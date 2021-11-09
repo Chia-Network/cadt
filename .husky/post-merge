@@ -1,0 +1,4 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+branch=`git branch | grep \\* | cut -d ' ' -f2`;branchesToCheck=(\"master\"); [[ \" ${branchesToCheck[@]} \" =~ \" ${branch} \" ]] &&  yarn run release || exit 0
