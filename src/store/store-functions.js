@@ -1,2 +1,3 @@
-export const keyMirror = (...keys) =>
-  keys.reduce((obj, key) => ({ ...obj, [key]: key }), {});
+export const keyMirror = (...keys) => {
+  return keys.reduce((obj, key) => ({...obj, [key]: key}), {});
+};

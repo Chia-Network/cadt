@@ -1,41 +1,27 @@
 {
   "env": {
     "browser": true,
-    "commonjs": true,
-    "es6": true,
-    "jest": true
+    "amd": true,
+    "node": true
   },
+  "parser": "babel-eslint",
   "parserOptions": {
     "ecmaFeatures": {
       "jsx": true
-    },
-    "sourceType": "module"
+    }
   },
+  "extends": [
+    "eslint:recommended",
+    "plugin:jest/recommended",
+    "plugin:react/recommended"
+  ],
   "rules": {
-    "no-const-assign": "warn",
-    "no-this-before-super": "warn",
-    "no-undef": "warn",
-    "no-continue": "off",
-    "no-unreachable": "warn",
-    "no-unused-vars": "warn",
-    "constructor-super": "warn",
-    "valid-typeof": "warn",
-    "quotes": [2, "single"],
-    "react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }],
-    "operator-linebreak": "off",
-    "linebreak-style": "off",
-    "import/prefer-default-export": "off",
-    "object-curly-spacing": "off",
-    "react/prop-types": "off",
-    "arrow-parens": "off",
-    "no-param-reassign": "off",
-    "vars-on-top": "off",
-    "no-bitwise": "off",
-    "import/order": "off",
-    "react/jsx-one-expression-per-line": "off",
-    "implicit-arrow-linebreak": "off"
+    "react/prop-types": "off"
   },
-  "parser": "babel-eslint",
-  "extends": "airbnb",
-  "plugins": ["react", "jsx-a11y", "import"]
+  "plugins": ["react"],
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  }
 }

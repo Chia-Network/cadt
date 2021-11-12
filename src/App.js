@@ -1,38 +1,51 @@
-import React, { useEffect, useState } from 'react';
-import { Provider } from 'react-redux';
-import { ThemeProvider } from 'styled-components';
-import { IntlProvider } from 'react-intl';
+import React, {useEffect, useState} from 'react';
+import {ThemeProvider} from 'styled-components';
+import {IntlProvider} from 'react-intl';
+import {useDispatch, useSelector} from 'react-redux';
 
-import { loadLocaleData } from './translations';
-import store from './store';
-import { AppNavigator } from './navigation';
+import {setLocale, setThemeFromLocalStorage} from './store/actions/app';
+import {loadLocaleData} from './translations';
+
+import {AppNavigator} from './navigation';
 import theme from './theme';
 
-import { IndeterminateProgressOverlay } from './components';
+import {IndeterminateProgressOverlay} from './components';
 
 const App = () => {
+  const dispatch = useDispatch();
+  const appStore = useSelector(state => state.app);
   const [translationTokens, setTranslationTokens] = useState();
 
-  useEffect(() => {
-    const processTranslationTokens = async () => {
-      setTranslationTokens(await loadLocaleData());
-    };
+  useEffect(
+    () => dispatch(setThemeFromLocalStorage),
+    [setThemeFromLocalStorage],
+  );
 
-    processTranslationTokens();
-  }, []);
+  useEffect(() => {
+    if (appStore.locale) {
+      const processTranslationTokens = async () => {
+        setTranslationTokens(await loadLocaleData(appStore.locale));
+      };
+
+      processTranslationTokens();
+    } else {
+      dispatch(setLocale(navigator.language));
+    }
+  }, [appStore.locale]);
 
   if (!translationTokens) {
     return <IndeterminateProgressOverlay />;
   }
 
   return (
-    <Provider store={store}>
-      <ThemeProvider theme={theme}>
-        <IntlProvider defaultLocale="en" messages={translationTokens.default}>
-          <AppNavigator />
-        </IntlProvider>
-      </ThemeProvider>
-    </Provider>
+    <ThemeProvider theme={theme}>
+      <IntlProvider
+        locale="en"
+        defaultLocale="en"
+        messages={translationTokens.default}>
+        <AppNavigator />
+      </IntlProvider>
+    </ThemeProvider>
   );
 };
 

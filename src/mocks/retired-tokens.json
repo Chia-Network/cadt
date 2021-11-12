@@ -1,0 +1,218 @@
+[
+  {
+    "coin_id": "001",
+    "name": "Kiwi Innovation",
+    "public_key": "xch1llxsnnutrmc58qz5s7kzt94qhgcdhevmakusnur5aw5zxw2s8c0qsn3ghl",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "002",
+    "name": "The B-School",
+    "public_key": "txch13zp6n0klhaezw8zn3yxzf2q4qejdjkejj63gwk3a4hvdamrzg65q2jqp88",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "003",
+    "name": "Laneway Business Centre",
+    "public_key": "txch1shusx983qpsfrnc3tqhyfwxhg3ag3cal35es9npv9azzdq4p6xpsaxaxrk",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "033",
+    "name": "Functional Industry",
+    "public_key": "txch1wl2dgnzyu0np3mpldf34ah08gwgvx2pytcjy638g5ynutx3ysm8s4awcyw",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "004",
+    "name": "Industry Tel",
+    "public_key": "txch1et2k45craut88kl79ruawm6mrazg6nlgd2uzr6fa5dsch6v62tcs9ntavc",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "005",
+    "name": "Ingenious Industry",
+    "public_key": "txch15lea58pw8dtng8fhmwrwrxez3v7dtuc33yf42m85ryy5xx47q2xqn8pfzh",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "006",
+    "name": "Adaptive Industry",
+    "public_key": "txch1zz4sqfzrc89aysnvt8yltk37v7x8zemyzttv9e74rltjmyekyh9qu7huu7",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "007",
+    "name": "Energy Business Hub",
+    "public_key": "txch1rf8lst5at2hlcpphetrml6al48d8rume72jhe3wh8fqjjs2u367srwp8dc",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "008",
+    "name": "New Energy Properties",
+    "public_key": "txch1k674fe6s9mks57ujlnvae549ghhawrs5389pvswh0g4qfnf05kzsnykr34",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "009",
+    "name": "Windsor Park Energy",
+    "public_key": "txch1hp9px4r454u6gyxe3jak3t0ur6gz0wjykurcy9jyahaz8gsjhm0s7w2d28",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "010",
+    "name": "Energex Renewables",
+    "public_key": "txch1d8t4km3ut99a24ew6twm0he7sjl0uhgpcvtxyfwmrj3cny5nyg0sjdsvvq",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "011",
+    "name": "The Energy Business Group",
+    "public_key": "txch1wshjv0smuznueawp2tsthqmlzemsc9az6tjvssgmfq0q8te9aypsrlee0z",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "012",
+    "name": "Energy Fortunes",
+    "public_key": "txch1ult26mnrsya35g6twnx58nruc9szjgre0tyjldyhr8g87m0wqnzsf90fhg",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "013",
+    "name": "Green Building Centre",
+    "public_key": "txch14jk7a2mxkkl6yvgshxjqtsz03vvp8h7m97ef0hqvgl8ktec0ckxq4dz4vp",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "014",
+    "name": "Energy & C02 Limited",
+    "public_key": "txch1cy78l7tfgazntey29yl4efr88valse5tshxrwl757vm79uu8mhqq6whrjk",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "015",
+    "name": "The Sustainable Property Company",
+    "public_key": "txch1xf6yg93dmvdyf9udpemkyxw7j63c8cstescsqd4ffkfnxr67r56qpdr25j",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "016",
+    "name": "The Climate Solutions Company",
+    "public_key": "txch19wqv0gwmttyp0hf4dttw9fx9s7u2vh5tdfdn7rdxrqamxu8ghdesk9eg8n",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "017",
+    "name": "Green & Sustainable Property Business",
+    "public_key": "txch1zpclmwzmmewnkf5ndf4rwpsdqrtnh65p5g3gz890qdyee2ey824s89evq6",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "018",
+    "name": "The Carbon War Room",
+    "public_key": "txch10mfvcxs727eswjd2e0qrnctpefmngegavpatp27s4pez0vzeyqys0ztzph",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "019",
+    "name": "Energy Carbon Industry One",
+    "public_key": "txch1emwky20w26sedx62wk56v09ju77cqzyadr8yfj7w02a9hhkw8ujqcszwj0",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "020",
+    "name": "Property & Development Solutions",
+    "public_key": "txch1cxh55khwvxvmzas6lfrqgrcellxstljz6mqp86xpu30a28vwpytsx6ztry",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "021",
+    "name": "Zero Carbon Inc.",
+    "public_key": "txch1upgqyc00kj87du0sxc4gjplac35dsl778427ynwklgdh5ase9aqqyle0hl",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "022",
+    "name": "New Energy and Property",
+    "public_key": "txch1k6h3lgn2uvgq3af92xrmnvvdmfkrsa6g5k5m9s5w7w7u7e7l48aqd6p5q5",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  },
+  {
+    "coin_id": "023",
+    "name": "The EcoVator",
+    "public_key": "txch1f5efzrr9l434l777fvf7zm5nureltffdpr8077scrks9q9jtpgsqmm3cvw",
+    "value": "SOME VALUE",
+    "block_height": 1000000,
+    "created_at": "2017-05-05",
+    "notified_at": true
+  }
+]

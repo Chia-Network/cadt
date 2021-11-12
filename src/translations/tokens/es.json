@@ -1,3 +1,12 @@
 {
-  "hello-world": "Hola Mundo"
+  "hello-world": "Hola Mundo",
+  "app-title": "Almacén climático",
+  "search": "Buscar",
+  "coin-id": "ID de moneda",
+  "name": "Nombre",
+  "public-key": "Llave pública",
+  "value": "Valor",
+  "block-height": "Altura del bloque",
+  "created-at": "Creado en",
+  "notified-at": "Notificado en"
 }

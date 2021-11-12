@@ -1,13 +1,12 @@
 const LANGUAGE_CODES = Object.freeze({
-  ENGLISH_US: 'en-us',
-  ENGLISH: 'en',
+  ENGLISH: 'en-US',
   SPANISH: 'es',
   JAPANESE: 'ja',
 });
 
-const loadLocaleData = () => {
+const loadLocaleData = locale => {
   // eslint-disable-next-line no-undef
-  switch (navigator.language) {
+  switch (locale) {
     case LANGUAGE_CODES.SPANISH:
       return import('./tokens/es.json');
     case LANGUAGE_CODES.JAPANESE:
@@ -19,4 +18,4 @@ const loadLocaleData = () => {
   }
 };
 
-export {loadLocaleData};
+export {loadLocaleData, LANGUAGE_CODES};

@@ -4,6 +4,10 @@
   "private": true,
   "homepage": "./",
   "main": "src/start.js",
+  "engineStrict": true,
+  "engines": {
+    "node": ">=15.0.1"
+  },
   "dependencies": {
     "@emotion/react": "^11.5.0",
     "@emotion/styled": "^11.3.0",
@@ -13,10 +17,12 @@
     "@testing-library/user-event": "^12.1.10",
     "electron": "^15.3.0",
     "lodash": "^4.17.21",
+    "minisearch": "^3.1.0",
     "react": "^17.0.2",
     "react-content-loader": "^6.0.3",
     "react-dom": "^17.0.2",
     "react-intl": "^5.21.0",
+    "react-paginate": "^8.0.0",
     "react-redux": "^7.2.6",
     "react-router-dom": "^5.3.0",
     "react-scripts": "4.0.3",
@@ -36,7 +42,8 @@
     "react-start": "react-scripts start",
     "pack": "build --dir",
     "dist": "npm run build && build",
-    "postinstall": "install-app-deps"
+    "requirements-check": "node check_node_version.js",
+    "postinstall": "npm run requirements-check && install-app-deps"
   },
   "eslintConfig": {
     "extends": [
@@ -73,7 +80,7 @@
     "standard-version": "^9.3.2"
   },
   "build": {
-    "appId": "com.electron.electron-with-create-react-app",
+    "appId": "com.chia.climate-warehouse",
     "win": {
       "iconUrl": "https://cdn2.iconfinder.com/data/icons/designer-skills/128/react-256.png"
     },

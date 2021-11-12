@@ -1,3 +1,12 @@
 {
-  "hello-world": "Hello World"
+  "hello-world": "Hello World",
+  "app-title": "Climate Warehouse",
+  "search": "Search",
+  "coin-id": "Coin ID",
+  "name": "Name",
+  "public-key": "Public Key",
+  "value": "Value",
+  "block-height": "Block Height",
+  "created-at": "Created At",
+  "notified-at": "Notified At"
 }
