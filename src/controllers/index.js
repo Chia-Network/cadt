@@ -1,5 +1,5 @@
 import * as ProjectController from './project.controller';
-import * as CoBenifetController from './co-benifet.controller';
+import * as CoBenefitController from './co-benefit.controller';
 import * as LocationController from './location.controller';
 import * as RatingController from './rating.controller';
 import * as QualificationController from './qualification.controller';
@@ -9,7 +9,7 @@ import * as VintageController from './vintages.controller';
 
 export {
   ProjectController,
-  CoBenifetController,
+  CoBenefitController,
   LocationController,
   RatingController,
   QualificationController,
