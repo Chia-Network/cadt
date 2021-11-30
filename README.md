@@ -7,8 +7,8 @@ A React App that displays a list of retired Carbon Tokens
 ### Installation
 
 ```
-git clone git@github.com:Chia-Network/carbon-asset-token.git
-cd carbon-asset-token
+git clone git@github.com:Chia-Network/climate-warehouse.git
+cd climate-warehouse
 nvm install 16.0.0
 nvm use 16.0.0
 npm install -g husky
