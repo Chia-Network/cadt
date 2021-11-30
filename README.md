@@ -24,10 +24,6 @@ You'll need:
 
   This app uses `nvm` to align node versions across development, CI and production. If you're working on Windows you should consider [nvm-windows](https://github.com/coreybutler/nvm-windows)
 
-- [yarn](https://yarnpkg.com/lang/en/)
-
-  This app uses `yarn` as an alternative to `npm`. The precise version you have doesn't matter (so long as it is `>1.0`).
-
 ## Contributing
 
 Upon your first commit, you will automatically be added to the package.json file as a contributor.
