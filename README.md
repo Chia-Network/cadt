@@ -12,8 +12,7 @@ cd carbon-asset-token
 nvm install 16.0.0
 nvm use 16.0.0
 npm install -g husky
-npm install -g yarn
-yarn
+npm run start
 ```
 
 ### Prerequisites
