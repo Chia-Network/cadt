@@ -6,7 +6,7 @@ const V1Router = express.Router();
 import {
   ProjectRouter,
   UnitRouter,
-  CoBenifetRouter,
+  CoBenefitRouter,
   LocationRouter,
   QualificationRouter,
   RatingRouter,
@@ -16,7 +16,7 @@ import {
 
 V1Router.use('/projects', ProjectRouter);
 V1Router.use('/units', UnitRouter);
-V1Router.use('/co-benifets', CoBenifetRouter);
+V1Router.use('/co-benefits', CoBenefitRouter);
 V1Router.use('/locations', LocationRouter);
 V1Router.use('/qualifications', QualificationRouter);
 V1Router.use('/ratings', RatingRouter);
