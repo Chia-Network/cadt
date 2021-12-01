@@ -12,6 +12,7 @@ cd climate-warehouse
 nvm install 16.0.0
 nvm use 16.0.0
 npm install -g husky
+npm install -g prettier
 npm run start
 ```
 
