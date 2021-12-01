@@ -1,6 +1,6 @@
-import stub from './co-benifets.stub.json';
+import stub from './co-benefits.stub.json';
 
-export const CoBenifetsMock = {
+export const CoBenefitsMock = {
   findAll: () => stub,
   findOne: (id) => {
     return stub.find((record) => record.id == id);
