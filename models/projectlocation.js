@@ -15,7 +15,9 @@ module.exports = (sequelize, DataTypes) => {
   };
   ProjectLocation.init({
     countryRegion: DataTypes.STRING,
-    hostCountry: DataTypes.STRING
+    country: DataTypes.STRING,
+    owner: DataTypes.STRING,
+    projectId: DataTypes.NUMBER
   }, {
     sequelize,
     modelName: 'ProjectLocation',

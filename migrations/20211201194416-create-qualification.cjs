@@ -1,21 +1,33 @@
 'use strict';
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Parties', {
+    await queryInterface.createTable('Qualifications', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      name: {
+      projectId: {
+        type: Sequelize.NUMBER
+      },
+      type: {
         type: Sequelize.STRING
       },
-      country: {
+      label: {
         type: Sequelize.STRING
       },
-      registry: {
+      creditingPeriodStartDate: {
+        type: Sequelize.DATE
+      },
+      creditingPeriodEndDate: {
+        type: Sequelize.DATE
+      },
+      owner: {
         type: Sequelize.STRING
+      },
+      unitId: {
+        type: Sequelize.NUMBER
       },
       createdAt: {
         allowNull: false,
@@ -28,6 +40,6 @@ module.exports = {
     });
   },
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Parties');
+    await queryInterface.dropTable('Qualifications');
   }
 };

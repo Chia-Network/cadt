@@ -28,7 +28,10 @@ module.exports = (sequelize, DataTypes) => {
     unitIssuanceLocation: DataTypes.STRING,
     unitLink: DataTypes.STRING,
     correspondingAdjustment: DataTypes.STRING,
-    unitTag: DataTypes.STRING
+    unitTag: DataTypes.STRING,
+    vintageId: DataTypes.NUMBER,
+    qualificationId: DataTypes.NUMBER,
+    owner: DataTypes.STRING
   }, {
     sequelize,
     modelName: 'Unit',

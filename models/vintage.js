@@ -18,7 +18,9 @@ module.exports = (sequelize, DataTypes) => {
     endDate: DataTypes.DATE,
     verificationApproach: DataTypes.STRING,
     verificationDate: DataTypes.DATE,
-    verificationBody: DataTypes.STRING
+    verificationBody: DataTypes.STRING,
+    owner: DataTypes.STRING,
+    projectId: DataTypes.NUMBER
   }, {
     sequelize,
     modelName: 'Vintage',

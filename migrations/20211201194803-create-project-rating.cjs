@@ -1,27 +1,30 @@
 'use strict';
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Vintages', {
+    await queryInterface.createTable('ProjectRatings', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      startDate: {
-        type: Sequelize.DATE
-      },
-      endDate: {
-        type: Sequelize.DATE
-      },
-      verificationApproach: {
+      ratingType: {
         type: Sequelize.STRING
       },
-      verificationDate: {
-        type: Sequelize.DATE
+      rating: {
+        type: Sequelize.NUMBER
       },
-      verificationBody: {
+      link: {
         type: Sequelize.STRING
+      },
+      scale: {
+        type: Sequelize.STRING
+      },
+      owner: {
+        type: Sequelize.STRING
+      },
+      projectId: {
+        type: Sequelize.NUMBER
       },
       createdAt: {
         allowNull: false,
@@ -34,6 +37,6 @@ module.exports = {
     });
   },
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Vintages');
+    await queryInterface.dropTable('ProjectRatings');
   }
 };
