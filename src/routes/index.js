@@ -2,7 +2,7 @@
 
 import express from 'express';
 import bodyParser from 'body-parser';
-import { V1Router } from './V1';
+import { V1Router } from './v1';
 const app = express();
 
 app.use(express.json());
