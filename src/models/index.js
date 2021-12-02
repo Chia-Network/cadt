@@ -1,5 +1,5 @@
 export * from './projects';
-export * from './co-benifets';
+export * from './co-benefits';
 export * from './locations';
 export * from './ratings';
 export * from './qualifications';

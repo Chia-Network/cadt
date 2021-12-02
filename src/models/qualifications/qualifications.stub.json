@@ -1,1 +1,62 @@
-[]
+[
+  {
+    "id": "1",
+    "projectId": 1,
+    "type": "basic type",
+    "label": "qualification 1",
+    "creditingPeriodStartDate": "2011-10-05T14:48:00.000Z",
+    "creditingPeriodEndDate": "2022-10-05T14:48:00.000Z",
+    "validityStartDate": "2011-11-05T14:41:00.000Z",
+    "validityEndDate": "2022-11-05T14:41:00.000Z",
+    "unitQuantity": 1,
+    "qualificationLink": "https://qualification.link/1"
+  },
+  {
+    "id": "2",
+    "projectId": 1,
+    "type": "basic type",
+    "label": "qualification 2",
+    "creditingPeriodStartDate": "2011-10-05T14:48:00.000Z",
+    "creditingPeriodEndDate": "2022-10-05T14:48:00.000Z",
+    "validityStartDate": "2011-11-05T14:41:00.000Z",
+    "validityEndDate": "2022-11-05T14:41:00.000Z",
+    "unitQuantity": 1,
+    "qualificationLink": "https://qualification.link/2"
+  },
+  {
+    "id": "3",
+    "projectId": 1,
+    "type": "basic type",
+    "label": "qualification 3",
+    "creditingPeriodStartDate": "2010-10-05T14:48:00.000Z",
+    "creditingPeriodEndDate": "2022-10-05T14:48:00.000Z",
+    "validityStartDate": "2011-10-05T14:41:00.000Z",
+    "validityEndDate": "2021-11-05T14:41:00.000Z",
+    "unitQuantity": 10,
+    "qualificationLink": "https://qualification.link/3"
+  },
+  {
+    "id": "4",
+    "projectId": 1,
+    "type": "basic type",
+    "label": "qualification 4",
+    "creditingPeriodStartDate": "2011-10-05T14:48:00.000Z",
+    "creditingPeriodEndDate": "2022-10-05T14:48:00.000Z",
+    "validityStartDate": "2011-11-05T14:41:00.000Z",
+    "validityEndDate": "2022-11-05T14:41:00.000Z",
+    "unitQuantity": 1,
+    "qualificationLink": "https://qualification.link/4"
+  },
+  {
+    "id": "5",
+    "projectId": 1,
+    "type": "basic type",
+    "label": "qualification 5",
+    "creditingPeriodStartDate": "2010-10-05T14:48:00.000Z",
+    "creditingPeriodEndDate": "2021-10-05T14:48:00.000Z",
+    "validityStartDate": "2010-11-05T14:41:00.000Z",
+    "validityEndDate": "2021-11-05T14:41:00.000Z",
+    "unitQuantity": 5,
+    "qualificationLink": "https://qualification.link/5"
+  }
+]
