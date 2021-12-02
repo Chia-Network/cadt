@@ -23,6 +23,15 @@ module.exports = {
       creditingPeriodEndDate: {
         type: Sequelize.DATE
       },
+      validityStartDate: {
+        type: Sequelize.DATE
+      },
+      validityEndDate: {
+        type: Sequelize.DATE
+      },
+      unitQuantity: {
+        type: Sequelize.NUMBER
+      },
       owner: {
         type: Sequelize.STRING
       },
