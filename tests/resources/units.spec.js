@@ -6,9 +6,9 @@ import app from './../../src/server';
 chai.use(chaiHttp);
 chai.should();
 
-describe("Units Routes", () => {
-  describe("GET /v1/units/", () => {
-    it("should get all units", () => {
+describe('Units Routes', () => {
+  describe('GET /v1/units/', () => {
+    it('should get all units', () => {
       chai.request(app)
         .get('/v1/units/?useMock=true')
         .end((err, res) => {
@@ -17,8 +17,8 @@ describe("Units Routes", () => {
         });
     });
   });
-  describe("GET /v1/units/?id=1", () => {
-    it("should get a single unit", () => {
+  describe('GET /v1/units/?id=1', () => {
+    it('should get a single unit', () => {
       chai.request(app)
         .get('/v1/units/?useMock=true&id=1')
         .end((err, res) => {
