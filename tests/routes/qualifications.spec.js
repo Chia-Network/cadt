@@ -1,15 +1,14 @@
-import {QualificationMock} from "../../src/models/index.js";
 import chai from 'chai';
 import chaiHttp from 'chai-http';
-import app from '../../src/server.js';
+import app from '../../src/server';
 
 // Configure chai
 chai.use(chaiHttp);
 chai.should();
 
-describe("Qualifications Routes", () => {
-  describe("GET /v1/qualifications/", () => {
-    it("should get all qualifications", () => {
+describe('Qualifications Routes', () => {
+  describe('GET /v1/qualifications/', () => {
+    it('should get all qualifications', () => {
       chai.request(app)
         .get('/v1/qualifications/?useMock=true')
         .end((err, res) => {
@@ -18,8 +17,8 @@ describe("Qualifications Routes", () => {
         });
     });
   });
-  describe("GET /v1/qualifications/?id=1", () => {
-    it("should get a single qualification", () => {
+  describe('GET /v1/qualifications/?id=1', () => {
+    it('should get a single qualification', () => {
       chai.request(app)
         .get('/v1/qualifications/?useMock=true&id=1')
         .end((err, res) => {
