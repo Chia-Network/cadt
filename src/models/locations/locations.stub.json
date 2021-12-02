@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "in_country_region": true,
+    "host_country": "United States"
+  },
+  {
+    "in_country_region": true,
+    "host_country": "United States"
+  },
+  {
+    "in_country_region": false,
+    "host_country": "China"
+  },
+  {
+    "in_country_region": false,
+    "host_country": "Russia"
+  },
+  {
+    "in_country_region": true,
+    "host_country": "United States"
+  }
+]

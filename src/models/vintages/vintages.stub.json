@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "vintage_start_date": "11/21/22",
+    "vintage_end_date": "12/2/22",
+    "verification_date": "11/19/22",
+    "verification_body": "This is verified"
+  },
+  {
+    "vintage_start_date": "3/2/22",
+    "vintage_end_date": "5/5/22",
+    "verification_date": "1/19/22",
+    "verification_body": "This is verified"
+  },
+  {
+    "vintage_start_date": "4/14/22",
+    "vintage_end_date": "7/25/22",
+    "verification_date": "3/8/22",
+    "verification_body": "This is verified"
+  },
+  {
+    "vintage_start_date": "7/23/22",
+    "vintage_end_date": "9/12/22",
+    "verification_date": "5/4/22",
+    "verification_body": "This is verified"
+  },
+  {
+    "vintage_start_date": "9/13/22",
+    "vintage_end_date": "11/21/22",
+    "verification_date": "8/22/22",
+    "verification_body": "This is verified"
+  }
+]
