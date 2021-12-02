@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "cobenefit": "TEST_COBENEFIT_1"
+  },
+  {
+    "cobenefit": "TEST_COBENEFIT_2"
+  },
+  {
+    "cobenefit": "TEST_COBENEFIT_3"
+  },
+  {
+    "cobenefit": "TEST_COBENEFIT_4"
+  },
+  {
+    "cobenefit": "TEST_COBENEFIT_5"
+  }
+]

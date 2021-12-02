@@ -1,4 +1,4 @@
-import { Project, ProjectMock } from '../models';
+import { ProjectMock } from '../models';
 
 export const create = (req, res) => {
   // create a blockchain node action and push to staging
@@ -13,7 +13,9 @@ export const findAll = async (req, res) => {
     return;
   }
 
-  res.json(await Project.findAll());
+  res.json({
+    message: 'Not Yet Implemented',
+  });
 };
 
 export const findOne = (req, res) => {
