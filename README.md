@@ -53,3 +53,33 @@ The "subject" of the commit follows. It should be a short indication of the chan
 ### Commit linting
 
 Each time you commit the message will be checked against these standards in a pre-commit hook. Additionally all the commits in a PR branch will be linted before it can be merged to master.
+
+### Sequelize Generator
+
+#### Creating Model and Migration Script
+
+Use the following command to create a model and a migration script
+
+npx sequelize-cli model:generate --name User --attributes firstName:string,lastName:string,email:string
+
+#### Running Migrations
+
+After you have generated the migration scripts you will need to sync it with the db. Use the following command
+
+npx sequelize-cli db:migrate
+
+#### Undoing Migration
+
+If you messed up and you want to rollback some of your migration changes. Use the following command
+
+npx sequelize-cli db:migrate:undo
+
+#### Making changes to Migrations without rolling back
+
+If you want to alter, drop or add a column or add a foriegn key or anything with the table. Use the following command to create a barebone migration script
+
+npx sequelize-cli migration:generate --name <enter-type-of-change-here>
+
+##### Recommendations
+
+Models are not currently being added to our folder structure because sequelize can handle it. So for now. simply copy and paste the model into the appropriate folder
