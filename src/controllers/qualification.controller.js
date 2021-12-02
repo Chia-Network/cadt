@@ -1,4 +1,4 @@
-import {Project, Qualification, QualificationMock} from "../models/index.js";
+import { Qualification, QualificationMock } from '../models';
 
 export const create = (req, res) => {
   res.json({
