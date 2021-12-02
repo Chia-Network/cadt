@@ -56,12 +56,6 @@ module.exports = {
       vintageId: {
         type: Sequelize.NUMBER
       },
-      qualificationId: {
-        type: Sequelize.NUMBER
-      },
-      owner: {
-        type: Sequelize.STRING
-      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE
