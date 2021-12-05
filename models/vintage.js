@@ -14,13 +14,16 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   Vintage.init({
-    startDate: DataTypes.DATE,
-    endDate: DataTypes.DATE,
-    verificationApproach: DataTypes.STRING,
-    verificationDate: DataTypes.DATE,
-    verificationBody: DataTypes.STRING,
-    owner: DataTypes.STRING,
-    projectId: DataTypes.NUMBER
+    id: Sequelize.INTEGER,
+    startDate: Sequelize.DATE,
+    endDate: Sequelize.DATE,
+    verificationApproach: Sequelize.STRING,
+    verificationDate: Sequelize.DATE,
+    verificationBody: Sequelize.STRING,
+    owner: Sequelize.STRING,
+    projectId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   }, {
     sequelize,
     modelName: 'Vintage',

@@ -14,11 +14,14 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   RelatedProject.init({
-    relatedProjectType: DataTypes.STRING,
-    registry: DataTypes.STRING,
-    note: DataTypes.STRING,
-    owner: DataTypes.STRING,
-    projectId: DataTypes.NUMBER
+    id: Sequelize.INTEGER,
+    relatedProjectType: Sequelize.STRING,
+    registry: Sequelize.STRING,
+    note: Sequelize.STRING,
+    owner: Sequelize.STRING,
+    projectId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE
   }, {
     sequelize,
     modelName: 'RelatedProject',
