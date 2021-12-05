@@ -14,12 +14,15 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   ProjectRating.init({
-    ratingType: DataTypes.STRING,
-    rating: DataTypes.NUMBER,
-    link: DataTypes.STRING,
-    scale: DataTypes.STRING,
-    owner: DataTypes.STRING,
-    projectId: DataTypes.NUMBER
+    id: Sequelize.INTEGER,
+    ratingType: Sequelize.STRING,
+    rating: Sequelize.NUMBER,
+    link: Sequelize.STRING,
+    scale: Sequelize.STRING,
+    owner: Sequelize.STRING,
+    projectId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   }, {
     sequelize,
     modelName: 'ProjectRating',

@@ -8,7 +8,7 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      benfit: {
+      benefit: {
         type: Sequelize.STRING
       },
       owner: {

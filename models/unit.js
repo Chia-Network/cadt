@@ -14,27 +14,27 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   Unit.init({
-    owner: DataTypes.STRING,
-    buyer: DataTypes.STRING,
-    registry: DataTypes.STRING,
-    blockIdentifier: DataTypes.STRING,
-    identifier: DataTypes.STRING,
-    qualificationId: DataTypes.NUMBER,
-    unitType: DataTypes.STRING,
-    unitCount: DataTypes.NUMBER,
-    unitStatus: DataTypes.STRING,
-    unitStatusDate: DataTypes.DATE,
-    transactionType: DataTypes.STRING,
-    unitIssuanceLocation: DataTypes.STRING,
-    unitLink: DataTypes.STRING,
-    correspondingAdjustment: DataTypes.STRING,
-    unitTag: DataTypes.STRING,
-    vintageId: DataTypes.NUMBER,
-    qualificationId: DataTypes.NUMBER,
-    owner: DataTypes.STRING
-  }, {
-    sequelize,
-    modelName: 'Unit',
+    id: Sequelize.INTEGER,
+    owner: Sequelize.STRING,
+    buyer: Sequelize.STRING,
+    registry: Sequelize.STRING,
+    blockIdentifier: Sequelize.STRING,
+    identifier: Sequelize.STRING,
+    qualificationId: Sequelize.NUMBER,
+    unitType: Sequelize.STRING,
+    unitCount: Sequelize.NUMBER,
+    unitStatus: Sequelize.STRING,
+    unitStatusDate: Sequelize.DATE,
+    transactionType: Sequelize.STRING,
+    unitIssuanceLocation: Sequelize.STRING,
+    unitLink: Sequelize.STRING,
+    correspondingAdjustment: Sequelize.STRING,
+    unitTag: Sequelize.STRING,
+    vintageId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE}, {
+      sequelize,
+      modelName: 'Unit',
   });
   return Unit;
 };

@@ -14,10 +14,13 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   Party.init({
-    name: DataTypes.STRING,
-    country: DataTypes.STRING,
-    registry: DataTypes.STRING,
-    owner: DataTypes.STRING
+    id: Sequelize.INTEGER,
+    name: Sequelize.STRING,
+    country: Sequelize.STRING,
+    registry: Sequelize.STRING,
+    owner: Sequelize.STRING,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   }, {
     sequelize,
     modelName: 'Party',

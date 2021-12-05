@@ -14,10 +14,13 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   ProjectLocation.init({
-    countryRegion: DataTypes.STRING,
-    country: DataTypes.STRING,
-    owner: DataTypes.STRING,
-    projectId: DataTypes.NUMBER
+    id: Sequelize.INTEGER,
+    countryRegion: Sequelize.STRING,
+    country: Sequelize.STRING,
+    owner: Sequelize.STRING,
+    projectId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   }, {
     sequelize,
     modelName: 'ProjectLocation',

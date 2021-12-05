@@ -14,13 +14,19 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   Qualification.init({
-    projectId: DataTypes.NUMBER,
-    type: DataTypes.STRING,
-    label: DataTypes.STRING,
-    creditingPeriodStartDate: DataTypes.DATE,
-    creditingPeriodEndDate: DataTypes.DATE,
-    owner: DataTypes.STRING,
-    unitId: DataTypes.NUMBER
+    id: Sequelize.INTEGER,
+    projectId: Sequelize.NUMBER,
+    type: Sequelize.STRING,
+    label: Sequelize.STRING,
+    creditingPeriodStartDate: Sequelize.DATE,
+    creditingPeriodEndDate: Sequelize.DATE,
+    validityStartDate: Sequelize.DATE,
+    validityEndDate: Sequelize.DATE,
+    unitQuantity: Sequelize.NUMBER,
+    owner: Sequelize.STRING,
+    unitId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   }, {
     sequelize,
     modelName: 'Qualification',
