@@ -3,14 +3,24 @@ import Sequelize from 'sequelize';
 const { DataTypes, Model } = Sequelize;
 import { sequelize } from '../database';
 
-class Qualification extends Model { }
+class Qualification extends Model {
+  /**
+   * Helper method for defining associations.
+   * This method is not a part of Sequelize lifecycle.
+   * The `models/index` file will call this method automatically.
+   */
+  static associate(models) {
+    // define association here
+  }
+
+}
 
 Qualification.init({
   id: {
     allowNull: false,
-      autoIncrement: true,
-      primaryKey: true,
-      type: Sequelize.INTEGER
+    autoIncrement: true,
+    primaryKey: true,
+    type: Sequelize.INTEGER
   },
   qualificationLink: {
     type: Sequelize.STRING
@@ -44,6 +54,6 @@ Qualification.init({
     allowNull: false,
       type: Sequelize.DATE
   }
-}, { sequelize, modelName: 'qualification' });
+}, { sequelize, modelName: 'Qualifications' });
 
 export { Qualification };
