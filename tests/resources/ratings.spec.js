@@ -6,21 +6,21 @@ import app from '../../src/server';
 chai.use(chaiHttp);
 chai.should();
 
-describe('Qualifications Routes', () => {
-  describe('GET /v1/qualifications/', () => {
-    it('should get all qualifications', () => {
+describe('Ratings Routes', () => {
+  describe('GET /v1/ratings/', () => {
+    it('should get all ratings', () => {
       chai.request(app)
-        .get('/v1/qualifications/?useMock=true')
+        .get('/v1/ratings/?useMock=true')
         .end((err, res) => {
           res.should.have.status(200);
           res.body.should.be.a('array');
         });
     });
   });
-  describe('GET /v1/qualifications/?id=1', () => {
-    it('should get a single qualification', () => {
+  describe('GET /v1/ratings/?id=1', () => {
+    it('should get a single rating', () => {
       chai.request(app)
-        .get('/v1/qualifications/?useMock=true&id=1')
+        .get('/v1/ratings/?useMock=true&id=1')
         .end((err, res) => {
           res.should.have.status(200);
           res.body.should.be.a('object');
