@@ -3,36 +3,47 @@ import Sequelize from 'sequelize';
 const { DataTypes, Model } = Sequelize;
 import { sequelize } from '../database';
 
-class Project extends Model {}
+class Project extends Model {
+  /**
+   * Helper method for defining associations.
+   * This method is not a part of Sequelize lifecycle.
+   * The `models/index` file will call this method automatically.
+   */
+  static associate(models) {
+    // define association here
+  }
 
-Project.init(
-  {
-    id: {
-      type: Sequelize.UUID,
-      defaultValue: Sequelize.UUIDV1,
-      primaryKey: true,
-    },
-    id_origin: DataTypes.STRING,
-    warehouse_project_id: DataTypes.STRING,
-    registry_current: DataTypes.STRING,
-    registry_origin: DataTypes.STRING,
-    name: DataTypes.STRING,
-    link: DataTypes.STRING,
-    developer: DataTypes.STRING,
-    sector: DataTypes.STRING,
-    type: DataTypes.STRING,
-    ndc_covered: DataTypes.BOOLEAN,
-    ndc_linkage: DataTypes.STRING,
-    status: DataTypes.STRING,
-    status_date: DataTypes.STRING,
-    unit_metric: DataTypes.STRING,
-    methodology: DataTypes.STRING,
-    methodology_version: DataTypes.STRING,
-    validation_approach: DataTypes.STRING,
-    validation_date: DataTypes.STRING,
-    estimated_annual_average_emission_reduction: DataTypes.STRING,
+}
+
+Project.init({
+  id: {
+    type: Sequelize.NUMBER,
+    primaryKey: true,
   },
-  { sequelize, modelName: 'project' },
-);
+  currentRegistry: Sequelize.STRING,
+  registryOfOrigin: Sequelize.STRING,
+  originProjectId: Sequelize.NUMBER,
+  program: Sequelize.STRING,
+  warehouseProjectId: Sequelize.NUMBER,
+  projectName: Sequelize.STRING,
+  projectLink: Sequelize.STRING,
+  projectDeveloper: Sequelize.STRING,
+  sector: Sequelize.STRING,
+  projectType: Sequelize.STRING,
+  coveredByNDC: Sequelize.STRING,
+  NDCLinkage: Sequelize.STRING,
+  projectStatus: Sequelize.STRING,
+  projectStatusDate: Sequelize.DATE,
+  unitMetric: Sequelize.STRING,
+  methodology: Sequelize.STRING,
+  methodologyVersion: Sequelize.STRING,
+  validationApproach: Sequelize.STRING,
+  validationDate: Sequelize.DATE,
+  projectTag: Sequelize.STRING,
+  estimatedAnnualAverageEmmisionReduction: Sequelize.STRING,
+  owner: Sequelize.STRING,
+  createdAt: Sequelize.DATE,
+  updatedAt: Sequelize.DATE,
+}, { sequelize, modelName: 'Projects' });
 
 export { Project };
