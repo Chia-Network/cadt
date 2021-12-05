@@ -14,9 +14,12 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   CoBenefit.init({
-    benfit: DataTypes.STRING,
-    owner: DataTypes.STRING,
-    projectId: DataTypes.NUMBER
+    id: Sequelize.INTEGER,
+    benefit: Sequelize.STRING,
+    owner: Sequelize.STRING,
+    projectId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   }, {
     sequelize,
     modelName: 'CoBenefit',
