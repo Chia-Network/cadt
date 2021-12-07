@@ -1,6 +1,6 @@
 'use strict';
 import Sequelize from 'sequelize';
-const { DataTypes, Model } = Sequelize;
+const { Model } = Sequelize;
 import { sequelize } from '../database';
 
 class Staging extends Model {
@@ -28,6 +28,7 @@ Staging.init(
   {
     sequelize,
     modelName: 'Staging',
+    timestamps: false,
   },
 );
 

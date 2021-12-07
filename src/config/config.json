@@ -1,0 +1,13 @@
+{
+  "app_database": {
+    "dialect": "sqlite",
+    "storage": "./data.sqlite3"
+  },
+  "reporting_database": {
+    "username": "root",
+    "password": null,
+    "database": "database",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}

@@ -1,6 +1,6 @@
 'use strict';
 import Sequelize from 'sequelize';
-const { DataTypes, Model } = Sequelize;
+const { Model } = Sequelize;
 import { sequelize } from '../database';
 
 class Unit extends Model {
@@ -12,34 +12,37 @@ class Unit extends Model {
   static associate(models) {
     // define association here
   }
-
 }
 
-Unit.init({
-  id: {
-    type: Sequelize.NUMBER,
-    primaryKey: true,
+Unit.init(
+  {
+    id: {
+      type: Sequelize.NUMBER,
+      primaryKey: true,
+    },
+    owner: Sequelize.STRING,
+    buyer: Sequelize.STRING,
+    registry: Sequelize.STRING,
+    blockIdentifier: Sequelize.STRING,
+    identifier: Sequelize.STRING,
+    qualificationId: Sequelize.NUMBER,
+    unitType: Sequelize.STRING,
+    unitCount: Sequelize.NUMBER,
+    unitStatus: Sequelize.STRING,
+    unitStatusDate: Sequelize.DATE,
+    transactionType: Sequelize.STRING,
+    unitIssuanceLocation: Sequelize.STRING,
+    unitLink: Sequelize.STRING,
+    correspondingAdjustment: Sequelize.STRING,
+    unitTag: Sequelize.STRING,
+    vintageId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   },
-  owner: Sequelize.STRING,
-  buyer: Sequelize.STRING,
-  registry: Sequelize.STRING,
-  blockIdentifier: Sequelize.STRING,
-  identifier: Sequelize.STRING,
-  qualificationId: Sequelize.NUMBER,
-  unitType: Sequelize.STRING,
-  unitCount: Sequelize.NUMBER,
-  unitStatus: Sequelize.STRING,
-  unitStatusDate: Sequelize.DATE,
-  transactionType: Sequelize.STRING,
-  unitIssuanceLocation: Sequelize.STRING,
-  unitLink: Sequelize.STRING,
-  correspondingAdjustment: Sequelize.STRING,
-  unitTag: Sequelize.STRING,
-  vintageId: Sequelize.NUMBER,
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE}, {
-  sequelize,
-  modelName: 'Units',
-});
+  {
+    sequelize,
+    modelName: 'Units',
+  },
+);
 
 export { Unit };
