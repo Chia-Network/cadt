@@ -8,6 +8,12 @@ import joiExpress from 'express-joi-validation';
 const validator = joiExpress.createValidator({});
 const UnitRouter = express.Router();
 
+UnitRouter.get('/', (req, res) => {
+  return req.query.id
+    ? UnitController.findOne(req, res)
+    : UnitController.findAll(req, res);
+});
+
 const querySchema = Joi.object({
   buyer: Joi.string().required(),
   registry: Joi.string().required(),
@@ -26,14 +32,23 @@ const querySchema = Joi.object({
   vintageId: Joi.number().required(),
 });
 
-UnitRouter.get('/', (req, res) => {
-  return req.query.id
-    ? UnitController.findOne(req, res)
-    : UnitController.findAll(req, res);
-});
+UnitRouter.post('/', validator.body(querySchema), UnitController.create);
 
-UnitRouter.post('/', validator.query(querySchema), UnitController.create);
-UnitRouter.put('/', validator.query(querySchema), UnitController.update);
-UnitRouter.delete('/', UnitController.destroy);
+const querySchemaUpdate = {
+  uuid: Joi.string().required(),
+  ...querySchema,
+};
+
+UnitRouter.put('/', validator.body(querySchemaUpdate), UnitController.update);
+
+const querySchemaDelete = {
+  uuid: Joi.string().required(),
+};
+
+UnitRouter.delete(
+  '/',
+  validator.body(querySchemaDelete),
+  UnitController.destroy,
+);
 
 export { UnitRouter };

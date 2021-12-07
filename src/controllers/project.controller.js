@@ -1,28 +1,22 @@
 import { uuid as uuidv4 } from 'uuidv4';
 import { Staging, ProjectMock } from '../models';
 
-export const create = (req, res) => {
+export const create = async (req, res) => {
   // When creating new projects assign a uuid to is so
   // multiple organizations will always have unique ids
   const uuid = uuidv4();
-  const stagedData = {
-    uuid,
-    action: 'INSERT',
-    table: 'Projects',
-    data: JSON.stringify(req.body),
-  };
 
-  Staging.create(stagedData)
-    .then(() =>
-      res.json({
-        message: 'Project created successfully',
-      }),
-    )
-    .catch(() =>
-      res.json({
-        message: 'Error creating new project',
-      }),
-    );
+  try {
+    await Staging.create({
+      uuid,
+      action: 'INSERT',
+      table: 'Projects',
+      data: JSON.stringify(req.body),
+    });
+    res.json('Success');
+  } catch (err) {
+    res.json(err);
+  }
 };
 
 export const findAll = async (req, res) => {
