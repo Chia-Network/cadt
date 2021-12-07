@@ -1,5 +1,5 @@
 {
-  "app_database": {
+  "development": {
     "dialect": "sqlite",
     "storage": "./data.sqlite3"
   },

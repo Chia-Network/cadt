@@ -24,11 +24,12 @@ Staging.init(
     table: Sequelize.STRING,
     action: Sequelize.STRING,
     data: Sequelize.STRING,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   },
   {
     sequelize,
     modelName: 'Staging',
-    timestamps: false,
   },
 );
 
