@@ -1,10 +1,28 @@
-import { ProjectMock } from '../models';
+import { uuid as uuidv4 } from 'uuidv4';
+import { Staging, ProjectMock } from '../models';
 
 export const create = (req, res) => {
-  // create a blockchain node action and push to staging
-  res.json({
-    message: 'Not Yet Implemented',
-  });
+  // When creating new projects assign a uuid to is so
+  // multiple organizations will always have unique ids
+  const uuid = uuidv4();
+  const stagedData = {
+    uuid,
+    action: 'INSERT',
+    table: 'Projects',
+    data: JSON.stringify(req.body),
+  };
+
+  Staging.create(stagedData)
+    .then(() =>
+      res.json({
+        message: 'Project created successfully',
+      }),
+    )
+    .catch(() =>
+      res.json({
+        message: 'Error creating new project',
+      }),
+    );
 };
 
 export const findAll = async (req, res) => {
@@ -36,13 +54,42 @@ export const findOne = (req, res) => {
 };
 
 export const update = (req, res) => {
-  res.json({
-    message: 'Not Yet Implemented',
-  });
+  const stagedData = {
+    uuid: req.body.uuid,
+    action: 'UPDATE',
+    table: 'Projects',
+    data: JSON.stringify(req.body),
+  };
+
+  Staging.create(stagedData)
+    .then(() =>
+      res.json({
+        message: 'Project created successfully',
+      }),
+    )
+    .catch(() =>
+      res.json({
+        message: 'Error creating new project',
+      }),
+    );
 };
 
 export const destroy = (req, res) => {
-  res.json({
-    message: 'Not Yet Implemented',
-  });
+  const stagedData = {
+    uuid: req.body.uuid,
+    action: 'DELETE',
+    table: 'Projects',
+  };
+
+  Staging.create(stagedData)
+    .then(() =>
+      res.json({
+        message: 'Project created successfully',
+      }),
+    )
+    .catch(() =>
+      res.json({
+        message: 'Error creating new project',
+      }),
+    );
 };
