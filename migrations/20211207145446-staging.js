@@ -2,7 +2,7 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Staging', {
+    await queryInterface.createTable('Stagings', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -19,12 +19,12 @@ module.exports = {
         type: Sequelize.STRING,
       },
       data: {
-        type: Sequelize.STRING,
+        type: Sequelize.STRING(10000),
       },
     });
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Staging');
+    await queryInterface.dropTable('Stagings');
   },
 };
