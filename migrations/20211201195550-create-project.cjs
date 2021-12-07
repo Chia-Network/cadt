@@ -6,85 +6,88 @@ module.exports = {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+      },
+      uuid: {
+        type: Sequelize.STRING,
       },
       currentRegistry: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       registryOfOrigin: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       originProjectId: {
-        type: Sequelize.NUMBER
+        type: Sequelize.NUMBER,
       },
       program: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       warehouseProjectId: {
-        type: Sequelize.NUMBER
+        type: Sequelize.NUMBER,
       },
       projectName: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       projectLink: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       projectDeveloper: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       sector: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       projectType: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       coveredByNDC: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       NDCLinkage: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       projectStatus: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       projectStatusDate: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       unitMetric: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       methodology: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       methodologyVersion: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       validationApproach: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       validationDate: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       projectTag: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       estimatedAnnualAverageEmmisionReduction: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       owner: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       createdAt: {
         allowNull: false,
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       updatedAt: {
         allowNull: false,
-        type: Sequelize.DATE
-      }
+        type: Sequelize.DATE,
+      },
     });
   },
   down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('Projects');
-  }
+  },
 };

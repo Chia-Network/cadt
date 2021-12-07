@@ -6,67 +6,70 @@ module.exports = {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+      },
+      uuid: {
+        type: Sequelize.STRING,
       },
       owner: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       buyer: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       registry: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       blockIdentifier: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       identifier: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       qualificationId: {
-        type: Sequelize.NUMBER
+        type: Sequelize.NUMBER,
       },
       unitType: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       unitCount: {
-        type: Sequelize.NUMBER
+        type: Sequelize.NUMBER,
       },
       unitStatus: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       unitStatusDate: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       transactionType: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       unitIssuanceLocation: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       unitLink: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       correspondingAdjustment: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       unitTag: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       vintageId: {
-        type: Sequelize.NUMBER
+        type: Sequelize.NUMBER,
       },
       createdAt: {
         allowNull: false,
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       updatedAt: {
         allowNull: false,
-        type: Sequelize.DATE
-      }
+        type: Sequelize.DATE,
+      },
     });
   },
   down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('Units');
-  }
+  },
 };
