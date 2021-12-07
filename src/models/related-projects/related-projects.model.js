@@ -1,6 +1,6 @@
 'use strict';
 import Sequelize from 'sequelize';
-const { DataTypes, Model } = Sequelize;
+const { Model } = Sequelize;
 import { sequelize } from '../database';
 
 class RelatedProject extends Model {
@@ -12,24 +12,26 @@ class RelatedProject extends Model {
   static associate(models) {
     // define association here
   }
-
 }
 
-RelatedProject.init({
-  id: {
-    type: Sequelize.NUMBER,
-    primaryKey: true,
+RelatedProject.init(
+  {
+    id: {
+      type: Sequelize.NUMBER,
+      primaryKey: true,
+    },
+    relatedProjectType: Sequelize.STRING,
+    registry: Sequelize.STRING,
+    note: Sequelize.STRING,
+    owner: Sequelize.STRING,
+    projectId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   },
-  relatedProjectType: Sequelize.STRING,
-  registry: Sequelize.STRING,
-  note: Sequelize.STRING,
-  owner: Sequelize.STRING,
-  projectId: Sequelize.NUMBER,
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE
-}, {
-  sequelize,
-  modelName: 'RelatedProjects',
-});
+  {
+    sequelize,
+    modelName: 'RelatedProjects',
+  },
+);
 
 export { RelatedProject };

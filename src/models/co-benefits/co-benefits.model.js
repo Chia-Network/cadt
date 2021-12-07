@@ -1,6 +1,6 @@
 'use strict';
 import Sequelize from 'sequelize';
-const { DataTypes, Model } = Sequelize;
+const { Model } = Sequelize;
 import { sequelize } from '../database';
 
 class CoBenefit extends Model {
@@ -12,22 +12,24 @@ class CoBenefit extends Model {
   static associate(models) {
     // define association here
   }
-
 }
 
-CoBenefit.init({
-  id: {
-    type: Sequelize.NUMBER,
-    primaryKey: true,
+CoBenefit.init(
+  {
+    id: {
+      type: Sequelize.NUMBER,
+      primaryKey: true,
+    },
+    benefit: Sequelize.STRING,
+    owner: Sequelize.STRING,
+    projectId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   },
-  benefit: Sequelize.STRING,
-  owner: Sequelize.STRING,
-  projectId: Sequelize.NUMBER,
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
-}, {
-  sequelize,
-  modelName: 'CoBenefits',
-});
+  {
+    sequelize,
+    modelName: 'CoBenefits',
+  },
+);
 
 export { CoBenefit };

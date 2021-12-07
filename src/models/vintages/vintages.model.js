@@ -1,6 +1,6 @@
 'use strict';
 import Sequelize from 'sequelize';
-const { DataTypes, Model } = Sequelize;
+const { Model } = Sequelize;
 import { sequelize } from '../database';
 
 class Vintage extends Model {
@@ -12,26 +12,28 @@ class Vintage extends Model {
   static associate(models) {
     // define association here
   }
-
 }
 
-Vintage.init({
-  id: {
-    type: Sequelize.NUMBER,
-    primaryKey: true,
+Vintage.init(
+  {
+    id: {
+      type: Sequelize.NUMBER,
+      primaryKey: true,
+    },
+    startDate: Sequelize.DATE,
+    endDate: Sequelize.DATE,
+    verificationApproach: Sequelize.STRING,
+    verificationDate: Sequelize.DATE,
+    verificationBody: Sequelize.STRING,
+    owner: Sequelize.STRING,
+    projectId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   },
-  startDate: Sequelize.DATE,
-  endDate: Sequelize.DATE,
-  verificationApproach: Sequelize.STRING,
-  verificationDate: Sequelize.DATE,
-  verificationBody: Sequelize.STRING,
-  owner: Sequelize.STRING,
-  projectId: Sequelize.NUMBER,
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
-}, {
-  sequelize,
-  modelName: 'Vintages',
-});
+  {
+    sequelize,
+    modelName: 'Vintages',
+  },
+);
 
 export { Vintage };

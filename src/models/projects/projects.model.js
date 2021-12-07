@@ -1,6 +1,6 @@
 'use strict';
 import Sequelize from 'sequelize';
-const { DataTypes, Model } = Sequelize;
+const { Model } = Sequelize;
 import { sequelize } from '../database';
 
 class Project extends Model {

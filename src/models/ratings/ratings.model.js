@@ -1,6 +1,6 @@
 'use strict';
 import Sequelize from 'sequelize';
-const { DataTypes, Model } = Sequelize;
+const { Model } = Sequelize;
 import { sequelize } from '../database';
 
 class Rating extends Model {
@@ -12,25 +12,27 @@ class Rating extends Model {
   static associate(models) {
     // define association here
   }
-
 }
 
-Rating.init({
-  id: {
-    type: Sequelize.NUMBER,
-    primaryKey: true,
+Rating.init(
+  {
+    id: {
+      type: Sequelize.NUMBER,
+      primaryKey: true,
+    },
+    ratingType: Sequelize.STRING,
+    rating: Sequelize.NUMBER,
+    link: Sequelize.STRING,
+    scale: Sequelize.STRING,
+    owner: Sequelize.STRING,
+    projectId: Sequelize.NUMBER,
+    createdAt: Sequelize.DATE,
+    updatedAt: Sequelize.DATE,
   },
-  ratingType: Sequelize.STRING,
-  rating: Sequelize.NUMBER,
-  link: Sequelize.STRING,
-  scale: Sequelize.STRING,
-  owner: Sequelize.STRING,
-  projectId: Sequelize.NUMBER,
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
-}, {
-  sequelize,
-  modelName: 'ProjectRatings',
-});
+  {
+    sequelize,
+    modelName: 'ProjectRatings',
+  },
+);
 
 export { Rating };
