@@ -3,6 +3,8 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
 
+import { Project } from '../projects';
+
 class RelatedProject extends Model {
   /**
    * Helper method for defining associations.
@@ -10,7 +12,7 @@ class RelatedProject extends Model {
    * The `models/index` file will call this method automatically.
    */
   static associate(models) {
-    // define association here
+    RelatedProject.belongsTo(Project);
   }
 }
 

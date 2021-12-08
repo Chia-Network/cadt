@@ -2,6 +2,7 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
+import { Project } from '../projects/index';
 
 class Vintage extends Model {
   /**
@@ -10,7 +11,7 @@ class Vintage extends Model {
    * The `models/index` file will call this method automatically.
    */
   static associate(models) {
-    // define association here
+    Vintage.belongsTo(Project);
   }
 }
 

@@ -3,6 +3,13 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
 
+import { RelatedProject } from './../related-projects';
+import { Vintage } from './../vintages';
+import { Qualification } from './../qualifications';
+import { ProjectLocation } from './../locations';
+import { Rating } from './../ratings';
+import { CoBenefit } from './../co-benefits';
+
 class Project extends Model {
   /**
    * Helper method for defining associations.
@@ -10,7 +17,12 @@ class Project extends Model {
    * The `models/index` file will call this method automatically.
    */
   static associate(models) {
-    // define association here
+    Project.hasMany(RelatedProject);
+    Project.hasMany(Vintage);
+    Project.hasMany(Qualification);
+    Project.hasMany(Rating);
+    Project.hasMany(CoBenefit);
+    Project.hasMany(ProjectLocation);
   }
 }
 
@@ -46,7 +58,7 @@ Project.init(
     createdAt: Sequelize.DATE,
     updatedAt: Sequelize.DATE,
   },
-  { sequelize, modelName: 'Projects' },
+  { sequelize, modelName: 'Projects', foreignKey: 'projectId' },
 );
 
 export { Project };

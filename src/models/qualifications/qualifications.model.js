@@ -2,6 +2,8 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
+import { Project } from '../projects';
+import { Unit } from '../units';
 
 class Qualification extends Model {
   /**
@@ -10,7 +12,8 @@ class Qualification extends Model {
    * The `models/index` file will call this method automatically.
    */
   static associate(models) {
-    // define association here
+    Qualification.belongsTo(Project);
+    Qualification.hasMany(Unit);
   }
 }
 
@@ -55,7 +58,7 @@ Qualification.init(
       type: Sequelize.DATE,
     },
   },
-  { sequelize, modelName: 'Qualifications' },
+  { sequelize, modelName: 'Qualifications', foreignKey: 'qualificationId' },
 );
 
 export { Qualification };
