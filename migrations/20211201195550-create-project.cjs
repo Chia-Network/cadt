@@ -8,7 +8,10 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      uuid: {
+      warehouseProjectId: {
+        type: Sequelize.STRING,
+      },
+      projectID: {
         type: Sequelize.STRING,
       },
       currentRegistry: {
@@ -18,13 +21,10 @@ module.exports = {
         type: Sequelize.STRING,
       },
       originProjectId: {
-        type: Sequelize.NUMBER,
+        type: Sequelize.STRING,
       },
       program: {
         type: Sequelize.STRING,
-      },
-      warehouseProjectId: {
-        type: Sequelize.NUMBER,
       },
       projectName: {
         type: Sequelize.STRING,
@@ -42,7 +42,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       coveredByNDC: {
-        type: Sequelize.STRING,
+        type: Sequelize.INTEGER,
       },
       NDCLinkage: {
         type: Sequelize.STRING,
@@ -60,7 +60,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       methodologyVersion: {
-        type: Sequelize.STRING,
+        type: Sequelize.NUMBER,
       },
       validationApproach: {
         type: Sequelize.STRING,
@@ -71,7 +71,7 @@ module.exports = {
       projectTag: {
         type: Sequelize.STRING,
       },
-      estimatedAnnualAverageEmmisionReduction: {
+      estimatedAnnualAverageEmissionReduction: {
         type: Sequelize.STRING,
       },
       owner: {

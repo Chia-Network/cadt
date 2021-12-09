@@ -1,5 +1,5 @@
 import { uuid as uuidv4 } from 'uuidv4';
-import { Staging, UnitMock } from '../models';
+import { Staging, UnitMock, Unit } from '../models';
 
 export const create = (req, res) => {
   // When creating new projects assign a uuid to is so
@@ -31,9 +31,7 @@ export const findAll = async (req, res) => {
     return;
   }
 
-  res.json({
-    message: 'Not Yet Implemented',
-  });
+  res.json(await Unit.findAll());
 };
 
 export const findOne = (req, res) => {

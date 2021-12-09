@@ -16,6 +16,7 @@ Unit.init(
       type: Sequelize.NUMBER,
       primaryKey: true,
     },
+    ProjectId: Sequelize.STRING,
     owner: Sequelize.STRING,
     buyer: Sequelize.STRING,
     registry: Sequelize.STRING,

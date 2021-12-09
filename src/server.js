@@ -6,7 +6,7 @@ import Debug from 'debug';
 
 const debug = Debug('climate-warehouse:server');
 
-const port = 3000;
+const port = 3030;
 const server = http.createServer(rootRouter);
 
 server.listen(port);
