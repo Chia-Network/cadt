@@ -12,6 +12,7 @@ import {
   RatingRouter,
   VintageRouter,
   RelatedProjectRouter,
+  StagingRouter,
 } from './resources';
 
 V1Router.use('/projects', ProjectRouter);
@@ -22,5 +23,6 @@ V1Router.use('/qualifications', QualificationRouter);
 V1Router.use('/ratings', RatingRouter);
 V1Router.use('/vintages', VintageRouter);
 V1Router.use('/related-projects', RelatedProjectRouter);
+V1Router.use('/staging', StagingRouter);
 
 export { V1Router };
