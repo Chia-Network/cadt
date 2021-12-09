@@ -81,6 +81,10 @@ If you want to alter, drop or add a column or add a foriegn key or anything with
 
 npx sequelize-cli migration:generate --name <enter-type-of-change-here>
 
+#### Seed database
+
+npx sequelize-cli db:seed:all
+
 ##### Recommendations
 
 Models are not currently being added to our folder structure because sequelize can handle it. So for now. simply copy and paste the model into the appropriate folder

@@ -11,6 +11,9 @@ module.exports = {
       uuid: {
         type: Sequelize.STRING,
       },
+      ProjectId: {
+        type: Sequelize.STRING,
+      },
       owner: {
         type: Sequelize.STRING,
       },

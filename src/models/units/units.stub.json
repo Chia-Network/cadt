@@ -17,6 +17,7 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag1",
     "vintageId": 1,
+    "ProjectId": 1,
     "createdAt": "2022-11-05T14:41:00.000Z",
     "updatedAt": "2022-11-05T14:41:00.000Z"
   },
@@ -38,6 +39,7 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag2",
     "vintageId": 1,
+    "ProjectId": 2,
     "createdAt": "2020-11-05T14:41:00.000Z",
     "updatedAt": "2020-11-05T14:41:00.000Z"
   },
@@ -59,6 +61,7 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag3",
     "vintageId": 1,
+    "ProjectId": 3,
     "createdAt": "2021-11-05T14:41:00.000Z",
     "updatedAt": "2021-11-05T14:41:00.000Z"
   },
@@ -80,6 +83,7 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag4",
     "vintageId": 1,
+    "ProjectId": 1,
     "createdAt": "2025-11-05T14:41:00.000Z",
     "updatedAt": "2025-11-05T14:41:00.000Z"
   },
@@ -101,6 +105,7 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag4",
     "vintageId": 1,
+    "ProjectId": 1,
     "createdAt": "2030-11-05T14:41:00.000Z",
     "updatedAt": "2030-11-05T14:41:00.000Z"
   }

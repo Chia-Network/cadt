@@ -1,4 +1,3 @@
-import { Staging, StagingMock } from '../models';
 import _ from 'lodash';
 import { Staging, StagingMock, Project, Unit } from '../models';
 
@@ -20,10 +19,19 @@ export const findAll = async (req, res) => {
       }
 
       if (workingData.action === 'UPDATE') {
-        const Model = workingData.table === 'Projects' ? Project : Unit;
-        const original = await Model.findOne({
-          where: { uuid: workingData.uuid },
-        });
+        let original;
+        if (workingData.table === 'Projects') {
+          original = await Project.findOne({
+            where: { warehouseProjectId: workingData.uuid },
+          });
+        }
+
+        if (workingData.table === 'Units') {
+          original = await Unit.findOne({
+            where: { uuid: workingData.uuid },
+          });
+        }
+
         workingData.diff.original = original;
         workingData.diff.change = JSON.parse(workingData.data);
       }
@@ -50,7 +58,7 @@ export const destroy = (req, res) => {
   })
     .then(() => {
       res.json({
-        message: 'Deleted',
+        message: 'Deleted from stage',
       });
     })
     .catch((err) => {

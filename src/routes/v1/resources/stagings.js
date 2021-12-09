@@ -1,7 +1,6 @@
 'use strict';
 
 import express from 'express';
-import { StagingController } from './staging./../../controllers';
 import Joi from 'joi';
 import joiExpress from 'express-joi-validation';
 import { StagingController } from '../../../controllers';
@@ -13,9 +12,9 @@ StagingRouter.get('/', (req, res) => {
   return StagingController.findAll(req, res);
 });
 
-const querySchemaDelete = {
-  id: Joi.string().required(),
-};
+const querySchemaDelete = Joi.object({
+  uuid: Joi.string().required(),
+});
 
 StagingRouter.delete(
   '/',

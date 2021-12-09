@@ -1,5 +1,5 @@
 import { uuid as uuidv4 } from 'uuidv4';
-import { Staging, ProjectMock } from '../models';
+import { Staging, ProjectMock, Project } from '../models';
 
 export const create = async (req, res) => {
   // When creating new projects assign a uuid to is so
@@ -13,7 +13,7 @@ export const create = async (req, res) => {
       table: 'Projects',
       data: JSON.stringify(req.body),
     });
-    res.json('Success');
+    res.json('Added project to stage');
   } catch (err) {
     res.json(err);
   }
@@ -25,9 +25,7 @@ export const findAll = async (req, res) => {
     return;
   }
 
-  res.json({
-    message: 'Not Yet Implemented',
-  });
+  res.json(await Project.findAll());
 };
 
 export const findOne = (req, res) => {
@@ -49,28 +47,31 @@ export const findOne = (req, res) => {
 
 export const update = (req, res) => {
   const stagedData = {
-    uuid: req.body.uuid,
+    uuid: req.body.warehouseProjectId,
     action: 'UPDATE',
     table: 'Projects',
     data: JSON.stringify(req.body),
   };
 
+  console.log(stagedData);
+
   Staging.create(stagedData)
     .then(() =>
       res.json({
-        message: 'Project created successfully',
+        message: 'Project update added to staging',
       }),
     )
-    .catch(() =>
+    .catch((err) =>
       res.json({
-        message: 'Error creating new project',
+        message: 'Error adding update to stage',
+        error: err,
       }),
     );
 };
 
 export const destroy = (req, res) => {
   const stagedData = {
-    uuid: req.body.uuid,
+    uuid: req.body.warehouseProjectId,
     action: 'DELETE',
     table: 'Projects',
   };
@@ -78,12 +79,12 @@ export const destroy = (req, res) => {
   Staging.create(stagedData)
     .then(() =>
       res.json({
-        message: 'Project created successfully',
+        message: 'Project removal added to stage',
       }),
     )
     .catch(() =>
       res.json({
-        message: 'Error creating new project',
+        message: 'Error adding project removal to stage',
       }),
     );
 };
