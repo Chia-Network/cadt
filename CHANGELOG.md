@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.2](https://github.com/Chia-Network/climate-warehouse/compare/v0.0.1...v0.0.2) (2021-12-10)
+
+
+### Features
+
+* add diffs to stage resource ([657b34a](https://github.com/Chia-Network/climate-warehouse/commit/657b34a33f6e14afe224104bc1f18377860b4942))
+* bring models in line with migrations ([6e710e5](https://github.com/Chia-Network/climate-warehouse/commit/6e710e5372041c52f52cc82d7a99dc406052af28))
+* bring models in line with migrations ([5c0fdad](https://github.com/Chia-Network/climate-warehouse/commit/5c0fdad56307daadb036edc802289123e734190c))
+* create staging resource ([19d5575](https://github.com/Chia-Network/climate-warehouse/commit/19d5575ff04ff56806756c56ee9cb81b638acb49))
+* get the database connection working ([1750631](https://github.com/Chia-Network/climate-warehouse/commit/1750631ba83e743813a1dc4e36c906d1b1e97132))
+* implement staging crud ([912b316](https://github.com/Chia-Network/climate-warehouse/commit/912b316fcb2647ec458f00f129141eb2fe16d82a))
+* model relationship tweaks ([db2a92e](https://github.com/Chia-Network/climate-warehouse/commit/db2a92eb9ce2712578e745d52e885c651ff735e8))
+* qualifications tests ([e282581](https://github.com/Chia-Network/climate-warehouse/commit/e282581daee5323d2e243fa333f42061fc32b6a5))
+* relationships ([0cd24ce](https://github.com/Chia-Network/climate-warehouse/commit/0cd24ce3e0bae0d3ba98bb3c5bb5d4f23e4df22e))
+* set up cors, set up db seed ([7e0766c](https://github.com/Chia-Network/climate-warehouse/commit/7e0766c3b0fe74b97c7cadb7d7216958131f3077))
+
+
+### Bug Fixes
+
+* spelling ([d1ea528](https://github.com/Chia-Network/climate-warehouse/commit/d1ea528c1e149f003f3b5385f1a2556f37956b86))
+
 ### 0.0.1 (2021-12-02)
 
 
