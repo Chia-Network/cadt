@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import * as fullNode from '../fullnode;';
 import { Staging, StagingMock, Project, Unit } from '../models';
 
 export const findAll = async (req, res) => {
@@ -48,6 +49,42 @@ export const findAll = async (req, res) => {
   );
 
   res.json(response);
+};
+
+export const commit = async (req, res) => {
+  const queryResponse = await Staging.findAll();
+  const stagingRecords = queryResponse.dataValues;
+  stagingRecords.forEach(async (stagingRecord) => {
+    const { uuid, table, action, data: rawData } = stagingRecord;
+    const data = JSON.parse(rawData);
+
+    if (table === 'Projects') {
+      switch (action) {
+        case 'INSERT':
+          fullNode.createProjectRecord(uuid, data);
+          break;
+        case 'UPDATE':
+          fullNode.updateProjectRecord(uuid, data);
+          break;
+        case 'DELETE':
+          fullNode.deleteProjectRecord(uuid);
+          break;
+      }
+    } else if (table === 'Unit') {
+      switch (action) {
+        case 'INSERT':
+          fullNode.createUnitRecord(uuid, data);
+          break;
+        case 'UPDATE':
+          fullNode.updateUnitRecord(uuid, data);
+          break;
+        case 'DELETE':
+          fullNode.deleteUnitRecord(uuid);
+          break;
+      }
+    }
+  });
+  res.json({ message: 'Not implemented' });
 };
 
 export const destroy = (req, res) => {

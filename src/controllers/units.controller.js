@@ -1,5 +1,5 @@
 import { uuid as uuidv4 } from 'uuidv4';
-import { Staging, UnitMock, Unit } from '../models';
+import { Staging, UnitMock, Unit, Qualification, Vintage } from '../models';
 
 export const create = (req, res) => {
   // When creating new projects assign a uuid to is so
@@ -31,7 +31,11 @@ export const findAll = async (req, res) => {
     return;
   }
 
-  res.json(await Unit.findAll());
+  res.json(
+    await Unit.findAll({
+      include: [Qualification, Vintage],
+    }),
+  );
 };
 
 export const findOne = (req, res) => {

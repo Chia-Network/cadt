@@ -1,6 +1,14 @@
 import { uuid as uuidv4 } from 'uuidv4';
-import { Staging, ProjectMock, Project } from '../models';
-import { sequelize } from "../models/database.js";
+import {
+  Staging,
+  ProjectMock,
+  Project,
+  ProjectLocation,
+  Qualification,
+  Vintage,
+  CoBenefit,
+  RelatedProject,
+} from '../models';
 
 export const create = async (req, res) => {
   // When creating new projects assign a uuid to is so
@@ -36,7 +44,15 @@ export const findAll = async (req, res) => {
     }
 
   } else {
-    res.json(await Project.findAll());
+    res.json(await Project.findAll({
+      include: [
+        ProjectLocation,
+        Qualification,
+        Vintage,
+        CoBenefit,
+        RelatedProject,
+      ],
+    }));
   }
 
 };
