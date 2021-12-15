@@ -1,10 +1,11 @@
 'use strict';
 import Sequelize from 'sequelize';
-const { Model } = Sequelize;
 import { sequelize } from '../database';
 import { Project, Qualification, Vintage } from '../../models';
 
 import ModelTypes from './projects.modeltypes.cjs';
+
+const { Model } = Sequelize;
 
 class Unit extends Model {
   static associate() {
@@ -16,7 +17,7 @@ class Unit extends Model {
 
 Unit.init(ModelTypes, {
   sequelize,
-  modelName: 'Units',
+  modelName: 'unit',
 });
 
 export { Unit };
