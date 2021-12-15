@@ -14,7 +14,7 @@ class Vintage extends Model {
 
 Vintage.init(ModelTypes, {
   sequelize,
-  modelName: 'Vintages',
+  modelName: 'vintages',
 });
 
 export { Vintage };
