@@ -4,31 +4,17 @@ const { Model } = Sequelize;
 import { sequelize } from '../database';
 import { Project } from '../projects/index';
 
+import ModelTypes from './projects.modeltypes.cjs';
+
 class Rating extends Model {
   static associate() {
     Rating.belongsTo(Project);
   }
 }
 
-Rating.init(
-  {
-    id: {
-      type: Sequelize.NUMBER,
-      primaryKey: true,
-    },
-    ratingType: Sequelize.STRING,
-    rating: Sequelize.NUMBER,
-    link: Sequelize.STRING,
-    scale: Sequelize.STRING,
-    owner: Sequelize.STRING,
-    projectId: Sequelize.NUMBER,
-    createdAt: Sequelize.DATE,
-    updatedAt: Sequelize.DATE,
-  },
-  {
-    sequelize,
-    modelName: 'ProjectRatings',
-  },
-);
+Rating.init(ModelTypes, {
+  sequelize,
+  modelName: 'projectRating',
+});
 
 export { Rating };

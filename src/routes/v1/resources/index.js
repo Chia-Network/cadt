@@ -6,4 +6,4 @@ export * from './ratings';
 export * from './vintages';
 export * from './related-projects';
 export * from './co-benefits';
-export * from './stagings';
+export * from './staging';

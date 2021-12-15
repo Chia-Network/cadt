@@ -3,8 +3,8 @@ const ProjectStub = require('../src/models/projects/projects.stub.json');
 
 module.exports = {
   up: async (queryInterface) =>
-    queryInterface.bulkInsert('Projects', ProjectStub, {}),
+    queryInterface.bulkInsert('projects', ProjectStub, {}),
   down: async (queryInterface) => {
-    await queryInterface.bulkDelete('Projects');
+    await queryInterface.bulkDelete('projects');
   },
 };
