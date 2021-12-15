@@ -11,6 +11,9 @@ class RelatedProject extends Model {
   static associate() {
     RelatedProject.belongsTo(Project, {
       onDelete: 'CASCADE',
+      foreignKey: {
+        allowNull: false,
+      },
     });
   }
 }

@@ -10,6 +10,9 @@ class CoBenefit extends Model {
   static associate() {
     CoBenefit.belongsTo(Project, {
       onDelete: 'CASCADE',
+      foreignKey: {
+        allowNull: false,
+      },
     });
   }
 }
