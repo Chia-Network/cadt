@@ -8,7 +8,10 @@ module.exports = {
   countryRegion: Sequelize.STRING,
   country: Sequelize.STRING,
   owner: Sequelize.STRING,
-  projectId: Sequelize.NUMBER,
+  projectId: {
+    type: Sequelize.NUMBER,
+    onDelete: 'CASCADE',
+  },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };

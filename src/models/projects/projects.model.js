@@ -15,24 +15,12 @@ import ModelTypes from './projects.modeltypes.cjs';
 
 class Project extends Model {
   static associate() {
-    Project.hasMany(RelatedProject, {
-      onDelete: 'CASCADE',
-    });
-    Project.hasMany(Vintage, {
-      onDelete: 'CASCADE',
-    });
-    Project.hasMany(Qualification, {
-      onDelete: 'CASCADE',
-    });
-    Project.hasMany(Rating, {
-      onDelete: 'CASCADE',
-    });
-    Project.hasMany(CoBenefit, {
-      onDelete: 'CASCADE',
-    });
-    Project.hasOne(ProjectLocation, {
-      onDelete: 'CASCADE',
-    });
+    Project.hasMany(RelatedProject);
+    Project.hasMany(Vintage);
+    Project.hasMany(Qualification);
+    Project.hasMany(Rating);
+    Project.hasMany(CoBenefit);
+    Project.hasMany(ProjectLocation);
   }
 
   static findAllMySQLFts(queryStr) {

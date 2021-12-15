@@ -3,7 +3,7 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
 
-import ModelTypes from './projects.modeltypes.cjs';
+import ModelTypes from './staging.modeltypes.cjs';
 
 class Staging extends Model {
   static associate() {

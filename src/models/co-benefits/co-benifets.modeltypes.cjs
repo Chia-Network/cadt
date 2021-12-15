@@ -7,7 +7,10 @@ module.exports = {
   },
   benefit: Sequelize.STRING,
   owner: Sequelize.STRING,
-  projectId: Sequelize.NUMBER,
+  projectId: {
+    type: Sequelize.NUMBER,
+    onDelete: 'CASCADE',
+  },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };
