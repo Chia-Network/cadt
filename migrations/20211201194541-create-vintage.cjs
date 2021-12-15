@@ -6,40 +6,43 @@ module.exports = {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
       },
       startDate: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       endDate: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       verificationApproach: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       verificationDate: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       verificationBody: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       owner: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
       },
       projectId: {
-        type: Sequelize.NUMBER
+        type: Sequelize.NUMBER,
+      },
+      UnitId: {
+        type: Sequelize.NUMBER,
       },
       createdAt: {
         allowNull: false,
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       updatedAt: {
         allowNull: false,
-        type: Sequelize.DATE
-      }
+        type: Sequelize.DATE,
+      },
     });
   },
   down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('Vintages');
-  }
+  },
 };

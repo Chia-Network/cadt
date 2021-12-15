@@ -2,11 +2,13 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
-import { Project } from '../projects/index';
+import { Project, Qualification, Vintage } from '../../models';
 
 class Unit extends Model {
   static associate() {
     Unit.belongsTo(Project);
+    Unit.hasMany(Qualification);
+    Unit.hasMany(Vintage);
   }
 }
 
