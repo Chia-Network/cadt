@@ -9,7 +9,10 @@ module.exports = {
   rating: Sequelize.NUMBER,
   link: Sequelize.STRING,
   scale: Sequelize.STRING,
-  projectId: Sequelize.NUMBER,
+  projectId: {
+    type: Sequelize.NUMBER,
+    onDelete: 'CASCADE',
+  },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };

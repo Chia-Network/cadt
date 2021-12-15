@@ -4,11 +4,13 @@ const { Model } = Sequelize;
 import { sequelize } from '../database';
 import { Project } from '../projects';
 
-import ModelTypes from './projects.modeltypes.cjs';
+import ModelTypes from './locations.modeltypes.cjs';
 
 class ProjectLocation extends Model {
   static associate() {
-    ProjectLocation.hasMany(Project);
+    ProjectLocation.belongsTo(Project, {
+      onDelete: 'CASCADE',
+    });
   }
 }
 

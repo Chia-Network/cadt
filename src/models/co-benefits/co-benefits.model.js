@@ -4,11 +4,13 @@ const { Model } = Sequelize;
 import { sequelize } from '../database';
 import { Project } from '../projects';
 
-import ModelTypes from './projects.modeltypes.cjs';
+import ModelTypes from './co-benifets.modeltypes.cjs';
 
 class CoBenefit extends Model {
   static associate() {
-    CoBenefit.belongsTo(Project);
+    CoBenefit.belongsTo(Project, {
+      onDelete: 'CASCADE',
+    });
   }
 }
 

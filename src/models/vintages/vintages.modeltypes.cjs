@@ -10,8 +10,8 @@ module.exports = {
   verificationApproach: Sequelize.STRING,
   verificationDate: Sequelize.DATE,
   verificationBody: Sequelize.STRING,
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
   projectId: Sequelize.NUMBER,
   unitId: Sequelize.NUMBER,
+  createdAt: Sequelize.DATE,
+  updatedAt: Sequelize.DATE,
 };

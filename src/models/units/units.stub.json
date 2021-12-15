@@ -6,7 +6,6 @@
     "registry": "registry 1",
     "blockIdentifier": "bi 1",
     "identifier": "i 1",
-    "qualificationId": 10,
     "unitType": "regular",
     "unitCount": 10,
     "unitStatus": "draft",
@@ -16,7 +15,6 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag1",
     "vintageId": 1,
-    "projectId": 1,
     "createdAt": "2022-11-05T14:41:00.000Z",
     "updatedAt": "2022-11-05T14:41:00.000Z"
   },
@@ -27,7 +25,6 @@
     "registry": "registry 2",
     "blockIdentifier": "bi 2",
     "identifier": "i 2",
-    "qualificationId": 14,
     "unitType": "regular",
     "unitCount": 10,
     "unitStatus": "draft",
@@ -37,7 +34,6 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag2",
     "vintageId": 1,
-    "projectId": 2,
     "createdAt": "2020-11-05T14:41:00.000Z",
     "updatedAt": "2020-11-05T14:41:00.000Z"
   },
@@ -48,7 +44,6 @@
     "registry": "registry 3",
     "blockIdentifier": "bi 3",
     "identifier": "i 3",
-    "qualificationId": 14,
     "unitType": "regular",
     "unitCount": 14,
     "unitStatus": "published",
@@ -58,7 +53,6 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag3",
     "vintageId": 1,
-    "projectId": 3,
     "createdAt": "2021-11-05T14:41:00.000Z",
     "updatedAt": "2021-11-05T14:41:00.000Z"
   },
@@ -69,7 +63,6 @@
     "registry": "registry 4",
     "blockIdentifier": "bi 4",
     "identifier": "i 4",
-    "qualificationId": 14,
     "unitType": "regular",
     "unitCount": 14,
     "unitStatus": "published",
@@ -79,7 +72,6 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag4",
     "vintageId": 1,
-    "projectId": 1,
     "createdAt": "2025-11-05T14:41:00.000Z",
     "updatedAt": "2025-11-05T14:41:00.000Z"
   },
@@ -90,7 +82,6 @@
     "registry": "registry 5",
     "blockIdentifier": "bi 5",
     "identifier": "i 5",
-    "qualificationId": 14,
     "unitType": "regular",
     "unitCount": 9,
     "unitStatus": "published",
@@ -100,7 +91,6 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag4",
     "vintageId": 1,
-    "projectId": 1,
     "createdAt": "2030-11-05T14:41:00.000Z",
     "updatedAt": "2030-11-05T14:41:00.000Z"
   }
