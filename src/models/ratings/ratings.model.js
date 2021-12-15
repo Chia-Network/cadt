@@ -10,9 +10,6 @@ class Rating extends Model {
   static associate() {
     Rating.belongsTo(Project, {
       onDelete: 'CASCADE',
-      foreignKey: {
-        allowNull: false,
-      },
     });
   }
 }

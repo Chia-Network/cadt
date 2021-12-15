@@ -9,7 +9,10 @@ import ModelTypes from './vintages.modeltypes.cjs';
 class Vintage extends Model {
   static associate() {
     Vintage.belongsTo(Project);
-    Vintage.belongsToMany(Unit);
+    Vintage.belongsToMany(Unit, {
+      through: 'vintage_unit',
+      as: 'vintage',
+    });
   }
 }
 

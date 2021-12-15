@@ -10,9 +10,6 @@ class ProjectLocation extends Model {
   static associate() {
     ProjectLocation.belongsTo(Project, {
       onDelete: 'CASCADE',
-      foreignKey: {
-        allowNull: false,
-      },
     });
   }
 }
