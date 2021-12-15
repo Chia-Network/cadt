@@ -25,6 +25,7 @@ Vintage.init(
     projectId: Sequelize.NUMBER,
     createdAt: Sequelize.DATE,
     updatedAt: Sequelize.DATE,
+    UnitId: Sequelize.NUMBER,
   },
   {
     sequelize,

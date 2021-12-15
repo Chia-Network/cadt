@@ -20,6 +20,9 @@ Qualification.init(
       primaryKey: true,
       type: Sequelize.INTEGER,
     },
+    qualificationId: {
+      type: Sequelize.NUMBER,
+    },
     qualificationLink: {
       type: Sequelize.STRING,
     },
