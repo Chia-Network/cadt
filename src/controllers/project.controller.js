@@ -1,5 +1,6 @@
 import { uuid as uuidv4 } from 'uuidv4';
 import { Staging, ProjectMock, Project } from '../models';
+import { sequelize } from "../models/database.js";
 
 export const create = async (req, res) => {
   // When creating new projects assign a uuid to is so
@@ -25,7 +26,19 @@ export const findAll = async (req, res) => {
     return;
   }
 
-  res.json(await Project.findAll());
+  const dialect = sequelize.getDialect();
+
+  if (req.query.search) {
+    if (dialect === 'sqlite') {
+      res.json(await Project.findAllSqliteFts(req.query.search));
+    } else if (dialect === 'mysql') {
+      res.json(await Project.findAllMySQLFts(req.query.search));
+    }
+
+  } else {
+    res.json(await Project.findAll());
+  }
+
 };
 
 export const findOne = (req, res) => {
