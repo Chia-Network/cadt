@@ -6,55 +6,49 @@ module.exports = {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER,
+        type: Sequelize.INTEGER
       },
       projectId: {
-        type: Sequelize.NUMBER,
-      },
-      qualificationId: {
-        type: Sequelize.NUMBER,
-      },
-      qualificationLink: {
-        type: Sequelize.STRING,
+        type: Sequelize.NUMBER
       },
       type: {
-        type: Sequelize.STRING,
+        type: Sequelize.STRING
       },
       label: {
-        type: Sequelize.STRING,
+        type: Sequelize.STRING
       },
       creditingPeriodStartDate: {
-        type: Sequelize.DATE,
+        type: Sequelize.DATE
       },
       creditingPeriodEndDate: {
-        type: Sequelize.DATE,
+        type: Sequelize.DATE
       },
       validityStartDate: {
-        type: Sequelize.DATE,
+        type: Sequelize.DATE
       },
       validityEndDate: {
-        type: Sequelize.DATE,
+        type: Sequelize.DATE
       },
       unitQuantity: {
-        type: Sequelize.NUMBER,
+        type: Sequelize.NUMBER
       },
       owner: {
-        type: Sequelize.STRING,
+        type: Sequelize.STRING
       },
       unitId: {
-        type: Sequelize.NUMBER,
+        type: Sequelize.NUMBER
       },
       createdAt: {
         allowNull: false,
-        type: Sequelize.DATE,
+        type: Sequelize.DATE
       },
       updatedAt: {
         allowNull: false,
-        type: Sequelize.DATE,
-      },
+        type: Sequelize.DATE
+      }
     });
   },
   down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('Qualifications');
-  },
+  }
 };
