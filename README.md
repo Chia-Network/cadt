@@ -88,15 +88,3 @@ npx sequelize-cli db:seed:all
 ##### Recommendations
 
 Models are not currently being added to our folder structure because sequelize can handle it. So for now. simply copy and paste the model into the appropriate folder
-
-##### Running Full Text Search Queries
-
-To run a FTS query on a supported table, you can use the `MATCH` operator. A virtual column `rank` is also available for sorting purposes.
-
-Example:
-
-```
-SELECT * FROM projects WHERE projectName MATCH "partial name" ORDER BY rank
-```
-
-More info: https://www.sqlite.org/fts5.html
