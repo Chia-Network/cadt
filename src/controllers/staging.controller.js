@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import * as fullNode from '../fullnode;';
+import * as fullNode from '../fullnode';
 import { Staging, StagingMock, Project, Unit } from '../models';
 
 export const findAll = async (req, res) => {

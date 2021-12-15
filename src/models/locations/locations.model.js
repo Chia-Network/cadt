@@ -4,29 +4,17 @@ const { Model } = Sequelize;
 import { sequelize } from '../database';
 import { Project } from '../projects';
 
+import ModelTypes from './projects.modeltypes.cjs';
+
 class ProjectLocation extends Model {
   static associate() {
-    ProjectLocation.belongsTo(Project);
+    ProjectLocation.hasMany(Project);
   }
 }
 
-ProjectLocation.init(
-  {
-    id: {
-      type: Sequelize.NUMBER,
-      primaryKey: true,
-    },
-    countryRegion: Sequelize.STRING,
-    country: Sequelize.STRING,
-    owner: Sequelize.STRING,
-    projectId: Sequelize.NUMBER,
-    createdAt: Sequelize.DATE,
-    updatedAt: Sequelize.DATE,
-  },
-  {
-    sequelize,
-    modelName: 'ProjectLocations',
-  },
-);
+ProjectLocation.init(ModelTypes, {
+  sequelize,
+  modelName: 'projectLocation',
+});
 
 export { ProjectLocation };

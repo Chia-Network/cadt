@@ -1,78 +1,12 @@
 'use strict';
+
+const modelTypes = require('../src/models/units/units.modeltypes.cjs');
+
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Units', {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER,
-      },
-      uuid: {
-        type: Sequelize.STRING,
-      },
-      ProjectId: {
-        type: Sequelize.STRING,
-      },
-      owner: {
-        type: Sequelize.STRING,
-      },
-      buyer: {
-        type: Sequelize.STRING,
-      },
-      registry: {
-        type: Sequelize.STRING,
-      },
-      blockIdentifier: {
-        type: Sequelize.STRING,
-      },
-      identifier: {
-        type: Sequelize.STRING,
-      },
-      qualificationId: {
-        type: Sequelize.NUMBER,
-      },
-      unitType: {
-        type: Sequelize.STRING,
-      },
-      unitCount: {
-        type: Sequelize.NUMBER,
-      },
-      unitStatus: {
-        type: Sequelize.STRING,
-      },
-      unitStatusDate: {
-        type: Sequelize.DATE,
-      },
-      transactionType: {
-        type: Sequelize.STRING,
-      },
-      unitIssuanceLocation: {
-        type: Sequelize.STRING,
-      },
-      unitLink: {
-        type: Sequelize.STRING,
-      },
-      correspondingAdjustment: {
-        type: Sequelize.STRING,
-      },
-      unitTag: {
-        type: Sequelize.STRING,
-      },
-      vintageId: {
-        type: Sequelize.NUMBER,
-      },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-      },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-      },
-    });
+    await queryInterface.createTable('units', modelTypes);
   },
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Units');
+    await queryInterface.dropTable('units');
   },
 };

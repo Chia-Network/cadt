@@ -2,7 +2,6 @@
   {
     "id": 1,
     "unitLink": "https://unit.link",
-    "owner": "owner",
     "buyer": "person 1",
     "registry": "registry 1",
     "blockIdentifier": "bi 1",
@@ -17,14 +16,13 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag1",
     "vintageId": 1,
-    "ProjectId": 1,
+    "projectId": 1,
     "createdAt": "2022-11-05T14:41:00.000Z",
     "updatedAt": "2022-11-05T14:41:00.000Z"
   },
   {
     "id": 2,
     "unitLink": "https://unit.link",
-    "owner": "owner",
     "buyer": "person 2",
     "registry": "registry 2",
     "blockIdentifier": "bi 2",
@@ -39,14 +37,13 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag2",
     "vintageId": 1,
-    "ProjectId": 2,
+    "projectId": 2,
     "createdAt": "2020-11-05T14:41:00.000Z",
     "updatedAt": "2020-11-05T14:41:00.000Z"
   },
   {
     "id": 3,
     "unitLink": "https://unit.link",
-    "owner": "owner",
     "buyer": "person 3",
     "registry": "registry 3",
     "blockIdentifier": "bi 3",
@@ -61,14 +58,13 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag3",
     "vintageId": 1,
-    "ProjectId": 3,
+    "projectId": 3,
     "createdAt": "2021-11-05T14:41:00.000Z",
     "updatedAt": "2021-11-05T14:41:00.000Z"
   },
   {
     "id": 4,
     "unitLink": "https://unit.link",
-    "owner": "owner",
     "buyer": "person 4",
     "registry": "registry 4",
     "blockIdentifier": "bi 4",
@@ -83,14 +79,13 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag4",
     "vintageId": 1,
-    "ProjectId": 1,
+    "projectId": 1,
     "createdAt": "2025-11-05T14:41:00.000Z",
     "updatedAt": "2025-11-05T14:41:00.000Z"
   },
   {
     "id": 5,
     "unitLink": "https://unit.link",
-    "owner": "owner",
     "buyer": "person 5",
     "registry": "registry 5",
     "blockIdentifier": "bi 5",
@@ -105,7 +100,7 @@
     "correspondingAdjustment": "1",
     "unitTag": "tag4",
     "vintageId": 1,
-    "ProjectId": 1,
+    "projectId": 1,
     "createdAt": "2030-11-05T14:41:00.000Z",
     "updatedAt": "2030-11-05T14:41:00.000Z"
   }

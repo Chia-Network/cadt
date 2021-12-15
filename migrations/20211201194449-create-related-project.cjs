@@ -1,39 +1,12 @@
 'use strict';
+
+const modelTypes = require('../src/models/related-projects/related-projects.modeltypes.cjs');
+
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('RelatedProjects', {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER
-      },
-      relatedProjectType: {
-        type: Sequelize.STRING
-      },
-      registry: {
-        type: Sequelize.STRING
-      },
-      note: {
-        type: Sequelize.STRING
-      },
-      owner: {
-        type: Sequelize.STRING
-      },
-      projectId: {
-        type: Sequelize.NUMBER
-      },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      }
-    });
+    await queryInterface.createTable('relatedProjects', modelTypes);
   },
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('RelatedProjects');
-  }
+    await queryInterface.dropTable('relatedProjects');
+  },
 };

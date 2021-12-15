@@ -3,29 +3,18 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
 
+import ModelTypes from './projects.modeltypes.cjs';
+
 class Staging extends Model {
   static associate() {
     // define association here
   }
 }
 
-Staging.init(
-  {
-    id: {
-      type: Sequelize.NUMBER,
-      primaryKey: true,
-    },
-    uuid: Sequelize.STRING,
-    table: Sequelize.STRING,
-    action: Sequelize.STRING,
-    data: Sequelize.STRING,
-    createdAt: Sequelize.DATE,
-    updatedAt: Sequelize.DATE,
-  },
-  {
-    sequelize,
-    modelName: 'Staging',
-  },
-);
+Staging.init(ModelTypes, {
+  sequelize,
+  modelName: 'staging',
+  freezeTableName: true,
+});
 
 export { Staging };

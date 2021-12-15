@@ -9,8 +9,8 @@ export const updateProjectRecord = async (uuid, record) => {
 };
 
 export const createProjectRecord = (uuid, record) => {
-  return new Promise(async (resolve) => {
-    setTimeout(() => {
+  return new Promise((resolve) => {
+    setTimeout(async () => {
       await Project.create({
         ...record,
         warehouseProjectId: uuid,
@@ -21,8 +21,8 @@ export const createProjectRecord = (uuid, record) => {
 };
 
 export const deleteProjectRecord = (uuid) => {
-  return new Promise(async (resolve) => {
-    setTimeout(() => {
+  return new Promise((resolve) => {
+    setTimeout(async () => {
       await Project.destroy({
         where: {
           warehouseProjectId: uuid,
@@ -39,8 +39,8 @@ export const updateUnitRecord = async (uuid, record) => {
 };
 
 export const createUnitRecord = (uuid, record) => {
-  return new Promise(async (resolve) => {
-    setTimeout(() => {
+  return new Promise((resolve) => {
+    setTimeout(async () => {
       await Unit.create({
         uuid,
         ...record,
@@ -51,8 +51,8 @@ export const createUnitRecord = (uuid, record) => {
 };
 
 export const deleteUnitRecord = (uuid) => {
-  return new Promise(async (resolve) => {
-    setTimeout(() => {
+  return new Promise((resolve) => {
+    setTimeout(async () => {
       await Unit.destroy({
         where: {
           uuid,

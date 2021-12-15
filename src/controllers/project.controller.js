@@ -1,4 +1,5 @@
 import { uuid as uuidv4 } from 'uuidv4';
+import { sequelize } from '../models/database';
 import {
   Staging,
   ProjectMock,
@@ -42,19 +43,19 @@ export const findAll = async (req, res) => {
     } else if (dialect === 'mysql') {
       res.json(await Project.findAllMySQLFts(req.query.search));
     }
-
   } else {
-    res.json(await Project.findAll({
-      include: [
-        ProjectLocation,
-        Qualification,
-        Vintage,
-        CoBenefit,
-        RelatedProject,
-      ],
-    }));
+    res.json(
+      await Project.findAll({
+        include: [
+          ProjectLocation,
+          Qualification,
+          Vintage,
+          CoBenefit,
+          RelatedProject,
+        ],
+      }),
+    );
   }
-
 };
 
 export const findOne = (req, res) => {
