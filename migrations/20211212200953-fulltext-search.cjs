@@ -2,7 +2,7 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    if (queryInterface.sequelize.dialect == 'sqlite') {
+    if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`
       create virtual table Projects using fts5
         (warehouseProjectId, currentRegistry, registryOfOrigin,
@@ -20,7 +20,7 @@ module.exports = {
   },
 
   down: async (queryInterface, Sequelize) => {
-    if (queryInterface.sequelize.dialect == 'sqlite') {
+    if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`drop virtual table Projects;`);
       await queryInterface.sequelize.query("create virtual table Units using fts5" +
         "(ProjectId, owner, buyer, registry, blockIdentifier, identifier," +

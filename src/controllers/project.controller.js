@@ -34,8 +34,17 @@ export const findAll = async (req, res) => {
     return;
   }
 
-  res.json(
-    await Project.findAll({
+  const dialect = sequelize.getDialect();
+
+  if (req.query.search) {
+    if (dialect === 'sqlite') {
+      res.json(await Project.findAllSqliteFts(req.query.search));
+    } else if (dialect === 'mysql') {
+      res.json(await Project.findAllMySQLFts(req.query.search));
+    }
+
+  } else {
+    res.json(await Project.findAll({
       include: [
         ProjectLocation,
         Qualification,
@@ -43,8 +52,9 @@ export const findAll = async (req, res) => {
         CoBenefit,
         RelatedProject,
       ],
-    }),
-  );
+    }));
+  }
+
 };
 
 export const findOne = (req, res) => {
