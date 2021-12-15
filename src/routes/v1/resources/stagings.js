@@ -22,4 +22,6 @@ StagingRouter.delete(
   StagingController.destroy,
 );
 
+StagingRouter.post('/commit', StagingController.commit);
+
 export { StagingRouter };
