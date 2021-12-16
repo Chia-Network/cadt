@@ -55,36 +55,47 @@ export const commit = async (req, res) => {
   const queryResponse = await Staging.findAll();
   const stagingRecords = queryResponse.dataValues;
   stagingRecords.forEach(async (stagingRecord) => {
-    const { uuid, table, action, data: rawData } = stagingRecord;
+    const {
+      id: stagingRecordId,
+      uuid,
+      table,
+      action,
+      data: rawData,
+    } = stagingRecord;
     const data = JSON.parse(rawData);
+
+    await Staging.update(
+      { commited: true },
+      { where: { id: stagingRecordId } },
+    );
 
     if (table === 'Projects') {
       switch (action) {
         case 'INSERT':
-          fullNode.createProjectRecord(uuid, data);
+          fullNode.createProjectRecord(uuid, data, stagingRecordId);
           break;
         case 'UPDATE':
-          fullNode.updateProjectRecord(uuid, data);
+          fullNode.updateProjectRecord(uuid, data, stagingRecordId);
           break;
         case 'DELETE':
-          fullNode.deleteProjectRecord(uuid);
+          fullNode.deleteProjectRecord(uuid, stagingRecordId);
           break;
       }
     } else if (table === 'Unit') {
       switch (action) {
         case 'INSERT':
-          fullNode.createUnitRecord(uuid, data);
+          fullNode.createUnitRecord(uuid, data, stagingRecordId);
           break;
         case 'UPDATE':
-          fullNode.updateUnitRecord(uuid, data);
+          fullNode.updateUnitRecord(uuid, data, stagingRecordId);
           break;
         case 'DELETE':
-          fullNode.deleteUnitRecord(uuid);
+          fullNode.deleteUnitRecord(uuid, stagingRecordId);
           break;
       }
     }
   });
-  res.json({ message: 'Not implemented' });
+  res.json({ message: 'Staging Table committed to full node' });
 };
 
 export const destroy = (req, res) => {
