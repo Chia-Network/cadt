@@ -2,15 +2,16 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   id: {
-    type: Sequelize.NUMBER,
+    type: Sequelize.INTEGER,
     primaryKey: true,
+    autoIncrement: true,
   },
-  ratingType: Sequelize.STRING,
+  type: Sequelize.STRING,
   rating: Sequelize.NUMBER,
   link: Sequelize.STRING,
   scale: Sequelize.STRING,
   projectId: {
-    type: Sequelize.NUMBER,
+    type: Sequelize.INTEGER,
     onDelete: 'CASCADE',
   },
   createdAt: Sequelize.DATE,

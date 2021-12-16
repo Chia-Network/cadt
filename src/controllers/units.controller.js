@@ -33,7 +33,13 @@ export const findAll = async (req, res) => {
 
   res.json(
     await Unit.findAll({
-      include: [Qualification, Vintage],
+      include: [
+        {
+          model: Qualification,
+          as: 'qualification',
+        },
+        Vintage,
+      ],
     }),
   );
 };

@@ -2,8 +2,9 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   id: {
-    type: Sequelize.NUMBER,
+    type: Sequelize.INTEGER,
     primaryKey: true,
+    autoIncrement: true,
   },
   warehouseProjectId: Sequelize.STRING,
   projectID: Sequelize.STRING,
@@ -28,7 +29,6 @@ module.exports = {
   validationDate: Sequelize.DATE,
   projectTag: Sequelize.STRING,
   estimatedAnnualAverageEmissionReduction: Sequelize.STRING,
-  owner: Sequelize.STRING,
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };

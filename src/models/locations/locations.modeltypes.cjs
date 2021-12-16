@@ -2,14 +2,14 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   id: {
-    type: Sequelize.NUMBER,
+    type: Sequelize.INTEGER,
     primaryKey: true,
+    autoIncrement: true,
   },
   countryRegion: Sequelize.STRING,
   country: Sequelize.STRING,
-  owner: Sequelize.STRING,
   projectId: {
-    type: Sequelize.NUMBER,
+    type: Sequelize.INTEGER,
     onDelete: 'CASCADE',
   },
   createdAt: Sequelize.DATE,

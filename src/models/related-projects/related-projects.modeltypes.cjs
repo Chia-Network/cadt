@@ -2,14 +2,15 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   id: {
-    type: Sequelize.NUMBER,
+    type: Sequelize.INTEGER,
     primaryKey: true,
+    autoIncrement: true,
   },
-  relatedProjectType: Sequelize.STRING,
+  type: Sequelize.STRING,
   registry: Sequelize.STRING,
   note: Sequelize.STRING,
   projectId: {
-    type: Sequelize.NUMBER,
+    type: Sequelize.INTEGER,
     onDelete: 'CASCADE',
   },
   createdAt: Sequelize.DATE,

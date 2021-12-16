@@ -57,7 +57,6 @@ class Project extends Model {
                     validationApproach MATCH ":search" OR
                     projectTag MATCH ":search" OR
                     estimatedAnnualAverageEmissionReduction MATCH ":search" OR
-                    owner MATCH ":search"
                     ORDER BY rank DESC`;
 
     return sequelize.query(sql, {

@@ -1,4 +1,5 @@
 'use strict';
+
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('parties', {
@@ -15,9 +16,6 @@ module.exports = {
         type: Sequelize.STRING,
       },
       registry: {
-        type: Sequelize.STRING,
-      },
-      owner: {
         type: Sequelize.STRING,
       },
       createdAt: {

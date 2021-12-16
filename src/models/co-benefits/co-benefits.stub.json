@@ -1,17 +1,22 @@
 [
   {
-    "cobenefit": "TEST_COBENEFIT_1"
+    "benefit": "TEST_COBENEFIT_1",
+    "projectId": 1
   },
   {
-    "cobenefit": "TEST_COBENEFIT_2"
+    "benefit": "TEST_COBENEFIT_2",
+    "projectId": 1
   },
   {
-    "cobenefit": "TEST_COBENEFIT_3"
+    "benefit": "TEST_COBENEFIT_3",
+    "projectId": 1
   },
   {
-    "cobenefit": "TEST_COBENEFIT_4"
+    "benefit": "TEST_COBENEFIT_4",
+    "projectId": 1
   },
   {
-    "cobenefit": "TEST_COBENEFIT_5"
+    "benefit": "TEST_COBENEFIT_5",
+    "projectId": 1
   }
 ]
