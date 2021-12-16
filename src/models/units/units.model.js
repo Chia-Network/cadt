@@ -1,7 +1,7 @@
 'use strict';
 import Sequelize from 'sequelize';
 import { sequelize } from '../database';
-import { Project, Qualification, Vintage } from '../../models';
+import { Qualification, Vintage } from '../../models';
 
 import ModelTypes from './units.modeltypes.cjs';
 
@@ -12,9 +12,9 @@ class Unit extends Model {
     Unit.hasOne(Vintage);
 
     // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
-    Unit.belongsToMany(Unit, {
+    Unit.belongsToMany(Qualification, {
       through: 'qualification_unit',
-      as: 'unit',
+      as: 'qualification',
     });
   }
 }

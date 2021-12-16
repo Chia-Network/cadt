@@ -2,8 +2,9 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   id: {
-    type: Sequelize.NUMBER,
+    type: Sequelize.INTEGER,
     primaryKey: true,
+    autoIncrement: true,
   },
   uuid: Sequelize.STRING,
   table: Sequelize.STRING,

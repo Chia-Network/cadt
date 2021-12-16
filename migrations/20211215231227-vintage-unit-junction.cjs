@@ -5,6 +5,8 @@ module.exports = {
     await queryInterface.createTable('vintage_unit', {
       unitId: Sequelize.INTEGER,
       vintageId: Sequelize.INTEGER,
+      createdAt: Sequelize.DATE,
+      updatedAt: Sequelize.DATE,
     });
   },
 

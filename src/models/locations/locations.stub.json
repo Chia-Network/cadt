@@ -1,22 +1,22 @@
 [
   {
-    "in_country_region": true,
-    "host_country": "United States"
+    "countryRegion": "United States",
+    "projectId": 1
   },
   {
-    "in_country_region": true,
-    "host_country": "United States"
+    "countryRegion": "United States",
+    "projectId": 1
   },
   {
-    "in_country_region": false,
-    "host_country": "China"
+    "countryRegion": "China",
+    "projectId": 2
   },
   {
-    "in_country_region": false,
-    "host_country": "Russia"
+    "countryRegion": "Russia",
+    "projectId": 2
   },
   {
-    "in_country_region": true,
-    "host_country": "United States"
+    "countryRegion": "United States",
+    "projectId": 2
   }
 ]
