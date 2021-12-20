@@ -7,12 +7,10 @@ module.exports = {
       CREATE TRIGGER unit_insert_fts AFTER INSERT ON units BEGIN
         INSERT INTO units_fts(
           id,
-          projectId, 
           buyer, 
           registry, 
           blockIdentifier, 
           identifier,
-          qualificationId, 
           unitType, 
           unitCount, 
           unitStatus, 
@@ -21,16 +19,13 @@ module.exports = {
           unitIssuanceLocation,
           unitLink, 
           correspondingAdjustment,
-          unitTag, 
-          vintageId
+          unitTag
         ) VALUES (
           new.id,
-          new.projectId, 
           new.buyer, 
           new.registry, 
           new.blockIdentifier, 
           new.identifier,
-          new.qualificationId, 
           new.unitType, 
           new.unitCount, 
           new.unitStatus, 
@@ -39,8 +34,7 @@ module.exports = {
           new.unitIssuanceLocation,
           new.unitLink, 
           new.correspondingAdjustment,
-          new.unitTag, 
-          new.vintageId
+          new.unitTag
         );
       END;`);
 
@@ -97,9 +91,9 @@ module.exports = {
 
   down: async (queryInterface, Sequelize) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
-      await queryInterface.sequelize.query("DROP TRIGGER unit_insert_fts;");
-      await queryInterface.sequelize.query("DROP TRIGGER unit_delete_fts;");
-      await queryInterface.sequelize.query("DROP TRIGGER unit_update_fts;");
+      await queryInterface.sequelize.query('DROP TRIGGER unit_insert_fts;');
+      await queryInterface.sequelize.query('DROP TRIGGER unit_delete_fts;');
+      await queryInterface.sequelize.query('DROP TRIGGER unit_update_fts;');
     }
-  }
+  },
 };

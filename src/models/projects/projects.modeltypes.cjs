@@ -7,7 +7,7 @@ module.exports = {
     autoIncrement: true,
   },
   warehouseProjectId: Sequelize.STRING,
-  projectID: Sequelize.STRING,
+  projectId: Sequelize.STRING,
   projectLocationId: Sequelize.NUMBER,
   currentRegistry: Sequelize.STRING,
   registryOfOrigin: Sequelize.STRING,

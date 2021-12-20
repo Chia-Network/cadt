@@ -10,7 +10,11 @@ module.exports = {
   table: Sequelize.STRING,
   action: Sequelize.STRING,
   data: Sequelize.STRING,
-  commited: Sequelize.BOOLEAN,
+  commited: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };

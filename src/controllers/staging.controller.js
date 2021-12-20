@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import * as fullNode from '../fullnode';
+
 import { Staging, StagingMock, Project, Unit } from '../models';
 
 export const findAll = async (req, res) => {
@@ -52,9 +53,11 @@ export const findAll = async (req, res) => {
 };
 
 export const commit = async (req, res) => {
-  const queryResponse = await Staging.findAll();
-  const stagingRecords = queryResponse.dataValues;
-  stagingRecords.forEach(async (stagingRecord) => {
+  const queryResponses = await Staging.findAll();
+
+  queryResponses.forEach(async (queryResponse) => {
+    const stagingRecord = queryResponse.dataValues;
+
     const {
       id: stagingRecordId,
       uuid,

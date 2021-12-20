@@ -108,13 +108,14 @@ module.exports = {
         );
       END;
       `);
-    }},
+    }
+  },
 
   down: async (queryInterface, Sequelize) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
-      await queryInterface.sequelize.query("DROP TRIGGER project_insert_fts;");
-      await queryInterface.sequelize.query("DROP TRIGGER project_delete_fts;");
-      await queryInterface.sequelize.query("DROP TRIGGER project_update_fts;");
+      await queryInterface.sequelize.query('DROP TRIGGER project_insert_fts;');
+      await queryInterface.sequelize.query('DROP TRIGGER project_delete_fts;');
+      await queryInterface.sequelize.query('DROP TRIGGER project_update_fts;');
     }
-  }
+  },
 };
