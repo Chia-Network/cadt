@@ -4,16 +4,26 @@ const THIRTY_SEC = 30000;
 // Simulate 30 seconds passing before commited to node
 
 export const updateProjectRecord = async (uuid, record, stagingRecordId) => {
-  await deleteProjectRecord(uuid);
-  await createProjectRecord(uuid, record);
-
-  if (stagingRecordId) {
-    await Staging.destroy({
-      where: {
-        id: stagingRecordId,
-      },
-    });
-  }
+  return new Promise((resolve) => {
+    setTimeout(async () => {
+      if (stagingRecordId) {
+        await Project.destroy({
+          where: {
+            warehouseProjectId: uuid,
+          },
+        });
+        await Project.create({
+          ...record,
+          warehouseProjectId: uuid,
+        });
+        await Staging.destroy({
+          where: {
+            id: stagingRecordId,
+          },
+        });
+      }
+    }, THIRTY_SEC);
+  });
 };
 
 export const createProjectRecord = (uuid, record, stagingRecordId) => {

@@ -14,13 +14,12 @@ ProjectRouter.get('/', (req, res) => {
     : ProjectController.findAll(req, res);
 });
 
-const querySchema = Joi.object({
+const baseSchema = {
   currentRegistry: Joi.string().required(),
   registryOfOrigin: Joi.string().required(),
   originProjectId: Joi.string().required(),
-  projectID: Joi.string().required(),
+  projectId: Joi.string().required(),
   program: Joi.string().required(),
-  warehouseProjectId: Joi.string().required(),
   projectName: Joi.string().required(),
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
@@ -36,20 +35,29 @@ const querySchema = Joi.object({
   validationApproach: Joi.string().required(),
   validationDate: Joi.string().required(),
   projectTag: Joi.string().required(),
-  estimatedAnnualAverageEmissionReduction: Joi.string().required(),
+  estimatedAnnualAverageEmissionReduction: Joi.number().required(),
+};
+
+const postSchema = Joi.object({
+  ...baseSchema,
 });
 
-ProjectRouter.post('/', validator.body(querySchema), ProjectController.create);
+ProjectRouter.post('/', validator.body(postSchema), ProjectController.create);
 
-ProjectRouter.put('/', validator.body(querySchema), ProjectController.update);
-
-const querySchemaDelete = {
+const updateSchema = Joi.object({
   warehouseProjectId: Joi.string().required(),
-};
+  ...baseSchema,
+});
+
+ProjectRouter.put('/', validator.body(updateSchema), ProjectController.update);
+
+const deleteSchema = Joi.object({
+  warehouseProjectId: Joi.string().required(),
+});
 
 ProjectRouter.delete(
   '/',
-  validator.body(querySchemaDelete),
+  validator.body(deleteSchema),
   ProjectController.destroy,
 );
 

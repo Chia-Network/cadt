@@ -4,10 +4,50 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`
-      CREATE VIRTUAL TABLE projects_fts USING fts5(projects);
+      CREATE VIRTUAL TABLE projects_fts USING fts5(
+        id,
+        warehouseProjectId,
+        projectId,
+        projectLocationId,
+        currentRegistry,
+        registryOfOrigin,
+        originProjectId,
+        program,
+        projectName,
+        projectLink,
+        projectDeveloper,
+        sector,
+        projectType,
+        coveredByNDC,
+        NDCLinkage,
+        projectStatus,
+        projectStatusDate,
+        unitMetric,
+        methodology,
+        methodologyVersion,
+        validationApproach,
+        validationDate,
+        projectTag,
+        estimatedAnnualAverageEmissionReduction
+      );
       `);
       await queryInterface.sequelize.query(`
-      CREATE VIRTUAL TABLE units_fts USING fts5(units);
+      CREATE VIRTUAL TABLE units_fts USING fts5(
+          id,
+          buyer,
+          registry,
+          blockIdentifier,
+          identifier,
+          unitType,
+          unitCount,
+          unitStatus,
+          unitStatusDate,
+          transactionType,
+          unitIssuanceLocation,
+          unitLink,
+          correspondingAdjustment,
+          unitTag
+        );
       `);
     }
   },

@@ -96,7 +96,9 @@ To run a FTS query on a supported table, you can use the `MATCH` operator. A vir
 Example:
 
 ```
-SELECT * FROM projects WHERE projectName MATCH "partial name" ORDER BY rank
+SELECT rank, * FROM projects_fts WHERE projects_fts MATCH "PartialMatch*" ORDER BY rank
+
+The '*' in the match is needed for wildcard
 ```
 
 More info: https://www.sqlite.org/fts5.html

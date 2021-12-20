@@ -39,29 +39,11 @@ class Project extends Model {
   }
 
   static findAllSqliteFts(queryStr) {
-    const sql = `SELECT * FROM projects WHERE 
-                    warehouseProjectId MATCH ":search" OR
-                    currentRegistry MATCH ":search" OR
-                    registryOfOrigin MATCH ":search" OR
-                    program MATCH ":search" OR
-                    projectName MATCH ":search" OR
-                    projectLink MATCH ":search" OR
-                    projectDeveloper MATCH ":search" OR
-                    sector MATCH ":search" OR
-                    projectType MATCH ":search" OR
-                    NDCLinkage MATCH ":search" OR
-                    projectStatus MATCH ":search" OR
-                    unitMetric MATCH ":search" OR
-                    methodology MATCH ":search" OR
-                    methodologyVersion MATCH ":search" OR
-                    validationApproach MATCH ":search" OR
-                    projectTag MATCH ":search" OR
-                    estimatedAnnualAverageEmissionReduction MATCH ":search" OR
-                    ORDER BY rank DESC`;
+    const sql = `SELECT * FROM projects_fts WHERE projects_fts MATCH :search ORDER BY rank DESC`;
 
     return sequelize.query(sql, {
       model: Project,
-      replacements: { search: queryStr },
+      replacements: { search: `${queryStr}*` },
       mapToModel: true, // pass true here if you have any mapped fields
     });
   }
