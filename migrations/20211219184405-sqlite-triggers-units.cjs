@@ -7,6 +7,7 @@ module.exports = {
       CREATE TRIGGER unit_insert_fts AFTER INSERT ON units BEGIN
         INSERT INTO units_fts(
           id,
+          orgUid,
           buyer, 
           registry, 
           blockIdentifier, 
@@ -22,6 +23,7 @@ module.exports = {
           unitTag
         ) VALUES (
           new.id,
+          new.orgUid,
           new.buyer, 
           new.registry, 
           new.blockIdentifier, 
@@ -49,6 +51,7 @@ module.exports = {
         DELETE FROM units_fts WHERE id = old.id;
         INSERT INTO units_fts(
           id,
+          orgUid,
           projectId,
           buyer,
           registry,
@@ -67,6 +70,7 @@ module.exports = {
           vintageId
         ) VALUES (
           new.id,
+          new.orgUid,
           new.projectId,
           new.buyer,
           new.registry,

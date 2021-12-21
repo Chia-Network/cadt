@@ -7,6 +7,7 @@ module.exports = {
       CREATE TRIGGER project_insert_fts AFTER INSERT ON projects BEGIN
         INSERT INTO projects_fts(
           id,
+          orgUid,
           warehouseProjectId, 
           currentRegistry, 
           registryOfOrigin,
@@ -29,6 +30,7 @@ module.exports = {
           projectTag
         ) VALUES (
           new.id,
+          new.orgUid,
           new.warehouseProjectId,
           new.currentRegistry,
           new.registryOfOrigin,
@@ -63,6 +65,7 @@ module.exports = {
         DELETE FROM projects_fts WHERE id = old.id;
         INSERT INTO projects_fts(
           id,
+          orgUid,
           warehouseProjectId, 
           currentRegistry, 
           registryOfOrigin,
@@ -85,6 +88,7 @@ module.exports = {
           projectTag
         ) VALUES (
           new.id,
+          new.orgUid,
           new.warehouseProjectId,
           new.currentRegistry,
           new.registryOfOrigin,

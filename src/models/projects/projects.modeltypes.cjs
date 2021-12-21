@@ -6,6 +6,9 @@ module.exports = {
     primaryKey: true,
     autoIncrement: true,
   },
+  // The orgUid is teh singeltonId of the
+  // organizations tables on the datalayer
+  orgUid: Sequelize.STRING,
   warehouseProjectId: Sequelize.STRING,
   projectId: Sequelize.STRING,
   projectLocationId: Sequelize.NUMBER,
