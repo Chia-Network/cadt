@@ -36,25 +36,31 @@ export const findAll = async (req, res) => {
   }
 
   const dialect = sequelize.getDialect();
+  const { search, orgUid } = req.query;
 
-  if (req.query.search) {
+  if (search) {
     if (dialect === 'sqlite') {
-      res.json(await Project.findAllSqliteFts(req.query.search));
+      res.json(await Project.findAllSqliteFts(search, orgUid));
     } else if (dialect === 'mysql') {
-      res.json(await Project.findAllMySQLFts(req.query.search));
+      res.json(await Project.findAllMySQLFts(search, orgUid));
     }
   } else {
-    res.json(
-      await Project.findAll({
-        include: [
-          ProjectLocation,
-          Qualification,
-          Vintage,
-          CoBenefit,
-          RelatedProject,
-        ],
-      }),
-    );
+    const query = {
+      include: [
+        ProjectLocation,
+        Qualification,
+        Vintage,
+        CoBenefit,
+        RelatedProject,
+      ],
+    };
+
+    if (orgUid) {
+      query.where = {
+        orgUid,
+      };
+    }
+    res.json(await Project.findAll(query));
   }
 };
 

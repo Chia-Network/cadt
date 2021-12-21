@@ -6,6 +6,7 @@ module.exports = {
       await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE projects_fts USING fts5(
         id,
+        orgUid,
         warehouseProjectId,
         projectId,
         projectLocationId,
@@ -34,6 +35,7 @@ module.exports = {
       await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE units_fts USING fts5(
           id,
+          orgUid,
           buyer,
           registry,
           blockIdentifier,

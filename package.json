@@ -11,7 +11,8 @@
     "start": "node --experimental-specifier-resolution=node ./src/server.js",
     "test": "mocha tests/**/*.spec.js --reporter spec --exit",
     "release": "./node_modules/.bin/standard-version && git push --tags",
-    "postinstall": "npm run requirements-check"
+    "postinstall": "npm run requirements-check",
+    "resetdb": "rm ./data.sqlite3 && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
   },
   "dependencies": {
     "body-parser": "^1.19.0",

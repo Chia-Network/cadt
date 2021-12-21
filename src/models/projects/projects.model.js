@@ -23,27 +23,54 @@ class Project extends Model {
     Project.hasMany(ProjectLocation);
   }
 
-  static findAllMySQLFts(queryStr) {
-    const sql = `SELECT * FROM projects WHERE MATCH(
-        warehouseProjectId, currentRegistry, registryOfOrigin, program, projectName,
-        projectLink, projectDeveloper, sector, projectType, NDCLinkage, projectStatus,
-        unitMetric, methodology, methodologyVersion, validationApproach, projectTag,
-        estimatedAnnualAverageEmissionReduction, owner
-    ) AGAINST ":search" ORDER BY relevance DESC`;
+  static findAllMySQLFts(searchStr, orgUid) {
+    let sql = `
+    SELECT * FROM projects WHERE MATCH (
+        warehouseProjectId,
+        currentRegistry,
+        registryOfOrigin,
+        program,
+        projectName,
+        projectLink,
+        projectDeveloper,
+        sector,
+        projectType,
+        NDCLinkage,
+        projectStatus,
+        unitMetric,
+        methodology,
+        methodologyVersion,
+        validationApproach,
+        projectTag,
+        estimatedAnnualAverageEmissionReduction
+    ) AGAINST ":search"
+    `;
+
+    if (orgUid) {
+      sql = `${sql} AND orgUid = :orgUid`;
+    }
+
+    sql = `${sql} ORDER BY relevance DESC`;
 
     return sequelize.query(sql, {
       model: Project,
-      replacements: { search: queryStr },
+      replacements: { search: searchStr, orgUid },
       mapToModel: true, // pass true here if you have any mapped fields
     });
   }
 
-  static findAllSqliteFts(queryStr) {
-    const sql = `SELECT * FROM projects_fts WHERE projects_fts MATCH :search ORDER BY rank DESC`;
+  static findAllSqliteFts(searchStr, orgUid) {
+    let sql = `SELECT * FROM projects_fts WHERE projects_fts MATCH :search`;
+
+    if (orgUid) {
+      sql = `${sql} AND orgUid = :orgUid`;
+    }
+
+    sql = `${sql} ORDER BY rank DESC`;
 
     return sequelize.query(sql, {
       model: Project,
-      replacements: { search: `${queryStr}*` },
+      replacements: { search: `${searchStr}*`, orgUid },
       mapToModel: true, // pass true here if you have any mapped fields
     });
   }
