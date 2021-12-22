@@ -10,7 +10,7 @@ export const create = async (req, res) => {
       uuid,
       action: 'INSERT',
       table: 'Units',
-      data: JSON.stringify(req.body),
+      data: JSON.stringify([req.body]),
     };
 
     await Staging.create(stagedData);
@@ -67,7 +67,7 @@ export const update = async (req, res) => {
       uuid: req.body.uuid,
       action: 'UPDATE',
       table: 'Units',
-      data: JSON.stringify(req.body),
+      data: JSON.stringify(Array.isArray(req.body) ? req.body : [req.body]),
     };
 
     await Staging.create(stagedData);
