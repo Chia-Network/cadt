@@ -101,20 +101,19 @@ export const commit = async (req, res) => {
   res.json({ message: 'Staging Table committed to full node' });
 };
 
-export const destroy = (req, res) => {
-  Staging.destroy({
-    where: {
-      uuid: req.body.uuid,
-    },
-  })
-    .then(() => {
-      res.json({
-        message: 'Deleted from stage',
-      });
-    })
-    .catch((err) => {
-      res.json({
-        message: err,
-      });
+export const destroy = async (req, res) => {
+  try {
+    await Staging.destroy({
+      where: {
+        uuid: req.body.uuid,
+      },
     });
+    res.json({
+      message: 'Deleted from stage',
+    });
+  } catch (err) {
+    res.json({
+      message: err,
+    });
+  }
 };

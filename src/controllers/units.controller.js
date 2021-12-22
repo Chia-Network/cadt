@@ -1,28 +1,28 @@
 import { uuid as uuidv4 } from 'uuidv4';
 import { Staging, UnitMock, Unit, Qualification, Vintage } from '../models';
 
-export const create = (req, res) => {
-  // When creating new projects assign a uuid to is so
-  // multiple organizations will always have unique ids
-  const uuid = uuidv4();
-  const stagedData = {
-    uuid,
-    action: 'INSERT',
-    table: 'Units',
-    data: JSON.stringify(req.body),
-  };
+export const create = async (req, res) => {
+  try {
+    // When creating new projects assign a uuid to is so
+    // multiple organizations will always have unique ids
+    const uuid = uuidv4();
+    const stagedData = {
+      uuid,
+      action: 'INSERT',
+      table: 'Units',
+      data: JSON.stringify(req.body),
+    };
 
-  Staging.create(stagedData)
-    .then(() =>
-      res.json({
-        message: 'Unit created successfully',
-      }),
-    )
-    .catch(() =>
-      res.json({
-        message: 'Error creating new Unit',
-      }),
-    );
+    await Staging.create(stagedData);
+
+    res.json({
+      message: 'Unit created successfully',
+    });
+  } catch (err) {
+    res.json({
+      message: 'Error creating new Unit',
+    });
+  }
 };
 
 export const findAll = async (req, res) => {
@@ -61,43 +61,42 @@ export const findOne = (req, res) => {
   });
 };
 
-export const update = (req, res) => {
-  const stagedData = {
-    uuid: req.body.uuid,
-    action: 'UPDATE',
-    table: 'Units',
-    data: JSON.stringify(req.body),
-  };
+export const update = async (req, res) => {
+  try {
+    const stagedData = {
+      uuid: req.body.uuid,
+      action: 'UPDATE',
+      table: 'Units',
+      data: JSON.stringify(req.body),
+    };
 
-  Staging.create(stagedData)
-    .then(() =>
-      res.json({
-        message: 'Unit updated successfully',
-      }),
-    )
-    .catch(() =>
-      res.json({
-        message: 'Error updating new unit',
-      }),
-    );
+    await Staging.create(stagedData);
+
+    res.json({
+      message: 'Unit updated successfully',
+    });
+  } catch (err) {
+    res.json({
+      message: 'Error updating new unit',
+    });
+  }
 };
 
-export const destroy = (req, res) => {
-  const stagedData = {
-    uuid: req.body.uuid,
-    action: 'DELETE',
-    table: 'Units',
-  };
+export const destroy = async (req, res) => {
+  try {
+    const stagedData = {
+      uuid: req.body.uuid,
+      action: 'DELETE',
+      table: 'Units',
+    };
 
-  Staging.create(stagedData)
-    .then(() =>
-      res.json({
-        message: 'Unit deleted successfully',
-      }),
-    )
-    .catch(() =>
-      res.json({
-        message: 'Error deleting new unit',
-      }),
-    );
+    await Staging.create(stagedData);
+    res.json({
+      message: 'Unit deleted successfully',
+    });
+  } catch (err) {
+    res.json({
+      message: 'Error deleting new unit',
+    });
+  }
 };

@@ -81,46 +81,44 @@ export const findOne = (req, res) => {
   });
 };
 
-export const update = (req, res) => {
-  const stagedData = {
-    uuid: req.body.warehouseProjectId,
-    action: 'UPDATE',
-    table: 'Projects',
-    data: JSON.stringify(req.body),
-  };
+export const update = async (req, res) => {
+  try {
+    const stagedData = {
+      uuid: req.body.warehouseProjectId,
+      action: 'UPDATE',
+      table: 'Projects',
+      data: JSON.stringify(req.body),
+    };
 
-  console.log(stagedData);
+    await Staging.create(stagedData);
 
-  Staging.create(stagedData)
-    .then(() =>
-      res.json({
-        message: 'Project update added to staging',
-      }),
-    )
-    .catch((err) =>
-      res.json({
-        message: 'Error adding update to stage',
-        error: err,
-      }),
-    );
+    res.json({
+      message: 'Project update added to staging',
+    });
+  } catch (err) {
+    res.json({
+      message: 'Error adding update to stage',
+      error: err,
+    });
+  }
 };
 
-export const destroy = (req, res) => {
-  const stagedData = {
-    uuid: req.body.warehouseProjectId,
-    action: 'DELETE',
-    table: 'Projects',
-  };
+export const destroy = async (req, res) => {
+  try {
+    const stagedData = {
+      uuid: req.body.warehouseProjectId,
+      action: 'DELETE',
+      table: 'Projects',
+    };
 
-  Staging.create(stagedData)
-    .then(() =>
-      res.json({
-        message: 'Project removal added to stage',
-      }),
-    )
-    .catch(() =>
-      res.json({
-        message: 'Error adding project removal to stage',
-      }),
-    );
+    await Staging.create(stagedData);
+
+    res.json({
+      message: 'Project removal added to stage',
+    });
+  } catch (err) {
+    res.json({
+      message: 'Error adding project removal to stage',
+    });
+  }
 };
