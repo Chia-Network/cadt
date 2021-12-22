@@ -39,7 +39,10 @@ export const findAll = async (req, res) => {
       }
 
       if (workingData.action === 'DELETE') {
-        workingData.diff.original = JSON.parse(workingData.data);
+        const original = await Project.findOne({
+          where: { warehouseProjectId: workingData.uuid },
+        });
+        workingData.diff.original = original;
         workingData.diff.change = {};
       }
 
