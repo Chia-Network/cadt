@@ -47,14 +47,19 @@ export const findAll = async (req, res) => {
     } else if (dialect === 'mysql') {
       res.json(await Project.findAllMySQLFts(search, orgUid, paginationParams(page, limit)));
     }
-  } else {
+    return;
+  }
+
+  if (req.query.onlyEssentialColumns) {
     const query = {
-      include: [
-        ProjectLocation,
-        Qualification,
-        Vintage,
-        CoBenefit,
-        RelatedProject,
+      attributes: [
+        'orgUid',
+        'warehouseProjectId',
+        'currentRegistry',
+        'registryOfOrigin',
+        'projectLink',
+        'projectStatus',
+        'projectTag',
       ],
     };
 
@@ -65,10 +70,23 @@ export const findAll = async (req, res) => {
     }
 
     res.json(await Project.findAll({ ...query, ...paginationParams(page, limit) }));
+    return;
   }
+
+  const query = {
+    include: [
+      ProjectLocation,
+      Qualification,
+      Vintage,
+      CoBenefit,
+      RelatedProject,
+    ],
+  };
+
+  res.json(await Project.findAll(query));
 };
 
-export const findOne = (req, res) => {
+export const findOne = async (req, res) => {
   if (req.query.useMock) {
     const record = ProjectMock.findOne(req.query.id);
     if (record) {
@@ -80,9 +98,18 @@ export const findOne = (req, res) => {
     return;
   }
 
-  res.json({
-    message: 'Not Yet Implemented',
-  });
+  const query = {
+    where: { warehouseProjectId: res.query.warehouseProjectId },
+    include: [
+      ProjectLocation,
+      Qualification,
+      Vintage,
+      CoBenefit,
+      RelatedProject,
+    ],
+  };
+
+  res.json(await Project.findOne(query));
 };
 
 export const update = async (req, res) => {
