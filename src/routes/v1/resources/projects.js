@@ -9,7 +9,7 @@ const validator = joiExpress.createValidator({});
 const ProjectRouter = express.Router();
 
 ProjectRouter.get('/', (req, res) => {
-  return req.query.id
+  return req.query.warehouseProjectId
     ? ProjectController.findOne(req, res)
     : ProjectController.findAll(req, res);
 });
