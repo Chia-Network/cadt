@@ -31,6 +31,23 @@ export const findAll = async (req, res) => {
     return;
   }
 
+  if (req.query.onlyEssentialColumns) {
+    res.json(
+      await Unit.findAll({
+        attributes: [
+          'orgUid',
+          'unitLink',
+          'registry',
+          'unitType',
+          'unitCount',
+          'unitStatus',
+          'unitStatusDate',
+        ],
+      }),
+    );
+    return;
+  }
+
   res.json(
     await Unit.findAll({
       include: [
@@ -44,7 +61,7 @@ export const findAll = async (req, res) => {
   );
 };
 
-export const findOne = (req, res) => {
+export const findOne = async (req, res) => {
   if (req.query.useMock) {
     const record = UnitMock.findOne(req.query.id);
     if (record) {
@@ -56,9 +73,18 @@ export const findOne = (req, res) => {
     return;
   }
 
-  res.json({
-    message: 'Not Yet Implemented',
-  });
+  res.json(
+    await Unit.findAll({
+      where: { id: req.query.id },
+      include: [
+        {
+          model: Qualification,
+          as: 'qualification',
+        },
+        Vintage,
+      ],
+    }),
+  );
 };
 
 export const update = async (req, res) => {
