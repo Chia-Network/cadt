@@ -1,5 +1,8 @@
+'use strict';
+
 import { uuid as uuidv4 } from 'uuidv4';
 import { Staging, UnitMock, Unit, Qualification, Vintage } from '../models';
+import { paginationParams } from './helpers';
 
 export const create = async (req, res) => {
   try {
@@ -26,8 +29,10 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
+  const { page, limit } = req.query;
+
   if (req.query.useMock) {
-    res.json(UnitMock.findAll());
+    res.json(UnitMock.findAll({ ...paginationParams(page, limit) }));
     return;
   }
 
@@ -40,6 +45,7 @@ export const findAll = async (req, res) => {
         },
         Vintage,
       ],
+      ...paginationParams(page, limit),
     }),
   );
 };
