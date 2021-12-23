@@ -11,6 +11,8 @@ import {
   RelatedProject,
 } from '../models';
 
+import { paginationParams } from './helpers';
+
 export const create = async (req, res) => {
   // When creating new projects assign a uuid to is so
   // multiple organizations will always have unique ids
@@ -30,19 +32,20 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
+  const { page, limit, search, orgUid } = req.query;
+
   if (req.query.useMock) {
-    res.json(ProjectMock.findAll());
+    res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
     return;
   }
 
   const dialect = sequelize.getDialect();
-  const { search, orgUid } = req.query;
 
   if (search) {
     if (dialect === 'sqlite') {
-      res.json(await Project.findAllSqliteFts(search, orgUid));
+      res.json(await Project.findAllSqliteFts(search, orgUid, paginationParams(page, limit)));
     } else if (dialect === 'mysql') {
-      res.json(await Project.findAllMySQLFts(search, orgUid));
+      res.json(await Project.findAllMySQLFts(search, orgUid, paginationParams(page, limit)));
     }
   } else {
     const query = {
@@ -60,7 +63,8 @@ export const findAll = async (req, res) => {
         orgUid,
       };
     }
-    res.json(await Project.findAll(query));
+
+    res.json(await Project.findAll({ ...query, ...paginationParams(page, limit) }));
   }
 };
 
