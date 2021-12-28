@@ -1,5 +1,8 @@
+'use strict';
+
 import { uuid as uuidv4 } from 'uuidv4';
 import { Staging, UnitMock, Unit, Qualification, Vintage } from '../models';
+import { optionallyPaginatedResponse, paginationParams } from "./helpers";
 
 export const create = async (req, res) => {
   try {
@@ -26,30 +29,29 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
+  const { page, limit } = req.query;
+
   if (req.query.useMock) {
-    res.json(UnitMock.findAll());
+    res.json(UnitMock.findAll({ ...paginationParams(page, limit) }));
     return;
   }
 
   if (req.query.onlyEssentialColumns) {
-    res.json(
-      await Unit.findAll({
-        attributes: [
-          'orgUid',
-          'unitLink',
-          'registry',
-          'unitType',
-          'unitCount',
-          'unitStatus',
-          'unitStatusDate',
-        ],
-      }),
-    );
-    return;
+    return res.json(optionallyPaginatedResponse(await Unit.findAndCountAll({
+      attributes: [
+        'orgUid',
+        'unitLink',
+        'registry',
+        'unitType',
+        'unitCount',
+        'unitStatus',
+        'unitStatusDate',
+      ],
+    }), page, limit));
   }
 
   res.json(
-    await Unit.findAll({
+    optionallyPaginatedResponse(await Unit.findAndCountAll({
       include: [
         {
           model: Qualification,
@@ -57,7 +59,8 @@ export const findAll = async (req, res) => {
         },
         Vintage,
       ],
-    }),
+      ...paginationParams(page, limit),
+    }), page, limit),
   );
 };
 

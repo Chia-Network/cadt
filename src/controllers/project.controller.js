@@ -11,6 +11,8 @@ import {
   RelatedProject,
 } from '../models';
 
+import { optionallyPaginatedResponse, paginationParams } from "./helpers";
+
 export const create = async (req, res) => {
   // When creating new projects assign a uuid to is so
   // multiple organizations will always have unique ids
@@ -30,24 +32,27 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  if (req.query.useMock) {
-    res.json(ProjectMock.findAll());
+  const { page, limit, search, orgUid, onlyEssentialColumns, useMock } = req.query;
+
+  if (useMock) {
+    res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
     return;
   }
 
   const dialect = sequelize.getDialect();
-  const { search, orgUid } = req.query;
+
+  let results;
 
   if (search) {
     if (dialect === 'sqlite') {
-      res.json(await Project.findAllSqliteFts(search, orgUid));
+      results = await Project.findAllSqliteFts(search, orgUid, paginationParams(page, limit));
     } else if (dialect === 'mysql') {
-      res.json(await Project.findAllMySQLFts(search, orgUid));
+      results = await Project.findAllMySQLFts(search, orgUid, paginationParams(page, limit));
     }
-    return;
+    return res.json(optionallyPaginatedResponse(results, page, limit));
   }
 
-  if (req.query.onlyEssentialColumns) {
+  if (onlyEssentialColumns) {
     const query = {
       attributes: [
         'orgUid',
@@ -65,8 +70,12 @@ export const findAll = async (req, res) => {
         orgUid,
       };
     }
-    res.json(await Project.findAll(query));
-    return;
+
+    return res.json(optionallyPaginatedResponse(
+      await Project.findAndCountAll({ ...query, ...paginationParams(page, limit) }),
+      page,
+      limit,
+    ));
   }
 
   const query = {
@@ -79,7 +88,7 @@ export const findAll = async (req, res) => {
     ],
   };
 
-  res.json(await Project.findAll(query));
+  return res.json(await Project.findAll(query));
 };
 
 export const findOne = async (req, res) => {

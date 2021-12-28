@@ -1,7 +1,7 @@
 import stub from './projects.stub.json';
 
 export const ProjectMock = {
-  findAll: () => stub,
+  findAll: ({ limit, offset }) => stub.slice(offset * limit, (offset + 1) * limit),
   findOne: (id) => {
     return stub.find((record) => record.id == id);
   },
