@@ -11,7 +11,7 @@ import {
   RelatedProject,
 } from '../models';
 
-import { paginationParams } from './helpers';
+import { optionallyPaginatedResponse, paginationParams } from "./helpers";
 
 export const create = async (req, res) => {
   // When creating new projects assign a uuid to is so
@@ -41,13 +41,15 @@ export const findAll = async (req, res) => {
 
   const dialect = sequelize.getDialect();
 
+  let results;
+
   if (search) {
     if (dialect === 'sqlite') {
-      res.json(await Project.findAllSqliteFts(search, orgUid, paginationParams(page, limit)));
+      results = await Project.findAllSqliteFts(search, orgUid, paginationParams(page, limit));
     } else if (dialect === 'mysql') {
-      res.json(await Project.findAllMySQLFts(search, orgUid, paginationParams(page, limit)));
+      results = await Project.findAllMySQLFts(search, orgUid, paginationParams(page, limit));
     }
-    return;
+    return res.json(optionallyPaginatedResponse(results, page, limit));
   }
 
   if (req.query.onlyEssentialColumns) {
@@ -69,8 +71,11 @@ export const findAll = async (req, res) => {
       };
     }
 
-    res.json(await Project.findAll({ ...query, ...paginationParams(page, limit) }));
-    return;
+    return res.json(optionallyPaginatedResponse(
+      await Project.findAndCountAll({ ...query, ...paginationParams(page, limit) }),
+      page,
+      limit,
+    ));
   }
 
   const query = {
@@ -83,7 +88,7 @@ export const findAll = async (req, res) => {
     ],
   };
 
-  res.json(await Project.findAll(query));
+  return await Project.findAll(query);
 };
 
 export const findOne = async (req, res) => {

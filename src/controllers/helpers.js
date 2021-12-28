@@ -14,3 +14,15 @@ export const paginationParams = (page, limit) => {
     offset: page ? page - 1 : 1,
   }
 }
+
+export const optionallyPaginatedResponse = ({count, rows}, page, limit) => {
+  if (page) {
+    return {
+      page,
+      pageCount: Math.max(count / (limit || 15)),
+      data: rows,
+    }
+  } else {
+    return rows;
+  }
+}
