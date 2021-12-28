@@ -88,7 +88,7 @@ export const findAll = async (req, res) => {
     ],
   };
 
-  return await Project.findAll(query);
+  return res.json(await Project.findAll(query));
 };
 
 export const findOne = async (req, res) => {
