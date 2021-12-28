@@ -32,9 +32,9 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  const { page, limit, search, orgUid } = req.query;
+  const { page, limit, search, orgUid, onlyEssentialColumns, useMock } = req.query;
 
-  if (req.query.useMock) {
+  if (useMock) {
     res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
     return;
   }
@@ -52,7 +52,7 @@ export const findAll = async (req, res) => {
     return res.json(optionallyPaginatedResponse(results, page, limit));
   }
 
-  if (req.query.onlyEssentialColumns) {
+  if (onlyEssentialColumns) {
     const query = {
       attributes: [
         'orgUid',
