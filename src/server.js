@@ -30,6 +30,7 @@ io.on("connection", (socket) => {
   socket.on('disconnect', () => {
     if (socketSubscriptions[socket.id]) {
       socketSubscriptions[socket.id].unsubscribe();
+      delete socketSubscriptions[socket.id]
     }
     
   });
