@@ -2,7 +2,7 @@
 
 import { uuid as uuidv4 } from 'uuidv4';
 import { Staging, UnitMock, Unit, Qualification, Vintage } from '../models';
-import { optionallyPaginatedResponse, paginationParams } from "./helpers";
+import { optionallyPaginatedResponse, paginationParams } from './helpers';
 
 export const create = async (req, res) => {
   try {
@@ -37,30 +37,40 @@ export const findAll = async (req, res) => {
   }
 
   if (req.query.onlyEssentialColumns) {
-    return res.json(optionallyPaginatedResponse(await Unit.findAndCountAll({
-      attributes: [
-        'orgUid',
-        'unitLink',
-        'registry',
-        'unitType',
-        'unitCount',
-        'unitStatus',
-        'unitStatusDate',
-      ],
-    }), page, limit));
+    return res.json(
+      optionallyPaginatedResponse(
+        await Unit.findAndCountAll({
+          attributes: [
+            'orgUid',
+            'unitLink',
+            'registry',
+            'unitType',
+            'unitCount',
+            'unitStatus',
+            'unitStatusDate',
+          ],
+        }),
+        page,
+        limit,
+      ),
+    );
   }
 
   res.json(
-    optionallyPaginatedResponse(await Unit.findAndCountAll({
-      include: [
-        {
-          model: Qualification,
-          as: 'qualification',
-        },
-        Vintage,
-      ],
-      ...paginationParams(page, limit),
-    }), page, limit),
+    optionallyPaginatedResponse(
+      await Unit.findAndCountAll({
+        include: [
+          {
+            model: Qualification,
+            as: 'qualification',
+          },
+          Vintage,
+        ],
+        ...paginationParams(page, limit),
+      }),
+      page,
+      limit,
+    ),
   );
 };
 
@@ -78,7 +88,7 @@ export const findOne = async (req, res) => {
 
   res.json(
     await Unit.findAll({
-      where: { id: req.query.id },
+      where: { uuid: req.query.uuid },
       include: [
         {
           model: Qualification,
