@@ -20,6 +20,26 @@ class Unit extends Model {
       as: 'qualification',
     });
   }
+  
+  static async create(values, options) {
+    const createResult = await super.create(values, options);
+    const { orgUid } = createResult;
+    
+    Unit.changes.next(orgUid);
+    
+    return createResult;
+  }
+  
+  static async destroy(values) {
+    const { id: unitId } = values.where;
+    const { orgUid } = await super.findOne(unitId);
+    
+    const destroyResult = await super.destroy(values);
+    
+    Unit.changes.next(orgUid);
+    
+    return destroyResult;
+  }
 }
 
 Unit.init(ModelTypes, {

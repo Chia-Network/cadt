@@ -27,6 +27,26 @@ class Project extends Model {
     Project.hasMany(CoBenefit);
     Project.hasMany(ProjectLocation);
   }
+  
+  static async create(values, options) {
+    const createResult = await super.create(values, options);
+    const { orgUid } = createResult;
+    
+    Project.changes.next(orgUid);
+    
+    return createResult;
+  }
+  
+  static async destroy(values) {
+    const { id: projectId } = values.where;
+    const { orgUid } = await super.findOne(projectId);
+    
+    const destroyResult = await super.destroy(values);
+    
+    Project.changes.next(orgUid);
+    
+    return destroyResult;
+  }
 
   static async findAllMySQLFts(searchStr, orgUid, pagination) {
     const { offset, limit } = pagination;

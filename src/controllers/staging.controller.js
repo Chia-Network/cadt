@@ -87,8 +87,6 @@ export const commit = async (req, res) => {
           fullNode.deleteProjectRecord(uuid, stagingRecordId);
           break;
       }
-      
-      Project.changes.next(data.orgUid);
     } else if (table === 'Unit') {
       switch (action) {
         case 'INSERT':
@@ -101,7 +99,6 @@ export const commit = async (req, res) => {
           fullNode.deleteUnitRecord(uuid, stagingRecordId);
           break;
       }
-      Unit.changes.next(data.orgUid);
     }
   });
   res.json({ message: 'Staging Table committed to full node' });
