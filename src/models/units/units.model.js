@@ -4,10 +4,13 @@ import { sequelize } from '../database';
 import { Qualification, Vintage } from '../../models';
 
 import ModelTypes from './units.modeltypes.cjs';
+import rxjs from "rxjs";
 
 const { Model } = Sequelize;
 
 class Unit extends Model {
+  static changes = new rxjs.Subject();
+  
   static associate() {
     Unit.hasOne(Vintage);
 

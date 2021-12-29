@@ -1,5 +1,7 @@
 'use strict';
 import Sequelize from 'sequelize';
+import rxjs from "rxjs";
+
 const { Model } = Sequelize;
 
 import { sequelize } from '../database';
@@ -15,6 +17,8 @@ import ModelTypes from './projects.modeltypes.cjs';
 import { optionallyPaginatedResponse } from "../../controllers/helpers.js";
 
 class Project extends Model {
+  static changes = new rxjs.Subject();
+  
   static associate() {
     Project.hasMany(RelatedProject);
     Project.hasMany(Vintage);
