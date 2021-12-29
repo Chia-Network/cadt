@@ -3,8 +3,8 @@
 import rootRouter from './routes';
 import http from 'http';
 import Debug from 'debug';
-import { Server } from "socket.io";
-import {Project, Unit} from "./models/index.js";
+import { Server } from 'socket.io';
+import { Project, Unit } from "./models/index";
 
 const debug = Debug('climate-warehouse:server');
 
@@ -30,12 +30,12 @@ io.on("connection", (socket) => {
   socket.on('disconnect', () => {
     if (socketSubscriptions[socket.id]) {
       socketSubscriptions[socket.id].unsubscribe();
-      delete socketSubscriptions[socket.id]
+      delete socketSubscriptions[socket.id];
     }
     
   });
   
-  socketSubscriptions[socket.id] = subject.subscribe(orgUid => socket.broadcast.emit({ orgUid }))
+  socketSubscriptions[socket.id] = subject.subscribe(orgUid => socket.broadcast.emit({ orgUid }));
 });
 
 server.on('error', onError);
