@@ -11,7 +11,7 @@ import {
   RelatedProject,
 } from '../models';
 
-import { optionallyPaginatedResponse, paginationParams } from "./helpers";
+import { optionallyPaginatedResponse, paginationParams } from './helpers';
 
 export const create = async (req, res) => {
   // When creating new projects assign a uuid to is so
@@ -32,7 +32,8 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  const { page, limit, search, orgUid, onlyEssentialColumns, useMock } = req.query;
+  const { page, limit, search, orgUid, onlyEssentialColumns, useMock } =
+    req.query;
 
   if (useMock) {
     res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
@@ -45,9 +46,17 @@ export const findAll = async (req, res) => {
 
   if (search) {
     if (dialect === 'sqlite') {
-      results = await Project.findAllSqliteFts(search, orgUid, paginationParams(page, limit));
+      results = await Project.findAllSqliteFts(
+        search,
+        orgUid,
+        paginationParams(page, limit),
+      );
     } else if (dialect === 'mysql') {
-      results = await Project.findAllMySQLFts(search, orgUid, paginationParams(page, limit));
+      results = await Project.findAllMySQLFts(
+        search,
+        orgUid,
+        paginationParams(page, limit),
+      );
     }
     return res.json(optionallyPaginatedResponse(results, page, limit));
   }
@@ -71,11 +80,16 @@ export const findAll = async (req, res) => {
       };
     }
 
-    return res.json(optionallyPaginatedResponse(
-      await Project.findAndCountAll({ ...query, ...paginationParams(page, limit) }),
-      page,
-      limit,
-    ));
+    return res.json(
+      optionallyPaginatedResponse(
+        await Project.findAndCountAll({
+          ...query,
+          ...paginationParams(page, limit),
+        }),
+        page,
+        limit,
+      ),
+    );
   }
 
   const query = {
@@ -88,7 +102,16 @@ export const findAll = async (req, res) => {
     ],
   };
 
-  return res.json(await Project.findAll(query));
+  return res.json(
+    optionallyPaginatedResponse(
+      await Project.findAndCountAll({
+        ...query,
+        ...paginationParams(page, limit),
+      }),
+      page,
+      limit,
+    ),
+  );
 };
 
 export const findOne = async (req, res) => {
