@@ -2,46 +2,22 @@
 
 import rootRouter from './routes';
 import http from 'http';
-import Debug from 'debug';
 import { Server } from 'socket.io';
-import { Project, Unit } from "./models";
+import Debug from 'debug';
+import { connection } from "./websocket";
 
 const debug = Debug('climate-warehouse:server');
 
 const port = 3030;
 const server = http.createServer(rootRouter);
 
-const io = new Server(server);
-
-const socketSubscriptions = {};
-
-io.on("connection", (socket) => {
-  const { url } = socket.request;
-  let subject;
-  
-  if (url.includes('project')) {
-    subject = Project.changes;
-  } else if (url.includes('unit')) {
-    subject = Unit.changes;
-  } else {
-    return socket.disconnect();
-  }
-  
-  socket.on('disconnect', () => {
-    if (socketSubscriptions[socket.id]) {
-      socketSubscriptions[socket.id].unsubscribe();
-      delete socketSubscriptions[socket.id];
-    }
-    
-  });
-  
-  socketSubscriptions[socket.id] = subject.subscribe(orgUid => socket.broadcast.emit({ orgUid }));
-});
-
 server.on('error', onError);
 server.on('listening', onListening);
 
 server.listen(port);
+
+const io = new Server(server);
+io.of('/v1/updates').on('connection', connection);
 
 function onError(error) {
   if (error.syscall !== 'listen') {
