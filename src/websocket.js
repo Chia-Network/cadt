@@ -8,9 +8,10 @@ const socketSubscriptions = {};
 const ORG_UID = 0;
 const ENTITY_NAME = 1;
 
+//future authentication logic goes here
 const authenticate = (_payload) => true;
 
-const subscribedChangeFeeds = ({ projects, units }) => [projects, units].filter(feed => !!feed);
+const subscribedChangeFeeds = ({ projects, units }) => [projects, units].filter(feed => Boolean(feed));
 
 export const connection = (socket) => {
   let combinedChangeFeedSubscription = null;
@@ -29,7 +30,6 @@ export const connection = (socket) => {
       socketSubscriptions[socket.id].unsubscribe();
       delete socketSubscriptions[socket.id];
     }
-    
   });
   
   socket.on('/subscribe', (feed) => {
@@ -59,10 +59,9 @@ export const connection = (socket) => {
       combinedChangeFeedSubscription.unsubscribe();
     }
   
+    // using zip to take an array of observables, and funnel all their outputs into a single handler
     combinedChangeFeedSubscription = zip(...subscribedChangeFeeds(feeds)).subscribe(update => {
       socket.broadcast.emit(`change:${update[ENTITY_NAME]}`, JSON.stringify({ orgUid: update[ORG_UID] }));
     });
-    
   });
-  
 }
