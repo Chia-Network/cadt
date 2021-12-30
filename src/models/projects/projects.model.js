@@ -1,5 +1,7 @@
 'use strict';
 import Sequelize from 'sequelize';
+import rxjs from "rxjs";
+
 const { Model } = Sequelize;
 
 import { sequelize } from '../database';
@@ -15,6 +17,8 @@ import ModelTypes from './projects.modeltypes.cjs';
 import { optionallyPaginatedResponse } from "../../controllers/helpers.js";
 
 class Project extends Model {
+  static changes = new rxjs.Subject();
+  
   static associate() {
     Project.hasMany(RelatedProject);
     Project.hasMany(Vintage);
@@ -22,6 +26,26 @@ class Project extends Model {
     Project.hasMany(Rating);
     Project.hasMany(CoBenefit);
     Project.hasMany(ProjectLocation);
+  }
+  
+  static async create(values, options) {
+    const createResult = await super.create(values, options);
+    const { orgUid } = createResult;
+    
+    Project.changes.next(orgUid);
+    
+    return createResult;
+  }
+  
+  static async destroy(values) {
+    const { id: projectId } = values.where;
+    const { orgUid } = await super.findOne(projectId);
+    
+    const destroyResult = await super.destroy(values);
+    
+    Project.changes.next(orgUid);
+    
+    return destroyResult;
   }
 
   static async findAllMySQLFts(searchStr, orgUid, pagination) {
