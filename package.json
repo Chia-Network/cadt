@@ -24,6 +24,7 @@
     "rxjs": "^7.5.1",
     "sequelize": "^6.12.0-alpha.1",
     "socket.io": "^4.4.0",
+    "socket.io-client": "^4.4.0",
     "sqlite3": "4.1.1",
     "uuidv4": "^6.2.12"
   },
