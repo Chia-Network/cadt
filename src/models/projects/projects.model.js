@@ -32,7 +32,7 @@ class Project extends Model {
     const createResult = await super.create(values, options);
     const { orgUid } = createResult;
     
-    Project.changes.next(orgUid);
+    Project.changes.next(['projects', orgUid]);
     
     return createResult;
   }
@@ -43,7 +43,7 @@ class Project extends Model {
     
     const destroyResult = await super.destroy(values);
     
-    Project.changes.next(orgUid);
+    Project.changes.next(['projects', orgUid]);
     
     return destroyResult;
   }

@@ -25,7 +25,7 @@ class Unit extends Model {
     const createResult = await super.create(values, options);
     const { orgUid } = createResult;
     
-    Unit.changes.next(orgUid);
+    Unit.changes.next(['units', orgUid]);
     
     return createResult;
   }
@@ -36,7 +36,7 @@ class Unit extends Model {
     
     const destroyResult = await super.destroy(values);
     
-    Unit.changes.next(orgUid);
+    Unit.changes.next(['units', orgUid]);
     
     return destroyResult;
   }
