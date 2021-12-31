@@ -1,67 +1,57 @@
 'use strict';
 
-import { Project, Unit } from "./models/index.js";
-import { BehaviorSubject, zip } from "rxjs";
+import { Project, Unit } from './models/index.js';
 
 const socketSubscriptions = {};
-
-const ORG_UID = 0;
-const ENTITY_NAME = 1;
 
 //future authentication logic goes here
 const authenticate = (_payload) => true;
 
-const subscribedChangeFeeds = ({ projects, units }) => [projects, units].filter(feed => Boolean(feed));
-
 export const connection = (socket) => {
-  let combinedChangeFeedSubscription = null;
-  
-  const changeFeeds = new BehaviorSubject({
-    projects: null,
-    units: null,
-  });
-  
-  socket.on('disconnect', () => {
-    if (changeFeedListSub) {
-      changeFeedListSub.unsubscribe();
+  socket.on('authentication', () => {
+    console.log('Attempting to authenticate');
+    if (!authenticate(socket)) {
+      console.log('authentication failure');
+      return socket.disconnect();
+    } else {
+      socket.emit('authenticated');
     }
-    
+  });
+
+  socket.on('disconnect', () => {
     if (socketSubscriptions[socket.id]) {
-      socketSubscriptions[socket.id].unsubscribe();
       delete socketSubscriptions[socket.id];
     }
   });
-  
-  socket.on('/subscribe', (feed) => {
+
+  socket.on('/subscribe', (feed, callback) => {
+    if (!socketSubscriptions[socket.id]) {
+      socketSubscriptions[socket.id] = [];
+    }
+
     switch (feed) {
       case 'projects':
-        if (!changeFeeds.projects) {
-          changeFeeds.projects = Project.changes;
+        if (!socketSubscriptions[socket.id].includes('projects')) {
+          Project.changes.subscribe((data) => {
+            socket.emit('change:projects', data);
+          });
+          socketSubscriptions[socket.id].push('projects');
+          callback('success');
+        } else {
+          callback('already subscribed');
         }
-      break;
+        break;
       case 'units':
-        if (!changeFeeds.units) {
-          changeFeeds.units = Unit.changes;
+        if (!socketSubscriptions[socket.id].includes('units')) {
+          Unit.changes.subscribe((data) => {
+            socket.emit('change:units', data);
+          });
+          socketSubscriptions[socket.id].push('units');
+          callback('success');
+        } else {
+          callback('already subscribed');
         }
-      break;
+        break;
     }
   });
-  
-  if (!authenticate(socket)) {
-    console.log('authentication failure');
-    return socket.disconnect();
-  } else {
-    socket.broadcast.emit('authenticated');
-  }
-  
-  const changeFeedListSub = changeFeeds.subscribe((feeds) => {
-    if (combinedChangeFeedSubscription) {
-      combinedChangeFeedSubscription.unsubscribe();
-    }
-  
-    // using zip to take an array of observables, and funnel all their outputs into a single handler
-    combinedChangeFeedSubscription = zip(...subscribedChangeFeeds(feeds)).subscribe(update => {
-      socket.broadcast.emit(`change:${update[ENTITY_NAME]}`, JSON.stringify({ orgUid: update[ORG_UID] }));
-    });
-  });
-}
+};

@@ -4,7 +4,7 @@ import rootRouter from './routes';
 import http from 'http';
 import { Server } from 'socket.io';
 import Debug from 'debug';
-import { connection } from "./websocket";
+import { connection } from './websocket';
 
 const debug = Debug('climate-warehouse:server');
 
@@ -17,7 +17,7 @@ server.on('listening', onListening);
 server.listen(port);
 
 const io = new Server(server);
-io.of('/v1/updates').on('connection', connection);
+io.of('/v1/ws').on('connection', connection);
 
 function onError(error) {
   if (error.syscall !== 'listen') {

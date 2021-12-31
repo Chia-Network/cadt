@@ -15,6 +15,7 @@ ProjectRouter.get('/', (req, res) => {
 });
 
 const baseSchema = {
+  orgUid: Joi.string().required(),
   currentRegistry: Joi.string().required(),
   registryOfOrigin: Joi.string().required(),
   originProjectId: Joi.string().required(),
