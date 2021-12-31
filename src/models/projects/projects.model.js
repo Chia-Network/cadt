@@ -1,6 +1,6 @@
 'use strict';
 import Sequelize from 'sequelize';
-import rxjs from "rxjs";
+import rxjs from 'rxjs';
 
 const { Model } = Sequelize;
 
@@ -14,11 +14,11 @@ import { Rating } from './../ratings';
 import { CoBenefit } from './../co-benefits';
 
 import ModelTypes from './projects.modeltypes.cjs';
-import { optionallyPaginatedResponse } from "../../controllers/helpers.js";
+import { optionallyPaginatedResponse } from '../../controllers/helpers.js';
 
 class Project extends Model {
   static changes = new rxjs.Subject();
-  
+
   static associate() {
     Project.hasMany(RelatedProject);
     Project.hasMany(Vintage);
@@ -27,24 +27,25 @@ class Project extends Model {
     Project.hasMany(CoBenefit);
     Project.hasMany(ProjectLocation);
   }
-  
+
   static async create(values, options) {
     const createResult = await super.create(values, options);
-    const { orgUid } = createResult;
-    
+
+    const { orgUid } = values['0'];
+
     Project.changes.next(['projects', orgUid]);
-    
+
     return createResult;
   }
-  
+
   static async destroy(values) {
     const { id: projectId } = values.where;
     const { orgUid } = await super.findOne(projectId);
-    
+
     const destroyResult = await super.destroy(values);
-    
+
     Project.changes.next(['projects', orgUid]);
-    
+
     return destroyResult;
   }
 
@@ -78,7 +79,7 @@ class Project extends Model {
 
     sql = `${sql} ORDER BY relevance DESC LIMIT :limit OFFSET :offset`;
 
-    const count = await Project.count()
+    const count = await Project.count();
 
     return {
       count,
@@ -88,11 +89,11 @@ class Project extends Model {
         mapToModel: true, // pass true here if you have any mapped fields
         offset,
         limit,
-      })
+      }),
     };
   }
 
-  static findAllSqliteFts(searchStr, orgUid, pagination ) {
+  static findAllSqliteFts(searchStr, orgUid, pagination) {
     const { offset, limit } = pagination;
     let sql = `SELECT * FROM projects_fts WHERE projects_fts MATCH :search`;
 
