@@ -8,7 +8,7 @@
   },
   "scripts": {
     "requirements-check": "node --experimental-json-modules check_node_version.js",
-    "start": "node --experimental-specifier-resolution=node ./src/server.js",
+    "start": "node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
     "test": "mocha tests/**/*.spec.js --reporter spec --exit",
     "release": "./node_modules/.bin/standard-version && git push --tags",
     "postinstall": "npm run requirements-check",

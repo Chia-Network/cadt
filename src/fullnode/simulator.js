@@ -3,7 +3,12 @@ const THIRTY_SEC = 30000;
 
 // Simulate 30 seconds passing before commited to node
 
-export const updateProjectRecord = async (uuid, record, stagingRecordId) => {
+export const updateProjectRecord = async (
+  uuid,
+  encodedRecord,
+  stagingRecordId,
+) => {
+  const record = JSON.parse(encodedRecord.toString('utf8'));
   return new Promise((resolve) => {
     setTimeout(async () => {
       if (stagingRecordId) {
@@ -26,7 +31,10 @@ export const updateProjectRecord = async (uuid, record, stagingRecordId) => {
   });
 };
 
-export const createProjectRecord = (uuid, record, stagingRecordId) => {
+export const createProjectRecord = (uuid, encodedRecord, stagingRecordId) => {
+  const record = JSON.parse(atob(encodedRecord));
+
+  console.log(record);
   return new Promise((resolve) => {
     setTimeout(async () => {
       await Project.create({
@@ -69,7 +77,13 @@ export const deleteProjectRecord = (uuid, stagingRecordId) => {
   });
 };
 
-export const updateUnitRecord = async (uuid, record, stagingRecordId) => {
+export const updateUnitRecord = async (
+  uuid,
+  encodedRecord,
+  stagingRecordId,
+) => {
+  const record = JSON.parse(encodedRecord.toString('utf8'));
+
   await deleteUnitRecord(uuid);
   await createUnitRecord(uuid, record);
 
@@ -82,7 +96,8 @@ export const updateUnitRecord = async (uuid, record, stagingRecordId) => {
   }
 };
 
-export const createUnitRecord = (uuid, record, stagingRecordId) => {
+export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
+  const record = JSON.parse(encodedRecord.toString('utf8'));
   return new Promise((resolve) => {
     setTimeout(async () => {
       await Unit.create({
