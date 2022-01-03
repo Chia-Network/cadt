@@ -75,7 +75,7 @@ export const commit = async (req, res) => {
       { where: { id: stagingRecordId } },
     );
 
-    if (table === 'Projects') {
+    if (table === 'Projects' && !commited) {
       switch (action) {
         case 'INSERT':
           fullNode.createProjectRecord(uuid, data, stagingRecordId);
@@ -87,7 +87,7 @@ export const commit = async (req, res) => {
           fullNode.deleteProjectRecord(uuid, stagingRecordId);
           break;
       }
-    } else if (table === 'Unit') {
+    } else if (table === 'Unit' && !commited) {
       switch (action) {
         case 'INSERT':
           fullNode.createUnitRecord(uuid, data, stagingRecordId);
