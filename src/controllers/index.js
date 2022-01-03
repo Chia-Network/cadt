@@ -1,5 +1,4 @@
-import * as ProjectController from './project.controller';
-import * as UnitController from './units.controller';
-import * as StagingController from './staging.controller';
-
-export { ProjectController, UnitController, StagingController };
+export * as ProjectController from './project.controller';
+export * as UnitController from './units.controller';
+export * as StagingController from './staging.controller';
+export * as OrganizationController from './organization.controller';
