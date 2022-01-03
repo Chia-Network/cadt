@@ -109,7 +109,7 @@ export const update = async (req, res) => {
       data: JSON.stringify(Array.isArray(req.body) ? req.body : [req.body]),
     };
 
-    await Staging.create(stagedData);
+    await Staging.upsert(stagedData);
 
     res.json({
       message: 'Unit updated successfully',

@@ -6,7 +6,10 @@ module.exports = {
     primaryKey: true,
     autoIncrement: true,
   },
-  uuid: Sequelize.STRING,
+  uuid: {
+    type: Sequelize.STRING,
+    unique: true,
+  },
   table: Sequelize.STRING,
   action: Sequelize.STRING,
   data: Sequelize.STRING,
