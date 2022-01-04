@@ -17,7 +17,7 @@ class Unit extends Model {
     // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
     Unit.belongsToMany(Qualification, {
       through: 'qualification_unit',
-      as: 'qualification',
+      as: 'qualifications',
     });
   }
   
