@@ -62,7 +62,7 @@ export const findAll = async (req, res) => {
         include: [
           {
             model: Qualification,
-            as: 'qualification',
+            as: 'qualifications',
           },
           Vintage,
         ],
@@ -87,12 +87,12 @@ export const findOne = async (req, res) => {
   }
 
   res.json(
-    await Unit.findAll({
+    await Unit.findOne({
       where: { uuid: req.query.uuid },
       include: [
         {
           model: Qualification,
-          as: 'qualification',
+          as: 'qualifications',
         },
         Vintage,
       ],
@@ -136,6 +136,34 @@ export const destroy = async (req, res) => {
   } catch (err) {
     res.json({
       message: 'Error deleting new unit',
+    });
+  }
+};
+
+export const split = async (req, res) => {
+  try {
+    const originalRecord = await Unit.findOne({
+      where: { uuid: req.query.unitUid },
+    });
+
+    const stagedData = {
+      uuid: req.body.uuid,
+      action: 'UPDATE',
+      table: 'Units',
+      data: [
+        {
+          ...originalRecord,
+        },
+      ],
+    };
+
+    await Staging.create(stagedData);
+    res.json({
+      message: 'Unit split successfully',
+    });
+  } catch (err) {
+    res.json({
+      message: 'Error splitting unit',
     });
   }
 };
