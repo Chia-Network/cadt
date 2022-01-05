@@ -76,16 +76,20 @@ class Project extends Model {
     if (orgUid) {
       sql = `${sql} AND orgUid = :orgUid`;
     }
-
-    sql = `${sql} ORDER BY relevance DESC LIMIT :limit OFFSET :offset`;
-
-    const count = await Project.count();
+    
+    const replacements = { search: searchStr, orgUid };
+  
+    const count = (await sequelize.query(sql, {
+      model: Project,
+      mapToModel: true, // pass true here if you have any mapped fields
+      replacements
+    })).length;
 
     return {
       count,
-      rows: await sequelize.query(sql, {
+      rows: await sequelize.query(`${sql} ORDER BY relevance DESC LIMIT :limit OFFSET :offset`, {
         model: Project,
-        replacements: { search: searchStr, orgUid, offset, limit },
+        replacements: {...replacements, ...{offset, limit}},
         mapToModel: true, // pass true here if you have any mapped fields
       }),
     };
@@ -98,17 +102,21 @@ class Project extends Model {
     if (orgUid) {
       sql = `${sql} AND orgUid = :orgUid`;
     }
-
-    sql = `${sql} ORDER BY rank DESC LIMIT :limit OFFSET :offset`;
+    
+    const replacements = { search: `${searchStr}*`, orgUid };
   
-    const count = await Project.count();
-
+    const count = (await sequelize.query(sql, {
+      model: Project,
+      mapToModel: true, // pass true here if you have any mapped fields
+      replacements
+    })).length;
+    
     return {
       count,
-      rows: sequelize.query(sql, {
+      rows: await sequelize.query(`${sql} ORDER BY rank DESC LIMIT :limit OFFSET :offset`, {
         model: Project,
-        replacements: { search: `${searchStr}*`, orgUid, offset, limit },
         mapToModel: true, // pass true here if you have any mapped fields
+        replacements: {...replacements, ...{offset, limit}}
       }),
     };
   }
