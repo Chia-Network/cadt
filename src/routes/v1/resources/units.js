@@ -8,7 +8,15 @@ import joiExpress from 'express-joi-validation';
 const validator = joiExpress.createValidator({});
 const UnitRouter = express.Router();
 
-UnitRouter.get('/', (req, res) => {
+const querySchema = Joi.object()
+  .keys({
+    page: Joi.number(),
+    limit: Joi.number(),
+    search: Joi.string(),
+  })
+  .with('page', 'limit');
+
+UnitRouter.get('/', validator.query(querySchema), (req, res) => {
   return req.query.id
     ? UnitController.findOne(req, res)
     : UnitController.findAll(req, res);
