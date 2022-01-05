@@ -83,6 +83,7 @@ export const findAll = async (req, res) => {
     return res.json(
       optionallyPaginatedResponse(
         await Project.findAndCountAll({
+          distinct: true,
           ...query,
           ...paginationParams(page, limit),
         }),
@@ -105,6 +106,7 @@ export const findAll = async (req, res) => {
   return res.json(
     optionallyPaginatedResponse(
       await Project.findAndCountAll({
+        distinct: true,
         ...query,
         ...paginationParams(page, limit),
       }),
