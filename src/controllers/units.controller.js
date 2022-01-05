@@ -40,6 +40,7 @@ export const findAll = async (req, res) => {
     return res.json(
       optionallyPaginatedResponse(
         await Unit.findAndCountAll({
+          distinct: true,
           attributes: [
             'orgUid',
             'unitLink',
@@ -59,6 +60,7 @@ export const findAll = async (req, res) => {
   res.json(
     optionallyPaginatedResponse(
       await Unit.findAndCountAll({
+        distinct: true,
         include: [
           {
             model: Qualification,
