@@ -97,6 +97,9 @@ class Project extends Model {
 
   static async findAllSqliteFts(searchStr, orgUid, pagination) {
     const { offset, limit } = pagination;
+    
+    searchStr = searchStr = searchStr.replaceAll('-', '+');
+    
     let sql = `SELECT * FROM projects_fts WHERE projects_fts MATCH :search`;
 
     if (orgUid) {
