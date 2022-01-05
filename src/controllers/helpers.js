@@ -1,6 +1,13 @@
 'use strict';
 
 export const paginationParams = (page, limit) => {
+  if (page === undefined || limit === undefined) {
+    return {
+      page: undefined,
+      limit: undefined,
+    }
+  }
+  
   if (page < 1) {
     page = 1;
   }
