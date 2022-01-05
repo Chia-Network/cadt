@@ -85,10 +85,8 @@ class Project extends Model {
       count,
       rows: await sequelize.query(sql, {
         model: Project,
-        replacements: { search: searchStr, orgUid },
+        replacements: { search: searchStr, orgUid, offset, limit },
         mapToModel: true, // pass true here if you have any mapped fields
-        offset,
-        limit,
       }),
     };
   }
@@ -105,10 +103,8 @@ class Project extends Model {
 
     return sequelize.query(sql, {
       model: Project,
-      replacements: { search: `${searchStr}*`, orgUid },
+      replacements: { search: `${searchStr}*`, orgUid, offset, limit },
       mapToModel: true, // pass true here if you have any mapped fields
-      offset,
-      limit,
     });
   }
 }
