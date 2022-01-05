@@ -85,9 +85,13 @@ class Project extends Model {
       replacements
     })).length;
 
+    if (limit && offset) {
+      sql = `${sql} ORDER BY relevance DESC LIMIT :limit OFFSET :offset`;
+    }
+    
     return {
       count,
-      rows: await sequelize.query(`${sql} ORDER BY relevance DESC LIMIT :limit OFFSET :offset`, {
+      rows: await sequelize.query(sql, {
         model: Project,
         replacements: {...replacements, ...{offset, limit}},
         mapToModel: true, // pass true here if you have any mapped fields
@@ -97,6 +101,9 @@ class Project extends Model {
 
   static async findAllSqliteFts(searchStr, orgUid, pagination) {
     const { offset, limit } = pagination;
+    
+    searchStr = searchStr = searchStr.replaceAll('-', '+');
+    
     let sql = `SELECT * FROM projects_fts WHERE projects_fts MATCH :search`;
 
     if (orgUid) {
@@ -111,9 +118,13 @@ class Project extends Model {
       replacements
     })).length;
     
+    if (limit && offset) {
+      sql = `${sql} ORDER BY rank DESC LIMIT :limit OFFSET :offset`;
+    }
+    
     return {
       count,
-      rows: await sequelize.query(`${sql} ORDER BY rank DESC LIMIT :limit OFFSET :offset`, {
+      rows: await sequelize.query(sql, {
         model: Project,
         mapToModel: true, // pass true here if you have any mapped fields
         replacements: {...replacements, ...{offset, limit}}

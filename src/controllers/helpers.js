@@ -3,7 +3,7 @@
 export const paginationParams = (page, limit) => {
   if (page === undefined || limit === undefined) {
     return {
-      page: undefined,
+      offset: undefined,
       limit: undefined,
     }
   }
