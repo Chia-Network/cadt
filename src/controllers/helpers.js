@@ -11,7 +11,7 @@ export const paginationParams = (page, limit) => {
 
   return {
     limit: limit ? limit : 15,
-    offset: page ? page - 1 : 1,
+    offset: (page ? page - 1 : 0) * limit,
   }
 }
 
