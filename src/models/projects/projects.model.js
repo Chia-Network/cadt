@@ -31,7 +31,7 @@ class Project extends Model {
   static async create(values, options) {
     const createResult = await super.create(values, options);
 
-    const { orgUid } = values['0'];
+    const { orgUid } = values;
 
     Project.changes.next(['projects', orgUid]);
 
