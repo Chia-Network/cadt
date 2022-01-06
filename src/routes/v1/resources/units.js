@@ -23,13 +23,14 @@ UnitRouter.get('/', validator.query(querySchema), (req, res) => {
 });
 
 const bodySchema = Joi.object({
+  orgUid: Joi.string().required(),
   buyer: Joi.string().required(),
   registry: Joi.string().required(),
   blockIdentifier: Joi.string().required(),
   identifier: Joi.string().required(),
-  qualificationId: Joi.number().required(),
+  qualifications: Joi.array().min(1).optional(),
   unitType: Joi.string().required(),
-  unitCount: Joi.number().required(),
+  unitCount: Joi.string().required(),
   unitStatus: Joi.string().required(),
   unitStatusDate: Joi.string().required(),
   transactionType: Joi.string().required(),
@@ -37,7 +38,7 @@ const bodySchema = Joi.object({
   unitLink: Joi.string().required(),
   correspondingAdjustment: Joi.string().required(),
   unitTag: Joi.string().required(),
-  vintageId: Joi.number().required(),
+  vintage: Joi.object().optional(),
 });
 
 UnitRouter.post('/', validator.body(bodySchema), UnitController.create);
