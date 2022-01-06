@@ -1,5 +1,5 @@
 import { Project, Unit, Staging } from '../models';
-const THIRTY_SEC = 30000;
+const THIRTY_SEC = 300;
 
 // Simulate 30 seconds passing before commited to node
 
@@ -8,7 +8,7 @@ export const updateProjectRecord = async (
   encodedRecord,
   stagingRecordId,
 ) => {
-  const record = JSON.parse(encodedRecord.toString('utf8'));
+  const record = JSON.parse(atob(encodedRecord));
   return new Promise((resolve) => {
     setTimeout(async () => {
       if (stagingRecordId) {
@@ -37,6 +37,7 @@ export const createProjectRecord = (uuid, encodedRecord, stagingRecordId) => {
   console.log(record);
   return new Promise((resolve) => {
     setTimeout(async () => {
+      delete record.id;
       await Project.create({
         ...record,
         warehouseProjectId: uuid,
@@ -82,10 +83,8 @@ export const updateUnitRecord = async (
   encodedRecord,
   stagingRecordId,
 ) => {
-  const record = JSON.parse(encodedRecord.toString('utf8'));
-
   await deleteUnitRecord(uuid);
-  await createUnitRecord(uuid, record);
+  await createUnitRecord(uuid, encodedRecord);
 
   if (stagingRecordId) {
     await Staging.destroy({
@@ -97,9 +96,11 @@ export const updateUnitRecord = async (
 };
 
 export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
-  const record = JSON.parse(encodedRecord.toString('utf8'));
+  const record = JSON.parse(atob(encodedRecord));
+
   return new Promise((resolve) => {
     setTimeout(async () => {
+      delete record.id;
       await Unit.create({
         uuid,
         ...record,

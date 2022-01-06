@@ -42,7 +42,7 @@ module.exports = {
 
       await queryInterface.sequelize.query(`
       CREATE TRIGGER unit_delete_fts AFTER DELETE ON units BEGIN
-        DELETE FROM unit_insert_fts WHERE id = old.id;
+        DELETE FROM units_fts WHERE id = old.id;
       END;
       `);
 

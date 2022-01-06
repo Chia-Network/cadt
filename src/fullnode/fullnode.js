@@ -15,8 +15,20 @@ export const deleteProjectRecord = async (uuid, stagingRecordId) => {
 };
 
 export const updateUnitRecord = async (uuid, record, stagingRecordId) => {
-  const encoded = btoa(JSON.stringify(record));
-  await simulator.updateUnitRecord(uuid, encoded, stagingRecordId);
+  if (Array.isArray(record)) {
+    record.forEach(async (_record, index) => {
+      const encoded = btoa(JSON.stringify(_record));
+      await simulator.updateUnitRecord(
+        // we need to pass in the uuid only one to track
+        index === record.length - 1 ? uuid : _record.uuid,
+        encoded,
+        stagingRecordId,
+      );
+    });
+  } else {
+    const encoded = btoa(JSON.stringify(record));
+    await simulator.updateUnitRecord(uuid, record, stagingRecordId);
+  }
 };
 
 export const createUnitRecord = async (uuid, record, stagingRecordId) => {

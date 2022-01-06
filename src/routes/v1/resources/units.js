@@ -22,7 +22,7 @@ UnitRouter.get('/', validator.query(querySchema), (req, res) => {
     : UnitController.findAll(req, res);
 });
 
-const querySchema = Joi.object({
+const bodySchema = Joi.object({
   buyer: Joi.string().required(),
   registry: Joi.string().required(),
   blockIdentifier: Joi.string().required(),
@@ -40,23 +40,38 @@ const querySchema = Joi.object({
   vintageId: Joi.number().required(),
 });
 
-UnitRouter.post('/', validator.body(querySchema), UnitController.create);
+UnitRouter.post('/', validator.body(bodySchema), UnitController.create);
 
-const querySchemaUpdate = {
+const bodySchemaUpdate = {
   uuid: Joi.string().required(),
-  ...querySchema,
+  ...bodySchema,
 };
 
-UnitRouter.put('/', validator.body(querySchemaUpdate), UnitController.update);
+UnitRouter.put('/', validator.body(bodySchemaUpdate), UnitController.update);
 
-const querySchemaDelete = {
+const bodySchemaDelete = {
   uuid: Joi.string().required(),
 };
 
 UnitRouter.delete(
   '/',
-  validator.body(querySchemaDelete),
+  validator.body(bodySchemaDelete),
   UnitController.destroy,
 );
+
+const splitSchema = Joi.object({
+  unitUid: Joi.string().required(),
+  records: Joi.array()
+    .items(
+      Joi.object().keys({
+        unitCount: Joi.number().required(),
+        orgUid: Joi.string().optional(),
+      }),
+    )
+    .min(2)
+    .max(2),
+});
+
+UnitRouter.post('/split', UnitController.split);
 
 export { UnitRouter };

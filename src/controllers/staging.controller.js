@@ -66,10 +66,12 @@ export const commit = async (req, res) => {
       uuid,
       table,
       action,
+      commited,
       data: rawData,
     } = stagingRecord;
     const data = JSON.parse(rawData);
 
+    // set the commited flag to true
     await Staging.update(
       { commited: true },
       { where: { id: stagingRecordId } },
@@ -87,7 +89,7 @@ export const commit = async (req, res) => {
           fullNode.deleteProjectRecord(uuid, stagingRecordId);
           break;
       }
-    } else if (table === 'Unit' && !commited) {
+    } else if (table === 'Units' && !commited) {
       switch (action) {
         case 'INSERT':
           fullNode.createUnitRecord(uuid, data, stagingRecordId);
