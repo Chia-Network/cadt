@@ -16,7 +16,7 @@ const loadFileIntoString = (path) => {
 export const findAll = async (req, res) => {
   return res.json({
     me: {
-      orguid: 'f1c54511-865e-4611-976c-7c3c1f704662',
+      orgUid: 'f1c54511-865e-4611-976c-7c3c1f704662',
       icon: await loadFileIntoString('src/assets/organizationIcons/me.svg'),
     },
     chili: {
