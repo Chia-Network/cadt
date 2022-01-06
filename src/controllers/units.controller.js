@@ -149,6 +149,25 @@ export const split = async (req, res) => {
       where: { uuid: req.body.unitUid },
     });
 
+    if (!originalRecord) {
+      res.status(404).json({
+        message: `The unit record for the uuid: ${req.body.unitUid} does not exist`,
+      });
+      return;
+    }
+
+    const sumOfSplitUnits = req.body.records.reduce(
+      (previousValue, currentValue) =>
+        previousValue.unitCount + currentValue.unitCount,
+    );
+
+    if (sumOfSplitUnits !== originalRecord.unitCount) {
+      res.status(404).json({
+        message: `The sum of the split units is ${sumOfSplitUnits} and the original record is ${originalRecord.unitCount}. These should be the same.`,
+      });
+      return;
+    }
+
     const splitRecords = req.body.records.map((record) => {
       const newRecord = _.cloneDeep(originalRecord);
       newRecord.uuid = uuidv4();
@@ -172,12 +191,11 @@ export const split = async (req, res) => {
     await Staging.upsert(stagedData);
 
     res.json({
-      message: 'Unit split successfully',
+      message: 'Unit split successful',
     });
   } catch (err) {
     res.json({
       message: 'Error splitting unit',
-      err,
     });
   }
 };
