@@ -76,58 +76,64 @@ class Project extends Model {
     if (orgUid) {
       sql = `${sql} AND orgUid = :orgUid`;
     }
-    
+
     const replacements = { search: searchStr, orgUid };
-  
-    const count = (await sequelize.query(sql, {
-      model: Project,
-      mapToModel: true, // pass true here if you have any mapped fields
-      replacements
-    })).length;
+
+    const count = (
+      await sequelize.query(sql, {
+        model: Project,
+        mapToModel: true, // pass true here if you have any mapped fields
+        replacements,
+      })
+    ).length;
 
     if (limit && offset) {
       sql = `${sql} ORDER BY relevance DESC LIMIT :limit OFFSET :offset`;
     }
-    
+
     return {
       count,
       rows: await sequelize.query(sql, {
         model: Project,
-        replacements: {...replacements, ...{offset, limit}},
+        replacements: { ...replacements, ...{ offset, limit } },
         mapToModel: true, // pass true here if you have any mapped fields
+        offset,
+        limit,
       }),
     };
   }
 
   static async findAllSqliteFts(searchStr, orgUid, pagination) {
     const { offset, limit } = pagination;
-    
+
     searchStr = searchStr = searchStr.replaceAll('-', '+');
-    
+
     let sql = `SELECT * FROM projects_fts WHERE projects_fts MATCH :search`;
 
     if (orgUid) {
       sql = `${sql} AND orgUid = :orgUid`;
     }
-    
+
     const replacements = { search: `${searchStr}*`, orgUid };
-  
-    const count = (await sequelize.query(sql, {
-      model: Project,
-      mapToModel: true, // pass true here if you have any mapped fields
-      replacements
-    })).length;
-    
+
+    const count = (
+      await sequelize.query(sql, {
+        model: Project,
+        mapToModel: true, // pass true here if you have any mapped fields
+        replacements,
+      })
+    ).length;
+
     if (limit && offset) {
       sql = `${sql} ORDER BY rank DESC LIMIT :limit OFFSET :offset`;
     }
-    
+
     return {
       count,
       rows: await sequelize.query(sql, {
         model: Project,
         mapToModel: true, // pass true here if you have any mapped fields
-        replacements: {...replacements, ...{offset, limit}}
+        replacements: { ...replacements, ...{ offset, limit } },
       }),
     };
   }

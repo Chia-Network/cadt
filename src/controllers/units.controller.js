@@ -1,5 +1,6 @@
 'use strict';
 
+import _ from 'lodash';
 import { uuid as uuidv4 } from 'uuidv4';
 import { Staging, UnitMock, Unit, Qualification, Vintage } from '../models';
 import { optionallyPaginatedResponse, paginationParams } from './helpers';
@@ -145,27 +146,38 @@ export const destroy = async (req, res) => {
 export const split = async (req, res) => {
   try {
     const originalRecord = await Unit.findOne({
-      where: { uuid: req.query.unitUid },
+      where: { uuid: req.body.unitUid },
+    });
+
+    const splitRecords = req.body.records.map((record) => {
+      const newRecord = _.cloneDeep(originalRecord);
+      newRecord.uuid = uuidv4();
+      newRecord.unitCount = record.unitCount;
+
+      if (record.orgUid) {
+        newRecord.orgUid = record.orgUid;
+      }
+
+      return newRecord;
     });
 
     const stagedData = {
-      uuid: req.body.uuid,
+      uuid: req.body.unitUid,
       action: 'UPDATE',
+      commited: false,
       table: 'Units',
-      data: [
-        {
-          ...originalRecord,
-        },
-      ],
+      data: JSON.stringify(splitRecords),
     };
 
-    await Staging.create(stagedData);
+    await Staging.upsert(stagedData);
+
     res.json({
       message: 'Unit split successfully',
     });
   } catch (err) {
     res.json({
       message: 'Error splitting unit',
+      err,
     });
   }
 };
