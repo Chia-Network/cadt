@@ -1,5 +1,6 @@
+import _ from 'lodash';
 import { Project, Unit, Staging } from '../models';
-const THIRTY_SEC = 300;
+const THIRTY_SEC = 15000;
 
 // Simulate 30 seconds passing before commited to node
 
@@ -32,9 +33,9 @@ export const updateProjectRecord = async (
 };
 
 export const createProjectRecord = (uuid, encodedRecord, stagingRecordId) => {
-  const record = JSON.parse(atob(encodedRecord));
+  let record = JSON.parse(atob(encodedRecord));
+  record = Array.isArray(record) ? _.head(record) : record;
 
-  console.log(record);
   return new Promise((resolve) => {
     setTimeout(async () => {
       delete record.id;
@@ -96,7 +97,8 @@ export const updateUnitRecord = async (
 };
 
 export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
-  const record = JSON.parse(atob(encodedRecord));
+  let record = JSON.parse(atob(encodedRecord));
+  record = Array.isArray(record) ? _.head(record) : record;
 
   return new Promise((resolve) => {
     setTimeout(async () => {
