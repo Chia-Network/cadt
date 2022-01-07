@@ -13,19 +13,21 @@ export const updateProjectRecord = async (
   return new Promise((resolve) => {
     setTimeout(async () => {
       if (stagingRecordId) {
+        await Staging.destroy({
+          where: {
+            id: stagingRecordId,
+          },
+        });
+
         await Project.destroy({
           where: {
             warehouseProjectId: uuid,
           },
         });
+
         await Project.create({
           ...record,
           warehouseProjectId: uuid,
-        });
-        await Staging.destroy({
-          where: {
-            id: stagingRecordId,
-          },
         });
       }
     }, THIRTY_SEC);
@@ -38,12 +40,6 @@ export const createProjectRecord = (uuid, encodedRecord, stagingRecordId) => {
 
   return new Promise((resolve) => {
     setTimeout(async () => {
-      delete record.id;
-      await Project.create({
-        ...record,
-        warehouseProjectId: uuid,
-      });
-
       if (stagingRecordId) {
         await Staging.destroy({
           where: {
@@ -51,6 +47,12 @@ export const createProjectRecord = (uuid, encodedRecord, stagingRecordId) => {
           },
         });
       }
+
+      delete record.id;
+      await Project.create({
+        ...record,
+        warehouseProjectId: uuid,
+      });
 
       resolve();
     }, THIRTY_SEC);
@@ -60,12 +62,6 @@ export const createProjectRecord = (uuid, encodedRecord, stagingRecordId) => {
 export const deleteProjectRecord = (uuid, stagingRecordId) => {
   return new Promise((resolve) => {
     setTimeout(async () => {
-      await Project.destroy({
-        where: {
-          warehouseProjectId: uuid,
-        },
-      });
-
       if (stagingRecordId) {
         await Staging.destroy({
           where: {
@@ -73,6 +69,12 @@ export const deleteProjectRecord = (uuid, stagingRecordId) => {
           },
         });
       }
+
+      await Project.destroy({
+        where: {
+          warehouseProjectId: uuid,
+        },
+      });
 
       resolve();
     }, THIRTY_SEC);
@@ -84,9 +86,6 @@ export const updateUnitRecord = async (
   encodedRecord,
   stagingRecordId,
 ) => {
-  await deleteUnitRecord(uuid);
-  await createUnitRecord(uuid, encodedRecord);
-
   if (stagingRecordId) {
     await Staging.destroy({
       where: {
@@ -94,6 +93,9 @@ export const updateUnitRecord = async (
       },
     });
   }
+
+  await deleteUnitRecord(uuid);
+  await createUnitRecord(uuid, encodedRecord);
 };
 
 export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
@@ -102,12 +104,6 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
 
   return new Promise((resolve) => {
     setTimeout(async () => {
-      delete record.id;
-      await Unit.create({
-        uuid,
-        ...record,
-      });
-
       if (stagingRecordId) {
         await Staging.destroy({
           where: {
@@ -115,6 +111,13 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
           },
         });
       }
+
+      delete record.id;
+      await Unit.create({
+        uuid,
+        ...record,
+      });
+
       resolve();
     }, THIRTY_SEC);
   });
@@ -123,12 +126,6 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
 export const deleteUnitRecord = (uuid, stagingRecordId) => {
   return new Promise((resolve) => {
     setTimeout(async () => {
-      await Unit.destroy({
-        where: {
-          uuid,
-        },
-      });
-
       if (stagingRecordId) {
         await Staging.destroy({
           where: {
@@ -136,6 +133,13 @@ export const deleteUnitRecord = (uuid, stagingRecordId) => {
           },
         });
       }
+
+      await Unit.destroy({
+        where: {
+          uuid,
+        },
+      });
+
       resolve();
     }, THIRTY_SEC);
   });
