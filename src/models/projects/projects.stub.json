@@ -1,7 +1,7 @@
 [
   {
     "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
-    "warehouseprojectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
+    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
     "currentRegistry": "Feedfire",
     "registryOfOrigin": "Skinte",
     "originprojectId": "c5067a60-e329-4510-991c-b302fd00ec8d",
@@ -28,7 +28,7 @@
   },
   {
     "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
-    "warehouseprojectId": "897891e2-cc66-4867-8da2-c17d69d018cb",
+    "warehouseProjectId": "897891e2-cc66-4867-8da2-c17d69d018cb",
     "currentRegistry": "Feedfire",
     "registryOfOrigin": "Skinte",
     "originprojectId": "c5067a60-e329-4510-991c-b302fd00ec8d",
@@ -55,7 +55,7 @@
   },
   {
     "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
-    "warehouseprojectId": "8a02a620-8be8-44f9-ba90-eff00ccc3a70",
+    "warehouseProjectId": "8a02a620-8be8-44f9-ba90-eff00ccc3a70",
     "currentRegistry": "Feedfire",
     "registryOfOrigin": "Skinte",
     "originprojectId": "c5067a60-e329-4510-991c-b302fd00ec8d",
@@ -82,7 +82,7 @@
   },
   {
     "orgUid": "fbffae6b-0203-4ac0-a08b-1551b730783b",
-    "warehouseprojectId": "11954678-f7a5-47d2-94f8-f4f3138a529c",
+    "warehouseProjectId": "11954678-f7a5-47d2-94f8-f4f3138a529c",
     "currentRegistry": "Feedfire",
     "registryOfOrigin": "Skinte",
     "originprojectId": "c5067a60-e329-4510-991c-b302fd00ec8d",
@@ -109,7 +109,7 @@
   },
   {
     "orgUid": "35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf",
-    "warehouseprojectId": "634f3d01-ca5c-4c0c-80d4-9dec6e0ec712",
+    "warehouseProjectId": "634f3d01-ca5c-4c0c-80d4-9dec6e0ec712",
     "currentRegistry": "Feedfire",
     "registryOfOrigin": "Skinte",
     "originprojectId": "c5067a60-e329-4510-991c-b302fd00ec8d",
@@ -136,7 +136,7 @@
   },
   {
     "orgUid": "35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf",
-    "warehouseprojectId": "0d918e3e-9203-480f-b2e2-0217f437d5c1",
+    "warehouseProjectId": "0d918e3e-9203-480f-b2e2-0217f437d5c1",
     "currentRegistry": "Feedfire",
     "registryOfOrigin": "Skinte",
     "originprojectId": "c5067a60-e329-4510-991c-b302fd00ec8d",
@@ -163,7 +163,7 @@
   },
   {
     "orgUid": "35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf",
-    "warehouseprojectId": "1943d442-d243-456a-b2d6-cbb47b01fcb9",
+    "warehouseProjectId": "1943d442-d243-456a-b2d6-cbb47b01fcb9",
     "currentRegistry": "Feedfire",
     "registryOfOrigin": "Skinte",
     "originprojectId": "c5067a60-e329-4510-991c-b302fd00ec8d",
@@ -190,7 +190,7 @@
   },
   {
     "orgUid": "70150fde-57f6-44a6-9486-1fef49528475",
-    "warehouseprojectId": "c2a92ac1-8d63-4346-b747-dae736b0556c",
+    "warehouseProjectId": "c2a92ac1-8d63-4346-b747-dae736b0556c",
     "currentRegistry": "Feedfire",
     "registryOfOrigin": "Skinte",
     "originprojectId": "c5067a60-e329-4510-991c-b302fd00ec8d",
@@ -217,7 +217,7 @@
   },
   {
     "orgUid": "70150fde-57f6-44a6-9486-1fef49528475",
-    "warehouseprojectId": "da494c65-17ec-4694-85df-e44de2c77cf5",
+    "warehouseProjectId": "da494c65-17ec-4694-85df-e44de2c77cf5",
     "currentRegistry": "Feedfire",
     "registryOfOrigin": "Skinte",
     "originprojectId": "c5067a60-e329-4510-991c-b302fd00ec8d",

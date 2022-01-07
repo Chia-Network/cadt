@@ -51,12 +51,12 @@ class Project extends Model {
 
   static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
     const { offset, limit } = pagination;
-    
+
     let fields = '*';
     if (columns.length) {
       fields = columns.join(', ');
     }
-    
+
     let sql = `
     SELECT ${fields} FROM projects WHERE MATCH (
         warehouseProjectId,
@@ -111,12 +111,12 @@ class Project extends Model {
 
   static async findAllSqliteFts(searchStr, orgUid, pagination, columns = []) {
     const { offset, limit } = pagination;
-  
+
     let fields = '*';
     if (columns.length) {
       fields = columns.join(', ');
     }
-    
+
     searchStr = searchStr = searchStr.replaceAll('-', '+');
 
     let sql = `SELECT ${fields} FROM projects_fts WHERE projects_fts MATCH :search`;

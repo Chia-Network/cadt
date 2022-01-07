@@ -2,12 +2,12 @@
 const UnitStub = require('../src/models/units/units.stub.json');
 const JunctionStub = [
   {
-    unitId: 1,
-    qualificationId: 1,
+    unitId: '5c960ac1-a180-45a4-9850-be177e26d2fb',
+    qualificationId: '702cafbb-c624-4273-9cdc-c617ad5675df',
   },
   {
-    unitId: 1,
-    qualificationId: 2,
+    unitId: '5c960ac1-a180-45a4-9850-be177e26d2fb',
+    qualificationId: '76903895-840e-406c-b2a0-f90244acf02d',
   },
 ];
 module.exports = {

@@ -12,7 +12,10 @@ class Qualification extends Model {
     // When all qualifications are removed from
     // all projects and units, remove completly,
     // otherwise just dissaciate
-    Qualification.belongsTo(Project);
+    Qualification.belongsTo(Project, {
+      targetKey: 'warehouseProjectId',
+      foreignKey: 'projectId',
+    });
     //Qualification.hasMany(Unit);
     // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
     Qualification.belongsToMany(Unit, {

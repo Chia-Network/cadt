@@ -1,21 +1,26 @@
 [
   {
+    "id": "89adcb9a-dc10-41aa-8606-c1ce1545dcbd",
     "countryRegion": "United States",
     "projectId": 1
   },
   {
+    "id": "b41d0f89-2f71-4bde-b6d0-5cf77802c3fc",
     "countryRegion": "United States",
     "projectId": 1
   },
   {
+    "id": "8f23fd77-d19f-4083-b7be-949288e88a36",
     "countryRegion": "China",
     "projectId": 2
   },
   {
+    "id": "f28965c3-96b8-40ef-809e-894975d16c4d",
     "countryRegion": "Russia",
     "projectId": 2
   },
   {
+    "id": "40ae83b1-b497-4f63-9b7d-874505b67662",
     "countryRegion": "United States",
     "projectId": 2
   }
