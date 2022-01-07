@@ -18,7 +18,7 @@ export const updateUnitRecord = async (uuid, record, stagingRecordId) => {
   if (Array.isArray(record)) {
     record.forEach(async (_record, index) => {
       const encoded = btoa(JSON.stringify(_record));
-      await simulator.updateUnitRecord(
+      simulator.updateUnitRecord(
         // we need to pass in the uuid only one to track
         index === record.length - 1 ? uuid : _record.uuid,
         encoded,
