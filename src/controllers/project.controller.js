@@ -12,6 +12,7 @@ import {
 } from '../models';
 
 import { optionallyPaginatedResponse, paginationParams } from './helpers';
+import ModelTypes from './../models/projects/projects.modeltypes.cjs';
 
 export const create = async (req, res) => {
   // When creating new projects assign a uuid to is so
@@ -32,12 +33,28 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  const { page, limit, search, orgUid, onlyEssentialColumns, useMock } =
+  const { page, limit, search, orgUid, columns, useMock } =
     req.query;
 
   if (useMock) {
     res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
     return;
+  }
+  
+  const defaultColumns = Object.keys(ModelTypes);
+  
+  let columnsList = [];
+  if (columns) {
+    columnsList = columns.split(',');
+    // Check to ensure passed in columns are valid
+    if (columnsList.filter(col => defaultColumns.includes(col)).length !== columnsList.length) {
+      console.error('Invalid column specified');
+      res.status(400).send('Invalid column specified');
+      return;
+    }
+    
+  } else {
+    columnsList = defaultColumns;
   }
 
   const dialect = sequelize.getDialect();
@@ -45,55 +62,28 @@ export const findAll = async (req, res) => {
   let results;
 
   if (search) {
+    const supportedSearchFields = columnsList.filter(col => !['createdAt', 'updatedAt'].includes(col))
+    
     if (dialect === 'sqlite') {
       results = await Project.findAllSqliteFts(
         search,
         orgUid,
         paginationParams(page, limit),
+        supportedSearchFields,
       );
     } else if (dialect === 'mysql') {
       results = await Project.findAllMySQLFts(
         search,
         orgUid,
         paginationParams(page, limit),
+        supportedSearchFields,
       );
     }
     return res.json(optionallyPaginatedResponse(results, page, limit));
   }
-
-  if (onlyEssentialColumns) {
-    const query = {
-      attributes: [
-        'orgUid',
-        'warehouseProjectId',
-        'currentRegistry',
-        'registryOfOrigin',
-        'projectLink',
-        'projectStatus',
-        'projectTag',
-      ],
-    };
-
-    if (orgUid) {
-      query.where = {
-        orgUid,
-      };
-    }
-
-    return res.json(
-      optionallyPaginatedResponse(
-        await Project.findAndCountAll({
-          distinct: true,
-          ...query,
-          ...paginationParams(page, limit),
-        }),
-        page,
-        limit,
-      ),
-    );
-  }
-
+  
   const query = {
+    attributes: columnsList,
     include: [
       ProjectLocation,
       Qualification,
