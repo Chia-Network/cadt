@@ -1,14 +1,12 @@
+const { uuid: uuidv4 } = require('uuidv4');
 const Sequelize = require('sequelize');
 
 module.exports = {
-  id: {
-    type: Sequelize.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
   warehouseProjectId: {
     type: Sequelize.STRING,
     unique: true,
+    defaultValue: () => uuidv4(),
+    primaryKey: true,
   },
   // The orgUid is the singeltonId of the
   // organizations tables on the datalayer

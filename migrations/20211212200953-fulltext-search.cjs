@@ -5,7 +5,6 @@ module.exports = {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE projects_fts USING fts5(
-        id,
         orgUid,
         warehouseProjectId,
         projectId,

@@ -6,7 +6,6 @@ module.exports = {
       await queryInterface.sequelize.query(`
       CREATE TRIGGER project_insert_fts AFTER INSERT ON projects BEGIN
         INSERT INTO projects_fts(
-          id,
           orgUid,
           warehouseProjectId, 
           currentRegistry, 
@@ -29,7 +28,6 @@ module.exports = {
           validationDate,
           projectTag
         ) VALUES (
-          new.id,
           new.orgUid,
           new.warehouseProjectId,
           new.currentRegistry,
@@ -64,7 +62,6 @@ module.exports = {
       CREATE TRIGGER project_update_fts AFTER UPDATE ON projects BEGIN
         DELETE FROM projects_fts WHERE id = old.id;
         INSERT INTO projects_fts(
-          id,
           orgUid,
           warehouseProjectId, 
           currentRegistry, 
@@ -87,7 +84,6 @@ module.exports = {
           validationDate,
           projectTag
         ) VALUES (
-          new.id,
           new.orgUid,
           new.warehouseProjectId,
           new.currentRegistry,

@@ -4,13 +4,13 @@ import { sequelize } from '../database';
 import { Qualification, Vintage } from '../../models';
 
 import ModelTypes from './units.modeltypes.cjs';
-import rxjs from "rxjs";
+import rxjs from 'rxjs';
 
 const { Model } = Sequelize;
 
 class Unit extends Model {
   static changes = new rxjs.Subject();
-  
+
   static associate() {
     Unit.hasOne(Vintage);
 
@@ -20,24 +20,24 @@ class Unit extends Model {
       as: 'qualifications',
     });
   }
-  
+
   static async create(values, options) {
     const createResult = await super.create(values, options);
     const { orgUid } = createResult;
-    
+
     Unit.changes.next(['units', orgUid]);
-    
+
     return createResult;
   }
-  
+
   static async destroy(values) {
     const { id: unitId } = values.where;
     const { orgUid } = await super.findOne(unitId);
-    
+
     const destroyResult = await super.destroy(values);
-    
+
     Unit.changes.next(['units', orgUid]);
-    
+
     return destroyResult;
   }
 }

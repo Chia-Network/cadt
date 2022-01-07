@@ -10,6 +10,8 @@ class ProjectLocation extends Model {
   static associate() {
     ProjectLocation.belongsTo(Project, {
       onDelete: 'CASCADE',
+      targetKey: 'warehouseProjectId',
+      foreignKey: 'projectId',
     });
   }
 }

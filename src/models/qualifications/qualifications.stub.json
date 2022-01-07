@@ -1,7 +1,6 @@
 [
   {
-    "id": "1",
-    "projectId": 2,
+    "id": "702cafbb-c624-4273-9cdc-c617ad5675df",
     "type": "basic type",
     "label": "qualification 1",
     "creditingPeriodStartDate": "2011-10-05T14:48:00.000Z",
@@ -10,8 +9,7 @@
     "qualificationLink": "https://qualification.link/1"
   },
   {
-    "id": "2",
-    "projectId": 1,
+    "id": "76903895-840e-406c-b2a0-f90244acf02d",
     "type": "basic type",
     "label": "qualification 2",
     "creditingPeriodStartDate": "2011-10-05T14:48:00.000Z",
@@ -19,7 +17,7 @@
     "qualificationLink": "https://qualification.link/2"
   },
   {
-    "id": "3",
+    "id": "2c9d41fc-1f58-427d-b028-fc83bf45c74f",
     "type": "basic type",
     "label": "qualification 3",
     "creditingPeriodStartDate": "2010-10-05T14:48:00.000Z",
@@ -27,7 +25,7 @@
     "qualificationLink": "https://qualification.link/3"
   },
   {
-    "id": "4",
+    "id": "2421e951-0a68-4f9f-b760-01528c605237",
     "type": "basic type",
     "label": "qualification 4",
     "creditingPeriodStartDate": "2011-10-05T14:48:00.000Z",
@@ -35,7 +33,7 @@
     "qualificationLink": "https://qualification.link/4"
   },
   {
-    "id": "5",
+    "id": "df7c1ff8-f669-4028-bcbd-3abedf7b1a49",
     "type": "basic type",
     "label": "qualification 5",
     "creditingPeriodStartDate": "2010-10-05T14:48:00.000Z",
