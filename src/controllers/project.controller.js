@@ -50,10 +50,10 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, search, orgUid, column, useMock } = req.query;
+  let { page, limit, search, orgUid, columns, useMock } = req.query;
 
-  if (column && !Array.isArray(column)) {
-    column = [column];
+  if (columns && !Array.isArray(columns)) {
+    columns = [columns];
   }
   
   if (useMock) {
@@ -69,18 +69,18 @@ export const findAll = async (req, res) => {
     RelatedProject,
   ];
   
-  if (column) {
+  if (columns) {
     // Remove any unsupported columns
-    column = column.filter(col => Project.defaultColumns.concat(
+    columns = columns.filter(col => Project.defaultColumns.concat(
       includes.map(model => model.name + 's')
     ).includes(col));
   } else {
-    column = Project.defaultColumns;
+    columns = Project.defaultColumns;
   }
   
   // If only FK fields have been specified, select just ID
-  if (!column.length) {
-    column = ['warehouseProjectId'];
+  if (!columns.length) {
+    columns = ['warehouseProjectId'];
   }
   
   let results;
@@ -90,13 +90,13 @@ export const findAll = async (req, res) => {
       search,
       orgUid,
       paginationParams(page, limit),
-      column,
+      columns,
     );
   }
   
   if (!results) {
     const query = {
-      ...columnsToInclude(column, includes),
+      ...columnsToInclude(columns, includes),
       ...paginationParams(page, limit),
     };
     
