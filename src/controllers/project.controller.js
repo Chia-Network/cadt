@@ -50,57 +50,53 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  const { page, limit, search, orgUid, columns, useMock } = req.query;
+  let { page, limit, search, orgUid, column, useMock } = req.query;
 
+  if (column && !Array.isArray(column)) {
+    column = [column];
+  }
+  
   if (useMock) {
     res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
     return;
   }
   
-  let columnsList = [];
+  const includes = [
+    ProjectLocation,
+    Qualification,
+    Vintage,
+    CoBenefit,
+    RelatedProject,
+  ];
   
-  if (columns) {
-    columnsList = columns.split(',').filter(col => Boolean(col)).map(col => col.trim());
-    
-    // Check to ensure passed in columns are valid
-    if (
-      columnsList.filter((col) => Project.defaultColumns.concat(
-        Project.allForeigns.map(model => model.name + 's')
-      ).includes(col)).length !== columnsList.length
-    ) {
-      console.error('Invalid column specified');
-      res.status(400).send('Invalid column specified');
-      return;
-    }
+  if (column) {
+    // Remove any unsupported columns
+    column = column.filter(col => Project.defaultColumns.concat(
+      includes.map(model => model.name + 's')
+    ).includes(col));
   } else {
-    columnsList = Project.defaultColumns;
+    column = Project.defaultColumns;
   }
   
   // If only FK fields have been specified, select just ID
-  if (!columnsList.length) {
-    columnsList = ['warehouseProjectId'];
+  if (!column.length) {
+    column = ['warehouseProjectId'];
   }
   
   let results;
 
   if (search) {
-    const dialect = sequelize.getDialect();
-    const supportedSearchFields = columnsList.filter(
-      (col) => !['createdAt', 'updatedAt'].includes(col),
-    ).filter((col) => !Project.allForeigns.map(model => model.name + 's').includes(col))
-    
     results = await Project.fts(
-      dialect,
       search,
       orgUid,
       paginationParams(page, limit),
-      supportedSearchFields,
+      column,
     );
   }
   
   if (!results) {
     const query = {
-      ...columnsToInclude(columnsList, Project.allForeigns),
+      ...columnsToInclude(column, includes),
       ...paginationParams(page, limit),
     };
     

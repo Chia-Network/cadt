@@ -16,18 +16,13 @@ import ModelTypes from './projects.modeltypes.cjs';
 class Project extends Model {
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
-  static allForeigns = [
-    ProjectLocation,
-    Qualification,
-    Vintage,
-    CoBenefit,
-    RelatedProject,
-  ]
   
   static associate() {
-    for(const foreign of Project.allForeigns) {
-      Project.hasMany(foreign);
-    }
+    Project.hasMany(ProjectLocation);
+    Project.hasMany(Qualification);
+    Project.hasMany(Vintage);
+    Project.hasMany(CoBenefit);
+    Project.hasMany(RelatedProject);
   }
 
   static async create(values, options) {
@@ -51,13 +46,23 @@ class Project extends Model {
     return destroyResult;
   }
   
-  static async fts(dialect, searchStr, orgUid, pagination, columns = []) {
+  static async fts(searchStr, orgUid, pagination, columns = []) {
+    const dialect = sequelize.getDialect();
+    
     const handlerMap = {
       sqlite: Project.findAllSqliteFts,
       mysql: Project.findAllMySQLFts,
     }
     
-    return handlerMap[dialect](searchStr, orgUid, pagination, columns);
+    return handlerMap[dialect](searchStr, orgUid, pagination, columns.filter(
+      (col) => !['createdAt', 'updatedAt'].includes(col),
+    ).filter((col) => ![
+      ProjectLocation,
+      Qualification,
+      Vintage,
+      CoBenefit,
+      RelatedProject,
+    ].map(model => model.name + 's').includes(col)));
   }
 
   static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
