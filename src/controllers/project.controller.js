@@ -14,7 +14,7 @@ import {
   Organization,
 } from '../models';
 
-import { optionallyPaginatedResponse, paginationParams } from './helpers';
+import {columnsToInclude, optionallyPaginatedResponse, paginationParams} from './helpers';
 
 export const create = async (req, res) => {
   const newRecord = _.cloneDeep(req.body);
@@ -58,30 +58,20 @@ export const findAll = async (req, res) => {
   }
   
   let columnsList = [];
-  let fkInclude = Project.apiFkRelationships;
   
   if (columns) {
-    columnsList = columns.split(',');
+    columnsList = columns.split(',').filter(col => Boolean(col)).map(col => col.trim());
+    
     // Check to ensure passed in columns are valid
     if (
-      columnsList.filter((col) => Project.validApiColumns.includes(col)).length !==
-      columnsList.length
+      columnsList.filter((col) => Project.defaultColumns.concat(
+        Project.allForeigns.map(model => model.name + 's')
+      ).includes(col)).length !== columnsList.length
     ) {
       console.error('Invalid column specified');
       res.status(400).send('Invalid column specified');
       return;
     }
-    // What foreign keys should we include?
-    fkInclude = _.intersection(
-      columnsList,
-      Project.foreignColumns
-    ).map(fk => Project.apiFkRelationships.find(model => {
-      console.log(model.name, fk)
-      return model.name === fk.substring(0, fk.length - 1); // chop off the s
-    }));
-    
-    // What non fk columns are being requested?
-    columnsList = columnsList.filter(column => !Project.foreignColumns.includes(column));
   } else {
     columnsList = Project.defaultColumns;
   }
@@ -90,48 +80,39 @@ export const findAll = async (req, res) => {
   if (!columnsList.length) {
     columnsList = ['warehouseProjectId'];
   }
-
-  const dialect = sequelize.getDialect();
-
+  
   let results;
 
   if (search) {
+    const dialect = sequelize.getDialect();
     const supportedSearchFields = columnsList.filter(
       (col) => !['createdAt', 'updatedAt'].includes(col),
-    );
-
-    if (dialect === 'sqlite') {
-      results = await Project.findAllSqliteFts(
-        search,
-        orgUid,
-        paginationParams(page, limit),
-        supportedSearchFields,
-      );
-    } else if (dialect === 'mysql') {
-      results = await Project.findAllMySQLFts(
-        search,
-        orgUid,
-        paginationParams(page, limit),
-        supportedSearchFields,
-      );
-    }
-    return res.json(optionallyPaginatedResponse(results, page, limit));
+    ).filter((col) => !Project.allForeigns.map(model => model.name + 's').includes(col))
+    
+    results = await Project.fts(
+      dialect,
+      search,
+      orgUid,
+      paginationParams(page, limit),
+      supportedSearchFields,
+    )
   }
   
-  console.log(fkInclude)
-  
   const query = {
-    attributes: columnsList,
-    include: fkInclude,
+    ...columnsToInclude(columnsList, Project.allForeigns),
+    ...paginationParams(page, limit),
   };
+  
+  if (!results) {
+    results = await Project.findAndCountAll({
+      distinct: true,
+      ...query,
+    })
+  }
 
   return res.json(
     optionallyPaginatedResponse(
-      await Project.findAndCountAll({
-        distinct: true,
-        ...query,
-        ...paginationParams(page, limit),
-      }),
+      results,
       page,
       limit,
     ),

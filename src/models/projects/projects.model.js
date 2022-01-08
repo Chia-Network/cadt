@@ -16,24 +16,18 @@ import ModelTypes from './projects.modeltypes.cjs';
 class Project extends Model {
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
-  static foreignColumns;
-  static validApiColumns;
-  static apiFkRelationships = [
+  static allForeigns = [
     ProjectLocation,
     Qualification,
     Vintage,
     CoBenefit,
     RelatedProject,
   ]
-
+  
   static associate() {
-    // Configure relationships
-    for (const relationship in Project.apiFkRelationships) {
-      Project.hasMany(Project.apiFkRelationships[relationship]);
+    for(const foreign of Project.allForeigns) {
+      Project.hasMany(foreign);
     }
-    // Cache some column info for the API
-    Project.foreignColumns = Project.apiFkRelationships.map(relationship => relationship.name + 's');
-    Project.validApiColumns = Project.defaultColumns.concat(Project.foreignColumns);
   }
 
   static async create(values, options) {
@@ -55,6 +49,15 @@ class Project extends Model {
     Project.changes.next(['projects', orgUid]);
 
     return destroyResult;
+  }
+  
+  static async fts(dialect, searchStr, orgUid, pagination, columns = []) {
+    const handlerMap = {
+      sqlite: Project.findAllSqliteFts,
+      mysql: Project.findAllMySQLFts,
+    }
+    
+    return handlerMap[dialect](searchStr, orgUid, pagination, columns);
   }
 
   static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
