@@ -15,7 +15,7 @@ import ModelTypes from './projects.modeltypes.cjs';
 
 class Project extends Model {
   static changes = new rxjs.Subject();
-  static defaultColumns = Object.keys(ModelTypes).concat(['id']);
+  static defaultColumns = Object.keys(ModelTypes);
   static foreignColumns;
   static validApiColumns;
   static apiFkRelationships = {

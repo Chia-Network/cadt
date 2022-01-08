@@ -91,7 +91,7 @@ export const findAll = async (req, res) => {
   
   // If only FK fields have been specified, select just ID
   if (!columnsList.length) {
-    columnsList = ['id'];
+    columnsList = ['warehouseProjectId'];
   }
 
   const dialect = sequelize.getDialect();
