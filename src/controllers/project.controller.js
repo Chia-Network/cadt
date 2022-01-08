@@ -121,10 +121,6 @@ export const findAll = async (req, res) => {
     return res.json(optionallyPaginatedResponse(results, page, limit));
   }
   
-  console.log("!!!", columnsList)
-  
-  console.log(fkInclude)
-  
   const query = {
     attributes: columnsList,
     include: fkInclude,
