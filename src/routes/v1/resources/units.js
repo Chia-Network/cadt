@@ -23,9 +23,7 @@ UnitRouter.get('/', validator.query(querySchema), (req, res) => {
 });
 
 const bodySchema = Joi.object({
-  orgUid: Joi.string().required(),
   buyer: Joi.string().required(),
-  registry: Joi.string().required(),
   blockIdentifier: Joi.string().required(),
   identifier: Joi.string().required(),
   qualifications: Joi.array().min(1).optional(),

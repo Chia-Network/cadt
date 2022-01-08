@@ -24,8 +24,6 @@ ProjectRouter.get('/', validator.query(querySchema), (req, res) => {
 });
 
 const baseSchema = {
-  orgUid: Joi.string().required(),
-  currentRegistry: Joi.string().required(),
   registryOfOrigin: Joi.string().required(),
   originProjectId: Joi.string().required(),
   projectId: Joi.string().required(),

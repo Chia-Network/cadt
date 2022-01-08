@@ -1,20 +1,33 @@
 'use strict';
 
 import _ from 'lodash';
+
 import { uuid as uuidv4 } from 'uuidv4';
 import { Staging, UnitMock, Unit, Qualification, Vintage } from '../models';
 import { optionallyPaginatedResponse, paginationParams } from './helpers';
 
 export const create = async (req, res) => {
   try {
+    const newRecord = _.cloneDeep(req.body);
+
     // When creating new projects assign a uuid to is so
     // multiple organizations will always have unique ids
     const uuid = uuidv4();
+
+    newRecord.warehouseProjectId = uuid;
+
+    // All new units are assigned to the home orgUid
+    const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+    newRecord.orgUid = orgUid;
+
+    // The new unit is getting created in this registry
+    newRecord.registry = orgUid;
+
     const stagedData = {
       uuid,
       action: 'INSERT',
       table: 'Units',
-      data: JSON.stringify([req.body]),
+      data: JSON.stringify([newRecord]),
     };
 
     await Staging.create(stagedData);

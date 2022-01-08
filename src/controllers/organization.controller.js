@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { Organization } from '../models/organizations';
 
 const loadFileIntoString = (path) => {
   return new Promise((resolve, reject) => {
@@ -15,11 +16,7 @@ const loadFileIntoString = (path) => {
 
 export const findAll = async (req, res) => {
   return res.json({
-    'f1c54511-865e-4611-976c-7c3c1f704662': {
-      name: 'Chia',
-      icon: await loadFileIntoString('src/assets/organizationIcons/me.svg'),
-      writeAccess: true,
-    },
+    ...(await Organization.getHomeOrg()),
     '35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf': {
       name: 'chili',
       icon: await loadFileIntoString('src/assets/organizationIcons/chili.svg'),

@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import { uuid as uuidv4 } from 'uuidv4';
 import { sequelize } from '../models/database';
 import {
@@ -9,22 +11,38 @@ import {
   Vintage,
   CoBenefit,
   RelatedProject,
+  Organization,
 } from '../models';
 
 import { optionallyPaginatedResponse, paginationParams } from './helpers';
 import ModelTypes from './../models/projects/projects.modeltypes.cjs';
 
 export const create = async (req, res) => {
+  const newRecord = _.cloneDeep(req.body);
   // When creating new projects assign a uuid to is so
   // multiple organizations will always have unique ids
   const uuid = uuidv4();
+
+  newRecord.warehouseProjectId = uuid;
+
+  // All new projects are assigned to the home orgUid
+  const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+  newRecord.orgUid = orgUid;
+
+  // The new project is getting created in this registry
+  newRecord.currentRegistry = orgUid;
+
+  // Unless we are overriding, a new project originates in this org
+  if (!newRecord.registryOfOrigin) {
+    newRecord.registryOfOrigin = orgUid;
+  }
 
   try {
     await Staging.create({
       uuid,
       action: 'INSERT',
       table: 'Projects',
-      data: JSON.stringify([req.body]),
+      data: JSON.stringify([newRecord]),
     });
     res.json('Added project to stage');
   } catch (err) {
@@ -33,26 +51,27 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  const { page, limit, search, orgUid, columns, useMock } =
-    req.query;
+  const { page, limit, search, orgUid, columns, useMock } = req.query;
 
   if (useMock) {
     res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
     return;
   }
-  
+
   const defaultColumns = Object.keys(ModelTypes);
-  
+
   let columnsList = [];
   if (columns) {
     columnsList = columns.split(',');
     // Check to ensure passed in columns are valid
-    if (columnsList.filter(col => defaultColumns.includes(col)).length !== columnsList.length) {
+    if (
+      columnsList.filter((col) => defaultColumns.includes(col)).length !==
+      columnsList.length
+    ) {
       console.error('Invalid column specified');
       res.status(400).send('Invalid column specified');
       return;
     }
-    
   } else {
     columnsList = defaultColumns;
   }
@@ -62,8 +81,10 @@ export const findAll = async (req, res) => {
   let results;
 
   if (search) {
-    const supportedSearchFields = columnsList.filter(col => !['createdAt', 'updatedAt'].includes(col))
-    
+    const supportedSearchFields = columnsList.filter(
+      (col) => !['createdAt', 'updatedAt'].includes(col),
+    );
+
     if (dialect === 'sqlite') {
       results = await Project.findAllSqliteFts(
         search,
@@ -81,7 +102,7 @@ export const findAll = async (req, res) => {
     }
     return res.json(optionallyPaginatedResponse(results, page, limit));
   }
-  
+
   const query = {
     attributes: columnsList,
     include: [
