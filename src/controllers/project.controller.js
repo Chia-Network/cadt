@@ -95,19 +95,19 @@ export const findAll = async (req, res) => {
       orgUid,
       paginationParams(page, limit),
       supportedSearchFields,
-    )
+    );
   }
   
-  const query = {
-    ...columnsToInclude(columnsList, Project.allForeigns),
-    ...paginationParams(page, limit),
-  };
-  
   if (!results) {
+    const query = {
+      ...columnsToInclude(columnsList, Project.allForeigns),
+      ...paginationParams(page, limit),
+    };
+    
     results = await Project.findAndCountAll({
       distinct: true,
       ...query,
-    })
+    });
   }
 
   return res.json(
