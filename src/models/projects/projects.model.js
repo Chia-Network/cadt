@@ -18,23 +18,22 @@ class Project extends Model {
   static defaultColumns = Object.keys(ModelTypes);
   static foreignColumns;
   static validApiColumns;
-  static apiFkRelationships = {
-    'projectLocations': ProjectLocation,
-    'qualifications': Qualification,
-    'vintages': Vintage,
-    'coBenefits': CoBenefit,
-    'relatedProjects': RelatedProject,
-  }
+  static apiFkRelationships = [
+    ProjectLocation,
+    Qualification,
+    Vintage,
+    CoBenefit,
+    RelatedProject,
+  ]
 
   static associate() {
     // Configure relationships
     for (const relationship in Project.apiFkRelationships) {
       Project.hasMany(Project.apiFkRelationships[relationship]);
     }
-    
     // Cache some column info for the API
-    Project.foreignColumns = Object.keys(Project.apiFkRelationships).map(relationship => {
-      return Project.apiFkRelationships[relationship].name + 's';
+    Project.foreignColumns = Project.apiFkRelationships.map(relationship => {
+      return relationship.name + 's';
     });
     Project.validApiColumns = Project.defaultColumns.concat(Project.foreignColumns);
   }

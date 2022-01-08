@@ -58,13 +58,7 @@ export const findAll = async (req, res) => {
   }
   
   let columnsList = [];
-  let fkInclude = [
-    ProjectLocation,
-    Qualification,
-    Vintage,
-    CoBenefit,
-    RelatedProject,
-  ];
+  let fkInclude = Project.apiFkRelationships;
   
   if (columns) {
     columnsList = columns.split(',');
@@ -81,7 +75,10 @@ export const findAll = async (req, res) => {
     fkInclude = _.intersection(
       columnsList,
       Project.foreignColumns
-    ).map(fk => Project.apiFkRelationships[fk]);
+    ).map(fk => Project.apiFkRelationships.find(model => {
+      console.log(model.name, fk)
+      return model.name === fk.substring(0, fk.length - 1); // chop off the s
+    }));
     
     // What non fk columns are being requested?
     columnsList = columnsList.filter(column => !Project.foreignColumns.includes(column));
@@ -120,6 +117,8 @@ export const findAll = async (req, res) => {
     }
     return res.json(optionallyPaginatedResponse(results, page, limit));
   }
+  
+  console.log(fkInclude)
   
   const query = {
     attributes: columnsList,
