@@ -32,9 +32,7 @@ class Project extends Model {
       Project.hasMany(Project.apiFkRelationships[relationship]);
     }
     // Cache some column info for the API
-    Project.foreignColumns = Project.apiFkRelationships.map(relationship => {
-      return relationship.name + 's';
-    });
+    Project.foreignColumns = Project.apiFkRelationships.map(relationship => relationship.name + 's');
     Project.validApiColumns = Project.defaultColumns.concat(Project.foreignColumns);
   }
 
