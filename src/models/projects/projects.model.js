@@ -1,7 +1,6 @@
 'use strict';
 import Sequelize from 'sequelize';
 import rxjs from 'rxjs';
-
 const { Model } = Sequelize;
 
 import { sequelize } from '../database';
@@ -10,22 +9,34 @@ import { RelatedProject } from './../related-projects';
 import { Vintage } from './../vintages';
 import { Qualification } from './../qualifications';
 import { ProjectLocation } from './../locations';
-import { Rating } from './../ratings';
 import { CoBenefit } from './../co-benefits';
 
 import ModelTypes from './projects.modeltypes.cjs';
-import { optionallyPaginatedResponse } from '../../controllers/helpers.js';
 
 class Project extends Model {
   static changes = new rxjs.Subject();
+  static defaultColumns = Object.keys(ModelTypes).concat(['id']);
+  static foreignColumns;
+  static validApiColumns;
+  static apiFkRelationships = {
+    'projectLocations': ProjectLocation,
+    'qualifications': Qualification,
+    'vintages': Vintage,
+    'coBenefits': CoBenefit,
+    'relatedProjects': RelatedProject,
+  }
 
   static associate() {
-    Project.hasMany(RelatedProject);
-    Project.hasMany(Vintage);
-    Project.hasMany(Qualification);
-    Project.hasMany(Rating);
-    Project.hasMany(CoBenefit);
-    Project.hasMany(ProjectLocation);
+    // Configure relationships
+    for (const relationship in Project.apiFkRelationships) {
+      Project.hasMany(Project.apiFkRelationships[relationship]);
+    }
+    
+    // Cache some column info for the API
+    Project.foreignColumns = Object.keys(Project.apiFkRelationships).map(relationship => {
+      return Project.apiFkRelationships[relationship].name + 's';
+    });
+    Project.validApiColumns = Project.defaultColumns.concat(Project.foreignColumns);
   }
 
   static async create(values, options) {

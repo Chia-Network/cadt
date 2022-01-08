@@ -15,7 +15,6 @@ import {
 } from '../models';
 
 import { optionallyPaginatedResponse, paginationParams } from './helpers';
-import ModelTypes from './../models/projects/projects.modeltypes.cjs';
 
 export const create = async (req, res) => {
   const newRecord = _.cloneDeep(req.body);
@@ -57,23 +56,42 @@ export const findAll = async (req, res) => {
     res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
     return;
   }
-
-  const defaultColumns = Object.keys(ModelTypes);
-
+  
   let columnsList = [];
+  let fkInclude = [
+    ProjectLocation,
+    Qualification,
+    Vintage,
+    CoBenefit,
+    RelatedProject,
+  ];
+  
   if (columns) {
     columnsList = columns.split(',');
     // Check to ensure passed in columns are valid
     if (
-      columnsList.filter((col) => defaultColumns.includes(col)).length !==
+      columnsList.filter((col) => Project.validApiColumns.includes(col)).length !==
       columnsList.length
     ) {
       console.error('Invalid column specified');
       res.status(400).send('Invalid column specified');
       return;
     }
+    // What foreign keys should we include?
+    fkInclude = _.intersection(
+      columnsList,
+      Project.foreignColumns
+    ).map(fk => Project.apiFkRelationships[fk]);
+    
+    // What non fk columns are being requested?
+    columnsList = columnsList.filter(column => !Project.foreignColumns.includes(column));
   } else {
-    columnsList = defaultColumns;
+    columnsList = Project.defaultColumns;
+  }
+  
+  // If only FK fields have been specified, select just ID
+  if (!columnsList.length) {
+    columnsList = ['id'];
   }
 
   const dialect = sequelize.getDialect();
@@ -102,16 +120,14 @@ export const findAll = async (req, res) => {
     }
     return res.json(optionallyPaginatedResponse(results, page, limit));
   }
-
+  
+  console.log("!!!", columnsList)
+  
+  console.log(fkInclude)
+  
   const query = {
     attributes: columnsList,
-    include: [
-      ProjectLocation,
-      Qualification,
-      Vintage,
-      CoBenefit,
-      RelatedProject,
-    ],
+    include: fkInclude,
   };
 
   return res.json(
