@@ -14,8 +14,7 @@ import {
   Organization,
 } from '../models';
 
-import { optionallyPaginatedResponse, paginationParams } from './helpers';
-import ModelTypes from './../models/projects/projects.modeltypes.cjs';
+import {columnsToInclude, optionallyPaginatedResponse, paginationParams} from './helpers';
 
 export const create = async (req, res) => {
   const newRecord = _.cloneDeep(req.body);
@@ -51,76 +50,65 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  const { page, limit, search, orgUid, columns, useMock } = req.query;
+  let { page, limit, search, orgUid, columns, useMock } = req.query;
 
+  if (columns && !Array.isArray(columns)) {
+    columns = [columns];
+  }
+  
   if (useMock) {
     res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
     return;
   }
-
-  const defaultColumns = Object.keys(ModelTypes);
-
-  let columnsList = [];
+  
+  const includes = [
+    ProjectLocation,
+    Qualification,
+    Vintage,
+    CoBenefit,
+    RelatedProject,
+  ];
+  
   if (columns) {
-    columnsList = columns.split(',');
-    // Check to ensure passed in columns are valid
-    if (
-      columnsList.filter((col) => defaultColumns.includes(col)).length !==
-      columnsList.length
-    ) {
-      console.error('Invalid column specified');
-      res.status(400).send('Invalid column specified');
-      return;
-    }
+    // Remove any unsupported columns
+    columns = columns.filter(col => Project.defaultColumns.concat(
+      includes.map(model => model.name + 's')
+    ).includes(col));
   } else {
-    columnsList = defaultColumns;
+    columns = Project.defaultColumns;
   }
-
-  const dialect = sequelize.getDialect();
-
+  
+  // If only FK fields have been specified, select just ID
+  if (!columns.length) {
+    columns = ['warehouseProjectId'];
+  }
+  
   let results;
 
   if (search) {
-    const supportedSearchFields = columnsList.filter(
-      (col) => !['createdAt', 'updatedAt'].includes(col),
+    results = await Project.fts(
+      search,
+      orgUid,
+      paginationParams(page, limit),
+      columns,
     );
-
-    if (dialect === 'sqlite') {
-      results = await Project.findAllSqliteFts(
-        search,
-        orgUid,
-        paginationParams(page, limit),
-        supportedSearchFields,
-      );
-    } else if (dialect === 'mysql') {
-      results = await Project.findAllMySQLFts(
-        search,
-        orgUid,
-        paginationParams(page, limit),
-        supportedSearchFields,
-      );
-    }
-    return res.json(optionallyPaginatedResponse(results, page, limit));
   }
-
-  const query = {
-    attributes: columnsList,
-    include: [
-      ProjectLocation,
-      Qualification,
-      Vintage,
-      CoBenefit,
-      RelatedProject,
-    ],
-  };
+  
+  if (!results) {
+    const query = {
+      ...columnsToInclude(columns, includes),
+      ...paginationParams(page, limit),
+    };
+    
+    results = await Project.findAndCountAll({
+      distinct: true,
+      ...query,
+    });
+  }
 
   return res.json(
     optionallyPaginatedResponse(
-      await Project.findAndCountAll({
-        distinct: true,
-        ...query,
-        ...paginationParams(page, limit),
-      }),
+      results,
       page,
       limit,
     ),

@@ -1,7 +1,6 @@
 'use strict';
 import Sequelize from 'sequelize';
 import rxjs from 'rxjs';
-
 const { Model } = Sequelize;
 
 import { sequelize } from '../database';
@@ -10,22 +9,20 @@ import { RelatedProject } from './../related-projects';
 import { Vintage } from './../vintages';
 import { Qualification } from './../qualifications';
 import { ProjectLocation } from './../locations';
-import { Rating } from './../ratings';
 import { CoBenefit } from './../co-benefits';
 
 import ModelTypes from './projects.modeltypes.cjs';
-import { optionallyPaginatedResponse } from '../../controllers/helpers.js';
 
 class Project extends Model {
   static changes = new rxjs.Subject();
-
+  static defaultColumns = Object.keys(ModelTypes);
+  
   static associate() {
-    Project.hasMany(RelatedProject);
-    Project.hasMany(Vintage);
-    Project.hasMany(Qualification);
-    Project.hasMany(Rating);
-    Project.hasMany(CoBenefit);
     Project.hasMany(ProjectLocation);
+    Project.hasMany(Qualification);
+    Project.hasMany(Vintage);
+    Project.hasMany(CoBenefit);
+    Project.hasMany(RelatedProject);
   }
 
   static async create(values, options) {
@@ -47,6 +44,25 @@ class Project extends Model {
     Project.changes.next(['projects', orgUid]);
 
     return destroyResult;
+  }
+  
+  static async fts(searchStr, orgUid, pagination, columns = []) {
+    const dialect = sequelize.getDialect();
+    
+    const handlerMap = {
+      sqlite: Project.findAllSqliteFts,
+      mysql: Project.findAllMySQLFts,
+    }
+    
+    return handlerMap[dialect](searchStr, orgUid, pagination, columns.filter(
+      (col) => !['createdAt', 'updatedAt'].includes(col),
+    ).filter((col) => ![
+      ProjectLocation,
+      Qualification,
+      Vintage,
+      CoBenefit,
+      RelatedProject,
+    ].map(model => model.name + 's').includes(col)));
   }
 
   static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {

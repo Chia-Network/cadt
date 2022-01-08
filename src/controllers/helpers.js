@@ -1,5 +1,7 @@
 'use strict';
 
+import _ from "lodash";
+
 export const paginationParams = (page, limit) => {
   if (page === undefined || limit === undefined) {
     return {
@@ -31,5 +33,20 @@ export const optionallyPaginatedResponse = ({count, rows}, page, limit) => {
     }
   } else {
     return rows;
+  }
+}
+
+export const columnsToInclude = (userColumns, foreignKeys) => {
+  const attributeModelMap = foreignKeys.map(relationship => relationship.name + 's');
+  return {
+    attributes: userColumns.filter(
+      column => !attributeModelMap.includes(column)
+    ),
+    include: _.intersection(
+      userColumns,
+      attributeModelMap,
+    ).map(fk => foreignKeys.find(model => {
+      return model.name === fk.substring(0, fk.length - 1);
+    }))
   }
 }
