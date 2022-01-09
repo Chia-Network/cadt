@@ -1,18 +1,4 @@
-import fs from 'fs';
 import { Organization } from '../models/organizations';
-
-const loadFileIntoString = (path) => {
-  return new Promise((resolve, reject) => {
-    fs.readFile(path, (err, buff) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-      console.log(buff.toString());
-      resolve(buff.toString());
-    });
-  });
-};
 
 export const findAll = async (req, res) => {
   return res.json({

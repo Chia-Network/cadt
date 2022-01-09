@@ -1,24 +1,10 @@
 'use strict';
 
-import fs from 'fs';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
 
 import ModelTypes from './organizations.modeltypes.cjs';
-
-const loadFileIntoString = (path) => {
-  return new Promise((resolve, reject) => {
-    fs.readFile(path, (err, buff) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-      console.log(buff.toString());
-      resolve(buff.toString());
-    });
-  });
-};
 
 class Organization extends Model {
   static async getHomeOrg() {
