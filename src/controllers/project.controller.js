@@ -2,6 +2,7 @@ import _ from 'lodash';
 
 import { uuid as uuidv4 } from 'uuidv4';
 import { sequelize } from '../models/database';
+
 import {
   Staging,
   ProjectMock,
@@ -105,13 +106,13 @@ export const findAll = async (req, res) => {
 
   const query = {
     attributes: columnsList,
-    include: [
+    include: getRequestedForignModels(req.query.columns, [
       ProjectLocation,
       Qualification,
       Vintage,
       CoBenefit,
       RelatedProject,
-    ],
+    ]),
   };
 
   return res.json(

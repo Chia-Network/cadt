@@ -25,7 +25,7 @@ class Organization extends Model {
     return {
       'f1c54511-865e-4611-976c-7c3c1f704662': {
         name: 'Chia',
-        icon: await loadFileIntoString('src/assets/organizationIcons/me.svg'),
+        icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
         writeAccess: true,
       },
     };
