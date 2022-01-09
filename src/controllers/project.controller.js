@@ -2,6 +2,7 @@ import _ from 'lodash';
 
 import { uuid as uuidv4 } from 'uuidv4';
 import { sequelize } from '../models/database';
+
 import {
   Staging,
   ProjectMock,
@@ -14,7 +15,11 @@ import {
   Organization,
 } from '../models';
 
-import {columnsToInclude, optionallyPaginatedResponse, paginationParams} from './helpers';
+import {
+  columnsToInclude,
+  optionallyPaginatedResponse,
+  paginationParams,
+} from './helpers';
 
 export const create = async (req, res) => {
   const newRecord = _.cloneDeep(req.body);
@@ -55,12 +60,12 @@ export const findAll = async (req, res) => {
   if (columns && !Array.isArray(columns)) {
     columns = [columns];
   }
-  
+
   if (useMock) {
     res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
     return;
   }
-  
+
   const includes = [
     ProjectLocation,
     Qualification,
@@ -68,21 +73,23 @@ export const findAll = async (req, res) => {
     CoBenefit,
     RelatedProject,
   ];
-  
+
   if (columns) {
     // Remove any unsupported columns
-    columns = columns.filter(col => Project.defaultColumns.concat(
-      includes.map(model => model.name + 's')
-    ).includes(col));
+    columns = columns.filter((col) =>
+      Project.defaultColumns
+        .concat(includes.map((model) => model.name + 's'))
+        .includes(col),
+    );
   } else {
     columns = Project.defaultColumns;
   }
-  
+
   // If only FK fields have been specified, select just ID
   if (!columns.length) {
     columns = ['warehouseProjectId'];
   }
-  
+
   let results;
 
   if (search) {
@@ -93,26 +100,20 @@ export const findAll = async (req, res) => {
       columns,
     );
   }
-  
+
   if (!results) {
     const query = {
       ...columnsToInclude(columns, includes),
       ...paginationParams(page, limit),
     };
-    
+
     results = await Project.findAndCountAll({
       distinct: true,
       ...query,
     });
   }
 
-  return res.json(
-    optionallyPaginatedResponse(
-      results,
-      page,
-      limit,
-    ),
-  );
+  return res.json(optionallyPaginatedResponse(results, page, limit));
 };
 
 export const findOne = async (req, res) => {
