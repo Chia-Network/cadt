@@ -14,8 +14,7 @@ const querySchema = Joi.object()
     limit: Joi.number(),
     search: Joi.string(),
     columns: Joi.alternatives().try(
-      Joi.array().items(Joi.string()),
-      Joi.string(),
+      Joi.array().items(Joi.string()).single(),
     ),
   })
   .with('page', 'limit');

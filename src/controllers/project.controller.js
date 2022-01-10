@@ -57,10 +57,6 @@ export const create = async (req, res) => {
 export const findAll = async (req, res) => {
   let { page, limit, search, orgUid, columns, useMock } = req.query;
 
-  if (columns && !Array.isArray(columns)) {
-    columns = [columns];
-  }
-
   if (useMock) {
     res.json(ProjectMock.findAll({ ...paginationParams(page, limit) }));
     return;

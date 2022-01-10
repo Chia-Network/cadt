@@ -10,6 +10,7 @@ const { Model } = Sequelize;
 
 class Unit extends Model {
   static changes = new rxjs.Subject();
+  static defaultColumns = Object.keys(ModelTypes);
 
   static associate() {
     Unit.hasOne(Vintage);
