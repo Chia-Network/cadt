@@ -6,51 +6,45 @@ module.exports = {
       await queryInterface.sequelize.query(`
       CREATE TRIGGER unit_insert_fts AFTER INSERT ON units BEGIN
         INSERT INTO units_fts(
-          id,
+          warehouseUnitId,
           orgUid,
-          buyer, 
-          registry, 
-          blockIdentifier, 
-          identifier,
-          unitType, 
-          unitCount, 
-          unitStatus, 
-          unitStatusDate,
-          transactionType, 
-          unitIssuanceLocation,
-          unitLink, 
-          correspondingAdjustment,
-          unitTag
+          unitOwnerOrgUid,
+          unitBlockStart,
+          unitBlockEnd,
+          unitCount,
+          countryJuridictionOfOwner,
+          inCountryJuridictionOfOwner,
+          intendedBuyerOrgUid,
+          tags,
+          tokenIssuanceHash,
+          marketplaceIdentifier
         ) VALUES (
-          new.id,
+          new.warehouseUnitId,
           new.orgUid,
-          new.buyer, 
-          new.registry, 
-          new.blockIdentifier, 
-          new.identifier,
-          new.unitType, 
-          new.unitCount, 
-          new.unitStatus, 
-          new.unitStatusDate,
-          new.transactionType, 
-          new.unitIssuanceLocation,
-          new.unitLink, 
-          new.correspondingAdjustment,
-          new.unitTag
+          new.unitOwnerOrgUid,
+          new.unitBlockStart,
+          new.unitBlockEnd,
+          new.unitCount,
+          new.countryJuridictionOfOwner,
+          new.inCountryJuridictionOfOwner,
+          new.intendedBuyerOrgUid,
+          new.tags,
+          new.tokenIssuanceHash,
+          new.marketplaceIdentifier
         );
       END;`);
 
       await queryInterface.sequelize.query(`
       CREATE TRIGGER unit_delete_fts AFTER DELETE ON units BEGIN
-        DELETE FROM units_fts WHERE id = old.id;
+        DELETE FROM units_fts WHERE warehouseUnitId = old.warehouseUnitId;
       END;
       `);
 
       await queryInterface.sequelize.query(`
       CREATE TRIGGER unit_update_fts AFTER UPDATE ON units BEGIN
-        DELETE FROM units_fts WHERE id = old.id;
+        DELETE FROM units_fts WHERE warehouseUnitId = old.warehouseUnitId;
         INSERT INTO units_fts(
-          id,
+          warehouseUnitId,
           orgUid,
           projectId,
           buyer,
@@ -69,7 +63,7 @@ module.exports = {
           unitTag,
           vintageId
         ) VALUES (
-          new.id,
+          new.warehouseUnitId,
           new.orgUid,
           new.projectId,
           new.buyer,

@@ -12,7 +12,10 @@ class Vintage extends Model {
       targetKey: 'warehouseProjectId',
       foreignKey: 'projectId',
     });
-    Vintage.belongsTo(Unit);
+    Vintage.belongsTo(Unit, {
+      targetKey: 'warehouseUnitId',
+      foreignKey: 'unitId',
+    });
   }
 }
 

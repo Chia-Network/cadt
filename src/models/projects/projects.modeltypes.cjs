@@ -12,7 +12,7 @@ module.exports = {
   // organizations tables on the datalayer
   orgUid: Sequelize.STRING,
   projectId: Sequelize.STRING,
-  projectLocationId: Sequelize.NUMBER,
+  projectLocationId: Sequelize.INTEGER,
   currentRegistry: Sequelize.STRING,
   registryOfOrigin: Sequelize.STRING,
   originProjectId: Sequelize.STRING,
@@ -28,7 +28,7 @@ module.exports = {
   projectStatusDate: Sequelize.DATE,
   unitMetric: Sequelize.STRING,
   methodology: Sequelize.STRING,
-  methodologyVersion: Sequelize.NUMBER,
+  methodologyVersion: Sequelize.INTEGER,
   validationApproach: Sequelize.STRING,
   validationDate: Sequelize.DATE,
   projectTag: Sequelize.STRING,

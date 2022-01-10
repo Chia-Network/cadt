@@ -22,44 +22,38 @@ UnitRouter.get('/', validator.query(querySchema), (req, res) => {
     : UnitController.findAll(req, res);
 });
 
-const bodySchema = Joi.object({
-  buyer: Joi.string().required(),
-  blockIdentifier: Joi.string().required(),
-  identifier: Joi.string().required(),
-  qualifications: Joi.array().min(1).optional(),
-  unitType: Joi.string().required(),
-  unitCount: Joi.string().required(),
-  unitStatus: Joi.string().required(),
-  unitStatusDate: Joi.string().required(),
-  transactionType: Joi.string().required(),
-  unitIssuanceLocation: Joi.string().required(),
-  unitLink: Joi.string().required(),
-  correspondingAdjustment: Joi.string().required(),
-  unitTag: Joi.string().required(),
-  vintage: Joi.object().optional(),
+const baseSchema = {
+  unitBlockStart: Joi.string().required(),
+  unitBlockEnd: Joi.string().required(),
+  countryJuridictionOfOwner: Joi.string().required(),
+  inCountryJuridictionOfOwner: Joi.string().required(),
+  intendedBuyerOrgUid: Joi.string().optional(),
+  tags: Joi.string().optional(),
+  tokenIssuanceHash: Joi.string().required(),
+  marketplaceIdentifier: Joi.string().optional(),
+};
+
+const postSchema = Joi.object({
+  ...baseSchema,
 });
 
-UnitRouter.post('/', validator.body(bodySchema), UnitController.create);
+UnitRouter.post('/', validator.body(postSchema), UnitController.create);
 
-const bodySchemaUpdate = {
-  uuid: Joi.string().required(),
-  ...bodySchema,
-};
+const updateSchema = Joi.object({
+  warehouseUnitId: Joi.string().required(),
+  ...baseSchema,
+});
 
-UnitRouter.put('/', validator.body(bodySchemaUpdate), UnitController.update);
+UnitRouter.put('/', validator.body(updateSchema), UnitController.update);
 
-const bodySchemaDelete = {
-  uuid: Joi.string().required(),
-};
+const deleteSchema = Joi.object({
+  warehouseUnitId: Joi.string().required(),
+});
 
-UnitRouter.delete(
-  '/',
-  validator.body(bodySchemaDelete),
-  UnitController.destroy,
-);
+UnitRouter.delete('/', validator.body(deleteSchema), UnitController.destroy);
 
 const splitSchema = Joi.object({
-  unitUid: Joi.string().required(),
+  warehouseUnitId: Joi.string().required(),
   records: Joi.array()
     .items(
       Joi.object().keys({
@@ -71,6 +65,6 @@ const splitSchema = Joi.object({
     .max(2),
 });
 
-UnitRouter.post('/split', UnitController.split);
+UnitRouter.post('/split', validator.body(splitSchema), UnitController.split);
 
 export { UnitRouter };

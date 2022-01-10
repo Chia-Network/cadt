@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { Project, Unit, Staging } from '../models';
-const THIRTY_SEC = 15000;
+const WAIT_TIME = 1500;
 
 // Simulate 30 seconds passing before commited to node
 
@@ -9,7 +9,9 @@ export const updateProjectRecord = async (
   encodedRecord,
   stagingRecordId,
 ) => {
-  const record = JSON.parse(atob(encodedRecord));
+  let record = JSON.parse(atob(encodedRecord));
+  record = Array.isArray(record) ? _.head(record) : record;
+
   return new Promise((resolve) => {
     setTimeout(async () => {
       if (stagingRecordId) {
@@ -29,8 +31,10 @@ export const updateProjectRecord = async (
           ...record,
           warehouseProjectId: uuid,
         });
+
+        resolve();
       }
-    }, THIRTY_SEC);
+    }, WAIT_TIME);
   });
 };
 
@@ -55,7 +59,7 @@ export const createProjectRecord = (uuid, encodedRecord, stagingRecordId) => {
       });
 
       resolve();
-    }, THIRTY_SEC);
+    }, WAIT_TIME);
   });
 };
 
@@ -77,7 +81,7 @@ export const deleteProjectRecord = (uuid, stagingRecordId) => {
       });
 
       resolve();
-    }, THIRTY_SEC);
+    }, WAIT_TIME);
   });
 };
 
@@ -114,12 +118,12 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
 
       delete record.id;
       await Unit.create({
-        uuid,
+        warehouseUnitId: uuid,
         ...record,
       });
 
       resolve();
-    }, THIRTY_SEC);
+    }, WAIT_TIME);
   });
 };
 
@@ -136,11 +140,11 @@ export const deleteUnitRecord = (uuid, stagingRecordId) => {
 
       await Unit.destroy({
         where: {
-          uuid,
+          warehouseUnitId: uuid,
         },
       });
 
       resolve();
-    }, THIRTY_SEC);
+    }, WAIT_TIME);
   });
 };

@@ -2,7 +2,7 @@ const { uuid: uuidv4 } = require('uuidv4');
 const Sequelize = require('sequelize');
 
 module.exports = {
-  id: {
+  warehouseUnitId: {
     type: Sequelize.STRING,
     unique: true,
     defaultValue: () => uuidv4(),
@@ -11,19 +11,16 @@ module.exports = {
   // The orgUid is teh singeltonId of the
   // organizations tables on the datalayer
   orgUid: Sequelize.STRING,
-  buyer: Sequelize.STRING,
-  registry: Sequelize.STRING,
-  blockIdentifier: Sequelize.STRING,
-  identifier: Sequelize.STRING,
-  unitType: Sequelize.STRING,
-  unitCount: Sequelize.NUMBER,
-  unitStatus: Sequelize.STRING,
-  unitStatusDate: Sequelize.DATE,
-  transactionType: Sequelize.STRING,
-  unitIssuanceLocation: Sequelize.STRING,
-  unitLink: Sequelize.STRING,
-  correspondingAdjustment: Sequelize.STRING,
-  unitTag: Sequelize.STRING,
+  unitOwnerOrgUid: Sequelize.STRING,
+  unitBlockStart: Sequelize.STRING,
+  unitBlockEnd: Sequelize.STRING,
+  unitCount: Sequelize.INTEGER,
+  countryJuridictionOfOwner: Sequelize.STRING,
+  inCountryJuridictionOfOwner: Sequelize.STRING,
+  intendedBuyerOrgUid: Sequelize.STRING,
+  tags: Sequelize.STRING,
+  tokenIssuanceHash: Sequelize.STRING,
+  marketplaceIdentifier: Sequelize.STRING,
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };

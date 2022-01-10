@@ -3,25 +3,37 @@
 import _ from 'lodash';
 
 import { uuid as uuidv4 } from 'uuidv4';
-import { Staging, UnitMock, Unit, Qualification, Vintage } from '../models';
+import {
+  Staging,
+  UnitMock,
+  Unit,
+  Qualification,
+  Vintage,
+  Organization,
+} from '../models';
 import { optionallyPaginatedResponse, paginationParams } from './helpers';
 
 export const create = async (req, res) => {
   try {
     const newRecord = _.cloneDeep(req.body);
 
-    // When creating new projects assign a uuid to is so
+    // When creating new unitd assign a uuid to is so
     // multiple organizations will always have unique ids
     const uuid = uuidv4();
 
-    newRecord.warehouseProjectId = uuid;
+    newRecord.warehouseUnitId = uuid;
 
     // All new units are assigned to the home orgUid
     const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
     newRecord.orgUid = orgUid;
+    newRecord.unitOwnerOrgUid = orgUid;
 
     // The new unit is getting created in this registry
     newRecord.registry = orgUid;
+
+    newRecord.unitCount =
+      Number(newRecord.unitBlockEnd.replace(/^\D+/, '')) -
+      Number(newRecord.unitBlockStart.replace(/^\D+/, ''));
 
     const stagedData = {
       uuid,
@@ -104,7 +116,7 @@ export const findOne = async (req, res) => {
 
   res.json(
     await Unit.findOne({
-      where: { uuid: req.query.uuid },
+      where: { warehouseUnitId: req.query.warehouseUnitId },
       include: [
         {
           model: Qualification,
@@ -119,7 +131,7 @@ export const findOne = async (req, res) => {
 export const update = async (req, res) => {
   try {
     const stagedData = {
-      uuid: req.body.uuid,
+      uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
       table: 'Units',
       data: JSON.stringify(Array.isArray(req.body) ? req.body : [req.body]),
@@ -140,7 +152,7 @@ export const update = async (req, res) => {
 export const destroy = async (req, res) => {
   try {
     const stagedData = {
-      uuid: req.body.uuid,
+      uuid: req.body.warehouseUnitId,
       action: 'DELETE',
       table: 'Units',
     };
@@ -158,13 +170,12 @@ export const destroy = async (req, res) => {
 
 export const split = async (req, res) => {
   try {
-    const originalRecord = await Unit.findOne({
-      where: { uuid: req.body.unitUid },
-    });
+    const originalRecordResult = await Unit.findByPk(req.body.warehouseUnitId);
+    const originalRecord = originalRecordResult.dataValues;
 
     if (!originalRecord) {
       res.status(404).json({
-        message: `The unit record for the uuid: ${req.body.unitUid} does not exist`,
+        message: `The unit record for the warehouseUnitId: ${req.body.warehouseUnitId} does not exist`,
       });
       return;
     }
@@ -181,20 +192,23 @@ export const split = async (req, res) => {
       return;
     }
 
-    const splitRecords = req.body.records.map((record) => {
+    const splitRecords = req.body.records.map((record, index) => {
       const newRecord = _.cloneDeep(originalRecord);
-      newRecord.uuid = uuidv4();
+      newRecord.warehouseUnitId = uuidv4();
+      console.log(uuidv4());
       newRecord.unitCount = record.unitCount;
 
       if (record.orgUid) {
-        newRecord.orgUid = record.orgUid;
+        newRecord.unitOwnerOrgUid = record.orgUid;
       }
 
       return newRecord;
     });
 
+    // console.log(splitRecords);
+
     const stagedData = {
-      uuid: req.body.unitUid,
+      uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
       commited: false,
       table: 'Units',
