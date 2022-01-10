@@ -12,6 +12,7 @@ const querySchema = Joi.object()
   .keys({
     page: Joi.number(),
     limit: Joi.number(),
+    search: Joi.string(),
     columns: Joi.alternatives().try(
       Joi.array().items(Joi.string()).single(),
     ),
