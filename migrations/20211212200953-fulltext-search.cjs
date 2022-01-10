@@ -33,21 +33,18 @@ module.exports = {
       `);
       await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE units_fts USING fts5(
-          id,
+          warehouseUnitId,
           orgUid,
-          buyer,
-          registry,
-          blockIdentifier,
-          identifier,
-          unitType,
+          unitOwnerOrgUid,
+          unitBlockStart,
+          unitBlockEnd,
           unitCount,
-          unitStatus,
-          unitStatusDate,
-          transactionType,
-          unitIssuanceLocation,
-          unitLink,
-          correspondingAdjustment,
-          unitTag
+          countryJuridictionOfOwner,
+          inCountryJuridictionOfOwner,
+          intendedBuyerOrgUid,
+          tags,
+          tokenIssuanceHash,
+          marketplaceIdentifier
         );
       `);
     }

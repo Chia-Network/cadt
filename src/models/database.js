@@ -1,4 +1,4 @@
 import { Sequelize } from 'sequelize';
-import config from '../config/config.json';
+import config from '../config/config.cjs';
 
-export const sequelize = new Sequelize(config['development']);
+export const sequelize = new Sequelize(config['local']);

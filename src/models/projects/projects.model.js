@@ -16,7 +16,7 @@ import ModelTypes from './projects.modeltypes.cjs';
 class Project extends Model {
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
-  
+
   static associate() {
     Project.hasMany(ProjectLocation);
     Project.hasMany(Qualification);
@@ -36,33 +36,41 @@ class Project extends Model {
   }
 
   static async destroy(values) {
-    const { id: projectId } = values.where;
-    const { orgUid } = await super.findOne(projectId);
-
-    const destroyResult = await super.destroy(values);
+    const record = await super.findOne(values.where);
+    const { orgUid } = record.dataValues;
 
     Project.changes.next(['projects', orgUid]);
 
-    return destroyResult;
+    return super.destroy(values);
   }
-  
+
   static async fts(searchStr, orgUid, pagination, columns = []) {
     const dialect = sequelize.getDialect();
-    
+
     const handlerMap = {
       sqlite: Project.findAllSqliteFts,
       mysql: Project.findAllMySQLFts,
-    }
-    
-    return handlerMap[dialect](searchStr, orgUid, pagination, columns.filter(
-      (col) => !['createdAt', 'updatedAt'].includes(col),
-    ).filter((col) => ![
-      ProjectLocation,
-      Qualification,
-      Vintage,
-      CoBenefit,
-      RelatedProject,
-    ].map(model => model.name + 's').includes(col)));
+    };
+
+    return handlerMap[dialect](
+      searchStr,
+      orgUid,
+      pagination,
+      columns
+        .filter((col) => !['createdAt', 'updatedAt'].includes(col))
+        .filter(
+          (col) =>
+            ![
+              ProjectLocation,
+              Qualification,
+              Vintage,
+              CoBenefit,
+              RelatedProject,
+            ]
+              .map((model) => model.name + 's')
+              .includes(col),
+        ),
+    );
   }
 
   static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {

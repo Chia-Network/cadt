@@ -13,7 +13,10 @@ const querySchema = Joi.object()
     page: Joi.number(),
     limit: Joi.number(),
     search: Joi.string(),
-    columns: Joi.alternatives().try(Joi.array().items(Joi.string()), Joi.string()),
+    columns: Joi.alternatives().try(
+      Joi.array().items(Joi.string()),
+      Joi.string(),
+    ),
   })
   .with('page', 'limit');
 
@@ -24,7 +27,6 @@ ProjectRouter.get('/', validator.query(querySchema), (req, res) => {
 });
 
 const baseSchema = {
-  registryOfOrigin: Joi.string().required(),
   originProjectId: Joi.string().required(),
   projectId: Joi.string().required(),
   program: Joi.string().required(),

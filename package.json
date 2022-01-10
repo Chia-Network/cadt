@@ -12,16 +12,19 @@
     "test": "mocha tests/**/*.spec.js --reporter spec --exit",
     "release": "./node_modules/.bin/standard-version && git push --tags",
     "postinstall": "npm run requirements-check",
-    "resetdb": "rm ./data.sqlite3 && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all --debug"
+    "resetdb": "rm ./data.sqlite3 && npx sequelize-cli db:migrate --env local && npx sequelize-cli db:seed:all --debug --env local",
+    "resetReportingdb": "npx sequelize-cli db:drop --env reporting && npx sequelize-cli db:create --env reporting && npx sequelize-cli db:migrate --env reporting --debug"
   },
   "dependencies": {
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "debug": "~2.6.9",
+    "dotenv": "^10.0.0",
     "express": "~4.16.1",
     "express-joi-validation": "^5.0.0",
     "joi": "^17.5.0",
     "lodash": "^4.17.21",
+    "mysql2": "^2.3.3",
     "rxjs": "^7.5.1",
     "sequelize": "^6.12.0-alpha.1",
     "socket.io": "^4.4.0",

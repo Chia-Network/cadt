@@ -9,7 +9,7 @@ module.exports = {
     primaryKey: true,
   },
   type: Sequelize.STRING,
-  rating: Sequelize.NUMBER,
+  rating: Sequelize.INTEGER,
   link: Sequelize.STRING,
   scale: Sequelize.STRING,
   projectId: {

@@ -31,14 +31,14 @@ class Unit extends Model {
   }
 
   static async destroy(values) {
-    const { id: unitId } = values.where;
-    const { orgUid } = await super.findOne(unitId);
-
-    const destroyResult = await super.destroy(values);
+    const record = await super.findOne(values.where);
+    const { orgUid } = record.dataValues;
 
     Unit.changes.next(['units', orgUid]);
 
-    return destroyResult;
+    console.log(values);
+
+    return super.destroy(values);
   }
 }
 
