@@ -13,6 +13,7 @@ const querySchema = Joi.object()
     page: Joi.number(),
     limit: Joi.number(),
     search: Joi.string(),
+    columns: Joi.array().items(Joi.string()).single(),
   })
   .with('page', 'limit');
 

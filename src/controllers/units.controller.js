@@ -9,9 +9,9 @@ import {
   Unit,
   Qualification,
   Vintage,
-  Organization,
+  Organization, ProjectLocation, CoBenefit, RelatedProject, Project,
 } from '../models';
-import { optionallyPaginatedResponse, paginationParams } from './helpers';
+import {columnsToInclude, optionallyPaginatedResponse, paginationParams} from './helpers';
 
 export const create = async (req, res) => {
   try {
@@ -55,45 +55,33 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  const { page, limit } = req.query;
-
-  if (req.query.useMock) {
-    res.json(UnitMock.findAll({ ...paginationParams(page, limit) }));
-    return;
-  }
-
-  if (req.query.onlyEssentialColumns) {
-    return res.json(
-      optionallyPaginatedResponse(
-        await Unit.findAndCountAll({
-          distinct: true,
-          attributes: [
-            'orgUid',
-            'unitLink',
-            'registry',
-            'unitType',
-            'unitCount',
-            'unitStatus',
-            'unitStatusDate',
-          ],
-        }),
-        page,
-        limit,
-      ),
+  let { page, limit, columns } = req.query;
+  
+  const includes = [
+    Qualification,
+  ];
+  
+  if (columns) {
+    // Remove any unsupported columns
+    columns = columns.filter((col) =>
+      Unit.defaultColumns
+        .concat(includes.map((model) => model.name + 's'))
+        .includes(col),
     );
+  } else {
+    columns = Unit.defaultColumns;
+  }
+  
+  // If only FK fields have been specified, select just ID
+  if (!columns.length) {
+    columns = ['warehouseUnitId'];
   }
 
   res.json(
     optionallyPaginatedResponse(
       await Unit.findAndCountAll({
         distinct: true,
-        include: [
-          {
-            model: Qualification,
-            as: 'qualifications',
-          },
-          Vintage,
-        ],
+        ...columnsToInclude(columns, includes),
         ...paginationParams(page, limit),
       }),
       page,
