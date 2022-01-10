@@ -57,11 +57,6 @@ export const create = async (req, res) => {
 export const findAll = async (req, res) => {
   let { page, limit, columns } = req.query;
   
-  if (req.query.useMock) {
-    res.json(UnitMock.findAll({ ...paginationParams(page, limit) }));
-    return;
-  }
-  
   const includes = [
     Qualification,
   ];
