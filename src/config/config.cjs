@@ -5,6 +5,10 @@ module.exports = {
     dialect: 'sqlite',
     storage: './data.sqlite3',
   },
+  test: {
+    dialect: 'sqlite',
+    storage: './test.sqlite3',
+  },
   reporting: {
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,

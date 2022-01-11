@@ -89,6 +89,9 @@ export const updateUnitRecord = async (
   encodedRecord,
   stagingRecordId,
 ) => {
+  await deleteUnitRecord(uuid);
+  await createUnitRecord(uuid, encodedRecord);
+
   if (stagingRecordId) {
     await Staging.destroy({
       where: {
@@ -96,9 +99,6 @@ export const updateUnitRecord = async (
       },
     });
   }
-
-  await deleteUnitRecord(uuid);
-  await createUnitRecord(uuid, encodedRecord);
 };
 
 export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
@@ -116,7 +116,6 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
       }
 
       await Unit.create({
-        warehouseUnitId: uuid,
         ...record,
       });
 

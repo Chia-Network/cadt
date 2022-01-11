@@ -60,7 +60,7 @@ const splitSchema = Joi.object({
     .items(
       Joi.object().keys({
         unitCount: Joi.number().required(),
-        orgUid: Joi.string().optional(),
+        unitOwnerOrgUid: Joi.string().optional(),
       }),
     )
     .min(2)
