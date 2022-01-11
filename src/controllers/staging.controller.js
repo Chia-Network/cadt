@@ -68,7 +68,7 @@ export const findAll = async (req, res) => {
 export const commit = async (req, res) => {
   const queryResponses = await Staging.findAll();
 
-  queryResponses.forEach(async (queryResponse) => {
+  queryResponses.map(async (queryResponse) => {
     const stagingRecord = queryResponse.dataValues;
 
     const {
@@ -79,7 +79,8 @@ export const commit = async (req, res) => {
       commited,
       data: rawData,
     } = stagingRecord;
-    const data = JSON.parse(rawData);
+    let data = JSON.parse(rawData);
+    data = Array.isArray(data) ? _.head(data) : data;
 
     // set the commited flag to true
     await Staging.update(
@@ -90,6 +91,7 @@ export const commit = async (req, res) => {
     if (table === 'Projects' && !commited) {
       switch (action) {
         case 'INSERT':
+          data.warehouseUnitId = uuid;
           fullNode.createProjectRecord(uuid, data, stagingRecordId);
           break;
         case 'UPDATE':
@@ -113,6 +115,7 @@ export const commit = async (req, res) => {
       }
     }
   });
+
   res.json({ message: 'Staging Table committed to full node' });
 };
 
@@ -125,6 +128,22 @@ export const destroy = async (req, res) => {
     });
     res.json({
       message: 'Deleted from stage',
+    });
+  } catch (err) {
+    res.json({
+      message: err,
+    });
+  }
+};
+
+export const clean = async (req, res) => {
+  try {
+    await Staging.destroy({
+      where: {},
+      truncate: true,
+    });
+    res.json({
+      message: 'Staging Data Cleaned',
     });
   } catch (err) {
     res.json({
