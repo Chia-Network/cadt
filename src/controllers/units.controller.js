@@ -13,7 +13,7 @@ import {
 } from '../models';
 import { optionallyPaginatedResponse, paginationParams } from './helpers';
 
-export const create = async (req, res) => {
+export const create = async (req, res, next) => {
   try {
     const newRecord = _.cloneDeep(req.body);
 
@@ -48,19 +48,12 @@ export const create = async (req, res) => {
       message: 'Unit created successfully',
     });
   } catch (err) {
-    res.json({
-      message: 'Error creating new Unit',
-    });
+    next(err);
   }
 };
 
 export const findAll = async (req, res) => {
   const { page, limit } = req.query;
-
-  if (req.query.useMock) {
-    res.json(UnitMock.findAll({ ...paginationParams(page, limit) }));
-    return;
-  }
 
   if (req.query.onlyEssentialColumns) {
     return res.json(
@@ -103,20 +96,9 @@ export const findAll = async (req, res) => {
 };
 
 export const findOne = async (req, res) => {
-  if (req.query.useMock) {
-    const record = UnitMock.findOne(req.query.id);
-    if (record) {
-      res.json(record);
-    } else {
-      res.json({ message: 'Not Found' });
-    }
-
-    return;
-  }
-
+  console.info('req.query', req.query);
   res.json(
-    await Unit.findOne({
-      where: { warehouseUnitId: req.query.warehouseUnitId },
+    await Unit.findByPk(req.query.warehouseUnitId, {
       include: [
         {
           model: Qualification,

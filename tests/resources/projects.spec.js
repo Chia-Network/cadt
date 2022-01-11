@@ -1,11 +1,11 @@
-import chai from 'chai';
-import { get } from '../utils/request-utils';
+// import chai from 'chai';
+import supertest from 'supertest';
+import app from '../../src/server';
 
-const { expect } = chai;
+// const { expect } = chai;
 
 describe('Project Resource CRUD', () => {
   it('gets all the projects available', async () => {
-    const { body, status } = await get('/v1/projects');
-    expect(status).to.equal(200);
+    await supertest(app).get('/v1/projects').expect(200);
   });
 });
