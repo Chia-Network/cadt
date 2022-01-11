@@ -17,4 +17,8 @@ app.use('/v1', V1Router);
 
 sequelize.authenticate().then(() => console.log('Connected to database'));
 
+app.use(function (err, req, res, next) {
+  console.error(err.stack);
+  res.status(500).send({ error: err });
+});
 export default app;

@@ -13,12 +13,14 @@ const querySchema = Joi.object()
     page: Joi.number(),
     limit: Joi.number(),
     search: Joi.string(),
+    warehouseUnitId: Joi.string(),
     columns: Joi.array().items(Joi.string()).single(),
   })
   .with('page', 'limit');
 
 UnitRouter.get('/', validator.query(querySchema), (req, res) => {
-  return req.query.id
+  console.log('UNIT>JS FILE', req.query);
+  return req.query.warehouseUnitId
     ? UnitController.findOne(req, res)
     : UnitController.findAll(req, res);
 });
