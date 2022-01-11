@@ -80,12 +80,12 @@ export const findAll = async (req, res) => {
   res.json(
     optionallyPaginatedResponse(
       await Unit.findAndCountAll({
+        where,
         distinct: true,
         ...columnsToInclude(columns, includes),
         ...paginationParams(page, limit),
       }),
       page,
-      where,
       limit,
     ),
   );
