@@ -56,8 +56,9 @@ export const create = async (req, res, next) => {
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, columns } = req.query;
-
+  let { page, limit, columns, orgUid } = req.query;
+  let where = orgUid ? { orgUid } : undefined;
+  
   const includes = [Qualification];
 
   if (columns) {
@@ -84,6 +85,7 @@ export const findAll = async (req, res) => {
         ...paginationParams(page, limit),
       }),
       page,
+      where,
       limit,
     ),
   );

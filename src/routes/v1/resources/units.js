@@ -15,6 +15,7 @@ const querySchema = Joi.object()
     search: Joi.string(),
     warehouseUnitId: Joi.string(),
     columns: Joi.array().items(Joi.string()).single(),
+    orgUid: Joi.string(),
   })
   .with('page', 'limit');
 
