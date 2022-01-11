@@ -36,9 +36,6 @@ export const create = async (req, res, next) => {
     newRecord.orgUid = orgUid;
     newRecord.unitOwnerOrgUid = orgUid;
 
-    // The new unit is getting created in this registry
-    newRecord.registry = orgUid;
-
     newRecord.unitCount =
       Number(newRecord.unitBlockEnd.replace(/^\D+/, '')) -
       Number(newRecord.unitBlockStart.replace(/^\D+/, ''));

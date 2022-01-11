@@ -24,4 +24,7 @@ StagingRouter.delete(
 
 StagingRouter.post('/commit', StagingController.commit);
 
+// Empty entire stagin table
+StagingRouter.delete('/clean', StagingController.clean);
+
 export { StagingRouter };
