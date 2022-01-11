@@ -98,8 +98,6 @@ export const findAll = async (req, res) => {
       ...columnsToInclude(columns, includes),
       ...paginationParams(page, limit),
     };
-
-    console.log(query)
     
     results = await Project.findAndCountAll({
       distinct: true,
