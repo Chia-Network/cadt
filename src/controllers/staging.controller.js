@@ -80,7 +80,6 @@ export const commit = async (req, res) => {
       data: rawData,
     } = stagingRecord;
     let data = JSON.parse(rawData);
-    data = Array.isArray(data) ? _.head(data) : data;
 
     // set the commited flag to true
     await Staging.update(

@@ -151,6 +151,9 @@ export const split = async (req, res) => {
     const originalRecordResult = await Unit.findByPk(req.body.warehouseUnitId);
     const originalRecord = originalRecordResult.dataValues;
 
+    delete originalRecord.createdAt;
+    delete originalRecord.updatedAt;
+
     if (!originalRecord) {
       res.status(404).json({
         message: `The unit record for the warehouseUnitId: ${req.body.warehouseUnitId} does not exist`,
@@ -163,27 +166,40 @@ export const split = async (req, res) => {
         previousValue.unitCount + currentValue.unitCount,
     );
 
-    if (sumOfSplitUnits !== originalRecord.unitCount) {
+    // Derive the unit count from the unit block start and end
+    // even though there is a unit count field in the record, this
+    // is the source of truth for unit count
+    const unitBlockStart = originalRecord.unitBlockStart.split(/(\d+)/);
+    const unitBlockEnd = originalRecord.unitBlockEnd.split(/(\d+)/);
+    const unitCount = Number(unitBlockEnd[1]) - Number(unitBlockStart[1]);
+
+    if (sumOfSplitUnits !== unitCount) {
       res.status(404).json({
-        message: `The sum of the split units is ${sumOfSplitUnits} and the original record is ${originalRecord.unitCount}. These should be the same.`,
+        message: `The sum of the split units is ${sumOfSplitUnits} and the original record is ${unitCount}. These should be the same.`,
       });
       return;
     }
 
-    const splitRecords = req.body.records.map((record, index) => {
+    let lastAvailableUnitBlock = Number(unitBlockStart[1]);
+
+    const splitRecords = req.body.records.map((record) => {
       const newRecord = _.cloneDeep(originalRecord);
       newRecord.warehouseUnitId = uuidv4();
-      console.log(uuidv4());
       newRecord.unitCount = record.unitCount;
 
-      if (record.orgUid) {
-        newRecord.unitOwnerOrgUid = record.orgUid;
+      newRecord.unitBlockStart =
+        unitBlockStart[0].toString() + lastAvailableUnitBlock.toString();
+      lastAvailableUnitBlock += Number(record.unitCount);
+      newRecord.unitBlockEnd =
+        unitBlockStart[0].toString() + lastAvailableUnitBlock.toString();
+      lastAvailableUnitBlock += 1;
+
+      if (record.unitOwnerOrgUid) {
+        newRecord.unitOwnerOrgUid = record.unitOwnerOrgUid;
       }
 
       return newRecord;
     });
-
-    // console.log(splitRecords);
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
