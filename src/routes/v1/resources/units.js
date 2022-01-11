@@ -25,14 +25,31 @@ UnitRouter.get('/', validator.query(querySchema), (req, res) => {
 });
 
 const baseSchema = {
-  unitBlockStart: Joi.string().required(),
-  unitBlockEnd: Joi.string().required(),
   countryJuridictionOfOwner: Joi.string().required(),
   inCountryJuridictionOfOwner: Joi.string().required(),
+  // must be in the form ABC123-XYZ456
+  serialNumberBlock: Joi.string()
+    .regex(/[.*\D]+[0-9]+[-][.*\D]+[0-9]+$/)
+    .required(),
+  unitIdentifier: Joi.string().required(),
+  unitType: Joi.string().valid('heard reduction', 'removal').required(),
   intendedBuyerOrgUid: Joi.string().optional(),
+  marketplace: Joi.string().optional(),
   tags: Joi.string().allow('').optional(),
+  unitStatus: Joi.string().valid('Held', 'For Sale', 'Retired').required(),
+  unitTransactionType: Joi.string().optional(),
+  unitStatusReason: Joi.string().optional(),
   tokenIssuanceHash: Joi.string().required(),
   marketplaceIdentifier: Joi.string().optional(),
+  unitsIssuanceLocation: Joi.string().optional(),
+  unitRegistryLink: Joi.string().optional(),
+  unitMarketplaceLink: Joi.string().optional(),
+  cooresponingAdjustmentDeclaration: Joi.string()
+    .valid('Commited', 'Not Required', 'Unknown')
+    .required(),
+  correspondingAdjustmentStatus: Joi.string()
+    .valid('Not Started', 'Pending')
+    .required(),
 };
 
 const postSchema = Joi.object({

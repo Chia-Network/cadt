@@ -9,7 +9,6 @@ const authenticate = (_payload) => true;
 
 export const connection = (socket) => {
   socket.on('authentication', () => {
-    console.log('Attempting to authenticate');
     if (!authenticate(socket)) {
       console.log('authentication failure');
       return socket.disconnect();

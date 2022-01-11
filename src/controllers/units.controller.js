@@ -19,6 +19,8 @@ import {
   columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
+  transformSerialNumberBlock,
+  createSerialNumberStr,
 } from './helpers';
 
 export const create = async (req, res, next) => {
@@ -35,10 +37,6 @@ export const create = async (req, res, next) => {
     const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
     newRecord.orgUid = orgUid;
     newRecord.unitOwnerOrgUid = orgUid;
-
-    newRecord.unitCount =
-      Number(newRecord.unitBlockEnd.replace(/^\D+/, '')) -
-      Number(newRecord.unitBlockStart.replace(/^\D+/, ''));
 
     const stagedData = {
       uuid,
@@ -166,12 +164,8 @@ export const split = async (req, res) => {
         previousValue.unitCount + currentValue.unitCount,
     );
 
-    // Derive the unit count from the unit block start and end
-    // even though there is a unit count field in the record, this
-    // is the source of truth for unit count
-    const unitBlockStart = originalRecord.unitBlockStart.split(/(\d+)/);
-    const unitBlockEnd = originalRecord.unitBlockEnd.split(/(\d+)/);
-    const unitCount = Number(unitBlockEnd[1]) - Number(unitBlockStart[1]);
+    const [unitBlockStart, unitBlockEnd, unitCount] =
+      transformSerialNumberBlock(originalRecord.serialNumberBlock);
 
     if (sumOfSplitUnits !== unitCount) {
       res.status(404).json({
@@ -180,19 +174,23 @@ export const split = async (req, res) => {
       return;
     }
 
-    let lastAvailableUnitBlock = Number(unitBlockStart[1]);
+    let lastAvailableUnitBlock = unitBlockStart;
 
     const splitRecords = req.body.records.map((record) => {
       const newRecord = _.cloneDeep(originalRecord);
       newRecord.warehouseUnitId = uuidv4();
       newRecord.unitCount = record.unitCount;
 
-      newRecord.unitBlockStart =
-        unitBlockStart[0].toString() + lastAvailableUnitBlock.toString();
+      const newUnitBlockStart = lastAvailableUnitBlock;
       lastAvailableUnitBlock += Number(record.unitCount);
-      newRecord.unitBlockEnd =
-        unitBlockStart[0].toString() + lastAvailableUnitBlock.toString();
+      const newUnitBlockEnd = lastAvailableUnitBlock;
       lastAvailableUnitBlock += 1;
+
+      newRecord.serialNumberBlock = createSerialNumberStr(
+        originalRecord.serialNumberBlock,
+        newUnitBlockStart,
+        newUnitBlockEnd,
+      );
 
       if (record.unitOwnerOrgUid) {
         newRecord.unitOwnerOrgUid = record.unitOwnerOrgUid;
@@ -217,6 +215,7 @@ export const split = async (req, res) => {
   } catch (err) {
     res.json({
       message: 'Error splitting unit',
+      error: err,
     });
   }
 };
