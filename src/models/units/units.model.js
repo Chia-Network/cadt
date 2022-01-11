@@ -1,16 +1,48 @@
 'use strict';
+
 import Sequelize from 'sequelize';
 import { sequelize } from '../database';
 import { Qualification, Vintage } from '../../models';
-
 import ModelTypes from './units.modeltypes.cjs';
 import rxjs from 'rxjs';
 
 const { Model } = Sequelize;
 
+const virtualColumns = {
+  unitBlockStart: {
+    type: Sequelize.VIRTUAL,
+    get() {
+      const rawValue = this.getDataValue('serialNumberBlock');
+      return rawValue.split('-')[0];
+    },
+    set(value) {
+      throw new Error('Do not try to set the `unitBlockStart` value!');
+    },
+  },
+  unitBlockEnd: {
+    type: Sequelize.VIRTUAL,
+    get() {
+      const rawValue = this.getDataValue('serialNumberBlock');
+      return rawValue.split('-')[1];
+    },
+  },
+  unitCount: {
+    type: Sequelize.VIRTUAL,
+    get() {
+      const rawValue = this.getDataValue('serialNumberBlock');
+      const blocks = rawValue.split('-');
+      const blockStart = Number(blocks[0].split(/(\d+)/)[1]);
+      const blockEnd = Number(blocks[1].split(/(\d+)/)[1]);
+      return blockEnd - blockStart;
+    },
+  },
+};
+
 class Unit extends Model {
   static changes = new rxjs.Subject();
-  static defaultColumns = Object.keys(ModelTypes);
+  static defaultColumns = Object.keys(
+    Object.assign({}, ModelTypes, virtualColumns),
+  );
 
   static associate() {
     Unit.hasOne(Vintage);
@@ -37,13 +69,11 @@ class Unit extends Model {
 
     Unit.changes.next(['units', orgUid]);
 
-    console.log(values);
-
     return super.destroy(values);
   }
 }
 
-Unit.init(ModelTypes, {
+Unit.init(Object.assign({}, ModelTypes, virtualColumns), {
   sequelize,
   modelName: 'unit',
   foreignKey: 'unitId',

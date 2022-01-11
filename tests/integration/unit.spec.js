@@ -2,7 +2,6 @@ import chai from 'chai';
 import supertest from 'supertest';
 import app from '../../src/server';
 import _ from 'lodash';
-import { exec } from 'child_process';
 
 import { WAIT_TIME } from '../../src/fullnode/simulator';
 
@@ -73,34 +72,12 @@ describe('Create Unit Integration', () => {
       splitRecord2.unitOwnerOrgUid,
     );
 
-    // The first split should have 9 units derived from its block start and block end
-    // The second unit should have 1 unit derived from its block start and block end
-    const splitRecord1UnitBlockStart =
-      splitRecord1.unitBlockStart.split(/(\d+)/);
-    const splitRecord1UnitBlockEnd = splitRecord1.unitBlockEnd.split(/(\d+)/);
-    const splitRecord1UnitCount =
-      Number(splitRecord1UnitBlockEnd[1]) -
-      Number(splitRecord1UnitBlockStart[1]);
-
-    expect(splitRecord1UnitCount).to.equal(9);
-
-    const splitRecord2UnitBlockStart =
-      splitRecord2.unitBlockStart.split(/(\d+)/);
-    const splitRecord2UnitBlockEnd = splitRecord2.unitBlockEnd.split(/(\d+)/);
-    const splitRecord2UnitCount =
-      Number(splitRecord2UnitBlockEnd[1]) -
-      Number(splitRecord2UnitBlockStart[1]);
-
-    expect(splitRecord2UnitCount).to.equal(1);
+    expect(splitRecord1.unitCount).to.equal(9);
+    expect(splitRecord2.unitCount).to.equal(1);
 
     // Expect the split unitscounts to add up to the original unit count
-    const originalUnitBlockStart = originalRecord.unitBlockStart.split(/(\d+)/);
-    const originalUnitBlockEnd = originalRecord.unitBlockEnd.split(/(\d+)/);
-    const originalUnitCount =
-      Number(originalUnitBlockEnd[1]) - Number(originalUnitBlockStart[1]);
-
-    expect(splitRecord1UnitCount + splitRecord2UnitCount).to.equal(
-      originalUnitCount,
+    expect(splitRecord1.unitCount + splitRecord2.unitCount).to.equal(
+      originalRecord.unitCount,
     );
 
     // The rest of the fields should match the original for each split unit
@@ -162,10 +139,9 @@ describe('Create Unit Integration', () => {
           expect(newRecord1.unitOwnerOrgUid).to.equal(
             splitRecord1.unitOwnerOrgUid,
           );
-          expect(newRecord1.unitBlockStart).to.equal(
-            splitRecord1.unitBlockStart,
+          expect(newRecord1.serialNumberBlock).to.equal(
+            splitRecord1.serialNumberBlock,
           );
-          expect(newRecord1.unitBlockEnd).to.equal(splitRecord1.unitBlockEnd);
           expect(newRecord1.countryJuridictionOfOwner).to.equal(
             splitRecord1.countryJuridictionOfOwner,
           );
@@ -189,10 +165,9 @@ describe('Create Unit Integration', () => {
           expect(newRecord2.unitOwnerOrgUid).to.equal(
             splitRecord2.unitOwnerOrgUid,
           );
-          expect(newRecord2.unitBlockStart).to.equal(
-            splitRecord2.unitBlockStart,
+          expect(newRecord1.serialNumberBlock).to.equal(
+            splitRecord1.serialNumberBlock,
           );
-          expect(newRecord2.unitBlockEnd).to.equal(splitRecord2.unitBlockEnd);
           expect(newRecord2.countryJuridictionOfOwner).to.equal(
             splitRecord2.countryJuridictionOfOwner,
           );
@@ -233,9 +208,13 @@ describe('Create Unit Integration', () => {
     // 6. verify the staging table was cleaned up
 
     const payload = {
-      unitBlockStart: 'AXJJFSLGHSHEJ1000',
-      unitBlockEnd: 'AXJJFSLGHSHEJ1010',
+      serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
       countryJuridictionOfOwner: 'USA',
+      unitType: 'removal',
+      unitIdentifier: 'XYZ',
+      unitStatus: 'Held',
+      cooresponingAdjustmentDeclaration: 'Commited',
+      correspondingAdjustmentStatus: 'Pending',
       inCountryJuridictionOfOwner: 'Maryland',
       tokenIssuanceHash: '0x7777',
     };
@@ -295,8 +274,9 @@ describe('Create Unit Integration', () => {
           expect(newRecord.warehouseUnitId).to.equal(warehouseUnitId);
           expect(newRecord.orgUid).to.equal(orgUid);
           expect(newRecord.unitOwnerOrgUid).to.equal(orgUid);
-          expect(newRecord.unitBlockStart).to.equal(payload.unitBlockStart);
-          expect(newRecord.unitBlockEnd).to.equal(payload.unitBlockEnd);
+          expect(newRecord.serialNumberBlock).to.equal(
+            payload.serialNumberBlock,
+          );
           expect(newRecord.countryJuridictionOfOwner).to.equal(
             payload.countryJuridictionOfOwner,
           );
