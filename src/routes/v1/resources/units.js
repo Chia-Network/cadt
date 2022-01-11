@@ -30,7 +30,7 @@ const baseSchema = {
   countryJuridictionOfOwner: Joi.string().required(),
   inCountryJuridictionOfOwner: Joi.string().required(),
   intendedBuyerOrgUid: Joi.string().optional(),
-  tags: Joi.string().optional(),
+  tags: Joi.string().allow('').optional(),
   tokenIssuanceHash: Joi.string().required(),
   marketplaceIdentifier: Joi.string().optional(),
 };
