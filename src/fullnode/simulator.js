@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { Project, Unit, Staging } from '../models';
-const WAIT_TIME = 1500;
+export const WAIT_TIME = 1500;
 
 // Simulate 30 seconds passing before commited to node
 
@@ -52,7 +52,6 @@ export const createProjectRecord = (uuid, encodedRecord, stagingRecordId) => {
         });
       }
 
-      delete record.id;
       await Project.create({
         ...record,
         warehouseProjectId: uuid,
@@ -106,7 +105,7 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
   let record = JSON.parse(atob(encodedRecord));
   record = Array.isArray(record) ? _.head(record) : record;
 
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     setTimeout(async () => {
       if (stagingRecordId) {
         await Staging.destroy({
@@ -116,7 +115,6 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
         });
       }
 
-      delete record.id;
       await Unit.create({
         warehouseUnitId: uuid,
         ...record,

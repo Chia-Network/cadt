@@ -19,7 +19,6 @@ const querySchema = Joi.object()
   .with('page', 'limit');
 
 UnitRouter.get('/', validator.query(querySchema), (req, res) => {
-  console.log('UNIT>JS FILE', req.query);
   return req.query.warehouseUnitId
     ? UnitController.findOne(req, res)
     : UnitController.findAll(req, res);
