@@ -58,15 +58,20 @@ describe('Create Unit Integration', () => {
 
     expect(stagingRes.statusCode).to.equal(200);
 
+    // Now push the staging table live
     const commitRes = await supertest(app).post('/v1/staging/commit');
     expect(stagingRes.statusCode).to.equal(200);
     expect(commitRes.body).to.deep.equal({
       message: 'Staging Table committed to full node',
     });
 
+    // After commiting the true flag should be set to this staging record
     const stagingRes2 = await supertest(app).get('/v1/staging');
     expect(_.head(stagingRes2.body).commited).to.equal(true);
 
+    // The node simulator runs on an async process, we are importing
+    // the WAIT_TIME constant from the simulator, padding it and waiting for the
+    // appropriate amount of time for the simulator to finish its operations
     await new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
