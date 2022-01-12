@@ -25,12 +25,16 @@ class CoBenefit extends Model {
   }
 
   static async create(values, options) {
-    CoBenefitMirror.create(values, options);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      CoBenefitMirror.create(values, options);
+    }
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    CoBenefitMirror.destroy(values);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      CoBenefitMirror.destroy(values);
+    }
     return super.destroy(values);
   }
 }

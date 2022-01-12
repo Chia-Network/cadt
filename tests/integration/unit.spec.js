@@ -198,7 +198,7 @@ describe('Create Unit Integration', () => {
     });
   });
 
-  it.skip('creates a new unit end-to-end', async () => {
+  it('creates a new unit end-to-end', async () => {
     // 1. Create a new unit
     // 2. verify the unit is in the staging tables
     // 3. verify the inferred data has been added to the unit record
@@ -267,6 +267,12 @@ describe('Create Unit Integration', () => {
     await new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
+          // Make sure the staging table is cleaned up
+          const stagingRes3 = await supertest(app).get('/v1/staging');
+
+          // There should be no staging records left
+          expect(stagingRes3.body.length).to.equal(0);
+
           const warehouseRes = await supertest(app)
             .get(`/v1/units`)
             .query({ warehouseUnitId });
@@ -289,17 +295,11 @@ describe('Create Unit Integration', () => {
             payload.tokenIssuanceHash,
           );
 
-          // Make sure the staging table is cleaned up
-          const stagingRes3 = await supertest(app).get('/v1/staging');
-
-          // There should be no staging records left
-          expect(stagingRes3.body.length).to.equal(0);
-
           resolve();
         } catch (err) {
           reject(err);
         }
-      }, WAIT_TIME + 1000);
+      }, WAIT_TIME * 2);
     });
   });
 });

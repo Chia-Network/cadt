@@ -26,12 +26,16 @@ class RelatedProject extends Model {
   }
 
   static async create(values, options) {
-    RelatedProjectMirror.create(values, options);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      RelatedProjectMirror.create(values, options);
+    }
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    RelatedProjectMirror.destroy(values);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      RelatedProjectMirror.destroy(values);
+    }
     return super.destroy(values);
   }
 }

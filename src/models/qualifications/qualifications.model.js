@@ -26,12 +26,16 @@ class Qualification extends Model {
   }
 
   static async create(values, options) {
-    QualificationMirror.create(values, options);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      QualificationMirror.create(values, options);
+    }
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    QualificationMirror.destroy(values);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      QualificationMirror.destroy(values);
+    }
     return super.destroy(values);
   }
 }

@@ -15,7 +15,7 @@ const unitsBaseSchema = {
           `serialNumberBlock must have a positive non-zero number, received ${unitCount}`,
         );
       } else {
-        return true;
+        return value;
       }
     })
     .required(),
