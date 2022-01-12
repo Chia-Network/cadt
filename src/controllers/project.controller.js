@@ -19,7 +19,7 @@ import {
   columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
-} from './helpers';
+} from '../utils/helpers';
 
 export const create = async (req, res) => {
   const newRecord = _.cloneDeep(req.body);
@@ -57,7 +57,7 @@ export const create = async (req, res) => {
 export const findAll = async (req, res) => {
   let { page, limit, search, orgUid, columns } = req.query;
   let where = orgUid ? { orgUid } : undefined;
-  
+
   const includes = [
     ProjectLocation,
     Qualification,
@@ -98,7 +98,7 @@ export const findAll = async (req, res) => {
       ...columnsToInclude(columns, includes),
       ...paginationParams(page, limit),
     };
-    
+
     results = await Project.findAndCountAll({
       distinct: true,
       where,
