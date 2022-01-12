@@ -4,11 +4,6 @@ import * as fullNode from '../fullnode';
 import { Staging, StagingMock, Project, Unit } from '../models';
 
 export const findAll = async (req, res) => {
-  if (req.query.useMock) {
-    res.json(StagingMock.findAll());
-    return;
-  }
-
   const stagingData = await Staging.findAll();
 
   const response = await Promise.all(

@@ -110,17 +110,6 @@ export const findAll = async (req, res) => {
 };
 
 export const findOne = async (req, res) => {
-  if (req.query.useMock) {
-    const record = ProjectMock.findOne(req.query.id);
-    if (record) {
-      res.json(record);
-    } else {
-      res.json({ message: 'Not Found' });
-    }
-
-    return;
-  }
-
   const query = {
     where: { warehouseProjectId: res.query.warehouseProjectId },
     include: [
