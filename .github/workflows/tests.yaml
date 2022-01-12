@@ -1,0 +1,26 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  test:
+    name: NPM Tests
+    runs-on: ubuntu-latest
+    container:
+      image: node:lts-alpine
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: npm install
+        run: npm install
+
+      - name: npm tests
+        run: npm run test
