@@ -3,7 +3,7 @@ import { transformSerialNumberBlock } from '../utils/helpers';
 
 const unitsBaseSchema = {
   countryJuridictionOfOwner: Joi.string().required(),
-  inCountryJuridictionOfOwner: Joi.string().required(),
+  inCountryJuridictionOfOwner: Joi.string().optional(),
   // must be in the form ABC123-XYZ456
   serialNumberBlock: Joi.string()
     .regex(/[.*\D]+[0-9]+[-][.*\D]+[0-9]+$/)
@@ -26,10 +26,10 @@ const unitsBaseSchema = {
   unitStatus: Joi.string().valid('Held', 'For Sale', 'Retired').required(),
   unitTransactionType: Joi.string().optional(),
   unitStatusReason: Joi.string().optional(),
-  tokenIssuanceHash: Joi.string().required(),
+  tokenIssuanceHash: Joi.string().optional(),
   marketplaceIdentifier: Joi.string().optional(),
-  unitsIssuanceLocation: Joi.string().optional(),
-  unitRegistryLink: Joi.string().optional(),
+  unitsIssuanceLocation: Joi.string().required(),
+  unitRegistryLink: Joi.string().required(),
   unitMarketplaceLink: Joi.string().optional(),
   correspondingAdjustmentDeclaration: Joi.string()
     .valid('Commited', 'Not Required', 'Unknown')
