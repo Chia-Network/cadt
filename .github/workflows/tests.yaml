@@ -13,7 +13,7 @@ jobs:
     name: NPM Tests
     runs-on: ubuntu-latest
     container:
-      image: node:lts-alpine
+      image: node:lts
 
     steps:
       - name: Checkout Code
