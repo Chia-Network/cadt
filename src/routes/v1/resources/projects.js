@@ -38,4 +38,6 @@ ProjectRouter.delete(
   ProjectController.destroy,
 );
 
+ProjectRouter.post('/batch', ProjectController.batchUpload);
+
 export { ProjectRouter };

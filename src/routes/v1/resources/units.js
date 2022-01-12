@@ -36,4 +36,6 @@ UnitRouter.post(
   UnitController.split,
 );
 
+UnitRouter.post('/batch', UnitController.batchUpload);
+
 export { UnitRouter };

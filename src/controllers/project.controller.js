@@ -165,3 +165,58 @@ export const destroy = async (req, res) => {
     });
   }
 };
+
+export const batchUpload = async (req, res) => {
+  if (!_.get(req, 'files.csv')) {
+    res
+      .status(400)
+      .json({ message: 'Can not file the required csv file in request' });
+    return;
+  }
+
+  const csvFile = req.files.csv;
+  const buffer = csvFile.data;
+  const stream = Readable.from(buffer.toString('utf8'));
+
+  csv()
+    .fromStream(stream)
+    .subscribe(
+      async (newRecord) => {
+        // When creating new projects assign a uuid to is so
+        // multiple organizations will always have unique ids
+        const uuid = uuidv4();
+
+        newRecord.warehouseProjectId = uuid;
+
+        // All new projects are assigned to the home orgUid
+        const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+        newRecord.orgUid = orgUid;
+
+        // The new project is getting created in this registry
+        newRecord.currentRegistry = orgUid;
+
+        // Unless we are overriding, a new project originates in this org
+        if (!newRecord.registryOfOrigin) {
+          newRecord.registryOfOrigin = orgUid;
+        }
+
+        try {
+          await Staging.create({
+            uuid,
+            action: 'INSERT',
+            table: 'Projects',
+            data: JSON.stringify([newRecord]),
+          });
+          res.json('Added project to stage');
+        } catch (err) {
+          res.json(err);
+        }
+      },
+      (err) => {
+        req
+          .status(400)
+          .json({ message: 'There was an error processing the csv file' });
+      },
+      () => res.json({ message: 'CSV processing complete' }),
+    );
+};
