@@ -38,7 +38,9 @@ const unitsBaseSchema = {
   correspondingAdjustmentStatus: Joi.string()
     .valid('Not Started', 'Pending')
     .required(),
-  vintages: Joi.object({}).optional(),
+  vintages: Joi.alternatives()
+    .try(newVintageScheme, existingVintageSchema)
+    .optional(),
 };
 
 export const unitsPostSchema = Joi.object({

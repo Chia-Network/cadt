@@ -16,6 +16,8 @@ jobs:
       image: node:lts
 
     steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
       - name: Checkout Code
         uses: actions/checkout@v2
 
