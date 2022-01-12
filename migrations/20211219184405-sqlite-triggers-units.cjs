@@ -21,7 +21,7 @@ module.exports = {
           marketplaceIdentifier,
           unitRegistryLink,
           unitMarketplaceLink,
-          cooresponingAdjustmentDeclaration,
+          correspondingAdjustmentDeclaration,
           correspondingAdjustmentStatus
         ) VALUES (
           new.warehouseUnitId,
@@ -39,7 +39,7 @@ module.exports = {
           new.marketplaceIdentifier,
           new.unitRegistryLink,
           new.unitMarketplaceLink,
-          new.cooresponingAdjustmentDeclaration,
+          new.correspondingAdjustmentDeclaration,
           new.correspondingAdjustmentStatus
         );
       END;`);
@@ -69,7 +69,7 @@ module.exports = {
           marketplaceIdentifier,
           unitRegistryLink,
           unitMarketplaceLink,
-          cooresponingAdjustmentDeclaration,
+          correspondingAdjustmentDeclaration,
           correspondingAdjustmentStatus
         ) VALUES (
           new.warehouseUnitId,
@@ -87,7 +87,7 @@ module.exports = {
           new.marketplaceIdentifier,
           new.unitRegistryLink,
           new.unitMarketplaceLink,
-          new.cooresponingAdjustmentDeclaration,
+          new.correspondingAdjustmentDeclaration,
           new.correspondingAdjustmentStatus
         );
       END;

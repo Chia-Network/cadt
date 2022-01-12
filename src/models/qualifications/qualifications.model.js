@@ -6,6 +6,7 @@ import { Project } from '../projects';
 import { Unit } from '../units';
 
 import ModelTypes from './qualifications.modeltypes.cjs';
+import { QualificationMirror } from './qualifications.model.mirror';
 
 class Qualification extends Model {
   static associate() {
@@ -22,6 +23,16 @@ class Qualification extends Model {
       through: 'qualification_unit',
       as: 'unit',
     });
+  }
+
+  static async create(values, options) {
+    QualificationMirror.create(values, options);
+    return super.create(values, options);
+  }
+
+  static async destroy(values) {
+    QualificationMirror.destroy(values);
+    return super.destroy(values);
   }
 }
 

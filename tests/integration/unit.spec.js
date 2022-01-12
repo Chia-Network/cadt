@@ -213,7 +213,7 @@ describe('Create Unit Integration', () => {
       unitType: 'removal',
       unitIdentifier: 'XYZ',
       unitStatus: 'Held',
-      cooresponingAdjustmentDeclaration: 'Commited',
+      correspondingAdjustmentDeclaration: 'Commited',
       correspondingAdjustmentStatus: 'Pending',
       inCountryJuridictionOfOwner: 'Maryland',
       tokenIssuanceHash: '0x7777',
