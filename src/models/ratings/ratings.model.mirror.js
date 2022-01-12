@@ -4,7 +4,7 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 
 import { sequelizeMirror } from '../database';
-import ModelTypes from './rating.modeltypes.cjs';
+import ModelTypes from './ratings.modeltypes.cjs';
 
 class RatingMirror extends Model {}
 

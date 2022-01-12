@@ -16,9 +16,6 @@ const virtualColumns = {
       const rawValue = this.getDataValue('serialNumberBlock');
       return rawValue.split('-')[0];
     },
-    set(value) {
-      throw new Error('Do not try to set the `unitBlockStart` value!');
-    },
   },
   unitBlockEnd: {
     type: Sequelize.VIRTUAL,
