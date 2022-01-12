@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { transformSerialNumberBlock } from '../utils/helpers';
+import { newVintageScheme, existingVintageSchema } from './vintages.validation';
 
 const unitsBaseSchema = {
   countryJuridictionOfOwner: Joi.string().required(),
@@ -14,7 +15,7 @@ const unitsBaseSchema = {
           `serialNumberBlock must have a positive non-zero number, received ${unitCount}`,
         );
       } else {
-        return true;
+        return value;
       }
     })
     .required(),
@@ -37,6 +38,7 @@ const unitsBaseSchema = {
   correspondingAdjustmentStatus: Joi.string()
     .valid('Not Started', 'Pending')
     .required(),
+  vintages: Joi.object({}).optional(),
 };
 
 export const unitsPostSchema = Joi.object({

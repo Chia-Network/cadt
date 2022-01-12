@@ -38,7 +38,9 @@ class Project extends Model {
   }
 
   static async create(values, options) {
-    ProjectMirror.create(values, options);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      ProjectMirror.create(values, options);
+    }
     const createResult = await super.create(values, options);
 
     const { orgUid } = values;
@@ -49,7 +51,9 @@ class Project extends Model {
   }
 
   static async destroy(values) {
-    ProjectMirror.destroy(values);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      ProjectMirror.destroy(values);
+    }
     const record = await super.findOne(values.where);
     const { orgUid } = record.dataValues;
 

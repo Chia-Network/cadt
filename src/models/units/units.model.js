@@ -63,7 +63,10 @@ class Unit extends Model {
   }
 
   static async create(values, options) {
-    UnitMirror.create(values, options);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      UnitMirror.create(values, options);
+    }
+
     const createResult = await super.create(values, options);
     const { orgUid } = createResult;
 
@@ -73,7 +76,9 @@ class Unit extends Model {
   }
 
   static async destroy(values) {
-    UnitMirror.destroy(values);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      UnitMirror.destroy(values);
+    }
     const record = await super.findOne(values.where);
     const { orgUid } = record.dataValues;
 

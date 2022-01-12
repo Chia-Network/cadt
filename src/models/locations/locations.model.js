@@ -27,12 +27,16 @@ class ProjectLocation extends Model {
   }
 
   static async create(values, options) {
-    ProjectLocationMirror.create(values, options);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      ProjectLocationMirror.create(values, options);
+    }
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    ProjectLocationMirror.destroy(values);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      ProjectLocationMirror.destroy(values);
+    }
     return super.destroy(values);
   }
 }

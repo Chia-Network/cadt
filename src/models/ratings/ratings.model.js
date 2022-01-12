@@ -25,12 +25,16 @@ class Rating extends Model {
   }
 
   static async create(values, options) {
-    RatingMirror.create(values, options);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      RatingMirror.create(values, options);
+    }
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    RatingMirror.destroy(values);
+    if (process.env.DB_USE_MIRROR === 'true') {
+      RatingMirror.destroy(values);
+    }
     return super.destroy(values);
   }
 }
