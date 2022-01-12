@@ -8,12 +8,13 @@
   },
   "scripts": {
     "requirements-check": "node --experimental-json-modules check_node_version.js",
-    "start": "node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
-    "test": "mocha tests/**/*.spec.js --reporter spec --exit --timeout 30000",
+    "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
+    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test mocha tests/**/*.spec.js --reporter spec --exit --timeout 30000",
     "release": "./node_modules/.bin/standard-version && git push --tags",
     "postinstall": "npm run requirements-check",
-    "resetdb": "rm ./data.sqlite3 && npx sequelize-cli db:migrate --env local && npx sequelize-cli db:seed:all --debug --env local",
-    "resetReportingdb": "npx sequelize-cli db:drop --env reporting && npx sequelize-cli db:create --env reporting && npx sequelize-cli db:migrate --env reporting --debug"
+    "resetDb": "rm -f ./data.sqlite3 && npx sequelize-cli db:migrate --env local && npx sequelize-cli db:seed:all --debug --env local",
+    "resetTestDb": "rm -f ./test.sqlite3 && npx sequelize-cli db:migrate --env test && npx sequelize-cli db:seed:all --debug --env test",
+    "resetMirrorDb": "npx sequelize-cli db:drop --env mirror && npx sequelize-cli db:create --env mirror && npx sequelize-cli db:migrate --env mirror --debug"
   },
   "dependencies": {
     "body-parser": "^1.19.0",

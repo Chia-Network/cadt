@@ -1,17 +1,21 @@
 'use strict';
+
 import Sequelize from 'sequelize';
 import rxjs from 'rxjs';
 const { Model } = Sequelize;
 
 import { sequelize } from '../database';
 
-import { RelatedProject } from './../related-projects';
-import { Vintage } from './../vintages';
-import { Qualification } from './../qualifications';
-import { ProjectLocation } from './../locations';
-import { CoBenefit } from './../co-benefits';
+import {
+  RelatedProject,
+  Vintage,
+  Qualification,
+  ProjectLocation,
+  CoBenefit,
+} from '../';
 
 import ModelTypes from './projects.modeltypes.cjs';
+import { ProjectMirror } from './projects.model.mirror';
 
 class Project extends Model {
   static changes = new rxjs.Subject();
@@ -23,9 +27,18 @@ class Project extends Model {
     Project.hasMany(Vintage);
     Project.hasMany(CoBenefit);
     Project.hasMany(RelatedProject);
+
+    if (process.env.DB_USE_MIRROR === 'true') {
+      ProjectMirror.hasMany(ProjectLocation);
+      ProjectMirror.hasMany(Qualification);
+      ProjectMirror.hasMany(Vintage);
+      ProjectMirror.hasMany(CoBenefit);
+      ProjectMirror.hasMany(RelatedProject);
+    }
   }
 
   static async create(values, options) {
+    ProjectMirror.create(values, options);
     const createResult = await super.create(values, options);
 
     const { orgUid } = values;
@@ -36,6 +49,7 @@ class Project extends Model {
   }
 
   static async destroy(values) {
+    ProjectMirror.destroy(values);
     const record = await super.findOne(values.where);
     const { orgUid } = record.dataValues;
 
@@ -141,6 +155,8 @@ class Project extends Model {
       fields = columns.join(', ');
     }
 
+    // hyphens cause errors in sqlite, but we can replace it with a + and
+    // the fulltext search will work the same
     searchStr = searchStr = searchStr.replaceAll('-', '+');
 
     let sql = `SELECT ${fields} FROM projects_fts WHERE projects_fts MATCH :search`;

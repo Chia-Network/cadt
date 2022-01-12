@@ -48,7 +48,7 @@ module.exports = {
           marketplaceIdentifier,
           unitRegistryLink,
           unitMarketplaceLink,
-          cooresponingAdjustmentDeclaration,
+          correspondingAdjustmentDeclaration,
           correspondingAdjustmentStatus
         );
       `);
