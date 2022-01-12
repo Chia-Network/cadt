@@ -2,7 +2,7 @@
 
 import Sequelize from 'sequelize';
 import { sequelize } from '../database';
-import { Qualification, Vintage } from '../../models';
+import {CoBenefit, ProjectLocation, Qualification, RelatedProject, Vintage} from '../../models';
 import ModelTypes from './units.modeltypes.cjs';
 import rxjs from 'rxjs';
 
@@ -70,6 +70,130 @@ class Unit extends Model {
     Unit.changes.next(['units', orgUid]);
 
     return super.destroy(values);
+  }
+  
+  static async fts(searchStr, orgUid, pagination, columns = []) {
+    const dialect = sequelize.getDialect();
+    
+    const handlerMap = {
+      sqlite: Unit.findAllSqliteFts,
+      mysql: Unit.findAllMySQLFts,
+    };
+    
+    return handlerMap[dialect](
+      searchStr,
+      orgUid,
+      pagination,
+      columns
+        .filter((col) => ![
+          'createdAt',
+          'updatedAt',
+          'unitBlockStart',
+          'unitBlockEnd',
+          'unitCount'].includes(col))
+    );
+  }
+  
+  static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
+    const { offset, limit } = pagination;
+    
+    let fields = '*';
+    if (columns.length) {
+      fields = columns.join(', ');
+    }
+    
+    let sql = `
+    SELECT ${fields} FROM units WHERE MATCH (
+        unitOwnerOrgUid,
+        countryJuridictionOfOwner,
+        inCountryJuridictionOfOwner,
+        serialNumberBlock,
+        unitIdentifier,
+        unitType,
+        intendedBuyerOrgUid,
+        marketplace,
+        tags,
+        unitStatus,
+        unitTransactionType,
+        unitStatusReason,
+        tokenIssuanceHash,
+        marketplaceIdentifier,
+        unitsIssuanceLocation,
+        unitRegistryLink,
+        unitMarketplaceLink,
+        cooresponingAdjustmentDeclaration,
+        correspondingAdjustmentStatus
+    ) AGAINST ":search"
+    `;
+    
+    if (orgUid) {
+      sql = `${sql} AND orgUid = :orgUid`;
+    }
+    
+    const replacements = { search: searchStr, orgUid };
+    
+    const count = (
+      await sequelize.query(sql, {
+        model: Unit,
+        mapToModel: true, // pass true here if you have any mapped fields
+        replacements,
+      })
+    ).length;
+    
+    if (limit && offset) {
+      sql = `${sql} ORDER BY relevance DESC LIMIT :limit OFFSET :offset`;
+    }
+    
+    return {
+      count,
+      rows: await sequelize.query(sql, {
+        model: Unit,
+        replacements: { ...replacements, ...{ offset, limit } },
+        mapToModel: true, // pass true here if you have any mapped fields
+        offset,
+        limit,
+      }),
+    };
+  }
+  
+  static async findAllSqliteFts(searchStr, orgUid, pagination, columns = []) {
+    const { offset, limit } = pagination;
+    
+    let fields = '*';
+    if (columns.length) {
+      fields = columns.join(', ');
+    }
+    
+    searchStr = searchStr = searchStr.replaceAll('-', '+');
+    
+    let sql = `SELECT ${fields} FROM units_fts WHERE units_fts MATCH :search`;
+    
+    if (orgUid) {
+      sql = `${sql} AND orgUid = :orgUid`;
+    }
+    
+    const replacements = { search: `${searchStr}*`, orgUid };
+    
+    const count = (
+      await sequelize.query(sql, {
+        model: Unit,
+        mapToModel: true, // pass true here if you have any mapped fields
+        replacements,
+      })
+    ).length;
+    
+    if (limit && offset) {
+      sql = `${sql} ORDER BY rank DESC LIMIT :limit OFFSET :offset`;
+    }
+    
+    return {
+      count,
+      rows: await sequelize.query(sql, {
+        model: Unit,
+        mapToModel: true, // pass true here if you have any mapped fields
+        replacements: { ...replacements, ...{ offset, limit } },
+      }),
+    };
   }
 }
 

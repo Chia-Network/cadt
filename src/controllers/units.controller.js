@@ -56,7 +56,7 @@ export const create = async (req, res, next) => {
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, columns, orgUid } = req.query;
+  let { page, limit, columns, orgUid, search } = req.query;
   let where = orgUid ? { orgUid } : undefined;
   
   const includes = [Qualification];
@@ -76,19 +76,28 @@ export const findAll = async (req, res) => {
   if (!columns.length) {
     columns = ['warehouseUnitId'];
   }
-
-  res.json(
-    optionallyPaginatedResponse(
-      await Unit.findAndCountAll({
-        where,
-        distinct: true,
-        ...columnsToInclude(columns, includes),
-        ...paginationParams(page, limit),
-      }),
-      page,
-      limit,
-    ),
-  );
+  
+  let results;
+  
+  if (search) {
+    results = await Unit.fts(
+      search,
+      orgUid,
+      paginationParams(page, limit),
+      columns,
+    );
+  }
+  
+  if (!results) {
+    results = await Unit.findAndCountAll({
+      where,
+      distinct: true,
+      ...columnsToInclude(columns, includes),
+      ...paginationParams(page, limit),
+    });
+  }
+  
+  res.json(optionallyPaginatedResponse(results, page, limit));
 };
 
 export const findOne = async (req, res) => {
