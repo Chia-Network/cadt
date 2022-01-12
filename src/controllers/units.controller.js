@@ -4,18 +4,7 @@ import _ from 'lodash';
 
 import { uuid as uuidv4 } from 'uuidv4';
 
-import {
-  Staging,
-  UnitMock,
-  Unit,
-  Qualification,
-  Vintage,
-  Organization,
-  ProjectLocation,
-  CoBenefit,
-  RelatedProject,
-  Project,
-} from '../models';
+import { Staging, Unit, Qualification, Vintage, Organization } from '../models';
 
 import {
   columnsToInclude,
@@ -189,6 +178,7 @@ export const split = async (req, res) => {
       const newUnitBlockStart = lastAvailableUnitBlock;
       lastAvailableUnitBlock += Number(record.unitCount);
       const newUnitBlockEnd = lastAvailableUnitBlock;
+      // move to the next available block
       lastAvailableUnitBlock += 1;
 
       newRecord.serialNumberBlock = createSerialNumberStr(
