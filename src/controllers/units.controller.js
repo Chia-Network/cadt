@@ -153,6 +153,7 @@ export const split = async (req, res) => {
     const originalRecordResult = await Unit.findByPk(req.body.warehouseUnitId);
     const originalRecord = originalRecordResult.dataValues;
 
+    // we dont need these fields for split
     delete originalRecord.createdAt;
     delete originalRecord.updatedAt;
 
