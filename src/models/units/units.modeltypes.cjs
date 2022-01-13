@@ -12,8 +12,8 @@ module.exports = {
   // organizations tables on the datalayer
   orgUid: Sequelize.STRING,
   unitOwnerOrgUid: Sequelize.STRING,
-  countryJuridictionOfOwner: Sequelize.STRING,
-  inCountryJuridictionOfOwner: Sequelize.STRING,
+  countryJurisdictionOfOwner: Sequelize.STRING,
+  inCountryJurisdictionOfOwner: Sequelize.STRING,
   serialNumberBlock: Sequelize.STRING,
   unitIdentifier: Sequelize.STRING,
   unitType: Sequelize.STRING,
