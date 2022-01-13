@@ -4,7 +4,6 @@ import { ProjectLocation } from './locations';
 import { Qualification } from './qualifications';
 import { Rating } from './ratings';
 import { RelatedProject } from './related-projects';
-import { Staging } from './staging';
 import { Unit } from './units';
 import { Vintage } from './vintages';
 
@@ -14,7 +13,6 @@ ProjectLocation.associate();
 Qualification.associate();
 Rating.associate();
 RelatedProject.associate();
-Staging.associate();
 Unit.associate();
 Vintage.associate();
 

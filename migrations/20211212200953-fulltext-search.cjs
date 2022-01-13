@@ -52,7 +52,7 @@ module.exports = {
           unitsIssuanceLocation,
           unitRegistryLink,
           unitMarketplaceLink,
-          cooresponingAdjustmentDeclaration,
+          correspondingAdjustmentDeclaration,
           correspondingAdjustmentStatus
         );
       `);

@@ -213,9 +213,11 @@ describe('Create Unit Integration', () => {
       unitType: 'removal',
       unitIdentifier: 'XYZ',
       unitStatus: 'Held',
-      cooresponingAdjustmentDeclaration: 'Commited',
+      correspondingAdjustmentDeclaration: 'Commited',
       correspondingAdjustmentStatus: 'Pending',
       inCountryJuridictionOfOwner: 'Maryland',
+      unitsIssuanceLocation: 'TEST_LOCATION',
+      unitRegistryLink: 'https://test.link',
       tokenIssuanceHash: '0x7777',
     };
     const unitRes = await supertest(app).post('/v1/units').send(payload);
@@ -265,6 +267,12 @@ describe('Create Unit Integration', () => {
     await new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
+          // Make sure the staging table is cleaned up
+          const stagingRes3 = await supertest(app).get('/v1/staging');
+
+          // There should be no staging records left
+          expect(stagingRes3.body.length).to.equal(0);
+
           const warehouseRes = await supertest(app)
             .get(`/v1/units`)
             .query({ warehouseUnitId });
@@ -287,17 +295,11 @@ describe('Create Unit Integration', () => {
             payload.tokenIssuanceHash,
           );
 
-          // Make sure the staging table is cleaned up
-          const stagingRes3 = await supertest(app).get('/v1/staging');
-
-          // There should be no staging records left
-          expect(stagingRes3.body.length).to.equal(0);
-
           resolve();
         } catch (err) {
           reject(err);
         }
-      }, WAIT_TIME + 1000);
+      }, WAIT_TIME * 2);
     });
   });
 });

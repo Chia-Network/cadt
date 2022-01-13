@@ -28,7 +28,7 @@ module.exports = {
   unitsIssuanceLocation: Sequelize.STRING,
   unitRegistryLink: Sequelize.STRING,
   unitMarketplaceLink: Sequelize.STRING,
-  cooresponingAdjustmentDeclaration: Sequelize.STRING,
+  correspondingAdjustmentDeclaration: Sequelize.STRING,
   correspondingAdjustmentStatus: Sequelize.STRING,
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,

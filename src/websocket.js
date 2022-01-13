@@ -50,6 +50,16 @@ export const connection = (socket) => {
         } else {
           callback('already subscribed');
         }
+      case 'staging':
+        if (!socketSubscriptions[socket.id].includes('staging')) {
+          Unit.changes.subscribe((data) => {
+            socket.emit('change:staging', data);
+          });
+          socketSubscriptions[socket.id].push('staging');
+          callback('success');
+        } else {
+          callback('already subscribed');
+        }
         break;
     }
   });

@@ -19,7 +19,7 @@ import {
   columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
-} from './helpers';
+} from '../utils/helpers';
 
 export const create = async (req, res) => {
   const newRecord = _.cloneDeep(req.body);
@@ -57,7 +57,7 @@ export const create = async (req, res) => {
 export const findAll = async (req, res) => {
   let { page, limit, search, orgUid, columns } = req.query;
   let where = orgUid ? { orgUid } : undefined;
-  
+
   const includes = [
     ProjectLocation,
     Qualification,
@@ -98,7 +98,7 @@ export const findAll = async (req, res) => {
       ...columnsToInclude(columns, includes),
       ...paginationParams(page, limit),
     };
-    
+
     results = await Project.findAndCountAll({
       distinct: true,
       where,
@@ -110,17 +110,6 @@ export const findAll = async (req, res) => {
 };
 
 export const findOne = async (req, res) => {
-  if (req.query.useMock) {
-    const record = ProjectMock.findOne(req.query.id);
-    if (record) {
-      res.json(record);
-    } else {
-      res.json({ message: 'Not Found' });
-    }
-
-    return;
-  }
-
   const query = {
     where: { warehouseProjectId: res.query.warehouseProjectId },
     include: [
@@ -175,4 +164,59 @@ export const destroy = async (req, res) => {
       message: 'Error adding project removal to stage',
     });
   }
+};
+
+export const batchUpload = async (req, res) => {
+  if (!_.get(req, 'files.csv')) {
+    res
+      .status(400)
+      .json({ message: 'Can not file the required csv file in request' });
+    return;
+  }
+
+  const csvFile = req.files.csv;
+  const buffer = csvFile.data;
+  const stream = Readable.from(buffer.toString('utf8'));
+
+  csv()
+    .fromStream(stream)
+    .subscribe(
+      async (newRecord) => {
+        // When creating new projects assign a uuid to is so
+        // multiple organizations will always have unique ids
+        const uuid = uuidv4();
+
+        newRecord.warehouseProjectId = uuid;
+
+        // All new projects are assigned to the home orgUid
+        const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+        newRecord.orgUid = orgUid;
+
+        // The new project is getting created in this registry
+        newRecord.currentRegistry = orgUid;
+
+        // Unless we are overriding, a new project originates in this org
+        if (!newRecord.registryOfOrigin) {
+          newRecord.registryOfOrigin = orgUid;
+        }
+
+        try {
+          await Staging.create({
+            uuid,
+            action: 'INSERT',
+            table: 'Projects',
+            data: JSON.stringify([newRecord]),
+          });
+          res.json('Added project to stage');
+        } catch (err) {
+          res.json(err);
+        }
+      },
+      (err) => {
+        req
+          .status(400)
+          .json({ message: 'There was an error processing the csv file' });
+      },
+      () => res.json({ message: 'CSV processing complete' }),
+    );
 };

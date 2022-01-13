@@ -25,7 +25,7 @@ module.exports = {
           unitsIssuanceLocation,
           unitRegistryLink,
           unitMarketplaceLink,
-          cooresponingAdjustmentDeclaration,
+          correspondingAdjustmentDeclaration,
           correspondingAdjustmentStatus
         ) VALUES (
           new.warehouseUnitId,
@@ -47,7 +47,7 @@ module.exports = {
           new.unitsIssuanceLocation,
           new.unitRegistryLink,
           new.unitMarketplaceLink,
-          new.cooresponingAdjustmentDeclaration,
+          new.correspondingAdjustmentDeclaration,
           new.correspondingAdjustmentStatus
         );
       END;`);
@@ -81,10 +81,8 @@ module.exports = {
           unitsIssuanceLocation,
           unitRegistryLink,
           unitMarketplaceLink,
-          cooresponingAdjustmentDeclaration,
-          correspondingAdjustmentStatus,
-          createdAt,
-          updatedAt
+          correspondingAdjustmentDeclaration,
+          correspondingAdjustmentStatus
         ) VALUES (
           new.warehouseUnitId,
           new.orgUid,
@@ -105,10 +103,8 @@ module.exports = {
           new.unitsIssuanceLocation,
           new.unitRegistryLink,
           new.unitMarketplaceLink,
-          new.cooresponingAdjustmentDeclaration,
-          new.correspondingAdjustmentStatus,
-          new.createdAt,
-          new.updatedAt
+          new.correspondingAdjustmentDeclaration,
+          new.correspondingAdjustmentStatus
         );
       END;
       `);

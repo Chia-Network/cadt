@@ -2,7 +2,8 @@
 
 import Sequelize from 'sequelize';
 import { sequelize } from '../database';
-import {CoBenefit, ProjectLocation, Qualification, RelatedProject, Vintage} from '../../models';
+import { Qualification, Vintage } from '../../models';
+import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
 import rxjs from 'rxjs';
 
@@ -14,9 +15,6 @@ const virtualColumns = {
     get() {
       const rawValue = this.getDataValue('serialNumberBlock');
       return rawValue.split('-')[0];
-    },
-    set(value) {
-      throw new Error('Do not try to set the `unitBlockStart` value!');
     },
   },
   unitBlockEnd: {
@@ -52,9 +50,23 @@ class Unit extends Model {
       through: 'qualification_unit',
       as: 'qualifications',
     });
+
+    if (process.env.DB_USE_MIRROR === 'true') {
+      UnitMirror.hasOne(Vintage);
+
+      // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
+      UnitMirror.belongsToMany(Qualification, {
+        through: 'qualification_unit',
+        as: 'qualifications',
+      });
+    }
   }
 
   static async create(values, options) {
+    if (process.env.DB_USE_MIRROR === 'true') {
+      UnitMirror.create(values, options);
+    }
+
     const createResult = await super.create(values, options);
     const { orgUid } = createResult;
 
@@ -64,6 +76,9 @@ class Unit extends Model {
   }
 
   static async destroy(values) {
+    if (process.env.DB_USE_MIRROR === 'true') {
+      UnitMirror.destroy(values);
+    }
     const record = await super.findOne(values.where);
     const { orgUid } = record.dataValues;
 

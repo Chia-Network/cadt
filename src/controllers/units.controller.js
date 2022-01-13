@@ -2,26 +2,19 @@
 
 import _ from 'lodash';
 
+import csv from 'csvtojson';
+import { Readable } from 'stream';
 import { uuid as uuidv4 } from 'uuidv4';
-import {
-  Staging,
-  UnitMock,
-  Unit,
-  Qualification,
-  Vintage,
-  Organization,
-  ProjectLocation,
-  CoBenefit,
-  RelatedProject,
-  Project,
-} from '../models';
+
+import { Staging, Unit, Qualification, Vintage, Organization } from '../models';
+
 import {
   columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
   transformSerialNumberBlock,
   createSerialNumberStr,
-} from './helpers';
+} from '../utils/helpers';
 
 export const create = async (req, res, next) => {
   try {
@@ -58,7 +51,7 @@ export const create = async (req, res, next) => {
 export const findAll = async (req, res) => {
   let { page, limit, columns, orgUid, search } = req.query;
   let where = orgUid ? { orgUid } : undefined;
-  
+
   const includes = [Qualification];
 
   if (columns) {
@@ -160,6 +153,7 @@ export const split = async (req, res) => {
     const originalRecordResult = await Unit.findByPk(req.body.warehouseUnitId);
     const originalRecord = originalRecordResult.dataValues;
 
+    // we dont need these fields for split
     delete originalRecord.createdAt;
     delete originalRecord.updatedAt;
 
@@ -195,6 +189,7 @@ export const split = async (req, res) => {
       const newUnitBlockStart = lastAvailableUnitBlock;
       lastAvailableUnitBlock += Number(record.unitCount);
       const newUnitBlockEnd = lastAvailableUnitBlock;
+      // move to the next available block
       lastAvailableUnitBlock += 1;
 
       newRecord.serialNumberBlock = createSerialNumberStr(
@@ -229,4 +224,49 @@ export const split = async (req, res) => {
       error: err,
     });
   }
+};
+
+export const batchUpload = async (req, res) => {
+  if (!_.get(req, 'files.csv')) {
+    res
+      .status(400)
+      .json({ message: 'Can not file the required csv file in request' });
+    return;
+  }
+
+  const csvFile = req.files.csv;
+  const buffer = csvFile.data;
+  const stream = Readable.from(buffer.toString('utf8'));
+
+  csv()
+    .fromStream(stream)
+    .subscribe(async (newRecord) => {
+      // When creating new unitd assign a uuid to is so
+      // multiple organizations will always have unique ids
+      const uuid = uuidv4();
+
+      newRecord.warehouseUnitId = uuid;
+
+      // All new units are assigned to the home orgUid
+      const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+      newRecord.orgUid = orgUid;
+      newRecord.unitOwnerOrgUid = orgUid;
+
+      const stagedData = {
+        uuid,
+        action: 'INSERT',
+        table: 'Units',
+        data: JSON.stringify([newRecord]),
+      };
+
+      await Staging.create(stagedData);
+    })
+    .on('error', (err) => {
+      req
+        .status(400)
+        .json({ message: 'There was an error processing the csv file' });
+    })
+    .on('done', (error) => {
+      res.json({ message: 'CSV processing complete' });
+    });
 };
