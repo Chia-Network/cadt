@@ -14,6 +14,9 @@ const virtualColumns = {
     type: Sequelize.VIRTUAL,
     get() {
       const rawValue = this.getDataValue('serialNumberBlock');
+      if (!rawValue) {
+        return undefined;
+      }
       return rawValue.split('-')[0];
     },
   },
@@ -21,6 +24,9 @@ const virtualColumns = {
     type: Sequelize.VIRTUAL,
     get() {
       const rawValue = this.getDataValue('serialNumberBlock');
+      if (!rawValue) {
+        return undefined;
+      }
       return rawValue.split('-')[1];
     },
   },
@@ -28,6 +34,9 @@ const virtualColumns = {
     type: Sequelize.VIRTUAL,
     get() {
       const rawValue = this.getDataValue('serialNumberBlock');
+      if (!rawValue) {
+        return undefined;
+      }
       const blocks = rawValue.split('-');
       const blockStart = Number(blocks[0].split(/(\d+)/)[1]);
       const blockEnd = Number(blocks[1].split(/(\d+)/)[1]);
@@ -90,14 +99,20 @@ class Unit extends Model {
   static async fts(searchStr, orgUid, pagination, columns = []) {
     const dialect = sequelize.getDialect();
     
-    if (!columns.includes('serialNumberBlock')) {
-      columns.push('serialNumberBlock');
-    }
-    
     const handlerMap = {
       sqlite: Unit.findAllSqliteFts,
       mysql: Unit.findAllMySQLFts,
     };
+    
+    // Check if we need to include the virtual field dep
+    for (const col of Object.keys(virtualColumns)) {
+      if (columns.includes(col)) {
+        if (!columns.includes('serialNumberBlock')) {
+          columns.push('serialNumberBlock');
+        }
+        break;
+      }
+    }
     
     return handlerMap[dialect](
       searchStr,
