@@ -1,7 +1,7 @@
 'use strict';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize } from '../database';
+import { sequelize, safeMirrorDbHandler } from '../database';
 import { Project, Unit } from '../../models';
 
 import ModelTypes from './vintages.modeltypes.cjs';
@@ -18,7 +18,7 @@ class Vintage extends Model {
       foreignKey: 'unitId',
     });
 
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       VintageMirror.belongsTo(Project, {
         targetKey: 'warehouseProjectId',
         foreignKey: 'projectId',
@@ -27,16 +27,22 @@ class Vintage extends Model {
         targetKey: 'warehouseUnitId',
         foreignKey: 'unitId',
       });
-    }
+    });
   }
 
   static async create(values, options) {
-    VintageMirror.create(values, options);
+    safeMirrorDbHandler(() => {
+      VintageMirror.create(values, options);
+    });
+
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    VintageMirror.destroy(values);
+    safeMirrorDbHandler(() => {
+      VintageMirror.destroy(values);
+    });
+
     return super.destroy(values);
   }
 }

@@ -5,4 +5,18 @@ dotenv.config();
 
 // possible values: local, test
 export const sequelize = new Sequelize(config[process.env.NODE_ENV]);
-export const sequelizeMirror = new Sequelize(config['mirror']);
+
+const mirrorConfig = process.env.NODE_ENV === 'local' ? 'mirror' : 'mirrorTest';
+export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
+
+export const safeMirrorDbHandler = (callback) => {
+  sequelizeMirror
+    .authenticate()
+    .then(() => {
+      console.log('Mirror DB connected');
+      callback();
+    })
+    .catch((err) => {
+      console.log('Mirror DB not connected');
+    });
+};
