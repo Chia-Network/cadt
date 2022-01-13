@@ -31,18 +31,12 @@ class Vintage extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => {
-      VintageMirror.create(values, options);
-    });
-
+    safeMirrorDbHandler(() => VintageMirror.create(values, options));
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    safeMirrorDbHandler(() => {
-      VintageMirror.destroy(values);
-    });
-
+    safeMirrorDbHandler(() => VintageMirror.destroy(values));
     return super.destroy(values);
   }
 }

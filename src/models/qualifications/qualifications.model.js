@@ -38,17 +38,12 @@ class Qualification extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => {
-      QualificationMirror.create(values, options);
-    });
-
+    safeMirrorDbHandler(() => QualificationMirror.create(values, options));
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    safeMirrorDbHandler(() => {
-      QualificationMirror.destroy(values);
-    });
+    safeMirrorDbHandler(() => QualificationMirror.destroy(values));
     return super.destroy(values);
   }
 }

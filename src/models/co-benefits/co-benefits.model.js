@@ -25,18 +25,12 @@ class CoBenefit extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => {
-      CoBenefitMirror.create(values, options);
-    });
-
+    safeMirrorDbHandler(() => CoBenefitMirror.create(values, options));
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    safeMirrorDbHandler(() => {
-      CoBenefitMirror.destroy(values);
-    });
-
+    safeMirrorDbHandler(() => CoBenefitMirror.destroy(values));
     return super.destroy(values);
   }
 }

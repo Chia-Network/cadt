@@ -38,9 +38,7 @@ class Project extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => {
-      ProjectMirror.create(values, options);
-    });
+    safeMirrorDbHandler(() => ProjectMirror.create(values, options));
 
     const createResult = await super.create(values, options);
 
@@ -52,9 +50,7 @@ class Project extends Model {
   }
 
   static async destroy(values) {
-    safeMirrorDbHandler(() => {
-      ProjectMirror.destroy(values);
-    });
+    safeMirrorDbHandler(() => ProjectMirror.destroy(values));
 
     const record = await super.findOne(values.where);
     const { orgUid } = record.dataValues;

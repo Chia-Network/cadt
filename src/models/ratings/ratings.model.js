@@ -25,18 +25,12 @@ class Rating extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => {
-      RatingMirror.create(values, options);
-    });
-
+    safeMirrorDbHandler(() => RatingMirror.create(values, options));
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    safeMirrorDbHandler(() => {
-      RatingMirror.destroy(values);
-    });
-
+    safeMirrorDbHandler(() => RatingMirror.destroy(values));
     return super.destroy(values);
   }
 }
