@@ -90,6 +90,10 @@ class Unit extends Model {
   static async fts(searchStr, orgUid, pagination, columns = []) {
     const dialect = sequelize.getDialect();
     
+    if (!columns.includes('serialNumberBlock')) {
+      columns.push('serialNumberBlock');
+    }
+    
     const handlerMap = {
       sqlite: Unit.findAllSqliteFts,
       mysql: Unit.findAllMySQLFts,
