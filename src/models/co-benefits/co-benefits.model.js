@@ -3,7 +3,7 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 
 import { CoBenefitMirror } from './co-benefits.model.mirror';
-import { sequelize } from '../database';
+import { sequelize, safeMirrorDbHandler } from '../database';
 import { Project } from '../projects';
 import ModelTypes from './co-benifets.modeltypes.cjs';
 
@@ -15,26 +15,28 @@ class CoBenefit extends Model {
       foreignKey: 'projectId',
     });
 
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       CoBenefitMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
         foreignKey: 'projectId',
       });
-    }
+    });
   }
 
   static async create(values, options) {
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       CoBenefitMirror.create(values, options);
-    }
+    });
+
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       CoBenefitMirror.destroy(values);
-    }
+    });
+
     return super.destroy(values);
   }
 }

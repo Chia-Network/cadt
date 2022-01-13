@@ -9,6 +9,10 @@ module.exports = {
     dialect: 'sqlite',
     storage: './test.sqlite3',
   },
+  mirrorTest: {
+    dialect: 'sqlite',
+    storage: './testMirror.sqlite3',
+  },
   mirror: {
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,

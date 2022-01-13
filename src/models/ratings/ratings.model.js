@@ -1,7 +1,7 @@
 'use strict';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize } from '../database';
+import { sequelize, safeMirrorDbHandler } from '../database';
 import { Project } from '../projects/index';
 
 import ModelTypes from './ratings.modeltypes.cjs';
@@ -15,26 +15,28 @@ class Rating extends Model {
       foreignKey: 'projectId',
     });
 
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       RatingMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
         foreignKey: 'projectId',
       });
-    }
+    });
   }
 
   static async create(values, options) {
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       RatingMirror.create(values, options);
-    }
+    });
+
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       RatingMirror.destroy(values);
-    }
+    });
+
     return super.destroy(values);
   }
 }

@@ -3,7 +3,7 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 
-import { sequelize } from '../database';
+import { sequelize, safeMirrorDbHandler } from '../database';
 import { Project } from '../projects';
 
 import ModelTypes from './locations.modeltypes.cjs';
@@ -17,26 +17,28 @@ class ProjectLocation extends Model {
       foreignKey: 'projectId',
     });
 
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       ProjectLocationMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
         foreignKey: 'projectId',
       });
-    }
+    });
   }
 
   static async create(values, options) {
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       ProjectLocationMirror.create(values, options);
-    }
+    });
+
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       ProjectLocationMirror.destroy(values);
-    }
+    });
+
     return super.destroy(values);
   }
 }

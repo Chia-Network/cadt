@@ -4,7 +4,7 @@ import Sequelize from 'sequelize';
 import rxjs from 'rxjs';
 const { Model } = Sequelize;
 
-import { sequelize } from '../database';
+import { sequelize, safeMirrorDbHandler } from '../database';
 
 import {
   RelatedProject,
@@ -28,19 +28,20 @@ class Project extends Model {
     Project.hasMany(CoBenefit);
     Project.hasMany(RelatedProject);
 
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       ProjectMirror.hasMany(ProjectLocation);
       ProjectMirror.hasMany(Qualification);
       ProjectMirror.hasMany(Vintage);
       ProjectMirror.hasMany(CoBenefit);
       ProjectMirror.hasMany(RelatedProject);
-    }
+    });
   }
 
   static async create(values, options) {
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       ProjectMirror.create(values, options);
-    }
+    });
+
     const createResult = await super.create(values, options);
 
     const { orgUid } = values;
@@ -51,9 +52,10 @@ class Project extends Model {
   }
 
   static async destroy(values) {
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       ProjectMirror.destroy(values);
-    }
+    });
+
     const record = await super.findOne(values.where);
     const { orgUid } = record.dataValues;
 

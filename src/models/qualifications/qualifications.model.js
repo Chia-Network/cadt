@@ -1,7 +1,7 @@
 'use strict';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize } from '../database';
+import { sequelize, safeMirrorDbHandler } from '../database';
 import { Project } from '../projects';
 import { Unit } from '../units';
 
@@ -23,19 +23,32 @@ class Qualification extends Model {
       through: 'qualification_unit',
       as: 'unit',
     });
+
+    safeMirrorDbHandler(() => {
+      QualificationMirror.belongsTo(Project, {
+        targetKey: 'warehouseProjectId',
+        foreignKey: 'projectId',
+      });
+
+      QualificationMirror.belongsToMany(Unit, {
+        through: 'qualification_unit',
+        as: 'unit',
+      });
+    });
   }
 
   static async create(values, options) {
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       QualificationMirror.create(values, options);
-    }
+    });
+
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    if (process.env.DB_USE_MIRROR === 'true') {
+    safeMirrorDbHandler(() => {
       QualificationMirror.destroy(values);
-    }
+    });
     return super.destroy(values);
   }
 }
