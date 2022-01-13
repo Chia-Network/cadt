@@ -27,18 +27,12 @@ class ProjectLocation extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => {
-      ProjectLocationMirror.create(values, options);
-    });
-
+    safeMirrorDbHandler(() => ProjectLocationMirror.create(values, options));
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    safeMirrorDbHandler(() => {
-      ProjectLocationMirror.destroy(values);
-    });
-
+    safeMirrorDbHandler(() => ProjectLocationMirror.destroy(values));
     return super.destroy(values);
   }
 }
