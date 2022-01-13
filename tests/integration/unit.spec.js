@@ -81,11 +81,11 @@ describe('Create Unit Integration', () => {
     );
 
     // The rest of the fields should match the original for each split unit
-    expect(splitRecord1.countryJuridictionOfOwner).to.equal(
-      unitRecord.countryJuridictionOfOwner,
+    expect(splitRecord1.countryJurisdictionOfOwner).to.equal(
+      unitRecord.countryJurisdictionOfOwner,
     );
-    expect(splitRecord1.inCountryJuridictionOfOwner).to.equal(
-      unitRecord.inCountryJuridictionOfOwner,
+    expect(splitRecord1.inCountryJurisdictionOfOwner).to.equal(
+      unitRecord.inCountryJurisdictionOfOwner,
     );
     expect(splitRecord1.intendedBuyerOrgUid).to.equal(
       unitRecord.intendedBuyerOrgUid,
@@ -95,11 +95,11 @@ describe('Create Unit Integration', () => {
       unitRecord.tokenIssuanceHash,
     );
 
-    expect(splitRecord2.countryJuridictionOfOwner).to.equal(
-      unitRecord.countryJuridictionOfOwner,
+    expect(splitRecord2.countryJurisdictionOfOwner).to.equal(
+      unitRecord.countryJurisdictionOfOwner,
     );
-    expect(splitRecord2.inCountryJuridictionOfOwner).to.equal(
-      unitRecord.inCountryJuridictionOfOwner,
+    expect(splitRecord2.inCountryJurisdictionOfOwner).to.equal(
+      unitRecord.inCountryJurisdictionOfOwner,
     );
     expect(splitRecord2.intendedBuyerOrgUid).to.equal(
       unitRecord.intendedBuyerOrgUid,
@@ -142,11 +142,11 @@ describe('Create Unit Integration', () => {
           expect(newRecord1.serialNumberBlock).to.equal(
             splitRecord1.serialNumberBlock,
           );
-          expect(newRecord1.countryJuridictionOfOwner).to.equal(
-            splitRecord1.countryJuridictionOfOwner,
+          expect(newRecord1.countryJurisdictionOfOwner).to.equal(
+            splitRecord1.countryJurisdictionOfOwner,
           );
-          expect(newRecord1.inCountryJuridictionOfOwner).to.equal(
-            splitRecord1.inCountryJuridictionOfOwner,
+          expect(newRecord1.inCountryJurisdictionOfOwner).to.equal(
+            splitRecord1.inCountryJurisdictionOfOwner,
           );
           expect(newRecord1.tokenIssuanceHash).to.equal(
             splitRecord1.tokenIssuanceHash,
@@ -168,11 +168,11 @@ describe('Create Unit Integration', () => {
           expect(newRecord1.serialNumberBlock).to.equal(
             splitRecord1.serialNumberBlock,
           );
-          expect(newRecord2.countryJuridictionOfOwner).to.equal(
-            splitRecord2.countryJuridictionOfOwner,
+          expect(newRecord2.countryJurisdictionOfOwner).to.equal(
+            splitRecord2.countryJurisdictionOfOwner,
           );
-          expect(newRecord2.inCountryJuridictionOfOwner).to.equal(
-            splitRecord2.inCountryJuridictionOfOwner,
+          expect(newRecord2.inCountryJurisdictionOfOwner).to.equal(
+            splitRecord2.inCountryJurisdictionOfOwner,
           );
           expect(newRecord2.tokenIssuanceHash).to.equal(
             splitRecord2.tokenIssuanceHash,
@@ -209,13 +209,13 @@ describe('Create Unit Integration', () => {
 
     const payload = {
       serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
-      countryJuridictionOfOwner: 'USA',
+      countryJurisdictionOfOwner: 'USA',
       unitType: 'removal',
       unitIdentifier: 'XYZ',
       unitStatus: 'Held',
       correspondingAdjustmentDeclaration: 'Commited',
       correspondingAdjustmentStatus: 'Pending',
-      inCountryJuridictionOfOwner: 'Maryland',
+      inCountryJurisdictionOfOwner: 'Maryland',
       unitsIssuanceLocation: 'TEST_LOCATION',
       unitRegistryLink: 'https://test.link',
       tokenIssuanceHash: '0x7777',
@@ -285,11 +285,11 @@ describe('Create Unit Integration', () => {
           expect(newRecord.serialNumberBlock).to.equal(
             payload.serialNumberBlock,
           );
-          expect(newRecord.countryJuridictionOfOwner).to.equal(
-            payload.countryJuridictionOfOwner,
+          expect(newRecord.countryJurisdictionOfOwner).to.equal(
+            payload.countryJurisdictionOfOwner,
           );
-          expect(newRecord.inCountryJuridictionOfOwner).to.equal(
-            payload.inCountryJuridictionOfOwner,
+          expect(newRecord.inCountryJurisdictionOfOwner).to.equal(
+            payload.inCountryJurisdictionOfOwner,
           );
           expect(newRecord.tokenIssuanceHash).to.equal(
             payload.tokenIssuanceHash,

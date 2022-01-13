@@ -3,8 +3,8 @@ import { transformSerialNumberBlock } from '../utils/helpers';
 import { newVintageScheme, existingVintageSchema } from './vintages.validation';
 
 const unitsBaseSchema = {
-  countryJuridictionOfOwner: Joi.string().required(),
-  inCountryJuridictionOfOwner: Joi.string().optional(),
+  countryJurisdictionOfOwner: Joi.string().required(),
+  inCountryJurisdictionOfOwner: Joi.string().optional(),
   // must be in the form ABC123-XYZ456
   serialNumberBlock: Joi.string()
     .regex(/[.*\D]+[0-9]+[-][.*\D]+[0-9]+$/)

@@ -120,8 +120,8 @@ class Unit extends Model {
     let sql = `
     SELECT ${fields} FROM units WHERE MATCH (
         unitOwnerOrgUid,
-        countryJuridictionOfOwner,
-        inCountryJuridictionOfOwner,
+        countryJurisdictionOfOwner,
+        inCountryJurisdictionOfOwner,
         serialNumberBlock,
         unitIdentifier,
         unitType,
