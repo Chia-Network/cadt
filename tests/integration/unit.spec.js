@@ -1,5 +1,6 @@
 import chai from 'chai';
 import supertest from 'supertest';
+import sinon from 'sinon';
 import app from '../../src/server';
 import _ from 'lodash';
 
@@ -8,8 +9,17 @@ import { WAIT_TIME } from '../../src/fullnode/simulator';
 const { expect } = chai;
 
 describe('Create Unit Integration', () => {
+  let clock;
+
   beforeEach(async () => {
+    clock = sinon.useFakeTimers({
+      toFake: ['setTimeout'],
+    });
     await supertest(app).get(`/v1/staging/clean`);
+  });
+
+  afterEach(() => {
+    clock.restore();
   });
 
   it('splits an existing unit end-to-end', async () => {

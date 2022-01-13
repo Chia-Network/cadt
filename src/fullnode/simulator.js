@@ -89,16 +89,26 @@ export const updateUnitRecord = async (
   encodedRecord,
   stagingRecordId,
 ) => {
-  await deleteUnitRecord(uuid);
-  await createUnitRecord(uuid, encodedRecord);
+  setTimeout(async () => {
+    let record = JSON.parse(atob(encodedRecord));
+    await Unit.create({
+      ...record,
+    });
 
-  if (stagingRecordId) {
-    await Staging.destroy({
+    await Unit.destroy({
       where: {
-        id: stagingRecordId,
+        warehouseUnitId: uuid,
       },
     });
-  }
+
+    if (stagingRecordId) {
+      await Staging.destroy({
+        where: {
+          id: stagingRecordId,
+        },
+      });
+    }
+  }, WAIT_TIME);
 };
 
 export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {

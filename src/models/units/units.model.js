@@ -76,6 +76,8 @@ class Unit extends Model {
       UnitMirror.create(values, options);
     }
 
+    console.log(values);
+
     const createResult = await super.create(values, options);
     const { orgUid } = createResult;
 
