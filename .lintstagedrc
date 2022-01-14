@@ -3,5 +3,5 @@
     "eslint",
     "prettier --write"
   ],
-  "!(.*)": []
+  "(*.json)": []
 }
