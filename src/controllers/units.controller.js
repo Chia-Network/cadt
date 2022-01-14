@@ -69,9 +69,9 @@ export const findAll = async (req, res) => {
   if (!columns.length) {
     columns = ['warehouseUnitId'];
   }
-  
+
   let results;
-  
+
   if (search) {
     results = await Unit.fts(
       search,
@@ -80,7 +80,7 @@ export const findAll = async (req, res) => {
       columns,
     );
   }
-  
+
   if (!results) {
     results = await Unit.findAndCountAll({
       where,
@@ -89,7 +89,7 @@ export const findAll = async (req, res) => {
       ...paginationParams(page, limit),
     });
   }
-  
+
   res.json(optionallyPaginatedResponse(results, page, limit));
 };
 
@@ -137,13 +137,16 @@ export const destroy = async (req, res) => {
       table: 'Units',
     };
 
-    await Staging.create(stagedData);
+    console.log('##########', stagedData);
+
+    await Staging.upsert(stagedData);
     res.json({
       message: 'Unit deleted successfully',
     });
   } catch (err) {
     res.json({
       message: 'Error deleting new unit',
+      err,
     });
   }
 };
@@ -169,6 +172,7 @@ export const split = async (req, res) => {
         previousValue.unitCount + currentValue.unitCount,
     );
 
+    // eslint-disable-next-line no-unused-vars
     const [unitBlockStart, unitBlockEnd, unitCount] =
       transformSerialNumberBlock(originalRecord.serialNumberBlock);
 
@@ -259,14 +263,14 @@ export const batchUpload = async (req, res) => {
         data: JSON.stringify([newRecord]),
       };
 
-      await Staging.create(stagedData);
+      await Staging.upsert(stagedData);
     })
-    .on('error', (err) => {
+    .on('error', () => {
       req
         .status(400)
         .json({ message: 'There was an error processing the csv file' });
     })
-    .on('done', (error) => {
+    .on('done', () => {
       res.json({ message: 'CSV processing complete' });
     });
 };
