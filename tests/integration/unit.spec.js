@@ -1,8 +1,9 @@
+import _ from 'lodash';
+
 import chai from 'chai';
 import supertest from 'supertest';
-import app from '../../src/server';
-import _ from 'lodash';
 import sinon from 'sinon';
+import app from '../../src/server';
 
 import { WAIT_TIME } from '../../src/fullnode/simulator';
 
@@ -10,6 +11,7 @@ const { expect } = chai;
 
 describe('Create Unit Integration', () => {
   let clock;
+
   beforeEach(async () => {
     clock = sinon.useFakeTimers({
       toFake: ['setTimeout'],
@@ -85,7 +87,7 @@ describe('Create Unit Integration', () => {
     expect(splitRecord2.unitCount).to.equal(1);
 
     // Expect the split unitscounts to add up to the original unit count
-    expect(splitRecord1.unitCount  splitRecord2.unitCount).to.equal(
+    expect(splitRecord1.unitCount + splitRecord2.unitCount).to.equal(
       originalRecord.unitCount,
     );
 
@@ -139,6 +141,7 @@ describe('Create Unit Integration', () => {
       .query({ warehouseUnitId: splitRecord1.warehouseUnitId });
 
     const newRecord1 = warehouseRes.body;
+    console.log(newRecord1, splitRecord1.warehouseUnitId);
 
     expect(newRecord1.warehouseUnitId).to.equal(splitRecord1.warehouseUnitId);
     expect(newRecord1.orgUid).to.equal(splitRecord1.orgUid);
