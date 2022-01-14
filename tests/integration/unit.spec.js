@@ -2,28 +2,131 @@ import _ from 'lodash';
 
 import chai from 'chai';
 import supertest from 'supertest';
-import sinon from 'sinon';
 import app from '../../src/server';
+
+import { UnitMirror } from '../../src/models';
 
 import { WAIT_TIME } from '../../src/fullnode/simulator';
 
 const { expect } = chai;
 
-describe('Create Unit Integration', () => {
-  let clock;
-
-  beforeEach(async () => {
-    clock = sinon.useFakeTimers({
-      toFake: ['setTimeout'],
-    });
+describe('Create Unit Integration', function () {
+  beforeEach(async function () {
     await supertest(app).get(`/v1/staging/clean`);
   });
 
-  afterEach(() => {
-    clock.restore();
+  it('deletes a unit end-to-end (with simulator)', async function () {
+    // create and commit the unit to be deleted
+    const payload = {
+      serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
+      countryJurisdictionOfOwner: 'USA',
+      unitType: 'removal',
+      unitIdentifier: 'XYZ',
+      unitStatus: 'Held',
+      correspondingAdjustmentDeclaration: 'Commited',
+      correspondingAdjustmentStatus: 'Pending',
+      inCountryJurisdictionOfOwner: 'Maryland',
+      unitsIssuanceLocation: 'TEST_LOCATION',
+      unitRegistryLink: 'https://test.link',
+      tokenIssuanceHash: '0x7777',
+    };
+    const unitRes = await supertest(app).post('/v1/units').send(payload);
+
+    expect(unitRes.statusCode).to.equal(200);
+    expect(unitRes.body).to.deep.equal({
+      message: 'Unit created successfully',
+    });
+
+    // Get the organizations so we can check the right org was set
+    const organizationResults = await supertest(app).get('/v1/organizations');
+    const orgUid = Object.keys(organizationResults.body).find(
+      (key) => organizationResults.body[key].writeAccess,
+    );
+
+    // Get the staging record we just created
+    const stagingRes = await supertest(app).get('/v1/staging');
+    const stagingRecord = _.head(stagingRes.body);
+
+    // There is no original when creating new units
+    expect(stagingRecord.diff.original).to.deep.equal({});
+
+    const changeRecord = _.head(stagingRecord.diff.change);
+
+    // make sure the inferred data was set to the staging record
+    expect(changeRecord.orgUid).to.equal(orgUid);
+    expect(changeRecord.unitOwnerOrgUid).to.equal(orgUid);
+
+    const warehouseUnitId = changeRecord.warehouseUnitId;
+
+    // Now push the staging table live
+    const commitRes = await supertest(app).post('/v1/staging/commit');
+    expect(commitRes.statusCode).to.equal(200);
+    expect(commitRes.body).to.deep.equal({
+      message: 'Staging Table committed to full node',
+    });
+
+    // The node simulator runs on an async process, we are importing
+    // the WAIT_TIME constant from the simulator, padding it and waiting for the
+    // appropriate amount of time for the simulator to finish its operations
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, WAIT_TIME * 2);
+    });
+
+    // Get the staging record we just created
+    const stagingRes2 = await supertest(app).get('/v1/staging');
+    expect(stagingRes2.body).to.deep.equal([]);
+
+    // Now time to delete the unit
+    const deleteRes = await supertest(app)
+      .delete('/v1/units')
+      .send({ warehouseUnitId });
+
+    expect(deleteRes.statusCode).to.equal(200);
+    expect(deleteRes.body).to.deep.equal({
+      message: 'Unit deleted successfully',
+    });
+
+    // Get the staging record we just created
+    const deleteStagingRes = await supertest(app).get('/v1/staging');
+    const deleteStagingRecord = _.head(deleteStagingRes.body);
+
+    // There is no original when creating new units
+    expect(deleteStagingRecord.diff.change).to.deep.equal({});
+
+    const deleteOriginalRecord = deleteStagingRecord.diff.original;
+
+    expect(
+      _.pick(deleteOriginalRecord, [...Object.keys(payload)]),
+    ).to.deep.equal(payload);
+
+    // Now push the staging table live
+    const commitRes3 = await supertest(app).post('/v1/staging/commit');
+    expect(commitRes3.statusCode).to.equal(200);
+    expect(commitRes3.body).to.deep.equal({
+      message: 'Staging Table committed to full node',
+    });
+
+    // The node simulator runs on an async process, we are importing
+    // the WAIT_TIME constant from the simulator, padding it and waiting for the
+    // appropriate amount of time for the simulator to finish its operations
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, WAIT_TIME * 2);
+    });
+
+    // Now check if the unit is still in the DB
+    const getDeletedRecordResult = await supertest(app)
+      .get('/v1/units')
+      .query({ warehouseUnitId });
+
+    expect(getDeletedRecordResult.statusCode).to.equal(200);
+    expect(getDeletedRecordResult.body).to.equal(null);
   });
 
-  it('splits an existing unit end-to-end', async () => {
+  it('splits an existing unit end-to-end (with simulator)', async function () {
     // Get a unit to split
     const allUnitsResult = await supertest(app).get('/v1/units');
     const unitRecord = _.head(allUnitsResult.body);
@@ -134,7 +237,11 @@ describe('Create Unit Integration', () => {
     // The node simulator runs on an async process, we are importing
     // the WAIT_TIME constant from the simulator, padding it and waiting for the
     // appropriate amount of time for the simulator to finish its operations
-    clock.tick(WAIT_TIME * 4);
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, WAIT_TIME * 4);
+    });
 
     const warehouseRes = await supertest(app)
       .get(`/v1/units`)
@@ -159,6 +266,26 @@ describe('Create Unit Integration', () => {
       splitRecord1.tokenIssuanceHash,
     );
 
+    // Make sure the newly created unit is in the mirrorDb
+    const mirrorRecord1 = await UnitMirror.findByPk(
+      splitRecord1.warehouseUnitId,
+    );
+
+    // filter out the fields we dont care about in this test, including the virtual fields
+    expect(
+      _.omit(mirrorRecord1.dataValues, ['createdAt', 'updatedAt']),
+    ).to.deep.equal(
+      _.omit(splitRecord1, [
+        'qualifications', // mapped associated field
+        'vintage', // mapped associated field
+        'unitBlockStart', // virtual field
+        'unitBlockEnd', // virtual field
+        'unitCount', // virtual field
+        'createdAt', // meta field
+        'updatedAt', // meta field
+      ]),
+    );
+
     const warehouse2Res = await supertest(app)
       .get(`/v1/units`)
       .query({ warehouseUnitId: splitRecord2.warehouseUnitId });
@@ -181,6 +308,26 @@ describe('Create Unit Integration', () => {
       splitRecord2.tokenIssuanceHash,
     );
 
+    // Make sure the newly created unit is in the mirrorDb
+    const mirrorRecord2 = await UnitMirror.findByPk(
+      splitRecord2.warehouseUnitId,
+    );
+
+    // filter out the fields we dont care about in this test, including the virtual fields
+    expect(
+      _.omit(mirrorRecord2.dataValues, ['createdAt', 'updatedAt']),
+    ).to.deep.equal(
+      _.omit(splitRecord2, [
+        'qualifications', // mapped associated field
+        'vintage', // mapped associated field
+        'unitBlockStart', // virtual field
+        'unitBlockEnd', // virtual field
+        'unitCount', // virtual field
+        'createdAt', // meta field
+        'updatedAt', // meta field
+      ]),
+    );
+
     // make sure the original record was deleted
     const warehouse3Res = await supertest(app)
       .get(`/v1/units`)
@@ -194,7 +341,7 @@ describe('Create Unit Integration', () => {
     expect(stagingRes3.body.length).to.equal(0);
   });
 
-  it('creates a new unit end-to-end', async () => {
+  it('creates a new unit end-to-end  (with simulator)', async function () {
     // 1. Create a new unit
     // 2. verify the unit is in the staging tables
     // 3. verify the inferred data has been added to the unit record
@@ -260,7 +407,11 @@ describe('Create Unit Integration', () => {
     // The node simulator runs on an async process, we are importing
     // the WAIT_TIME constant from the simulator, padding it and waiting for the
     // appropriate amount of time for the simulator to finish its operations
-    clock.tick(WAIT_TIME * 2);
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, WAIT_TIME * 2);
+    });
 
     // Make sure the staging table is cleaned up
     const stagingRes3 = await supertest(app).get('/v1/staging');
@@ -285,5 +436,23 @@ describe('Create Unit Integration', () => {
       payload.inCountryJuridictionOfOwner,
     );
     expect(newRecord.tokenIssuanceHash).to.equal(payload.tokenIssuanceHash);
+
+    // Make sure the newly created unit is in the mirrorDb
+    const mirrorRecord = await UnitMirror.findByPk(newRecord.warehouseUnitId);
+
+    // filter out the fields we dont care about in this test, including the virtual fields
+    expect(
+      _.omit(mirrorRecord.dataValues, ['createdAt', 'updatedAt']),
+    ).to.deep.equal(
+      _.omit(newRecord, [
+        'qualifications', // mapped associated field
+        'vintage', // mapped associated field
+        'unitBlockStart', // virtual field
+        'unitBlockEnd', // virtual field
+        'unitCount', // virtual field
+        'createdAt', // meta field
+        'updatedAt', // meta field
+      ]),
+    );
   });
 });

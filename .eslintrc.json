@@ -5,12 +5,9 @@
     "node": true
   },
   "parserOptions": {
-    "ecmaVersion": 2017,
+    "ecmaVersion": 9,
     "sourceType": "module"
   },
   "plugins": ["mocha"],
-  "extends": ["eslint:recommended", "plugin:mocha/recommended"],
-  "rules": {
-    "mocha/no-mocha-arrows": false
-  }
+  "extends": ["eslint:recommended", "plugin:mocha/recommended"]
 }

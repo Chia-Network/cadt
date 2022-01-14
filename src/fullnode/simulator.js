@@ -115,8 +115,13 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
   let record = JSON.parse(atob(encodedRecord));
   record = Array.isArray(record) ? _.head(record) : record;
 
+  // eslint-disable-next-line no-async-promise-executor
   return new Promise(async (resolve) => {
     setTimeout(async () => {
+      await Unit.create({
+        ...record,
+      });
+
       if (stagingRecordId) {
         await Staging.destroy({
           where: {
@@ -124,10 +129,6 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
           },
         });
       }
-
-      await Unit.create({
-        ...record,
-      });
 
       resolve();
     }, WAIT_TIME);
@@ -137,6 +138,12 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
 export const deleteUnitRecord = (uuid, stagingRecordId) => {
   return new Promise((resolve) => {
     setTimeout(async () => {
+      await Unit.destroy({
+        where: {
+          warehouseUnitId: uuid,
+        },
+      });
+
       if (stagingRecordId) {
         await Staging.destroy({
           where: {
@@ -144,12 +151,6 @@ export const deleteUnitRecord = (uuid, stagingRecordId) => {
           },
         });
       }
-
-      await Unit.destroy({
-        where: {
-          warehouseUnitId: uuid,
-        },
-      });
 
       resolve();
     }, WAIT_TIME);
