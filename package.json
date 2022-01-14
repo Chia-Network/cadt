@@ -58,5 +58,13 @@
     "sinon": "^12.0.1",
     "standard-version": "^9.3.2",
     "supertest": "^6.1.6"
-  }
+  },
+  "contributors": [
+    "Michael Taylor <5665004+MichaelTaylor3D@users.noreply.github.com>",
+    "Mike Keen <mwk@mikekeen.com>",
+    "Michael.Taylor <mtaylor@michaeltaylor3d.com>",
+    "Frantz Arty <artyfrantz@gmail.com>",
+    "Chris Marslender <chrismarslender@gmail.com>",
+    "Justin England <justin@jeng.land>"
+  ]
 }
