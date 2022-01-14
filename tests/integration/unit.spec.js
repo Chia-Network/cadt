@@ -192,6 +192,7 @@ describe('Create Unit Integration', () => {
 
     // There should be no staging records left
     expect(stagingRes3.body.length).to.equal(0);
+    expect(stagingRes3.body.length).to.equal(0);
   });
 
   it('creates a new unit end-to-end', async () => {
