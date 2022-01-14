@@ -13,6 +13,10 @@ nvm install 16.0.0
 nvm use 16.0.0
 npm install -g husky
 npm install -g prettier
+npm install -g lint-staged
+npm install -g git-authors-cli
+npm set-script prepare "husky install"
+npm run prepare
 npm run start
 ```
 

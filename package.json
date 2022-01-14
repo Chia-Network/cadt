@@ -14,7 +14,8 @@
     "postinstall": "npm run requirements-check",
     "resetDb": "rm -f ./data.sqlite3 && npx sequelize-cli db:migrate --env local && npx sequelize-cli db:seed:all --debug --env local",
     "resetTestDb": "rm -f ./test.sqlite3 && npx sequelize-cli db:migrate --env test && npx sequelize-cli db:seed:all --debug --env test && rm -f ./testMirror.sqlite3 && npx sequelize-cli db:migrate --env mirrorTest",
-    "resetMirrorDb": "npx sequelize-cli db:drop --env mirror && npx sequelize-cli db:create --env mirror && npx sequelize-cli db:migrate --env mirror --debug"
+    "resetMirrorDb": "npx sequelize-cli db:drop --env mirror && npx sequelize-cli db:create --env mirror && npx sequelize-cli db:migrate --env mirror --debug",
+    "prepare": "husky install"
   },
   "dependencies": {
     "body-parser": "^1.19.0",
