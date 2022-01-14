@@ -1,4 +1,7 @@
 {
-  "src/*.js": ["eslint", "prettier --write"],
-  "tests/*.js": ["eslint", "prettier --write"]
+  "*.js": [
+    "eslint",
+    "prettier --write"
+  ],
+  "!(.*)": []
 }
