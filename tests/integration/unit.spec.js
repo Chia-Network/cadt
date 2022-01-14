@@ -1,15 +1,26 @@
+import _ from 'lodash';
+
 import chai from 'chai';
 import supertest from 'supertest';
+import sinon from 'sinon';
 import app from '../../src/server';
-import _ from 'lodash';
 
 import { WAIT_TIME } from '../../src/fullnode/simulator';
 
 const { expect } = chai;
 
 describe('Create Unit Integration', () => {
+  let clock;
+
   beforeEach(async () => {
+    clock = sinon.useFakeTimers({
+      toFake: ['setTimeout'],
+    });
     await supertest(app).get(`/v1/staging/clean`);
+  });
+
+  afterEach(() => {
+    clock.restore();
   });
 
   it('splits an existing unit end-to-end', async () => {
@@ -123,79 +134,64 @@ describe('Create Unit Integration', () => {
     // The node simulator runs on an async process, we are importing
     // the WAIT_TIME constant from the simulator, padding it and waiting for the
     // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve, reject) => {
-      setTimeout(async () => {
-        try {
-          const warehouseRes = await supertest(app)
-            .get(`/v1/units`)
-            .query({ warehouseUnitId: splitRecord1.warehouseUnitId });
+    clock.tick(WAIT_TIME * 4);
 
-          const newRecord1 = warehouseRes.body;
+    const warehouseRes = await supertest(app)
+      .get(`/v1/units`)
+      .query({ warehouseUnitId: splitRecord1.warehouseUnitId });
 
-          expect(newRecord1.warehouseUnitId).to.equal(
-            splitRecord1.warehouseUnitId,
-          );
-          expect(newRecord1.orgUid).to.equal(splitRecord1.orgUid);
-          expect(newRecord1.unitOwnerOrgUid).to.equal(
-            splitRecord1.unitOwnerOrgUid,
-          );
-          expect(newRecord1.serialNumberBlock).to.equal(
-            splitRecord1.serialNumberBlock,
-          );
-          expect(newRecord1.countryJurisdictionOfOwner).to.equal(
-            splitRecord1.countryJurisdictionOfOwner,
-          );
-          expect(newRecord1.inCountryJurisdictionOfOwner).to.equal(
-            splitRecord1.inCountryJurisdictionOfOwner,
-          );
-          expect(newRecord1.tokenIssuanceHash).to.equal(
-            splitRecord1.tokenIssuanceHash,
-          );
+    const newRecord1 = warehouseRes.body;
+    console.log(newRecord1, splitRecord1.warehouseUnitId);
 
-          const warehouse2Res = await supertest(app)
-            .get(`/v1/units`)
-            .query({ warehouseUnitId: splitRecord2.warehouseUnitId });
+    expect(newRecord1.warehouseUnitId).to.equal(splitRecord1.warehouseUnitId);
+    expect(newRecord1.orgUid).to.equal(splitRecord1.orgUid);
+    expect(newRecord1.unitOwnerOrgUid).to.equal(splitRecord1.unitOwnerOrgUid);
+    expect(newRecord1.serialNumberBlock).to.equal(
+      splitRecord1.serialNumberBlock,
+    );
+    expect(newRecord1.countryJuridictionOfOwner).to.equal(
+      splitRecord1.countryJuridictionOfOwner,
+    );
+    expect(newRecord1.inCountryJuridictionOfOwner).to.equal(
+      splitRecord1.inCountryJuridictionOfOwner,
+    );
+    expect(newRecord1.tokenIssuanceHash).to.equal(
+      splitRecord1.tokenIssuanceHash,
+    );
 
-          const newRecord2 = warehouse2Res.body;
+    const warehouse2Res = await supertest(app)
+      .get(`/v1/units`)
+      .query({ warehouseUnitId: splitRecord2.warehouseUnitId });
 
-          expect(newRecord2.warehouseUnitId).to.equal(
-            splitRecord2.warehouseUnitId,
-          );
-          expect(newRecord2.orgUid).to.equal(splitRecord2.orgUid);
-          expect(newRecord2.unitOwnerOrgUid).to.equal(
-            splitRecord2.unitOwnerOrgUid,
-          );
-          expect(newRecord1.serialNumberBlock).to.equal(
-            splitRecord1.serialNumberBlock,
-          );
-          expect(newRecord2.countryJurisdictionOfOwner).to.equal(
-            splitRecord2.countryJurisdictionOfOwner,
-          );
-          expect(newRecord2.inCountryJurisdictionOfOwner).to.equal(
-            splitRecord2.inCountryJurisdictionOfOwner,
-          );
-          expect(newRecord2.tokenIssuanceHash).to.equal(
-            splitRecord2.tokenIssuanceHash,
-          );
+    const newRecord2 = warehouse2Res.body;
 
-          // make sure the original record was deleted
-          const warehouse3Res = await supertest(app)
-            .get(`/v1/units`)
-            .query({ warehouseUnitId: warehouseUnitIdToSplit });
-          expect(warehouse3Res.body).to.equal(null);
+    expect(newRecord2.warehouseUnitId).to.equal(splitRecord2.warehouseUnitId);
+    expect(newRecord2.orgUid).to.equal(splitRecord2.orgUid);
+    expect(newRecord2.unitOwnerOrgUid).to.equal(splitRecord2.unitOwnerOrgUid);
+    expect(newRecord1.serialNumberBlock).to.equal(
+      splitRecord1.serialNumberBlock,
+    );
+    expect(newRecord2.countryJuridictionOfOwner).to.equal(
+      splitRecord2.countryJuridictionOfOwner,
+    );
+    expect(newRecord2.inCountryJuridictionOfOwner).to.equal(
+      splitRecord2.inCountryJuridictionOfOwner,
+    );
+    expect(newRecord2.tokenIssuanceHash).to.equal(
+      splitRecord2.tokenIssuanceHash,
+    );
 
-          // Make sure the staging table is cleaned up
-          const stagingRes3 = await supertest(app).get('/v1/staging');
+    // make sure the original record was deleted
+    const warehouse3Res = await supertest(app)
+      .get(`/v1/units`)
+      .query({ warehouseUnitId: warehouseUnitIdToSplit });
+    expect(warehouse3Res.body).to.equal(null);
 
-          // There should be no staging records left
-          expect(stagingRes3.body.length).to.equal(0);
+    // Make sure the staging table is cleaned up
+    const stagingRes3 = await supertest(app).get('/v1/staging');
 
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      }, WAIT_TIME * 3);
-    });
+    // There should be no staging records left
+    expect(stagingRes3.body.length).to.equal(0);
   });
 
   it('creates a new unit end-to-end', async () => {
@@ -264,42 +260,30 @@ describe('Create Unit Integration', () => {
     // The node simulator runs on an async process, we are importing
     // the WAIT_TIME constant from the simulator, padding it and waiting for the
     // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve, reject) => {
-      setTimeout(async () => {
-        try {
-          // Make sure the staging table is cleaned up
-          const stagingRes3 = await supertest(app).get('/v1/staging');
+    clock.tick(WAIT_TIME * 2);
 
-          // There should be no staging records left
-          expect(stagingRes3.body.length).to.equal(0);
+    // Make sure the staging table is cleaned up
+    const stagingRes3 = await supertest(app).get('/v1/staging');
 
-          const warehouseRes = await supertest(app)
-            .get(`/v1/units`)
-            .query({ warehouseUnitId });
+    // There should be no staging records left
+    expect(stagingRes3.body.length).to.equal(0);
 
-          const newRecord = warehouseRes.body;
+    const warehouseRes = await supertest(app)
+      .get(`/v1/units`)
+      .query({ warehouseUnitId });
 
-          expect(newRecord.warehouseUnitId).to.equal(warehouseUnitId);
-          expect(newRecord.orgUid).to.equal(orgUid);
-          expect(newRecord.unitOwnerOrgUid).to.equal(orgUid);
-          expect(newRecord.serialNumberBlock).to.equal(
-            payload.serialNumberBlock,
-          );
-          expect(newRecord.countryJurisdictionOfOwner).to.equal(
-            payload.countryJurisdictionOfOwner,
-          );
-          expect(newRecord.inCountryJurisdictionOfOwner).to.equal(
-            payload.inCountryJurisdictionOfOwner,
-          );
-          expect(newRecord.tokenIssuanceHash).to.equal(
-            payload.tokenIssuanceHash,
-          );
+    const newRecord = warehouseRes.body;
 
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      }, WAIT_TIME * 2);
-    });
+    expect(newRecord.warehouseUnitId).to.equal(warehouseUnitId);
+    expect(newRecord.orgUid).to.equal(orgUid);
+    expect(newRecord.unitOwnerOrgUid).to.equal(orgUid);
+    expect(newRecord.serialNumberBlock).to.equal(payload.serialNumberBlock);
+    expect(newRecord.countryJuridictionOfOwner).to.equal(
+      payload.countryJuridictionOfOwner,
+    );
+    expect(newRecord.inCountryJuridictionOfOwner).to.equal(
+      payload.inCountryJuridictionOfOwner,
+    );
+    expect(newRecord.tokenIssuanceHash).to.equal(payload.tokenIssuanceHash);
   });
 });
