@@ -114,6 +114,6 @@ More info: https://www.sqlite.org/fts5.html
 
 ##### Connecting to the WebSocket
 
-1. Open a WebSocket connection to http://localhost:3000/v1/updates
+1. Open a WebSocket connection to http://localhost:3000/v1/ws
    1. Once subscribed, emit either emit ...['subscribe', 'units'] or ['subscribe', 'projects']. You can emit both on the same connection
 2. You will receive frames that look like ...[change:units, {orgUid: '123'}], letting you know that there has been an update to a record
