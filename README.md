@@ -17,6 +17,11 @@ npm install -g lint-staged
 npm install -g git-authors-cli
 npm set-script prepare "husky install"
 npm run prepare
+
+// If you are on linux or mac run
+chmod ug+x .husky/*
+chmod ug+x .git/hooks/*
+
 npm run start
 ```
 
