@@ -137,8 +137,6 @@ export const destroy = async (req, res) => {
       table: 'Units',
     };
 
-    console.log('##########', stagedData);
-
     await Staging.upsert(stagedData);
     res.json({
       message: 'Unit deleted successfully',

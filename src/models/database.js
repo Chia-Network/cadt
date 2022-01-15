@@ -13,10 +13,9 @@ export const safeMirrorDbHandler = (callback) => {
   sequelizeMirror
     .authenticate()
     .then(() => {
-      console.log('Mirror DB connected');
       callback();
     })
-    .catch((err) => {
+    .catch(() => {
       console.log('Mirror DB not connected');
     });
 };
