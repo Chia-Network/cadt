@@ -78,6 +78,11 @@ describe('Create Unit Integration', function () {
     const stagingRes2 = await supertest(app).get('/v1/staging');
     expect(stagingRes2.body).to.deep.equal([]);
 
+    // Make sure the newly created unit is in the mirrorDb
+    let mirrorRecord = await UnitMirror.findByPk(warehouseUnitId);
+
+    expect(mirrorRecord).to.be.ok;
+
     // Now time to delete the unit
     const deleteRes = await supertest(app)
       .delete('/v1/units')
@@ -124,6 +129,10 @@ describe('Create Unit Integration', function () {
 
     expect(getDeletedRecordResult.statusCode).to.equal(200);
     expect(getDeletedRecordResult.body).to.equal(null);
+
+    // Verify the record is no longer in the mirror db
+    mirrorRecord = await UnitMirror.findByPk(warehouseUnitId);
+    expect(mirrorRecord).to.equal(null);
   });
 
   it('splits an existing unit end-to-end (with simulator)', async function () {
@@ -248,7 +257,6 @@ describe('Create Unit Integration', function () {
       .query({ warehouseUnitId: splitRecord1.warehouseUnitId });
 
     const newRecord1 = warehouseRes.body;
-    console.log(newRecord1, splitRecord1.warehouseUnitId);
 
     expect(newRecord1.warehouseUnitId).to.equal(splitRecord1.warehouseUnitId);
     expect(newRecord1.orgUid).to.equal(splitRecord1.orgUid);
