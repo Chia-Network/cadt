@@ -37,7 +37,7 @@ jobs:
         run: npm cache verify
 
       - name: install sequelize-cli globally
-        run: npm i -g sequelize-cli@6.3.0
+        run: npm i -g sequelize-cli
 
       - name: install cross-env globally
         run: npm install -g cross-env

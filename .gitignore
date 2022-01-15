@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 data.sqlite3
 test.sqlite3
-testMirror.sqlite
+testMirror.sqlite3
 
 # dependencies
 /node_modules

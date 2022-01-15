@@ -9,7 +9,7 @@ import rxjs from 'rxjs';
 
 const { Model } = Sequelize;
 
-const virtualColumns = {
+const virtualFields = {
   unitBlockStart: {
     type: Sequelize.VIRTUAL,
     get() {
@@ -48,7 +48,7 @@ const virtualColumns = {
 class Unit extends Model {
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(
-    Object.assign({}, ModelTypes, virtualColumns),
+    Object.assign({}, ModelTypes, virtualFields),
   );
 
   static associate() {
@@ -102,7 +102,7 @@ class Unit extends Model {
     };
 
     // Check if we need to include the virtual field dep
-    for (const col of Object.keys(virtualColumns)) {
+    for (const col of Object.keys(virtualFields)) {
       if (columns.includes(col)) {
         if (!columns.includes('serialNumberBlock')) {
           columns.push('serialNumberBlock');
@@ -231,7 +231,7 @@ class Unit extends Model {
   }
 }
 
-Unit.init(Object.assign({}, ModelTypes, virtualColumns), {
+Unit.init(Object.assign({}, ModelTypes, virtualFields), {
   sequelize,
   modelName: 'unit',
   foreignKey: 'unitId',
