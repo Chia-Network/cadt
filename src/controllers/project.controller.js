@@ -1,11 +1,11 @@
 import _ from 'lodash';
 
+import csv from 'csvtojson';
+import { Readable } from 'stream';
 import { uuid as uuidv4 } from 'uuidv4';
-import { sequelize } from '../models/database';
 
 import {
   Staging,
-  ProjectMock,
   Project,
   ProjectLocation,
   Qualification,
@@ -126,6 +126,17 @@ export const findOne = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    const originalRecordResult = await Project.findByPk(
+      req.body.warehouseProjectId,
+    );
+
+    if (!originalRecordResult) {
+      res.status(404).json({
+        message: `The Project record for the warehouseUnitId: ${req.body.warehouseProjectId} does not exist and can not be updated`,
+      });
+      return;
+    }
+
     const stagedData = {
       uuid: req.body.warehouseProjectId,
       action: 'UPDATE',
@@ -148,6 +159,17 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    const originalRecordResult = await Project.findByPk(
+      req.body.warehouseProjectId,
+    );
+
+    if (!originalRecordResult) {
+      res.status(404).json({
+        message: `The Project record for the warehouseUnitId: ${req.body.warehouseProjectId} does not exist and can not be updated`,
+      });
+      return;
+    }
+
     const stagedData = {
       uuid: req.body.warehouseProjectId,
       action: 'DELETE',
@@ -180,43 +202,53 @@ export const batchUpload = async (req, res) => {
 
   csv()
     .fromStream(stream)
-    .subscribe(
-      async (newRecord) => {
-        // When creating new projects assign a uuid to is so
+    .subscribe(async (newRecord) => {
+      let action = 'UPDATE';
+
+      if (newRecord.warehouseProjectId) {
+        // Fail if they supplied their own warehouseUnitId and it doesnt exist
+        const possibleExistingRecord = await Project.findByPk(
+          newRecord.warehouseProjectId,
+        );
+
+        if (!possibleExistingRecord) {
+          throw new Error(
+            `Trying to update a record that doesnt exists, ${newRecord.warehouseProjectId}. To fix, remove the warehouseProjectId from this record so it will be treated as a new record`,
+          );
+        }
+      } else {
+        // When creating new unitd assign a uuid to is so
         // multiple organizations will always have unique ids
         const uuid = uuidv4();
-
         newRecord.warehouseProjectId = uuid;
 
-        // All new projects are assigned to the home orgUid
-        const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+        action = 'INSERT';
+      }
+
+      const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+
+      // All new records are registered within this org, but give them a chance to override this
+      if (!newRecord.orgUid) {
         newRecord.orgUid = orgUid;
+      }
 
-        // The new project is getting created in this registry
-        newRecord.currentRegistry = orgUid;
+      const stagedData = {
+        uuid: newRecord.warehouseProjectId,
+        action: action,
+        table: 'Projects',
+        data: JSON.stringify([newRecord]),
+      };
 
-        // Unless we are overriding, a new project originates in this org
-        if (!newRecord.registryOfOrigin) {
-          newRecord.registryOfOrigin = orgUid;
-        }
-
-        try {
-          await Staging.create({
-            uuid,
-            action: 'INSERT',
-            table: 'Projects',
-            data: JSON.stringify([newRecord]),
-          });
-          res.json('Added project to stage');
-        } catch (err) {
-          res.json(err);
-        }
-      },
-      (err) => {
-        req
-          .status(400)
-          .json({ message: 'There was an error processing the csv file' });
-      },
-      () => res.json({ message: 'CSV processing complete' }),
-    );
+      await Staging.upsert(stagedData);
+    })
+    .on('error', (error) => {
+      if (!res.headersSent) {
+        res.status(400).json({ message: error.message });
+      }
+    })
+    .on('done', () => {
+      if (!res.headersSent) {
+        res.json({ message: 'CSV processing complete' });
+      }
+    });
 };

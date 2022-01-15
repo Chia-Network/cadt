@@ -110,6 +110,15 @@ export const findOne = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    const originalRecordResult = await Unit.findByPk(req.body.warehouseUnitId);
+
+    if (!originalRecordResult) {
+      res.status(404).json({
+        message: `The unit record for the warehouseUnitId: ${req.body.warehouseUnitId} does not exist and can not be updated`,
+      });
+      return;
+    }
+
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
@@ -125,12 +134,21 @@ export const update = async (req, res) => {
   } catch (err) {
     res.json({
       message: 'Error updating new unit',
+      error: err.message,
     });
   }
 };
 
 export const destroy = async (req, res) => {
   try {
+    const originalRecordResult = await Unit.findByPk(req.body.warehouseUnitId);
+
+    if (!originalRecordResult) {
+      res.status(404).json({
+        message: `The unit record for the warehouseUnitId: ${req.body.warehouseUnitId} does not exist and can not be deleted`,
+      });
+      return;
+    }
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'DELETE',
