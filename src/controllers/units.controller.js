@@ -243,32 +243,57 @@ export const batchUpload = async (req, res) => {
   csv()
     .fromStream(stream)
     .subscribe(async (newRecord) => {
-      // When creating new unitd assign a uuid to is so
-      // multiple organizations will always have unique ids
-      const uuid = uuidv4();
+      let action = 'UPDATE';
 
-      newRecord.warehouseUnitId = uuid;
+      if (newRecord.warehouseUnitId) {
+        // Fail if they supplied their own warehouseUnitId and it doesnt exist
+        const possibleExistingRecord = await Unit.findByPk(
+          newRecord.warehouseUnitId,
+        );
 
-      // All new units are assigned to the home orgUid
+        if (!possibleExistingRecord) {
+          throw new Error(
+            `Trying to update a record that doesnt exists, ${newRecord.warehouseUnitId}. To fix, remove the warehouseUnitId from this record so it will be treated as a new record`,
+          );
+        }
+      } else {
+        // When creating new unitd assign a uuid to is so
+        // multiple organizations will always have unique ids
+        const uuid = uuidv4();
+        newRecord.warehouseUnitId = uuid;
+
+        action = 'INSERT';
+      }
+
       const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
-      newRecord.orgUid = orgUid;
-      newRecord.unitOwnerOrgUid = orgUid;
+
+      // All new records are registered within this org, but give them a chance to override this
+      if (!newRecord.orgUid) {
+        newRecord.orgUid = orgUid;
+      }
+
+      // All new records are owned by this org, but give them a chance to override this
+      if (!newRecord.unitOwnerOrgUid) {
+        newRecord.unitOwnerOrgUid = orgUid;
+      }
 
       const stagedData = {
-        uuid,
-        action: 'INSERT',
+        uuid: newRecord.warehouseUnitId,
+        action: action,
         table: 'Units',
         data: JSON.stringify([newRecord]),
       };
 
       await Staging.upsert(stagedData);
     })
-    .on('error', () => {
-      req
-        .status(400)
-        .json({ message: 'There was an error processing the csv file' });
+    .on('error', (error) => {
+      if (!res.headersSent) {
+        res.status(400).json({ message: error.message });
+      }
     })
     .on('done', () => {
-      res.json({ message: 'CSV processing complete' });
+      if (!res.headersSent) {
+        res.json({ message: 'CSV processing complete' });
+      }
     });
 };
