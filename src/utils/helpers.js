@@ -52,10 +52,21 @@ export const columnsToInclude = (userColumns, foreignKeys) => {
   };
 };
 
-export const transformSerialNumberBlock = (serialNumberBlock) => {
-  const blocks = serialNumberBlock.split('-');
-  const blockStart = Number(blocks[0].split(/(\d+)/)[1]);
-  const blockEnd = Number(blocks[1].split(/(\d+)/)[1]);
+export const defaultSerialNumberPattern = /[.*\D]+([0-9]+)+[-][.*\D]+([0-9]+)$/;
+
+export const transformSerialNumberBlock = (
+  serialNumberBlock,
+  // serial number format: ABC1000-ABC1010
+  serialNumberPattern = defaultSerialNumberPattern,
+) => {
+  const unitBlocks = serialNumberBlock.match(serialNumberPattern);
+
+  if (!unitBlocks) {
+    return [null, null, null];
+  }
+
+  const blockStart = Number(unitBlocks[1]);
+  const blockEnd = Number(unitBlocks[2]);
   return [blockStart, blockEnd, blockEnd - blockStart];
 };
 
@@ -63,8 +74,10 @@ export const createSerialNumberStr = (
   originalSerialNumberBlock,
   blockStart,
   blockEnd,
+  serialNumberPattern = defaultSerialNumberPattern,
 ) => {
-  const blocks = originalSerialNumberBlock.split('-');
-  const serialNumberPrefix = blocks[0].split(/(\d+)/)[0];
-  return `${serialNumberPrefix}${blockStart}-${serialNumberPrefix}${blockEnd}`;
+  const unitBlocks = originalSerialNumberBlock.match(serialNumberPattern);
+  return unitBlocks[0]
+    .replace(unitBlocks[1], blockStart)
+    .replace(unitBlocks[2], blockEnd);
 };

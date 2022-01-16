@@ -2,23 +2,35 @@ import Joi from 'joi';
 import { transformSerialNumberBlock } from '../utils/helpers';
 import { newVintageScheme, existingVintageSchema } from './vintages.validation';
 
+const customSerialNumberValidator = (obj, helper) => {
+  const { serialNumberBlock, customSerialNumberPattern } = obj;
+
+  // eslint-disable-next-line no-unused-vars
+  const [_, __, unitCount] = transformSerialNumberBlock(
+    serialNumberBlock,
+    customSerialNumberPattern || undefined,
+  );
+
+  if (!unitCount) {
+    return helper.message(
+      `serialNumberBlock could not be parsed, invalid pattern found`,
+    );
+  }
+
+  if (unitCount < 1) {
+    return helper.message(
+      `serialNumberBlock must have a positive non-zero number, received ${unitCount}`,
+    );
+  }
+  return obj;
+};
+
 const unitsBaseSchema = {
   countryJurisdictionOfOwner: Joi.string().required(),
   inCountryJurisdictionOfOwner: Joi.string().optional(),
   // must be in the form ABC123-XYZ456
-  serialNumberBlock: Joi.string()
-    .regex(/[.*\D]+[0-9]+[-][.*\D]+[0-9]+$/)
-    .custom((value, helper) => {
-      const [_, __, unitCount] = transformSerialNumberBlock(value);
-      if (unitCount < 1) {
-        return helper.message(
-          `serialNumberBlock must have a positive non-zero number, received ${unitCount}`,
-        );
-      } else {
-        return value;
-      }
-    })
-    .required(),
+  serialNumberBlock: Joi.string().required(),
+  customSerialNumberPattern: Joi.string().optional(),
   unitIdentifier: Joi.string().required(),
   unitType: Joi.string().valid('heard reduction', 'removal').required(),
   intendedBuyerOrgUid: Joi.string().optional(),
@@ -45,7 +57,7 @@ const unitsBaseSchema = {
 
 export const unitsPostSchema = Joi.object({
   ...unitsBaseSchema,
-});
+}).custom(customSerialNumberValidator);
 
 export const unitsGetQuerySchema = Joi.object()
   .keys({
@@ -61,7 +73,7 @@ export const unitsGetQuerySchema = Joi.object()
 export const unitsUpdateSchema = Joi.object({
   warehouseUnitId: Joi.string().required(),
   ...unitsBaseSchema,
-});
+}).custom(customSerialNumberValidator);
 
 export const unitsDeleteSchema = Joi.object({
   warehouseUnitId: Joi.string().required(),
