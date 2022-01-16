@@ -137,6 +137,14 @@ export const update = async (req, res) => {
       return;
     }
 
+    const homeOrg = await Organization.getHomeOrg();
+    if (!homeOrg[originalRecordResult.dataValues.orgUid]) {
+      res.status(404).json({
+        message: `Restricted data: can not modify this record with orgUid ${originalRecordResult.dataValues.orgUid}`,
+      });
+      return;
+    }
+
     const stagedData = {
       uuid: req.body.warehouseProjectId,
       action: 'UPDATE',
@@ -166,6 +174,14 @@ export const destroy = async (req, res) => {
     if (!originalRecordResult) {
       res.status(404).json({
         message: `The Project record for the warehouseUnitId: ${req.body.warehouseProjectId} does not exist and can not be updated`,
+      });
+      return;
+    }
+
+    const homeOrg = await Organization.getHomeOrg();
+    if (!homeOrg[originalRecordResult.dataValues.orgUid]) {
+      res.status(404).json({
+        message: `Restricted data: can not modify this record with orgUid ${originalRecordResult.dataValues.orgUid}`,
       });
       return;
     }
@@ -215,6 +231,14 @@ export const batchUpload = async (req, res) => {
           throw new Error(
             `Trying to update a record that doesnt exists, ${newRecord.warehouseProjectId}. To fix, remove the warehouseProjectId from this record so it will be treated as a new record`,
           );
+        }
+
+        const homeOrg = await Organization.getHomeOrg();
+        if (!homeOrg[possibleExistingRecord.dataValues.orgUid]) {
+          res.status(404).json({
+            message: `Restricted data: can not modify this record with orgUid ${possibleExistingRecord.dataValues.orgUid}`,
+          });
+          return;
         }
       } else {
         // When creating new unitd assign a uuid to is so
