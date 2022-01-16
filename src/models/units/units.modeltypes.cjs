@@ -15,6 +15,7 @@ module.exports = {
   countryJurisdictionOfOwner: Sequelize.STRING,
   inCountryJurisdictionOfOwner: Sequelize.STRING,
   serialNumberBlock: Sequelize.STRING,
+  customSerialNumberPattern: Sequelize.STRING,
   unitIdentifier: Sequelize.STRING,
   unitType: Sequelize.STRING,
   intendedBuyerOrgUid: Sequelize.STRING,
