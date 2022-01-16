@@ -119,6 +119,14 @@ export const update = async (req, res) => {
       return;
     }
 
+    const homeOrg = await Organization.getHomeOrg();
+    if (!homeOrg[originalRecordResult.dataValues.orgUid]) {
+      res.status(404).json({
+        message: `Restricted data: can not modify this record with orgUid ${originalRecordResult.dataValues.orgUid}`,
+      });
+      return;
+    }
+
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
@@ -149,6 +157,15 @@ export const destroy = async (req, res) => {
       });
       return;
     }
+
+    const homeOrg = await Organization.getHomeOrg();
+    if (!homeOrg[originalRecordResult.dataValues.orgUid]) {
+      res.status(404).json({
+        message: `Restricted data: can not modify this record with orgUid ${originalRecordResult.dataValues.orgUid}`,
+      });
+      return;
+    }
+
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'DELETE',
@@ -170,15 +187,24 @@ export const destroy = async (req, res) => {
 export const split = async (req, res) => {
   try {
     const originalRecordResult = await Unit.findByPk(req.body.warehouseUnitId);
+
+    if (!originalRecordResult) {
+      res.status(404).json({
+        message: `The unit record for the warehouseUnitId: ${req.body.warehouseUnitId} does not exist`,
+      });
+      return;
+    }
+
     const originalRecord = originalRecordResult.dataValues;
 
     // we dont need these fields for split
     delete originalRecord.createdAt;
     delete originalRecord.updatedAt;
 
-    if (!originalRecord) {
+    const homeOrg = await Organization.getHomeOrg();
+    if (!homeOrg[originalRecord.orgUid]) {
       res.status(404).json({
-        message: `The unit record for the warehouseUnitId: ${req.body.warehouseUnitId} does not exist`,
+        message: `Restricted data: can not modify this record with orgUid ${originalRecord.orgUid}`,
       });
       return;
     }
@@ -273,6 +299,14 @@ export const batchUpload = async (req, res) => {
           throw new Error(
             `Trying to update a record that doesnt exists, ${newRecord.warehouseUnitId}. To fix, remove the warehouseUnitId from this record so it will be treated as a new record`,
           );
+        }
+
+        const homeOrg = await Organization.getHomeOrg();
+        if (!homeOrg[possibleExistingRecord.dataValues.orgUid]) {
+          res.status(404).json({
+            message: `Restricted data: can not modify this record with orgUid ${possibleExistingRecord.dataValues.orgUid}`,
+          });
+          return;
         }
       } else {
         // When creating new unitd assign a uuid to is so
