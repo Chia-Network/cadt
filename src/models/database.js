@@ -16,6 +16,6 @@ export const safeMirrorDbHandler = (callback) => {
       callback();
     })
     .catch(() => {
-      console.log('Mirror DB not connected');
+      // console.log('Mirror DB not connected');
     });
 };

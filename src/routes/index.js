@@ -21,15 +21,19 @@ app.use('/v1', V1Router);
 
 sequelize.authenticate().then(() => console.log('Connected to database'));
 
-app.use((err, req, res) => {
-  if (_.get(err, 'error.details')) {
-    // format Joi validation errors
-    return res.status(400).json({
-      message: 'API Validation error',
-      errors: err.error.details.map((detail) => detail.message),
-    });
-  }
-  return res.status(400).json(err);
-});
+app.use((err, req, res, next) => {
+  if (err) {
+    if (_.get(err, 'error.details')) {
+      // format Joi validation errors
+      return res.status(400).json({
+        message: 'API Validation error',
+        errors: err.error.details.map((detail) => detail.message),
+      });
+    }
 
+    return res.status(err.status).json(err);
+  }
+
+  next();
+});
 export default app;

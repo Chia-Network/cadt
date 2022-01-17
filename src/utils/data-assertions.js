@@ -35,11 +35,15 @@ export const assertOrgIsHomeOrg = async (orgUid) => {
   return orgUid;
 };
 
-export const assertUnitRecordExists = async (warehouseUnitId) => {
+export const assertUnitRecordExists = async (
+  warehouseUnitId,
+  customMessage,
+) => {
   const record = await Unit.findByPk(warehouseUnitId);
   if (!record) {
     throw new Error(
-      `The unit record for the warehouseUnitId: ${warehouseUnitId} does not exist.`,
+      customMessage ||
+        `The unit record for the warehouseUnitId: ${warehouseUnitId} does not exist.`,
     );
   }
 
@@ -57,11 +61,15 @@ export const assertStagingRecordExists = async (stagingId) => {
   return record.dataValues;
 };
 
-export const assertProjectRecordExists = async (warehouseProjectId) => {
+export const assertProjectRecordExists = async (
+  warehouseProjectId,
+  customMessage,
+) => {
   const record = await Project.findByPk(warehouseProjectId);
   if (!record) {
     throw new Error(
-      `The project record for the warehouseProjectId: ${warehouseProjectId} does not exist.`,
+      customMessage ||
+        `The project record for the warehouseProjectId: ${warehouseProjectId} does not exist.`,
     );
   }
 

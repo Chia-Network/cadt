@@ -45,8 +45,6 @@ export const create = async (req, res) => {
       data: JSON.stringify([newRecord]),
     };
 
-    console.log(stagedData);
-
     await Staging.create(stagedData);
 
     res.json({
