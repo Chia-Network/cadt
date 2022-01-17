@@ -1,78 +1,41 @@
 'use strict';
 
 import express from 'express';
-import Joi from 'joi';
 import { UnitController } from '../../../controllers';
 import joiExpress from 'express-joi-validation';
+
+import {
+  unitsGetQuerySchema,
+  unitsPostSchema,
+  unitsUpdateSchema,
+  unitsDeleteSchema,
+  unitsSplitSchema,
+} from '../../../validations';
 
 const validator = joiExpress.createValidator({});
 const UnitRouter = express.Router();
 
-const querySchema = Joi.object()
-  .keys({
-    page: Joi.number(),
-    limit: Joi.number(),
-    search: Joi.string(),
-  })
-  .with('page', 'limit');
-
-UnitRouter.get('/', validator.query(querySchema), (req, res) => {
-  return req.query.id
+UnitRouter.get('/', validator.query(unitsGetQuerySchema), (req, res) => {
+  return req.query.warehouseUnitId
     ? UnitController.findOne(req, res)
     : UnitController.findAll(req, res);
 });
 
-const bodySchema = Joi.object({
-  orgUid: Joi.string().required(),
-  buyer: Joi.string().required(),
-  registry: Joi.string().required(),
-  blockIdentifier: Joi.string().required(),
-  identifier: Joi.string().required(),
-  qualifications: Joi.array().min(1).optional(),
-  unitType: Joi.string().required(),
-  unitCount: Joi.string().required(),
-  unitStatus: Joi.string().required(),
-  unitStatusDate: Joi.string().required(),
-  transactionType: Joi.string().required(),
-  unitIssuanceLocation: Joi.string().required(),
-  unitLink: Joi.string().required(),
-  correspondingAdjustment: Joi.string().required(),
-  unitTag: Joi.string().required(),
-  vintage: Joi.object().optional(),
-});
-
-UnitRouter.post('/', validator.body(bodySchema), UnitController.create);
-
-const bodySchemaUpdate = {
-  uuid: Joi.string().required(),
-  ...bodySchema,
-};
-
-UnitRouter.put('/', validator.body(bodySchemaUpdate), UnitController.update);
-
-const bodySchemaDelete = {
-  uuid: Joi.string().required(),
-};
+UnitRouter.post('/', validator.body(unitsPostSchema), UnitController.create);
+UnitRouter.put('/', validator.body(unitsUpdateSchema), UnitController.update);
 
 UnitRouter.delete(
   '/',
-  validator.body(bodySchemaDelete),
+  validator.body(unitsDeleteSchema),
   UnitController.destroy,
 );
 
-const splitSchema = Joi.object({
-  unitUid: Joi.string().required(),
-  records: Joi.array()
-    .items(
-      Joi.object().keys({
-        unitCount: Joi.number().required(),
-        orgUid: Joi.string().optional(),
-      }),
-    )
-    .min(2)
-    .max(2),
-});
+UnitRouter.post(
+  '/split',
+  validator.body(unitsSplitSchema),
+  UnitController.split,
+);
 
-UnitRouter.post('/split', UnitController.split);
+UnitRouter.post('/batch', UnitController.batchUpload);
 
 export { UnitRouter };

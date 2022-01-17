@@ -1,31 +1,36 @@
+const { uuid: uuidv4 } = require('uuidv4');
 const Sequelize = require('sequelize');
 
 module.exports = {
-  id: {
-    type: Sequelize.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  uuid: {
+  warehouseUnitId: {
     type: Sequelize.STRING,
     unique: true,
+    defaultValue: () => uuidv4(),
+    primaryKey: true,
   },
   // The orgUid is teh singeltonId of the
   // organizations tables on the datalayer
   orgUid: Sequelize.STRING,
-  buyer: Sequelize.STRING,
-  registry: Sequelize.STRING,
-  blockIdentifier: Sequelize.STRING,
-  identifier: Sequelize.STRING,
+  unitOwnerOrgUid: Sequelize.STRING,
+  countryJurisdictionOfOwner: Sequelize.STRING,
+  inCountryJurisdictionOfOwner: Sequelize.STRING,
+  serialNumberBlock: Sequelize.STRING,
+  customSerialNumberPattern: Sequelize.STRING,
+  unitIdentifier: Sequelize.STRING,
   unitType: Sequelize.STRING,
-  unitCount: Sequelize.NUMBER,
+  intendedBuyerOrgUid: Sequelize.STRING,
+  marketplace: Sequelize.STRING,
+  tags: Sequelize.STRING,
   unitStatus: Sequelize.STRING,
-  unitStatusDate: Sequelize.DATE,
-  transactionType: Sequelize.STRING,
-  unitIssuanceLocation: Sequelize.STRING,
-  unitLink: Sequelize.STRING,
-  correspondingAdjustment: Sequelize.STRING,
-  unitTag: Sequelize.STRING,
+  unitTransactionType: Sequelize.STRING,
+  unitStatusReason: Sequelize.STRING,
+  tokenIssuanceHash: Sequelize.STRING,
+  marketplaceIdentifier: Sequelize.STRING,
+  unitsIssuanceLocation: Sequelize.STRING,
+  unitRegistryLink: Sequelize.STRING,
+  unitMarketplaceLink: Sequelize.STRING,
+  correspondingAdjustmentDeclaration: Sequelize.STRING,
+  correspondingAdjustmentStatus: Sequelize.STRING,
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };

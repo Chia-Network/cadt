@@ -8,21 +8,31 @@
   },
   "scripts": {
     "requirements-check": "node --experimental-json-modules check_node_version.js",
-    "start": "node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
-    "test": "mocha tests/**/*.spec.js --reporter spec --exit",
+    "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
+    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test mocha tests/**/*.spec.js --reporter spec --exit --timeout 30000",
     "release": "./node_modules/.bin/standard-version && git push --tags",
     "postinstall": "npm run requirements-check",
-    "resetdb": "rm ./data.sqlite3 && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
+    "resetdb": "rm -f ./data.sqlite3 && npx sequelize-cli db:migrate --env local && npx sequelize-cli db:seed:all --debug --env local",
+    "cleandb": "rm -f ./data.sqlite3 && npx sequelize-cli db:migrate --env local",
+    "resetTestDb": "rm -f ./test.sqlite3 && npx sequelize-cli db:migrate --env test && npx sequelize-cli db:seed:all --debug --env test && rm -f ./testMirror.sqlite3 && npx sequelize-cli db:migrate --env mirrorTest",
+    "resetMirrorDb": "npx sequelize-cli db:drop --env mirror && npx sequelize-cli db:create --env mirror && npx sequelize-cli db:migrate --env mirror --debug",
+    "prepare": "husky install"
   },
   "dependencies": {
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
+    "csvtojson": "^2.0.10",
     "debug": "~2.6.9",
+    "dotenv": "^10.0.0",
     "express": "~4.16.1",
+    "express-fileupload": "^1.2.1",
     "express-joi-validation": "^5.0.0",
     "joi": "^17.5.0",
+    "lodash": "^4.17.21",
+    "mysql2": "^2.3.3",
     "rxjs": "^7.5.1",
     "sequelize": "^6.12.0-alpha.1",
+    "sequelize-mock": "^0.10.2",
     "socket.io": "^4.4.0",
     "socket.io-client": "^4.4.0",
     "sqlite3": "4.1.1",
@@ -47,6 +57,16 @@
     "mocha": "^9.1.3",
     "prettier": "^2.4.1",
     "semver": "^7.3.5",
-    "standard-version": "^9.3.2"
-  }
+    "sinon": "^12.0.1",
+    "standard-version": "^9.3.2",
+    "supertest": "^6.1.6"
+  },
+  "contributors": [
+    "Michael Taylor <5665004+MichaelTaylor3D@users.noreply.github.com>",
+    "Mike Keen <mwk@mikekeen.com>",
+    "Michael.Taylor <mtaylor@michaeltaylor3d.com>",
+    "Frantz Arty <artyfrantz@gmail.com>",
+    "Chris Marslender <chrismarslender@gmail.com>",
+    "Justin England <justin@jeng.land>"
+  ]
 }

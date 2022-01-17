@@ -1,20 +1,18 @@
+const { uuid: uuidv4 } = require('uuidv4');
 const Sequelize = require('sequelize');
 
 module.exports = {
-  id: {
-    type: Sequelize.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
   warehouseProjectId: {
     type: Sequelize.STRING,
     unique: true,
+    defaultValue: () => uuidv4(),
+    primaryKey: true,
   },
   // The orgUid is the singeltonId of the
   // organizations tables on the datalayer
   orgUid: Sequelize.STRING,
   projectId: Sequelize.STRING,
-  projectLocationId: Sequelize.NUMBER,
+  projectLocationId: Sequelize.INTEGER,
   currentRegistry: Sequelize.STRING,
   registryOfOrigin: Sequelize.STRING,
   originProjectId: Sequelize.STRING,
@@ -30,7 +28,7 @@ module.exports = {
   projectStatusDate: Sequelize.DATE,
   unitMetric: Sequelize.STRING,
   methodology: Sequelize.STRING,
-  methodologyVersion: Sequelize.NUMBER,
+  methodologyVersion: Sequelize.INTEGER,
   validationApproach: Sequelize.STRING,
   validationDate: Sequelize.DATE,
   projectTag: Sequelize.STRING,

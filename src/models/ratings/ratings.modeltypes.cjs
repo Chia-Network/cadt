@@ -1,13 +1,15 @@
+const { uuid: uuidv4 } = require('uuidv4');
 const Sequelize = require('sequelize');
 
 module.exports = {
   id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
+    unique: true,
+    defaultValue: () => uuidv4(),
     primaryKey: true,
-    autoIncrement: true,
   },
   type: Sequelize.STRING,
-  rating: Sequelize.NUMBER,
+  rating: Sequelize.INTEGER,
   link: Sequelize.STRING,
   scale: Sequelize.STRING,
   projectId: {

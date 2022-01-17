@@ -1,14 +1,10 @@
 import _ from 'lodash';
 import * as fullNode from '../fullnode';
 
-import { Staging, StagingMock, Project, Unit } from '../models';
+import { Staging, Project, Unit } from '../models';
+import { assertStagingRecordExists } from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
-  if (req.query.useMock) {
-    res.json(StagingMock.findAll());
-    return;
-  }
-
   const stagingData = await Staging.findAll();
 
   const response = await Promise.all(
@@ -30,7 +26,7 @@ export const findAll = async (req, res) => {
 
         if (workingData.table === 'Units') {
           original = await Unit.findOne({
-            where: { uuid: workingData.uuid },
+            where: { warehouseUnitId: workingData.uuid },
           });
         }
 
@@ -39,9 +35,19 @@ export const findAll = async (req, res) => {
       }
 
       if (workingData.action === 'DELETE') {
-        const original = await Project.findOne({
-          where: { warehouseProjectId: workingData.uuid },
-        });
+        let original;
+        if (workingData.table === 'Projects') {
+          original = await Project.findOne({
+            where: { warehouseProjectId: workingData.uuid },
+          });
+        }
+
+        if (workingData.table === 'Units') {
+          original = await Unit.findOne({
+            where: { warehouseUnitId: workingData.uuid },
+          });
+        }
+
         workingData.diff.original = original;
         workingData.diff.change = {};
       }
@@ -58,7 +64,7 @@ export const findAll = async (req, res) => {
 export const commit = async (req, res) => {
   const queryResponses = await Staging.findAll();
 
-  queryResponses.forEach(async (queryResponse) => {
+  queryResponses.map(async (queryResponse) => {
     const stagingRecord = queryResponse.dataValues;
 
     const {
@@ -69,7 +75,7 @@ export const commit = async (req, res) => {
       commited,
       data: rawData,
     } = stagingRecord;
-    const data = JSON.parse(rawData);
+    let data = JSON.parse(rawData);
 
     // set the commited flag to true
     await Staging.update(
@@ -80,6 +86,7 @@ export const commit = async (req, res) => {
     if (table === 'Projects' && !commited) {
       switch (action) {
         case 'INSERT':
+          data.warehouseUnitId = uuid;
           fullNode.createProjectRecord(uuid, data, stagingRecordId);
           break;
         case 'UPDATE':
@@ -103,11 +110,13 @@ export const commit = async (req, res) => {
       }
     }
   });
+
   res.json({ message: 'Staging Table committed to full node' });
 };
 
 export const destroy = async (req, res) => {
   try {
+    assertStagingRecordExists(req.body.uuid);
     await Staging.destroy({
       where: {
         uuid: req.body.uuid,
@@ -116,9 +125,26 @@ export const destroy = async (req, res) => {
     res.json({
       message: 'Deleted from stage',
     });
-  } catch (err) {
+  } catch (error) {
+    res.status(400).json({
+      message: 'Staging Record can not be removed.',
+      error: error.message,
+    });
+  }
+};
+
+export const clean = async (req, res) => {
+  try {
+    await Staging.destroy({
+      where: {},
+      truncate: true,
+    });
     res.json({
-      message: err,
+      message: 'Staging Data Cleaned',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message,
     });
   }
 };

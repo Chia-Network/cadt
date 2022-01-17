@@ -1,34 +1,45 @@
 'use strict';
+
 import Sequelize from 'sequelize';
 import rxjs from 'rxjs';
-
 const { Model } = Sequelize;
 
-import { sequelize } from '../database';
+import { sequelize, safeMirrorDbHandler } from '../database';
 
-import { RelatedProject } from './../related-projects';
-import { Vintage } from './../vintages';
-import { Qualification } from './../qualifications';
-import { ProjectLocation } from './../locations';
-import { Rating } from './../ratings';
-import { CoBenefit } from './../co-benefits';
+import {
+  RelatedProject,
+  Vintage,
+  Qualification,
+  ProjectLocation,
+  CoBenefit,
+} from '../';
 
 import ModelTypes from './projects.modeltypes.cjs';
-import { optionallyPaginatedResponse } from '../../controllers/helpers.js';
+import { ProjectMirror } from './projects.model.mirror';
 
 class Project extends Model {
   static changes = new rxjs.Subject();
+  static defaultColumns = Object.keys(ModelTypes);
 
   static associate() {
-    Project.hasMany(RelatedProject);
-    Project.hasMany(Vintage);
-    Project.hasMany(Qualification);
-    Project.hasMany(Rating);
-    Project.hasMany(CoBenefit);
     Project.hasMany(ProjectLocation);
+    Project.hasMany(Qualification);
+    Project.hasMany(Vintage);
+    Project.hasMany(CoBenefit);
+    Project.hasMany(RelatedProject);
+
+    safeMirrorDbHandler(() => {
+      ProjectMirror.hasMany(ProjectLocation);
+      ProjectMirror.hasMany(Qualification);
+      ProjectMirror.hasMany(Vintage);
+      ProjectMirror.hasMany(CoBenefit);
+      ProjectMirror.hasMany(RelatedProject);
+    });
   }
 
   static async create(values, options) {
+    safeMirrorDbHandler(() => ProjectMirror.create(values, options));
+
     const createResult = await super.create(values, options);
 
     const { orgUid } = values;
@@ -39,20 +50,55 @@ class Project extends Model {
   }
 
   static async destroy(values) {
-    const { id: projectId } = values.where;
-    const { orgUid } = await super.findOne(projectId);
+    safeMirrorDbHandler(() => ProjectMirror.destroy(values));
 
-    const destroyResult = await super.destroy(values);
+    const record = await super.findOne(values.where);
+    const { orgUid } = record.dataValues;
 
     Project.changes.next(['projects', orgUid]);
 
-    return destroyResult;
+    return super.destroy(values);
   }
 
-  static async findAllMySQLFts(searchStr, orgUid, pagination) {
+  static async fts(searchStr, orgUid, pagination, columns = []) {
+    const dialect = sequelize.getDialect();
+
+    const handlerMap = {
+      sqlite: Project.findAllSqliteFts,
+      mysql: Project.findAllMySQLFts,
+    };
+
+    return handlerMap[dialect](
+      searchStr,
+      orgUid,
+      pagination,
+      columns
+        .filter((col) => !['createdAt', 'updatedAt'].includes(col))
+        .filter(
+          (col) =>
+            ![
+              ProjectLocation,
+              Qualification,
+              Vintage,
+              CoBenefit,
+              RelatedProject,
+            ]
+              .map((model) => model.name + 's')
+              .includes(col),
+        ),
+    );
+  }
+
+  static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
     const { offset, limit } = pagination;
+
+    let fields = '*';
+    if (columns.length) {
+      fields = columns.join(', ');
+    }
+
     let sql = `
-    SELECT * FROM projects WHERE MATCH (
+    SELECT ${fields} FROM projects WHERE MATCH (
         warehouseProjectId,
         currentRegistry,
         registryOfOrigin,
@@ -103,12 +149,19 @@ class Project extends Model {
     };
   }
 
-  static async findAllSqliteFts(searchStr, orgUid, pagination) {
+  static async findAllSqliteFts(searchStr, orgUid, pagination, columns = []) {
     const { offset, limit } = pagination;
 
+    let fields = '*';
+    if (columns.length) {
+      fields = columns.join(', ');
+    }
+
+    // hyphens cause errors in sqlite, but we can replace it with a + and
+    // the fulltext search will work the same
     searchStr = searchStr = searchStr.replaceAll('-', '+');
 
-    let sql = `SELECT * FROM projects_fts WHERE projects_fts MATCH :search`;
+    let sql = `SELECT ${fields} FROM projects_fts WHERE projects_fts MATCH :search`;
 
     if (orgUid) {
       sql = `${sql} AND orgUid = :orgUid`;

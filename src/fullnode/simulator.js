@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import { Project, Unit, Staging } from '../models';
-const THIRTY_SEC = 15000;
+export const WAIT_TIME = 1500;
 
 // Simulate 30 seconds passing before commited to node
 
@@ -9,7 +9,9 @@ export const updateProjectRecord = async (
   encodedRecord,
   stagingRecordId,
 ) => {
-  const record = JSON.parse(atob(encodedRecord));
+  let record = JSON.parse(atob(encodedRecord));
+  record = Array.isArray(record) ? _.head(record) : record;
+
   return new Promise((resolve) => {
     setTimeout(async () => {
       if (stagingRecordId) {
@@ -29,8 +31,10 @@ export const updateProjectRecord = async (
           ...record,
           warehouseProjectId: uuid,
         });
+
+        resolve();
       }
-    }, THIRTY_SEC);
+    }, WAIT_TIME);
   });
 };
 
@@ -48,14 +52,13 @@ export const createProjectRecord = (uuid, encodedRecord, stagingRecordId) => {
         });
       }
 
-      delete record.id;
       await Project.create({
         ...record,
         warehouseProjectId: uuid,
       });
 
       resolve();
-    }, THIRTY_SEC);
+    }, WAIT_TIME);
   });
 };
 
@@ -77,7 +80,7 @@ export const deleteProjectRecord = (uuid, stagingRecordId) => {
       });
 
       resolve();
-    }, THIRTY_SEC);
+    }, WAIT_TIME);
   });
 };
 
@@ -86,24 +89,39 @@ export const updateUnitRecord = async (
   encodedRecord,
   stagingRecordId,
 ) => {
-  if (stagingRecordId) {
-    await Staging.destroy({
+  setTimeout(async () => {
+    let record = JSON.parse(atob(encodedRecord));
+    await Unit.create({
+      ...record,
+    });
+
+    await Unit.destroy({
       where: {
-        id: stagingRecordId,
+        warehouseUnitId: uuid,
       },
     });
-  }
 
-  await deleteUnitRecord(uuid);
-  await createUnitRecord(uuid, encodedRecord);
+    if (stagingRecordId) {
+      await Staging.destroy({
+        where: {
+          id: stagingRecordId,
+        },
+      });
+    }
+  }, WAIT_TIME);
 };
 
 export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
   let record = JSON.parse(atob(encodedRecord));
   record = Array.isArray(record) ? _.head(record) : record;
 
-  return new Promise((resolve) => {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise(async (resolve) => {
     setTimeout(async () => {
+      await Unit.create({
+        ...record,
+      });
+
       if (stagingRecordId) {
         await Staging.destroy({
           where: {
@@ -112,20 +130,20 @@ export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
         });
       }
 
-      delete record.id;
-      await Unit.create({
-        uuid,
-        ...record,
-      });
-
       resolve();
-    }, THIRTY_SEC);
+    }, WAIT_TIME);
   });
 };
 
 export const deleteUnitRecord = (uuid, stagingRecordId) => {
   return new Promise((resolve) => {
     setTimeout(async () => {
+      await Unit.destroy({
+        where: {
+          warehouseUnitId: uuid,
+        },
+      });
+
       if (stagingRecordId) {
         await Staging.destroy({
           where: {
@@ -134,13 +152,7 @@ export const deleteUnitRecord = (uuid, stagingRecordId) => {
         });
       }
 
-      await Unit.destroy({
-        where: {
-          uuid,
-        },
-      });
-
       resolve();
-    }, THIRTY_SEC);
+    }, WAIT_TIME);
   });
 };

@@ -1,16 +1,37 @@
 'use strict';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize } from '../database';
-import { Project } from '../projects';
 
+import { CoBenefitMirror } from './co-benefits.model.mirror';
+import { sequelize, safeMirrorDbHandler } from '../database';
+import { Project } from '../projects';
 import ModelTypes from './co-benifets.modeltypes.cjs';
 
 class CoBenefit extends Model {
   static associate() {
     CoBenefit.belongsTo(Project, {
       onDelete: 'CASCADE',
+      targetKey: 'warehouseProjectId',
+      foreignKey: 'projectId',
     });
+
+    safeMirrorDbHandler(() => {
+      CoBenefitMirror.belongsTo(Project, {
+        onDelete: 'CASCADE',
+        targetKey: 'warehouseProjectId',
+        foreignKey: 'projectId',
+      });
+    });
+  }
+
+  static async create(values, options) {
+    safeMirrorDbHandler(() => CoBenefitMirror.create(values, options));
+    return super.create(values, options);
+  }
+
+  static async destroy(values) {
+    safeMirrorDbHandler(() => CoBenefitMirror.destroy(values));
+    return super.destroy(values);
   }
 }
 

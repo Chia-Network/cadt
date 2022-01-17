@@ -5,7 +5,6 @@ module.exports = {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE projects_fts USING fts5(
-        id,
         orgUid,
         warehouseProjectId,
         projectId,
@@ -34,21 +33,27 @@ module.exports = {
       `);
       await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE units_fts USING fts5(
-          id,
+          warehouseUnitId,
           orgUid,
-          buyer,
-          registry,
-          blockIdentifier,
-          identifier,
+          unitOwnerOrgUid,
+          countryJurisdictionOfOwner,
+          inCountryJurisdictionOfOwner,
+          serialNumberBlock,
+          unitIdentifier,
           unitType,
-          unitCount,
+          intendedBuyerOrgUid,
+          marketplace,
+          tags,
           unitStatus,
-          unitStatusDate,
-          transactionType,
-          unitIssuanceLocation,
-          unitLink,
-          correspondingAdjustment,
-          unitTag
+          unitTransactionType,
+          unitStatusReason,
+          tokenIssuanceHash,
+          marketplaceIdentifier,
+          unitsIssuanceLocation,
+          unitRegistryLink,
+          unitMarketplaceLink,
+          correspondingAdjustmentDeclaration,
+          correspondingAdjustmentStatus
         );
       `);
     }

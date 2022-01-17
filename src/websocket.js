@@ -9,7 +9,6 @@ const authenticate = (_payload) => true;
 
 export const connection = (socket) => {
   socket.on('authentication', () => {
-    console.log('Attempting to authenticate');
     if (!authenticate(socket)) {
       console.log('authentication failure');
       return socket.disconnect();
@@ -47,6 +46,16 @@ export const connection = (socket) => {
             socket.emit('change:units', data);
           });
           socketSubscriptions[socket.id].push('units');
+          callback('success');
+        } else {
+          callback('already subscribed');
+        }
+      case 'staging':
+        if (!socketSubscriptions[socket.id].includes('staging')) {
+          Unit.changes.subscribe((data) => {
+            socket.emit('change:staging', data);
+          });
+          socketSubscriptions[socket.id].push('staging');
           callback('success');
         } else {
           callback('already subscribed');

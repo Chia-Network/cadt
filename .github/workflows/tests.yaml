@@ -21,8 +21,26 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
+      - name: Ignore Husky
+        run: npm set-script prepare ""
+
       - name: npm install
         run: npm install
+
+      - name: npm cache clear --force
+        run: npm cache clear --force
+
+      - name: npm cache rm
+        run: npm cache rm --force
+
+      - name: npm cache verify
+        run: npm cache verify
+
+      - name: install sequelize-cli globally
+        run: npm i -g sequelize-cli
+
+      - name: install cross-env globally
+        run: npm install -g cross-env
 
       - name: npm tests
         run: npm run test
