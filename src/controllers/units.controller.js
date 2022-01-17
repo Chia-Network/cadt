@@ -243,6 +243,8 @@ export const batchUpload = async (req, res) => {
   const buffer = csvFile.data;
   const stream = Readable.from(buffer.toString('utf8'));
 
+  const recordsToCreate = [];
+
   csv()
     .fromStream(stream)
     .subscribe(async (newRecord) => {
@@ -251,7 +253,7 @@ export const batchUpload = async (req, res) => {
       if (newRecord.warehouseUnitId) {
         // Fail if they supplied their own warehouseUnitId and it doesnt exist
         const possibleExistingRecord = await assertUnitRecordExists(
-          req.body.warehouseUnitId,
+          newRecord.warehouseUnitId,
         );
 
         assertOrgIsHomeOrg(res, possibleExistingRecord.dataValues.orgUid);
@@ -283,7 +285,7 @@ export const batchUpload = async (req, res) => {
         data: JSON.stringify([newRecord]),
       };
 
-      await Staging.upsert(stagedData);
+      recordsToCreate.push(stagedData);
     })
     .on('error', (error) => {
       if (!res.headersSent) {
@@ -293,9 +295,22 @@ export const batchUpload = async (req, res) => {
         });
       }
     })
-    .on('done', () => {
-      if (!res.headersSent) {
-        res.json({ message: 'CSV processing complete' });
+    .on('done', async () => {
+      if (recordsToCreate.length) {
+        await Staging.bulkCreate(recordsToCreate);
+
+        if (!res.headersSent) {
+          res.json({
+            message:
+              'CSV processing complete, your records have been added to the staging table.',
+          });
+        }
+      } else {
+        if (!res.headersSent) {
+          res
+            .status(400)
+            .json({ message: 'There were no valid records to parse' });
+        }
       }
     });
 };
