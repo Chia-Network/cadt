@@ -12,9 +12,14 @@ import {
   columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
-  transformSerialNumberBlock,
   createSerialNumberStr,
 } from '../utils/helpers';
+
+import {
+  assertOrgIsHomeOrg,
+  assertUnitRecordExists,
+  assertSumOfSplitUnitsIsValid,
+} from '../utils/data-assertions';
 
 export const create = async (req, res, next) => {
   try {
@@ -110,22 +115,11 @@ export const findOne = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
-    const originalRecordResult = await Unit.findByPk(req.body.warehouseUnitId);
+    const originalRecord = await assertUnitRecordExists(
+      req.body.warehouseUnitId,
+    );
 
-    if (!originalRecordResult) {
-      res.status(404).json({
-        message: `The unit record for the warehouseUnitId: ${req.body.warehouseUnitId} does not exist and can not be updated`,
-      });
-      return;
-    }
-
-    const homeOrg = await Organization.getHomeOrg();
-    if (!homeOrg[originalRecordResult.dataValues.orgUid]) {
-      res.status(404).json({
-        message: `Restricted data: can not modify this record with orgUid ${originalRecordResult.dataValues.orgUid}`,
-      });
-      return;
-    }
+    assertOrgIsHomeOrg(res, originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
@@ -140,7 +134,7 @@ export const update = async (req, res) => {
       message: 'Unit updated successfully',
     });
   } catch (err) {
-    res.json({
+    res.status(400).json({
       message: 'Error updating new unit',
       error: err.message,
     });
@@ -149,22 +143,11 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
-    const originalRecordResult = await Unit.findByPk(req.body.warehouseUnitId);
+    const originalRecord = await assertUnitRecordExists(
+      req.body.warehouseUnitId,
+    );
 
-    if (!originalRecordResult) {
-      res.status(404).json({
-        message: `The unit record for the warehouseUnitId: ${req.body.warehouseUnitId} does not exist and can not be deleted`,
-      });
-      return;
-    }
-
-    const homeOrg = await Organization.getHomeOrg();
-    if (!homeOrg[originalRecordResult.dataValues.orgUid]) {
-      res.status(404).json({
-        message: `Restricted data: can not modify this record with orgUid ${originalRecordResult.dataValues.orgUid}`,
-      });
-      return;
-    }
+    assertOrgIsHomeOrg(res, originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
@@ -177,53 +160,29 @@ export const destroy = async (req, res) => {
       message: 'Unit deleted successfully',
     });
   } catch (err) {
-    res.json({
+    res.status(400).json({
       message: 'Error deleting new unit',
-      err,
+      error: err.message,
     });
   }
 };
 
 export const split = async (req, res) => {
   try {
-    const originalRecordResult = await Unit.findByPk(req.body.warehouseUnitId);
-
-    if (!originalRecordResult) {
-      res.status(404).json({
-        message: `The unit record for the warehouseUnitId: ${req.body.warehouseUnitId} does not exist`,
-      });
-      return;
-    }
-
-    const originalRecord = originalRecordResult.dataValues;
+    const originalRecord = await assertUnitRecordExists(
+      req.body.warehouseUnitId,
+    );
 
     // we dont need these fields for split
     delete originalRecord.createdAt;
     delete originalRecord.updatedAt;
 
-    const homeOrg = await Organization.getHomeOrg();
-    if (!homeOrg[originalRecord.orgUid]) {
-      res.status(404).json({
-        message: `Restricted data: can not modify this record with orgUid ${originalRecord.orgUid}`,
-      });
-      return;
-    }
+    assertOrgIsHomeOrg(res, originalRecord.orgUid);
 
-    const sumOfSplitUnits = req.body.records.reduce(
-      (previousValue, currentValue) =>
-        previousValue.unitCount + currentValue.unitCount,
+    const { unitBlockStart } = assertSumOfSplitUnitsIsValid(
+      originalRecord.serialNumberBlock,
+      req.body.records,
     );
-
-    // eslint-disable-next-line no-unused-vars
-    const [unitBlockStart, unitBlockEnd, unitCount] =
-      transformSerialNumberBlock(originalRecord.serialNumberBlock);
-
-    if (sumOfSplitUnits !== unitCount) {
-      res.status(404).json({
-        message: `The sum of the split units is ${sumOfSplitUnits} and the original record is ${unitCount}. These should be the same.`,
-      });
-      return;
-    }
 
     let lastAvailableUnitBlock = unitBlockStart;
 
@@ -265,7 +224,7 @@ export const split = async (req, res) => {
       message: 'Unit split successful',
     });
   } catch (err) {
-    res.json({
+    res.status(400).json({
       message: 'Error splitting unit',
       error: err,
     });
@@ -291,23 +250,11 @@ export const batchUpload = async (req, res) => {
 
       if (newRecord.warehouseUnitId) {
         // Fail if they supplied their own warehouseUnitId and it doesnt exist
-        const possibleExistingRecord = await Unit.findByPk(
-          newRecord.warehouseUnitId,
+        const possibleExistingRecord = await assertUnitRecordExists(
+          req.body.warehouseUnitId,
         );
 
-        if (!possibleExistingRecord) {
-          throw new Error(
-            `Trying to update a record that doesnt exists, ${newRecord.warehouseUnitId}. To fix, remove the warehouseUnitId from this record so it will be treated as a new record`,
-          );
-        }
-
-        const homeOrg = await Organization.getHomeOrg();
-        if (!homeOrg[possibleExistingRecord.dataValues.orgUid]) {
-          res.status(404).json({
-            message: `Restricted data: can not modify this record with orgUid ${possibleExistingRecord.dataValues.orgUid}`,
-          });
-          return;
-        }
+        assertOrgIsHomeOrg(res, possibleExistingRecord.dataValues.orgUid);
       } else {
         // When creating new unitd assign a uuid to is so
         // multiple organizations will always have unique ids
@@ -340,7 +287,10 @@ export const batchUpload = async (req, res) => {
     })
     .on('error', (error) => {
       if (!res.headersSent) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({
+          message: 'Batch Upload Failed.',
+          error: error.message,
+        });
       }
     })
     .on('done', () => {
