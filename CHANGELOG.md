@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.5](https://github.com/Chia-Network/climate-warehouse/compare/v0.0.4...v0.0.5) (2022-01-17)
+
+
+### Features
+
+* add custom validation for the serialnumberblock ([88d47c0](https://github.com/Chia-Network/climate-warehouse/commit/88d47c0c85afd4befee3a3b04ea4c5fb1d4b8f3e))
+* add database mirror operations ([f999f86](https://github.com/Chia-Network/climate-warehouse/commit/f999f86cc142f24b38dd28b7bf490a5278987b8d))
+* add local test mirror db and safe db mirror utility ([2973b9f](https://github.com/Chia-Network/climate-warehouse/commit/2973b9f146ccf4a9a61e4921700708d55731f280))
+* add orgUid indexes to primary tables ([13054b8](https://github.com/Chia-Network/climate-warehouse/commit/13054b8766185a8ce8d8971332d4de930896a5e7))
+* add uuid validation to update and delete controller ([3a2b071](https://github.com/Chia-Network/climate-warehouse/commit/3a2b07150a343f25625727f4671bcc28379b383e))
+* add validation schema ([9b4f82d](https://github.com/Chia-Network/climate-warehouse/commit/9b4f82ddc90e47c8af77d76db3678150b7d4ac43))
+* add vintage validation in units ([8b5b1c0](https://github.com/Chia-Network/climate-warehouse/commit/8b5b1c0d424ab4d5e0162b2dae228f92d18138b2))
+* Added integration tests for unit ([260f748](https://github.com/Chia-Network/climate-warehouse/commit/260f74822dbc999519c402c7ed3bce0b77c5b320))
+* allow custom serial number format in units ([78ed438](https://github.com/Chia-Network/climate-warehouse/commit/78ed4380b0c000510dac0c600b08d3322a901c01))
+* auto assign orguid ([6d6cbd2](https://github.com/Chia-Network/climate-warehouse/commit/6d6cbd20e6be6b4a006daa849b78310b48605714))
+* batch upload can insert and update records ([ab5fad1](https://github.com/Chia-Network/climate-warehouse/commit/ab5fad1e05af70c4b1a462cae48bed29ef18410c))
+* clock stubs in unit tests ([32fabfd](https://github.com/Chia-Network/climate-warehouse/commit/32fabfdbd1b4654d5b5aab8abc327438c38c49ea))
+* csv batch upload for units and projects ([c1e73e2](https://github.com/Chia-Network/climate-warehouse/commit/c1e73e2bdc3b7f0fd8a1daa09b1d151af0a13b97))
+* fix optional validations in units ([05a690f](https://github.com/Chia-Network/climate-warehouse/commit/05a690f40847ca774721373af2261071dc5d651d))
+* fts params for units ([20e3236](https://github.com/Chia-Network/climate-warehouse/commit/20e323621196c1faa5a59dd39e3dd51df7a6a50f))
+* orgId filtering in units & projects ([b14583a](https://github.com/Chia-Network/climate-warehouse/commit/b14583ac9d946342e1f1bc451c824661ddee97b2))
+* prevent to attempt to modify records outside your home org ([300f273](https://github.com/Chia-Network/climate-warehouse/commit/300f27334c8db665bfc72709d9780595fbea5507))
+* remove old stub logic ([a275632](https://github.com/Chia-Network/climate-warehouse/commit/a2756322c9dfb4462104b76b3a0730bc236dc3a1))
+* simplify routes ([5df63a5](https://github.com/Chia-Network/climate-warehouse/commit/5df63a5773cbada4101e5cec400f562ff0c1f7d3))
+* specify columns for api responses ([3fd8268](https://github.com/Chia-Network/climate-warehouse/commit/3fd826807e599aae607264dba5b3dfc31d66845e))
+* unit columns/cleanup ([53b4921](https://github.com/Chia-Network/climate-warehouse/commit/53b49219245454211aad117755e553d5560a7209))
+* update datamodel to latest and setup mysql connection ([1e0291e](https://github.com/Chia-Network/climate-warehouse/commit/1e0291e8554bbe6c12246074a2b17ca4aff915ef))
+* use fake timers in tests ([8bfbc22](https://github.com/Chia-Network/climate-warehouse/commit/8bfbc2205722dbb9bcfb3d795e89a105993c1923))
+* use hosted org icons instead of embedded svg ([978e59a](https://github.com/Chia-Network/climate-warehouse/commit/978e59a9cbb61ec7b58cd92e22f1d2799684f40a))
+* use uuid as primary key for all global tables ([8b5ffdd](https://github.com/Chia-Network/climate-warehouse/commit/8b5ffddd73f631c6e35b062eaaa5bf9be95ea150))
+
+
+### Bug Fixes
+
+* add search ([e6f5a67](https://github.com/Chia-Network/climate-warehouse/commit/e6f5a67975c2bc80dd8ed8c3d54b6a0816792d96))
+* allow tags to be empty strings ([357fe9a](https://github.com/Chia-Network/climate-warehouse/commit/357fe9a9e13983f959c31ac3c01b66530ff3a862))
+* model updates ([8cee623](https://github.com/Chia-Network/climate-warehouse/commit/8cee623fea3e21e2e1364b036cd696af106ad65a))
+* move where ([48fb530](https://github.com/Chia-Network/climate-warehouse/commit/48fb5303e2f25c5cf5d278671180029073da911a))
+* remove console.log ([046d72e](https://github.com/Chia-Network/climate-warehouse/commit/046d72eec3e0bb8837be67b112e9e1bb59b0734e))
+* remove unused code in organization model ([02d2ab0](https://github.com/Chia-Network/climate-warehouse/commit/02d2ab025c16d956f24167b1ad5b80a5547c5185))
+* units columns ([554cce6](https://github.com/Chia-Network/climate-warehouse/commit/554cce67debb208797f897d9a0f746291c8941dc))
+* units columns fts edge case ([3fa4ff9](https://github.com/Chia-Network/climate-warehouse/commit/3fa4ff91b71d7c052ae4ca9cb7207292e031bd20))
+
 ### [0.0.4](https://github.com/Chia-Network/climate-warehouse/compare/v0.0.2...v0.0.4) (2022-01-07)
 
 
