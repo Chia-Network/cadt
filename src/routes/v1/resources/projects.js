@@ -11,7 +11,7 @@ import {
   projectsDeleteSchema,
 } from '../../../validations';
 
-const validator = joiExpress.createValidator({});
+const validator = joiExpress.createValidator({ passError: true });
 const ProjectRouter = express.Router();
 
 ProjectRouter.get('/', validator.query(projectsGetQuerySchema), (req, res) => {

@@ -46,6 +46,7 @@ const virtualFields = {
 };
 
 class Unit extends Model {
+  static stagingTableName = 'Units';
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(
     Object.assign({}, ModelTypes, virtualFields),

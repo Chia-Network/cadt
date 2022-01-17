@@ -6,7 +6,7 @@ import { StagingController } from '../../../controllers';
 
 import { stagingDeleteSchema } from '../../../validations';
 
-const validator = joiExpress.createValidator({});
+const validator = joiExpress.createValidator({ passError: true });
 const StagingRouter = express.Router();
 
 StagingRouter.get('/', (req, res) => {

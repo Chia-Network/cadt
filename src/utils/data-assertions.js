@@ -1,8 +1,17 @@
 'use strict';
 
-import { Organization, Unit, Project, Staging } from '../models';
+import _ from 'lodash';
 
+import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
+
+export const assertCsvFileInRequest = (req) => {
+  if (!_.get(req, 'files.csv')) {
+    throw new Error('Can not file the required csv file in request');
+  }
+
+  return req.files.csv;
+};
 
 export const assertOrgIsHomeOrg = async (orgUid) => {
   const homeOrg = await Organization.getHomeOrg();
@@ -57,7 +66,6 @@ export const assertSumOfSplitUnitsIsValid = (
       previousValue.unitCount + currentValue.unitCount,
   );
 
-  // eslint-disable-next-line no-unused-vars
   const [unitBlockStart, unitBlockEnd, unitCount] =
     transformSerialNumberBlock(serialNumberBlock);
 

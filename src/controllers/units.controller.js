@@ -2,8 +2,6 @@
 
 import _ from 'lodash';
 
-import csv from 'csvtojson';
-import { Readable } from 'stream';
 import { uuid as uuidv4 } from 'uuidv4';
 
 import { Staging, Unit, Qualification, Vintage, Organization } from '../models';
@@ -19,9 +17,12 @@ import {
   assertOrgIsHomeOrg,
   assertUnitRecordExists,
   assertSumOfSplitUnitsIsValid,
+  assertCsvFileInRequest,
 } from '../utils/data-assertions';
 
-export const create = async (req, res, next) => {
+import { createUnitRecordsFromCsv } from '../utils/csv-utils';
+
+export const create = async (req, res) => {
   try {
     const newRecord = _.cloneDeep(req.body);
 
@@ -39,7 +40,7 @@ export const create = async (req, res, next) => {
     const stagedData = {
       uuid,
       action: 'INSERT',
-      table: 'Units',
+      table: Unit.stagingTableName,
       data: JSON.stringify([newRecord]),
     };
 
@@ -48,8 +49,11 @@ export const create = async (req, res, next) => {
     res.json({
       message: 'Unit created successfully',
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
+    });
   }
 };
 
@@ -124,7 +128,7 @@ export const update = async (req, res) => {
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
-      table: 'Units',
+      table: Unit.stagingTableName,
       data: JSON.stringify(Array.isArray(req.body) ? req.body : [req.body]),
     };
 
@@ -152,7 +156,7 @@ export const destroy = async (req, res) => {
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'DELETE',
-      table: 'Units',
+      table: Unit.stagingTableName,
     };
 
     await Staging.upsert(stagedData);
@@ -214,7 +218,7 @@ export const split = async (req, res) => {
       uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
       commited: false,
-      table: 'Units',
+      table: Unit.stagingTableName,
       data: JSON.stringify(splitRecords),
     };
 
@@ -223,94 +227,27 @@ export const split = async (req, res) => {
     res.json({
       message: 'Unit split successful',
     });
-  } catch (err) {
+  } catch (error) {
     res.status(400).json({
       message: 'Error splitting unit',
-      error: err,
+      error: error.message,
     });
   }
 };
 
 export const batchUpload = async (req, res) => {
-  if (!_.get(req, 'files.csv')) {
-    res
-      .status(400)
-      .json({ message: 'Can not file the required csv file in request' });
-    return;
-  }
+  try {
+    const csvFile = await assertCsvFileInRequest(req);
+    await createUnitRecordsFromCsv(csvFile);
 
-  const csvFile = req.files.csv;
-  const buffer = csvFile.data;
-  const stream = Readable.from(buffer.toString('utf8'));
-
-  const recordsToCreate = [];
-
-  csv()
-    .fromStream(stream)
-    .subscribe(async (newRecord) => {
-      let action = 'UPDATE';
-
-      if (newRecord.warehouseUnitId) {
-        // Fail if they supplied their own warehouseUnitId and it doesnt exist
-        const possibleExistingRecord = await assertUnitRecordExists(
-          newRecord.warehouseUnitId,
-        );
-
-        assertOrgIsHomeOrg(res, possibleExistingRecord.dataValues.orgUid);
-      } else {
-        // When creating new unitd assign a uuid to is so
-        // multiple organizations will always have unique ids
-        const uuid = uuidv4();
-        newRecord.warehouseUnitId = uuid;
-
-        action = 'INSERT';
-      }
-
-      const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
-
-      // All new records are registered within this org, but give them a chance to override this
-      if (!newRecord.orgUid) {
-        newRecord.orgUid = orgUid;
-      }
-
-      // All new records are owned by this org, but give them a chance to override this
-      if (!newRecord.unitOwnerOrgUid) {
-        newRecord.unitOwnerOrgUid = orgUid;
-      }
-
-      const stagedData = {
-        uuid: newRecord.warehouseUnitId,
-        action: action,
-        table: 'Units',
-        data: JSON.stringify([newRecord]),
-      };
-
-      recordsToCreate.push(stagedData);
-    })
-    .on('error', (error) => {
-      if (!res.headersSent) {
-        res.status(400).json({
-          message: 'Batch Upload Failed.',
-          error: error.message,
-        });
-      }
-    })
-    .on('done', async () => {
-      if (recordsToCreate.length) {
-        await Staging.bulkCreate(recordsToCreate);
-
-        if (!res.headersSent) {
-          res.json({
-            message:
-              'CSV processing complete, your records have been added to the staging table.',
-          });
-        }
-      } else {
-        if (!res.headersSent) {
-          res
-            .status(400)
-            .json({ message: 'There were no valid records to parse' });
-        }
-      }
+    res.json({
+      message:
+        'CSV processing complete, your records have been added to the staging table.',
     });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
+    });
+  }
 };
