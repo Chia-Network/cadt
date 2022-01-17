@@ -21,6 +21,11 @@ import {
   paginationParams,
 } from '../utils/helpers';
 
+import {
+  assertOrgIsHomeOrg,
+  assertProjectRecordExists,
+} from '../utils/data-assertions';
+
 export const create = async (req, res) => {
   const newRecord = _.cloneDeep(req.body);
   // When creating new projects assign a uuid to is so
@@ -50,7 +55,10 @@ export const create = async (req, res) => {
     });
     res.json('Added project to stage');
   } catch (err) {
-    res.json(err);
+    res.status(400).json({
+      message: 'Error creating new project',
+      error: err.message,
+    });
   }
 };
 
@@ -126,24 +134,11 @@ export const findOne = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
-    const originalRecordResult = await Project.findByPk(
+    const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
     );
 
-    if (!originalRecordResult) {
-      res.status(404).json({
-        message: `The Project record for the warehouseUnitId: ${req.body.warehouseProjectId} does not exist and can not be updated`,
-      });
-      return;
-    }
-
-    const homeOrg = await Organization.getHomeOrg();
-    if (!homeOrg[originalRecordResult.dataValues.orgUid]) {
-      res.status(404).json({
-        message: `Restricted data: can not modify this record with orgUid ${originalRecordResult.dataValues.orgUid}`,
-      });
-      return;
-    }
+    assertOrgIsHomeOrg(res, originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
@@ -158,33 +153,20 @@ export const update = async (req, res) => {
       message: 'Project update added to staging',
     });
   } catch (err) {
-    res.json({
+    res.status(400).json({
       message: 'Error adding update to stage',
-      error: err,
+      error: err.message,
     });
   }
 };
 
 export const destroy = async (req, res) => {
   try {
-    const originalRecordResult = await Project.findByPk(
+    const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
     );
 
-    if (!originalRecordResult) {
-      res.status(404).json({
-        message: `The Project record for the warehouseUnitId: ${req.body.warehouseProjectId} does not exist and can not be updated`,
-      });
-      return;
-    }
-
-    const homeOrg = await Organization.getHomeOrg();
-    if (!homeOrg[originalRecordResult.dataValues.orgUid]) {
-      res.status(404).json({
-        message: `Restricted data: can not modify this record with orgUid ${originalRecordResult.dataValues.orgUid}`,
-      });
-      return;
-    }
+    assertOrgIsHomeOrg(res, originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
@@ -198,8 +180,9 @@ export const destroy = async (req, res) => {
       message: 'Project removal added to stage',
     });
   } catch (err) {
-    res.json({
+    res.status(400).json({
       message: 'Error adding project removal to stage',
+      error: err.message,
     });
   }
 };
@@ -223,23 +206,11 @@ export const batchUpload = async (req, res) => {
 
       if (newRecord.warehouseProjectId) {
         // Fail if they supplied their own warehouseUnitId and it doesnt exist
-        const possibleExistingRecord = await Project.findByPk(
+        const possibleExistingRecord = await assertProjectRecordExists(
           newRecord.warehouseProjectId,
         );
 
-        if (!possibleExistingRecord) {
-          throw new Error(
-            `Trying to update a record that doesnt exists, ${newRecord.warehouseProjectId}. To fix, remove the warehouseProjectId from this record so it will be treated as a new record`,
-          );
-        }
-
-        const homeOrg = await Organization.getHomeOrg();
-        if (!homeOrg[possibleExistingRecord.dataValues.orgUid]) {
-          res.status(404).json({
-            message: `Restricted data: can not modify this record with orgUid ${possibleExistingRecord.dataValues.orgUid}`,
-          });
-          return;
-        }
+        assertOrgIsHomeOrg(res, possibleExistingRecord.dataValues.orgUid);
       } else {
         // When creating new unitd assign a uuid to is so
         // multiple organizations will always have unique ids
@@ -267,7 +238,10 @@ export const batchUpload = async (req, res) => {
     })
     .on('error', (error) => {
       if (!res.headersSent) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({
+          message: 'Batch Upload Failed.',
+          error: error.message,
+        });
       }
     })
     .on('done', () => {

@@ -1,7 +1,8 @@
 import _ from 'lodash';
 import * as fullNode from '../fullnode';
 
-import { Staging, StagingMock, Project, Unit } from '../models';
+import { Staging, Project, Unit } from '../models';
+import { assertStagingRecordExists } from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
   const stagingData = await Staging.findAll();
@@ -115,6 +116,7 @@ export const commit = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    assertStagingRecordExists(req.body.uuid);
     await Staging.destroy({
       where: {
         uuid: req.body.uuid,
@@ -123,9 +125,10 @@ export const destroy = async (req, res) => {
     res.json({
       message: 'Deleted from stage',
     });
-  } catch (err) {
-    res.json({
-      message: err,
+  } catch (error) {
+    res.status(400).json({
+      message: 'Staging Record can not be removed.',
+      error: error.message,
     });
   }
 };
@@ -139,9 +142,9 @@ export const clean = async (req, res) => {
     res.json({
       message: 'Staging Data Cleaned',
     });
-  } catch (err) {
-    res.json({
-      message: err,
+  } catch (error) {
+    res.status(400).json({
+      message: error.message,
     });
   }
 };
