@@ -18,6 +18,7 @@ import ModelTypes from './projects.modeltypes.cjs';
 import { ProjectMirror } from './projects.model.mirror';
 
 class Project extends Model {
+  static stagingTableName = 'Projects';
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
 

@@ -12,7 +12,7 @@ import {
   unitsSplitSchema,
 } from '../../../validations';
 
-const validator = joiExpress.createValidator({});
+const validator = joiExpress.createValidator({ passError: true });
 const UnitRouter = express.Router();
 
 UnitRouter.get('/', validator.query(unitsGetQuerySchema), (req, res) => {
