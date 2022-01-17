@@ -139,7 +139,7 @@ export const update = async (req, res) => {
       req.body.warehouseProjectId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
@@ -167,7 +167,7 @@ export const destroy = async (req, res) => {
       req.body.warehouseProjectId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
@@ -190,7 +190,7 @@ export const destroy = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
-    const csvFile = await assertCsvFileInRequest(req);
+    const csvFile = assertCsvFileInRequest(req);
     await createProjectRecordsFromCsv(csvFile);
 
     res.json({

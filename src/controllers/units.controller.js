@@ -18,6 +18,7 @@ import {
   assertUnitRecordExists,
   assertSumOfSplitUnitsIsValid,
   assertCsvFileInRequest,
+  assertOrgUidIsValid,
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
@@ -44,12 +45,15 @@ export const create = async (req, res) => {
       data: JSON.stringify([newRecord]),
     };
 
+    console.log(stagedData);
+
     await Staging.create(stagedData);
 
     res.json({
       message: 'Unit created successfully',
     });
   } catch (error) {
+    console.log('###', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
@@ -123,7 +127,11 @@ export const update = async (req, res) => {
       req.body.warehouseUnitId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
+
+    if (req.body.unitOwnerOrgUid) {
+      await assertOrgUidIsValid(req.body.unitOwnerOrgUid, 'unitOwnerOrgUid');
+    }
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
@@ -151,7 +159,7 @@ export const destroy = async (req, res) => {
       req.body.warehouseUnitId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
@@ -181,7 +189,7 @@ export const split = async (req, res) => {
     delete originalRecord.createdAt;
     delete originalRecord.updatedAt;
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const { unitBlockStart } = assertSumOfSplitUnitsIsValid(
       originalRecord.serialNumberBlock,
@@ -190,29 +198,32 @@ export const split = async (req, res) => {
 
     let lastAvailableUnitBlock = unitBlockStart;
 
-    const splitRecords = req.body.records.map((record) => {
-      const newRecord = _.cloneDeep(originalRecord);
-      newRecord.warehouseUnitId = uuidv4();
-      newRecord.unitCount = record.unitCount;
+    const splitRecords = await Promise.all(
+      req.body.records.map(async (record) => {
+        const newRecord = _.cloneDeep(originalRecord);
+        newRecord.warehouseUnitId = uuidv4();
+        newRecord.unitCount = record.unitCount;
 
-      const newUnitBlockStart = lastAvailableUnitBlock;
-      lastAvailableUnitBlock += Number(record.unitCount);
-      const newUnitBlockEnd = lastAvailableUnitBlock;
-      // move to the next available block
-      lastAvailableUnitBlock += 1;
+        const newUnitBlockStart = lastAvailableUnitBlock;
+        lastAvailableUnitBlock += Number(record.unitCount);
+        const newUnitBlockEnd = lastAvailableUnitBlock;
+        // move to the next available block
+        lastAvailableUnitBlock += 1;
 
-      newRecord.serialNumberBlock = createSerialNumberStr(
-        originalRecord.serialNumberBlock,
-        newUnitBlockStart,
-        newUnitBlockEnd,
-      );
+        newRecord.serialNumberBlock = createSerialNumberStr(
+          originalRecord.serialNumberBlock,
+          newUnitBlockStart,
+          newUnitBlockEnd,
+        );
 
-      if (record.unitOwnerOrgUid) {
-        newRecord.unitOwnerOrgUid = record.unitOwnerOrgUid;
-      }
+        if (record.unitOwnerOrgUid) {
+          await assertOrgUidIsValid(record.unitOwnerOrgUid, 'unitOwnerOrgUid');
+          newRecord.unitOwnerOrgUid = record.unitOwnerOrgUid;
+        }
 
-      return newRecord;
-    });
+        return newRecord;
+      }),
+    );
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
@@ -237,7 +248,7 @@ export const split = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
-    const csvFile = await assertCsvFileInRequest(req);
+    const csvFile = assertCsvFileInRequest(req);
     await createUnitRecordsFromCsv(csvFile);
 
     res.json({

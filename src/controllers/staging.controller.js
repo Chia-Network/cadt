@@ -116,7 +116,7 @@ export const commit = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
-    assertStagingRecordExists(req.body.uuid);
+    await assertStagingRecordExists(req.body.uuid);
     await Staging.destroy({
       where: {
         uuid: req.body.uuid,

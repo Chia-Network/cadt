@@ -24,10 +24,12 @@ sequelize.authenticate().then(() => console.log('Connected to database'));
 app.use((err, req, res) => {
   if (_.get(err, 'error.details')) {
     // format Joi validation errors
-    return res
-      .status(400)
-      .json(err.error.details.map((detail) => detail.message));
+    return res.status(400).json({
+      message: 'API Validation error',
+      errors: err.error.details.map((detail) => detail.message),
+    });
   }
   return res.status(400).json(err);
 });
+
 export default app;

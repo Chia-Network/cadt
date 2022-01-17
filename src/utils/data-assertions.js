@@ -5,6 +5,17 @@ import _ from 'lodash';
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
 
+export const assertOrgUidIsValid = async (orgUid, fieldName) => {
+  const orgMap = await Organization.getOrgsMap();
+  if (!orgMap[orgUid]) {
+    throw new Error(
+      `The orgUid: ${orgUid}, provided for '${fieldName}' is not in the list of subscribed organizations, either remove it or add it to your organizations and try again`,
+    );
+  }
+
+  return orgMap;
+};
+
 export const assertCsvFileInRequest = (req) => {
   if (!_.get(req, 'files.csv')) {
     throw new Error('Can not file the required csv file in request');
