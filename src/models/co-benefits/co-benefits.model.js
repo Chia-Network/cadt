@@ -12,14 +12,14 @@ class CoBenefit extends Model {
     CoBenefit.belongsTo(Project, {
       onDelete: 'CASCADE',
       targetKey: 'warehouseProjectId',
-      foreignKey: 'projectId',
+      foreignKey: 'warehouseProjectId',
     });
 
     safeMirrorDbHandler(() => {
       CoBenefitMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
-        foreignKey: 'projectId',
+        foreignKey: 'warehouseProjectId',
       });
     });
   }

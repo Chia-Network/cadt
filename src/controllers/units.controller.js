@@ -51,7 +51,6 @@ export const create = async (req, res) => {
       message: 'Unit created successfully',
     });
   } catch (error) {
-    console.log('###', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
@@ -63,7 +62,7 @@ export const findAll = async (req, res) => {
   let { page, limit, columns, orgUid, search } = req.query;
   let where = orgUid ? { orgUid } : undefined;
 
-  const includes = [Qualification];
+  const includes = [Qualification, Vintage];
 
   if (columns) {
     // Remove any unsupported columns
@@ -73,7 +72,9 @@ export const findAll = async (req, res) => {
         .includes(col),
     );
   } else {
-    columns = Unit.defaultColumns;
+    columns = Unit.defaultColumns.concat(
+      includes.map((model) => model.name + 's'),
+    );
   }
 
   // If only FK fields have been specified, select just ID
@@ -88,8 +89,43 @@ export const findAll = async (req, res) => {
       search,
       orgUid,
       paginationParams(page, limit),
-      columns,
+      Unit.defaultColumns,
     );
+
+    // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
+
+    if (columns.includes('qualifications')) {
+      results.rows = await Promise.all(
+        results.rows.map(async (result) => {
+          result.dataValues.qualifications = await Qualification.findAll({
+            include: [
+              {
+                model: Unit,
+                where: {
+                  warehouseUnitId: result.dataValues.warehouseUnitId,
+                },
+                attributes: [],
+                as: 'unit',
+                require: true,
+              },
+            ],
+          });
+          return result;
+        }),
+      );
+    }
+
+    if (columns.includes('vintages')) {
+      results.rows = await Promise.all(
+        results.rows.map(async (result) => {
+          console.log(result.dataValues.vintageId);
+          result.dataValues.vintage = await Vintage.findByPk(
+            result.dataValues.vintageId,
+          );
+          return result;
+        }),
+      );
+    }
   }
 
   if (!results) {
@@ -131,11 +167,15 @@ export const update = async (req, res) => {
       await assertOrgUidIsValid(req.body.unitOwnerOrgUid, 'unitOwnerOrgUid');
     }
 
+    // merge the new record into the old record
+    let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
+    stagedRecord.map((record) => Object.assign({}, originalRecord, record));
+
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
       table: Unit.stagingTableName,
-      data: JSON.stringify(Array.isArray(req.body) ? req.body : [req.body]),
+      data: JSON.stringify(stagedRecord),
     };
 
     await Staging.upsert(stagedData);
@@ -182,10 +222,6 @@ export const split = async (req, res) => {
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
     );
-
-    // we dont need these fields for split
-    delete originalRecord.createdAt;
-    delete originalRecord.updatedAt;
 
     await assertOrgIsHomeOrg(originalRecord.orgUid);
 

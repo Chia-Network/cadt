@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // possible values: local, test
-export const sequelize = new Sequelize(config[process.env.NODE_ENV]);
+export const sequelize = new Sequelize(config['test']);
 
 const mirrorConfig = process.env.NODE_ENV === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);

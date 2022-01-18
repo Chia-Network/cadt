@@ -23,18 +23,24 @@ class Project extends Model {
   static defaultColumns = Object.keys(ModelTypes);
 
   static associate() {
-    Project.hasMany(ProjectLocation);
-    Project.hasMany(Qualification);
-    Project.hasMany(Vintage);
-    Project.hasMany(CoBenefit);
-    Project.hasMany(RelatedProject);
+    Project.hasMany(ProjectLocation, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(Qualification, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(Vintage, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(RelatedProject, { foreignKey: 'warehouseProjectId' });
 
     safeMirrorDbHandler(() => {
-      ProjectMirror.hasMany(ProjectLocation);
-      ProjectMirror.hasMany(Qualification);
-      ProjectMirror.hasMany(Vintage);
-      ProjectMirror.hasMany(CoBenefit);
-      ProjectMirror.hasMany(RelatedProject);
+      ProjectMirror.hasMany(ProjectLocation, {
+        foreignKey: 'warehouseProjectId',
+      });
+      ProjectMirror.hasMany(Qualification, {
+        foreignKey: 'warehouseProjectId',
+      });
+      ProjectMirror.hasMany(Vintage, { foreignKey: 'warehouseProjectId' });
+      ProjectMirror.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
+      ProjectMirror.hasMany(RelatedProject, {
+        foreignKey: 'warehouseProjectId',
+      });
     });
   }
 
@@ -196,7 +202,6 @@ class Project extends Model {
 Project.init(ModelTypes, {
   sequelize,
   modelName: 'project',
-  foreignKey: 'projectId',
 });
 
 export { Project };

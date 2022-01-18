@@ -13,8 +13,14 @@ module.exports = {
   verificationApproach: Sequelize.STRING,
   verificationDate: Sequelize.DATE,
   verificationBody: Sequelize.STRING,
-  projectId: Sequelize.STRING,
-  unitId: Sequelize.STRING,
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
+  warehouseProjectId: Sequelize.STRING,
+  createdAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+  },
+  updatedAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+    allowNull: false,
+  },
 };

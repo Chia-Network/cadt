@@ -19,7 +19,10 @@
     "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
     "unitMarketplaceLink": "http://climateWarehouse.com/myMarketplace",
     "correspondingAdjustmentDeclaration": "Commited",
-    "correspondingAdjustmentStatus": "Not Started"
+    "correspondingAdjustmentStatus": "Not Started",
+    "vintageId": "a6745831-5d5e-45ed-b9fe-fd6aa129df25",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "warehouseUnitId": "50aa22fe-20c4-4af9-a9e9-8472e73a9222",
@@ -41,7 +44,9 @@
     "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
     "unitMarketplaceLink": "http://climateWarehouse.com/myMarketplace",
     "correspondingAdjustmentDeclaration": "Commited",
-    "correspondingAdjustmentStatus": "Not Started"
+    "correspondingAdjustmentStatus": "Not Started",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "warehouseUnitId": "7703e6be-1781-4322-9a9c-502ca0dca29b",
@@ -63,7 +68,9 @@
     "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
     "unitMarketplaceLink": "http://climateWarehouse.com/myMarketplace",
     "correspondingAdjustmentDeclaration": "Commited",
-    "correspondingAdjustmentStatus": "Not Started"
+    "correspondingAdjustmentStatus": "Not Started",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "warehouseUnitId": "04582672-47a9-411b-896f-3d45974e360e",
@@ -85,7 +92,9 @@
     "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
     "unitMarketplaceLink": "http://climateWarehouse.com/myMarketplace",
     "correspondingAdjustmentDeclaration": "Commited",
-    "correspondingAdjustmentStatus": "Not Started"
+    "correspondingAdjustmentStatus": "Not Started",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "warehouseUnitId": "cdc90991-a00d-4567-a09a-cbe5430fdc56",
@@ -107,6 +116,8 @@
     "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
     "unitMarketplaceLink": "http://climateWarehouse.com/myMarketplace",
     "correspondingAdjustmentDeclaration": "Commited",
-    "correspondingAdjustmentStatus": "Not Started"
+    "correspondingAdjustmentStatus": "Not Started",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   }
 ]

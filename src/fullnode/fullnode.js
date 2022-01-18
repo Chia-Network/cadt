@@ -1,6 +1,7 @@
 import * as simulator from './simulator';
 
 export const updateProjectRecord = async (uuid, record, stagingRecordId) => {
+  record.updatedAt = Date.now();
   const encoded = btoa(JSON.stringify(record));
   await simulator.updateProjectRecord(uuid, encoded, stagingRecordId);
 };
@@ -17,10 +18,12 @@ export const deleteProjectRecord = async (uuid, stagingRecordId) => {
 export const updateUnitRecord = async (uuid, record, stagingRecordId) => {
   if (Array.isArray(record)) {
     record.forEach(async (_record) => {
+      _record.updatedAt = Date.now();
       const encoded = btoa(JSON.stringify(_record));
       simulator.updateUnitRecord(uuid, encoded, stagingRecordId);
     });
   } else {
+    record.updatedAt = Date.now();
     const encoded = btoa(JSON.stringify(record));
     await simulator.updateUnitRecord(uuid, encoded, stagingRecordId);
   }

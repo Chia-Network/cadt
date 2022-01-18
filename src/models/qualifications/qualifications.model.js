@@ -15,11 +15,12 @@ class Qualification extends Model {
     // otherwise just dissaciate
     Qualification.belongsTo(Project, {
       targetKey: 'warehouseProjectId',
-      foreignKey: 'projectId',
+      foreignKey: 'warehouseProjectId',
     });
     //Qualification.hasMany(Unit);
     // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
     Qualification.belongsToMany(Unit, {
+      foreignKey: 'qualificationId',
       through: 'qualification_unit',
       as: 'unit',
     });
@@ -27,7 +28,7 @@ class Qualification extends Model {
     safeMirrorDbHandler(() => {
       QualificationMirror.belongsTo(Project, {
         targetKey: 'warehouseProjectId',
-        foreignKey: 'projectId',
+        foreignKey: 'warehouseProjectId',
       });
 
       QualificationMirror.belongsToMany(Unit, {
@@ -51,7 +52,6 @@ class Qualification extends Model {
 Qualification.init(ModelTypes, {
   sequelize,
   modelName: 'qualification',
-  foreignKey: 'qualificationId',
 });
 
 export { Qualification };

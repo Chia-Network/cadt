@@ -4,34 +4,44 @@
     "type": "Greenlam",
     "registry": "Ventosanzap",
     "note": "Donec dapibus.",
-    "projectId": "81e05bfa-e93f-458f-b907-96bf170e52cd"
+    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "id": "39b80025-1a2c-4cda-92aa-541e8e059258",
     "type": "Matsoft",
     "registry": "Sub-Ex",
     "note": "Cras pellentesque volutpat dui. Maecenas tristique, est et tempus semper, est quam pharetra magna, ac consequat metus sapien ut nunc. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Mauris viverra diam vitae quam. Suspendisse potenti.",
-    "projectId": "81e05bfa-e93f-458f-b907-96bf170e52cd"
+    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "id": "d72df87c-a07a-4924-a4dc-e8a670916621",
     "type": "Redhold",
     "registry": "Konklux",
     "note": "Etiam pretium iaculis justo. In hac habitasse platea dictumst. Etiam faucibus cursus urna.",
-    "projectId": "81e05bfa-e93f-458f-b907-96bf170e52cd"
+    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "id": "54171fde-bbad-4483-9908-79707912cc22",
     "type": "Greenlam",
     "registry": "Aerified",
     "note": "Nulla ut erat id mauris vulputate elementum. Nullam varius. Nulla facilisi. Cras non velit nec nisi vulputate nonummy. Maecenas tincidunt lacus at velit. Vivamus vel nulla eget eros elementum pellentesque. Quisque porta volutpat erat.",
-    "projectId": "897891e2-cc66-4867-8da2-c17d69d018cb"
+    "warehouseProjectId": "897891e2-cc66-4867-8da2-c17d69d018cb",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "id": "aa537d7f-d693-4831-9d88-8a045eebef76",
     "type": "Lotstring",
     "registry": "Y-find",
     "note": "In hac habitasse platea dictumst. Morbi vestibulum, velit id pretium iaculis, diam erat fermentum justo, nec condimentum neque sapien placerat ante. Nulla justo. Aliquam quis turpis eget elit sodales scelerisque. Mauris sit amet eros. Suspendisse accumsan tortor quis turpis. Sed ante. Vivamus tortor. Duis mattis egestas metus.",
-    "projectId": "897891e2-cc66-4867-8da2-c17d69d018cb"
+    "warehouseProjectId": "897891e2-cc66-4867-8da2-c17d69d018cb",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   }
 ]

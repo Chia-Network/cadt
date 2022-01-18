@@ -31,6 +31,14 @@ module.exports = {
   unitMarketplaceLink: Sequelize.STRING,
   correspondingAdjustmentDeclaration: Sequelize.STRING,
   correspondingAdjustmentStatus: Sequelize.STRING,
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
+  vintageId: Sequelize.STRING,
+  createdAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+  },
+  updatedAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+    allowNull: false,
+  },
 };
