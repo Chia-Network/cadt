@@ -9,7 +9,7 @@ module.exports = {
     primaryKey: true,
   },
   benefit: Sequelize.STRING,
-  projectId: {
+  warehouseProjectId: {
     type: Sequelize.INTEGER,
     onDelete: 'CASCADE',
   },

@@ -2,26 +2,36 @@
   {
     "id": "89adcb9a-dc10-41aa-8606-c1ce1545dcbd",
     "countryRegion": "United States",
-    "projectId": 1
+    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "id": "b41d0f89-2f71-4bde-b6d0-5cf77802c3fc",
     "countryRegion": "United States",
-    "projectId": 1
+    "warehouseProjectId": "897891e2-cc66-4867-8da2-c17d69d018cb",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "id": "8f23fd77-d19f-4083-b7be-949288e88a36",
     "countryRegion": "China",
-    "projectId": 2
+    "warehouseProjectId": "8a02a620-8be8-44f9-ba90-eff00ccc3a70",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "id": "f28965c3-96b8-40ef-809e-894975d16c4d",
     "countryRegion": "Russia",
-    "projectId": 2
+    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   },
   {
     "id": "40ae83b1-b497-4f63-9b7d-874505b67662",
     "countryRegion": "United States",
-    "projectId": 2
+    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
+    "createdAt": "2022-01-18 00:05:45.701 +00:00",
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   }
 ]

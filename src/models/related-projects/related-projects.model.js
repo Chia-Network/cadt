@@ -13,14 +13,14 @@ class RelatedProject extends Model {
     RelatedProject.belongsTo(Project, {
       onDelete: 'CASCADE',
       targetKey: 'warehouseProjectId',
-      foreignKey: 'projectId',
+      foreignKey: 'warehouseProjectId',
     });
 
     safeMirrorDbHandler(() => {
       RelatedProjectMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
-        foreignKey: 'projectId',
+        foreignKey: 'warehouseProjectId',
       });
     });
   }

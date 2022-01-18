@@ -10,22 +10,23 @@ import { VintageMirror } from './vintages.model.mirror';
 class Vintage extends Model {
   static associate() {
     Vintage.belongsTo(Project, {
-      targetKey: 'warehouseProjectId',
-      foreignKey: 'projectId',
+      sourceKey: 'warehouseProjectId',
+      foreignKey: 'warehouseProjectId',
     });
-    Vintage.belongsTo(Unit, {
-      targetKey: 'warehouseUnitId',
-      foreignKey: 'unitId',
+
+    Vintage.hasMany(Unit, {
+      targetKey: 'vintageId',
+      foreignKey: 'vintageId',
     });
 
     safeMirrorDbHandler(() => {
       VintageMirror.belongsTo(Project, {
         targetKey: 'warehouseProjectId',
-        foreignKey: 'projectId',
+        foreignKey: 'warehouseProjectId',
       });
-      VintageMirror.belongsTo(Unit, {
+      VintageMirror.hasOne(Unit, {
         targetKey: 'warehouseUnitId',
-        foreignKey: 'unitId',
+        foreignKey: 'warehouseUnitId',
       });
     });
   }

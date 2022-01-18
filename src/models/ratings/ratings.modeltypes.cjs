@@ -12,10 +12,17 @@ module.exports = {
   rating: Sequelize.INTEGER,
   link: Sequelize.STRING,
   scale: Sequelize.STRING,
-  projectId: {
+  warehouseProjectId: {
     type: Sequelize.INTEGER,
     onDelete: 'CASCADE',
   },
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
+  createdAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+  },
+  updatedAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+    allowNull: false,
+  },
 };

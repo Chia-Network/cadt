@@ -83,7 +83,9 @@ export const findAll = async (req, res) => {
         .includes(col),
     );
   } else {
-    columns = Project.defaultColumns;
+    columns = Project.defaultColumns.concat(
+      includes.map((model) => model.name + 's'),
+    );
   }
 
   // If only FK fields have been specified, select just ID
@@ -120,7 +122,7 @@ export const findAll = async (req, res) => {
 
 export const findOne = async (req, res) => {
   const query = {
-    where: { warehouseProjectId: res.query.warehouseProjectId },
+    where: { warehouseProjectId: req.query.warehouseProjectId },
     include: [
       ProjectLocation,
       Qualification,
@@ -139,13 +141,17 @@ export const update = async (req, res) => {
       req.body.warehouseProjectId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
+
+    // merge the new record into the old record
+    let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
+    stagedRecord.map((record) => Object.assign({}, originalRecord, record));
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
       action: 'UPDATE',
       table: Project.stagingTableName,
-      data: JSON.stringify(Array.isArray(req.body) ? req.body : [req.body]),
+      data: JSON.stringify(stagedRecord),
     };
 
     await Staging.upsert(stagedData);
@@ -167,7 +173,7 @@ export const destroy = async (req, res) => {
       req.body.warehouseProjectId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
@@ -190,7 +196,7 @@ export const destroy = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
-    const csvFile = await assertCsvFileInRequest(req);
+    const csvFile = assertCsvFileInRequest(req);
     await createProjectRecordsFromCsv(csvFile);
 
     res.json({

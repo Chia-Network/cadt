@@ -9,6 +9,7 @@ import { Staging, Organization, Unit, Project } from '../models';
 import {
   assertOrgIsHomeOrg,
   assertUnitRecordExists,
+  assertOrgUidIsValid,
 } from '../utils/data-assertions';
 
 export const createUnitRecordsFromCsv = (csvFile) => {
@@ -23,31 +24,32 @@ export const createUnitRecordsFromCsv = (csvFile) => {
       .subscribe(async (newRecord) => {
         let action = 'UPDATE';
 
+        const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+
         if (newRecord.warehouseUnitId) {
           // Fail if they supplied their own warehouseUnitId and it doesnt exist
           const possibleExistingRecord = await assertUnitRecordExists(
             newRecord.warehouseUnitId,
           );
 
-          assertOrgIsHomeOrg(possibleExistingRecord.dataValues.orgUid);
+          await assertOrgIsHomeOrg(possibleExistingRecord.dataValues.orgUid);
         } else {
           // When creating new unitd assign a uuid to is so
           // multiple organizations will always have unique ids
           const uuid = uuidv4();
           newRecord.warehouseUnitId = uuid;
+          newRecord.orgUid = orgUid;
 
           action = 'INSERT';
         }
 
-        const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
-
-        // All new records are registered within this org, but give them a chance to override this
-        if (!newRecord.orgUid) {
-          newRecord.orgUid = orgUid;
-        }
-
         // All new records are owned by this org, but give them a chance to override this
-        if (!newRecord.unitOwnerOrgUid) {
+        if (newRecord.unitOwnerOrgUid) {
+          await assertOrgUidIsValid(
+            newRecord.unitOwnerOrgUid,
+            'unitOwnerOrgUid',
+          );
+        } else {
           newRecord.unitOwnerOrgUid = orgUid;
         }
 
@@ -93,21 +95,17 @@ export const createProjectRecordsFromCsv = (csvFile) => {
             newRecord.warehouseProjectId,
           );
 
-          assertOrgIsHomeOrg(possibleExistingRecord.dataValues.orgUid);
+          await assertOrgIsHomeOrg(possibleExistingRecord.dataValues.orgUid);
         } else {
           // When creating new unitd assign a uuid to is so
           // multiple organizations will always have unique ids
           const uuid = uuidv4();
           newRecord.warehouseProjectId = uuid;
 
-          action = 'INSERT';
-        }
-
-        const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
-
-        // All new records are registered within this org, but give them a chance to override this
-        if (!newRecord.orgUid) {
+          const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
           newRecord.orgUid = orgUid;
+
+          action = 'INSERT';
         }
 
         const stagedData = {
