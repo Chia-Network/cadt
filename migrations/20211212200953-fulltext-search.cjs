@@ -39,7 +39,7 @@ module.exports = {
           countryJurisdictionOfOwner,
           inCountryJurisdictionOfOwner,
           serialNumberBlock,
-          customSerialNumberPattern,
+          serialNumberPattern,
           unitIdentifier,
           unitType,
           intendedBuyerOrgUid,

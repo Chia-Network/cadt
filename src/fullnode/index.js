@@ -1,1 +1,1 @@
-export * from './fullnode';
+export * from './dispatcher';

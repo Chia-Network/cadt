@@ -19,6 +19,7 @@ describe('Create Unit Integration', function () {
     // create and commit the unit to be deleted
     const payload = {
       serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
+      serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
       countryJurisdictionOfOwner: 'USA',
       unitType: 'removal',
       unitIdentifier: 'XYZ',
@@ -360,6 +361,7 @@ describe('Create Unit Integration', function () {
 
     const payload = {
       serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
+      serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
       countryJurisdictionOfOwner: 'USA',
       unitType: 'removal',
       unitIdentifier: 'XYZ',

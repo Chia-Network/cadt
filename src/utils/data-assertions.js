@@ -83,6 +83,7 @@ export const assertProjectRecordExists = async (
 
 export const assertSumOfSplitUnitsIsValid = (
   serialNumberBlock,
+  serialNumberPattern,
   splitRecords,
 ) => {
   const sumOfSplitUnits = splitRecords.reduce(
@@ -90,8 +91,10 @@ export const assertSumOfSplitUnitsIsValid = (
       previousValue.unitCount + currentValue.unitCount,
   );
 
-  const [unitBlockStart, unitBlockEnd, unitCount] =
-    transformSerialNumberBlock(serialNumberBlock);
+  const [unitBlockStart, unitBlockEnd, unitCount] = transformSerialNumberBlock(
+    serialNumberBlock,
+    serialNumberPattern,
+  );
 
   if (sumOfSplitUnits !== unitCount) {
     throw new Error(
