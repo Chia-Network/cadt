@@ -12,9 +12,9 @@
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test mocha tests/**/*.spec.js --reporter spec --exit --timeout 30000",
     "release": "./node_modules/.bin/standard-version && git push --tags",
     "postinstall": "npm run requirements-check",
-    "resetdb": "rm -f ./data.sqlite3 && npx sequelize-cli db:migrate --env local && npx sequelize-cli db:seed:all --debug --env local",
-    "cleandb": "rm -f ./data.sqlite3 && npx sequelize-cli db:migrate --env local",
-    "resetTestDb": "rm -f ./test.sqlite3 && npx sequelize-cli db:migrate --env test && npx sequelize-cli db:seed:all --debug --env test && rm -f ./testMirror.sqlite3 && npx sequelize-cli db:migrate --env mirrorTest",
+    "resetdb": "sequelize db:migrate:undo:all --env local && npx sequelize-cli db:migrate --env local && npx sequelize-cli db:seed:all --debug --env local",
+    "cleandb": "sequelize db:migrate:undo:all --env local && && npx sequelize-cli db:migrate --env local",
+    "resetTestDb": "sequelize db:migrate:undo:all --env test && npx sequelize-cli db:migrate --env test && npx sequelize-cli db:seed:all --debug --env test && rm -f ./testMirror.sqlite3 && npx sequelize-cli db:migrate --env mirrorTest",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror && npx sequelize-cli db:create --env mirror && npx sequelize-cli db:migrate --env mirror --debug",
     "prepare": "husky install"
   },
@@ -36,6 +36,7 @@
     "socket.io": "^4.4.0",
     "socket.io-client": "^4.4.0",
     "sqlite3": "4.1.1",
+    "updeep": "^1.2.1",
     "uuidv4": "^6.2.12"
   },
   "devDependencies": {

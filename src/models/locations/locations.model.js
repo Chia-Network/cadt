@@ -14,14 +14,14 @@ class ProjectLocation extends Model {
     ProjectLocation.belongsTo(Project, {
       onDelete: 'CASCADE',
       targetKey: 'warehouseProjectId',
-      foreignKey: 'projectId',
+      foreignKey: 'warehouseProjectId',
     });
 
     safeMirrorDbHandler(() => {
       ProjectLocationMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
-        foreignKey: 'projectId',
+        foreignKey: 'warehouseProjectId',
       });
     });
   }

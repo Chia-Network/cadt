@@ -39,6 +39,7 @@ module.exports = {
           countryJurisdictionOfOwner,
           inCountryJurisdictionOfOwner,
           serialNumberBlock,
+          customSerialNumberPattern,
           unitIdentifier,
           unitType,
           intendedBuyerOrgUid,
@@ -53,7 +54,8 @@ module.exports = {
           unitRegistryLink,
           unitMarketplaceLink,
           correspondingAdjustmentDeclaration,
-          correspondingAdjustmentStatus
+          correspondingAdjustmentStatus,
+          vintageId
         );
       `);
     }

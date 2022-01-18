@@ -34,6 +34,7 @@ export const projectsGetQuerySchema = Joi.object()
     search: Joi.string(),
     columns: Joi.array().items(Joi.string()).single(),
     orgUid: Joi.string(),
+    warehouseProjectId: Joi.string(),
   })
   .with('page', 'limit');
 

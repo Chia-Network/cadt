@@ -10,12 +10,19 @@ module.exports = {
   },
   qualificationId: Sequelize.INTEGER,
   qualificationLink: Sequelize.STRING,
-  projectId: Sequelize.INTEGER,
+  warehouseProjectId: Sequelize.INTEGER,
   type: Sequelize.STRING,
   label: Sequelize.STRING,
   creditingPeriodStartDate: Sequelize.DATE,
   creditingPeriodEndDate: Sequelize.DATE,
-  unitId: Sequelize.INTEGER,
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
+  warehouseUnitId: Sequelize.INTEGER,
+  createdAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+  },
+  updatedAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+    allowNull: false,
+  },
 };

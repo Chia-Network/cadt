@@ -12,6 +12,7 @@ module.exports = {
           countryJurisdictionOfOwner,
           inCountryJurisdictionOfOwner,
           serialNumberBlock,
+          customSerialNumberPattern,
           unitIdentifier,
           unitType,
           intendedBuyerOrgUid,
@@ -26,7 +27,8 @@ module.exports = {
           unitRegistryLink,
           unitMarketplaceLink,
           correspondingAdjustmentDeclaration,
-          correspondingAdjustmentStatus
+          correspondingAdjustmentStatus,
+          vintageId
         ) VALUES (
           new.warehouseUnitId,
           new.orgUid,
@@ -34,6 +36,7 @@ module.exports = {
           new.countryJurisdictionOfOwner,
           new.inCountryJurisdictionOfOwner,
           new.serialNumberBlock,
+          new.customSerialNumberPattern,
           new.unitIdentifier,
           new.unitType,
           new.intendedBuyerOrgUid,
@@ -48,7 +51,8 @@ module.exports = {
           new.unitRegistryLink,
           new.unitMarketplaceLink,
           new.correspondingAdjustmentDeclaration,
-          new.correspondingAdjustmentStatus
+          new.correspondingAdjustmentStatus,
+          new.vintageId
         );
       END;`);
 
@@ -68,6 +72,7 @@ module.exports = {
           countryJurisdictionOfOwner,
           inCountryJurisdictionOfOwner,
           serialNumberBlock,
+          customSerialNumberPattern,
           unitIdentifier,
           unitType,
           intendedBuyerOrgUid,
@@ -82,7 +87,8 @@ module.exports = {
           unitRegistryLink,
           unitMarketplaceLink,
           correspondingAdjustmentDeclaration,
-          correspondingAdjustmentStatus
+          correspondingAdjustmentStatus,
+          vintageId
         ) VALUES (
           new.warehouseUnitId,
           new.orgUid,
@@ -90,6 +96,7 @@ module.exports = {
           new.countryJurisdictionOfOwner,
           new.inCountryJurisdictionOfOwner,
           new.serialNumberBlock,
+          new.customSerialNumberPattern,
           new.unitIdentifier,
           new.unitType,
           new.intendedBuyerOrgUid,
@@ -104,7 +111,8 @@ module.exports = {
           new.unitRegistryLink,
           new.unitMarketplaceLink,
           new.correspondingAdjustmentDeclaration,
-          new.correspondingAdjustmentStatus
+          new.correspondingAdjustmentStatus,
+          new.vintageId
         );
       END;
       `);

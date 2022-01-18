@@ -12,7 +12,7 @@ safeMirrorDbHandler(() => {
   ProjectMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
     modelName: 'project',
-    foreignKey: 'projectId',
+    foreignKey: 'warehouseProjectId',
   });
 });
 

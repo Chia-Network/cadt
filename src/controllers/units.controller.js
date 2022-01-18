@@ -1,7 +1,6 @@
 'use strict';
 
 import _ from 'lodash';
-
 import { uuid as uuidv4 } from 'uuidv4';
 
 import { Staging, Unit, Qualification, Vintage, Organization } from '../models';
@@ -18,6 +17,7 @@ import {
   assertUnitRecordExists,
   assertSumOfSplitUnitsIsValid,
   assertCsvFileInRequest,
+  assertOrgUidIsValid,
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
@@ -61,7 +61,7 @@ export const findAll = async (req, res) => {
   let { page, limit, columns, orgUid, search } = req.query;
   let where = orgUid ? { orgUid } : undefined;
 
-  const includes = [Qualification];
+  const includes = [Qualification, Vintage];
 
   if (columns) {
     // Remove any unsupported columns
@@ -71,7 +71,9 @@ export const findAll = async (req, res) => {
         .includes(col),
     );
   } else {
-    columns = Unit.defaultColumns;
+    columns = Unit.defaultColumns.concat(
+      includes.map((model) => model.name + 's'),
+    );
   }
 
   // If only FK fields have been specified, select just ID
@@ -86,8 +88,42 @@ export const findAll = async (req, res) => {
       search,
       orgUid,
       paginationParams(page, limit),
-      columns,
+      Unit.defaultColumns,
     );
+
+    // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
+
+    if (columns.includes('qualifications')) {
+      results.rows = await Promise.all(
+        results.rows.map(async (result) => {
+          result.dataValues.qualifications = await Qualification.findAll({
+            include: [
+              {
+                model: Unit,
+                where: {
+                  warehouseUnitId: result.dataValues.warehouseUnitId,
+                },
+                attributes: [],
+                as: 'unit',
+                require: true,
+              },
+            ],
+          });
+          return result;
+        }),
+      );
+    }
+
+    if (columns.includes('vintages')) {
+      results.rows = await Promise.all(
+        results.rows.map(async (result) => {
+          result.dataValues.vintage = await Vintage.findByPk(
+            result.dataValues.vintageId,
+          );
+          return result;
+        }),
+      );
+    }
   }
 
   if (!results) {
@@ -106,13 +142,7 @@ export const findOne = async (req, res) => {
   console.info('req.query', req.query);
   res.json(
     await Unit.findByPk(req.query.warehouseUnitId, {
-      include: [
-        {
-          model: Qualification,
-          as: 'qualifications',
-        },
-        Vintage,
-      ],
+      include: Unit.getAssociatedModels(),
     }),
   );
 };
@@ -123,13 +153,23 @@ export const update = async (req, res) => {
       req.body.warehouseUnitId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
+
+    if (req.body.unitOwnerOrgUid) {
+      await assertOrgUidIsValid(req.body.unitOwnerOrgUid, 'unitOwnerOrgUid');
+    }
+
+    // merge the new record into the old record
+    let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
+    stagedRecord = stagedRecord.map((record) =>
+      Object.assign({}, originalRecord, record),
+    );
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
       table: Unit.stagingTableName,
-      data: JSON.stringify(Array.isArray(req.body) ? req.body : [req.body]),
+      data: JSON.stringify(stagedRecord),
     };
 
     await Staging.upsert(stagedData);
@@ -151,7 +191,7 @@ export const destroy = async (req, res) => {
       req.body.warehouseUnitId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
@@ -177,11 +217,7 @@ export const split = async (req, res) => {
       req.body.warehouseUnitId,
     );
 
-    // we dont need these fields for split
-    delete originalRecord.createdAt;
-    delete originalRecord.updatedAt;
-
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const { unitBlockStart } = assertSumOfSplitUnitsIsValid(
       originalRecord.serialNumberBlock,
@@ -190,29 +226,32 @@ export const split = async (req, res) => {
 
     let lastAvailableUnitBlock = unitBlockStart;
 
-    const splitRecords = req.body.records.map((record) => {
-      const newRecord = _.cloneDeep(originalRecord);
-      newRecord.warehouseUnitId = uuidv4();
-      newRecord.unitCount = record.unitCount;
+    const splitRecords = await Promise.all(
+      req.body.records.map(async (record) => {
+        const newRecord = _.cloneDeep(originalRecord);
+        newRecord.warehouseUnitId = uuidv4();
+        newRecord.unitCount = record.unitCount;
 
-      const newUnitBlockStart = lastAvailableUnitBlock;
-      lastAvailableUnitBlock += Number(record.unitCount);
-      const newUnitBlockEnd = lastAvailableUnitBlock;
-      // move to the next available block
-      lastAvailableUnitBlock += 1;
+        const newUnitBlockStart = lastAvailableUnitBlock;
+        lastAvailableUnitBlock += Number(record.unitCount);
+        const newUnitBlockEnd = lastAvailableUnitBlock;
+        // move to the next available block
+        lastAvailableUnitBlock += 1;
 
-      newRecord.serialNumberBlock = createSerialNumberStr(
-        originalRecord.serialNumberBlock,
-        newUnitBlockStart,
-        newUnitBlockEnd,
-      );
+        newRecord.serialNumberBlock = createSerialNumberStr(
+          originalRecord.serialNumberBlock,
+          newUnitBlockStart,
+          newUnitBlockEnd,
+        );
 
-      if (record.unitOwnerOrgUid) {
-        newRecord.unitOwnerOrgUid = record.unitOwnerOrgUid;
-      }
+        if (record.unitOwnerOrgUid) {
+          await assertOrgUidIsValid(record.unitOwnerOrgUid, 'unitOwnerOrgUid');
+          newRecord.unitOwnerOrgUid = record.unitOwnerOrgUid;
+        }
 
-      return newRecord;
-    });
+        return newRecord;
+      }),
+    );
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
@@ -237,7 +276,7 @@ export const split = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
-    const csvFile = await assertCsvFileInRequest(req);
+    const csvFile = assertCsvFileInRequest(req);
     await createUnitRecordsFromCsv(csvFile);
 
     res.json({

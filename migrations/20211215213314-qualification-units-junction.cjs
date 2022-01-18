@@ -3,7 +3,7 @@
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('qualification_unit', {
-      unitId: Sequelize.INTEGER,
+      warehouseUnitId: Sequelize.INTEGER,
       qualificationId: Sequelize.INTEGER,
       createdAt: Sequelize.DATE,
       updatedAt: Sequelize.DATE,
