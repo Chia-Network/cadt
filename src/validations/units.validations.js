@@ -3,12 +3,12 @@ import { transformSerialNumberBlock } from '../utils/helpers';
 import { newVintageScheme, existingVintageSchema } from './vintages.validation';
 
 const customSerialNumberValidator = (obj, helper) => {
-  const { serialNumberBlock, customSerialNumberPattern } = obj;
+  const { serialNumberBlock, serialNumberPattern } = obj;
 
   // eslint-disable-next-line no-unused-vars
   const [_, __, unitCount] = transformSerialNumberBlock(
     serialNumberBlock,
-    customSerialNumberPattern || undefined,
+    new RegExp(serialNumberPattern),
   );
 
   if (!unitCount) {
@@ -30,7 +30,10 @@ const unitsBaseSchema = {
   inCountryJurisdictionOfOwner: Joi.string().optional(),
   // must be in the form ABC123-XYZ456
   serialNumberBlock: Joi.string().required(),
-  customSerialNumberPattern: Joi.string().optional(),
+  serialNumberPattern: Joi.string().required().messages({
+    'any.required':
+      'serialNumberPattern is required. This pattern must be a regex expression with 2 match groups to match block start and block end. Example: [.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$ that matches ABC1000-ABC1010 TODO: ADD LINK HERE FOR DOCUMENTATION',
+  }),
   unitIdentifier: Joi.string().required(),
   unitType: Joi.string().valid('heard reduction', 'removal').required(),
   intendedBuyerOrgUid: Joi.string().optional(),

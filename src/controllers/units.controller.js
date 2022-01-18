@@ -221,6 +221,7 @@ export const split = async (req, res) => {
 
     const { unitBlockStart } = assertSumOfSplitUnitsIsValid(
       originalRecord.serialNumberBlock,
+      new RegExp(originalRecord.serialNumberPattern),
       req.body.records,
     );
 

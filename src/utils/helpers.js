@@ -69,8 +69,9 @@ export const defaultSerialNumberPattern = /[.*\D]+([0-9]+)+[-][.*\D]+([0-9]+)$/;
 export const transformSerialNumberBlock = (
   serialNumberBlock,
   // serial number format: ABC1000-ABC1010
-  serialNumberPattern = defaultSerialNumberPattern,
+  serialNumberPattern,
 ) => {
+  console.log(serialNumberPattern);
   const unitBlocks = serialNumberBlock.match(serialNumberPattern);
 
   if (!unitBlocks) {
