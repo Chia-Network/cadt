@@ -26,12 +26,14 @@ export const findAll = async (req, res) => {
           if (workingData.table === 'Projects') {
             original = await Project.findOne({
               where: { warehouseProjectId: workingData.uuid },
+              include: Project.getAssociatedModels(),
             });
           }
 
           if (workingData.table === 'Units') {
             original = await Unit.findOne({
               where: { warehouseUnitId: workingData.uuid },
+              include: Unit.getAssociatedModels(),
             });
           }
 

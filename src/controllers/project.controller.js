@@ -67,13 +67,7 @@ export const findAll = async (req, res) => {
   let { page, limit, search, orgUid, columns } = req.query;
   let where = orgUid ? { orgUid } : undefined;
 
-  const includes = [
-    ProjectLocation,
-    Qualification,
-    Vintage,
-    CoBenefit,
-    RelatedProject,
-  ];
+  const includes = Project.getAssociatedModels();
 
   if (columns) {
     // Remove any unsupported columns
@@ -145,7 +139,9 @@ export const update = async (req, res) => {
 
     // merge the new record into the old record
     let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
-    stagedRecord.map((record) => Object.assign({}, originalRecord, record));
+    stagedRecord = stagedRecord.map((record) =>
+      Object.assign({}, originalRecord, record),
+    );
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,

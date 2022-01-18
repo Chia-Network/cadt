@@ -1,7 +1,6 @@
 'use strict';
 
 import _ from 'lodash';
-
 import { uuid as uuidv4 } from 'uuidv4';
 
 import { Staging, Unit, Qualification, Vintage, Organization } from '../models';
@@ -118,7 +117,6 @@ export const findAll = async (req, res) => {
     if (columns.includes('vintages')) {
       results.rows = await Promise.all(
         results.rows.map(async (result) => {
-          console.log(result.dataValues.vintageId);
           result.dataValues.vintage = await Vintage.findByPk(
             result.dataValues.vintageId,
           );
@@ -144,13 +142,7 @@ export const findOne = async (req, res) => {
   console.info('req.query', req.query);
   res.json(
     await Unit.findByPk(req.query.warehouseUnitId, {
-      include: [
-        {
-          model: Qualification,
-          as: 'qualifications',
-        },
-        Vintage,
-      ],
+      include: Unit.getAssociatedModels(),
     }),
   );
 };
@@ -169,7 +161,9 @@ export const update = async (req, res) => {
 
     // merge the new record into the old record
     let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
-    stagedRecord.map((record) => Object.assign({}, originalRecord, record));
+    stagedRecord = stagedRecord.map((record) =>
+      Object.assign({}, originalRecord, record),
+    );
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,

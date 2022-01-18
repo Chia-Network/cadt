@@ -21,6 +21,13 @@ class Project extends Model {
   static stagingTableName = 'Projects';
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
+  static getAssociatedModels = () => [
+    ProjectLocation,
+    Qualification,
+    Vintage,
+    CoBenefit,
+    RelatedProject,
+  ];
 
   static associate() {
     Project.hasMany(ProjectLocation, { foreignKey: 'warehouseProjectId' });

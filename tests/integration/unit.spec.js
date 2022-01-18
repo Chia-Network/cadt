@@ -169,11 +169,7 @@ describe('Create Unit Integration', function () {
     const originalRecord = stagingRecord.diff.original;
 
     // The orginal record should be the original unit before the split
-    // merge the unitRecord into the originalRecord because the original includes associated tables
-    // that we are not testing right now
-    expect(Object.assign({}, originalRecord, unitRecord)).to.deep.equal(
-      unitRecord,
-    );
+    expect(originalRecord).to.deep.equal(unitRecord);
 
     // Check that the 2 split records have set up their data correctly
     const splitRecord1 = stagingRecord.diff.change[0];

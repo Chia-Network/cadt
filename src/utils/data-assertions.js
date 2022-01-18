@@ -39,7 +39,9 @@ export const assertUnitRecordExists = async (
   warehouseUnitId,
   customMessage,
 ) => {
-  const record = await Unit.findByPk(warehouseUnitId);
+  const record = await Unit.findByPk(warehouseUnitId, {
+    include: Unit.getAssociatedModels(),
+  });
   if (!record) {
     throw new Error(
       customMessage ||
@@ -65,7 +67,10 @@ export const assertProjectRecordExists = async (
   warehouseProjectId,
   customMessage,
 ) => {
-  const record = await Project.findByPk(warehouseProjectId);
+  const record = await Project.findByPk(warehouseProjectId, {
+    include: Project.getAssociatedModels(),
+  });
+
   if (!record) {
     throw new Error(
       customMessage ||
