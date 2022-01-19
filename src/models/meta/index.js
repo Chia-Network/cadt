@@ -1,2 +1,2 @@
-export * from './organizations.model.js';
-export * from './organizations.mock.js';
+export * from './meta.model.js';
+export * from './meta.mock.js';
