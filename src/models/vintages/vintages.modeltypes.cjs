@@ -8,6 +8,7 @@ module.exports = {
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
+  orgUid: Sequelize.STRING,
   startDate: Sequelize.DATE,
   endDate: Sequelize.DATE,
   verificationApproach: Sequelize.STRING,
