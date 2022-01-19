@@ -15,7 +15,10 @@ module.exports = {
   countryJurisdictionOfOwner: Sequelize.STRING,
   inCountryJurisdictionOfOwner: Sequelize.STRING,
   serialNumberBlock: Sequelize.STRING,
-  customSerialNumberPattern: Sequelize.STRING,
+  serialNumberPattern: {
+    type: Sequelize.STRING,
+    defaultValue: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
+  },
   unitIdentifier: Sequelize.STRING,
   unitType: Sequelize.STRING,
   intendedBuyerOrgUid: Sequelize.STRING,
@@ -31,6 +34,14 @@ module.exports = {
   unitMarketplaceLink: Sequelize.STRING,
   correspondingAdjustmentDeclaration: Sequelize.STRING,
   correspondingAdjustmentStatus: Sequelize.STRING,
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
+  vintageId: Sequelize.STRING,
+  createdAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+  },
+  updatedAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+    allowNull: false,
+  },
 };

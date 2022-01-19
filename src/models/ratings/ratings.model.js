@@ -12,14 +12,14 @@ class Rating extends Model {
     Rating.belongsTo(Project, {
       onDelete: 'CASCADE',
       targetKey: 'warehouseProjectId',
-      foreignKey: 'projectId',
+      foreignKey: 'warehouseProjectId',
     });
 
     safeMirrorDbHandler(() => {
       RatingMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
-        foreignKey: 'projectId',
+        foreignKey: 'warehouseProjectId',
       });
     });
   }

@@ -1,9 +1,6 @@
 'use strict';
 
 import _ from 'lodash';
-
-import csv from 'csvtojson';
-import { Readable } from 'stream';
 import { uuid as uuidv4 } from 'uuidv4';
 
 import { Staging, Unit, Qualification, Vintage, Organization } from '../models';
@@ -19,9 +16,13 @@ import {
   assertOrgIsHomeOrg,
   assertUnitRecordExists,
   assertSumOfSplitUnitsIsValid,
+  assertCsvFileInRequest,
+  assertOrgUidIsValid,
 } from '../utils/data-assertions';
 
-export const create = async (req, res, next) => {
+import { createUnitRecordsFromCsv } from '../utils/csv-utils';
+
+export const create = async (req, res) => {
   try {
     const newRecord = _.cloneDeep(req.body);
 
@@ -39,7 +40,7 @@ export const create = async (req, res, next) => {
     const stagedData = {
       uuid,
       action: 'INSERT',
-      table: 'Units',
+      table: Unit.stagingTableName,
       data: JSON.stringify([newRecord]),
     };
 
@@ -48,8 +49,11 @@ export const create = async (req, res, next) => {
     res.json({
       message: 'Unit created successfully',
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
+    });
   }
 };
 
@@ -57,7 +61,7 @@ export const findAll = async (req, res) => {
   let { page, limit, columns, orgUid, search } = req.query;
   let where = orgUid ? { orgUid } : undefined;
 
-  const includes = [Qualification];
+  const includes = [Qualification, Vintage];
 
   if (columns) {
     // Remove any unsupported columns
@@ -67,7 +71,9 @@ export const findAll = async (req, res) => {
         .includes(col),
     );
   } else {
-    columns = Unit.defaultColumns;
+    columns = Unit.defaultColumns.concat(
+      includes.map((model) => model.name + 's'),
+    );
   }
 
   // If only FK fields have been specified, select just ID
@@ -82,8 +88,42 @@ export const findAll = async (req, res) => {
       search,
       orgUid,
       paginationParams(page, limit),
-      columns,
+      Unit.defaultColumns,
     );
+
+    // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
+
+    if (columns.includes('qualifications')) {
+      results.rows = await Promise.all(
+        results.rows.map(async (result) => {
+          result.dataValues.qualifications = await Qualification.findAll({
+            include: [
+              {
+                model: Unit,
+                where: {
+                  warehouseUnitId: result.dataValues.warehouseUnitId,
+                },
+                attributes: [],
+                as: 'unit',
+                require: true,
+              },
+            ],
+          });
+          return result;
+        }),
+      );
+    }
+
+    if (columns.includes('vintages')) {
+      results.rows = await Promise.all(
+        results.rows.map(async (result) => {
+          result.dataValues.vintage = await Vintage.findByPk(
+            result.dataValues.vintageId,
+          );
+          return result;
+        }),
+      );
+    }
   }
 
   if (!results) {
@@ -102,13 +142,7 @@ export const findOne = async (req, res) => {
   console.info('req.query', req.query);
   res.json(
     await Unit.findByPk(req.query.warehouseUnitId, {
-      include: [
-        {
-          model: Qualification,
-          as: 'qualifications',
-        },
-        Vintage,
-      ],
+      include: Unit.getAssociatedModels(),
     }),
   );
 };
@@ -119,13 +153,23 @@ export const update = async (req, res) => {
       req.body.warehouseUnitId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
+
+    if (req.body.unitOwnerOrgUid) {
+      await assertOrgUidIsValid(req.body.unitOwnerOrgUid, 'unitOwnerOrgUid');
+    }
+
+    // merge the new record into the old record
+    let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
+    stagedRecord = stagedRecord.map((record) =>
+      Object.assign({}, originalRecord, record),
+    );
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
-      table: 'Units',
-      data: JSON.stringify(Array.isArray(req.body) ? req.body : [req.body]),
+      table: Unit.stagingTableName,
+      data: JSON.stringify(stagedRecord),
     };
 
     await Staging.upsert(stagedData);
@@ -147,12 +191,12 @@ export const destroy = async (req, res) => {
       req.body.warehouseUnitId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'DELETE',
-      table: 'Units',
+      table: Unit.stagingTableName,
     };
 
     await Staging.upsert(stagedData);
@@ -173,48 +217,48 @@ export const split = async (req, res) => {
       req.body.warehouseUnitId,
     );
 
-    // we dont need these fields for split
-    delete originalRecord.createdAt;
-    delete originalRecord.updatedAt;
-
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const { unitBlockStart } = assertSumOfSplitUnitsIsValid(
       originalRecord.serialNumberBlock,
+      new RegExp(originalRecord.serialNumberPattern),
       req.body.records,
     );
 
     let lastAvailableUnitBlock = unitBlockStart;
 
-    const splitRecords = req.body.records.map((record) => {
-      const newRecord = _.cloneDeep(originalRecord);
-      newRecord.warehouseUnitId = uuidv4();
-      newRecord.unitCount = record.unitCount;
+    const splitRecords = await Promise.all(
+      req.body.records.map(async (record) => {
+        const newRecord = _.cloneDeep(originalRecord);
+        newRecord.warehouseUnitId = uuidv4();
+        newRecord.unitCount = record.unitCount;
 
-      const newUnitBlockStart = lastAvailableUnitBlock;
-      lastAvailableUnitBlock += Number(record.unitCount);
-      const newUnitBlockEnd = lastAvailableUnitBlock;
-      // move to the next available block
-      lastAvailableUnitBlock += 1;
+        const newUnitBlockStart = lastAvailableUnitBlock;
+        lastAvailableUnitBlock += Number(record.unitCount);
+        const newUnitBlockEnd = lastAvailableUnitBlock;
+        // move to the next available block
+        lastAvailableUnitBlock += 1;
 
-      newRecord.serialNumberBlock = createSerialNumberStr(
-        originalRecord.serialNumberBlock,
-        newUnitBlockStart,
-        newUnitBlockEnd,
-      );
+        newRecord.serialNumberBlock = createSerialNumberStr(
+          originalRecord.serialNumberBlock,
+          newUnitBlockStart,
+          newUnitBlockEnd,
+        );
 
-      if (record.unitOwnerOrgUid) {
-        newRecord.unitOwnerOrgUid = record.unitOwnerOrgUid;
-      }
+        if (record.unitOwnerOrgUid) {
+          await assertOrgUidIsValid(record.unitOwnerOrgUid, 'unitOwnerOrgUid');
+          newRecord.unitOwnerOrgUid = record.unitOwnerOrgUid;
+        }
 
-      return newRecord;
-    });
+        return newRecord;
+      }),
+    );
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
       commited: false,
-      table: 'Units',
+      table: Unit.stagingTableName,
       data: JSON.stringify(splitRecords),
     };
 
@@ -223,79 +267,27 @@ export const split = async (req, res) => {
     res.json({
       message: 'Unit split successful',
     });
-  } catch (err) {
+  } catch (error) {
     res.status(400).json({
       message: 'Error splitting unit',
-      error: err,
+      error: error.message,
     });
   }
 };
 
 export const batchUpload = async (req, res) => {
-  if (!_.get(req, 'files.csv')) {
-    res
-      .status(400)
-      .json({ message: 'Can not file the required csv file in request' });
-    return;
-  }
+  try {
+    const csvFile = assertCsvFileInRequest(req);
+    await createUnitRecordsFromCsv(csvFile);
 
-  const csvFile = req.files.csv;
-  const buffer = csvFile.data;
-  const stream = Readable.from(buffer.toString('utf8'));
-
-  csv()
-    .fromStream(stream)
-    .subscribe(async (newRecord) => {
-      let action = 'UPDATE';
-
-      if (newRecord.warehouseUnitId) {
-        // Fail if they supplied their own warehouseUnitId and it doesnt exist
-        const possibleExistingRecord = await assertUnitRecordExists(
-          req.body.warehouseUnitId,
-        );
-
-        assertOrgIsHomeOrg(res, possibleExistingRecord.dataValues.orgUid);
-      } else {
-        // When creating new unitd assign a uuid to is so
-        // multiple organizations will always have unique ids
-        const uuid = uuidv4();
-        newRecord.warehouseUnitId = uuid;
-
-        action = 'INSERT';
-      }
-
-      const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
-
-      // All new records are registered within this org, but give them a chance to override this
-      if (!newRecord.orgUid) {
-        newRecord.orgUid = orgUid;
-      }
-
-      // All new records are owned by this org, but give them a chance to override this
-      if (!newRecord.unitOwnerOrgUid) {
-        newRecord.unitOwnerOrgUid = orgUid;
-      }
-
-      const stagedData = {
-        uuid: newRecord.warehouseUnitId,
-        action: action,
-        table: 'Units',
-        data: JSON.stringify([newRecord]),
-      };
-
-      await Staging.upsert(stagedData);
-    })
-    .on('error', (error) => {
-      if (!res.headersSent) {
-        res.status(400).json({
-          message: 'Batch Upload Failed.',
-          error: error.message,
-        });
-      }
-    })
-    .on('done', () => {
-      if (!res.headersSent) {
-        res.json({ message: 'CSV processing complete' });
-      }
+    res.json({
+      message:
+        'CSV processing complete, your records have been added to the staging table.',
     });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
+    });
+  }
 };

@@ -46,25 +46,43 @@ const virtualFields = {
 };
 
 class Unit extends Model {
+  static stagingTableName = 'Units';
   static changes = new rxjs.Subject();
+
   static defaultColumns = Object.keys(
     Object.assign({}, ModelTypes, virtualFields),
   );
 
+  static getAssociatedModels = () => [
+    {
+      model: Qualification,
+      as: 'qualifications',
+    },
+    Vintage,
+  ];
+
   static associate() {
-    Unit.hasOne(Vintage);
+    Unit.belongsTo(Vintage, {
+      sourceKey: 'vintageId',
+      foreignKey: 'vintageId',
+    });
 
     // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
     Unit.belongsToMany(Qualification, {
+      foreignKey: 'warehouseUnitId',
       through: 'qualification_unit',
       as: 'qualifications',
     });
 
     safeMirrorDbHandler(() => {
-      UnitMirror.hasOne(Vintage);
+      UnitMirror.belongsTo(Vintage, {
+        sourceKey: 'vintageId',
+        foreignKey: 'vintageId',
+      });
 
       // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
       UnitMirror.belongsToMany(Qualification, {
+        foreignKey: 'warehouseUnitId',
         through: 'qualification_unit',
         as: 'qualifications',
       });
@@ -234,7 +252,6 @@ class Unit extends Model {
 Unit.init(Object.assign({}, ModelTypes, virtualFields), {
   sequelize,
   modelName: 'unit',
-  foreignKey: 'unitId',
 });
 
 export { Unit };

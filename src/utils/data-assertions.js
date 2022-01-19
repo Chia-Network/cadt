@@ -1,8 +1,28 @@
 'use strict';
 
-import { Organization, Unit, Project, Staging } from '../models';
+import _ from 'lodash';
 
+import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
+
+export const assertOrgUidIsValid = async (orgUid, fieldName) => {
+  const orgMap = await Organization.getOrgsMap();
+  if (!orgMap[orgUid]) {
+    throw new Error(
+      `The orgUid: ${orgUid}, provided for '${fieldName}' is not in the list of subscribed organizations, either remove it or add it to your organizations and try again`,
+    );
+  }
+
+  return orgMap;
+};
+
+export const assertCsvFileInRequest = (req) => {
+  if (!_.get(req, 'files.csv')) {
+    throw new Error('Can not file the required csv file in request');
+  }
+
+  return req.files.csv;
+};
 
 export const assertOrgIsHomeOrg = async (orgUid) => {
   const homeOrg = await Organization.getHomeOrg();
@@ -15,11 +35,17 @@ export const assertOrgIsHomeOrg = async (orgUid) => {
   return orgUid;
 };
 
-export const assertUnitRecordExists = async (warehouseUnitId) => {
-  const record = await Unit.findByPk(warehouseUnitId);
+export const assertUnitRecordExists = async (
+  warehouseUnitId,
+  customMessage,
+) => {
+  const record = await Unit.findByPk(warehouseUnitId, {
+    include: Unit.getAssociatedModels(),
+  });
   if (!record) {
     throw new Error(
-      `The unit record for the warehouseUnitId: ${warehouseUnitId} does not exist.`,
+      customMessage ||
+        `The unit record for the warehouseUnitId: ${warehouseUnitId} does not exist.`,
     );
   }
 
@@ -37,11 +63,18 @@ export const assertStagingRecordExists = async (stagingId) => {
   return record.dataValues;
 };
 
-export const assertProjectRecordExists = async (warehouseProjectId) => {
-  const record = await Project.findByPk(warehouseProjectId);
+export const assertProjectRecordExists = async (
+  warehouseProjectId,
+  customMessage,
+) => {
+  const record = await Project.findByPk(warehouseProjectId, {
+    include: Project.getAssociatedModels(),
+  });
+
   if (!record) {
     throw new Error(
-      `The project record for the warehouseProjectId: ${warehouseProjectId} does not exist.`,
+      customMessage ||
+        `The project record for the warehouseProjectId: ${warehouseProjectId} does not exist.`,
     );
   }
 
@@ -50,6 +83,7 @@ export const assertProjectRecordExists = async (warehouseProjectId) => {
 
 export const assertSumOfSplitUnitsIsValid = (
   serialNumberBlock,
+  serialNumberPattern,
   splitRecords,
 ) => {
   const sumOfSplitUnits = splitRecords.reduce(
@@ -57,9 +91,10 @@ export const assertSumOfSplitUnitsIsValid = (
       previousValue.unitCount + currentValue.unitCount,
   );
 
-  // eslint-disable-next-line no-unused-vars
-  const [unitBlockStart, unitBlockEnd, unitCount] =
-    transformSerialNumberBlock(serialNumberBlock);
+  const [unitBlockStart, unitBlockEnd, unitCount] = transformSerialNumberBlock(
+    serialNumberBlock,
+    serialNumberPattern,
+  );
 
   if (sumOfSplitUnits !== unitCount) {
     throw new Error(
