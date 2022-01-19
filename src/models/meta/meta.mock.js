@@ -1,4 +1,4 @@
-import stub from './organizations.stub.json';
+import stub from './meta.stub.json';
 
 export const CoBenefitsMock = {
   findAll: () => stub,
