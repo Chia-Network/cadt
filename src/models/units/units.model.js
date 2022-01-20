@@ -1,7 +1,7 @@
 'use strict';
 
 import Sequelize from 'sequelize';
-import { sequelize, safeMirrorDbHandler } from '../database';
+import {sequelize, safeMirrorDbHandler, sanitizeSqliteFtsQuery} from '../database';
 import { Qualification, Vintage } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
@@ -215,10 +215,9 @@ class Unit extends Model {
     if (columns.length) {
       fields = columns.join(', ');
     }
-
-    searchStr = searchStr.replace(/[-](?=.*[-])/g, "+"); // Replace all but the final dash
-    searchStr = searchStr.replace('-', ''); //Replace the final dash with nothing
-    searchStr += '*'; // Query should end with asterisk for partial matching
+  
+    searchStr = sanitizeSqliteFtsQuery(searchStr);
+    
     if (searchStr === '*') { // * isn't a valid matcher on its own. return empty set
       return {
         count: 0,

@@ -4,7 +4,7 @@ import Sequelize from 'sequelize';
 import rxjs from 'rxjs';
 const { Model } = Sequelize;
 
-import { sequelize, safeMirrorDbHandler } from '../database';
+import {sequelize, safeMirrorDbHandler, sanitizeSqliteFtsQuery} from '../database';
 
 import {
   RelatedProject,
@@ -171,9 +171,8 @@ class Project extends Model {
       fields = columns.join(', ');
     }
   
-    searchStr = searchStr.replace(/[-](?=.*[-])/g, "+"); // Replace all but the final dash
-    searchStr = searchStr.replace('-', ''); //Replace the final dash with nothing
-    searchStr += '*'; // Query should end with asterisk for partial matching
+    searchStr = sanitizeSqliteFtsQuery(searchStr);
+    
     if (searchStr === '*') { // * isn't a valid matcher on its own. return empty set
       return {
         count: 0,
