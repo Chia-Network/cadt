@@ -19,3 +19,10 @@ export const safeMirrorDbHandler = (callback) => {
       console.log('Mirror DB not connected');
     });
 };
+
+export const sanitizeSqliteFtsQuery = (query) => {
+  query = query.replace(/[-](?=.*[-])/g, "+"); // Replace all but the final dash
+  query = query.replace('-', ''); //Replace the final dash with nothing
+  query += '*'; // Query should end with asterisk for partial matching
+  return query;
+}
