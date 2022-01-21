@@ -30,6 +30,7 @@
     "joi": "^17.5.0",
     "lodash": "^4.17.21",
     "mysql2": "^2.3.3",
+    "request-promise": "^4.2.6",
     "rxjs": "^7.5.1",
     "sequelize": "^6.12.0-alpha.1",
     "sequelize-mock": "^0.10.2",

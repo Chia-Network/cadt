@@ -51,7 +51,7 @@ const unitsBaseSchema = {
     .valid('Commited', 'Not Required', 'Unknown')
     .required(),
   correspondingAdjustmentStatus: Joi.string()
-    .valid('Not Started', 'Pending')
+    .valid('Unknown', 'Not Started', 'Pending')
     .required(),
   vintages: Joi.alternatives()
     .try(newVintageScheme, existingVintageSchema)

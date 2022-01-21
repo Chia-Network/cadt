@@ -3,18 +3,39 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
+import { Meta } from '../../models';
 
 import ModelTypes from './organizations.modeltypes.cjs';
 
 class Organization extends Model {
   static async getHomeOrg() {
-    return {
-      'f1c54511-865e-4611-976c-7c3c1f704662': {
-        name: 'Chia Demo Organization',
-        icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
-        writeAccess: true,
-      },
-    };
+    const organizationRecord = await Meta.findOne({
+      where: { metaKey: 'organizationId' },
+    });
+    const organizationNameRecord = await Meta.findOne({
+      where: { metaKey: 'organizationName' },
+    });
+    const organizationIconRecord = await Meta.findOne({
+      where: { metaKey: 'organizationIconUrl' },
+    });
+
+    if (organizationRecord) {
+      let homeOrg = { [organizationRecord.metaValue]: { writeAccess: true } };
+
+      if (organizationNameRecord) {
+        homeOrg[organizationRecord.metaValue].name =
+          organizationNameRecord.metaValue;
+      }
+
+      if (organizationIconRecord) {
+        homeOrg[organizationRecord.metaValue].icon =
+          organizationIconRecord.metaValue;
+      }
+
+      return homeOrg;
+    }
+
+    return undefined;
   }
 
   static async getOrgsMap() {

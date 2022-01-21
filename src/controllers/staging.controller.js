@@ -176,3 +176,135 @@ export const clean = async (req, res) => {
     });
   }
 };
+
+export const commitV2 = async (req, res) => {
+  try {
+    const queryResponses = await Staging.findAll();
+
+    const changeList = [];
+
+    await Promise.all(
+      queryResponses.map(async (queryResponse) => {
+        const stagingRecord = queryResponse.dataValues;
+
+        const {
+          id: stagingRecordId,
+          uuid,
+          table,
+          action,
+          commited,
+          data: rawData,
+        } = stagingRecord;
+        let data = JSON.parse(rawData);
+
+        if (table === 'Projects' && !commited) {
+          const customAssertionMessage = `The project record for the warehouseProjectId: ${uuid} does not exist. Please remove ${uuid} from the staging table and try to commit again.`;
+          const projectRecord = _.omit(data, 'qualifications', 'vintages');
+          // const qualificationsRecords = data.qualifications;
+          // const vintageRecords = data.vintages;
+
+          console.log('!@@');
+
+          switch (action) {
+            case 'INSERT':
+              data.warehouseProjectId = uuid;
+
+              changeList.push([
+                {
+                  action: 'delete',
+                  key: new Buffer(`project_${uuid}`).toString('hex'),
+                },
+                {
+                  action: 'insert',
+                  key: new Buffer(`project_${uuid}`).toString('hex'),
+                  value: new Buffer(JSON.stringify(projectRecord)).toString(
+                    'hex',
+                  ),
+                },
+              ]);
+              break;
+            case 'UPDATE':
+              await assertProjectRecordExists(uuid, customAssertionMessage);
+              changeList.push([
+                {
+                  action: 'delete',
+                  key: new Buffer(`project_${uuid}`).toString('hex'),
+                },
+                {
+                  action: 'insert',
+                  key: new Buffer(`project_${uuid}`).toString('hex'),
+                  value: new Buffer(JSON.stringify(data)).toString('hex'),
+                },
+              ]);
+              break;
+            case 'DELETE':
+              await assertProjectRecordExists(uuid, customAssertionMessage);
+              changeList.push([
+                {
+                  action: 'delete',
+                  key: new Buffer(`project_${uuid}`).toString('hex'),
+                },
+              ]);
+              break;
+          }
+        } else if (table === 'Units' && !commited) {
+          const customAssertionMessage = `The unit record for the warehouseUnitId: ${uuid} does not exist. Please remove ${uuid} from the staging table and try to commit again.`;
+          const unitRecord = _.omit(data, 'qualifications', 'vintage');
+          switch (action) {
+            case 'INSERT':
+              changeList.push({
+                action: 'delete',
+                key: new Buffer(`unit_${uuid}`).toString('hex'),
+              });
+              changeList.push({
+                action: 'insert',
+                key: new Buffer(`unit_${uuid}`).toString('hex'),
+                value: new Buffer(JSON.stringify(unitRecord)).toString('hex'),
+              });
+
+              break;
+            case 'UPDATE':
+              await assertUnitRecordExists(uuid, customAssertionMessage);
+              changeList.push([
+                {
+                  action: 'delete',
+                  key: new Buffer(`unit_${uuid}`).toString('hex'),
+                },
+                {
+                  action: 'insert',
+                  key: new Buffer(`unit_${uuid}`).toString('hex'),
+                  value: new Buffer(JSON.stringify(unitRecord)).toString('hex'),
+                },
+              ]);
+              break;
+            case 'DELETE':
+              await assertUnitRecordExists(uuid, customAssertionMessage);
+              changeList.push([
+                {
+                  action: 'delete',
+                  key: new Buffer(`unit_${uuid}`).toString('hex'),
+                },
+              ]);
+              break;
+          }
+        }
+
+        // set the commited flag to true
+        await Staging.update(
+          { commited: true },
+          { where: { id: stagingRecordId } },
+        );
+      }),
+    );
+
+    console.log(changeList);
+    await fullNode.pushChangeListToRegistryTable('units', changeList);
+
+    res.json({ message: 'Staging Table committed to full node' });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error commiting staging table',
+      error: error.message,
+    });
+  }
+};

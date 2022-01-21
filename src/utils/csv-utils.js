@@ -67,7 +67,9 @@ export const createUnitRecordsFromCsv = (csvFile) => {
       })
       .on('done', async () => {
         if (recordsToCreate.length) {
-          await Staging.bulkCreate(recordsToCreate);
+          await Staging.bulkCreate(recordsToCreate, {
+            updateOnDuplicate: ['warehouseUnitId'],
+          });
 
           resolve();
         } else {
@@ -109,7 +111,7 @@ export const createProjectRecordsFromCsv = (csvFile) => {
         }
 
         const stagedData = {
-          uuid: newRecord.warehouseUnitId,
+          uuid: newRecord.warehouseProjectId,
           action: action,
           table: Project.stagingTableName,
           data: JSON.stringify([newRecord]),
@@ -122,7 +124,9 @@ export const createProjectRecordsFromCsv = (csvFile) => {
       })
       .on('done', async () => {
         if (recordsToCreate.length) {
-          await Staging.bulkCreate(recordsToCreate);
+          await Staging.bulkCreate(recordsToCreate, {
+            updateOnDuplicate: ['warehouseProjectId'],
+          });
 
           resolve();
         } else {

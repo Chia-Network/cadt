@@ -6,9 +6,9 @@ module.exports = {
     primaryKey: true,
     autoIncrement: true,
   },
-  meta_key: {
+  metaKey: {
     type: Sequelize.STRING,
     unique: true,
   },
-  meta_value: Sequelize.STRING,
+  metaValue: Sequelize.STRING,
 };

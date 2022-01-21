@@ -18,12 +18,15 @@ import {
   assertSumOfSplitUnitsIsValid,
   assertCsvFileInRequest,
   assertOrgUidIsValid,
+  assertHomeOrgExists,
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
 
 export const create = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const newRecord = _.cloneDeep(req.body);
 
     // When creating new unitd assign a uuid to is so
@@ -149,6 +152,8 @@ export const findOne = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
     );
@@ -187,6 +192,8 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
     );
@@ -213,6 +220,8 @@ export const destroy = async (req, res) => {
 
 export const split = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
     );
@@ -277,6 +286,8 @@ export const split = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const csvFile = assertCsvFileInRequest(req);
     await createUnitRecordsFromCsv(csvFile);
 

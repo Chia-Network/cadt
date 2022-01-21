@@ -23,31 +23,34 @@ import {
   assertOrgIsHomeOrg,
   assertProjectRecordExists,
   assertCsvFileInRequest,
+  assertHomeOrgExists,
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
 
 export const create = async (req, res) => {
-  const newRecord = _.cloneDeep(req.body);
-  // When creating new projects assign a uuid to is so
-  // multiple organizations will always have unique ids
-  const uuid = uuidv4();
-
-  newRecord.warehouseProjectId = uuid;
-
-  // All new projects are assigned to the home orgUid
-  const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
-  newRecord.orgUid = orgUid;
-
-  // The new project is getting created in this registry
-  newRecord.currentRegistry = orgUid;
-
-  // Unless we are overriding, a new project originates in this org
-  if (!newRecord.registryOfOrigin) {
-    newRecord.registryOfOrigin = orgUid;
-  }
-
   try {
+    await assertHomeOrgExists();
+
+    const newRecord = _.cloneDeep(req.body);
+    // When creating new projects assign a uuid to is so
+    // multiple organizations will always have unique ids
+    const uuid = uuidv4();
+
+    newRecord.warehouseProjectId = uuid;
+
+    // All new projects are assigned to the home orgUid
+    const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+    newRecord.orgUid = orgUid;
+
+    // The new project is getting created in this registry
+    newRecord.currentRegistry = orgUid;
+
+    // Unless we are overriding, a new project originates in this org
+    if (!newRecord.registryOfOrigin) {
+      newRecord.registryOfOrigin = orgUid;
+    }
+
     await Staging.create({
       uuid,
       action: 'INSERT',
@@ -131,6 +134,8 @@ export const findOne = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
     );
@@ -165,6 +170,8 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
     );
@@ -192,6 +199,8 @@ export const destroy = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const csvFile = assertCsvFileInRequest(req);
     await createProjectRecordsFromCsv(csvFile);
 
