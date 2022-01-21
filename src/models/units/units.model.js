@@ -1,7 +1,7 @@
 'use strict';
 
 import Sequelize from 'sequelize';
-import { sequelize, safeMirrorDbHandler } from '../database';
+import {sequelize, safeMirrorDbHandler, sanitizeSqliteFtsQuery} from '../database';
 import { Qualification, Vintage } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
@@ -175,7 +175,7 @@ class Unit extends Model {
         unitMarketplaceLink,
         cooresponingAdjustmentDeclaration,
         correspondingAdjustmentStatus
-    ) AGAINST ":search"
+    ) AGAINST '":search"'
     `;
 
     if (orgUid) {
@@ -215,16 +215,27 @@ class Unit extends Model {
     if (columns.length) {
       fields = columns.join(', ');
     }
-
-    searchStr = searchStr = searchStr.replaceAll('-', '+');
-
+  
+    searchStr = sanitizeSqliteFtsQuery(searchStr);
+    
+    if (searchStr === '*') { // * isn't a valid matcher on its own. return empty set
+      return {
+        count: 0,
+        rows: [],
+      }
+    }
+    
+    if (searchStr.startsWith('+')) {
+      searchStr = searchStr.replace('+', '') // If query starts with +, replace it
+    }
+    
     let sql = `SELECT ${fields} FROM units_fts WHERE units_fts MATCH :search`;
 
     if (orgUid) {
       sql = `${sql} AND orgUid = :orgUid`;
     }
 
-    const replacements = { search: `${searchStr}*`, orgUid };
+    const replacements = { search: searchStr, orgUid };
 
     const count = (
       await sequelize.query(sql, {

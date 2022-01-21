@@ -4,7 +4,7 @@ import Sequelize from 'sequelize';
 import rxjs from 'rxjs';
 const { Model } = Sequelize;
 
-import { sequelize, safeMirrorDbHandler } from '../database';
+import {sequelize, safeMirrorDbHandler, sanitizeSqliteFtsQuery} from '../database';
 
 import {
   RelatedProject,
@@ -170,10 +170,19 @@ class Project extends Model {
     if (columns.length) {
       fields = columns.join(', ');
     }
-
-    // hyphens cause errors in sqlite, but we can replace it with a + and
-    // the fulltext search will work the same
-    searchStr = searchStr = searchStr.replaceAll('-', '+');
+  
+    searchStr = sanitizeSqliteFtsQuery(searchStr);
+    
+    if (searchStr === '*') { // * isn't a valid matcher on its own. return empty set
+      return {
+        count: 0,
+        rows: [],
+      }
+    }
+  
+    if (searchStr.startsWith('+')) {
+      searchStr = searchStr.replace('+', '') // If query starts with +, replace it
+    }
 
     let sql = `SELECT ${fields} FROM projects_fts WHERE projects_fts MATCH :search`;
 
@@ -181,7 +190,7 @@ class Project extends Model {
       sql = `${sql} AND orgUid = :orgUid`;
     }
 
-    const replacements = { search: `${searchStr}*`, orgUid };
+    const replacements = { search: searchStr, orgUid };
 
     const count = (
       await sequelize.query(sql, {
