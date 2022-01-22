@@ -70,6 +70,7 @@ export const unitsGetQuerySchema = Joi.object()
     warehouseUnitId: Joi.string(),
     columns: Joi.array().items(Joi.string()).single(),
     orgUid: Joi.string(),
+    xls: Joi.boolean(),
   })
   .with('page', 'limit');
 

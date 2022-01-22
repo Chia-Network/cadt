@@ -21,6 +21,7 @@ import {
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
+import {createXlsFromSequelizeResults} from "../utils/xls.js";
 
 export const create = async (req, res) => {
   try {
@@ -58,7 +59,7 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, columns, orgUid, search } = req.query;
+  let { page, limit, columns, orgUid, search, xls } = req.query;
   let where = orgUid ? { orgUid } : undefined;
 
   const includes = [Qualification, Vintage];
@@ -82,12 +83,17 @@ export const findAll = async (req, res) => {
   }
 
   let results;
+  let pagination = paginationParams(page, limit);
+  
+  if (xls) {
+    pagination = {page: undefined, limit: undefined};
+  }
 
   if (search) {
     results = await Unit.fts(
       search,
       orgUid,
-      paginationParams(page, limit),
+      pagination,
       Unit.defaultColumns,
     );
 
@@ -134,8 +140,15 @@ export const findAll = async (req, res) => {
       ...paginationParams(page, limit),
     });
   }
+  
+  const response = optionallyPaginatedResponse(results, page, limit);
+  
+  if (!xls) {
+    return res.json(response);
+  } else {
+    createXlsFromSequelizeResults(response, Unit);
+  }
 
-  res.json(optionallyPaginatedResponse(results, page, limit));
 };
 
 export const findOne = async (req, res) => {
