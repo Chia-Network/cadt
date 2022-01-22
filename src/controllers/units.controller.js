@@ -21,7 +21,7 @@ import {
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
-import {createXlsFromSequelizeResults} from "../utils/xls.js";
+import { createXlsFromSequelizeResults, sendXls } from "../utils/xls";
 
 export const create = async (req, res) => {
   try {
@@ -146,7 +146,7 @@ export const findAll = async (req, res) => {
   if (!xls) {
     return res.json(response);
   } else {
-    createXlsFromSequelizeResults(response, Unit);
+    return sendXls(Unit.name, createXlsFromSequelizeResults(response, Unit), res);
   }
 
 };

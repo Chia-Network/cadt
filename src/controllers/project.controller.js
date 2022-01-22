@@ -26,7 +26,7 @@ import {
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
-import {createXlsFromSequelizeResults, sendXls} from '../utils/xls';
+import { createXlsFromSequelizeResults, sendXls } from '../utils/xls';
 import * as stream from "stream";
 
 export const create = async (req, res) => {
