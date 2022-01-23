@@ -37,10 +37,18 @@ export const createXlsFromSequelizeResults = (rows, model) => {
     // Populate main sheet values
     for (const [mainColName, mainCol] of columnsInMainSheet.entries()) {
       if (!Object.keys(sheets).includes(model.name)) {
-        sheets[model.name] = { name: model.name + 's', data: [model.defaultColumns] }; // Column headings
+        sheets[model.name] = {
+          name: model.name + 's',
+          data: [
+            columnsInMainSheet
+          ]
+        }; // Column headings
       }
       
       if (!associations.map(singular => singular + 's').includes(mainColName)) {
+        if (row[mainCol] === null) {
+          row[mainCol] = 'null';
+        }
         mainXlsRow.push(row[mainCol]);
       }
       
@@ -55,7 +63,7 @@ export const createXlsFromSequelizeResults = (rows, model) => {
     for (const associatedModel of associatedModels) {
       const xlsRow = [];
       // Column headings for associated sheets will be available for associated sheets once its referenced by a row
-      if (!Object.keys(sheets).includes(associatedModel) && row[associatedModel + 's'].length > 0) {
+      if (!Object.keys(sheets).includes(associatedModel) && row[associatedModel].length > 0) {
         sheets[associatedModel] = {
           name: associatedModel,
           data: [
