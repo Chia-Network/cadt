@@ -89,7 +89,6 @@ export const createXlsFromSequelizeResults = (rows, model, hex = false, csv = fa
                 xlsRow.push(encodeValue(v, hex));
               }
               if (xlsRow.length > 0) {
-                console.log(model.primaryKeyAttributes)
                 xlsRow.push(encodeValue(row[model.primaryKeyAttributes[0]], hex));
                 sheets[associatedModel].data.push(xlsRow);
               }
