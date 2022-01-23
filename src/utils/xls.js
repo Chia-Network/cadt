@@ -16,7 +16,6 @@ export const sendXls = (name, bytes, response) => {
 
 export const createXlsFromSequelizeResults = (rows, model) => {
   rows = JSON.parse(JSON.stringify(rows)); // Sadly this is the best way to simplify sequelize's return shape
-  console.log(typeof rows)
   
   let columnsInResults = [];
   
@@ -33,36 +32,54 @@ export const createXlsFromSequelizeResults = (rows, model) => {
   initialReduceValue[model.name] = { name: model.name + 's', data: [columnsInMainSheet] }
   
   const xlsData = rows.reduce((sheets, row) => {
+    let mainXlsRow = [];
+  
     // Populate main sheet values
-    let xlsRow = [];
-    for (const mainCol of columnsInMainSheet) {
+    for (const [mainColName, mainCol] of columnsInMainSheet.entries()) {
       if (!Object.keys(sheets).includes(model.name)) {
-        sheets[model.name] = { name: model.name + 's', data: [columnsInMainSheet] }; // Column headings
+        sheets[model.name] = { name: model.name + 's', data: [model.defaultColumns] }; // Column headings
       }
       
-      xlsRow.push(row[mainCol]);
+      if (!associations.map(singular => singular + 's').includes(mainColName)) {
+        mainXlsRow.push(row[mainCol]);
+      }
+      
     }
+  
+    if (mainXlsRow.length) {
+      sheets[model.name].data.push(mainXlsRow);
+    }
+    
     
     // Populate associated data sheets
     for (const associatedModel of associatedModels) {
-      xlsRow = [];
+      const xlsRow = [];
       // Column headings for associated sheets will be available for associated sheets once its referenced by a row
-      if (!Object.keys(sheets).includes(associatedModel) && row[associatedModel].length) {
+      if (!Object.keys(sheets).includes(associatedModel) && row[associatedModel + 's'].length > 0) {
         sheets[associatedModel] = {
           name: associatedModel,
           data: [
-            columnsInResults.filter(col => Object.keys(row).includes(col))
+            columnsInResults.filter(col => !Object.keys(columnsInMainSheet).includes(col))
           ],
         };
       }
       
       for (const [columnName, columnValue] of Object.entries(row)) {
-        if (!columnsInMainSheet.includes(columnName)) {
-          xlsRow.push(columnValue);
+        if (!columnsInMainSheet.includes(columnName) && columnValue) {
+          if (Array.isArray(columnValue)) {
+            // one to many
+            for (const [_assocIndex, assocColVal] of columnValue.entries()) {
+              Object.values(assocColVal).map(col => xlsRow.push());
+            }
+          } else {
+            // one to one
+            xlsRow.push(columnValue);
+          }
+        }
+        if (xlsRow.length > 0) {
+          sheets[associatedModel].data = sheets[associatedModel].data.concat(xlsRow);
         }
       }
-  
-      sheets[associatedModel].data.push(xlsRow);
     }
     
     return sheets;
