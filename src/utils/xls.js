@@ -78,7 +78,14 @@ export const createXlsFromSequelizeResults = (rows, model, hex = false, csv = fa
               if (!Object.keys(sheets).includes(associatedModel)) {
                 sheets[associatedModel] = { name: associatedModel, data: [Object.keys(assocColVal).concat([model.name + 'Id'])], };
               }
-              for (const v of Object.values(assocColVal).map(col => col === null ? 'null': col)) {
+              const colNames = Object.keys(assocColVal);
+              for (const [i, v] of Object.values(assocColVal).map(col => col === null ? 'null': col).entries()) {
+                if (typeof v === 'object') {
+                  if (!Object.keys(sheets).includes(colNames[i] + 's')) {
+                    sheets[colNames[i] + 's'] = { name: colNames[i] + 's', data: [Object.keys(v).concat([colNames[i].split('_') + 'Id'])], };
+                  }
+                  sheets[colNames[i] + 's'].data.push(Object.values(v).concat(assocColVal.id));
+                }
                 xlsRow.push(encodeValue(v, hex));
               }
               if (xlsRow.length > 0) {
