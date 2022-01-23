@@ -14,7 +14,20 @@ export const sendXls = (name, bytes, response) => {
   readStream.pipe(response);
 }
 
-export const createXlsFromSequelizeResults = (rows, model) => {
+export const encodeValue = (value, hex = false) => {
+  if (hex) {
+    try {
+      return Buffer.from(value).toString('hex');
+    } catch(e) {
+      return "";
+    }
+    
+  } else {
+    return value;
+  }
+}
+
+export const createXlsFromSequelizeResults = (rows, model, hex = false, csv = false) => {
   rows = JSON.parse(JSON.stringify(rows)); // Sadly this is the best way to simplify sequelize's return shape
   
   let columnsInResults = [];
@@ -36,15 +49,11 @@ export const createXlsFromSequelizeResults = (rows, model) => {
   
     // Populate main sheet values
     for (const [mainColName, mainCol] of columnsInMainSheet.entries()) {
-      if (!Object.keys(sheets).includes(model.name)) {
-        sheets[model.name] = { name: model.name + 's', data: [columnsInMainSheet] }; // Column headings
-      }
-      
       if (!associations.map(singular => singular + 's').includes(mainColName)) {
         if (row[mainCol] === null) {
           row[mainCol] = 'null';
         }
-        mainXlsRow.push(row[mainCol]);
+        mainXlsRow.push(encodeValue(row[mainCol], hex));
       }
     }
   
@@ -55,16 +64,19 @@ export const createXlsFromSequelizeResults = (rows, model) => {
     // Populate associated data sheets
     for (const associatedModel of associatedModels) {
       for (const [columnName, columnValue] of Object.entries(row)) {
-        if (columnValue && !columnsInMainSheet.includes(columnName)) {
+        if (!columnsInMainSheet.includes(columnName) && columnName === associatedModel) {
           if (Array.isArray(columnValue)) {
             // one to many
-            for (const [_assocIndex, assocColVal] of columnValue.entries()) {
+            for (const [_i, assocColVal] of columnValue.entries()) {
               const xlsRow = [];
               if (!Object.keys(sheets).includes(associatedModel)) {
-                sheets[associatedModel] = { name: associatedModel, data: [Object.keys(assocColVal)], };
+                sheets[associatedModel] = { name: associatedModel, data: [Object.keys(assocColVal).concat(['projectId'])], };
               }
-              Object.values(assocColVal).map(col => col === null ? 'null': col).map(col => xlsRow.push(col));
+              for (const v of Object.values(assocColVal).map(col => col === null ? 'null': col)) {
+                xlsRow.push(encodeValue(v, hex));
+              }
               if (xlsRow.length > 0) {
+                xlsRow.push(encodeValue(row[model.name + 'Id'], hex));
                 sheets[associatedModel].data.push(xlsRow);
               }
             }
@@ -76,8 +88,11 @@ export const createXlsFromSequelizeResults = (rows, model) => {
     return sheets;
   }, initialReduceValue);
   
-  console.log(JSON.stringify(Object.values(xlsData)))
+  if (!csv) {
+    return xlsx.build(Object.values(xlsData));
+  } else {
+    return Object.values(xlsData).map(({data}) => data);
+  }
   
-  return xlsx.build(Object.values(xlsData));
 }
 
