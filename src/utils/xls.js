@@ -70,7 +70,7 @@ export const createXlsFromSequelizeResults = (rows, model, hex = false, csv = fa
             for (const [_i, assocColVal] of columnValue.entries()) {
               const xlsRow = [];
               if (!Object.keys(sheets).includes(associatedModel)) {
-                sheets[associatedModel] = { name: associatedModel, data: [Object.keys(assocColVal).concat(['projectId'])], };
+                sheets[associatedModel] = { name: associatedModel, data: [Object.keys(assocColVal).concat([row[model.name + 'Id']])], };
               }
               for (const v of Object.values(assocColVal).map(col => col === null ? 'null': col)) {
                 xlsRow.push(encodeValue(v, hex));
