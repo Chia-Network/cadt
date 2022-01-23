@@ -8,7 +8,7 @@ export const sendXls = (name, bytes, response) => {
   const readStream = new stream.PassThrough();
   readStream.end(bytes);
   
-  response.set('Content-disposition', 'attachment; filename=' + name + '.xls');
+  response.set('Content-disposition', 'attachment; filename=' + name + 's' + '.xlsx');
   response.set('Content-Type', 'text/plain');
   
   readStream.pipe(response);
