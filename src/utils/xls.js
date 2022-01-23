@@ -37,7 +37,13 @@ export const createXlsFromSequelizeResults = (rows, model, hex = false, csv = fa
     columnsInResults = Object.keys(rows[0]);
   }
   
-  let associations = model.getAssociatedModels();
+  let associations = model.getAssociatedModels().map(model => {
+    if (typeof model === 'object') {
+      return model.model;
+    } else {
+      return model;
+    }
+  });
   const columnsInMainSheet = columnsInResults.filter(col => !associations.map(a => a.name + 's').includes(col));
   const associatedModels = columnsInResults.filter(col => associations.map(a => a.name + 's').includes(col));
   
