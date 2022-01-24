@@ -28,3 +28,4 @@ export * from './staging';
 export * from './organizations';
 export * from './meta';
 export * from './simulator';
+export * from './qualificationUnits';

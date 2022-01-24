@@ -78,9 +78,11 @@ class Project extends Model {
     safeMirrorDbHandler(() => ProjectMirror.destroy(values));
 
     const record = await super.findOne(values.where);
-    const { orgUid } = record.dataValues;
 
-    Project.changes.next(['projects', orgUid]);
+    if (record) {
+      const { orgUid } = record.dataValues;
+      Project.changes.next(['projects', orgUid]);
+    }
 
     return super.destroy(values);
   }
@@ -245,11 +247,11 @@ class Project extends Model {
     );
 
     const primaryKeyMap = {
-      projects: 'warehouseProjectId',
+      project: 'warehouseProjectId',
       projectLocations: 'id',
       qualifications: 'id',
       vintages: 'id',
-      coBenifets: 'id',
+      coBenefits: 'id',
       relatedProjects: 'id',
     };
 
@@ -283,9 +285,9 @@ class Project extends Model {
         ..._.get(insertChangeList, 'vintages', []),
         ..._.get(updateChangeList, 'vintages', []),
       ],
-      coBenifets: [
-        ..._.get(insertChangeList, 'coBenifets', []),
-        ..._.get(updateChangeList, 'coBenifets', []),
+      coBenefits: [
+        ..._.get(insertChangeList, 'coBenefits', []),
+        ..._.get(updateChangeList, 'coBenefits', []),
       ],
       relatedProjects: [
         ..._.get(insertChangeList, 'relatedProjects', []),

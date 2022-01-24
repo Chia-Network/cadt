@@ -6,7 +6,7 @@ export const findAll = async (req, res) => {
   try {
     await assertHomeOrgExists();
     const homeOrg = await Organization.getHomeOrg();
-    console.log({ orgUid: Object.keys(homeOrg)[0] });
+
     return res.json(
       await Vintage.findAll({
         where: { orgUid: Object.keys(homeOrg)[0] },

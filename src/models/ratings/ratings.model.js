@@ -33,17 +33,6 @@ class Rating extends Model {
     safeMirrorDbHandler(() => RatingMirror.destroy(values));
     return super.destroy(values);
   }
-
-  static async generateChangeListFromStagedData(
-    // eslint-disable-next-line
-    action,
-    // eslint-disable-next-line
-    id,
-    // eslint-disable-next-line
-    stagedData,
-  ) {
-    return {};
-  }
 }
 
 Rating.init(ModelTypes, {

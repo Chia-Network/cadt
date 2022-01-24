@@ -114,9 +114,11 @@ class Unit extends Model {
     safeMirrorDbHandler(() => UnitMirror.destroy(values));
 
     const record = await super.findOne(values.where);
-    const { orgUid } = record.dataValues;
 
-    Unit.changes.next(['units', orgUid]);
+    if (record) {
+      const { orgUid } = record.dataValues;
+      Unit.changes.next(['units', orgUid]);
+    }
 
     return super.destroy(values);
   }
@@ -292,6 +294,7 @@ class Unit extends Model {
       unit: 'warehouseUnitId',
       qualifications: 'id',
       qualification_units: 'qualificationunitId',
+      vintages: 'id',
     };
 
     const insertChangeList = transformFullXslsToChangeList(

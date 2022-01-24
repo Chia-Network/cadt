@@ -1,11 +1,14 @@
 'use strict';
 
+import _ from 'lodash';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { Project, Unit } from '../../models';
+import { Project, Unit, Organization } from '../../models';
 
 import rxjs from 'rxjs';
 import { sequelize } from '../database';
+
+import { pushDataLayerChangeList } from '../../fullnode';
 
 import ModelTypes from './staging.modeltypes.cjs';
 
@@ -30,6 +33,11 @@ class Staging extends Model {
     stagedData
       .filter((stagingRecord) => stagingRecord.table === table)
       .forEach((stagingRecord) => {
+        // TODO: Think of a better place to mark the records as commited
+        Staging.update(
+          { commited: true },
+          { where: { uuid: stagingRecord.uuid } },
+        );
         if (stagingRecord.action === 'INSERT') {
           insertRecords.push(...JSON.parse(stagingRecord.data));
         } else if (stagingRecord.action === 'UPDATE') {
@@ -63,7 +71,16 @@ class Staging extends Model {
       ],
     };
 
-    console.log(unifiedChangeList);
+    const myOrganization = await Organization.findOne({
+      where: { isHome: true },
+      raw: true,
+    });
+
+    await pushDataLayerChangeList(
+      myOrganization.registryId,
+      // sort so that deletes are first and inserts second
+      _.sortBy(_.flatten(_.values(unifiedChangeList)), 'action'),
+    );
   }
 }
 

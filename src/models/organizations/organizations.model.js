@@ -44,7 +44,11 @@ class Organization extends Model {
       return myOrganization.orgUid;
     }
 
-    const newOrganizationId = await createDataLayerStore();
+    const newOrganizationId =
+      process.env.USE_SIMULATOR === 'true'
+        ? 'f1c54511-865e-4611-976c-7c3c1f704662'
+        : await createDataLayerStore();
+
     const newRegistryId = await createDataLayerStore();
     const registryVersionId = await createDataLayerStore();
 
@@ -60,41 +64,9 @@ class Organization extends Model {
       [dataVersion]: registryVersionId,
     });
 
-    // Create the TableStores
-    const coBenefitsStoreId = await createDataLayerStore();
-    const projectLocationStoreId = await createDataLayerStore();
-    const projectsStoreId = await createDataLayerStore();
-    const projectRatingStoreId = await createDataLayerStore();
-    const relatedProjectsStoreId = await createDataLayerStore();
-    const qualificationsStoreId = await createDataLayerStore();
-    const unitsStoreId = await createDataLayerStore();
-    const vintagesStoreId = await createDataLayerStore();
-    const qualificationUnitJunctionStoreId = await createDataLayerStore();
-
-    await syncDataLayer(registryVersionId, {
-      coBenefitsStoreId,
-      projectLocationStoreId,
-      projectsStoreId,
-      projectRatingStoreId,
-      relatedProjectsStoreId,
-      qualificationsStoreId,
-      unitsStoreId,
-      vintagesStoreId,
-      qualificationUnitJunctionStoreId,
-    });
-
     await Organization.create({
       orgUid: newOrganizationId,
       registryId: registryVersionId,
-      coBenefitsStoreId,
-      projectLocationStoreId,
-      projectsStoreId,
-      projectRatingStoreId,
-      relatedProjectsStoreId,
-      qualificationsStoreId,
-      qualificationUnitJunctionStoreId,
-      unitsStoreId,
-      vintagesStoreId,
       isHome: true,
       subscribed: true,
       name,

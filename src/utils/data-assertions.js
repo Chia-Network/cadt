@@ -37,7 +37,8 @@ export const assertCsvFileInRequest = (req) => {
 
 export const assertOrgIsHomeOrg = async (orgUid) => {
   const homeOrg = await Organization.getHomeOrg();
-  if (!homeOrg[orgUid]) {
+
+  if (homeOrg.orgUid !== orgUid) {
     throw new Error(
       `Restricted data: can not modify this record with orgUid ${orgUid}`,
     );

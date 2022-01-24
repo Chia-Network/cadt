@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import xlsx from 'node-xlsx';
 import stream from 'stream';
 
@@ -30,7 +31,7 @@ export const createXlsFromSequelizeResults = (
   rows,
   model,
   hex = false,
-  csv = false,
+  toStructuredCsv = false,
 ) => {
   rows = JSON.parse(JSON.stringify(rows)); // Sadly this is the best way to simplify sequelize's return shape
 
@@ -159,7 +160,7 @@ export const createXlsFromSequelizeResults = (
     return sheets;
   }, initialReduceValue);
 
-  if (!csv) {
+  if (!toStructuredCsv) {
     return xlsx.build(Object.values(xlsData));
   } else {
     return xlsData;
@@ -197,26 +198,31 @@ export const transformFullXslsToChangeList = (
             // filter out the header row
             .filter((r) => r[primaryKeyIndex] !== headerRow[primaryKeyIndex])
             .forEach((r) => {
+              console.log(_.zipObject(headerRow, r));
+              const dataLayerKey = Buffer.from(
+                `${key}_${r[primaryKeyIndex]}`,
+              ).toString('hex');
+
               if (action === 'update') {
                 changeList[key].push(
                   {
                     action: 'delete',
-                    id: Buffer.from(r[primaryKeyIndex]).toString('hex'),
+                    key: dataLayerKey,
                   },
                   {
                     action: 'insert',
-                    id: Buffer.from(r[primaryKeyIndex]).toString('hex'),
-                    data: Buffer.from(
-                      r.filter((x) => typeof x === 'string').join(','),
+                    key: dataLayerKey,
+                    value: Buffer.from(
+                      JSON.stringify(_.zipObject(headerRow, r)),
                     ).toString('hex'),
                   },
                 );
               } else {
                 changeList[key].push({
                   action: action,
-                  id: Buffer.from(r[primaryKeyIndex]).toString('hex'),
-                  data: Buffer.from(
-                    r.filter((x) => typeof x === 'string').join(','),
+                  key: dataLayerKey,
+                  value: Buffer.from(
+                    JSON.stringify(_.zipObject(headerRow, r)),
                   ).toString('hex'),
                 });
               }

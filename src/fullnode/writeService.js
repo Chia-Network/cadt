@@ -1,5 +1,5 @@
 import * as dataLayer from './persistance';
-import * as simulator from './simulatorV2';
+import * as simulator from './simulator';
 
 export const createDataLayerStore = async () => {
   let storeId;
