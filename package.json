@@ -32,6 +32,7 @@
     "mysql2": "^2.3.3",
     "random-hash": "^4.0.1",
     "request-promise": "^4.2.6",
+    "node-xlsx": "^0.21.0",
     "rxjs": "^7.5.1",
     "sequelize": "^6.12.0-alpha.1",
     "sequelize-mock": "^0.10.2",

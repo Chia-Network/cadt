@@ -27,6 +27,7 @@ import {
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
+import { createXlsFromSequelizeResults, sendXls } from '../utils/xls';
 
 export const create = async (req, res) => {
   try {
@@ -67,7 +68,7 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, search, orgUid, columns } = req.query;
+  let { page, limit, search, orgUid, columns, xls } = req.query;
   let where = orgUid ? { orgUid } : undefined;
 
   const includes = Project.getAssociatedModels();
@@ -91,20 +92,20 @@ export const findAll = async (req, res) => {
   }
 
   let results;
+  let pagination = paginationParams(page, limit);
+
+  if (xls) {
+    pagination = { page: undefined, limit: undefined };
+  }
 
   if (search) {
-    results = await Project.fts(
-      search,
-      orgUid,
-      paginationParams(page, limit),
-      columns,
-    );
+    results = await Project.fts(search, orgUid, pagination, columns);
   }
 
   if (!results) {
     const query = {
       ...columnsToInclude(columns, includes),
-      ...paginationParams(page, limit),
+      ...pagination,
     };
 
     results = await Project.findAndCountAll({
@@ -114,7 +115,17 @@ export const findAll = async (req, res) => {
     });
   }
 
-  return res.json(optionallyPaginatedResponse(results, page, limit));
+  const response = optionallyPaginatedResponse(results, page, limit);
+
+  if (!xls) {
+    return res.json(response);
+  } else {
+    return sendXls(
+      Project.name,
+      createXlsFromSequelizeResults(response, Project),
+      res,
+    );
+  }
 };
 
 export const findOne = async (req, res) => {

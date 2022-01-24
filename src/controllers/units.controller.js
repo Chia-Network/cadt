@@ -22,6 +22,7 @@ import {
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
+import { createXlsFromSequelizeResults, sendXls } from '../utils/xls';
 
 export const create = async (req, res) => {
   try {
@@ -61,7 +62,7 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, columns, orgUid, search } = req.query;
+  let { page, limit, columns, orgUid, search, xls } = req.query;
   let where = orgUid ? { orgUid } : undefined;
 
   const includes = [Qualification, Vintage];
@@ -85,14 +86,14 @@ export const findAll = async (req, res) => {
   }
 
   let results;
+  let pagination = paginationParams(page, limit);
+
+  if (xls) {
+    pagination = { page: undefined, limit: undefined };
+  }
 
   if (search) {
-    results = await Unit.fts(
-      search,
-      orgUid,
-      paginationParams(page, limit),
-      Unit.defaultColumns,
-    );
+    results = await Unit.fts(search, orgUid, pagination, Unit.defaultColumns);
 
     // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
 
@@ -138,7 +139,17 @@ export const findAll = async (req, res) => {
     });
   }
 
-  res.json(optionallyPaginatedResponse(results, page, limit));
+  const response = optionallyPaginatedResponse(results, page, limit);
+
+  if (!xls) {
+    return res.json(response);
+  } else {
+    return sendXls(
+      Unit.name,
+      createXlsFromSequelizeResults(response, Unit),
+      res,
+    );
+  }
 };
 
 export const findOne = async (req, res) => {
