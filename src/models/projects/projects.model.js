@@ -1,10 +1,15 @@
 'use strict';
 
+import _ from 'lodash';
 import Sequelize from 'sequelize';
 import rxjs from 'rxjs';
 const { Model } = Sequelize;
 
-import {sequelize, safeMirrorDbHandler, sanitizeSqliteFtsQuery} from '../database';
+import {
+  sequelize,
+  safeMirrorDbHandler,
+  sanitizeSqliteFtsQuery,
+} from '../database';
 
 import {
   RelatedProject,
@@ -12,7 +17,10 @@ import {
   Qualification,
   ProjectLocation,
   CoBenefit,
+  Rating,
 } from '../';
+
+import { changeListFactory } from '../../fullnode/data-layer-utils';
 
 import ModelTypes from './projects.modeltypes.cjs';
 import { ProjectMirror } from './projects.model.mirror';
@@ -170,18 +178,19 @@ class Project extends Model {
     if (columns.length) {
       fields = columns.join(', ');
     }
-  
+
     searchStr = sanitizeSqliteFtsQuery(searchStr);
-    
-    if (searchStr === '*') { // * isn't a valid matcher on its own. return empty set
+
+    if (searchStr === '*') {
+      // * isn't a valid matcher on its own. return empty set
       return {
         count: 0,
         rows: [],
-      }
+      };
     }
-  
+
     if (searchStr.startsWith('+')) {
-      searchStr = searchStr.replace('+', '') // If query starts with +, replace it
+      searchStr = searchStr.replace('+', ''); // If query starts with +, replace it
     }
 
     let sql = `SELECT ${fields} FROM projects_fts WHERE projects_fts MATCH :search`;
@@ -212,6 +221,68 @@ class Project extends Model {
         replacements: { ...replacements, ...{ offset, limit } },
       }),
     };
+  }
+
+  static async generateChangeListFromStagedData(
+    action,
+    warehouseProjectId,
+    stagedData,
+  ) {
+    const foreignKeys = [
+      'projectLocations',
+      'qualifications',
+      'vintages',
+      'coBenefits',
+      'relatedProjects',
+    ];
+
+    return Promise.resolve(
+      changeListFactory(
+        action,
+        warehouseProjectId,
+        _.omit(stagedData, foreignKeys),
+      ),
+    );
+  }
+
+  static async generateFullProjectModelChangeListFromStagedRecord(data) {
+    const promises = [Project.generateChangeListFromStagedData(data)];
+
+    if (data.projectLocations) {
+      promises.push(
+        ProjectLocation.generateChangeListFromStagedData(data.projectLocations),
+      );
+    }
+
+    if (data.qualifications) {
+      promises.push(
+        Qualification.generateChangeListFromStagedData(data.qualifications),
+      );
+    }
+
+    if (data.relatedProjects) {
+      promises.push(
+        Rating.generateChangeListFromStagedData(data.relatedProjects),
+      );
+    }
+
+    if (data.coBenefits) {
+      promises.push(
+        CoBenefit.generateChangeListFromStagedData(data.coBenefits),
+      );
+    }
+
+    if (data.vintages) {
+      promises.push(Vintage.generateChangeListFromStagedData(data.vintages));
+    }
+
+    if (data.relatedProjects) {
+      promises.push(
+        RelatedProject.generateChangeListFromStagedData(data.relatedProjects),
+      );
+    }
+
+    return Promise.all(promises);
   }
 }
 

@@ -4,17 +4,17 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
 
-import ModelTypes from './meta.modeltypes.cjs';
+import ModelTypes from './simulator.modeltypes.cjs';
 
-class Meta extends Model {}
+class Simulator extends Model {}
 
-Meta.init(ModelTypes, {
+Simulator.init(ModelTypes, {
   sequelize,
-  modelName: 'meta',
+  modelName: 'simulator',
   freezeTableName: true,
   timestamps: false,
   createdAt: false,
   updatedAt: false,
 });
 
-export { Meta };
+export { Simulator };

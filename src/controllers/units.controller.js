@@ -36,7 +36,7 @@ export const create = async (req, res) => {
     newRecord.warehouseUnitId = uuid;
 
     // All new units are assigned to the home orgUid
-    const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+    const { orgUid } = await Organization.getHomeOrg();
     newRecord.orgUid = orgUid;
     newRecord.unitOwnerOrgUid = orgUid;
 

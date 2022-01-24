@@ -27,3 +27,4 @@ export * from './vintages';
 export * from './staging';
 export * from './organizations';
 export * from './meta';
+export * from './simulator';

@@ -1,2 +1,2 @@
-export * from './dispatcher';
-export * from './dataLayerService';
+export * from './dataLayerWriteService';
+export * from './dataLayerReadService';

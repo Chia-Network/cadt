@@ -1,25 +1,33 @@
 import { uuid as uuidv4 } from 'uuidv4';
-import { Meta } from '../models';
+import { Simulator } from '../models';
 import { Sequelize } from 'sequelize';
+import { RandomHash } from 'random-hash';
+import { randomBytes } from 'crypto';
 
 const Op = Sequelize.Op;
+
+const generateHash = new RandomHash({
+  length: 55,
+  charset: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_',
+  rng: randomBytes,
+});
 
 export const createDataLayerStore = async () => {
   return uuidv4();
 };
 
-export const pushChangeListToDataLayer = (storeId, changeList) => {
-  console.log('!!!!!', storeId, changeList);
-  return Promise.all(
+export const pushChangeListToDataLayer = async (storeId, changeList) => {
+  console.log(storeId, changeList);
+  await Promise.all(
     changeList.map(async (change) => {
       if (change.action === 'insert') {
-        await Meta.create({
-          metaKey: `${storeId}_${change.key}`,
-          metaValue: change.value,
+        await Simulator.upsert({
+          key: `simulator_${storeId}_${change.key}`,
+          value: change.value,
         });
       } else if (change.action === 'delete') {
-        await Meta.destroy({
-          where: { metaKey: `simulator_${storeId}_${change.key}` },
+        await Simulator.destroy({
+          where: { key: `simulator_${storeId}_${change.key}` },
         });
       }
     }),
@@ -28,14 +36,15 @@ export const pushChangeListToDataLayer = (storeId, changeList) => {
 
 export const getStoreData = async (storeId) => {
   if (storeId) {
-    const results = await await Meta.findAll({
+    const results = await await Simulator.findAll({
       where: {
-        metaKey: { [Op.like]: `simulator_${storeId}%` },
+        key: { [Op.like]: `${storeId}%` },
       },
     });
 
     // return the store data in a form that mirrors that datalayer response
     return {
+      root: `0x${generateHash()}`,
       keys_values: results.map((result) => {
         const simulatedResult = result;
         simulatedResult.hash = result.metaValue.split('').reduce((a, b) => {
@@ -51,4 +60,20 @@ export const getStoreData = async (storeId) => {
   }
 
   return new Error('Error getting datalayer store data');
+};
+
+// eslint-disable-next-line
+export const getRoot = (storeId) => {
+  return Promise.resolve({
+    // fake hash
+    hash: `0x${generateHash()}`,
+    success: true,
+  });
+};
+
+export const getRoots = (storeIds) => {
+  return Promise.resolve({
+    hash: storeIds.map(() => `0x${generateHash()}`),
+    success: true,
+  });
 };

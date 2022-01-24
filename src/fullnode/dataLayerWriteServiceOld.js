@@ -1,14 +1,12 @@
-import { Meta } from '../models';
+import { Meta, Organization } from '../models';
 import * as dataLayer from './persistance';
 import * as simulator from './simulatorV2';
 
 const strToHex = (str) => {
-  console.log('str', str);
   return new Buffer(str).toString('hex');
 };
 
 const createChangeObject = (type, key, value) => {
-  console.log(type, key, value);
   return { action: type, key: strToHex(key), value: strToHex(value) };
 };
 
@@ -17,8 +15,6 @@ const ensureDataLayerStore = async (metaKey) => {
     where: { metaKey },
   });
 
-  console.log('@@@', storeMeta);
-
   if (!storeMeta) {
     let storeId;
     if (process.env.USE_SIMULATOR === 'true') {
@@ -27,9 +23,7 @@ const ensureDataLayerStore = async (metaKey) => {
       storeId = await dataLayer.createDataLayerStore();
     }
 
-    console.log({ [metaKey]: storeId });
-
-    await Meta.create({ [metaKey]: storeId });
+    await Meta.create({ metaKey, metaValue: storeId });
     return storeId;
   }
 
@@ -37,73 +31,41 @@ const ensureDataLayerStore = async (metaKey) => {
 };
 
 const ensureRegistryStore = async (orgUid) => {
-  const storeId = await ensureDataLayerStore('registryId');
+  const storeId = await ensureDataLayerStore(`registryId`);
   const changeList = [createChangeObject('insert', 'registryId', storeId)];
 
-  console.log('#####orgUid', orgUid, changeList);
-
-  let registryId;
   if (process.env.USE_SIMULATOR === 'true') {
-    registryId = await simulator.pushChangeListToDataLayer(orgUid, changeList);
+    await simulator.pushChangeListToDataLayer(orgUid, changeList);
   } else {
-    registryId = await dataLayer.pushChangeListToDataLayer(orgUid, changeList);
+    await dataLayer.pushChangeListToDataLayer(orgUid, changeList);
   }
-  await Meta.create({ registryId });
-  return registryId;
+
+  return storeId;
 };
 
 const ensureRegistryTableStore = async (tableName) => {
-  const orgUid = await ensureOrganizationStore();
+  const myOrganization = await Organization.findOne({
+    where: { isHome: true },
+    raw: true,
+  });
+
+  const orgUid = myOrganization.orgUid;
   const registryId = await ensureRegistryStore(orgUid);
-  const metaKey = `${tableName}StoreId`;
+  const metaKey = `${tableName}TableStoreId`;
   const storeId = await ensureDataLayerStore(metaKey);
   const changeList = [createChangeObject('insert', metaKey, storeId)];
 
-  let registryTableStoreId;
   if (process.env.USE_SIMULATOR === 'true') {
-    registryTableStoreId = await simulator.pushChangeListToDataLayer(
-      registryId,
-      changeList,
-    );
+    await simulator.pushChangeListToDataLayer(registryId, changeList);
   } else {
-    registryTableStoreId = await dataLayer.pushChangeListToDataLayer(
-      registryId,
-      changeList,
-    );
+    await dataLayer.pushChangeListToDataLayer(registryId, changeList);
   }
 
-  await Meta.create({ [metaKey]: registryTableStoreId });
-
-  console.log('3############', registryTableStoreId);
-  return registryTableStoreId;
-};
-
-const ensureOrganizationStore = async () => {
-  const metaKey = 'organizationId';
-  const storeMeta = await Meta.findOne({
-    where: { metaKey },
-  });
-
-  if (!storeMeta) {
-    let storeId;
-
-    if (process.env.USE_SIMULATOR === 'true') {
-      storeId = await simulator.createDataLayerStore();
-    } else {
-      storeId = await dataLayer.createDataLayerStore();
-    }
-
-    await Meta.upsert({ metaKey: 'organizationId', metaValue: storeId });
-    return storeId;
-  }
-
-  return storeMeta.metaValue;
+  return storeId;
 };
 
 export const pushChangeListToRegistryTable = async (tableName, changeList) => {
   const storeId = await ensureRegistryTableStore(tableName);
-
-  console.log('########', storeId);
 
   if (storeId) {
     if (process.env.USE_SIMULATOR === 'true') {
@@ -116,18 +78,8 @@ export const pushChangeListToRegistryTable = async (tableName, changeList) => {
   throw new Error('Could not create datalayer store');
 };
 
-export const getRegistryTableData = async (tableName) => {
-  const storeId = await ensureDataLayerStore(tableName);
-
-  if (process.env.USE_SIMULATOR === 'true') {
-    return simulator.getStoreData(storeId);
-  } else {
-    return dataLayer.getStoreData(storeId);
-  }
-};
-
 export const updateOrganization = async (orgName, orgIconUrl, orgWebSite) => {
-  const orgUid = await ensureOrganizationStore();
+  const orgUid = await ensureDataLayerStore();
 
   const changeList = [];
   const metaUpdateList = [];

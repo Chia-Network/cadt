@@ -1,11 +1,17 @@
 'use strict';
 
+import _ from 'lodash';
 import Sequelize from 'sequelize';
-import {sequelize, safeMirrorDbHandler, sanitizeSqliteFtsQuery} from '../database';
+import rxjs from 'rxjs';
+import {
+  sequelize,
+  safeMirrorDbHandler,
+  sanitizeSqliteFtsQuery,
+} from '../database';
 import { Qualification, Vintage } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
-import rxjs from 'rxjs';
+import { changeListFactory } from '../../fullnode/data-layer-utils';
 
 const { Model } = Sequelize;
 
@@ -215,20 +221,21 @@ class Unit extends Model {
     if (columns.length) {
       fields = columns.join(', ');
     }
-  
+
     searchStr = sanitizeSqliteFtsQuery(searchStr);
-    
-    if (searchStr === '*') { // * isn't a valid matcher on its own. return empty set
+
+    if (searchStr === '*') {
+      // * isn't a valid matcher on its own. return empty set
       return {
         count: 0,
         rows: [],
-      }
+      };
     }
-    
+
     if (searchStr.startsWith('+')) {
-      searchStr = searchStr.replace('+', '') // If query starts with +, replace it
+      searchStr = searchStr.replace('+', ''); // If query starts with +, replace it
     }
-    
+
     let sql = `SELECT ${fields} FROM units_fts WHERE units_fts MATCH :search`;
 
     if (orgUid) {
@@ -257,6 +264,49 @@ class Unit extends Model {
         replacements: { ...replacements, ...{ offset, limit } },
       }),
     };
+  }
+
+  static async generateChangeListFromStagedData(
+    action,
+    warehouseUnitId,
+    stagedData,
+  ) {
+    const foreignKeys = ['qualifications', 'vintage'];
+    if (_.get(stagedData, 'vintage.id')) {
+      stagedData.vintageId = stagedData.vintage.id;
+    }
+
+    return Promise.resolve(
+      changeListFactory(
+        action,
+        warehouseUnitId,
+        _.omit(stagedData, foreignKeys),
+      ),
+    );
+  }
+
+  static generateUnitModelChangeListFromStagedRecord(action, uuid, data) {
+    const promises = [
+      Unit.generateChangeListFromStagedData(action, uuid, data),
+    ];
+
+    if (data.vintage) {
+      promises.push(
+        Vintage.generateChangeListFromStagedData(action, uuid, [data.vintage]),
+      );
+    }
+
+    if (data.qualifications) {
+      promises.push(
+        Qualification.generateChangeListFromStagedData(
+          action,
+          uuid,
+          data.qualifications,
+        ),
+      );
+    }
+
+    return Promise.all(promises);
   }
 }
 

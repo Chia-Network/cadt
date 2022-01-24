@@ -19,7 +19,7 @@ StagingRouter.delete(
   StagingController.destroy,
 );
 
-StagingRouter.post('/commit', StagingController.commitV2);
+StagingRouter.post('/commit', StagingController.commit);
 
 // Empty entire stagin table
 StagingRouter.delete('/clean', StagingController.clean);
