@@ -65,14 +65,37 @@ export const createXlsFromSequelizeResults = (
     let mainXlsRow = [];
 
     // Populate main sheet values
-    for (const [mainColName, mainCol] of columnsInMainSheet.entries()) {
+    for (const [i, mainColName] of columnsInMainSheet.entries()) {
+      if (row[mainColName] === null) {
+        row[mainColName] = 'null';
+      }
+
       if (
-        !associations.map((singular) => singular + 's').includes(mainColName)
+        Object.keys(row).includes(mainColName) &&
+        Object.keys(row[mainColName]).includes('id')
       ) {
-        if (row[mainCol] === null) {
-          row[mainCol] = 'null';
+        if (!Object.keys(sheets).includes(mainColName + 's')) {
+          sheets[mainColName + 's'] = {
+            name: mainColName + 's',
+            data: [
+              Object.keys(row[mainColName]).concat([
+                model.name.split('_').join('') + 'Id',
+              ]),
+            ],
+          };
         }
-        mainXlsRow.push(encodeValue(row[mainCol], hex));
+        sheets[mainColName + 's'].data.push(
+          Object.values(row[mainColName])
+            .map((val1) => encodeValue(val1, hex))
+            .concat([encodeValue(row[mainColName].id, hex)]),
+        );
+      }
+      if (!associations.map((singular) => singular + 's').includes(i)) {
+        // Todo: change to colNames[i], but also filter column headings first (for skipping assoc cols)
+        if (row[mainColName] === null) {
+          row[mainColName] = 'null';
+        }
+        mainXlsRow.push(encodeValue(row[mainColName], hex));
       }
     }
 
