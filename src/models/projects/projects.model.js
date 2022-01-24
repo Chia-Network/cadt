@@ -17,10 +17,13 @@ import {
   Qualification,
   ProjectLocation,
   CoBenefit,
-  Rating,
+  Staging,
 } from '../';
 
-import { changeListFactory } from '../../fullnode/data-layer-utils';
+import {
+  createXlsFromSequelizeResults,
+  transformFullXslsToChangeList,
+} from '../../utils/xls';
 
 import ModelTypes from './projects.modeltypes.cjs';
 import { ProjectMirror } from './projects.model.mirror';
@@ -223,66 +226,72 @@ class Project extends Model {
     };
   }
 
-  static async generateChangeListFromStagedData(
-    action,
-    warehouseProjectId,
-    stagedData,
-  ) {
-    const foreignKeys = [
-      'projectLocations',
-      'qualifications',
-      'vintages',
-      'coBenefits',
-      'relatedProjects',
-    ];
+  static generateChangeListFromStagedData(stagedData) {
+    const [insertRecords, updateRecords, deleteChangeList] =
+      Staging.seperateStagingDataIntoActionGroups(stagedData, 'Projects');
 
-    return Promise.resolve(
-      changeListFactory(
-        action,
-        warehouseProjectId,
-        _.omit(stagedData, foreignKeys),
-      ),
+    const insertXslsSheets = createXlsFromSequelizeResults(
+      insertRecords,
+      Project,
+      false,
+      true,
     );
-  }
 
-  static async generateFullProjectModelChangeListFromStagedRecord(data) {
-    const promises = [Project.generateChangeListFromStagedData(data)];
+    const updateXslsSheets = createXlsFromSequelizeResults(
+      updateRecords,
+      Project,
+      false,
+      true,
+    );
 
-    if (data.projectLocations) {
-      promises.push(
-        ProjectLocation.generateChangeListFromStagedData(data.projectLocations),
-      );
-    }
+    const primaryKeyMap = {
+      projects: 'warehouseProjectId',
+      projectLocations: 'id',
+      qualifications: 'id',
+      vintages: 'id',
+      coBenifets: 'id',
+      relatedProjects: 'id',
+    };
 
-    if (data.qualifications) {
-      promises.push(
-        Qualification.generateChangeListFromStagedData(data.qualifications),
-      );
-    }
+    const insertChangeList = transformFullXslsToChangeList(
+      insertXslsSheets,
+      'insert',
+      primaryKeyMap,
+    );
 
-    if (data.relatedProjects) {
-      promises.push(
-        Rating.generateChangeListFromStagedData(data.relatedProjects),
-      );
-    }
+    const updateChangeList = transformFullXslsToChangeList(
+      updateXslsSheets,
+      'update',
+      primaryKeyMap,
+    );
 
-    if (data.coBenefits) {
-      promises.push(
-        CoBenefit.generateChangeListFromStagedData(data.coBenefits),
-      );
-    }
-
-    if (data.vintages) {
-      promises.push(Vintage.generateChangeListFromStagedData(data.vintages));
-    }
-
-    if (data.relatedProjects) {
-      promises.push(
-        RelatedProject.generateChangeListFromStagedData(data.relatedProjects),
-      );
-    }
-
-    return Promise.all(promises);
+    return {
+      projects: [
+        ..._.get(insertChangeList, 'project', []),
+        ..._.get(updateChangeList, 'project', []),
+        ...deleteChangeList,
+      ],
+      qualifications: [
+        ..._.get(insertChangeList, 'qualifications', []),
+        ..._.get(updateChangeList, 'qualifications', []),
+      ],
+      projectLocations: [
+        ..._.get(insertChangeList, 'projectLocations', []),
+        ..._.get(updateChangeList, 'projectLocations', []),
+      ],
+      vintages: [
+        ..._.get(insertChangeList, 'vintages', []),
+        ..._.get(updateChangeList, 'vintages', []),
+      ],
+      coBenifets: [
+        ..._.get(insertChangeList, 'coBenifets', []),
+        ..._.get(updateChangeList, 'coBenifets', []),
+      ],
+      relatedProjects: [
+        ..._.get(insertChangeList, 'relatedProjects', []),
+        ..._.get(updateChangeList, 'relatedProjects', []),
+      ],
+    };
   }
 }
 

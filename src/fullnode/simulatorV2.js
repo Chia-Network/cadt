@@ -22,12 +22,12 @@ export const pushChangeListToDataLayer = async (storeId, changeList) => {
     changeList.map(async (change) => {
       if (change.action === 'insert') {
         await Simulator.upsert({
-          key: `simulator_${storeId}_${change.key}`,
+          key: `${storeId}_${change.key}`,
           value: change.value,
         });
       } else if (change.action === 'delete') {
         await Simulator.destroy({
-          where: { key: `simulator_${storeId}_${change.key}` },
+          where: { key: `${storeId}_${change.key}` },
         });
       }
     }),

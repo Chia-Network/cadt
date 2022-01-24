@@ -1,4 +1,5 @@
 'use strict';
+
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize, safeMirrorDbHandler } from '../database';
@@ -46,17 +47,6 @@ class Qualification extends Model {
   static async destroy(values) {
     safeMirrorDbHandler(() => QualificationMirror.destroy(values));
     return super.destroy(values);
-  }
-
-  static async generateChangeListFromStagedData(
-    // eslint-disable-next-line
-    action,
-    // eslint-disable-next-line
-    id,
-    // eslint-disable-next-line
-    stagedData,
-  ) {
-    return {};
   }
 }
 

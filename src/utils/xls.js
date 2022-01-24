@@ -139,6 +139,69 @@ export const createXlsFromSequelizeResults = (
   if (!csv) {
     return xlsx.build(Object.values(xlsData));
   } else {
-    return Object.values(xlsData).map(({ data }) => data);
+    return xlsData;
   }
+};
+
+const checkArrayOfArrays = (a) => {
+  return a.every(function (x) {
+    return Array.isArray(x);
+  });
+};
+
+export const transformFullXslsToChangeList = (
+  xsls,
+  action,
+  primaryKeyNames,
+) => {
+  const models = Object.keys(primaryKeyNames);
+  const changeList = {};
+
+  models.forEach((key) => {
+    let sheet = xsls[key];
+    if (sheet) {
+      const headerRow = sheet.data[0];
+      const primaryKeyIndex = headerRow.findIndex((item) => {
+        return item === primaryKeyNames[key];
+      });
+
+      changeList[key] = [];
+
+      sheet.data.forEach((row) => {
+        const rows = checkArrayOfArrays(row) ? row : [row];
+        return (
+          rows
+            // filter out the header row
+            .filter((r) => r[primaryKeyIndex] !== headerRow[primaryKeyIndex])
+            .forEach((r) => {
+              if (action === 'update') {
+                changeList[key].push(
+                  {
+                    action: 'delete',
+                    id: Buffer.from(r[primaryKeyIndex]).toString('hex'),
+                  },
+                  {
+                    action: 'insert',
+                    id: Buffer.from(r[primaryKeyIndex]).toString('hex'),
+                    data: Buffer.from(
+                      r.filter((x) => typeof x === 'string').join(','),
+                    ).toString('hex'),
+                  },
+                );
+              } else {
+                changeList[key].push({
+                  action: action,
+                  id: Buffer.from(r[primaryKeyIndex]).toString('hex'),
+                  data: Buffer.from(
+                    r.filter((x) => typeof x === 'string').join(','),
+                  ).toString('hex'),
+                });
+              }
+            })
+        );
+      });
+    }
+  });
+
+  return changeList;
 };

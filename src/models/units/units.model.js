@@ -8,10 +8,14 @@ import {
   safeMirrorDbHandler,
   sanitizeSqliteFtsQuery,
 } from '../database';
-import { Qualification, Vintage } from '../../models';
+import { Qualification, Vintage, Staging } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
-import { changeListFactory } from '../../fullnode/data-layer-utils';
+
+import {
+  createXlsFromSequelizeResults,
+  transformFullXslsToChangeList,
+} from '../../utils/xls';
 
 const { Model } = Sequelize;
 
@@ -266,47 +270,61 @@ class Unit extends Model {
     };
   }
 
-  static async generateChangeListFromStagedData(
-    action,
-    warehouseUnitId,
-    stagedData,
-  ) {
-    const foreignKeys = ['qualifications', 'vintage'];
-    if (_.get(stagedData, 'vintage.id')) {
-      stagedData.vintageId = stagedData.vintage.id;
-    }
+  static generateChangeListFromStagedData(stagedData) {
+    const [insertRecords, updateRecords, deleteChangeList] =
+      Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
 
-    return Promise.resolve(
-      changeListFactory(
-        action,
-        warehouseUnitId,
-        _.omit(stagedData, foreignKeys),
-      ),
+    const insertXslsSheets = createXlsFromSequelizeResults(
+      insertRecords,
+      Unit,
+      false,
+      true,
     );
-  }
 
-  static generateUnitModelChangeListFromStagedRecord(action, uuid, data) {
-    const promises = [
-      Unit.generateChangeListFromStagedData(action, uuid, data),
-    ];
+    const updateXslsSheets = createXlsFromSequelizeResults(
+      updateRecords,
+      Unit,
+      false,
+      true,
+    );
 
-    if (data.vintage) {
-      promises.push(
-        Vintage.generateChangeListFromStagedData(action, uuid, [data.vintage]),
-      );
-    }
+    const primaryKeyMap = {
+      unit: 'warehouseUnitId',
+      qualifications: 'id',
+      qualification_units: 'qualificationunitId',
+    };
 
-    if (data.qualifications) {
-      promises.push(
-        Qualification.generateChangeListFromStagedData(
-          action,
-          uuid,
-          data.qualifications,
-        ),
-      );
-    }
+    const insertChangeList = transformFullXslsToChangeList(
+      insertXslsSheets,
+      'insert',
+      primaryKeyMap,
+    );
 
-    return Promise.all(promises);
+    const updateChangeList = transformFullXslsToChangeList(
+      updateXslsSheets,
+      'update',
+      primaryKeyMap,
+    );
+
+    return {
+      units: [
+        ..._.get(insertChangeList, 'unit', []),
+        ..._.get(updateChangeList, 'unit', []),
+        ...deleteChangeList,
+      ],
+      qualifications: [
+        ..._.get(insertChangeList, 'qualifications', []),
+        ..._.get(updateChangeList, 'qualifications', []),
+      ],
+      vintages: [
+        ..._.get(insertChangeList, 'vintages', []),
+        ..._.get(updateChangeList, 'vintages', []),
+      ],
+      qualificationUnits: [
+        ..._.get(insertChangeList, 'qualification_units', []),
+        ..._.get(updateChangeList, 'qualification_units', []),
+      ],
+    };
   }
 }
 
