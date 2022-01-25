@@ -29,12 +29,9 @@ class Organization extends Model {
     });
 
     return organizations.reduce((map, current) => {
-      if (map) {
-        map = {};
-      }
-
       map[current.orgUid] = current;
-    });
+      return map;
+    }, {});
   }
 
   static async createHomeOrganization(name, icon, dataVersion = 'v1') {

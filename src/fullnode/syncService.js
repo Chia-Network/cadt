@@ -22,9 +22,9 @@ export const startDataLayerUpdatePolling = () => {
   updateInterval = setInterval(async () => {
     const tablesToUpdate = await dataLayerWasUpdated();
     _.keys(tablesToUpdate).forEach((storeId) => {
-      if (tablesToUpdate[storeId]) {
-        syncDataLayerStore(storeId);
-      }
+      // if (tablesToUpdate[storeId]) {
+      syncDataLayerStore(storeId);
+      // }
     });
   }, 10000);
 };
@@ -42,45 +42,60 @@ export const syncDataLayerStore = async (storeId) => {
     storeData = await dataLayer.getStoreData(storeId);
   }
 
-  await Promise.all([
-    Unit.destroy({ where: {}, truncate: true }),
-    Project.destroy({ where: {}, truncate: true }),
-    RelatedProject.destroy({ where: {}, truncate: true }),
-    QualificationUnit.destroy({ where: {}, truncate: true }),
-    CoBenefit.destroy({ where: {}, truncate: true }),
-    Vintage.destroy({ where: {}, truncate: true }),
-    ProjectLocation.destroy({ where: {}, truncate: true }),
-    Qualification.destroy({ where: {}, truncate: true }),
-  ]);
+  // Extract out the orgUid thats being updated so we can
+  // clean that orgs tables and repopulate without truncating
+  // the entire db
+  const { decodedStoreData, orgUid } = storeData.keys_values.reduce(
+    (accum, kv) => {
+      const decodedRecord = {
+        key: new Buffer(kv.key.replace(`${storeId}_`, ''), 'hex').toString(),
+        value: JSON.parse(new Buffer(kv.value, 'hex').toString()),
+      };
+
+      accum.decodedStoreData.push(decodedRecord);
+      if (_.get(decodedRecord, 'value.orgUid')) {
+        accum.orgUid = _.get(decodedRecord, 'value.orgUid');
+      }
+
+      return accum;
+    },
+    {
+      decodedStoreData: [],
+      orgUid: null,
+    },
+  );
+
+  if (orgUid) {
+    await Promise.all([
+      // the child table records should cascade delete so we only need to
+      // truncate the primary tables
+      Unit.destroy({ where: { orgUid } }),
+      Project.destroy({ where: { orgUid } }),
+      QualificationUnit.destroy({ where: { orgUid } }),
+    ]);
+  }
 
   await Promise.all(
-    storeData.keys_values.map(async (kv) => {
-      const key = new Buffer(
-        kv.key.replace(`${storeId}_`, ''),
-        'hex',
-      ).toString();
-      const value = new Buffer(kv.value, 'hex').toString();
-
+    decodedStoreData.map(async (kv) => {
+      const { key, value } = kv;
       if (key.includes('unit')) {
-        const data = JSON.parse(value);
-        await Unit.upsert(data);
-        await Staging.destroy({ where: { uuid: data.warehouseUnitId } });
+        await Unit.upsert(value);
+        await Staging.destroy({ where: { uuid: value.warehouseUnitId } });
       } else if (key.includes('project')) {
-        const data = JSON.parse(value);
-        await Project.upsert(data);
-        await Staging.destroy({ where: { uuid: data.warehouseProjectId } });
+        await Project.upsert(value);
+        await Staging.destroy({ where: { uuid: value.warehouseProjectId } });
       } else if (key.includes('relatedProjects')) {
-        await RelatedProject.upsert(JSON.parse(value));
+        await RelatedProject.upsert(value);
       } else if (key.includes('qualification_units')) {
-        await QualificationUnit.upsert(JSON.parse(value));
+        await QualificationUnit.upsert(value);
       } else if (key.includes('coBenefits')) {
-        await CoBenefit.upsert(JSON.stringify(value));
+        await CoBenefit.upsert(value);
       } else if (key.includes('vintages')) {
-        await Vintage.upsert(JSON.parse(value));
+        await Vintage.upsert(value);
       } else if (key.includes('projectLocations')) {
-        await ProjectLocation.upsert(JSON.parse(value));
+        await ProjectLocation.upsert(value);
       } else if (key.includes('qualifications')) {
-        await Qualification.upsert(JSON.parse(value));
+        await Qualification.upsert(value);
       }
     }),
   );

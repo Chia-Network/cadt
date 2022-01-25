@@ -41,7 +41,7 @@ export const create = async (req, res) => {
     newRecord.warehouseProjectId = uuid;
 
     // All new projects are assigned to the home orgUid
-    const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+    const { orgUid } = await Organization.getHomeOrg();
     newRecord.orgUid = orgUid;
 
     // The new project is getting created in this registry
