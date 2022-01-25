@@ -1,12 +1,4 @@
 import {
-  Project,
-  CoBenefit,
-  ProjectLocation,
-  Qualification,
-  Rating,
-  RelatedProject,
-  Unit,
-  Vintage,
   Staging
 } from './../models';
 
