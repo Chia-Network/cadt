@@ -1,8 +1,27 @@
-import {sequelize} from "../models/database.js";
-import {Project} from "../models/index.js";
+import {
+  Project,
+  CoBenefit,
+  ProjectLocation,
+  Qualification,
+  Rating,
+  RelatedProject,
+  Unit,
+  Vintage,
+  Staging
+} from './../models';
 
 import xlsx from 'node-xlsx';
 import stream from "stream";
+
+const associations = (model) => model.getAssociatedModels().map(model => {
+  if (typeof model === 'object') {
+    return model.model;
+  } else {
+    return model;
+  }
+});
+
+const capitalize = ([firstLetter, ...restOfWord]) => firstLetter.toUpperCase() + restOfWord.join('');
 
 export const sendXls = (name, bytes, response) => {
   const readStream = new stream.PassThrough();
@@ -114,8 +133,58 @@ export const createXlsFromSequelizeResults = (rows, model, hex = false, csv = fa
   if (!csv) {
     return xlsx.build(Object.values(xlsData));
   } else {
-    return Object.values(xlsData).map(({data}) => data);
+    return xlsData;
   }
   
 }
 
+export const tableDataFromXlsx = (xlsx, model) => {
+  return xlsx.reduce((stagingData, { data, name }) => {
+    const dataModel = [...associations(model), model].find((m) => {
+      const modelName = name.slice(0, -1);
+      const assocModelName = modelName.split('_');
+      if (assocModelName.length > 1) {
+        assocModelName[1] = capitalize(assocModelName[1]);
+      }
+      return m.name === name.slice(0, -1) || m.name === assocModelName.join('');
+    });
+    if (dataModel) {
+      const columnNames = data.shift();
+      for (const [_i, dataRow] of data.entries()) {
+        if (!Object.keys(stagingData).includes(dataModel.name)) {
+          stagingData[dataModel.name] = {model: dataModel, data: []};
+        }
+        const row = {}
+        for (let [columnIndex, columnData] of dataRow.entries()) {
+          if (columnData === 'null') {
+            columnData = null;
+          }
+          row[columnNames[columnIndex]] = columnData;
+        }
+        stagingData[dataModel.name].data.push(row)
+      }
+    }
+    return stagingData;
+  }, {});
+}
+
+export const updateTablesWithData = async (tableData) => {
+  const allStaged = [];
+  
+  for (let [_i, {model, data}] of Object.values(tableData).entries()) {
+    for (let row of data) {
+      const exists = Object.keys(row).includes(model.primaryKeyAttributes[0]) &&
+        row[model.primaryKeyAttributes[0]].length &&
+        Boolean(await model.findByPk(row[model.primaryKeyAttributes[0]]));
+      
+      allStaged.push({
+        uuid: data[model.primaryKeyAttributes[0]],
+        action: exists ? 'UPDATE' : 'INSERT',
+        table: model.tableName,
+        row,
+      });
+    }
+  }
+  
+  await Staging.bulkCreate(allStaged);
+}

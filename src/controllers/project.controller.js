@@ -1,5 +1,5 @@
 import _ from 'lodash';
-
+import xlsx from 'node-xlsx';
 import { uuid as uuidv4 } from 'uuidv4';
 
 import {
@@ -10,7 +10,7 @@ import {
   Vintage,
   CoBenefit,
   RelatedProject,
-  Organization,
+  Organization, Unit,
 } from '../models';
 
 import {
@@ -26,7 +26,7 @@ import {
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
-import { createXlsFromSequelizeResults, sendXls } from '../utils/xls';
+import {tableDataFromXlsx, createXlsFromSequelizeResults, sendXls, updateTablesWithData} from '../utils/xls';
 import * as stream from "stream";
 
 export const create = async (req, res) => {
@@ -68,7 +68,6 @@ export const create = async (req, res) => {
 export const findAll = async (req, res) => {
   let { page, limit, search, orgUid, columns, xls } = req.query;
   let where = orgUid ? { orgUid } : undefined;
-  
   const includes = Project.getAssociatedModels();
 
   if (columns) {
@@ -142,6 +141,24 @@ export const findOne = async (req, res) => {
 
   res.json(await Project.findOne(query));
 };
+
+export const updateFromXLS = async (req, res) => {
+  const { files } = req;
+  
+  if(files && files.xlsx) {
+    const xlsxParsed = xlsx.parse(files.xlsx.data);
+    const stagedDataItems = tableDataFromXlsx(xlsxParsed, Project);
+    await updateTablesWithData(stagedDataItems);
+    res.json({
+      message: 'Updates from xlsx added to staging',
+    });
+  } else {
+    res.status(400).json({
+      message: 'File not received',
+      error: 'File not received',
+    });
+  }
+}
 
 export const update = async (req, res) => {
   try {

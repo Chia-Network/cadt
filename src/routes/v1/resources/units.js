@@ -38,4 +38,9 @@ UnitRouter.post(
 
 UnitRouter.post('/batch', UnitController.batchUpload);
 
+UnitRouter.put(
+  '/xlsx',
+  UnitController.updateFromXLS,
+);
+
 export { UnitRouter };

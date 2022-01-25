@@ -3,7 +3,7 @@
 import _ from 'lodash';
 import { uuid as uuidv4 } from 'uuidv4';
 
-import { Staging, Unit, Qualification, Vintage, Organization } from '../models';
+import {Staging, Unit, Qualification, Vintage, Organization, Project} from '../models';
 
 import {
   columnsToInclude,
@@ -21,7 +21,8 @@ import {
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
-import { createXlsFromSequelizeResults, sendXls } from "../utils/xls";
+import {createXlsFromSequelizeResults, sendXls, tableDataFromXlsx, updateTablesWithData} from "../utils/xls";
+import xlsx from "node-xlsx";
 
 export const create = async (req, res) => {
   try {
@@ -159,6 +160,24 @@ export const findOne = async (req, res) => {
     }),
   );
 };
+
+export const updateFromXLS = async (req, res) => {
+  const { files } = req;
+  
+  if(files && files.xlsx) {
+    const xlsxParsed = xlsx.parse(files.xlsx.data);
+    const stagedDataItems = tableDataFromXlsx(xlsxParsed, Unit);
+    await updateTablesWithData(stagedDataItems);
+    res.json({
+      message: 'Updates from xlsx added to staging',
+    });
+  } else {
+    res.status(400).json({
+      message: 'File not received',
+      error: 'File not received',
+    });
+  }
+}
 
 export const update = async (req, res) => {
   try {
