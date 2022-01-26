@@ -1,27 +1,8 @@
 [
   {
     "id": "9506cf84-6f9e-437a-a099-9672e4737668",
-    "benefit": "TEST_COBENEFIT_1",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd"
-  },
-  {
-    "id": "f124ebef-6436-4cd4-abdd-c55e10f4d1a0",
-    "benefit": "TEST_COBENEFIT_2",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd"
-  },
-  {
-    "id": "729c71bf-cc6e-4424-842f-54c2a490952a",
-    "benefit": "TEST_COBENEFIT_3",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd"
-  },
-  {
-    "id": "2995a129-1fad-4251-9942-7c6db2fbff74",
-    "benefit": "TEST_COBENEFIT_4",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd"
-  },
-  {
-    "id": "83913f9e-9876-4c4d-ac4c-10dd992d7d7f",
-    "benefit": "TEST_COBENEFIT_5",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd"
+    "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
+    "cobenefit": "TEST_COBENEFIT_1",
+    "warehouseProjectId": "11954678-f7a5-47d2-94f8-f4f3138a529c"
   }
 ]

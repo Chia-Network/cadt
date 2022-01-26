@@ -13,6 +13,12 @@ module.exports = {
     onDelete: 'CASCADE',
     required: true,
   },
+  // The orgUid is the singeltonId of the
+  // organizations tables on the datalayer
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
+  },
   cobenefit: {
     type: Sequelize.STRING,
     required: true,

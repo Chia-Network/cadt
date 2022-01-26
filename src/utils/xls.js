@@ -1,9 +1,11 @@
 import _ from 'lodash';
 
-import { Staging } from './../models';
-
 import xlsx from 'node-xlsx';
 import stream from 'stream';
+
+import { Staging, Organization } from './../models';
+import { sequelize } from '../models/database';
+import { assertOrgIsHomeOrg } from '../utils/data-assertions';
 
 const associations = (model) =>
   model.getAssociatedModels().map((model) => {
@@ -213,26 +215,40 @@ export const tableDataFromXlsx = (xlsx, model) => {
 };
 
 export const updateTablesWithData = async (tableData) => {
-  const allStaged = [];
+  const { orgUid } = await Organization.getHomeOrg();
 
-  for (let [, { model, data }] of Object.values(tableData).entries()) {
-    for (let row of data) {
-      const exists =
-        Object.keys(row).includes(model.primaryKeyAttributes[0]) &&
-        row[model.primaryKeyAttributes[0]].length &&
-        Boolean(await model.findByPk(row[model.primaryKeyAttributes[0]]));
+  // using a transaction ensures either everything is uploaded or everything fails
+  await sequelize.transaction(async () => {
+    for (let [, { model, data }] of Object.values(tableData).entries()) {
+      for (let row of data) {
+        const existingRecord = await model.findByPk(
+          row[model.primaryKeyAttributes[0]],
+        );
 
-      allStaged.push({
-        uuid: data[model.primaryKeyAttributes[0]],
-        action: exists ? 'UPDATE' : 'INSERT',
-        table: model.tableName,
-        row,
-      });
+        const exists =
+          Object.keys(row).includes(model.primaryKeyAttributes[0]) &&
+          row[model.primaryKeyAttributes[0]].length &&
+          Boolean(existingRecord);
+
+        if (exists) {
+          // Assert the original record is a record your allowed to modify
+          assertOrgIsHomeOrg(existingRecord.orgUid);
+        } else {
+          // Assign the newly created record to this home org
+          row.orgUid = orgUid;
+        }
+
+        await Staging.upsert({
+          uuid: data[model.primaryKeyAttributes[0]],
+          action: exists ? 'UPDATE' : 'INSERT',
+          table: model.tableName,
+          data: JSON.stringify(row),
+        });
+      }
     }
-  }
-
-  await Staging.bulkCreate(allStaged);
+  });
 };
+
 const checkArrayOfArrays = (a) => {
   return a.every(function (x) {
     return Array.isArray(x);

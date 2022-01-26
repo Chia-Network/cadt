@@ -13,6 +13,10 @@ module.exports = {
     required: true,
     onDelete: 'CASCADE',
   },
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
+  },
   country: {
     type: Sequelize.STRING,
     required: true,

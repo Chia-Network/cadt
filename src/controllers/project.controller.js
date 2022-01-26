@@ -143,19 +143,26 @@ export const findOne = async (req, res) => {
 };
 
 export const updateFromXLS = async (req, res) => {
-  const { files } = req;
+  try {
+    await assertHomeOrgExists();
 
-  if (files && files.xlsx) {
+    const { files } = req;
+
+    if (!files || !files.xlsx) {
+      throw new Error('File Not Received');
+    }
+
     const xlsxParsed = xlsx.parse(files.xlsx.data);
     const stagedDataItems = tableDataFromXlsx(xlsxParsed, Project);
     await updateTablesWithData(stagedDataItems);
+
     res.json({
       message: 'Updates from xlsx added to staging',
     });
-  } else {
+  } catch (error) {
     res.status(400).json({
-      message: 'File not received',
-      error: 'File not received',
+      message: 'Batch Upload Failed.',
+      error: error.message,
     });
   }
 };
