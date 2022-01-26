@@ -1,6 +1,6 @@
-import stub from './qualifications.stub.json';
+import stub from './labels.stub.json';
 
-export const QualificationMock = {
+export const LabelsMock = {
   findAll: () => stub,
   findOne: (id) => {
     return stub.find((record) => record.id == id);

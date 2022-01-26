@@ -6,7 +6,7 @@ import {
   Staging,
   Project,
   ProjectLocation,
-  Qualification,
+  Label,
   Issuance,
   CoBenefit,
   RelatedProject,
@@ -131,13 +131,7 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   const query = {
     where: { warehouseProjectId: req.query.warehouseProjectId },
-    include: [
-      ProjectLocation,
-      Qualification,
-      Issuance,
-      CoBenefit,
-      RelatedProject,
-    ],
+    include: [ProjectLocation, Label, Issuance, CoBenefit, RelatedProject],
   };
 
   res.json(await Project.findOne(query));

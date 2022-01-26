@@ -6,7 +6,7 @@ module.exports = {
     required: true,
   },
   warehouseUnitId: Sequelize.STRING,
-  qualificationId: Sequelize.STRING,
+  labelId: Sequelize.STRING,
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

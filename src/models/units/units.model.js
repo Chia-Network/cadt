@@ -8,7 +8,7 @@ import {
   safeMirrorDbHandler,
   sanitizeSqliteFtsQuery,
 } from '../database';
-import { Qualification, Issuance, Staging } from '../../models';
+import { Label, Issuance, Staging } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
 
@@ -65,8 +65,8 @@ class Unit extends Model {
 
   static getAssociatedModels = () => [
     {
-      model: Qualification,
-      as: 'qualifications',
+      model: Label,
+      as: 'labels',
     },
     Issuance,
   ];
@@ -78,10 +78,10 @@ class Unit extends Model {
     });
 
     // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
-    Unit.belongsToMany(Qualification, {
+    Unit.belongsToMany(Label, {
       foreignKey: 'warehouseUnitId',
-      through: 'qualification_unit',
-      as: 'qualifications',
+      through: 'label_unit',
+      as: 'labels',
     });
 
     safeMirrorDbHandler(() => {
@@ -91,10 +91,10 @@ class Unit extends Model {
       });
 
       // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
-      UnitMirror.belongsToMany(Qualification, {
+      UnitMirror.belongsToMany(Label, {
         foreignKey: 'warehouseUnitId',
-        through: 'qualification_unit',
-        as: 'qualifications',
+        through: 'label_unit',
+        as: 'labels',
       });
     });
   }
@@ -303,8 +303,8 @@ class Unit extends Model {
 
     const primaryKeyMap = {
       unit: 'warehouseUnitId',
-      qualifications: 'id',
-      qualification_units: 'qualificationunitId',
+      labels: 'id',
+      label_units: 'labelunitId',
       issuances: 'id',
     };
 
@@ -326,17 +326,17 @@ class Unit extends Model {
         ..._.get(updateChangeList, 'unit', []),
         ...deleteChangeList,
       ],
-      qualifications: [
-        ..._.get(insertChangeList, 'qualifications', []),
-        ..._.get(updateChangeList, 'qualifications', []),
+      labels: [
+        ..._.get(insertChangeList, 'labels', []),
+        ..._.get(updateChangeList, 'labels', []),
       ],
       issuances: [
         ..._.get(insertChangeList, 'issuances', []),
         ..._.get(updateChangeList, 'issuances', []),
       ],
-      qualificationUnits: [
-        ..._.get(insertChangeList, 'qualification_units', []),
-        ..._.get(updateChangeList, 'qualification_units', []),
+      labelUnits: [
+        ..._.get(insertChangeList, 'label_units', []),
+        ..._.get(updateChangeList, 'label_units', []),
       ],
     };
   }

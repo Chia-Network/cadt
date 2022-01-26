@@ -53,7 +53,7 @@ export const columnsToInclude = (userColumns, foreignKeys) => {
       (column) => !attributeModelMap.includes(column),
     ),
     include: filteredIncludes.map((include) => {
-      if (include.name === 'qualification') {
+      if (include.name === 'label') {
         return {
           model: include,
           as: include.name + 's',

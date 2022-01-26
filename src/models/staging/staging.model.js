@@ -161,10 +161,7 @@ class Staging extends Model {
         ...unitsChangeList.issuances,
         ...projectsChangeList.issuances,
       ],
-      qualifications: [
-        ...unitsChangeList.qualifications,
-        ...projectsChangeList.qualifications,
-      ],
+      labels: [...unitsChangeList.labels, ...projectsChangeList.labels],
     };
 
     const myOrganization = await Organization.findOne({

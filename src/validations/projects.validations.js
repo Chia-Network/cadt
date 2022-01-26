@@ -21,7 +21,7 @@ export const baseSchema = {
   projectTag: Joi.string().required(),
   estimatedAnnualAverageEmissionReduction: Joi.number().required(),
   projectLocations: Joi.array().min(1).optional(),
-  qualifications: Joi.array().min(1).optional(),
+  labels: Joi.array().min(1).optional(),
   issuances: Joi.array().min(1).optional(),
   coBenefits: Joi.array().min(1).optional(),
   relatedProjects: Joi.array().min(1).optional(),
