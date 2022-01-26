@@ -8,14 +8,38 @@ module.exports = {
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
-  labelId: Sequelize.INTEGER,
-  labelLink: Sequelize.STRING,
-  warehouseProjectId: Sequelize.INTEGER,
-  type: Sequelize.STRING,
-  label: Sequelize.STRING,
-  creditingPeriodStartDate: Sequelize.DATE,
-  creditingPeriodEndDate: Sequelize.DATE,
-  warehouseUnitId: Sequelize.INTEGER,
+  warehouseProjectId: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  label: {
+    type: Sequelize.STRING,
+    require: true,
+  },
+  creditingPeriodStartDate: {
+    type: Sequelize.DATE,
+    require: true,
+  },
+  creditingPeriodEndDate: {
+    type: Sequelize.DATE,
+    require: true,
+  },
+  validityStartDate: {
+    type: Sequelize.DATE,
+    require: true,
+  },
+  validityPeriodEndDate: {
+    type: Sequelize.DATE,
+    require: true,
+  },
+  unitQuantity: {
+    type: Sequelize.INTEGER,
+    require: true,
+  },
+  labelLink: {
+    type: Sequelize.STRING,
+    require: true,
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
@@ -23,6 +47,5 @@ module.exports = {
   updatedAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
-    allowNull: false,
   },
 };

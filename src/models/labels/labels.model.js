@@ -58,6 +58,7 @@ class Label extends Model {
 Label.init(ModelTypes, {
   sequelize,
   modelName: 'label',
+  timestamps: true,
 });
 
 export { Label };

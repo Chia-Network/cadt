@@ -8,11 +8,22 @@ module.exports = {
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
-  countryRegion: Sequelize.STRING,
-  country: Sequelize.STRING,
   warehouseProjectId: {
     type: Sequelize.INTEGER,
+    required: true,
     onDelete: 'CASCADE',
+  },
+  country: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  inCountryRegion: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  geographicIdentifier: {
+    type: Sequelize.STRING,
+    required: true,
   },
   createdAt: {
     type: Sequelize.DATE,

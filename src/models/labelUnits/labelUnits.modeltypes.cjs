@@ -5,8 +5,14 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
-  warehouseUnitId: Sequelize.STRING,
-  labelId: Sequelize.STRING,
+  warehouseUnitId: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  labelId: {
+    type: Sequelize.STRING,
+    required: true,
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

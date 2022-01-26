@@ -10,29 +10,73 @@ module.exports = {
   },
   // The orgUid is the singeltonId of the
   // organizations tables on the datalayer
-  orgUid: Sequelize.STRING,
-  projectId: Sequelize.STRING,
-  projectLocationId: Sequelize.INTEGER,
-  currentRegistry: Sequelize.STRING,
-  registryOfOrigin: Sequelize.STRING,
-  originProjectId: Sequelize.STRING,
-  program: Sequelize.STRING,
-  projectName: Sequelize.STRING,
-  projectLink: Sequelize.STRING,
-  projectDeveloper: Sequelize.STRING,
-  sector: Sequelize.STRING,
-  projectType: Sequelize.STRING,
-  coveredByNDC: Sequelize.INTEGER,
-  NDCLinkage: Sequelize.STRING,
-  projectStatus: Sequelize.STRING,
-  projectStatusDate: Sequelize.DATE,
-  unitMetric: Sequelize.STRING,
-  methodology: Sequelize.STRING,
-  methodologyVersion: Sequelize.INTEGER,
-  validationApproach: Sequelize.STRING,
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  currentRegistry: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  projectId: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  registryOfOrigin: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  program: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  projectName: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  projectLink: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  projectDeveloper: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  sector: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  projectType: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  projectTags: Sequelize.STRING,
+  coveredByNDC: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  ndcInformation: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  projectStatus: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  projectStatusDate: {
+    type: Sequelize.DATE,
+    required: true,
+  },
+  unitMetric: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  methodology: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  validationBody: Sequelize.STRING,
   validationDate: Sequelize.DATE,
-  projectTag: Sequelize.STRING,
-  estimatedAnnualAverageEmissionReduction: Sequelize.STRING,
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

@@ -13,6 +13,7 @@ safeMirrorDbHandler(() => {
     sequelize: sequelizeMirror,
     modelName: 'label_unit',
     freezeTableName: true,
+    timestamps: true,
   });
 });
 

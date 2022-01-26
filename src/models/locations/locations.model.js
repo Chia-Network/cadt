@@ -45,6 +45,7 @@ class ProjectLocation extends Model {
 ProjectLocation.init(ModelTypes, {
   sequelize,
   modelName: 'projectLocation',
+  timestamps: true,
 });
 
 export { ProjectLocation };

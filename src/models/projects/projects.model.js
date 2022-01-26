@@ -305,6 +305,7 @@ class Project extends Model {
 Project.init(ModelTypes, {
   sequelize,
   modelName: 'project',
+  timestamps: true,
 });
 
 export { Project };

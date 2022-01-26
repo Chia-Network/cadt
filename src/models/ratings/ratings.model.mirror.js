@@ -12,6 +12,7 @@ safeMirrorDbHandler(() => {
   RatingMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
     modelName: 'projectRating',
+    timestamps: true,
   });
 });
 

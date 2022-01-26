@@ -28,21 +28,22 @@ describe('Create Unit Integration', function () {
       serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
       countryJurisdictionOfOwner: 'USA',
       unitType: 'removal',
-      unitIdentifier: 'XYZ',
       unitStatus: 'Held',
+      unitOwner: 'TEST_UNIT_OWNER',
       correspondingAdjustmentDeclaration: 'Commited',
       correspondingAdjustmentStatus: 'Pending',
       inCountryJurisdictionOfOwner: 'Maryland',
-      unitsIssuanceLocation: 'TEST_LOCATION',
       unitRegistryLink: 'https://test.link',
-      tokenIssuanceHash: '0x7777',
+      // TODO: make initial project in beforeEach and assign id here
+      // This will be validated appropriatly later
+      projectLocationId: 'TEST_LOCATION_ID',
     };
     const unitRes = await supertest(app).post('/v1/units').send(payload);
 
-    expect(unitRes.statusCode).to.equal(200);
     expect(unitRes.body).to.deep.equal({
       message: 'Unit staged successfully',
     });
+    expect(unitRes.statusCode).to.equal(200);
 
     // Get the organizations so we can check the right org was set
     const organizationResults = await supertest(app).get('/v1/organizations');
@@ -149,21 +150,20 @@ describe('Create Unit Integration', function () {
       countryJurisdictionOfOwner: 'USA',
       unitOwner: 'TEST_OWNER',
       unitType: 'removal',
-      unitIdentifier: 'XYZ',
       unitStatus: 'Held',
+      vintageYear: 2020,
       correspondingAdjustmentDeclaration: 'Commited',
       correspondingAdjustmentStatus: 'Pending',
       inCountryJurisdictionOfOwner: 'Maryland',
-      unitsIssuanceLocation: 'TEST_LOCATION',
       unitRegistryLink: 'https://test.link',
-      tokenIssuanceHash: '0x7777',
-      intendedBuyerOrgUid: 'TEST_OWNER',
       marketplace: 'TEST_MARKETPLACE',
       marketplaceIdentifier: 'TEST_MARKETPLACE_IDENTIFIER',
-      tags: 'TEST_TAGS, TEST_TAG2',
+      marketplaceLink: 'https://link.link',
+      unitTags: 'TEST_TAGS, TEST_TAG2',
       unitStatusReason: 'TEST_REASON',
-      unitTransactionType: 'TEST_TYPE',
-      unitMarketplaceLink: 'TEST_MARKETPLACE_LINK',
+      // TODO: make initial project in beforeEach and assign id here
+      // This will be validated appropriatly later
+      projectLocationId: 'TEST_LOCATION_ID',
     });
 
     expect(createdUnitResult.body).to.deep.equal({
@@ -254,13 +254,7 @@ describe('Create Unit Integration', function () {
     expect(splitRecord1.inCountryJurisdictionOfOwner).to.equal(
       unitRecord.inCountryJurisdictionOfOwner,
     );
-    expect(splitRecord1.intendedBuyerOrgUid).to.equal(
-      unitRecord.intendedBuyerOrgUid,
-    );
-    expect(splitRecord1.tags).to.equal(unitRecord.tags);
-    expect(splitRecord1.tokenIssuanceHash).to.equal(
-      unitRecord.tokenIssuanceHash,
-    );
+    expect(splitRecord1.unitTags).to.equal(unitRecord.unitTags);
 
     expect(splitRecord2.countryJurisdictionOfOwner).to.equal(
       unitRecord.countryJurisdictionOfOwner,
@@ -268,13 +262,7 @@ describe('Create Unit Integration', function () {
     expect(splitRecord2.inCountryJurisdictionOfOwner).to.equal(
       unitRecord.inCountryJurisdictionOfOwner,
     );
-    expect(splitRecord2.intendedBuyerOrgUid).to.equal(
-      unitRecord.intendedBuyerOrgUid,
-    );
-    expect(splitRecord2.tags).to.equal(unitRecord.tags);
-    expect(splitRecord2.tokenIssuanceHash).to.equal(
-      unitRecord.tokenIssuanceHash,
-    );
+    expect(splitRecord2.unitTags).to.equal(unitRecord.unitTags);
 
     // Now push the staging table live
     const commitRes = await supertest(app).post('/v1/staging/commit');
@@ -313,9 +301,6 @@ describe('Create Unit Integration', function () {
     );
     expect(newRecord1.inCountryJuridictionOfOwner).to.equal(
       splitRecord1.inCountryJuridictionOfOwner,
-    );
-    expect(newRecord1.tokenIssuanceHash).to.equal(
-      splitRecord1.tokenIssuanceHash,
     );
 
     // Make sure the newly created unit is in the mirrorDb
@@ -360,9 +345,6 @@ describe('Create Unit Integration', function () {
     );
     expect(newRecord2.inCountryJuridictionOfOwner).to.equal(
       splitRecord2.inCountryJuridictionOfOwner,
-    );
-    expect(newRecord2.tokenIssuanceHash).to.equal(
-      splitRecord2.tokenIssuanceHash,
     );
 
     // Make sure the newly created unit is in the mirrorDb
@@ -417,21 +399,22 @@ describe('Create Unit Integration', function () {
       serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
       countryJurisdictionOfOwner: 'USA',
       unitType: 'removal',
-      unitIdentifier: 'XYZ',
       unitStatus: 'Held',
+      unitOwner: 'TEST_UNIT_OWNER',
       correspondingAdjustmentDeclaration: 'Commited',
       correspondingAdjustmentStatus: 'Pending',
       inCountryJurisdictionOfOwner: 'Maryland',
-      unitsIssuanceLocation: 'TEST_LOCATION',
       unitRegistryLink: 'https://test.link',
-      tokenIssuanceHash: '0x7777',
+      // TODO: make initial project in beforeEach and assign id here
+      // This will be validated appropriatly later
+      projectLocationId: 'TEST_LOCATION_ID',
     };
     const unitRes = await supertest(app).post('/v1/units').send(payload);
 
-    expect(unitRes.statusCode).to.equal(200);
     expect(unitRes.body).to.deep.equal({
       message: 'Unit staged successfully',
     });
+    expect(unitRes.statusCode).to.equal(200);
 
     // Get the organizations so we can check the right org was set
     const organizationResults = await supertest(app).get('/v1/organizations');
@@ -496,7 +479,6 @@ describe('Create Unit Integration', function () {
     expect(newRecord.inCountryJuridictionOfOwner).to.equal(
       payload.inCountryJuridictionOfOwner,
     );
-    expect(newRecord.tokenIssuanceHash).to.equal(payload.tokenIssuanceHash);
 
     // Make sure the newly created unit is in the mirrorDb
     const mirrorRecord = await UnitMirror.findByPk(newRecord.warehouseUnitId);

@@ -12,6 +12,7 @@ safeMirrorDbHandler(() => {
     sequelize: sequelizeMirror,
     modelName: 'unit',
     foreignKey: 'warehouseUnitId',
+    timestamps: true,
   });
 });
 

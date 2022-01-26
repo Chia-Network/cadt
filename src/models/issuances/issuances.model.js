@@ -50,6 +50,7 @@ class Issuance extends Model {
 Issuance.init(ModelTypes, {
   sequelize,
   modelName: 'issuance',
+  timestamps: true,
 });
 
 export { Issuance };

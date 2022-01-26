@@ -97,6 +97,7 @@ class Organization extends Model {
 Organization.init(ModelTypes, {
   sequelize,
   modelName: 'organization',
+  timestamps: true,
 });
 
 export { Organization };

@@ -8,31 +8,12 @@ module.exports = {
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
-  orgUid: {
-    type: Sequelize.STRING,
-    required: true,
-  },
   warehouseProjectId: {
-    type: Sequelize.STRING,
+    type: Sequelize.INTEGER,
+    onDelete: 'CASCADE',
     required: true,
   },
-  startDate: {
-    type: Sequelize.DATE,
-    required: true,
-  },
-  endDate: {
-    type: Sequelize.DATE,
-    required: true,
-  },
-  verificationApproach: {
-    type: Sequelize.STRING,
-    required: true,
-  },
-  verificationReportDate: {
-    type: Sequelize.DATE,
-    required: true,
-  },
-  verificationBody: {
+  cobenefit: {
     type: Sequelize.STRING,
     required: true,
   },
@@ -43,6 +24,5 @@ module.exports = {
   updatedAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
-    allowNull: false,
   },
 };

@@ -12,6 +12,7 @@ safeMirrorDbHandler(() => {
   ProjectLocationMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
     modelName: 'projectLocation',
+    timestamps: true,
   });
 });
 

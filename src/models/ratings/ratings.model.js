@@ -43,6 +43,7 @@ class Rating extends Model {
 Rating.init(ModelTypes, {
   sequelize,
   modelName: 'projectRating',
+  timestamps: true,
 });
 
 export { Rating };

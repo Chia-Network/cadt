@@ -12,6 +12,7 @@ safeMirrorDbHandler(() => {
   IssuanceMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
     modelName: 'issuance',
+    timestamps: true,
   });
 });
 
