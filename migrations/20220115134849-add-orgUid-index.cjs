@@ -1,12 +1,12 @@
 'use strict';
 
 module.exports = {
-  async up(queryInterface, Sequelize) {
-    queryInterface.addIndex('Projects', ['orgUid']);
-    queryInterface.addIndex('Units', ['orgUid']);
+  async up(queryInterface) {
+    queryInterface.addIndex('projects', ['orgUid']);
+    queryInterface.addIndex('units', ['orgUid']);
   },
 
-  async down(queryInterface, Sequelize) {
+  async down() {
     /**
      * Add reverting commands here.
      *
