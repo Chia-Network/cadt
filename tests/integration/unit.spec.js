@@ -8,7 +8,9 @@ import { UnitMirror } from '../../src/models';
 
 const { expect } = chai;
 
-const WAIT_TIME = 20000;
+import { POLLING_INTERVAL } from '../../src/fullnode';
+
+const TEST_WAIT_TIME = POLLING_INTERVAL * 2;
 
 describe('Create Unit Integration', function () {
   beforeEach(async function () {
@@ -75,7 +77,7 @@ describe('Create Unit Integration', function () {
     await new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, WAIT_TIME);
+      }, TEST_WAIT_TIME);
     });
 
     // Get the staging record we just created
@@ -123,7 +125,7 @@ describe('Create Unit Integration', function () {
     await new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, WAIT_TIME);
+      }, TEST_WAIT_TIME);
     });
 
     // Now check if the unit is still in the DB
@@ -137,7 +139,7 @@ describe('Create Unit Integration', function () {
     // Verify the record is no longer in the mirror db
     mirrorRecord = await UnitMirror.findByPk(warehouseUnitId);
     expect(mirrorRecord).to.equal(null);
-  }).timeout(100000);
+  }).timeout(TEST_WAIT_TIME * 10);
 
   it('splits an existing unit end-to-end (with simulator)', async function () {
     // create and commit the unit to be deleted
@@ -184,7 +186,7 @@ describe('Create Unit Integration', function () {
     await new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, WAIT_TIME);
+      }, TEST_WAIT_TIME);
     });
 
     // Get a unit to split
@@ -291,7 +293,7 @@ describe('Create Unit Integration', function () {
     await new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, WAIT_TIME);
+      }, TEST_WAIT_TIME);
     });
 
     const warehouseRes = await supertest(app)
@@ -391,7 +393,7 @@ describe('Create Unit Integration', function () {
 
     // There should be no staging records left
     expect(stagingRes3.body.length).to.equal(0);
-  }).timeout(100000);
+  }).timeout(TEST_WAIT_TIME * 10);
 
   it('creates a new unit end-to-end  (with simulator)', async function () {
     // 1. Create a new unit
@@ -462,7 +464,7 @@ describe('Create Unit Integration', function () {
     await new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, WAIT_TIME);
+      }, TEST_WAIT_TIME);
     });
 
     // Make sure the staging table is cleaned up
@@ -505,5 +507,5 @@ describe('Create Unit Integration', function () {
         'updatedAt', // meta field
       ]),
     );
-  }).timeout(50000);
+  }).timeout(TEST_WAIT_TIME * 10);
 });

@@ -25,6 +25,28 @@ class Staging extends Model {
     return super.destroy(values);
   }
 
+  // If the record was commited but the diff.original is null
+  // that means that the original record no longer exists and
+  // the staging record should be cleaned up.
+  static cleanUpCommitedAndInvalidRecords = async () => {
+    const stagingRecords = await Staging.findAll({ raw: true });
+
+    const stagingRecordsToDelete = await stagingRecords.filter(
+      async (record) => {
+        if (record.commited === 1) {
+          const { uuid, table, action, data } = record;
+          const diff = await Staging.getDiffObject(uuid, table, action, data);
+          return diff.original === null;
+        }
+        return false;
+      },
+    );
+
+    await Staging.destroy({
+      where: { uuid: stagingRecordsToDelete.map((record) => record.uuid) },
+    });
+  };
+
   static getDiffObject = async (uuid, table, action, data) => {
     const diff = {};
     if (action === 'INSERT') {
