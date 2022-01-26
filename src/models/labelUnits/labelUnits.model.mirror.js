@@ -4,16 +4,16 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 
 import { sequelizeMirror, safeMirrorDbHandler } from '../database';
-import ModelTypes from './qualificationUnits.modeltypes.cjs';
+import ModelTypes from './labelUnits.modeltypes.cjs';
 
-class QualificationUnitMirror extends Model {}
+class LabelUnitMirror extends Model {}
 
 safeMirrorDbHandler(() => {
-  QualificationUnitMirror.init(ModelTypes, {
+  LabelUnitMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
-    modelName: 'qualification_unit',
+    modelName: 'label_unit',
     freezeTableName: true,
   });
 });
 
-export { QualificationUnitMirror };
+export { LabelUnitMirror };

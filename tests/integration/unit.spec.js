@@ -332,7 +332,7 @@ describe('Create Unit Integration', function () {
       ]),
     ).to.deep.equal(
       _.omit(splitRecord1, [
-        'qualifications', // mapped associated field
+        'labels', // mapped associated field
         'issuance', // mapped associated field
         'issuanceId',
         'unitBlockStart', // virtual field
@@ -379,7 +379,7 @@ describe('Create Unit Integration', function () {
       ]),
     ).to.deep.equal(
       _.omit(splitRecord2, [
-        'qualifications', // mapped associated field
+        'labels', // mapped associated field
         'issuance', // mapped associated field
         'issuanceId',
         'unitBlockStart', // virtual field
@@ -506,7 +506,7 @@ describe('Create Unit Integration', function () {
       _.omit(mirrorRecord.dataValues, ['createdAt', 'updatedAt']),
     ).to.deep.equal(
       _.omit(newRecord, [
-        'qualifications', // mapped associated field
+        'labels', // mapped associated field
         'issuance', // mapped associated field
         'unitBlockStart', // virtual field
         'unitBlockEnd', // virtual field

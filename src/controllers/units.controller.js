@@ -3,13 +3,7 @@
 import _ from 'lodash';
 import { uuid as uuidv4 } from 'uuidv4';
 
-import {
-  Staging,
-  Unit,
-  Qualification,
-  Issuance,
-  Organization,
-} from '../models';
+import { Staging, Unit, Label, Issuance, Organization } from '../models';
 
 import {
   columnsToInclude,
@@ -69,7 +63,7 @@ export const findAll = async (req, res) => {
   let { page, limit, columns, orgUid, search, xls } = req.query;
   let where = orgUid ? { orgUid } : undefined;
 
-  const includes = [Qualification, Issuance];
+  const includes = [Label, Issuance];
 
   if (columns) {
     // Remove any unsupported columns
@@ -101,10 +95,10 @@ export const findAll = async (req, res) => {
 
     // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
 
-    if (columns.includes('qualifications')) {
+    if (columns.includes('labels')) {
       results.rows = await Promise.all(
         results.rows.map(async (result) => {
-          result.dataValues.qualifications = await Qualification.findAll({
+          result.dataValues.labels = await Label.findAll({
             include: [
               {
                 model: Unit,

@@ -5,11 +5,11 @@ import {
   Unit,
   Project,
   RelatedProject,
-  Qualification,
+  Label,
   Issuance,
   CoBenefit,
   ProjectLocation,
-  QualificationUnit,
+  LabelUnit,
   Staging,
 } from '../models';
 
@@ -62,7 +62,7 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
             Project.destroy({
               where: { orgUid: organizationToTrucate.orgUid },
             }),
-            QualificationUnit.destroy({
+            LabelUnit.destroy({
               where: { orgUid: organizationToTrucate.orgUid },
             }),
           ]);
@@ -87,16 +87,16 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
               });
             } else if (key.includes('relatedProjects')) {
               await RelatedProject.upsert(value);
-            } else if (key.includes('qualification_units')) {
-              await QualificationUnit.upsert(value);
+            } else if (key.includes('labels_units')) {
+              await LabelUnit.upsert(value);
             } else if (key.includes('coBenefits')) {
               await CoBenefit.upsert(value);
             } else if (key.includes('issuances')) {
               await Issuance.upsert(value);
             } else if (key.includes('projectLocations')) {
               await ProjectLocation.upsert(value);
-            } else if (key.includes('qualifications')) {
-              await Qualification.upsert(value);
+            } else if (key.includes('labels')) {
+              await Label.upsert(value);
             }
           }),
         );

@@ -14,7 +14,7 @@ import {
 import {
   RelatedProject,
   Issuance,
-  Qualification,
+  Label,
   ProjectLocation,
   CoBenefit,
   Staging,
@@ -34,7 +34,7 @@ class Project extends Model {
   static defaultColumns = Object.keys(ModelTypes);
   static getAssociatedModels = () => [
     ProjectLocation,
-    Qualification,
+    Label,
     Issuance,
     CoBenefit,
     RelatedProject,
@@ -42,7 +42,7 @@ class Project extends Model {
 
   static associate() {
     Project.hasMany(ProjectLocation, { foreignKey: 'warehouseProjectId' });
-    Project.hasMany(Qualification, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(Label, { foreignKey: 'warehouseProjectId' });
     Project.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
     Project.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
     Project.hasMany(RelatedProject, { foreignKey: 'warehouseProjectId' });
@@ -51,7 +51,7 @@ class Project extends Model {
       ProjectMirror.hasMany(ProjectLocation, {
         foreignKey: 'warehouseProjectId',
       });
-      ProjectMirror.hasMany(Qualification, {
+      ProjectMirror.hasMany(Label, {
         foreignKey: 'warehouseProjectId',
       });
       ProjectMirror.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
@@ -114,13 +114,7 @@ class Project extends Model {
         .filter((col) => !['createdAt', 'updatedAt'].includes(col))
         .filter(
           (col) =>
-            ![
-              ProjectLocation,
-              Qualification,
-              Issuance,
-              CoBenefit,
-              RelatedProject,
-            ]
+            ![ProjectLocation, Label, Issuance, CoBenefit, RelatedProject]
               .map((model) => model.name + 's')
               .includes(col),
         ),
@@ -260,7 +254,7 @@ class Project extends Model {
     const primaryKeyMap = {
       project: 'warehouseProjectId',
       projectLocations: 'id',
-      qualifications: 'id',
+      labels: 'id',
       issuances: 'id',
       coBenefits: 'id',
       relatedProjects: 'id',
@@ -284,9 +278,9 @@ class Project extends Model {
         ..._.get(updateChangeList, 'project', []),
         ...deleteChangeList,
       ],
-      qualifications: [
-        ..._.get(insertChangeList, 'qualifications', []),
-        ..._.get(updateChangeList, 'qualifications', []),
+      labels: [
+        ..._.get(insertChangeList, 'labels', []),
+        ..._.get(updateChangeList, 'labels', []),
       ],
       projectLocations: [
         ..._.get(insertChangeList, 'projectLocations', []),
