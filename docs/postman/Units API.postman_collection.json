@@ -1,0 +1,520 @@
+{
+  "info": {
+    "_postman_id": "a5634501-c735-4c7d-84ef-e6b8b1bbc5f6",
+    "name": "Units API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET Units",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{api_url_v1}}/units",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET Units with all unitsGetQuerySchema params",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{api_url_v1}}/units?page=1&limit=10&search=Maryland&warehouseUnitId=5c960ac1-a180-45a4-9850-be177e26d2fb&columns=all&orgUid=f1c54511-865e-4611-976c-7c3c1f704662",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            },
+            {
+              "key": "search",
+              "value": "Maryland"
+            },
+            {
+              "key": "warehouseUnitId",
+              "value": "5c960ac1-a180-45a4-9850-be177e26d2fb"
+            },
+            {
+              "key": "columns",
+              "value": "all"
+            },
+            {
+              "key": "orgUid",
+              "value": "f1c54511-865e-4611-976c-7c3c1f704662"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET Units with displayed columns (with paging)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{api_url_v1}}/units?page=2&limit=3&columns=countryJurisdictionOfOwner&columns=inCountryJurisdictionOfOwner&columns=serialNumberBlock&columns=unitIdentifier&columns=unitType&columns=intentedBuyerOrgUid&columns=marketplace&columns=tags&columns=unitStatus&columns=unitTransactionType&columns=unitStatusReason&columns=tokenIssuranceHash&columns=marketplaceIdentifier&columns=unitsIssuranceLocation&columns=unitRegistryLink&columns=unitMarkeplaceLink&columns=correspondingAdjusmentDeclaration&columns=correspondingAdjusmentStatus&columns=unitCount",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units"],
+          "query": [
+            {
+              "key": "page",
+              "value": "2"
+            },
+            {
+              "key": "limit",
+              "value": "3"
+            },
+            {
+              "key": "columns",
+              "value": "countryJurisdictionOfOwner"
+            },
+            {
+              "key": "columns",
+              "value": "inCountryJurisdictionOfOwner"
+            },
+            {
+              "key": "columns",
+              "value": "serialNumberBlock"
+            },
+            {
+              "key": "columns",
+              "value": "unitIdentifier"
+            },
+            {
+              "key": "columns",
+              "value": "unitType"
+            },
+            {
+              "key": "columns",
+              "value": "intentedBuyerOrgUid"
+            },
+            {
+              "key": "columns",
+              "value": "marketplace"
+            },
+            {
+              "key": "columns",
+              "value": "tags"
+            },
+            {
+              "key": "columns",
+              "value": "unitStatus"
+            },
+            {
+              "key": "columns",
+              "value": "unitTransactionType"
+            },
+            {
+              "key": "columns",
+              "value": "unitStatusReason"
+            },
+            {
+              "key": "columns",
+              "value": "tokenIssuranceHash"
+            },
+            {
+              "key": "columns",
+              "value": "marketplaceIdentifier"
+            },
+            {
+              "key": "columns",
+              "value": "unitsIssuranceLocation"
+            },
+            {
+              "key": "columns",
+              "value": "unitRegistryLink"
+            },
+            {
+              "key": "columns",
+              "value": "unitMarkeplaceLink"
+            },
+            {
+              "key": "columns",
+              "value": "correspondingAdjusmentDeclaration"
+            },
+            {
+              "key": "columns",
+              "value": "correspondingAdjusmentStatus"
+            },
+            {
+              "key": "columns",
+              "value": "unitCount"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET Units with displayed columns (without paging)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{api_url_v1}}/units?columns=countryJurisdictionOfOwner&columns=inCountryJurisdictionOfOwner&columns=serialNumberBlock&columns=unitIdentifier&columns=unitType&columns=intentedBuyerOrgUid&columns=marketplace&columns=tags&columns=unitStatus&columns=unitTransactionType&columns=unitStatusReason&columns=tokenIssuranceHash&columns=marketplaceIdentifier&columns=unitsIssuranceLocation&columns=unitRegistryLink&columns=unitMarkeplaceLink&columns=correspondingAdjusmentDeclaration&columns=correspondingAdjusmentStatus&columns=unitCount",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units"],
+          "query": [
+            {
+              "key": "columns",
+              "value": "countryJurisdictionOfOwner"
+            },
+            {
+              "key": "columns",
+              "value": "inCountryJurisdictionOfOwner"
+            },
+            {
+              "key": "columns",
+              "value": "serialNumberBlock"
+            },
+            {
+              "key": "columns",
+              "value": "unitIdentifier"
+            },
+            {
+              "key": "columns",
+              "value": "unitType"
+            },
+            {
+              "key": "columns",
+              "value": "intentedBuyerOrgUid"
+            },
+            {
+              "key": "columns",
+              "value": "marketplace"
+            },
+            {
+              "key": "columns",
+              "value": "tags"
+            },
+            {
+              "key": "columns",
+              "value": "unitStatus"
+            },
+            {
+              "key": "columns",
+              "value": "unitTransactionType"
+            },
+            {
+              "key": "columns",
+              "value": "unitStatusReason"
+            },
+            {
+              "key": "columns",
+              "value": "tokenIssuranceHash"
+            },
+            {
+              "key": "columns",
+              "value": "marketplaceIdentifier"
+            },
+            {
+              "key": "columns",
+              "value": "unitsIssuranceLocation"
+            },
+            {
+              "key": "columns",
+              "value": "unitRegistryLink"
+            },
+            {
+              "key": "columns",
+              "value": "unitMarkeplaceLink"
+            },
+            {
+              "key": "columns",
+              "value": "correspondingAdjusmentDeclaration"
+            },
+            {
+              "key": "columns",
+              "value": "correspondingAdjusmentStatus"
+            },
+            {
+              "key": "columns",
+              "value": "unitCount"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET Units with specific colums",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{api_url_v1}}/units?page=1&limit=10&columns=warehouseUnitId&columns=serialNumberBlock&columns=unitIdentifier&columns=unitType&columns=unitStatus&columns=unitCount",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            },
+            {
+              "key": "columns",
+              "value": "warehouseUnitId"
+            },
+            {
+              "key": "columns",
+              "value": "serialNumberBlock"
+            },
+            {
+              "key": "columns",
+              "value": "unitIdentifier"
+            },
+            {
+              "key": "columns",
+              "value": "unitType"
+            },
+            {
+              "key": "columns",
+              "value": "unitStatus"
+            },
+            {
+              "key": "columns",
+              "value": "unitCount"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST Units with unitsPostSchema",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"countryJurisdictionOfOwner\": \"USA\",\r\n    \"inCountryJurisdictionOfOwner\": \"Michigan\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"unitIdentifier\": \"DFA\",\r\n    \"unitType\": \"removal\",\r\n    \"intendedBuyerOrgUid\": \"70150fde-57f6-44a6-9486-1fef49528475\",\r\n    \"marketplace\": \"MP Test\",\r\n    \"tags\": \"TEST_TAG\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitTransactionType\": \"U_TYPE\",\r\n    \"unitStatusReason\": \"reason\",\r\n    \"tokenIssuanceHash\": \"0x668d82fd009d805e99559eaf6ed43c38fc835aa5ce4fdf64796f32c47682d1ad\",\r\n    \"marketplaceIdentifier\": \"ADIV223\",\r\n    \"unitsIssuanceLocation\": \"Michigan\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"unitMarketplaceLink\": \"http://climateWarehouse.com/myMarketplace\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\",\r\n    \"vintages\": {\r\n        \"startDate\": \"2022-02-15\",\r\n        \"endDate\": \"2022-03-22\",\r\n        \"verificationApproach\": \"7 tactical schemes\",\r\n        \"verificationDate\": \"2022-05-13\",\r\n        \"verificationBody\": \"Lorem ipsum dolor sit amet, consectetur adipiscing elit.\"\r\n    }\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{api_url_v1}}/units",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST Units with required fields",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"countryJurisdictionOfOwner\": \"USA\",\r\n    \"serialNumberBlock\": \"QWERTY7800-ASDFGH7820\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"unitIdentifier\": \"DFA\",\r\n    \"unitType\": \"removal\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitsIssuanceLocation\": \"Michigan\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{api_url_v1}}/units",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST Units missing required fields: unitIdentifier, unitsIssuanceLocation",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"countryJurisdictionOfOwner\": \"USA\",\r\n    \"serialNumberBlock\": \"QWERTY7800-ASDFGH7820\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"unitType\": \"removal\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{api_url_v1}}/units",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT Units unitType, unitsIssuanceLocation",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"warehouseUnitId\": \"5c960ac1-a180-45a4-9850-be177e26d2fb\",\r\n    \"countryJurisdictionOfOwner\": \"USA\",\r\n    \"inCountryJurisdictionOfOwner\": \"Maryland\",\r\n    \"serialNumberBlock\": \"AXJJFSLGHSHEJ1000-AXJJFSLGHSHEJ1010\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"unitIdentifier\": \"XYZ\",\r\n    \"unitType\": \"removal\",\r\n    \"intendedBuyerOrgUid\": \"70150fde-57f6-44a6-9486-1fef49528475\",\r\n    \"marketplace\": \"Demo Marketplace\",\r\n    \"tags\": \"Demo, Wind Energy\",\r\n    \"unitStatus\": \"Held\",\r\n    \"unitTransactionType\": \"TRANSACTION_TYPE\",\r\n    \"unitStatusReason\": \"Retired Status\",\r\n    \"tokenIssuanceHash\": \"0x668d82fd009d805e99559eaf6ed43c38fc835aa5ce4fdf64796f32c47682d1ab\",\r\n    \"marketplaceIdentifier\": \"AKFEE3\",\r\n    \"unitsIssuanceLocation\": \"Maryland\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"unitMarketplaceLink\": \"http://climateWarehouse.com/myMarketplace\",\r\n    \"correspondingAdjustmentDeclaration\": \"Commited\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{api_url_v1}}/units",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DELETE Units",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"warehouseUnitId\": \"5c960ac1-a180-45a4-9850-be177e26d2fb\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{api_url_v1}}/units",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST Units SPLIT in two",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"warehouseUnitId\": \"50aa22fe-20c4-4af9-a9e9-8472e73a9222\",\r\n    \"records\": [\r\n        {\r\n            \"unitCount\": 6,\r\n            \"unitOwnerOrgUid\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 4,\r\n            \"unitOwnerOrgUid\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        }\r\n    ]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{api_url_v1}}/units/split",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units", "split"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST Units SPLIT in five",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"warehouseUnitId\": \"50aa22fe-20c4-4af9-a9e9-8472e73a9222\",\r\n    \"records\": [\r\n        {\r\n            \"unitCount\": 1,\r\n            \"unitOwnerOrgUid\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 2,\r\n            \"unitOwnerOrgUid\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 2,\r\n            \"unitOwnerOrgUid\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 3,\r\n            \"unitOwnerOrgUid\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 4,\r\n            \"unitOwnerOrgUid\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        }\r\n    ]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{api_url_v1}}/units/split",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units", "split"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST Units batch - create units",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "csv",
+              "type": "file",
+              "src": "/C:/Users/alexa/Desktop/createUnits.csv"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{api_url_v1}}/units/batch",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units", "batch"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST Units batch - update units",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "csv",
+              "type": "file",
+              "src": "/C:/Users/alexa/Desktop/updateUnits.csv"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{api_url_v1}}/units/batch",
+          "host": ["{{api_url_v1}}"],
+          "path": ["units", "batch"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "<Basic Auth Username>",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "<Basic Auth Password>",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "localhost:3000",
+      "type": "string"
+    }
+  ]
+}
