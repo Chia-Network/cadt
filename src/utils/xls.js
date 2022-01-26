@@ -232,7 +232,7 @@ export const updateTablesWithData = async (tableData) => {
 
         if (exists) {
           // Assert the original record is a record your allowed to modify
-          assertOrgIsHomeOrg(existingRecord.orgUid);
+          await assertOrgIsHomeOrg(existingRecord.orgUid);
         } else {
           // Assign the newly created record to this home org
           row.orgUid = orgUid;
