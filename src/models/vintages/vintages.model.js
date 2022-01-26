@@ -40,6 +40,11 @@ class Vintage extends Model {
     safeMirrorDbHandler(() => VintageMirror.destroy(values));
     return super.destroy(values);
   }
+
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => VintageMirror.upsert(values, options));
+    return super.create(values, options);
+  }
 }
 
 Vintage.init(ModelTypes, {

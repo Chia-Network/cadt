@@ -5,6 +5,17 @@ import _ from 'lodash';
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
 
+export const assertHomeOrgExists = async () => {
+  const homeOrg = await Organization.getHomeOrg();
+  if (!homeOrg) {
+    throw new Error(
+      `No Home organization found, please create an organization to write data`,
+    );
+  }
+
+  return homeOrg;
+};
+
 export const assertOrgUidIsValid = async (orgUid, fieldName) => {
   const orgMap = await Organization.getOrgsMap();
   if (!orgMap[orgUid]) {
@@ -26,7 +37,8 @@ export const assertCsvFileInRequest = (req) => {
 
 export const assertOrgIsHomeOrg = async (orgUid) => {
   const homeOrg = await Organization.getHomeOrg();
-  if (!homeOrg[orgUid]) {
+
+  if (homeOrg.orgUid !== orgUid) {
     throw new Error(
       `Restricted data: can not modify this record with orgUid ${orgUid}`,
     );

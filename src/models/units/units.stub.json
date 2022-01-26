@@ -2,7 +2,7 @@
   {
     "warehouseUnitId": "5c960ac1-a180-45a4-9850-be177e26d2fb",
     "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
-    "unitOwnerOrgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
+    "unitOwner": "f1c54511-865e-4611-976c-7c3c1f704662",
     "countryJurisdictionOfOwner": "USA",
     "serialNumberBlock": "AXJJFSLGHSHEJ1000-AXJJFSLGHSHEJ1010",
     "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
@@ -28,7 +28,7 @@
   {
     "warehouseUnitId": "50aa22fe-20c4-4af9-a9e9-8472e73a9222",
     "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
-    "unitOwnerOrgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
+    "unitOwner": "f1c54511-865e-4611-976c-7c3c1f704662",
     "countryJurisdictionOfOwner": "USA",
     "serialNumberBlock": "AXJJFSLGHSHEJ2000-AXJJFSLGHSHEJ2010",
     "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
@@ -53,7 +53,7 @@
   {
     "warehouseUnitId": "7703e6be-1781-4322-9a9c-502ca0dca29b",
     "orgUid": "35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf",
-    "unitOwnerOrgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
+    "unitOwner": "f1c54511-865e-4611-976c-7c3c1f704662",
     "countryJurisdictionOfOwner": "USA",
     "serialNumberBlock": "AXJJFSLGHSHEJ3000-AXJJFSLGHSHEJ3010",
     "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
@@ -78,7 +78,7 @@
   {
     "warehouseUnitId": "04582672-47a9-411b-896f-3d45974e360e",
     "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
-    "unitOwnerOrgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
+    "unitOwner": "f1c54511-865e-4611-976c-7c3c1f704662",
     "countryJurisdictionOfOwner": "USA",
     "serialNumberBlock": "AXJJFSLGHSHEJ4000-AXJJFSLGHSHEJ4010",
     "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
@@ -103,7 +103,7 @@
   {
     "warehouseUnitId": "cdc90991-a00d-4567-a09a-cbe5430fdc56",
     "orgUid": "35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf",
-    "unitOwnerOrgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
+    "unitOwner": "f1c54511-865e-4611-976c-7c3c1f704662",
     "serialNumberBlock": "AXJJFSLGHSHEJ5000-AXJJFSLGHSHEJ5010",
     "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
     "unitIdentifier": "XYZ",

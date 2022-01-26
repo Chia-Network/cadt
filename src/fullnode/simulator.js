@@ -1,158 +1,116 @@
-import _ from 'lodash';
-import { Project, Unit, Staging } from '../models';
-export const WAIT_TIME = 1500;
+import { uuid as uuidv4 } from 'uuidv4';
+import { Simulator, Organization } from '../models';
+import { Sequelize } from 'sequelize';
+import { createHash } from 'crypto';
 
-// Simulate 30 seconds passing before commited to node
+const Op = Sequelize.Op;
 
-export const updateProjectRecord = async (
-  uuid,
-  encodedRecord,
-  stagingRecordId,
-) => {
-  let record = JSON.parse(atob(encodedRecord));
-  record = Array.isArray(record) ? _.head(record) : record;
-
-  return new Promise((resolve) => {
-    setTimeout(async () => {
-      if (stagingRecordId) {
-        await Staging.destroy({
-          where: {
-            id: stagingRecordId,
-          },
-        });
-
-        await Project.destroy({
-          where: {
-            warehouseProjectId: uuid,
-          },
-        });
-
-        await Project.create({
-          ...record,
-          warehouseProjectId: uuid,
-        });
-
-        resolve();
-      }
-    }, WAIT_TIME);
-  });
+export const createDataLayerStore = async () => {
+  return uuidv4();
 };
 
-export const createProjectRecord = (uuid, encodedRecord, stagingRecordId) => {
-  let record = JSON.parse(atob(encodedRecord));
-  record = Array.isArray(record) ? _.head(record) : record;
-
-  return new Promise((resolve) => {
-    setTimeout(async () => {
-      if (stagingRecordId) {
-        await Staging.destroy({
-          where: {
-            id: stagingRecordId,
-          },
+export const pushChangeListToDataLayer = async (storeId, changeList) => {
+  await Promise.all(
+    changeList.map(async (change) => {
+      if (change.action === 'insert') {
+        await Simulator.upsert({
+          key: `${storeId}_${change.key}`,
+          value: change.value,
+        });
+      } else if (change.action === 'delete') {
+        await Simulator.destroy({
+          where: { key: `${storeId}_${change.key}` },
         });
       }
-
-      await Project.create({
-        ...record,
-        warehouseProjectId: uuid,
-      });
-
-      resolve();
-    }, WAIT_TIME);
-  });
+    }),
+  );
 };
 
-export const deleteProjectRecord = (uuid, stagingRecordId) => {
-  return new Promise((resolve) => {
-    setTimeout(async () => {
-      if (stagingRecordId) {
-        await Staging.destroy({
-          where: {
-            id: stagingRecordId,
-          },
-        });
-      }
-
-      await Project.destroy({
-        where: {
-          warehouseProjectId: uuid,
-        },
-      });
-
-      resolve();
-    }, WAIT_TIME);
-  });
-};
-
-export const updateUnitRecord = async (
-  uuid,
-  encodedRecord,
-  stagingRecordId,
-) => {
-  setTimeout(async () => {
-    let record = JSON.parse(atob(encodedRecord));
-    await Unit.create({
-      ...record,
-    });
-
-    await Unit.destroy({
+export const getStoreData = async (storeId) => {
+  if (storeId) {
+    const results = await await Simulator.findAll({
       where: {
-        warehouseUnitId: uuid,
+        key: { [Op.like]: `${storeId}%` },
       },
+      raw: true,
     });
 
-    if (stagingRecordId) {
-      await Staging.destroy({
-        where: {
-          id: stagingRecordId,
-        },
-      });
-    }
-  }, WAIT_TIME);
+    // return the store data in a form that mirrors that datalayer response
+    return {
+      root: createHash('md5').update(JSON.stringify(results)).digest('hex'),
+      keys_values: results
+        .filter((result) => result.value)
+        .map((result) => {
+          const simulatedResult = result;
+
+          simulatedResult.hash = createHash('md5')
+            .update(result.value)
+            .digest('hex');
+          simulatedResult.atom = null;
+          simulatedResult.key = result.key;
+          simulatedResult.value = result.value;
+          return simulatedResult;
+        }),
+    };
+  }
+
+  return new Error('Error getting datalayer store data');
 };
 
-export const createUnitRecord = (uuid, encodedRecord, stagingRecordId) => {
-  let record = JSON.parse(atob(encodedRecord));
-  record = Array.isArray(record) ? _.head(record) : record;
+// eslint-disable-next-line
+export const getRoot = async (storeId) => {
+  const simulatorTable = await Simulator.findAll({ raw: true });
 
-  // eslint-disable-next-line no-async-promise-executor
-  return new Promise(async (resolve) => {
-    setTimeout(async () => {
-      await Unit.create({
-        ...record,
-      });
+  const myOrganization = await Organization.findOne({
+    where: { isHome: true },
+    raw: true,
+  });
 
-      if (stagingRecordId) {
-        await Staging.destroy({
-          where: {
-            id: stagingRecordId,
-          },
-        });
-      }
+  if (!myOrganization) {
+    console.log('Cant get root, Home org does not yet exist');
+    return Promise.resolve({
+      hash: null,
+      success: false,
+    });
+  }
 
-      resolve();
-    }, WAIT_TIME);
+  let hash = 0;
+
+  if (myOrganization.registryId === storeId) {
+    createHash('md5').update(JSON.stringify(simulatorTable)).digest('hex');
+  }
+
+  return Promise.resolve({
+    hash,
+    success: true,
   });
 };
 
-export const deleteUnitRecord = (uuid, stagingRecordId) => {
-  return new Promise((resolve) => {
-    setTimeout(async () => {
-      await Unit.destroy({
-        where: {
-          warehouseUnitId: uuid,
-        },
-      });
+export const getRoots = async (storeIds) => {
+  const simulatorTable = await Simulator.findAll({ raw: true });
+  const myOrganization = await Organization.findOne({
+    where: { isHome: true },
+    raw: true,
+  });
 
-      if (stagingRecordId) {
-        await Staging.destroy({
-          where: {
-            id: stagingRecordId,
-          },
-        });
+  if (!myOrganization) {
+    console.log('Cant get root, Home org does not yet exist');
+    return Promise.resolve({
+      hash: null,
+      success: false,
+    });
+  }
+
+  return Promise.resolve({
+    hash: storeIds.map((storeId) => {
+      if (myOrganization.registryId === storeId) {
+        return createHash('md5')
+          .update(JSON.stringify(simulatorTable))
+          .digest('hex');
       }
 
-      resolve();
-    }, WAIT_TIME);
+      return 0;
+    }),
+    success: true,
   });
 };

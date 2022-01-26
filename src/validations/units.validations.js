@@ -36,6 +36,7 @@ const unitsBaseSchema = {
   }),
   unitIdentifier: Joi.string().required(),
   unitType: Joi.string().valid('heard reduction', 'removal').required(),
+  unitOwner: Joi.string().optional(),
   intendedBuyerOrgUid: Joi.string().optional(),
   marketplace: Joi.string().optional(),
   tags: Joi.string().allow('').optional(),
@@ -51,7 +52,7 @@ const unitsBaseSchema = {
     .valid('Commited', 'Not Required', 'Unknown')
     .required(),
   correspondingAdjustmentStatus: Joi.string()
-    .valid('Not Started', 'Pending')
+    .valid('Unknown', 'Not Started', 'Pending')
     .required(),
   vintages: Joi.alternatives()
     .try(newVintageScheme, existingVintageSchema)
@@ -89,7 +90,7 @@ export const unitsSplitSchema = Joi.object({
     .items(
       Joi.object().keys({
         unitCount: Joi.number().required(),
-        unitOwnerOrgUid: Joi.string().optional(),
+        unitOwner: Joi.string().optional(),
       }),
     )
     .min(2)

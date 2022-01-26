@@ -1,10 +1,15 @@
 'use strict';
 
+import _ from 'lodash';
 import Sequelize from 'sequelize';
 import rxjs from 'rxjs';
 const { Model } = Sequelize;
 
-import {sequelize, safeMirrorDbHandler, sanitizeSqliteFtsQuery} from '../database';
+import {
+  sequelize,
+  safeMirrorDbHandler,
+  sanitizeSqliteFtsQuery,
+} from '../database';
 
 import {
   RelatedProject,
@@ -12,7 +17,13 @@ import {
   Qualification,
   ProjectLocation,
   CoBenefit,
+  Staging,
 } from '../';
+
+import {
+  createXlsFromSequelizeResults,
+  transformFullXslsToChangeList,
+} from '../../utils/xls';
 
 import ModelTypes from './projects.modeltypes.cjs';
 import { ProjectMirror } from './projects.model.mirror';
@@ -67,11 +78,24 @@ class Project extends Model {
     safeMirrorDbHandler(() => ProjectMirror.destroy(values));
 
     const record = await super.findOne(values.where);
-    const { orgUid } = record.dataValues;
+
+    if (record) {
+      const { orgUid } = record.dataValues;
+      Project.changes.next(['projects', orgUid]);
+    }
+
+    return super.destroy(values);
+  }
+
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => ProjectMirror.create(values, options));
+    const upsertResult = await super.create(values, options);
+
+    const { orgUid } = values;
 
     Project.changes.next(['projects', orgUid]);
 
-    return super.destroy(values);
+    return upsertResult;
   }
 
   static async fts(searchStr, orgUid, pagination, columns = []) {
@@ -170,18 +194,19 @@ class Project extends Model {
     if (columns.length) {
       fields = columns.join(', ');
     }
-  
+
     searchStr = sanitizeSqliteFtsQuery(searchStr);
-    
-    if (searchStr === '*') { // * isn't a valid matcher on its own. return empty set
+
+    if (searchStr === '*') {
+      // * isn't a valid matcher on its own. return empty set
       return {
         count: 0,
         rows: [],
-      }
+      };
     }
-  
+
     if (searchStr.startsWith('+')) {
-      searchStr = searchStr.replace('+', '') // If query starts with +, replace it
+      searchStr = searchStr.replace('+', ''); // If query starts with +, replace it
     }
 
     let sql = `SELECT ${fields} FROM projects_fts WHERE projects_fts MATCH :search`;
@@ -211,6 +236,74 @@ class Project extends Model {
         mapToModel: true, // pass true here if you have any mapped fields
         replacements: { ...replacements, ...{ offset, limit } },
       }),
+    };
+  }
+
+  static generateChangeListFromStagedData(stagedData) {
+    const [insertRecords, updateRecords, deleteChangeList] =
+      Staging.seperateStagingDataIntoActionGroups(stagedData, 'Projects');
+
+    const insertXslsSheets = createXlsFromSequelizeResults(
+      insertRecords,
+      Project,
+      false,
+      true,
+    );
+
+    const updateXslsSheets = createXlsFromSequelizeResults(
+      updateRecords,
+      Project,
+      false,
+      true,
+    );
+
+    const primaryKeyMap = {
+      project: 'warehouseProjectId',
+      projectLocations: 'id',
+      qualifications: 'id',
+      vintages: 'id',
+      coBenefits: 'id',
+      relatedProjects: 'id',
+    };
+
+    const insertChangeList = transformFullXslsToChangeList(
+      insertXslsSheets,
+      'insert',
+      primaryKeyMap,
+    );
+
+    const updateChangeList = transformFullXslsToChangeList(
+      updateXslsSheets,
+      'update',
+      primaryKeyMap,
+    );
+
+    return {
+      projects: [
+        ..._.get(insertChangeList, 'project', []),
+        ..._.get(updateChangeList, 'project', []),
+        ...deleteChangeList,
+      ],
+      qualifications: [
+        ..._.get(insertChangeList, 'qualifications', []),
+        ..._.get(updateChangeList, 'qualifications', []),
+      ],
+      projectLocations: [
+        ..._.get(insertChangeList, 'projectLocations', []),
+        ..._.get(updateChangeList, 'projectLocations', []),
+      ],
+      vintages: [
+        ..._.get(insertChangeList, 'vintages', []),
+        ..._.get(updateChangeList, 'vintages', []),
+      ],
+      coBenefits: [
+        ..._.get(insertChangeList, 'coBenefits', []),
+        ..._.get(updateChangeList, 'coBenefits', []),
+      ],
+      relatedProjects: [
+        ..._.get(insertChangeList, 'relatedProjects', []),
+        ..._.get(updateChangeList, 'relatedProjects', []),
+      ],
     };
   }
 }

@@ -1,14 +1,14 @@
 'use strict';
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
+  up: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`
       CREATE TRIGGER unit_insert_fts AFTER INSERT ON units BEGIN
         INSERT INTO units_fts(
           warehouseUnitId,
           orgUid,
-          unitOwnerOrgUid,
+          unitOwner,
           countryJurisdictionOfOwner,
           inCountryJurisdictionOfOwner,
           serialNumberBlock,
@@ -32,7 +32,7 @@ module.exports = {
         ) VALUES (
           new.warehouseUnitId,
           new.orgUid,
-          new.unitOwnerOrgUid,
+          new.unitOwner,
           new.countryJurisdictionOfOwner,
           new.inCountryJurisdictionOfOwner,
           new.serialNumberBlock,
@@ -68,7 +68,7 @@ module.exports = {
         INSERT INTO units_fts(
           warehouseUnitId,
           orgUid,
-          unitOwnerOrgUid,
+          unitOwner,
           countryJurisdictionOfOwner,
           inCountryJurisdictionOfOwner,
           serialNumberBlock,
@@ -92,7 +92,7 @@ module.exports = {
         ) VALUES (
           new.warehouseUnitId,
           new.orgUid,
-          new.unitOwnerOrgUid,
+          new.unitOwner,
           new.countryJurisdictionOfOwner,
           new.inCountryJurisdictionOfOwner,
           new.serialNumberBlock,
@@ -119,7 +119,7 @@ module.exports = {
     }
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query('DROP TRIGGER unit_insert_fts;');
       await queryInterface.sequelize.query('DROP TRIGGER unit_delete_fts;');

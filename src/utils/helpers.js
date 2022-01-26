@@ -71,7 +71,6 @@ export const transformSerialNumberBlock = (
   // serial number format: ABC1000-ABC1010
   serialNumberPattern,
 ) => {
-  console.log(serialNumberPattern);
   const unitBlocks = serialNumberBlock.match(serialNumberPattern);
 
   if (!unitBlocks) {

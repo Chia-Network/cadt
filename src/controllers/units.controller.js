@@ -17,14 +17,16 @@ import {
   assertUnitRecordExists,
   assertSumOfSplitUnitsIsValid,
   assertCsvFileInRequest,
-  assertOrgUidIsValid,
+  assertHomeOrgExists,
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
-import { createXlsFromSequelizeResults, sendXls } from "../utils/xls";
+import { createXlsFromSequelizeResults, sendXls } from '../utils/xls';
 
 export const create = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const newRecord = _.cloneDeep(req.body);
 
     // When creating new unitd assign a uuid to is so
@@ -34,9 +36,8 @@ export const create = async (req, res) => {
     newRecord.warehouseUnitId = uuid;
 
     // All new units are assigned to the home orgUid
-    const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
+    const { orgUid } = await Organization.getHomeOrg();
     newRecord.orgUid = orgUid;
-    newRecord.unitOwnerOrgUid = orgUid;
 
     const stagedData = {
       uuid,
@@ -48,7 +49,7 @@ export const create = async (req, res) => {
     await Staging.create(stagedData);
 
     res.json({
-      message: 'Unit created successfully',
+      message: 'Unit staged successfully',
     });
   } catch (error) {
     res.status(400).json({
@@ -84,18 +85,13 @@ export const findAll = async (req, res) => {
 
   let results;
   let pagination = paginationParams(page, limit);
-  
+
   if (xls) {
-    pagination = {page: undefined, limit: undefined};
+    pagination = { page: undefined, limit: undefined };
   }
 
   if (search) {
-    results = await Unit.fts(
-      search,
-      orgUid,
-      pagination,
-      Unit.defaultColumns,
-    );
+    results = await Unit.fts(search, orgUid, pagination, Unit.defaultColumns);
 
     // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
 
@@ -140,15 +136,18 @@ export const findAll = async (req, res) => {
       ...paginationParams(page, limit),
     });
   }
-  
+
   const response = optionallyPaginatedResponse(results, page, limit);
-  
+
   if (!xls) {
     return res.json(response);
   } else {
-    return sendXls(Unit.name, createXlsFromSequelizeResults(response, Unit), res);
+    return sendXls(
+      Unit.name,
+      createXlsFromSequelizeResults(response, Unit),
+      res,
+    );
   }
-
 };
 
 export const findOne = async (req, res) => {
@@ -162,15 +161,13 @@ export const findOne = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
     );
 
     await assertOrgIsHomeOrg(originalRecord.orgUid);
-
-    if (req.body.unitOwnerOrgUid) {
-      await assertOrgUidIsValid(req.body.unitOwnerOrgUid, 'unitOwnerOrgUid');
-    }
 
     // merge the new record into the old record
     let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
@@ -200,6 +197,8 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
     );
@@ -226,6 +225,8 @@ export const destroy = async (req, res) => {
 
 export const split = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
     );
@@ -258,9 +259,8 @@ export const split = async (req, res) => {
           newUnitBlockEnd,
         );
 
-        if (record.unitOwnerOrgUid) {
-          await assertOrgUidIsValid(record.unitOwnerOrgUid, 'unitOwnerOrgUid');
-          newRecord.unitOwnerOrgUid = record.unitOwnerOrgUid;
+        if (record.unitOwner) {
+          newRecord.unitOwner = record.unitOwner;
         }
 
         return newRecord;
@@ -290,6 +290,8 @@ export const split = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const csvFile = assertCsvFileInRequest(req);
     await createUnitRecordsFromCsv(csvFile);
 

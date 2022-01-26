@@ -9,7 +9,6 @@ import { Staging, Organization, Unit, Project } from '../models';
 import {
   assertOrgIsHomeOrg,
   assertUnitRecordExists,
-  assertOrgUidIsValid,
 } from '../utils/data-assertions';
 
 export const createUnitRecordsFromCsv = (csvFile) => {
@@ -43,16 +42,6 @@ export const createUnitRecordsFromCsv = (csvFile) => {
           action = 'INSERT';
         }
 
-        // All new records are owned by this org, but give them a chance to override this
-        if (newRecord.unitOwnerOrgUid) {
-          await assertOrgUidIsValid(
-            newRecord.unitOwnerOrgUid,
-            'unitOwnerOrgUid',
-          );
-        } else {
-          newRecord.unitOwnerOrgUid = orgUid;
-        }
-
         const stagedData = {
           uuid: newRecord.warehouseUnitId,
           action: action,
@@ -67,7 +56,9 @@ export const createUnitRecordsFromCsv = (csvFile) => {
       })
       .on('done', async () => {
         if (recordsToCreate.length) {
-          await Staging.bulkCreate(recordsToCreate);
+          await Staging.bulkCreate(recordsToCreate, {
+            updateOnDuplicate: ['warehouseUnitId'],
+          });
 
           resolve();
         } else {
@@ -109,7 +100,7 @@ export const createProjectRecordsFromCsv = (csvFile) => {
         }
 
         const stagedData = {
-          uuid: newRecord.warehouseUnitId,
+          uuid: newRecord.warehouseProjectId,
           action: action,
           table: Project.stagingTableName,
           data: JSON.stringify([newRecord]),
@@ -122,7 +113,9 @@ export const createProjectRecordsFromCsv = (csvFile) => {
       })
       .on('done', async () => {
         if (recordsToCreate.length) {
-          await Staging.bulkCreate(recordsToCreate);
+          await Staging.bulkCreate(recordsToCreate, {
+            updateOnDuplicate: ['warehouseProjectId'],
+          });
 
           resolve();
         } else {

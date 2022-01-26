@@ -1,11 +1,21 @@
 'use strict';
 
+import _ from 'lodash';
 import Sequelize from 'sequelize';
-import {sequelize, safeMirrorDbHandler, sanitizeSqliteFtsQuery} from '../database';
-import { Qualification, Vintage } from '../../models';
+import rxjs from 'rxjs';
+import {
+  sequelize,
+  safeMirrorDbHandler,
+  sanitizeSqliteFtsQuery,
+} from '../database';
+import { Qualification, Vintage, Staging } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
-import rxjs from 'rxjs';
+
+import {
+  createXlsFromSequelizeResults,
+  transformFullXslsToChangeList,
+} from '../../utils/xls';
 
 const { Model } = Sequelize;
 
@@ -100,13 +110,26 @@ class Unit extends Model {
     return createResult;
   }
 
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => UnitMirror.create(values, options));
+    const upsertResult = await super.create(values, options);
+
+    const { orgUid } = values;
+
+    Unit.changes.next(['projects', orgUid]);
+
+    return upsertResult;
+  }
+
   static async destroy(values) {
     safeMirrorDbHandler(() => UnitMirror.destroy(values));
 
     const record = await super.findOne(values.where);
-    const { orgUid } = record.dataValues;
 
-    Unit.changes.next(['units', orgUid]);
+    if (record) {
+      const { orgUid } = record.dataValues;
+      Unit.changes.next(['units', orgUid]);
+    }
 
     return super.destroy(values);
   }
@@ -156,7 +179,7 @@ class Unit extends Model {
 
     let sql = `
     SELECT ${fields} FROM units WHERE MATCH (
-        unitOwnerOrgUid,
+        unitOwner,
         countryJurisdictionOfOwner,
         inCountryJurisdictionOfOwner,
         serialNumberBlock,
@@ -215,20 +238,21 @@ class Unit extends Model {
     if (columns.length) {
       fields = columns.join(', ');
     }
-  
+
     searchStr = sanitizeSqliteFtsQuery(searchStr);
-    
-    if (searchStr === '*') { // * isn't a valid matcher on its own. return empty set
+
+    if (searchStr === '*') {
+      // * isn't a valid matcher on its own. return empty set
       return {
         count: 0,
         rows: [],
-      }
+      };
     }
-    
+
     if (searchStr.startsWith('+')) {
-      searchStr = searchStr.replace('+', '') // If query starts with +, replace it
+      searchStr = searchStr.replace('+', ''); // If query starts with +, replace it
     }
-    
+
     let sql = `SELECT ${fields} FROM units_fts WHERE units_fts MATCH :search`;
 
     if (orgUid) {
@@ -256,6 +280,64 @@ class Unit extends Model {
         mapToModel: true, // pass true here if you have any mapped fields
         replacements: { ...replacements, ...{ offset, limit } },
       }),
+    };
+  }
+
+  static generateChangeListFromStagedData(stagedData) {
+    const [insertRecords, updateRecords, deleteChangeList] =
+      Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
+
+    const insertXslsSheets = createXlsFromSequelizeResults(
+      insertRecords,
+      Unit,
+      false,
+      true,
+    );
+
+    const updateXslsSheets = createXlsFromSequelizeResults(
+      updateRecords,
+      Unit,
+      false,
+      true,
+    );
+
+    const primaryKeyMap = {
+      unit: 'warehouseUnitId',
+      qualifications: 'id',
+      qualification_units: 'qualificationunitId',
+      vintages: 'id',
+    };
+
+    const insertChangeList = transformFullXslsToChangeList(
+      insertXslsSheets,
+      'insert',
+      primaryKeyMap,
+    );
+
+    const updateChangeList = transformFullXslsToChangeList(
+      updateXslsSheets,
+      'update',
+      primaryKeyMap,
+    );
+
+    return {
+      units: [
+        ..._.get(insertChangeList, 'unit', []),
+        ..._.get(updateChangeList, 'unit', []),
+        ...deleteChangeList,
+      ],
+      qualifications: [
+        ..._.get(insertChangeList, 'qualifications', []),
+        ..._.get(updateChangeList, 'qualifications', []),
+      ],
+      vintages: [
+        ..._.get(insertChangeList, 'vintages', []),
+        ..._.get(updateChangeList, 'vintages', []),
+      ],
+      qualificationUnits: [
+        ..._.get(insertChangeList, 'qualification_units', []),
+        ..._.get(updateChangeList, 'qualification_units', []),
+      ],
     };
   }
 }
