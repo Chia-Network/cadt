@@ -8,14 +8,28 @@ module.exports = {
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
-  type: Sequelize.STRING,
-  rating: Sequelize.INTEGER,
-  link: Sequelize.STRING,
-  scale: Sequelize.STRING,
   warehouseProjectId: {
     type: Sequelize.INTEGER,
+    required: true,
     onDelete: 'CASCADE',
   },
+  ratingType: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  ratingRangeHighest: {
+    type: Sequelize.INTEGER,
+    required: true,
+  },
+  ratingRangeLowest: {
+    type: Sequelize.INTEGER,
+    requred: true,
+  },
+  rating: {
+    type: Sequelize.INTEGER,
+    requred: true,
+  },
+  ratingLink: Sequelize.STRING,
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
@@ -23,6 +37,5 @@ module.exports = {
   updatedAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
-    allowNull: false,
   },
 };

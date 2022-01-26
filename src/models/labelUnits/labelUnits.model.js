@@ -28,6 +28,7 @@ LabelUnit.init(ModelTypes, {
   sequelize,
   modelName: 'label_unit',
   freezeTableName: true,
+  timestamps: true,
 });
 
 export { LabelUnit };

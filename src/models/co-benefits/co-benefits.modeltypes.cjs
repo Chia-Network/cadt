@@ -8,11 +8,21 @@ module.exports = {
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
-  benefit: Sequelize.STRING,
   warehouseProjectId: {
     type: Sequelize.INTEGER,
     onDelete: 'CASCADE',
+    required: true,
   },
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
+  cobenefit: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  createdAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+  },
+  updatedAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+  },
 };

@@ -8,13 +8,34 @@ module.exports = {
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
-  orgUid: Sequelize.STRING,
-  startDate: Sequelize.DATE,
-  endDate: Sequelize.DATE,
-  verificationApproach: Sequelize.STRING,
-  verificationDate: Sequelize.DATE,
-  verificationBody: Sequelize.STRING,
-  warehouseProjectId: Sequelize.STRING,
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  warehouseProjectId: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  startDate: {
+    type: Sequelize.DATE,
+    required: true,
+  },
+  endDate: {
+    type: Sequelize.DATE,
+    required: true,
+  },
+  verificationApproach: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  verificationReportDate: {
+    type: Sequelize.DATE,
+    required: true,
+  },
+  verificationBody: {
+    type: Sequelize.STRING,
+    required: true,
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

@@ -345,6 +345,7 @@ class Unit extends Model {
 Unit.init(Object.assign({}, ModelTypes, virtualFields), {
   sequelize,
   modelName: 'unit',
+  timestamps: true,
 });
 
 export { Unit };

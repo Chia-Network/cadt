@@ -5,7 +5,7 @@ const { Model } = Sequelize;
 import { CoBenefitMirror } from './co-benefits.model.mirror';
 import { sequelize, safeMirrorDbHandler } from '../database';
 import { Project } from '../projects';
-import ModelTypes from './co-benifets.modeltypes.cjs';
+import ModelTypes from './co-benefits.modeltypes.cjs';
 
 class CoBenefit extends Model {
   static associate() {
@@ -43,6 +43,7 @@ class CoBenefit extends Model {
 CoBenefit.init(ModelTypes, {
   sequelize,
   modelName: 'coBenefit',
+  timestamps: true,
 });
 
 export { CoBenefit };

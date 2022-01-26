@@ -1,9 +1,7 @@
 import Joi from 'joi';
 import { transformSerialNumberBlock } from '../utils/helpers';
-import {
-  newIssuanceScheme,
-  existingIssuanceSchema,
-} from './issuances.validation';
+import { newIssuanceScheme } from './issuances.validation';
+import { newLabelScheme, existingLabelScheme } from './labels.validations';
 
 const customSerialNumberValidator = (obj, helper) => {
   const { serialNumberBlock, serialNumberPattern } = obj;
@@ -29,36 +27,38 @@ const customSerialNumberValidator = (obj, helper) => {
 };
 
 const unitsBaseSchema = {
+  // warehouseUnitId - derived upon unit creation
+  // issuanceId - derived upon unit creation
+  // orgUid - derived upon unit creation
+  projectLocationId: Joi.string().required(),
+  unitOwner: Joi.string().required(),
   countryJurisdictionOfOwner: Joi.string().required(),
-  inCountryJurisdictionOfOwner: Joi.string().optional(),
+  inCountryJurisdictionOfOwner: Joi.string().required(),
   // must be in the form ABC123-XYZ456
   serialNumberBlock: Joi.string().required(),
   serialNumberPattern: Joi.string().required().messages({
     'any.required':
       'serialNumberPattern is required. This pattern must be a regex expression with 2 match groups to match block start and block end. Example: [.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$ that matches ABC1000-ABC1010 TODO: ADD LINK HERE FOR DOCUMENTATION',
   }),
-  unitIdentifier: Joi.string().required(),
+  // match 4 digit year
+  vintageYear: Joi.number().integer().min(1900).max(3000),
   unitType: Joi.string().valid('heard reduction', 'removal').required(),
-  unitOwner: Joi.string().optional(),
-  intendedBuyerOrgUid: Joi.string().optional(),
   marketplace: Joi.string().optional(),
-  tags: Joi.string().allow('').optional(),
-  unitStatus: Joi.string().valid('Held', 'For Sale', 'Retired').required(),
-  unitTransactionType: Joi.string().optional(),
-  unitStatusReason: Joi.string().optional(),
-  tokenIssuanceHash: Joi.string().optional(),
+  marketplaceLink: Joi.string().optional(),
   marketplaceIdentifier: Joi.string().optional(),
-  unitsIssuanceLocation: Joi.string().required(),
+  unitTags: Joi.string().allow('').optional(),
+  unitStatus: Joi.string().valid('Held', 'For Sale', 'Retired').required(),
+  unitStatusReason: Joi.string().optional(),
   unitRegistryLink: Joi.string().required(),
-  unitMarketplaceLink: Joi.string().optional(),
   correspondingAdjustmentDeclaration: Joi.string()
     .valid('Commited', 'Not Required', 'Unknown')
     .required(),
   correspondingAdjustmentStatus: Joi.string()
     .valid('Unknown', 'Not Started', 'Pending')
     .required(),
-  issuances: Joi.alternatives()
-    .try(newIssuanceScheme, existingIssuanceSchema)
+  issuance: Joi.alternatives().try(newIssuanceScheme).optional(),
+  labels: Joi.array()
+    .items(Joi.alternatives().try(newLabelScheme, existingLabelScheme))
     .optional(),
 };
 
