@@ -225,10 +225,7 @@ export const updateTablesWithData = async (tableData) => {
           row[model.primaryKeyAttributes[0]],
         );
 
-        const exists =
-          Object.keys(row).includes(model.primaryKeyAttributes[0]) &&
-          row[model.primaryKeyAttributes[0]].length &&
-          Boolean(existingRecord);
+        const exists = Boolean(existingRecord);
 
         if (exists) {
           // Assert the original record is a record your allowed to modify
