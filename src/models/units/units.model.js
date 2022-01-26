@@ -8,7 +8,7 @@ import {
   safeMirrorDbHandler,
   sanitizeSqliteFtsQuery,
 } from '../database';
-import { Qualification, Vintage, Staging } from '../../models';
+import { Qualification, Issuance, Staging } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
 
@@ -68,13 +68,13 @@ class Unit extends Model {
       model: Qualification,
       as: 'qualifications',
     },
-    Vintage,
+    Issuance,
   ];
 
   static associate() {
-    Unit.belongsTo(Vintage, {
-      sourceKey: 'vintageId',
-      foreignKey: 'vintageId',
+    Unit.belongsTo(Issuance, {
+      sourceKey: 'issuanceId',
+      foreignKey: 'issuanceId',
     });
 
     // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
@@ -85,9 +85,9 @@ class Unit extends Model {
     });
 
     safeMirrorDbHandler(() => {
-      UnitMirror.belongsTo(Vintage, {
-        sourceKey: 'vintageId',
-        foreignKey: 'vintageId',
+      UnitMirror.belongsTo(Issuance, {
+        sourceKey: 'issuanceId',
+        foreignKey: 'issuanceId',
       });
 
       // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
@@ -305,7 +305,7 @@ class Unit extends Model {
       unit: 'warehouseUnitId',
       qualifications: 'id',
       qualification_units: 'qualificationunitId',
-      vintages: 'id',
+      issuances: 'id',
     };
 
     const insertChangeList = transformFullXslsToChangeList(
@@ -330,9 +330,9 @@ class Unit extends Model {
         ..._.get(insertChangeList, 'qualifications', []),
         ..._.get(updateChangeList, 'qualifications', []),
       ],
-      vintages: [
-        ..._.get(insertChangeList, 'vintages', []),
-        ..._.get(updateChangeList, 'vintages', []),
+      issuances: [
+        ..._.get(insertChangeList, 'issuances', []),
+        ..._.get(updateChangeList, 'issuances', []),
       ],
       qualificationUnits: [
         ..._.get(insertChangeList, 'qualification_units', []),

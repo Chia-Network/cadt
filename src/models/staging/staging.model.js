@@ -157,7 +157,10 @@ class Staging extends Model {
     const unifiedChangeList = {
       ...projectsChangeList,
       ...unitsChangeList,
-      vintages: [...unitsChangeList.vintages, ...projectsChangeList.vintages],
+      issuances: [
+        ...unitsChangeList.issuances,
+        ...projectsChangeList.issuances,
+      ],
       qualifications: [
         ...unitsChangeList.qualifications,
         ...projectsChangeList.qualifications,

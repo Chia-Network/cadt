@@ -13,7 +13,7 @@ import {
 
 import {
   RelatedProject,
-  Vintage,
+  Issuance,
   Qualification,
   ProjectLocation,
   CoBenefit,
@@ -35,7 +35,7 @@ class Project extends Model {
   static getAssociatedModels = () => [
     ProjectLocation,
     Qualification,
-    Vintage,
+    Issuance,
     CoBenefit,
     RelatedProject,
   ];
@@ -43,7 +43,7 @@ class Project extends Model {
   static associate() {
     Project.hasMany(ProjectLocation, { foreignKey: 'warehouseProjectId' });
     Project.hasMany(Qualification, { foreignKey: 'warehouseProjectId' });
-    Project.hasMany(Vintage, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
     Project.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
     Project.hasMany(RelatedProject, { foreignKey: 'warehouseProjectId' });
 
@@ -54,7 +54,7 @@ class Project extends Model {
       ProjectMirror.hasMany(Qualification, {
         foreignKey: 'warehouseProjectId',
       });
-      ProjectMirror.hasMany(Vintage, { foreignKey: 'warehouseProjectId' });
+      ProjectMirror.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
       ProjectMirror.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
       ProjectMirror.hasMany(RelatedProject, {
         foreignKey: 'warehouseProjectId',
@@ -117,7 +117,7 @@ class Project extends Model {
             ![
               ProjectLocation,
               Qualification,
-              Vintage,
+              Issuance,
               CoBenefit,
               RelatedProject,
             ]
@@ -261,7 +261,7 @@ class Project extends Model {
       project: 'warehouseProjectId',
       projectLocations: 'id',
       qualifications: 'id',
-      vintages: 'id',
+      issuances: 'id',
       coBenefits: 'id',
       relatedProjects: 'id',
     };
@@ -292,9 +292,9 @@ class Project extends Model {
         ..._.get(insertChangeList, 'projectLocations', []),
         ..._.get(updateChangeList, 'projectLocations', []),
       ],
-      vintages: [
-        ..._.get(insertChangeList, 'vintages', []),
-        ..._.get(updateChangeList, 'vintages', []),
+      issuances: [
+        ..._.get(insertChangeList, 'issuances', []),
+        ..._.get(updateChangeList, 'issuances', []),
       ],
       coBenefits: [
         ..._.get(insertChangeList, 'coBenefits', []),

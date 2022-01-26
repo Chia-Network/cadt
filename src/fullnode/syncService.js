@@ -6,7 +6,7 @@ import {
   Project,
   RelatedProject,
   Qualification,
-  Vintage,
+  Issuance,
   CoBenefit,
   ProjectLocation,
   QualificationUnit,
@@ -91,8 +91,8 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
               await QualificationUnit.upsert(value);
             } else if (key.includes('coBenefits')) {
               await CoBenefit.upsert(value);
-            } else if (key.includes('vintages')) {
-              await Vintage.upsert(value);
+            } else if (key.includes('issuances')) {
+              await Issuance.upsert(value);
             } else if (key.includes('projectLocations')) {
               await ProjectLocation.upsert(value);
             } else if (key.includes('qualifications')) {

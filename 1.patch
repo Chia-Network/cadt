@@ -1,0 +1,945 @@
+From 5e990c2d74e4275f21455c9d4a73f0c06facb9c3 Mon Sep 17 00:00:00 2001
+From: Frantz Arty <artyfrantz@gmail.com>
+Date: Wed, 26 Jan 2022 09:59:56 -0500
+Subject: [PATCH] feat: rename vintage model to insuance model
+
+---
+ .../Projects API.postman_collection.json      |  2 +-
+ docs/postman/createProjects.csv               | 20 ++++++------
+ docs/postman/updateProjects.csv               |  8 ++---
+ migrations/20211201194541-create-issuance.cjs | 12 +++++++
+ migrations/20211201194541-create-vintage.cjs  | 12 -------
+ migrations/20211212200953-fulltext-search.cjs |  6 ++--
+ .../20211215231227-vintage-unit-junction.cjs  |  9 +++---
+ ...0211219182106-sqlite-triggers-projects.cjs |  2 +-
+ .../20211219184405-sqlite-triggers-units.cjs  |  8 ++---
+ seeders/20211209204301-add-projects.cjs       |  4 +--
+ src/controllers/index.js                      |  2 +-
+ ...e.controller.js => issuance.controller.js} |  6 ++--
+ src/controllers/project.controller.js         |  4 +--
+ src/controllers/units.controller.js           | 16 +++++++---
+ src/fullnode/syncService.js                   |  6 ++--
+ src/models/index.js                           |  6 ++--
+ src/models/issuances/index.js                 |  2 ++
+ .../issuances.mock.js}                        |  4 +--
+ .../issuances.model.js}                       | 32 +++++++++----------
+ .../issuances.model.mirror.js}                | 10 +++---
+ .../issuances.modeltypes.cjs}                 |  0
+ .../issuances.stub.json}                      |  0
+ src/models/projects/projects.model.js         | 18 +++++------
+ src/models/staging/staging.model.js           |  5 ++-
+ src/models/units/units.model.js               | 24 +++++++-------
+ src/models/units/units.modeltypes.cjs         |  2 +-
+ src/models/units/units.stub.json              |  2 +-
+ src/models/vintages/index.js                  |  2 --
+ src/routes/v1/index.js                        |  4 +--
+ src/routes/v1/resources/index.js              |  2 +-
+ src/routes/v1/resources/issuances.js          | 13 ++++++++
+ src/routes/v1/resources/vintages.js           | 13 --------
+ ....validation.js => issuances.validation.js} |  6 ++--
+ src/validations/projects.validations.js       |  2 +-
+ src/validations/units.validations.js          |  9 ++++--
+ tests/integration/unit.spec.js                | 22 +++++++++----
+ 36 files changed, 158 insertions(+), 137 deletions(-)
+ create mode 100644 migrations/20211201194541-create-issuance.cjs
+ delete mode 100644 migrations/20211201194541-create-vintage.cjs
+ rename src/controllers/{vintage.controller.js => issuance.controller.js} (75%)
+ create mode 100644 src/models/issuances/index.js
+ rename src/models/{vintages/vintages.mock.js => issuances/issuances.mock.js} (59%)
+ rename src/models/{vintages/vintages.model.js => issuances/issuances.model.js} (53%)
+ rename src/models/{vintages/vintages.model.mirror.js => issuances/issuances.model.mirror.js} (54%)
+ rename src/models/{vintages/vintages.modeltypes.cjs => issuances/issuances.modeltypes.cjs} (100%)
+ rename src/models/{vintages/vintages.stub.json => issuances/issuances.stub.json} (100%)
+ delete mode 100644 src/models/vintages/index.js
+ create mode 100644 src/routes/v1/resources/issuances.js
+ delete mode 100644 src/routes/v1/resources/vintages.js
+ rename src/validations/{vintages.validation.js => issuances.validation.js} (63%)
+
+diff --git a/docs/postman/Projects API.postman_collection.json b/docs/postman/Projects API.postman_collection.json
+index 03089c9..720e77f 100644
+--- a/docs/postman/Projects API.postman_collection.json	
++++ b/docs/postman/Projects API.postman_collection.json	
+@@ -197,7 +197,7 @@
+         "header": [],
+         "body": {
+           "mode": "raw",
+-          "raw": "{\r\n    \"originProjectId\": \"c5067a60-e329-4510-991c-b302fd00ec8d\",\r\n    \"projectId\": \"c9d147e2-bc07-4e68-a76d-43424fa8cd4e\",\r\n    \"program\": \"Eimbee\",\r\n    \"projectName\": \"Zoomcast\",\r\n    \"projectLink\": \"http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum\",\r\n    \"projectDeveloper\": \"Cogibox\",\r\n    \"sector\": \"Viva\",\r\n    \"projectType\": \"Topicshots\",\r\n    \"coveredByNDC\": 0,\r\n    \"NDCLinkage\": \"Shuffletag\",\r\n    \"projectStatus\": \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\r\n    \"projectStatusDate\": \"2022-01-19\",\r\n    \"unitMetric\": \"Fuscia\",\r\n    \"methodology\": \"Quatz\",\r\n    \"methodologyVersion\": 43,\r\n    \"validationApproach\": \"Praesent in consequat urna\",\r\n    \"validationDate\": \"2022-01-19\",\r\n    \"projectTag\": \"Neque\",\r\n    \"estimatedAnnualAverageEmissionReduction\": \"223\",\r\n    \"projectLocations\": [\r\n        {\r\n            \"id\": \"40ae83b1-b497-4f63-9b7d-874505b67662\",\r\n            \"countryRegion\": \"United States\",\r\n            \"country\": null,\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        }\r\n    ],\r\n    \"qualifications\": [\r\n        {\r\n            \"id\": \"702cafbb-c624-4273-9cdc-c617ad5675df\",\r\n            \"qualificationId\": null,\r\n            \"qualificationLink\": \"https://qualification.link/1\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"type\": \"basic type\",\r\n            \"label\": \"qualification 1\",\r\n            \"creditingPeriodStartDate\": null,\r\n            \"creditingPeriodEndDate\": null,\r\n            \"warehouseUnitId\": null,\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        }\r\n    ],\r\n    \"vintages\": [\r\n        {\r\n            \"id\": \"3d5a8ed2-e5a7-4275-a36e-3456812e39b7\",\r\n            \"startDate\": null,\r\n            \"endDate\": null,\r\n            \"verificationApproach\": null,\r\n            \"verificationDate\": null,\r\n            \"verificationBody\": \"This is verified\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        },\r\n        {\r\n            \"id\": \"57c1859d-6aa4-4c57-9dfb-6438e0d4653e\",\r\n            \"startDate\": null,\r\n            \"endDate\": null,\r\n            \"verificationApproach\": null,\r\n            \"verificationDate\": null,\r\n            \"verificationBody\": \"This is verified\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        },\r\n        {\r\n            \"id\": \"74887b22-da3b-4c2b-b945-670319193cdd\",\r\n            \"startDate\": null,\r\n            \"endDate\": null,\r\n            \"verificationApproach\": null,\r\n            \"verificationDate\": null,\r\n            \"verificationBody\": \"This is verified\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        },\r\n        {\r\n            \"id\": \"7f7f23a5-3e1a-43b4-82d8-b4156b158f88\",\r\n            \"startDate\": null,\r\n            \"endDate\": null,\r\n            \"verificationApproach\": null,\r\n            \"verificationDate\": null,\r\n            \"verificationBody\": \"This is verified\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        },\r\n        {\r\n            \"id\": \"a6745831-5d5e-45ed-b9fe-fd6aa129df25\",\r\n            \"startDate\": null,\r\n            \"endDate\": null,\r\n            \"verificationApproach\": null,\r\n            \"verificationDate\": null,\r\n            \"verificationBody\": \"This is verified\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        }\r\n    ],\r\n    \"coBenefits\": [\r\n        {\r\n            \"id\": \"2995a129-1fad-4251-9942-7c6db2fbff74\",\r\n            \"benefit\": \"TEST_COBENEFIT_4\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": null,\r\n            \"updatedAt\": null\r\n        },\r\n        {\r\n            \"id\": \"729c71bf-cc6e-4424-842f-54c2a490952a\",\r\n            \"benefit\": \"TEST_COBENEFIT_3\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": null,\r\n            \"updatedAt\": null\r\n        },\r\n        {\r\n            \"id\": \"83913f9e-9876-4c4d-ac4c-10dd992d7d7f\",\r\n            \"benefit\": \"TEST_COBENEFIT_5\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": null,\r\n            \"updatedAt\": null\r\n        },\r\n        {\r\n            \"id\": \"9506cf84-6f9e-437a-a099-9672e4737668\",\r\n            \"benefit\": \"TEST_COBENEFIT_1\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": null,\r\n            \"updatedAt\": null\r\n        },\r\n        {\r\n            \"id\": \"f124ebef-6436-4cd4-abdd-c55e10f4d1a0\",\r\n            \"benefit\": \"TEST_COBENEFIT_2\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": null,\r\n            \"updatedAt\": null\r\n        }\r\n    ],\r\n    \"relatedProjects\": [\r\n        {\r\n            \"id\": \"394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec\",\r\n            \"type\": \"Greenlam\",\r\n            \"registry\": \"Ventosanzap\",\r\n            \"note\": \"Donec dapibus.\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        },\r\n        {\r\n            \"id\": \"39b80025-1a2c-4cda-92aa-541e8e059258\",\r\n            \"type\": \"Matsoft\",\r\n            \"registry\": \"Sub-Ex\",\r\n            \"note\": \"Cras pellentesque volutpat dui. Maecenas tristique, est et tempus semper, est quam pharetra magna, ac consequat metus sapien ut nunc. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Mauris viverra diam vitae quam. Suspendisse potenti.\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        }\r\n    ]\r\n}",
++          "raw": "{\r\n    \"originProjectId\": \"c5067a60-e329-4510-991c-b302fd00ec8d\",\r\n    \"projectId\": \"c9d147e2-bc07-4e68-a76d-43424fa8cd4e\",\r\n    \"program\": \"Eimbee\",\r\n    \"projectName\": \"Zoomcast\",\r\n    \"projectLink\": \"http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum\",\r\n    \"projectDeveloper\": \"Cogibox\",\r\n    \"sector\": \"Viva\",\r\n    \"projectType\": \"Topicshots\",\r\n    \"coveredByNDC\": 0,\r\n    \"NDCLinkage\": \"Shuffletag\",\r\n    \"projectStatus\": \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\r\n    \"projectStatusDate\": \"2022-01-19\",\r\n    \"unitMetric\": \"Fuscia\",\r\n    \"methodology\": \"Quatz\",\r\n    \"methodologyVersion\": 43,\r\n    \"validationApproach\": \"Praesent in consequat urna\",\r\n    \"validationDate\": \"2022-01-19\",\r\n    \"projectTag\": \"Neque\",\r\n    \"estimatedAnnualAverageEmissionReduction\": \"223\",\r\n    \"projectLocations\": [\r\n        {\r\n            \"id\": \"40ae83b1-b497-4f63-9b7d-874505b67662\",\r\n            \"countryRegion\": \"United States\",\r\n            \"country\": null,\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        }\r\n    ],\r\n    \"qualifications\": [\r\n        {\r\n            \"id\": \"702cafbb-c624-4273-9cdc-c617ad5675df\",\r\n            \"qualificationId\": null,\r\n            \"qualificationLink\": \"https://qualification.link/1\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"type\": \"basic type\",\r\n            \"label\": \"qualification 1\",\r\n            \"creditingPeriodStartDate\": null,\r\n            \"creditingPeriodEndDate\": null,\r\n            \"warehouseUnitId\": null,\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        }\r\n    ],\r\n    \"issuances\": [\r\n        {\r\n            \"id\": \"3d5a8ed2-e5a7-4275-a36e-3456812e39b7\",\r\n            \"startDate\": null,\r\n            \"endDate\": null,\r\n            \"verificationApproach\": null,\r\n            \"verificationDate\": null,\r\n            \"verificationBody\": \"This is verified\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        },\r\n        {\r\n            \"id\": \"57c1859d-6aa4-4c57-9dfb-6438e0d4653e\",\r\n            \"startDate\": null,\r\n            \"endDate\": null,\r\n            \"verificationApproach\": null,\r\n            \"verificationDate\": null,\r\n            \"verificationBody\": \"This is verified\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        },\r\n        {\r\n            \"id\": \"74887b22-da3b-4c2b-b945-670319193cdd\",\r\n            \"startDate\": null,\r\n            \"endDate\": null,\r\n            \"verificationApproach\": null,\r\n            \"verificationDate\": null,\r\n            \"verificationBody\": \"This is verified\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        },\r\n        {\r\n            \"id\": \"7f7f23a5-3e1a-43b4-82d8-b4156b158f88\",\r\n            \"startDate\": null,\r\n            \"endDate\": null,\r\n            \"verificationApproach\": null,\r\n            \"verificationDate\": null,\r\n            \"verificationBody\": \"This is verified\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        },\r\n        {\r\n            \"id\": \"a6745831-5d5e-45ed-b9fe-fd6aa129df25\",\r\n            \"startDate\": null,\r\n            \"endDate\": null,\r\n            \"verificationApproach\": null,\r\n            \"verificationDate\": null,\r\n            \"verificationBody\": \"This is verified\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        }\r\n    ],\r\n    \"coBenefits\": [\r\n        {\r\n            \"id\": \"2995a129-1fad-4251-9942-7c6db2fbff74\",\r\n            \"benefit\": \"TEST_COBENEFIT_4\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": null,\r\n            \"updatedAt\": null\r\n        },\r\n        {\r\n            \"id\": \"729c71bf-cc6e-4424-842f-54c2a490952a\",\r\n            \"benefit\": \"TEST_COBENEFIT_3\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": null,\r\n            \"updatedAt\": null\r\n        },\r\n        {\r\n            \"id\": \"83913f9e-9876-4c4d-ac4c-10dd992d7d7f\",\r\n            \"benefit\": \"TEST_COBENEFIT_5\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": null,\r\n            \"updatedAt\": null\r\n        },\r\n        {\r\n            \"id\": \"9506cf84-6f9e-437a-a099-9672e4737668\",\r\n            \"benefit\": \"TEST_COBENEFIT_1\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": null,\r\n            \"updatedAt\": null\r\n        },\r\n        {\r\n            \"id\": \"f124ebef-6436-4cd4-abdd-c55e10f4d1a0\",\r\n            \"benefit\": \"TEST_COBENEFIT_2\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": null,\r\n            \"updatedAt\": null\r\n        }\r\n    ],\r\n    \"relatedProjects\": [\r\n        {\r\n            \"id\": \"394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec\",\r\n            \"type\": \"Greenlam\",\r\n            \"registry\": \"Ventosanzap\",\r\n            \"note\": \"Donec dapibus.\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        },\r\n        {\r\n            \"id\": \"39b80025-1a2c-4cda-92aa-541e8e059258\",\r\n            \"type\": \"Matsoft\",\r\n            \"registry\": \"Sub-Ex\",\r\n            \"note\": \"Cras pellentesque volutpat dui. Maecenas tristique, est et tempus semper, est quam pharetra magna, ac consequat metus sapien ut nunc. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Mauris viverra diam vitae quam. Suspendisse potenti.\",\r\n            \"warehouseProjectId\": \"81e05bfa-e93f-458f-b907-96bf170e52cd\",\r\n            \"createdAt\": \"2022-01-19\",\r\n            \"updatedAt\": \"2022-01-19\"\r\n        }\r\n    ]\r\n}",
+           "options": {
+             "raw": {
+               "language": "json"
+diff --git a/docs/postman/createProjects.csv b/docs/postman/createProjects.csv
+index 4b3f4ef..74272cb 100644
+--- a/docs/postman/createProjects.csv
++++ b/docs/postman/createProjects.csv
+@@ -1,10 +1,10 @@
+-originProjectId,projectId,program,projectName,projectLink,projectDeveloper,sector,projectType,coveredByNDC,NDCLinkage,projectStatus,projectStatusDate,unitMetric,methodology,methodologyVersion,validationApproach,validationDate,projectTag,estimatedAnnualAverageEmissionReduction,projectLocations,qualifications,vintages,coBenefits,relatedProjects
+-c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,0,Shuffletag,"Lorem†ipsum†dolor†sit†amet,†consectetur†adipiscing†elit,†sed†do†eiusmod†tempor†incididunt†ut†labore†et†dolore†magna†aliqua.",1/19/2022,Fuscia,Quatz,43,Praesent†in†consequat†urna,1/19/2022,Neque,120,United†States,https://qualification.link/1,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_4,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+-c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,1,Shuffletag,"Lorem†ipsum†dolor†sit†amet,†consectetur†adipiscing†elit,†sed†do†eiusmod†tempor†incididunt†ut†labore†et†dolore†magna†aliqua.",1/20/2022,Fuscia,Quatz,44,Praesent†in†consequat†urna,1/20/2022,Neque,121,United†States,https://qualification.link/2,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_5,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+-c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,2,Shuffletag,"Lorem†ipsum†dolor†sit†amet,†consectetur†adipiscing†elit,†sed†do†eiusmod†tempor†incididunt†ut†labore†et†dolore†magna†aliqua.",1/21/2022,Fuscia,Quatz,45,Praesent†in†consequat†urna,1/21/2022,Neque,122,United†States,https://qualification.link/3,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_6,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+-c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,3,Shuffletag,"Lorem†ipsum†dolor†sit†amet,†consectetur†adipiscing†elit,†sed†do†eiusmod†tempor†incididunt†ut†labore†et†dolore†magna†aliqua.",1/22/2022,Fuscia,Quatz,46,Praesent†in†consequat†urna,1/22/2022,Neque,123,United†States,https://qualification.link/4,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_7,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+-c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,4,Shuffletag,"Lorem†ipsum†dolor†sit†amet,†consectetur†adipiscing†elit,†sed†do†eiusmod†tempor†incididunt†ut†labore†et†dolore†magna†aliqua.",1/23/2022,Fuscia,Quatz,47,Praesent†in†consequat†urna,1/23/2022,Neque,124,United†States,https://qualification.link/5,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_8,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+-c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,5,Shuffletag,"Lorem†ipsum†dolor†sit†amet,†consectetur†adipiscing†elit,†sed†do†eiusmod†tempor†incididunt†ut†labore†et†dolore†magna†aliqua.",1/24/2022,Fuscia,Quatz,48,Praesent†in†consequat†urna,1/24/2022,Neque,125,United†States,https://qualification.link/6,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_9,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+-c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,6,Shuffletag,"Lorem†ipsum†dolor†sit†amet,†consectetur†adipiscing†elit,†sed†do†eiusmod†tempor†incididunt†ut†labore†et†dolore†magna†aliqua.",1/25/2022,Fuscia,Quatz,49,Praesent†in†consequat†urna,1/25/2022,Neque,126,United†States,https://qualification.link/7,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_10,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+-c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,7,Shuffletag,"Lorem†ipsum†dolor†sit†amet,†consectetur†adipiscing†elit,†sed†do†eiusmod†tempor†incididunt†ut†labore†et†dolore†magna†aliqua.",1/26/2022,Fuscia,Quatz,50,Praesent†in†consequat†urna,1/26/2022,Neque,127,United†States,https://qualification.link/8,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_11,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+-c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,8,Shuffletag,"Lorem†ipsum†dolor†sit†amet,†consectetur†adipiscing†elit,†sed†do†eiusmod†tempor†incididunt†ut†labore†et†dolore†magna†aliqua.",1/27/2022,Fuscia,Quatz,51,Praesent†in†consequat†urna,1/27/2022,Neque,128,United†States,https://qualification.link/9,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_12,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++originProjectId,projectId,program,projectName,projectLink,projectDeveloper,sector,projectType,coveredByNDC,NDCLinkage,projectStatus,projectStatusDate,unitMetric,methodology,methodologyVersion,validationApproach,validationDate,projectTag,estimatedAnnualAverageEmissionReduction,projectLocations,qualifications,issuances,coBenefits,relatedProjects
++c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,0,Shuffletag,"LoremÔøΩipsumÔøΩdolorÔøΩsitÔøΩamet,ÔøΩconsecteturÔøΩadipiscingÔøΩelit,ÔøΩsedÔøΩdoÔøΩeiusmodÔøΩtemporÔøΩincididuntÔøΩutÔøΩlaboreÔøΩetÔøΩdoloreÔøΩmagnaÔøΩaliqua.",1/19/2022,Fuscia,Quatz,43,PraesentÔøΩinÔøΩconsequatÔøΩurna,1/19/2022,Neque,120,UnitedÔøΩStates,https://qualification.link/1,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_4,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,1,Shuffletag,"LoremÔøΩipsumÔøΩdolorÔøΩsitÔøΩamet,ÔøΩconsecteturÔøΩadipiscingÔøΩelit,ÔøΩsedÔøΩdoÔøΩeiusmodÔøΩtemporÔøΩincididuntÔøΩutÔøΩlaboreÔøΩetÔøΩdoloreÔøΩmagnaÔøΩaliqua.",1/20/2022,Fuscia,Quatz,44,PraesentÔøΩinÔøΩconsequatÔøΩurna,1/20/2022,Neque,121,UnitedÔøΩStates,https://qualification.link/2,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_5,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,2,Shuffletag,"LoremÔøΩipsumÔøΩdolorÔøΩsitÔøΩamet,ÔøΩconsecteturÔøΩadipiscingÔøΩelit,ÔøΩsedÔøΩdoÔøΩeiusmodÔøΩtemporÔøΩincididuntÔøΩutÔøΩlaboreÔøΩetÔøΩdoloreÔøΩmagnaÔøΩaliqua.",1/21/2022,Fuscia,Quatz,45,PraesentÔøΩinÔøΩconsequatÔøΩurna,1/21/2022,Neque,122,UnitedÔøΩStates,https://qualification.link/3,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_6,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,3,Shuffletag,"LoremÔøΩipsumÔøΩdolorÔøΩsitÔøΩamet,ÔøΩconsecteturÔøΩadipiscingÔøΩelit,ÔøΩsedÔøΩdoÔøΩeiusmodÔøΩtemporÔøΩincididuntÔøΩutÔøΩlaboreÔøΩetÔøΩdoloreÔøΩmagnaÔøΩaliqua.",1/22/2022,Fuscia,Quatz,46,PraesentÔøΩinÔøΩconsequatÔøΩurna,1/22/2022,Neque,123,UnitedÔøΩStates,https://qualification.link/4,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_7,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,4,Shuffletag,"LoremÔøΩipsumÔøΩdolorÔøΩsitÔøΩamet,ÔøΩconsecteturÔøΩadipiscingÔøΩelit,ÔøΩsedÔøΩdoÔøΩeiusmodÔøΩtemporÔøΩincididuntÔøΩutÔøΩlaboreÔøΩetÔøΩdoloreÔøΩmagnaÔøΩaliqua.",1/23/2022,Fuscia,Quatz,47,PraesentÔøΩinÔøΩconsequatÔøΩurna,1/23/2022,Neque,124,UnitedÔøΩStates,https://qualification.link/5,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_8,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,5,Shuffletag,"LoremÔøΩipsumÔøΩdolorÔøΩsitÔøΩamet,ÔøΩconsecteturÔøΩadipiscingÔøΩelit,ÔøΩsedÔøΩdoÔøΩeiusmodÔøΩtemporÔøΩincididuntÔøΩutÔøΩlaboreÔøΩetÔøΩdoloreÔøΩmagnaÔøΩaliqua.",1/24/2022,Fuscia,Quatz,48,PraesentÔøΩinÔøΩconsequatÔøΩurna,1/24/2022,Neque,125,UnitedÔøΩStates,https://qualification.link/6,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_9,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,6,Shuffletag,"LoremÔøΩipsumÔøΩdolorÔøΩsitÔøΩamet,ÔøΩconsecteturÔøΩadipiscingÔøΩelit,ÔøΩsedÔøΩdoÔøΩeiusmodÔøΩtemporÔøΩincididuntÔøΩutÔøΩlaboreÔøΩetÔøΩdoloreÔøΩmagnaÔøΩaliqua.",1/25/2022,Fuscia,Quatz,49,PraesentÔøΩinÔøΩconsequatÔøΩurna,1/25/2022,Neque,126,UnitedÔøΩStates,https://qualification.link/7,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_10,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,7,Shuffletag,"LoremÔøΩipsumÔøΩdolorÔøΩsitÔøΩamet,ÔøΩconsecteturÔøΩadipiscingÔøΩelit,ÔøΩsedÔøΩdoÔøΩeiusmodÔøΩtemporÔøΩincididuntÔøΩutÔøΩlaboreÔøΩetÔøΩdoloreÔøΩmagnaÔøΩaliqua.",1/26/2022,Fuscia,Quatz,50,PraesentÔøΩinÔøΩconsequatÔøΩurna,1/26/2022,Neque,127,UnitedÔøΩStates,https://qualification.link/8,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_11,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,8,Shuffletag,"LoremÔøΩipsumÔøΩdolorÔøΩsitÔøΩamet,ÔøΩconsecteturÔøΩadipiscingÔøΩelit,ÔøΩsedÔøΩdoÔøΩeiusmodÔøΩtemporÔøΩincididuntÔøΩutÔøΩlaboreÔøΩetÔøΩdoloreÔøΩmagnaÔøΩaliqua.",1/27/2022,Fuscia,Quatz,51,PraesentÔøΩinÔøΩconsequatÔøΩurna,1/27/2022,Neque,128,UnitedÔøΩStates,https://qualification.link/9,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_12,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+diff --git a/docs/postman/updateProjects.csv b/docs/postman/updateProjects.csv
+index e12a722..9839674 100644
+--- a/docs/postman/updateProjects.csv
++++ b/docs/postman/updateProjects.csv
+@@ -1,4 +1,4 @@
+-warehouseUnitId,originProjectId,projectId,program,projectName,projectLink,projectDeveloper,sector,projectType,coveredByNDC,NDCLinkage,projectStatus,projectStatusDate,unitMetric,methodology,methodologyVersion,validationApproach,validationDate,projectTag,estimatedAnnualAverageEmissionReduction,projectLocations,qualifications,vintages,coBenefits,relatedProjects
+-5c960ac1-a180-45a4-9850-be177e26d2fb,c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,0,Shuffletag,"Lorem†ipsum†dolor†sit†amet,†consectetur†adipiscing†elit,†sed†do†eiusmod†tempor†incididunt†ut†labore†et†dolore†magna†aliqua.",1/19/2022,Fuscia,Quatz,43,He waited for the stop sign to turn to a go sign.,1/19/2022,Neque,120,United†States,https://qualification.link/1,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_4,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+-7703e6be-1781-4322-9a9c-502ca0dca29b,c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Seven,Topicshots,0,Shuffletag,"I know many children ask for a pony, but I wanted a bicycle with rockets strapped to it.",1/19/2022,Fuscia,Quatz,43,He waited for the stop sign to turn to a go sign.,1/19/2022,Neque,120,United†States,https://qualification.link/1,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_4,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+-04582672-47a9-411b-896f-3d45974e360e,c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,0,Shuffletag,"I know many children ask for a pony, but I wanted a bicycle with rockets strapped to it.",1/22/2022,Fuscia,Quatz,43,He waited for the stop sign to turn to a go sign.,1/19/2022,Neque,120,United†States,https://qualification.link/1,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_4,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++warehouseUnitId,originProjectId,projectId,program,projectName,projectLink,projectDeveloper,sector,projectType,coveredByNDC,NDCLinkage,projectStatus,projectStatusDate,unitMetric,methodology,methodologyVersion,validationApproach,validationDate,projectTag,estimatedAnnualAverageEmissionReduction,projectLocations,qualifications,issuances,coBenefits,relatedProjects
++5c960ac1-a180-45a4-9850-be177e26d2fb,c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,0,Shuffletag,"LoremÔøΩipsumÔøΩdolorÔøΩsitÔøΩamet,ÔøΩconsecteturÔøΩadipiscingÔøΩelit,ÔøΩsedÔøΩdoÔøΩeiusmodÔøΩtemporÔøΩincididuntÔøΩutÔøΩlaboreÔøΩetÔøΩdoloreÔøΩmagnaÔøΩaliqua.",1/19/2022,Fuscia,Quatz,43,He waited for the stop sign to turn to a go sign.,1/19/2022,Neque,120,UnitedÔøΩStates,https://qualification.link/1,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_4,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++7703e6be-1781-4322-9a9c-502ca0dca29b,c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Seven,Topicshots,0,Shuffletag,"I know many children ask for a pony, but I wanted a bicycle with rockets strapped to it.",1/19/2022,Fuscia,Quatz,43,He waited for the stop sign to turn to a go sign.,1/19/2022,Neque,120,UnitedÔøΩStates,https://qualification.link/1,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_4,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
++04582672-47a9-411b-896f-3d45974e360e,c5067a60-e329-4510-991c-b302fd00ec8d,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,Eimbee,Zoomcast,http://dailymotion.com/ligula/suspendisse/ornare/consequat/lectus/in.jpg?aliquam=consequat&lacus=nulla&morbi=nisl&quis=nunc&tortor=nisl&id=duis&nulla=bibendum&ultrices=felis&aliquet=sed&maecenas=interdum&leo=venenatis&odio=turpis&condimentum=enim&id=blandit&luctus=mi&nec=in&molestie=porttitor&sed=pede&justo=justo&pellentesque=eu&viverra=massa&pede=donec&ac=dapibus&diam=duis&cras=at&pellentesque=velit&volutpat=eu&dui=est&maecenas=congue&tristique=elementum&est=in&et=hac&tempus=habitasse&semper=platea&est=dictumst&quam=morbi&pharetra=vestibulum&magna=velit&ac=id&consequat=pretium&metus=iaculis&sapien=diam&ut=erat&nunc=fermentum&vestibulum=justo&ante=nec&ipsum=condimentum,Cogibox,Viva,Topicshots,0,Shuffletag,"I know many children ask for a pony, but I wanted a bicycle with rockets strapped to it.",1/22/2022,Fuscia,Quatz,43,He waited for the stop sign to turn to a go sign.,1/19/2022,Neque,120,UnitedÔøΩStates,https://qualification.link/1,"3d5a8ed2-e5a7-4275-a36e-3456812e39b7,57c1859d-6aa4-4c57-9dfb-6438e0d4653e",TEST_COBENEFIT_4,394e319e-a4d2-4ad8-a4b3-0d5b660dd8ec
+diff --git a/migrations/20211201194541-create-issuance.cjs b/migrations/20211201194541-create-issuance.cjs
+new file mode 100644
+index 0000000..3d0e8b4
+--- /dev/null
++++ b/migrations/20211201194541-create-issuance.cjs
+@@ -0,0 +1,12 @@
++'use strict';
++
++const modelTypes = require('../src/models/issuances/issuances.modeltypes.cjs');
++
++module.exports = {
++  up: async (queryInterface) => {
++    await queryInterface.createTable('issuances', modelTypes);
++  },
++  down: async (queryInterface) => {
++    await queryInterface.dropTable('issuances');
++  },
++};
+diff --git a/migrations/20211201194541-create-vintage.cjs b/migrations/20211201194541-create-vintage.cjs
+deleted file mode 100644
+index 5709a64..0000000
+--- a/migrations/20211201194541-create-vintage.cjs
++++ /dev/null
+@@ -1,12 +0,0 @@
+-'use strict';
+-
+-const modelTypes = require('../src/models/vintages/vintages.modeltypes.cjs');
+-
+-module.exports = {
+-  up: async (queryInterface, Sequelize) => {
+-    await queryInterface.createTable('vintages', modelTypes);
+-  },
+-  down: async (queryInterface, Sequelize) => {
+-    await queryInterface.dropTable('vintages');
+-  },
+-};
+diff --git a/migrations/20211212200953-fulltext-search.cjs b/migrations/20211212200953-fulltext-search.cjs
+index 4c3017a..f4efc1b 100644
+--- a/migrations/20211212200953-fulltext-search.cjs
++++ b/migrations/20211212200953-fulltext-search.cjs
+@@ -1,7 +1,7 @@
+ 'use strict';
+ 
+ module.exports = {
+-  up: async (queryInterface, Sequelize) => {
++  up: async (queryInterface) => {
+     if (queryInterface.sequelize.getDialect() === 'sqlite') {
+       await queryInterface.sequelize.query(`
+       CREATE VIRTUAL TABLE projects_fts USING fts5(
+@@ -55,13 +55,13 @@ module.exports = {
+           unitMarketplaceLink,
+           correspondingAdjustmentDeclaration,
+           correspondingAdjustmentStatus,
+-          vintageId
++          issuanceId
+         );
+       `);
+     }
+   },
+ 
+-  down: async (queryInterface, Sequelize) => {
++  down: async (queryInterface) => {
+     if (queryInterface.sequelize.getDialect() === 'sqlite') {
+       await queryInterface.sequelize.query(`drop table projects_fts;`);
+       await queryInterface.sequelize.query('drop table units_fts;');
+diff --git a/migrations/20211215231227-vintage-unit-junction.cjs b/migrations/20211215231227-vintage-unit-junction.cjs
+index 026dc66..836d696 100644
+--- a/migrations/20211215231227-vintage-unit-junction.cjs
++++ b/migrations/20211215231227-vintage-unit-junction.cjs
+@@ -1,16 +1,17 @@
+ 'use strict';
+ 
+ module.exports = {
++  // eslint-disable-next-line
+   up: async (queryInterface, Sequelize) => {
+-    /*  await queryInterface.createTable('vintage_unit', {
++    /*  await queryInterface.createTable('issuance_unit', {
+       unitId: Sequelize.INTEGER,
+-      vintageId: Sequelize.INTEGER,
++      issuanceId: Sequelize.INTEGER,
+       createdAt: Sequelize.DATE,
+       updatedAt: Sequelize.DATE,
+     });*/
+   },
+ 
+-  down: async (queryInterface, Sequelize) => {
+-    await queryInterface.dropTable('vintage_unit');
++  down: async (queryInterface) => {
++    await queryInterface.dropTable('issuance_unit');
+   },
+ };
+diff --git a/migrations/20211219182106-sqlite-triggers-projects.cjs b/migrations/20211219182106-sqlite-triggers-projects.cjs
+index 3651649..7dfabd6 100644
+--- a/migrations/20211219182106-sqlite-triggers-projects.cjs
++++ b/migrations/20211219182106-sqlite-triggers-projects.cjs
+@@ -1,7 +1,7 @@
+ 'use strict';
+ 
+ module.exports = {
+-  up: async (queryInterface, Sequelize) => {
++  up: async (queryInterface) => {
+     if (queryInterface.sequelize.getDialect() === 'sqlite') {
+       await queryInterface.sequelize.query(`
+       CREATE TRIGGER project_insert_fts AFTER INSERT ON projects BEGIN
+diff --git a/migrations/20211219184405-sqlite-triggers-units.cjs b/migrations/20211219184405-sqlite-triggers-units.cjs
+index e63ac08..2251b3f 100644
+--- a/migrations/20211219184405-sqlite-triggers-units.cjs
++++ b/migrations/20211219184405-sqlite-triggers-units.cjs
+@@ -28,7 +28,7 @@ module.exports = {
+           unitMarketplaceLink,
+           correspondingAdjustmentDeclaration,
+           correspondingAdjustmentStatus,
+-          vintageId
++          issuanceId
+         ) VALUES (
+           new.warehouseUnitId,
+           new.orgUid,
+@@ -52,7 +52,7 @@ module.exports = {
+           new.unitMarketplaceLink,
+           new.correspondingAdjustmentDeclaration,
+           new.correspondingAdjustmentStatus,
+-          new.vintageId
++          new.issuanceId
+         );
+       END;`);
+ 
+@@ -88,7 +88,7 @@ module.exports = {
+           unitMarketplaceLink,
+           correspondingAdjustmentDeclaration,
+           correspondingAdjustmentStatus,
+-          vintageId
++          issuanceId
+         ) VALUES (
+           new.warehouseUnitId,
+           new.orgUid,
+@@ -112,7 +112,7 @@ module.exports = {
+           new.unitMarketplaceLink,
+           new.correspondingAdjustmentDeclaration,
+           new.correspondingAdjustmentStatus,
+-          new.vintageId
++          new.issuanceId
+         );
+       END;
+       `);
+diff --git a/seeders/20211209204301-add-projects.cjs b/seeders/20211209204301-add-projects.cjs
+index bded169..3365a82 100644
+--- a/seeders/20211209204301-add-projects.cjs
++++ b/seeders/20211209204301-add-projects.cjs
+@@ -4,7 +4,7 @@ const CoBenifetStub = require('../src/models/co-benefits/co-benefits.stub.json')
+ const RelatedProjectStub = require('../src/models/related-projects/related-projects.stub.json');
+ const QualificationStub = require('../src/models/qualifications/qualifications.stub.json');
+ const RatingsStub = require('../src/models/ratings/ratings.stub.json');
+-const VintagesStub = require('../src/models/vintages/vintages.stub.json');
++const IssuanceStub = require('../src/models/issuances/issuances.stub.json');
+ const LocationsStub = require('../src/models/locations/locations.stub.json');
+ 
+ module.exports = {
+@@ -14,7 +14,7 @@ module.exports = {
+     await queryInterface.bulkInsert('relatedProjects', RelatedProjectStub, {});
+     await queryInterface.bulkInsert('qualifications', QualificationStub, {});
+     await queryInterface.bulkInsert('projectRatings', RatingsStub, {});
+-    await queryInterface.bulkInsert('vintages', VintagesStub, {});
++    await queryInterface.bulkInsert('issuances', IssuanceStub, {});
+     await queryInterface.bulkInsert('projectLocations', LocationsStub, {});
+   },
+ 
+diff --git a/src/controllers/index.js b/src/controllers/index.js
+index 23ae20d..50ca520 100644
+--- a/src/controllers/index.js
++++ b/src/controllers/index.js
+@@ -2,4 +2,4 @@ export * as ProjectController from './project.controller';
+ export * as UnitController from './units.controller';
+ export * as StagingController from './staging.controller';
+ export * as OrganizationController from './organization.controller';
+-export * as VintageController from './vintage.controller';
++export * as IssuanceController from './issuance.controller';
+diff --git a/src/controllers/vintage.controller.js b/src/controllers/issuance.controller.js
+similarity index 75%
+rename from src/controllers/vintage.controller.js
+rename to src/controllers/issuance.controller.js
+index faab5a8..ac39623 100644
+--- a/src/controllers/vintage.controller.js
++++ b/src/controllers/issuance.controller.js
+@@ -1,4 +1,4 @@
+-import { Vintage, Organization } from '../models';
++import { Issuance, Organization } from '../models';
+ 
+ import { assertHomeOrgExists } from '../utils/data-assertions';
+ 
+@@ -8,13 +8,13 @@ export const findAll = async (req, res) => {
+     const homeOrg = await Organization.getHomeOrg();
+ 
+     return res.json(
+-      await Vintage.findAll({
++      await Issuance.findAll({
+         where: { orgUid: Object.keys(homeOrg)[0] },
+       }),
+     );
+   } catch (error) {
+     res.status(400).json({
+-      message: 'Can not retreive vintages',
++      message: 'Can not retreive issuances',
+       error: error.message,
+     });
+   }
+diff --git a/src/controllers/project.controller.js b/src/controllers/project.controller.js
+index a00dbea..dd141fa 100644
+--- a/src/controllers/project.controller.js
++++ b/src/controllers/project.controller.js
+@@ -7,7 +7,7 @@ import {
+   Project,
+   ProjectLocation,
+   Qualification,
+-  Vintage,
++  Issuance,
+   CoBenefit,
+   RelatedProject,
+   Organization,
+@@ -134,7 +134,7 @@ export const findOne = async (req, res) => {
+     include: [
+       ProjectLocation,
+       Qualification,
+-      Vintage,
++      Issuance,
+       CoBenefit,
+       RelatedProject,
+     ],
+diff --git a/src/controllers/units.controller.js b/src/controllers/units.controller.js
+index 6f8a296..fde7dcf 100644
+--- a/src/controllers/units.controller.js
++++ b/src/controllers/units.controller.js
+@@ -3,7 +3,13 @@
+ import _ from 'lodash';
+ import { uuid as uuidv4 } from 'uuidv4';
+ 
+-import { Staging, Unit, Qualification, Vintage, Organization } from '../models';
++import {
++  Staging,
++  Unit,
++  Qualification,
++  Issuance,
++  Organization,
++} from '../models';
+ 
+ import {
+   columnsToInclude,
+@@ -63,7 +69,7 @@ export const findAll = async (req, res) => {
+   let { page, limit, columns, orgUid, search, xls } = req.query;
+   let where = orgUid ? { orgUid } : undefined;
+ 
+-  const includes = [Qualification, Vintage];
++  const includes = [Qualification, Issuance];
+ 
+   if (columns) {
+     // Remove any unsupported columns
+@@ -116,11 +122,11 @@ export const findAll = async (req, res) => {
+       );
+     }
+ 
+-    if (columns.includes('vintages')) {
++    if (columns.includes('issuances')) {
+       results.rows = await Promise.all(
+         results.rows.map(async (result) => {
+-          result.dataValues.vintage = await Vintage.findByPk(
+-            result.dataValues.vintageId,
++          result.dataValues.issuance = await Issuance.findByPk(
++            result.dataValues.issuanceId,
+           );
+           return result;
+         }),
+diff --git a/src/fullnode/syncService.js b/src/fullnode/syncService.js
+index 492d84a..eb7d850 100644
+--- a/src/fullnode/syncService.js
++++ b/src/fullnode/syncService.js
+@@ -6,7 +6,7 @@ import {
+   Project,
+   RelatedProject,
+   Qualification,
+-  Vintage,
++  Issuance,
+   CoBenefit,
+   ProjectLocation,
+   QualificationUnit,
+@@ -91,8 +91,8 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
+               await QualificationUnit.upsert(value);
+             } else if (key.includes('coBenefits')) {
+               await CoBenefit.upsert(value);
+-            } else if (key.includes('vintages')) {
+-              await Vintage.upsert(value);
++            } else if (key.includes('issuances')) {
++              await Issuance.upsert(value);
+             } else if (key.includes('projectLocations')) {
+               await ProjectLocation.upsert(value);
+             } else if (key.includes('qualifications')) {
+diff --git a/src/models/index.js b/src/models/index.js
+index b5e06dd..8b535ed 100644
+--- a/src/models/index.js
++++ b/src/models/index.js
+@@ -5,7 +5,7 @@ import { Qualification } from './qualifications';
+ import { Rating } from './ratings';
+ import { RelatedProject } from './related-projects';
+ import { Unit } from './units';
+-import { Vintage } from './vintages';
++import { Issuance } from './issuances';
+ 
+ Project.associate();
+ CoBenefit.associate();
+@@ -14,7 +14,7 @@ Qualification.associate();
+ Rating.associate();
+ RelatedProject.associate();
+ Unit.associate();
+-Vintage.associate();
++Issuance.associate();
+ 
+ export * from './projects';
+ export * from './co-benefits';
+@@ -23,7 +23,7 @@ export * from './ratings';
+ export * from './qualifications';
+ export * from './related-projects';
+ export * from './units';
+-export * from './vintages';
++export * from './issuances';
+ export * from './staging';
+ export * from './organizations';
+ export * from './meta';
+diff --git a/src/models/issuances/index.js b/src/models/issuances/index.js
+new file mode 100644
+index 0000000..f31bf56
+--- /dev/null
++++ b/src/models/issuances/index.js
+@@ -0,0 +1,2 @@
++export * from './issuances.model';
++export * from './issuances.mock';
+diff --git a/src/models/vintages/vintages.mock.js b/src/models/issuances/issuances.mock.js
+similarity index 59%
+rename from src/models/vintages/vintages.mock.js
+rename to src/models/issuances/issuances.mock.js
+index 7c18c6e..063795c 100644
+--- a/src/models/vintages/vintages.mock.js
++++ b/src/models/issuances/issuances.mock.js
+@@ -1,6 +1,6 @@
+-import stub from './vintages.stub.json';
++import stub from './issuances.stub.json';
+ 
+-export const VintageMock = {
++export const IssuanceMock = {
+   findAll: () => stub,
+   findOne: (id) => {
+     return stub.find((record) => record.id == id);
+diff --git a/src/models/vintages/vintages.model.js b/src/models/issuances/issuances.model.js
+similarity index 53%
+rename from src/models/vintages/vintages.model.js
+rename to src/models/issuances/issuances.model.js
+index 46ec60b..1e6b6bc 100644
+--- a/src/models/vintages/vintages.model.js
++++ b/src/models/issuances/issuances.model.js
+@@ -2,29 +2,29 @@
+ import Sequelize from 'sequelize';
+ const { Model } = Sequelize;
+ import { sequelize, safeMirrorDbHandler } from '../database';
+-import { Project, Unit } from '../../models';
++import { Project, Unit } from '..';
+ 
+-import ModelTypes from './vintages.modeltypes.cjs';
+-import { VintageMirror } from './vintages.model.mirror';
++import ModelTypes from './issuances.modeltypes.cjs';
++import { IssuanceMirror } from './issuances.model.mirror';
+ 
+-class Vintage extends Model {
++class Issuance extends Model {
+   static associate() {
+-    Vintage.belongsTo(Project, {
++    Issuance.belongsTo(Project, {
+       sourceKey: 'warehouseProjectId',
+       foreignKey: 'warehouseProjectId',
+     });
+ 
+-    Vintage.hasMany(Unit, {
+-      targetKey: 'vintageId',
+-      foreignKey: 'vintageId',
++    Issuance.hasMany(Unit, {
++      targetKey: 'issuanceId',
++      foreignKey: 'issuanceId',
+     });
+ 
+     safeMirrorDbHandler(() => {
+-      VintageMirror.belongsTo(Project, {
++      IssuanceMirror.belongsTo(Project, {
+         targetKey: 'warehouseProjectId',
+         foreignKey: 'warehouseProjectId',
+       });
+-      VintageMirror.hasOne(Unit, {
++      IssuanceMirror.hasOne(Unit, {
+         targetKey: 'warehouseUnitId',
+         foreignKey: 'warehouseUnitId',
+       });
+@@ -32,24 +32,24 @@ class Vintage extends Model {
+   }
+ 
+   static async create(values, options) {
+-    safeMirrorDbHandler(() => VintageMirror.create(values, options));
++    safeMirrorDbHandler(() => IssuanceMirror.create(values, options));
+     return super.create(values, options);
+   }
+ 
+   static async destroy(values) {
+-    safeMirrorDbHandler(() => VintageMirror.destroy(values));
++    safeMirrorDbHandler(() => IssuanceMirror.destroy(values));
+     return super.destroy(values);
+   }
+ 
+   static async upsert(values, options) {
+-    safeMirrorDbHandler(() => VintageMirror.upsert(values, options));
++    safeMirrorDbHandler(() => IssuanceMirror.upsert(values, options));
+     return super.create(values, options);
+   }
+ }
+ 
+-Vintage.init(ModelTypes, {
++Issuance.init(ModelTypes, {
+   sequelize,
+-  modelName: 'vintage',
++  modelName: 'issuance',
+ });
+ 
+-export { Vintage };
++export { Issuance };
+diff --git a/src/models/vintages/vintages.model.mirror.js b/src/models/issuances/issuances.model.mirror.js
+similarity index 54%
+rename from src/models/vintages/vintages.model.mirror.js
+rename to src/models/issuances/issuances.model.mirror.js
+index 47a6974..68497ba 100644
+--- a/src/models/vintages/vintages.model.mirror.js
++++ b/src/models/issuances/issuances.model.mirror.js
+@@ -4,15 +4,15 @@ import Sequelize from 'sequelize';
+ const { Model } = Sequelize;
+ 
+ import { sequelizeMirror, safeMirrorDbHandler } from '../database';
+-import ModelTypes from './vintages.modeltypes.cjs';
++import ModelTypes from './issuances.modeltypes.cjs';
+ 
+-class VintageMirror extends Model {}
++class IssuanceMirror extends Model {}
+ 
+ safeMirrorDbHandler(() => {
+-  VintageMirror.init(ModelTypes, {
++  IssuanceMirror.init(ModelTypes, {
+     sequelize: sequelizeMirror,
+-    modelName: 'vintage',
++    modelName: 'issuance',
+   });
+ });
+ 
+-export { VintageMirror };
++export { IssuanceMirror };
+diff --git a/src/models/vintages/vintages.modeltypes.cjs b/src/models/issuances/issuances.modeltypes.cjs
+similarity index 100%
+rename from src/models/vintages/vintages.modeltypes.cjs
+rename to src/models/issuances/issuances.modeltypes.cjs
+diff --git a/src/models/vintages/vintages.stub.json b/src/models/issuances/issuances.stub.json
+similarity index 100%
+rename from src/models/vintages/vintages.stub.json
+rename to src/models/issuances/issuances.stub.json
+diff --git a/src/models/projects/projects.model.js b/src/models/projects/projects.model.js
+index 3be7b61..3f40b0d 100644
+--- a/src/models/projects/projects.model.js
++++ b/src/models/projects/projects.model.js
+@@ -13,7 +13,7 @@ import {
+ 
+ import {
+   RelatedProject,
+-  Vintage,
++  Issuance,
+   Qualification,
+   ProjectLocation,
+   CoBenefit,
+@@ -35,7 +35,7 @@ class Project extends Model {
+   static getAssociatedModels = () => [
+     ProjectLocation,
+     Qualification,
+-    Vintage,
++    Issuance,
+     CoBenefit,
+     RelatedProject,
+   ];
+@@ -43,7 +43,7 @@ class Project extends Model {
+   static associate() {
+     Project.hasMany(ProjectLocation, { foreignKey: 'warehouseProjectId' });
+     Project.hasMany(Qualification, { foreignKey: 'warehouseProjectId' });
+-    Project.hasMany(Vintage, { foreignKey: 'warehouseProjectId' });
++    Project.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
+     Project.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
+     Project.hasMany(RelatedProject, { foreignKey: 'warehouseProjectId' });
+ 
+@@ -54,7 +54,7 @@ class Project extends Model {
+       ProjectMirror.hasMany(Qualification, {
+         foreignKey: 'warehouseProjectId',
+       });
+-      ProjectMirror.hasMany(Vintage, { foreignKey: 'warehouseProjectId' });
++      ProjectMirror.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
+       ProjectMirror.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
+       ProjectMirror.hasMany(RelatedProject, {
+         foreignKey: 'warehouseProjectId',
+@@ -117,7 +117,7 @@ class Project extends Model {
+             ![
+               ProjectLocation,
+               Qualification,
+-              Vintage,
++              Issuance,
+               CoBenefit,
+               RelatedProject,
+             ]
+@@ -261,7 +261,7 @@ class Project extends Model {
+       project: 'warehouseProjectId',
+       projectLocations: 'id',
+       qualifications: 'id',
+-      vintages: 'id',
++      issuances: 'id',
+       coBenefits: 'id',
+       relatedProjects: 'id',
+     };
+@@ -292,9 +292,9 @@ class Project extends Model {
+         ..._.get(insertChangeList, 'projectLocations', []),
+         ..._.get(updateChangeList, 'projectLocations', []),
+       ],
+-      vintages: [
+-        ..._.get(insertChangeList, 'vintages', []),
+-        ..._.get(updateChangeList, 'vintages', []),
++      issuances: [
++        ..._.get(insertChangeList, 'issuances', []),
++        ..._.get(updateChangeList, 'issuances', []),
+       ],
+       coBenefits: [
+         ..._.get(insertChangeList, 'coBenefits', []),
+diff --git a/src/models/staging/staging.model.js b/src/models/staging/staging.model.js
+index dbcaec5..3125602 100644
+--- a/src/models/staging/staging.model.js
++++ b/src/models/staging/staging.model.js
+@@ -157,7 +157,10 @@ class Staging extends Model {
+     const unifiedChangeList = {
+       ...projectsChangeList,
+       ...unitsChangeList,
+-      vintages: [...unitsChangeList.vintages, ...projectsChangeList.vintages],
++      issuances: [
++        ...unitsChangeList.issuances,
++        ...projectsChangeList.issuances,
++      ],
+       qualifications: [
+         ...unitsChangeList.qualifications,
+         ...projectsChangeList.qualifications,
+diff --git a/src/models/units/units.model.js b/src/models/units/units.model.js
+index 44eecb1..9712722 100644
+--- a/src/models/units/units.model.js
++++ b/src/models/units/units.model.js
+@@ -8,7 +8,7 @@ import {
+   safeMirrorDbHandler,
+   sanitizeSqliteFtsQuery,
+ } from '../database';
+-import { Qualification, Vintage, Staging } from '../../models';
++import { Qualification, Issuance, Staging } from '../../models';
+ import { UnitMirror } from './units.model.mirror';
+ import ModelTypes from './units.modeltypes.cjs';
+ 
+@@ -68,13 +68,13 @@ class Unit extends Model {
+       model: Qualification,
+       as: 'qualifications',
+     },
+-    Vintage,
++    Issuance,
+   ];
+ 
+   static associate() {
+-    Unit.belongsTo(Vintage, {
+-      sourceKey: 'vintageId',
+-      foreignKey: 'vintageId',
++    Unit.belongsTo(Issuance, {
++      sourceKey: 'issuanceId',
++      foreignKey: 'issuanceId',
+     });
+ 
+     // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
+@@ -85,9 +85,9 @@ class Unit extends Model {
+     });
+ 
+     safeMirrorDbHandler(() => {
+-      UnitMirror.belongsTo(Vintage, {
+-        sourceKey: 'vintageId',
+-        foreignKey: 'vintageId',
++      UnitMirror.belongsTo(Issuance, {
++        sourceKey: 'issuanceId',
++        foreignKey: 'issuanceId',
+       });
+ 
+       // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
+@@ -305,7 +305,7 @@ class Unit extends Model {
+       unit: 'warehouseUnitId',
+       qualifications: 'id',
+       qualification_units: 'qualificationunitId',
+-      vintages: 'id',
++      issuances: 'id',
+     };
+ 
+     const insertChangeList = transformFullXslsToChangeList(
+@@ -330,9 +330,9 @@ class Unit extends Model {
+         ..._.get(insertChangeList, 'qualifications', []),
+         ..._.get(updateChangeList, 'qualifications', []),
+       ],
+-      vintages: [
+-        ..._.get(insertChangeList, 'vintages', []),
+-        ..._.get(updateChangeList, 'vintages', []),
++      issuances: [
++        ..._.get(insertChangeList, 'issuances', []),
++        ..._.get(updateChangeList, 'issuances', []),
+       ],
+       qualificationUnits: [
+         ..._.get(insertChangeList, 'qualification_units', []),
+diff --git a/src/models/units/units.modeltypes.cjs b/src/models/units/units.modeltypes.cjs
+index 0905db7..bd4d59e 100644
+--- a/src/models/units/units.modeltypes.cjs
++++ b/src/models/units/units.modeltypes.cjs
+@@ -34,7 +34,7 @@ module.exports = {
+   unitMarketplaceLink: Sequelize.STRING,
+   correspondingAdjustmentDeclaration: Sequelize.STRING,
+   correspondingAdjustmentStatus: Sequelize.STRING,
+-  vintageId: Sequelize.STRING,
++  issuanceId: Sequelize.STRING,
+   createdAt: {
+     type: Sequelize.DATE,
+     defaultValue: Sequelize.NOW,
+diff --git a/src/models/units/units.stub.json b/src/models/units/units.stub.json
+index f6fbe60..ce756ef 100644
+--- a/src/models/units/units.stub.json
++++ b/src/models/units/units.stub.json
+@@ -21,7 +21,7 @@
+     "unitMarketplaceLink": "http://climateWarehouse.com/myMarketplace",
+     "correspondingAdjustmentDeclaration": "Commited",
+     "correspondingAdjustmentStatus": "Not Started",
+-    "vintageId": "a6745831-5d5e-45ed-b9fe-fd6aa129df25",
++    "issuanceId": "a6745831-5d5e-45ed-b9fe-fd6aa129df25",
+     "createdAt": "2022-01-18 00:05:45.701 +00:00",
+     "updatedAt": "2022-01-18 00:05:45.701 +00:00"
+   },
+diff --git a/src/models/vintages/index.js b/src/models/vintages/index.js
+deleted file mode 100644
+index 4f0e002..0000000
+--- a/src/models/vintages/index.js
++++ /dev/null
+@@ -1,2 +0,0 @@
+-export * from './vintages.model';
+-export * from './vintages.mock';
+diff --git a/src/routes/v1/index.js b/src/routes/v1/index.js
+index 931369b..67f0359 100644
+--- a/src/routes/v1/index.js
++++ b/src/routes/v1/index.js
+@@ -8,13 +8,13 @@ import {
+   UnitRouter,
+   StagingRouter,
+   OrganizationRouter,
+-  VintageRouter,
++  IssuanceRouter,
+ } from './resources';
+ 
+ V1Router.use('/projects', ProjectRouter);
+ V1Router.use('/units', UnitRouter);
+ V1Router.use('/staging', StagingRouter);
+ V1Router.use('/organizations', OrganizationRouter);
+-V1Router.use('/vintages', VintageRouter);
++V1Router.use('/issuances', IssuanceRouter);
+ 
+ export { V1Router };
+diff --git a/src/routes/v1/resources/index.js b/src/routes/v1/resources/index.js
+index fbf8642..77de230 100644
+--- a/src/routes/v1/resources/index.js
++++ b/src/routes/v1/resources/index.js
+@@ -2,4 +2,4 @@ export * from './projects';
+ export * from './units';
+ export * from './staging';
+ export * from './organization';
+-export * from './vintages';
++export * from './issuances';
+diff --git a/src/routes/v1/resources/issuances.js b/src/routes/v1/resources/issuances.js
+new file mode 100644
+index 0000000..912e4c3
+--- /dev/null
++++ b/src/routes/v1/resources/issuances.js
+@@ -0,0 +1,13 @@
++'use strict';
++
++import express from 'express';
++
++import { IssuanceController } from '../../../controllers';
++
++const IssuanceRouter = express.Router();
++
++IssuanceRouter.get('/', (req, res) => {
++  return IssuanceController.findAll(req, res);
++});
++
++export { IssuanceRouter };
+diff --git a/src/routes/v1/resources/vintages.js b/src/routes/v1/resources/vintages.js
+deleted file mode 100644
+index 2007f7e..0000000
+--- a/src/routes/v1/resources/vintages.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-'use strict';
+-
+-import express from 'express';
+-
+-import { VintageController } from '../../../controllers';
+-
+-const VintageRouter = express.Router();
+-
+-VintageRouter.get('/', (req, res) => {
+-  return VintageController.findAll(req, res);
+-});
+-
+-export { VintageRouter };
+diff --git a/src/validations/vintages.validation.js b/src/validations/issuances.validation.js
+similarity index 63%
+rename from src/validations/vintages.validation.js
+rename to src/validations/issuances.validation.js
+index 12f22b3..918d8b4 100644
+--- a/src/validations/vintages.validation.js
++++ b/src/validations/issuances.validation.js
+@@ -1,6 +1,6 @@
+ import Joi from 'joi';
+ 
+-export const newVintageScheme = Joi.object({
++export const newIssuanceScheme = Joi.object({
+   startDate: Joi.date().required(),
+   endDate: Joi.date().required(),
+   verificationApproach: Joi.string().required(),
+@@ -8,6 +8,6 @@ export const newVintageScheme = Joi.object({
+   verificationBody: Joi.string().required(),
+ });
+ 
+-export const existingVintageSchema = Joi.object({
+-  vintageId: Joi.string().required(),
++export const existingIssuanceSchema = Joi.object({
++  issuanceId: Joi.string().required(),
+ });
+diff --git a/src/validations/projects.validations.js b/src/validations/projects.validations.js
+index f61de53..ac18eea 100644
+--- a/src/validations/projects.validations.js
++++ b/src/validations/projects.validations.js
+@@ -22,7 +22,7 @@ export const baseSchema = {
+   estimatedAnnualAverageEmissionReduction: Joi.number().required(),
+   projectLocations: Joi.array().min(1).optional(),
+   qualifications: Joi.array().min(1).optional(),
+-  vintages: Joi.array().min(1).optional(),
++  issuances: Joi.array().min(1).optional(),
+   coBenefits: Joi.array().min(1).optional(),
+   relatedProjects: Joi.array().min(1).optional(),
+ };
+diff --git a/src/validations/units.validations.js b/src/validations/units.validations.js
+index 161c585..2e2bf85 100644
+--- a/src/validations/units.validations.js
++++ b/src/validations/units.validations.js
+@@ -1,6 +1,9 @@
+ import Joi from 'joi';
+ import { transformSerialNumberBlock } from '../utils/helpers';
+-import { newVintageScheme, existingVintageSchema } from './vintages.validation';
++import {
++  newIssuanceScheme,
++  existingIssuanceSchema,
++} from './issuances.validation';
+ 
+ const customSerialNumberValidator = (obj, helper) => {
+   const { serialNumberBlock, serialNumberPattern } = obj;
+@@ -54,8 +57,8 @@ const unitsBaseSchema = {
+   correspondingAdjustmentStatus: Joi.string()
+     .valid('Unknown', 'Not Started', 'Pending')
+     .required(),
+-  vintages: Joi.alternatives()
+-    .try(newVintageScheme, existingVintageSchema)
++  issuances: Joi.alternatives()
++    .try(newIssuanceScheme, existingIssuanceSchema)
+     .optional(),
+ };
+ 
+diff --git a/tests/integration/unit.spec.js b/tests/integration/unit.spec.js
+index bc66830..98ab1c3 100644
+--- a/tests/integration/unit.spec.js
++++ b/tests/integration/unit.spec.js
+@@ -325,12 +325,16 @@ describe('Create Unit Integration', function () {
+ 
+     // filter out the fields we dont care about in this test, including the virtual fields
+     expect(
+-      _.omit(mirrorRecord1.dataValues, ['createdAt', 'updatedAt', 'vintageId']),
++      _.omit(mirrorRecord1.dataValues, [
++        'createdAt',
++        'updatedAt',
++        'issuanceId',
++      ]),
+     ).to.deep.equal(
+       _.omit(splitRecord1, [
+         'qualifications', // mapped associated field
+-        'vintage', // mapped associated field
+-        'vintageId',
++        'issuance', // mapped associated field
++        'issuanceId',
+         'unitBlockStart', // virtual field
+         'unitBlockEnd', // virtual field
+         'unitCount', // virtual field
+@@ -368,12 +372,16 @@ describe('Create Unit Integration', function () {
+ 
+     // filter out the fields we dont care about in this test, including the virtual fields
+     expect(
+-      _.omit(mirrorRecord2.dataValues, ['createdAt', 'updatedAt', 'vintageId']),
++      _.omit(mirrorRecord2.dataValues, [
++        'createdAt',
++        'updatedAt',
++        'issuanceId',
++      ]),
+     ).to.deep.equal(
+       _.omit(splitRecord2, [
+         'qualifications', // mapped associated field
+-        'vintage', // mapped associated field
+-        'vintageId',
++        'issuance', // mapped associated field
++        'issuanceId',
+         'unitBlockStart', // virtual field
+         'unitBlockEnd', // virtual field
+         'unitCount', // virtual field
+@@ -499,7 +507,7 @@ describe('Create Unit Integration', function () {
+     ).to.deep.equal(
+       _.omit(newRecord, [
+         'qualifications', // mapped associated field
+-        'vintage', // mapped associated field
++        'issuance', // mapped associated field
+         'unitBlockStart', // virtual field
+         'unitBlockEnd', // virtual field
+         'unitCount', // virtual field
+-- 
+2.34.1.windows.1
+

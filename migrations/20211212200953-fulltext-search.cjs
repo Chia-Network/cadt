@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
+  up: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE projects_fts USING fts5(
@@ -55,13 +55,13 @@ module.exports = {
           unitMarketplaceLink,
           correspondingAdjustmentDeclaration,
           correspondingAdjustmentStatus,
-          vintageId
+          issuanceId
         );
       `);
     }
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`drop table projects_fts;`);
       await queryInterface.sequelize.query('drop table units_fts;');

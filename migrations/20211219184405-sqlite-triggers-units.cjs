@@ -28,7 +28,7 @@ module.exports = {
           unitMarketplaceLink,
           correspondingAdjustmentDeclaration,
           correspondingAdjustmentStatus,
-          vintageId
+          issuanceId
         ) VALUES (
           new.warehouseUnitId,
           new.orgUid,
@@ -52,7 +52,7 @@ module.exports = {
           new.unitMarketplaceLink,
           new.correspondingAdjustmentDeclaration,
           new.correspondingAdjustmentStatus,
-          new.vintageId
+          new.issuanceId
         );
       END;`);
 
@@ -88,7 +88,7 @@ module.exports = {
           unitMarketplaceLink,
           correspondingAdjustmentDeclaration,
           correspondingAdjustmentStatus,
-          vintageId
+          issuanceId
         ) VALUES (
           new.warehouseUnitId,
           new.orgUid,
@@ -112,7 +112,7 @@ module.exports = {
           new.unitMarketplaceLink,
           new.correspondingAdjustmentDeclaration,
           new.correspondingAdjustmentStatus,
-          new.vintageId
+          new.issuanceId
         );
       END;
       `);

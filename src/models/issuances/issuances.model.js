@@ -2,29 +2,29 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize, safeMirrorDbHandler } from '../database';
-import { Project, Unit } from '../../models';
+import { Project, Unit } from '..';
 
-import ModelTypes from './vintages.modeltypes.cjs';
-import { VintageMirror } from './vintages.model.mirror';
+import ModelTypes from './issuances.modeltypes.cjs';
+import { IssuanceMirror } from './issuances.model.mirror';
 
-class Vintage extends Model {
+class Issuance extends Model {
   static associate() {
-    Vintage.belongsTo(Project, {
+    Issuance.belongsTo(Project, {
       sourceKey: 'warehouseProjectId',
       foreignKey: 'warehouseProjectId',
     });
 
-    Vintage.hasMany(Unit, {
-      targetKey: 'vintageId',
-      foreignKey: 'vintageId',
+    Issuance.hasMany(Unit, {
+      targetKey: 'issuanceId',
+      foreignKey: 'issuanceId',
     });
 
     safeMirrorDbHandler(() => {
-      VintageMirror.belongsTo(Project, {
+      IssuanceMirror.belongsTo(Project, {
         targetKey: 'warehouseProjectId',
         foreignKey: 'warehouseProjectId',
       });
-      VintageMirror.hasOne(Unit, {
+      IssuanceMirror.hasOne(Unit, {
         targetKey: 'warehouseUnitId',
         foreignKey: 'warehouseUnitId',
       });
@@ -32,24 +32,24 @@ class Vintage extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => VintageMirror.create(values, options));
+    safeMirrorDbHandler(() => IssuanceMirror.create(values, options));
     return super.create(values, options);
   }
 
   static async destroy(values) {
-    safeMirrorDbHandler(() => VintageMirror.destroy(values));
+    safeMirrorDbHandler(() => IssuanceMirror.destroy(values));
     return super.destroy(values);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => VintageMirror.upsert(values, options));
+    safeMirrorDbHandler(() => IssuanceMirror.upsert(values, options));
     return super.create(values, options);
   }
 }
 
-Vintage.init(ModelTypes, {
+Issuance.init(ModelTypes, {
   sequelize,
-  modelName: 'vintage',
+  modelName: 'issuance',
 });
 
-export { Vintage };
+export { Issuance };

@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-export const newVintageScheme = Joi.object({
+export const newIssuanceScheme = Joi.object({
   startDate: Joi.date().required(),
   endDate: Joi.date().required(),
   verificationApproach: Joi.string().required(),
@@ -8,6 +8,6 @@ export const newVintageScheme = Joi.object({
   verificationBody: Joi.string().required(),
 });
 
-export const existingVintageSchema = Joi.object({
-  vintageId: Joi.string().required(),
+export const existingIssuanceSchema = Joi.object({
+  issuanceId: Joi.string().required(),
 });

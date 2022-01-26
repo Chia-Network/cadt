@@ -4,15 +4,15 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 
 import { sequelizeMirror, safeMirrorDbHandler } from '../database';
-import ModelTypes from './vintages.modeltypes.cjs';
+import ModelTypes from './issuances.modeltypes.cjs';
 
-class VintageMirror extends Model {}
+class IssuanceMirror extends Model {}
 
 safeMirrorDbHandler(() => {
-  VintageMirror.init(ModelTypes, {
+  IssuanceMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
-    modelName: 'vintage',
+    modelName: 'issuance',
   });
 });
 
-export { VintageMirror };
+export { IssuanceMirror };

@@ -325,12 +325,16 @@ describe('Create Unit Integration', function () {
 
     // filter out the fields we dont care about in this test, including the virtual fields
     expect(
-      _.omit(mirrorRecord1.dataValues, ['createdAt', 'updatedAt', 'vintageId']),
+      _.omit(mirrorRecord1.dataValues, [
+        'createdAt',
+        'updatedAt',
+        'issuanceId',
+      ]),
     ).to.deep.equal(
       _.omit(splitRecord1, [
         'qualifications', // mapped associated field
-        'vintage', // mapped associated field
-        'vintageId',
+        'issuance', // mapped associated field
+        'issuanceId',
         'unitBlockStart', // virtual field
         'unitBlockEnd', // virtual field
         'unitCount', // virtual field
@@ -368,12 +372,16 @@ describe('Create Unit Integration', function () {
 
     // filter out the fields we dont care about in this test, including the virtual fields
     expect(
-      _.omit(mirrorRecord2.dataValues, ['createdAt', 'updatedAt', 'vintageId']),
+      _.omit(mirrorRecord2.dataValues, [
+        'createdAt',
+        'updatedAt',
+        'issuanceId',
+      ]),
     ).to.deep.equal(
       _.omit(splitRecord2, [
         'qualifications', // mapped associated field
-        'vintage', // mapped associated field
-        'vintageId',
+        'issuance', // mapped associated field
+        'issuanceId',
         'unitBlockStart', // virtual field
         'unitBlockEnd', // virtual field
         'unitCount', // virtual field
@@ -499,7 +507,7 @@ describe('Create Unit Integration', function () {
     ).to.deep.equal(
       _.omit(newRecord, [
         'qualifications', // mapped associated field
-        'vintage', // mapped associated field
+        'issuance', // mapped associated field
         'unitBlockStart', // virtual field
         'unitBlockEnd', // virtual field
         'unitCount', // virtual field
