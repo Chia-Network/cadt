@@ -198,7 +198,6 @@ export const transformFullXslsToChangeList = (
             // filter out the header row
             .filter((r) => r[primaryKeyIndex] !== headerRow[primaryKeyIndex])
             .forEach((r) => {
-              console.log(_.zipObject(headerRow, r));
               const dataLayerKey = Buffer.from(
                 `${key}_${r[primaryKeyIndex]}`,
               ).toString('hex');

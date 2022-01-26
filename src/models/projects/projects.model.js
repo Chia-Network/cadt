@@ -87,6 +87,17 @@ class Project extends Model {
     return super.destroy(values);
   }
 
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => ProjectMirror.create(values, options));
+    const upsertResult = await super.create(values, options);
+
+    const { orgUid } = values;
+
+    Project.changes.next(['projects', orgUid]);
+
+    return upsertResult;
+  }
+
   static async fts(searchStr, orgUid, pagination, columns = []) {
     const dialect = sequelize.getDialect();
 

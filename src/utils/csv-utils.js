@@ -9,7 +9,6 @@ import { Staging, Organization, Unit, Project } from '../models';
 import {
   assertOrgIsHomeOrg,
   assertUnitRecordExists,
-  assertOrgUidIsValid,
 } from '../utils/data-assertions';
 
 export const createUnitRecordsFromCsv = (csvFile) => {
@@ -41,16 +40,6 @@ export const createUnitRecordsFromCsv = (csvFile) => {
           newRecord.orgUid = orgUid;
 
           action = 'INSERT';
-        }
-
-        // All new records are owned by this org, but give them a chance to override this
-        if (newRecord.unitOwnerOrgUid) {
-          await assertOrgUidIsValid(
-            newRecord.unitOwnerOrgUid,
-            'unitOwnerOrgUid',
-          );
-        } else {
-          newRecord.unitOwnerOrgUid = orgUid;
         }
 
         const stagedData = {

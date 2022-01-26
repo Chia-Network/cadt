@@ -1,6 +1,6 @@
 import _ from 'lodash';
 
-import { Staging, Project, Unit } from '../models';
+import { Staging } from '../models';
 import { assertStagingRecordExists } from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
@@ -8,51 +8,15 @@ export const findAll = async (req, res) => {
     const stagingData = await Staging.findAll();
 
     const response = await Promise.all(
-      stagingData.map(async (data) => {
-        const workingData = _.cloneDeep(data.dataValues);
-        workingData.diff = {};
-        if (workingData.action === 'INSERT') {
-          workingData.diff.original = {};
-          workingData.diff.change = JSON.parse(workingData.data);
-        }
-
-        if (workingData.action === 'UPDATE') {
-          let original;
-          if (workingData.table === 'Projects') {
-            original = await Project.findOne({
-              where: { warehouseProjectId: workingData.uuid },
-              include: Project.getAssociatedModels(),
-            });
-          }
-
-          if (workingData.table === 'Units') {
-            original = await Unit.findOne({
-              where: { warehouseUnitId: workingData.uuid },
-              include: Unit.getAssociatedModels(),
-            });
-          }
-
-          workingData.diff.original = original;
-          workingData.diff.change = JSON.parse(workingData.data);
-        }
-
-        if (workingData.action === 'DELETE') {
-          let original;
-          if (workingData.table === 'Projects') {
-            original = await Project.findOne({
-              where: { warehouseProjectId: workingData.uuid },
-            });
-          }
-
-          if (workingData.table === 'Units') {
-            original = await Unit.findOne({
-              where: { warehouseUnitId: workingData.uuid },
-            });
-          }
-
-          workingData.diff.original = original;
-          workingData.diff.change = {};
-        }
+      stagingData.map(async (stagingRecord) => {
+        const { uuid, table, action, data } = stagingRecord;
+        const workingData = _.cloneDeep(stagingRecord.dataValues);
+        workingData.diff = await Staging.getDiffObject(
+          uuid,
+          table,
+          action,
+          data,
+        );
 
         delete workingData.data;
 

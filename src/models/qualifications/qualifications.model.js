@@ -48,6 +48,11 @@ class Qualification extends Model {
     safeMirrorDbHandler(() => QualificationMirror.destroy(values));
     return super.destroy(values);
   }
+
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => QualificationMirror.upsert(values, options));
+    return super.create(values, options);
+  }
 }
 
 Qualification.init(ModelTypes, {

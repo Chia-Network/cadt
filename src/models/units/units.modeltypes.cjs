@@ -11,7 +11,7 @@ module.exports = {
   // The orgUid is teh singeltonId of the
   // organizations tables on the datalayer
   orgUid: Sequelize.STRING,
-  unitOwnerOrgUid: Sequelize.STRING,
+  unitOwner: Sequelize.STRING,
   countryJurisdictionOfOwner: Sequelize.STRING,
   inCountryJurisdictionOfOwner: Sequelize.STRING,
   serialNumberBlock: Sequelize.STRING,

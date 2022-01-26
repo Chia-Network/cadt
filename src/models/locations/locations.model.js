@@ -35,6 +35,11 @@ class ProjectLocation extends Model {
     safeMirrorDbHandler(() => ProjectLocationMirror.destroy(values));
     return super.destroy(values);
   }
+
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => ProjectLocationMirror.upsert(values, options));
+    return super.create(values, options);
+  }
 }
 
 ProjectLocation.init(ModelTypes, {

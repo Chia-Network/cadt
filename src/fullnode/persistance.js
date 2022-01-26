@@ -6,17 +6,21 @@ process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const rpcUrl = process.env.DATALAYER_URL;
 
-const certFile = path.resolve(
-  `${process.env.CHIA_ROOT}/config/ssl/data_layer/private_data_layer.crt`,
-);
-const keyFile = path.resolve(
-  `${process.env.CHIA_ROOT}/config/ssl/data_layer/private_data_layer.key`,
-);
+const getBaseOptions = () => {
+  const certFile = path.resolve(
+    `${process.env.CHIA_ROOT}/config/ssl/data_layer/private_data_layer.crt`,
+  );
+  const keyFile = path.resolve(
+    `${process.env.CHIA_ROOT}/config/ssl/data_layer/private_data_layer.key`,
+  );
 
-const baseOptions = {
-  method: 'POST',
-  cert: fs.readFileSync(certFile),
-  key: fs.readFileSync(keyFile),
+  const baseOptions = {
+    method: 'POST',
+    cert: fs.readFileSync(certFile),
+    key: fs.readFileSync(keyFile),
+  };
+
+  return baseOptions;
 };
 
 export const createDataLayerStore = async () => {
@@ -25,7 +29,7 @@ export const createDataLayerStore = async () => {
     body: JSON.stringify({}),
   };
 
-  const response = await request(Object.assign({}, baseOptions, options));
+  const response = await request(Object.assign({}, getBaseOptions(), options));
 
   if (response.body.id) {
     return response.body.id;
@@ -43,7 +47,7 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
     }),
   };
 
-  const response = request(Object.assign({}, baseOptions, options));
+  const response = request(Object.assign({}, getBaseOptions(), options));
 
   if (response.body) {
     return response.body;
@@ -60,7 +64,7 @@ export const getRoot = async (storeId) => {
     }),
   };
 
-  const response = request(Object.assign({}, baseOptions, options));
+  const response = request(Object.assign({}, getBaseOptions(), options));
 
   if (response.body && response.body.keys_values) {
     return response.body.keys_values;
@@ -76,7 +80,7 @@ export const getStoreData = async (storeId) => {
       }),
     };
 
-    const response = request(Object.assign({}, baseOptions, options));
+    const response = request(Object.assign({}, getBaseOptions(), options));
 
     if (response.body && response.body.keys_values) {
       return response.body.keys_values;

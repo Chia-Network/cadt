@@ -17,7 +17,6 @@ import {
   assertUnitRecordExists,
   assertSumOfSplitUnitsIsValid,
   assertCsvFileInRequest,
-  assertOrgUidIsValid,
   assertHomeOrgExists,
 } from '../utils/data-assertions';
 
@@ -39,7 +38,6 @@ export const create = async (req, res) => {
     // All new units are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
     newRecord.orgUid = orgUid;
-    newRecord.unitOwnerOrgUid = orgUid;
 
     const stagedData = {
       uuid,
@@ -51,7 +49,7 @@ export const create = async (req, res) => {
     await Staging.create(stagedData);
 
     res.json({
-      message: 'Unit created successfully',
+      message: 'Unit staged successfully',
     });
   } catch (error) {
     res.status(400).json({
@@ -171,10 +169,6 @@ export const update = async (req, res) => {
 
     await assertOrgIsHomeOrg(originalRecord.orgUid);
 
-    if (req.body.unitOwnerOrgUid) {
-      await assertOrgUidIsValid(req.body.unitOwnerOrgUid, 'unitOwnerOrgUid');
-    }
-
     // merge the new record into the old record
     let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
     stagedRecord = stagedRecord.map((record) =>
@@ -265,9 +259,8 @@ export const split = async (req, res) => {
           newUnitBlockEnd,
         );
 
-        if (record.unitOwnerOrgUid) {
-          await assertOrgUidIsValid(record.unitOwnerOrgUid, 'unitOwnerOrgUid');
-          newRecord.unitOwnerOrgUid = record.unitOwnerOrgUid;
+        if (record.unitOwner) {
+          newRecord.unitOwner = record.unitOwner;
         }
 
         return newRecord;

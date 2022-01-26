@@ -9,7 +9,7 @@
   "scripts": {
     "requirements-check": "node --experimental-json-modules check_node_version.js",
     "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
-    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test mocha tests/**/*.spec.js --reporter spec --exit --timeout 30000",
+    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha tests/**/*.spec.js --reporter spec --exit --timeout 30000",
     "release": "./node_modules/.bin/standard-version && git push --tags",
     "postinstall": "npm run requirements-check",
     "resetdb": "rm -f ./data.sqlite3 && npx sequelize-cli db:migrate --env local && npx sequelize-cli db:seed:all --debug --env local",

@@ -58,7 +58,7 @@ export const create = async (req, res) => {
       table: Project.stagingTableName,
       data: JSON.stringify([newRecord]),
     });
-    res.json('Added project to stage');
+    res.json({ message: 'Project staged successfully' });
   } catch (err) {
     res.status(400).json({
       message: 'Error creating new project',

@@ -42,42 +42,30 @@ export const syncDataLayerStore = async (storeId) => {
     storeData = await dataLayer.getStoreData(storeId);
   }
 
-  // Extract out the orgUid thats being updated so we can
-  // clean that orgs tables and repopulate without truncating
-  // the entire db
-  const { decodedStoreData, orgUid } = storeData.keys_values.reduce(
-    (accum, kv) => {
-      const decodedRecord = {
-        key: new Buffer(kv.key.replace(`${storeId}_`, ''), 'hex').toString(),
-        value: JSON.parse(new Buffer(kv.value, 'hex').toString()),
-      };
+  const organizationToTrucate = await Organization.findOne({
+    where: { registryId: storeId },
+    attributes: ['orgUid'],
+  });
 
-      accum.decodedStoreData.push(decodedRecord);
-      if (_.get(decodedRecord, 'value.orgUid')) {
-        accum.orgUid = _.get(decodedRecord, 'value.orgUid');
-      }
-
-      return accum;
-    },
-    {
-      decodedStoreData: [],
-      orgUid: null,
-    },
-  );
-
-  if (orgUid) {
+  if (organizationToTrucate) {
     await Promise.all([
       // the child table records should cascade delete so we only need to
       // truncate the primary tables
-      Unit.destroy({ where: { orgUid } }),
-      Project.destroy({ where: { orgUid } }),
-      QualificationUnit.destroy({ where: { orgUid } }),
+      Unit.destroy({ where: { orgUid: organizationToTrucate.orgUid } }),
+      Project.destroy({ where: { orgUid: organizationToTrucate.orgUid } }),
+      QualificationUnit.destroy({
+        where: { orgUid: organizationToTrucate.orgUid },
+      }),
     ]);
   }
 
   await Promise.all(
-    decodedStoreData.map(async (kv) => {
-      const { key, value } = kv;
+    storeData.keys_values.map(async (kv) => {
+      const key = new Buffer(
+        kv.key.replace(`${storeId}_`, ''),
+        'hex',
+      ).toString();
+      const value = JSON.parse(new Buffer(kv.value, 'hex').toString());
       if (key.includes('unit')) {
         await Unit.upsert(value);
         await Staging.destroy({ where: { uuid: value.warehouseUnitId } });
@@ -99,6 +87,21 @@ export const syncDataLayerStore = async (storeId) => {
       }
     }),
   );
+
+  // clean up any staging records than involved delete commands,
+  // since we cant track that they came in through the uuid,
+  // we can infer this because diff.original is null instead of empty object.
+  const stagingRecords = await Staging.findAll({ raw: true });
+
+  const stagingRecordsToDelete = await stagingRecords.filter(async (record) => {
+    const { uuid, table, action, data } = record;
+    const diff = await Staging.getDiffObject(uuid, table, action, data);
+    return diff.original === null;
+  });
+
+  await Staging.destroy({
+    where: { uuid: stagingRecordsToDelete.map((record) => record.uuid) },
+  });
 };
 
 export const dataLayerWasUpdated = async () => {

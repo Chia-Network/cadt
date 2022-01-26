@@ -110,6 +110,17 @@ class Unit extends Model {
     return createResult;
   }
 
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => UnitMirror.create(values, options));
+    const upsertResult = await super.create(values, options);
+
+    const { orgUid } = values;
+
+    Unit.changes.next(['projects', orgUid]);
+
+    return upsertResult;
+  }
+
   static async destroy(values) {
     safeMirrorDbHandler(() => UnitMirror.destroy(values));
 
@@ -168,7 +179,7 @@ class Unit extends Model {
 
     let sql = `
     SELECT ${fields} FROM units WHERE MATCH (
-        unitOwnerOrgUid,
+        unitOwner,
         countryJurisdictionOfOwner,
         inCountryJurisdictionOfOwner,
         serialNumberBlock,

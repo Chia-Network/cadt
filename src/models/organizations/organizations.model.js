@@ -23,7 +23,7 @@ class Organization extends Model {
   }
 
   static async getOrgsMap() {
-    const organizations = Organization.findOne({
+    const organizations = await Organization.findAll({
       attributes: ['orgUid', 'name', 'icon', 'isHome', 'subscribed'],
       raw: true,
     });

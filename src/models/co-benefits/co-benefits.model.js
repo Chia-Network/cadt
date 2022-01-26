@@ -29,6 +29,11 @@ class CoBenefit extends Model {
     return super.create(values, options);
   }
 
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => CoBenefitMirror.upsert(values, options));
+    return super.create(values, options);
+  }
+
   static async destroy(values) {
     safeMirrorDbHandler(() => CoBenefitMirror.destroy(values));
     return super.destroy(values);

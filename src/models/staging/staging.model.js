@@ -25,6 +25,54 @@ class Staging extends Model {
     return super.destroy(values);
   }
 
+  static getDiffObject = async (uuid, table, action, data) => {
+    const diff = {};
+    if (action === 'INSERT') {
+      diff.original = {};
+      diff.change = JSON.parse(data);
+    }
+
+    if (action === 'UPDATE') {
+      let original;
+      if (table === 'Projects') {
+        original = await Project.findOne({
+          where: { warehouseProjectId: uuid },
+          include: Project.getAssociatedModels(),
+        });
+      }
+
+      if (table === 'Units') {
+        original = await Unit.findOne({
+          where: { warehouseUnitId: uuid },
+          include: Unit.getAssociatedModels(),
+        });
+      }
+
+      diff.original = original;
+      diff.change = JSON.parse(data);
+    }
+
+    if (action === 'DELETE') {
+      let original;
+      if (table === 'Projects') {
+        original = await Project.findOne({
+          where: { warehouseProjectId: uuid },
+        });
+      }
+
+      if (table === 'Units') {
+        original = await Unit.findOne({
+          where: { warehouseUnitId: uuid },
+        });
+      }
+
+      diff.original = original;
+      diff.change = {};
+    }
+
+    return diff;
+  };
+
   static seperateStagingDataIntoActionGroups = (stagedData, table) => {
     const insertRecords = [];
     const updateRecords = [];
@@ -41,11 +89,34 @@ class Staging extends Model {
         if (stagingRecord.action === 'INSERT') {
           insertRecords.push(...JSON.parse(stagingRecord.data));
         } else if (stagingRecord.action === 'UPDATE') {
-          updateRecords.push(...JSON.parse(stagingRecord.data));
-        } else if (stagingRecord.action === 'DELETE') {
+          let tablePrefix = table.toLowerCase();
+          // hacky fix to account for the units and projects table not
+          // being lowercase and plural in the xsls transformation
+          if (tablePrefix === 'units' || tablePrefix === 'projects') {
+            tablePrefix = tablePrefix.replace(/s\s*$/, '');
+          }
+
           deleteChangeList.push({
             action: 'delete',
-            key: Buffer.from(stagingRecord.uuid).toString('hex'),
+            key: Buffer.from(`${tablePrefix}_${stagingRecord.uuid}`).toString(
+              'hex',
+            ),
+          });
+          updateRecords.push(...JSON.parse(stagingRecord.data));
+        } else if (stagingRecord.action === 'DELETE') {
+          let tablePrefix = table.toLowerCase();
+
+          // hacky fix to account for the units and projects table not
+          // being lowercase and plural in the xsls transformation
+          if (tablePrefix === 'units' || tablePrefix === 'projects') {
+            tablePrefix = tablePrefix.replace(/s\s*$/, '');
+          }
+
+          deleteChangeList.push({
+            action: 'delete',
+            key: Buffer.from(`${tablePrefix}_${stagingRecord.uuid}`).toString(
+              'hex',
+            ),
           });
         }
       });

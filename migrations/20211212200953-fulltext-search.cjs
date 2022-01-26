@@ -35,7 +35,7 @@ module.exports = {
       CREATE VIRTUAL TABLE units_fts USING fts5(
           warehouseUnitId,
           orgUid,
-          unitOwnerOrgUid,
+          unitOwner,
           countryJurisdictionOfOwner,
           inCountryJurisdictionOfOwner,
           serialNumberBlock,
