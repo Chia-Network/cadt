@@ -13,6 +13,7 @@ safeMirrorDbHandler(() => {
     sequelize: sequelizeMirror,
     modelName: 'label',
     foreignKey: 'labelId',
+    timestamps: true,
   });
 });
 

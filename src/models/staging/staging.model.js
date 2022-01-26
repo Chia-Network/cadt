@@ -181,6 +181,7 @@ Staging.init(ModelTypes, {
   sequelize,
   modelName: 'staging',
   freezeTableName: true,
+  timestamps: true,
 });
 
 export { Staging };

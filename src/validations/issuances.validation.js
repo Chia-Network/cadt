@@ -1,6 +1,8 @@
 import Joi from 'joi';
 
 export const newIssuanceScheme = Joi.object({
+  // orgUid - derived upon creation
+  // warehouseProjectId - derived upon creation
   startDate: Joi.date().required(),
   endDate: Joi.date().required(),
   verificationApproach: Joi.string().required(),

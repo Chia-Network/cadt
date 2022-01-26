@@ -44,6 +44,7 @@ class RelatedProject extends Model {
 RelatedProject.init(ModelTypes, {
   sequelize,
   modelName: 'relatedProject',
+  timestamps: true,
 });
 
 export { RelatedProject };
