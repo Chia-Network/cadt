@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
+  up: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`
       CREATE TRIGGER project_insert_fts AFTER INSERT ON projects BEGIN

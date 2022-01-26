@@ -1,16 +1,17 @@
 'use strict';
 
 module.exports = {
+  // eslint-disable-next-line
   up: async (queryInterface, Sequelize) => {
-    /*  await queryInterface.createTable('vintage_unit', {
+    /*  await queryInterface.createTable('issuance_unit', {
       unitId: Sequelize.INTEGER,
-      vintageId: Sequelize.INTEGER,
+      issuanceId: Sequelize.INTEGER,
       createdAt: Sequelize.DATE,
       updatedAt: Sequelize.DATE,
     });*/
   },
 
-  down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('vintage_unit');
+  down: async (queryInterface) => {
+    await queryInterface.dropTable('issuance_unit');
   },
 };

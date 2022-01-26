@@ -7,7 +7,7 @@ import {
   Project,
   ProjectLocation,
   Qualification,
-  Vintage,
+  Issuance,
   CoBenefit,
   RelatedProject,
   Organization,
@@ -134,7 +134,7 @@ export const findOne = async (req, res) => {
     include: [
       ProjectLocation,
       Qualification,
-      Vintage,
+      Issuance,
       CoBenefit,
       RelatedProject,
     ],

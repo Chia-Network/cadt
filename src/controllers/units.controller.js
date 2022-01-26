@@ -3,7 +3,13 @@
 import _ from 'lodash';
 import { uuid as uuidv4 } from 'uuidv4';
 
-import { Staging, Unit, Qualification, Vintage, Organization } from '../models';
+import {
+  Staging,
+  Unit,
+  Qualification,
+  Issuance,
+  Organization,
+} from '../models';
 
 import {
   columnsToInclude,
@@ -63,7 +69,7 @@ export const findAll = async (req, res) => {
   let { page, limit, columns, orgUid, search, xls } = req.query;
   let where = orgUid ? { orgUid } : undefined;
 
-  const includes = [Qualification, Vintage];
+  const includes = [Qualification, Issuance];
 
   if (columns) {
     // Remove any unsupported columns
@@ -116,11 +122,11 @@ export const findAll = async (req, res) => {
       );
     }
 
-    if (columns.includes('vintages')) {
+    if (columns.includes('issuances')) {
       results.rows = await Promise.all(
         results.rows.map(async (result) => {
-          result.dataValues.vintage = await Vintage.findByPk(
-            result.dataValues.vintageId,
+          result.dataValues.issuance = await Issuance.findByPk(
+            result.dataValues.issuanceId,
           );
           return result;
         }),

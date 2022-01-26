@@ -4,7 +4,7 @@ const CoBenifetStub = require('../src/models/co-benefits/co-benefits.stub.json')
 const RelatedProjectStub = require('../src/models/related-projects/related-projects.stub.json');
 const QualificationStub = require('../src/models/qualifications/qualifications.stub.json');
 const RatingsStub = require('../src/models/ratings/ratings.stub.json');
-const VintagesStub = require('../src/models/vintages/vintages.stub.json');
+const IssuanceStub = require('../src/models/issuances/issuances.stub.json');
 const LocationsStub = require('../src/models/locations/locations.stub.json');
 
 module.exports = {
@@ -14,7 +14,7 @@ module.exports = {
     await queryInterface.bulkInsert('relatedProjects', RelatedProjectStub, {});
     await queryInterface.bulkInsert('qualifications', QualificationStub, {});
     await queryInterface.bulkInsert('projectRatings', RatingsStub, {});
-    await queryInterface.bulkInsert('vintages', VintagesStub, {});
+    await queryInterface.bulkInsert('issuances', IssuanceStub, {});
     await queryInterface.bulkInsert('projectLocations', LocationsStub, {});
   },
 
