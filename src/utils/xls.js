@@ -215,10 +215,10 @@ export const tableDataFromXlsx = (xlsx, model) => {
 };
 
 export const updateTablesWithData = async (tableData) => {
-  const { orgUid } = await Organization.getHomeOrg();
-
   // using a transaction ensures either everything is uploaded or everything fails
   await sequelize.transaction(async () => {
+    const { orgUid } = await Organization.getHomeOrg();
+
     for (let [, { model, data }] of Object.values(tableData).entries()) {
       for (let row of data) {
         const existingRecord = await model.findByPk(
