@@ -1,20 +1,17 @@
 'use strict';
+
+/* TODO: Fix seeddata for latest models
 const UnitStub = require('../src/models/units/units.stub.json');
-const JunctionStub = [
-  {
-    warehouseUnitId: '5c960ac1-a180-45a4-9850-be177e26d2fb',
-    qualificationId: '702cafbb-c624-4273-9cdc-c617ad5675df',
-  },
-  {
-    warehouseUnitId: '5c960ac1-a180-45a4-9850-be177e26d2fb',
-    qualificationId: '76903895-840e-406c-b2a0-f90244acf02d',
-  },
-];
+const LabelUnitStub = require('../src/models/labelUnits/labelUnits.stub.json');
+*/
 
 module.exports = {
+  // eslint-disable-next-line no-unused-vars
   up: async (queryInterface) => {
+    /*
     await queryInterface.bulkInsert('units', UnitStub, {});
-    await queryInterface.bulkInsert('qualification_unit', JunctionStub, {});
+    await queryInterface.bulkInsert('label_unit', LabelUnitStub, {});
+    */
   },
 
   down: async (queryInterface) => {

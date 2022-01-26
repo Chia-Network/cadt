@@ -1,18 +1,29 @@
 'use strict';
 
+import _ from 'lodash';
 import Sequelize from 'sequelize';
 import rxjs from 'rxjs';
 const { Model } = Sequelize;
 
-import {sequelize, safeMirrorDbHandler, sanitizeSqliteFtsQuery} from '../database';
+import {
+  sequelize,
+  safeMirrorDbHandler,
+  sanitizeSqliteFtsQuery,
+} from '../database';
 
 import {
   RelatedProject,
-  Vintage,
-  Qualification,
+  Issuance,
+  Label,
   ProjectLocation,
   CoBenefit,
+  Staging,
 } from '../';
+
+import {
+  createXlsFromSequelizeResults,
+  transformFullXslsToChangeList,
+} from '../../utils/xls';
 
 import ModelTypes from './projects.modeltypes.cjs';
 import { ProjectMirror } from './projects.model.mirror';
@@ -23,16 +34,16 @@ class Project extends Model {
   static defaultColumns = Object.keys(ModelTypes);
   static getAssociatedModels = () => [
     ProjectLocation,
-    Qualification,
-    Vintage,
+    Label,
+    Issuance,
     CoBenefit,
     RelatedProject,
   ];
 
   static associate() {
     Project.hasMany(ProjectLocation, { foreignKey: 'warehouseProjectId' });
-    Project.hasMany(Qualification, { foreignKey: 'warehouseProjectId' });
-    Project.hasMany(Vintage, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(Label, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
     Project.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
     Project.hasMany(RelatedProject, { foreignKey: 'warehouseProjectId' });
 
@@ -40,10 +51,10 @@ class Project extends Model {
       ProjectMirror.hasMany(ProjectLocation, {
         foreignKey: 'warehouseProjectId',
       });
-      ProjectMirror.hasMany(Qualification, {
+      ProjectMirror.hasMany(Label, {
         foreignKey: 'warehouseProjectId',
       });
-      ProjectMirror.hasMany(Vintage, { foreignKey: 'warehouseProjectId' });
+      ProjectMirror.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
       ProjectMirror.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
       ProjectMirror.hasMany(RelatedProject, {
         foreignKey: 'warehouseProjectId',
@@ -67,11 +78,24 @@ class Project extends Model {
     safeMirrorDbHandler(() => ProjectMirror.destroy(values));
 
     const record = await super.findOne(values.where);
-    const { orgUid } = record.dataValues;
+
+    if (record) {
+      const { orgUid } = record.dataValues;
+      Project.changes.next(['projects', orgUid]);
+    }
+
+    return super.destroy(values);
+  }
+
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => ProjectMirror.create(values, options));
+    const upsertResult = await super.create(values, options);
+
+    const { orgUid } = values;
 
     Project.changes.next(['projects', orgUid]);
 
-    return super.destroy(values);
+    return upsertResult;
   }
 
   static async fts(searchStr, orgUid, pagination, columns = []) {
@@ -90,13 +114,7 @@ class Project extends Model {
         .filter((col) => !['createdAt', 'updatedAt'].includes(col))
         .filter(
           (col) =>
-            ![
-              ProjectLocation,
-              Qualification,
-              Vintage,
-              CoBenefit,
-              RelatedProject,
-            ]
+            ![ProjectLocation, Label, Issuance, CoBenefit, RelatedProject]
               .map((model) => model.name + 's')
               .includes(col),
         ),
@@ -170,18 +188,19 @@ class Project extends Model {
     if (columns.length) {
       fields = columns.join(', ');
     }
-  
+
     searchStr = sanitizeSqliteFtsQuery(searchStr);
-    
-    if (searchStr === '*') { // * isn't a valid matcher on its own. return empty set
+
+    if (searchStr === '*') {
+      // * isn't a valid matcher on its own. return empty set
       return {
         count: 0,
         rows: [],
-      }
+      };
     }
-  
+
     if (searchStr.startsWith('+')) {
-      searchStr = searchStr.replace('+', '') // If query starts with +, replace it
+      searchStr = searchStr.replace('+', ''); // If query starts with +, replace it
     }
 
     let sql = `SELECT ${fields} FROM projects_fts WHERE projects_fts MATCH :search`;
@@ -213,11 +232,80 @@ class Project extends Model {
       }),
     };
   }
+
+  static generateChangeListFromStagedData(stagedData) {
+    const [insertRecords, updateRecords, deleteChangeList] =
+      Staging.seperateStagingDataIntoActionGroups(stagedData, 'Projects');
+
+    const insertXslsSheets = createXlsFromSequelizeResults(
+      insertRecords,
+      Project,
+      false,
+      true,
+    );
+
+    const updateXslsSheets = createXlsFromSequelizeResults(
+      updateRecords,
+      Project,
+      false,
+      true,
+    );
+
+    const primaryKeyMap = {
+      project: 'warehouseProjectId',
+      projectLocations: 'id',
+      labels: 'id',
+      issuances: 'id',
+      coBenefits: 'id',
+      relatedProjects: 'id',
+    };
+
+    const insertChangeList = transformFullXslsToChangeList(
+      insertXslsSheets,
+      'insert',
+      primaryKeyMap,
+    );
+
+    const updateChangeList = transformFullXslsToChangeList(
+      updateXslsSheets,
+      'update',
+      primaryKeyMap,
+    );
+
+    return {
+      projects: [
+        ..._.get(insertChangeList, 'project', []),
+        ..._.get(updateChangeList, 'project', []),
+        ...deleteChangeList,
+      ],
+      labels: [
+        ..._.get(insertChangeList, 'labels', []),
+        ..._.get(updateChangeList, 'labels', []),
+      ],
+      projectLocations: [
+        ..._.get(insertChangeList, 'projectLocations', []),
+        ..._.get(updateChangeList, 'projectLocations', []),
+      ],
+      issuances: [
+        ..._.get(insertChangeList, 'issuances', []),
+        ..._.get(updateChangeList, 'issuances', []),
+      ],
+      coBenefits: [
+        ..._.get(insertChangeList, 'coBenefits', []),
+        ..._.get(updateChangeList, 'coBenefits', []),
+      ],
+      relatedProjects: [
+        ..._.get(insertChangeList, 'relatedProjects', []),
+        ..._.get(updateChangeList, 'relatedProjects', []),
+      ],
+    };
+  }
 }
 
 Project.init(ModelTypes, {
   sequelize,
   modelName: 'project',
+  timestamps: true,
 });
 
 export { Project };

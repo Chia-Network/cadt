@@ -1,0 +1,3 @@
+Notice and Disclaimer
+
+This custom software published by Chia Network Inc. is governed by the Apache 2.0 License.

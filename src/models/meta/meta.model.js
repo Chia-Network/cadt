@@ -11,6 +11,10 @@ class Meta extends Model {}
 Meta.init(ModelTypes, {
   sequelize,
   modelName: 'meta',
+  freezeTableName: true,
+  timestamps: false,
+  createdAt: false,
+  updatedAt: false,
 });
 
 export { Meta };

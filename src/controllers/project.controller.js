@@ -6,11 +6,11 @@ import {
   Staging,
   Project,
   ProjectLocation,
-  Qualification,
-  Vintage,
+  Label,
+  Issuance,
   CoBenefit,
   RelatedProject,
-  Organization, Unit,
+  Organization,
 } from '../models';
 
 import {
@@ -23,40 +23,47 @@ import {
   assertOrgIsHomeOrg,
   assertProjectRecordExists,
   assertCsvFileInRequest,
+  assertHomeOrgExists,
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
-import {tableDataFromXlsx, createXlsFromSequelizeResults, sendXls, updateTablesWithData} from '../utils/xls';
-import * as stream from "stream";
+import {
+  tableDataFromXlsx,
+  createXlsFromSequelizeResults,
+  sendXls,
+  updateTablesWithData,
+} from '../utils/xls';
 
 export const create = async (req, res) => {
-  const newRecord = _.cloneDeep(req.body);
-  // When creating new projects assign a uuid to is so
-  // multiple organizations will always have unique ids
-  const uuid = uuidv4();
-
-  newRecord.warehouseProjectId = uuid;
-
-  // All new projects are assigned to the home orgUid
-  const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
-  newRecord.orgUid = orgUid;
-
-  // The new project is getting created in this registry
-  newRecord.currentRegistry = orgUid;
-
-  // Unless we are overriding, a new project originates in this org
-  if (!newRecord.registryOfOrigin) {
-    newRecord.registryOfOrigin = orgUid;
-  }
-
   try {
+    await assertHomeOrgExists();
+
+    const newRecord = _.cloneDeep(req.body);
+    // When creating new projects assign a uuid to is so
+    // multiple organizations will always have unique ids
+    const uuid = uuidv4();
+
+    newRecord.warehouseProjectId = uuid;
+
+    // All new projects are assigned to the home orgUid
+    const { orgUid } = await Organization.getHomeOrg();
+    newRecord.orgUid = orgUid;
+
+    // The new project is getting created in this registry
+    newRecord.currentRegistry = orgUid;
+
+    // Unless we are overriding, a new project originates in this org
+    if (!newRecord.registryOfOrigin) {
+      newRecord.registryOfOrigin = orgUid;
+    }
+
     await Staging.create({
       uuid,
       action: 'INSERT',
       table: Project.stagingTableName,
       data: JSON.stringify([newRecord]),
     });
-    res.json('Added project to stage');
+    res.json({ message: 'Project staged successfully' });
   } catch (err) {
     res.status(400).json({
       message: 'Error creating new project',
@@ -68,6 +75,7 @@ export const create = async (req, res) => {
 export const findAll = async (req, res) => {
   let { page, limit, search, orgUid, columns, xls } = req.query;
   let where = orgUid ? { orgUid } : undefined;
+
   const includes = Project.getAssociatedModels();
 
   if (columns) {
@@ -92,16 +100,11 @@ export const findAll = async (req, res) => {
   let pagination = paginationParams(page, limit);
 
   if (xls) {
-    pagination = {page: undefined, limit: undefined};
+    pagination = { page: undefined, limit: undefined };
   }
-  
+
   if (search) {
-    results = await Project.fts(
-      search,
-      orgUid,
-      pagination,
-      columns,
-    );
+    results = await Project.fts(search, orgUid, pagination, columns);
   }
 
   if (!results) {
@@ -118,25 +121,22 @@ export const findAll = async (req, res) => {
   }
 
   const response = optionallyPaginatedResponse(results, page, limit);
-  
+
   if (!xls) {
     return res.json(response);
   } else {
-    return sendXls(Project.name, createXlsFromSequelizeResults(response, Project), res);
+    return sendXls(
+      Project.name,
+      createXlsFromSequelizeResults(response, Project),
+      res,
+    );
   }
-  
 };
 
 export const findOne = async (req, res) => {
   const query = {
     where: { warehouseProjectId: req.query.warehouseProjectId },
-    include: [
-      ProjectLocation,
-      Qualification,
-      Vintage,
-      CoBenefit,
-      RelatedProject,
-    ],
+    include: [ProjectLocation, Label, Issuance, CoBenefit, RelatedProject],
   };
 
   res.json(await Project.findOne(query));
@@ -144,8 +144,8 @@ export const findOne = async (req, res) => {
 
 export const updateFromXLS = async (req, res) => {
   const { files } = req;
-  
-  if(files && files.xlsx) {
+
+  if (files && files.xlsx) {
     const xlsxParsed = xlsx.parse(files.xlsx.data);
     const stagedDataItems = tableDataFromXlsx(xlsxParsed, Project);
     await updateTablesWithData(stagedDataItems);
@@ -158,10 +158,12 @@ export const updateFromXLS = async (req, res) => {
       error: 'File not received',
     });
   }
-}
+};
 
 export const update = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
     );
@@ -196,6 +198,8 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
     );
@@ -223,6 +227,8 @@ export const destroy = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const csvFile = assertCsvFileInRequest(req);
     await createProjectRecordsFromCsv(csvFile);
 

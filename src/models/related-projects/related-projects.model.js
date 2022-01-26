@@ -34,11 +34,17 @@ class RelatedProject extends Model {
     safeMirrorDbHandler(() => RelatedProjectMirror.destroy(values));
     return super.destroy(values);
   }
+
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => RelatedProjectMirror.upsert(values, options));
+    return super.create(values, options);
+  }
 }
 
 RelatedProject.init(ModelTypes, {
   sequelize,
   modelName: 'relatedProject',
+  timestamps: true,
 });
 
 export { RelatedProject };
