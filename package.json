@@ -14,12 +14,13 @@
     "release": "./node_modules/.bin/standard-version && git push --tags",
     "postinstall": "npm run requirements-check",
     "resetdb": "rm -f ./data.sqlite3 && npx sequelize-cli db:migrate --env local && npx sequelize-cli db:seed:all --debug --env local",
-    "cleandb": "rm -f ./data.sqlite3 && && npx sequelize-cli db:migrate --env local",
+    "cleandb": "rm -f ./data.sqlite3 && npx sequelize-cli db:migrate --env local",
     "resetTestDb": "rm -f ./test.sqlite3 && npx sequelize-cli db:migrate --env test && npx sequelize-cli db:seed:all --debug --env test && rm -f ./testMirror.sqlite3 && npx sequelize-cli db:migrate --env mirrorTest",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror && npx sequelize-cli db:create --env mirror && npx sequelize-cli db:migrate --env mirror --debug",
     "prepare": "husky install",
-    "build": "babel src --keep-file-extension  --out-dir build --copy-files",
-    "output-binary": "pkg package.json --out-path dist"
+    "build": "babel src --keep-file-extension --out-dir build --copy-files",
+    "output-binary": "npm run cleandb && cp data.sqlite3 dist/data.sqlite3 && cp .env.copy dist/.env && pkg package.json --out-path dist",
+    "create-distibution": "rm -rf dist && mkdir dist && npm run build && npm run output-binary"
   },
   "dependencies": {
     "body-parser": "^1.19.0",
