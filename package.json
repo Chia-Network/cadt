@@ -19,8 +19,10 @@
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror && npx sequelize-cli db:create --env mirror && npx sequelize-cli db:migrate --env mirror --debug",
     "prepare": "husky install",
     "build": "babel src --keep-file-extension --out-dir build --copy-files",
-    "output-binary": "npm run cleandb && cp data.sqlite3 dist/data.sqlite3 && cp .env.copy dist/.env && pkg package.json --out-path dist",
-    "create-distribution": "rm -rf dist && mkdir dist && npm run build && npm run output-binary"
+    "prepare-binary": "npm run cleandb && cp data.sqlite3 dist/data.sqlite3 && cp .env.copy dist/.env",
+    "create-win-x64-dist": "rm -rf dist && mkdir dist && npm run build && npm run prepare-binary && pkg package.json -t node16-win-x64 --out-path dist",
+    "create-mac-x64-dist": "rm -rf dist && mkdir dist && npm run build && npm run prepare-binary && pkg package.json -t node16-macos-x64 --out-path dist",
+    "create-linux-x64-dist": "rm -rf dist && mkdir dist && npm run build && npm run prepare-binary && pkg package.json -t node16-linux-x64 --out-path dist"
   },
   "dependencies": {
     "body-parser": "^1.19.0",
