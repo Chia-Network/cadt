@@ -1,0 +1,40 @@
+name: Build Binaries
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Binaries
+    runs-on: ubuntu-latest
+    container:
+      image: node:lts
+
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: install global packages
+        run: npm i -g @babel/cli pkg
+
+      - name: create distributions
+        run: npm run create-distribution
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries
+          path: ${{ github.workspace }}/dist
