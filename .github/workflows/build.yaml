@@ -27,6 +27,18 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
+      - name: npm install
+        run: npm install
+
+      - name: npm cache clear --force
+        run: npm cache clear --force
+
+      - name: npm cache rm
+        run: npm cache rm --force
+
+      - name: npm cache verify
+        run: npm cache verify
+
       - name: install global packages
         run: npm i -g @babel/cli @babel/preset-env pkg
 
