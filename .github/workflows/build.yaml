@@ -37,6 +37,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
+      - name: Setup Node 16.x
+        uses: actions/setup-node@v2.4.1
+        with:
+          node-version: '16.x'
+
       - name: Ignore Husky
         run: npm set-script prepare ""
 
