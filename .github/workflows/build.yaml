@@ -17,9 +17,19 @@ concurrency:
 jobs:
   build:
     name: Build Binaries
-    runs-on: ubuntu-latest
-    container:
-      image: node:lts
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        include:
+          - runs-on: ubuntu-latest
+            artifact-name: linux-x64
+            build-command: npm run create-linux-x64-dist
+          - runs-on: macos-latest
+            artifact-name: macos-x64
+            build-command: npm run create-mac-x64-dist
+          - runs-on: windows-latest
+            artifact-name: windows-x64
+            build-command: npm run create-win-x64-dist
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -46,24 +56,24 @@ jobs:
         run: npm i -g @babel/cli @babel/preset-env pkg
 
       - name: create distributions
-        run: npm run create-distribution
+        run: ${{ matrix.build-command }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: binaries
+          name: ${{ matrix.artifact-name }}
           path: ${{ github.workspace }}/dist
 
-      - name: Get list of files
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          file_list=$(find ./dist -type f)
-          echo "::set-output name=file-list::$file_list"
-        id: file-list
-
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            ${{ steps.file-list.outputs.file-list }}
+#      - name: Get list of files
+#        if: startsWith(github.ref, 'refs/tags/')
+#        run: |
+#          file_list=$(find ./dist -type f)
+#          echo "::set-output name=file-list::$file_list"
+#        id: file-list
+#
+#      - name: Release
+#        uses: softprops/action-gh-release@v1
+#        if: startsWith(github.ref, 'refs/tags/')
+#        with:
+#          files: |
+#            ${{ steps.file-list.outputs.file-list }}
