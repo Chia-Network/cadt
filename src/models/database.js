@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // possible values: local, test
-export const sequelize = new Sequelize(config[process.env.NODE_ENV]);
+export const sequelize = new Sequelize(config[process.env.NODE_ENV || 'local']);
 
 const mirrorConfig = process.env.NODE_ENV === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
@@ -21,8 +21,8 @@ export const safeMirrorDbHandler = (callback) => {
 };
 
 export const sanitizeSqliteFtsQuery = (query) => {
-  query = query.replace(/[-](?=.*[-])/g, "+"); // Replace all but the final dash
+  query = query.replace(/[-](?=.*[-])/g, '+'); // Replace all but the final dash
   query = query.replace('-', ''); //Replace the final dash with nothing
   query += '*'; // Query should end with asterisk for partial matching
   return query;
-}
+};

@@ -2,7 +2,7 @@
   "name": "climate-warehouse",
   "version": "0.0.5",
   "private": true,
-  "type": "module",
+  "bin": "build/server.js",
   "engines": {
     "node": ">=16.0.0"
   },
@@ -16,7 +16,9 @@
     "cleandb": "rm -f ./data.sqlite3 && && npx sequelize-cli db:migrate --env local",
     "resetTestDb": "rm -f ./test.sqlite3 && npx sequelize-cli db:migrate --env test && npx sequelize-cli db:seed:all --debug --env test && rm -f ./testMirror.sqlite3 && npx sequelize-cli db:migrate --env mirrorTest",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror && npx sequelize-cli db:create --env mirror && npx sequelize-cli db:migrate --env mirror --debug",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "build": "babel src --keep-file-extension  --out-dir build --copy-files",
+    "output-binary": "pkg package.json --out-path dist"
   },
   "dependencies": {
     "body-parser": "^1.19.0",
@@ -32,6 +34,7 @@
     "mysql2": "^2.3.3",
     "node-xlsx": "^0.21.0",
     "random-hash": "^4.0.1",
+    "regenerator-runtime": "^0.13.9",
     "request-promise": "^4.2.6",
     "rxjs": "^7.5.1",
     "sequelize": "^6.12.0-alpha.1",
