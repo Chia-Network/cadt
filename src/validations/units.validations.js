@@ -1,7 +1,7 @@
 import Joi from 'joi';
 import { transformSerialNumberBlock } from '../utils/helpers';
-import { newIssuanceScheme } from './issuances.validation';
-import { newLabelScheme, existingLabelScheme } from './labels.validations';
+import { newIssuanceSchema } from './issuances.validation';
+import { newLabelSchema, existingLabelSchema } from './labels.validations';
 
 const customSerialNumberValidator = (obj, helper) => {
   const { serialNumberBlock, serialNumberPattern } = obj;
@@ -56,9 +56,9 @@ const unitsBaseSchema = {
   correspondingAdjustmentStatus: Joi.string()
     .valid('Unknown', 'Not Started', 'Pending')
     .required(),
-  issuance: Joi.alternatives().try(newIssuanceScheme).optional(),
+  issuance: Joi.alternatives().try(newIssuanceSchema).optional(),
   labels: Joi.array()
-    .items(Joi.alternatives().try(newLabelScheme, existingLabelScheme))
+    .items(Joi.alternatives().try(newLabelSchema, existingLabelSchema))
     .optional(),
 };
 

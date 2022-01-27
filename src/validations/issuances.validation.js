@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-export const newIssuanceScheme = Joi.object({
+const baseSchema = {
   // orgUid - derived upon creation
   // warehouseProjectId - derived upon creation
   startDate: Joi.date().required(),
@@ -8,8 +8,11 @@ export const newIssuanceScheme = Joi.object({
   verificationApproach: Joi.string().required(),
   verificationDate: Joi.date().required(),
   verificationBody: Joi.string().required(),
-});
+};
+
+export const newIssuanceSchema = Joi.object({ ...baseSchema });
 
 export const existingIssuanceSchema = Joi.object({
-  issuanceId: Joi.string().required(),
+  id: Joi.string().required(),
+  ...baseSchema,
 });

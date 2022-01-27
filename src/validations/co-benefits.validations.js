@@ -1,9 +1,12 @@
 import Joi from 'joi';
 
-export const newCobenefitScheme = Joi.object({
+const baseSchema = {
   cobenefit: Joi.string().required(),
-});
+};
+
+export const newCobenefitSchema = Joi.object({ ...baseSchema });
 
 export const existingCobenefitSchema = Joi.object({
-  cobenefitId: Joi.string().required(),
+  id: Joi.string().required(),
+  ...baseSchema,
 });
