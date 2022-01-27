@@ -5,7 +5,7 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { Project, Unit, Organization } from '../../models';
 
-import rxjs from 'rxjs';
+import * as rxjs from 'rxjs';
 import { sequelize } from '../database';
 
 import { pushDataLayerChangeList } from '../../fullnode';

@@ -11,10 +11,7 @@ git clone git@github.com:Chia-Network/climate-warehouse.git
 cd climate-warehouse
 nvm install 16.0.0
 nvm use 16.0.0
-npm install -g husky
-npm install -g prettier
-npm install -g lint-staged
-npm install -g cross-env
+npm install -g @babel/cli husky prettier lint-staged cross-env
 npm set-script prepare "husky install"
 npm run prepare
 
@@ -23,6 +20,16 @@ chmod ug+x .husky/*
 chmod ug+x .git/hooks/*
 
 npm run start
+```
+
+### Build Binaries
+
+```
+// transcompile project to es5
+npm run build
+
+// Output binaries to dist folder
+npm run output-binary
 ```
 
 ### Prerequisites
