@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: install global packages
-        run: npm i -g @babel/cli pkg
+        run: npm i -g @babel/cli @babel/preset-env pkg
 
       - name: create distributions
         run: npm run create-distribution
