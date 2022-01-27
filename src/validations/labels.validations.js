@@ -1,6 +1,7 @@
 import Joi from 'joi';
 
-const baseSchema = {
+export const labelSchema = Joi.object({
+  id: Joi.string().optional(),
   label: Joi.string().required(),
   creditingPeriodStartDate: Joi.string().required(),
   creditingPeriodEndDate: Joi.string().required(),
@@ -8,13 +9,4 @@ const baseSchema = {
   validityPeriodEndDate: Joi.string().required(),
   unitQuantity: Joi.number().integer().required(),
   labelLink: Joi.string().required(),
-};
-
-export const newLabelSchema = Joi.object({
-  ...baseSchema,
-});
-
-export const existingLabelSchema = Joi.object({
-  id: Joi.string().required(),
-  ...baseSchema,
 });
