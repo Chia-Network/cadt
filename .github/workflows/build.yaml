@@ -27,9 +27,9 @@ jobs:
           - runs-on: macos-latest
             artifact-name: macos-x64
             build-command: npm run create-mac-x64-dist
-          - runs-on: windows-latest
-            artifact-name: windows-x64
-            build-command: npm run create-win-x64-dist
+#          - runs-on: windows-latest
+#            artifact-name: windows-x64
+#            build-command: npm run create-win-x64-dist
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
