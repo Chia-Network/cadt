@@ -2,10 +2,10 @@ import Joi from 'joi';
 
 const baseSchema = {
   label: Joi.string().required(),
-  creditingPeriodStartDate: Joi.date().required(),
-  creditingPeriodEndDate: Joi.date().required(),
-  validityStartDate: Joi.date().required(),
-  validityPeriodEndDate: Joi.date().required(),
+  creditingPeriodStartDate: Joi.string().required(),
+  creditingPeriodEndDate: Joi.string().required(),
+  validityPeriodStartDate: Joi.string().required(),
+  validityPeriodEndDate: Joi.string().required(),
   unitQuantity: Joi.number().integer().required(),
   labelLink: Joi.string().required(),
 };
