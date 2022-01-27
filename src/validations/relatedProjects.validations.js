@@ -1,11 +1,14 @@
 import Joi from 'joi';
 
-export const newRelatedProjectScheme = Joi.object({
+const baseSchema = {
   // warehouseProjectId - derived upon creation
   relationshipType: Joi.string().optional(),
   registry: Joi.string().optional(),
-});
+};
+
+export const newRelatedProjectSchema = Joi.object({ ...baseSchema });
 
 export const existingRelatedProjectSchema = Joi.object({
-  relatedProjectId: Joi.string().required(),
+  id: Joi.string().required(),
+  ...baseSchema,
 });

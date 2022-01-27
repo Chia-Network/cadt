@@ -1,11 +1,17 @@
 import Joi from 'joi';
 import {
-  newCobenefitScheme,
-  newLocationScheme,
-  newRatingScheme,
-  newRelatedProjectScheme,
-  newLabelScheme,
-  newIssuanceScheme,
+  newCobenefitSchema,
+  newLocationSchema,
+  newRatingSchema,
+  newRelatedProjectSchema,
+  newLabelSchema,
+  newIssuanceSchema,
+  existingCobenefitSchema,
+  existingLocationSchema,
+  existingRatingSchema,
+  existingRelatedProjectSchema,
+  existingLabelSchema,
+  existingIssuanceSchema,
 } from '../validations';
 
 export const baseSchema = {
@@ -31,12 +37,35 @@ export const baseSchema = {
   validationDate: Joi.string().optional(),
 
   /* Child Tables */
-  labels: Joi.array().items(newLabelScheme).min(1).optional(),
-  issuances: Joi.array().items(newIssuanceScheme).min(1).optional(),
-  coBenefits: Joi.array().items(newCobenefitScheme).min(1).optional(),
-  relatedProjects: Joi.array().items(newRelatedProjectScheme).min(1).optional(),
-  projectLocations: Joi.array().items(newLocationScheme).min(1).optional(),
-  projectRatings: Joi.array().items(newRatingScheme).min(1).optional(),
+  labels: Joi.array()
+    .items(Joi.alternatives().try(newLabelSchema, existingLabelSchema))
+    .min(1)
+    .optional(),
+  issuances: Joi.array()
+    .items(Joi.alternatives().try(newIssuanceSchema, existingIssuanceSchema))
+    .min(1)
+    .optional(),
+  coBenefits: Joi.array()
+    .items(Joi.alternatives().try(newCobenefitSchema, existingCobenefitSchema))
+    .min(1)
+    .optional(),
+  relatedProjects: Joi.array()
+    .items(
+      Joi.alternatives().try(
+        newRelatedProjectSchema,
+        existingRelatedProjectSchema,
+      ),
+    )
+    .min(1)
+    .optional(),
+  projectLocations: Joi.array()
+    .items(Joi.alternatives().try(newLocationSchema, existingLocationSchema))
+    .min(1)
+    .optional(),
+  projectRatings: Joi.array()
+    .items(Joi.alternatives().try(newRatingSchema, existingRatingSchema))
+    .min(1)
+    .optional(),
 };
 
 export const projectsGetQuerySchema = Joi.object()

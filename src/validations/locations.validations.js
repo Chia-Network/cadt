@@ -1,11 +1,14 @@
 import Joi from 'joi';
 
-export const newLocationScheme = Joi.object({
+const baseSchema = {
   country: Joi.string().required(),
   inCountryRegion: Joi.string().required(),
   geographicIdentifier: Joi.string().required(),
-});
+};
+
+export const newLocationSchema = Joi.object({ ...baseSchema });
 
 export const existingLocationSchema = Joi.object({
-  projectLocationId: Joi.string().required(),
+  id: Joi.string().required(),
+  ...baseSchema,
 });
