@@ -20,7 +20,7 @@
     "prepare": "husky install",
     "build": "babel src --keep-file-extension --out-dir build --copy-files",
     "output-binary": "npm run cleandb && cp data.sqlite3 dist/data.sqlite3 && cp .env.copy dist/.env && pkg package.json --out-path dist",
-    "create-distibution": "rm -rf dist && mkdir dist && npm run build && npm run output-binary"
+    "create-distribution": "rm -rf dist && mkdir dist && npm run build && npm run output-binary"
   },
   "dependencies": {
     "body-parser": "^1.19.0",
