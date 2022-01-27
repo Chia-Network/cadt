@@ -18,6 +18,8 @@ import {
   ProjectLocation,
   CoBenefit,
   Staging,
+  Estimation,
+  Rating,
 } from '../';
 
 import {
@@ -46,6 +48,8 @@ class Project extends Model {
     Project.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
     Project.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
     Project.hasMany(RelatedProject, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(Estimation, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(Rating, { foreignKey: 'warehouseProjectId' });
 
     safeMirrorDbHandler(() => {
       ProjectMirror.hasMany(ProjectLocation, {
@@ -59,6 +63,8 @@ class Project extends Model {
       ProjectMirror.hasMany(RelatedProject, {
         foreignKey: 'warehouseProjectId',
       });
+      ProjectMirror.hasMany(Estimation, { foreignKey: 'warehouseProjectId' });
+      ProjectMirror.hasMany(Rating, { foreignKey: 'warehouseProjectId' });
     });
   }
 
@@ -258,6 +264,8 @@ class Project extends Model {
       issuances: 'id',
       coBenefits: 'id',
       relatedProjects: 'id',
+      estimations: 'id',
+      projectRatings: 'id',
     };
 
     const insertChangeList = transformFullXslsToChangeList(
@@ -297,6 +305,14 @@ class Project extends Model {
       relatedProjects: [
         ..._.get(insertChangeList, 'relatedProjects', []),
         ..._.get(updateChangeList, 'relatedProjects', []),
+      ],
+      estimations: [
+        ..._.get(insertChangeList, 'estimations', []),
+        ..._.get(updateChangeList, 'estimations', []),
+      ],
+      projectRatings: [
+        ..._.get(insertChangeList, 'projectRatings', []),
+        ..._.get(updateChangeList, 'projectRatings', []),
       ],
     };
   }
