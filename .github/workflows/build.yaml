@@ -53,3 +53,17 @@ jobs:
         with:
           name: binaries
           path: ${{ github.workspace }}/dist
+
+      - name: Get list of files
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          file_list=$(find ./dist -type f)
+          echo "::set-output name=file-list::$file_list"
+        id: file-list
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ${{ steps.file-list.outputs.file-list }}
