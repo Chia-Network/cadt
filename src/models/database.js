@@ -6,7 +6,8 @@ dotenv.config();
 // possible values: local, test
 export const sequelize = new Sequelize(config[process.env.NODE_ENV || 'local']);
 
-const mirrorConfig = process.env.NODE_ENV === 'local' ? 'mirror' : 'mirrorTest';
+const mirrorConfig =
+  (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
 
 export const safeMirrorDbHandler = (callback) => {
