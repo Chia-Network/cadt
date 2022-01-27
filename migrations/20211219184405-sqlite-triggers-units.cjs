@@ -1,52 +1,50 @@
 'use strict';
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
+  up: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`
       CREATE TRIGGER unit_insert_fts AFTER INSERT ON units BEGIN
         INSERT INTO units_fts(
           warehouseUnitId,
+          issuanceId,
+          projectLocationId,
           orgUid,
-          unitOwnerOrgUid,
+          unitOwner,
           countryJurisdictionOfOwner,
           inCountryJurisdictionOfOwner,
           serialNumberBlock,
-          unitIdentifier,
+          serialNumberPattern,
+          vintageYear,
           unitType,
-          intendedBuyerOrgUid,
           marketplace,
-          tags,
-          unitStatus,
-          unitTransactionType,
-          unitStatusReason,
-          tokenIssuanceHash,
+          marketplaceLink,
           marketplaceIdentifier,
-          unitsIssuanceLocation,
+          unitTags,
+          unitStatus,
+          unitStatusReason,
           unitRegistryLink,
-          unitMarketplaceLink,
           correspondingAdjustmentDeclaration,
           correspondingAdjustmentStatus
         ) VALUES (
           new.warehouseUnitId,
+          new.issuanceId,
+          new.projectLocationId,
           new.orgUid,
-          new.unitOwnerOrgUid,
+          new.unitOwner,
           new.countryJurisdictionOfOwner,
           new.inCountryJurisdictionOfOwner,
           new.serialNumberBlock,
-          new.unitIdentifier,
+          new.serialNumberPattern,
+          new.vintageYear,
           new.unitType,
-          new.intendedBuyerOrgUid,
           new.marketplace,
-          new.tags,
-          new.unitStatus,
-          new.unitTransactionType,
-          new.unitStatusReason,
-          new.tokenIssuanceHash,
+          new.marketplaceLink,
           new.marketplaceIdentifier,
-          new.unitsIssuanceLocation,
+          new.unitTags,
+          new.unitStatus,
+          new.unitStatusReason,
           new.unitRegistryLink,
-          new.unitMarketplaceLink,
           new.correspondingAdjustmentDeclaration,
           new.correspondingAdjustmentStatus
         );
@@ -63,46 +61,44 @@ module.exports = {
         DELETE FROM units_fts WHERE warehouseUnitId = old.warehouseUnitId;
         INSERT INTO units_fts(
           warehouseUnitId,
+          issuanceId,
+          projectLocationId,
           orgUid,
-          unitOwnerOrgUid,
+          unitOwner,
           countryJurisdictionOfOwner,
           inCountryJurisdictionOfOwner,
           serialNumberBlock,
-          unitIdentifier,
+          serialNumberPattern,
+          vintageYear,
           unitType,
-          intendedBuyerOrgUid,
           marketplace,
-          tags,
-          unitStatus,
-          unitTransactionType,
-          unitStatusReason,
-          tokenIssuanceHash,
+          marketplaceLink,
           marketplaceIdentifier,
-          unitsIssuanceLocation,
+          unitTags,
+          unitStatus,
+          unitStatusReason,
           unitRegistryLink,
-          unitMarketplaceLink,
           correspondingAdjustmentDeclaration,
           correspondingAdjustmentStatus
         ) VALUES (
           new.warehouseUnitId,
+          new.issuanceId,
+          new.projectLocationId,
           new.orgUid,
-          new.unitOwnerOrgUid,
+          new.unitOwner,
           new.countryJurisdictionOfOwner,
           new.inCountryJurisdictionOfOwner,
           new.serialNumberBlock,
-          new.unitIdentifier,
+          new.serialNumberPattern,
+          new.vintageYear,
           new.unitType,
-          new.intendedBuyerOrgUid,
           new.marketplace,
-          new.tags,
-          new.unitStatus,
-          new.unitTransactionType,
-          new.unitStatusReason,
-          new.tokenIssuanceHash,
+          new.marketplaceLink,
           new.marketplaceIdentifier,
-          new.unitsIssuanceLocation,
+          new.unitTags,
+          new.unitStatus,
+          new.unitStatusReason,
           new.unitRegistryLink,
-          new.unitMarketplaceLink,
           new.correspondingAdjustmentDeclaration,
           new.correspondingAdjustmentStatus
         );
@@ -111,7 +107,7 @@ module.exports = {
     }
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query('DROP TRIGGER unit_insert_fts;');
       await queryInterface.sequelize.query('DROP TRIGGER unit_delete_fts;');

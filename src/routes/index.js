@@ -1,5 +1,7 @@
 'use strict';
 
+import _ from 'lodash';
+
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -19,8 +21,22 @@ app.use('/v1', V1Router);
 
 sequelize.authenticate().then(() => console.log('Connected to database'));
 
-app.use(function (err, req, res, next) {
-  console.error(err.stack);
-  res.status(500).send({ error: err });
+app.use((err, req, res, next) => {
+  if (err) {
+    if (_.get(err, 'error.details')) {
+      // format Joi validation errors
+      return res.status(400).json({
+        message: 'API Validation error',
+        errors: err.error.details.map((detail) => {
+          console.log(detail);
+          return _.get(detail, 'context.message', detail.message);
+        }),
+      });
+    }
+
+    return res.status(err.status).json(err);
+  }
+
+  next();
 });
 export default app;

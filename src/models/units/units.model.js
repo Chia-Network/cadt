@@ -1,11 +1,21 @@
 'use strict';
 
+import _ from 'lodash';
 import Sequelize from 'sequelize';
-import { sequelize, safeMirrorDbHandler } from '../database';
-import { Qualification, Vintage } from '../../models';
+import * as rxjs from 'rxjs';
+import {
+  sequelize,
+  safeMirrorDbHandler,
+  sanitizeSqliteFtsQuery,
+} from '../database';
+import { Label, Issuance, Staging } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
-import rxjs from 'rxjs';
+
+import {
+  createXlsFromSequelizeResults,
+  transformFullXslsToChangeList,
+} from '../../utils/xls';
 
 const { Model } = Sequelize;
 
@@ -46,27 +56,45 @@ const virtualFields = {
 };
 
 class Unit extends Model {
+  static stagingTableName = 'Units';
   static changes = new rxjs.Subject();
+
   static defaultColumns = Object.keys(
     Object.assign({}, ModelTypes, virtualFields),
   );
 
+  static getAssociatedModels = () => [
+    {
+      model: Label,
+      as: 'labels',
+    },
+    Issuance,
+  ];
+
   static associate() {
-    Unit.hasOne(Vintage);
+    Unit.belongsTo(Issuance, {
+      sourceKey: 'issuanceId',
+      foreignKey: 'issuanceId',
+    });
 
     // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
-    Unit.belongsToMany(Qualification, {
-      through: 'qualification_unit',
-      as: 'qualifications',
+    Unit.belongsToMany(Label, {
+      foreignKey: 'warehouseUnitId',
+      through: 'label_unit',
+      as: 'labels',
     });
 
     safeMirrorDbHandler(() => {
-      UnitMirror.hasOne(Vintage);
+      UnitMirror.belongsTo(Issuance, {
+        sourceKey: 'issuanceId',
+        foreignKey: 'issuanceId',
+      });
 
       // https://gist.github.com/elliette/20ddc4e827efd9d62bc98752e7a62610#some-important-addendums
-      UnitMirror.belongsToMany(Qualification, {
-        through: 'qualification_unit',
-        as: 'qualifications',
+      UnitMirror.belongsToMany(Label, {
+        foreignKey: 'warehouseUnitId',
+        through: 'label_unit',
+        as: 'labels',
       });
     });
   }
@@ -82,13 +110,26 @@ class Unit extends Model {
     return createResult;
   }
 
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => UnitMirror.create(values, options));
+    const upsertResult = await super.create(values, options);
+
+    const { orgUid } = values;
+
+    Unit.changes.next(['projects', orgUid]);
+
+    return upsertResult;
+  }
+
   static async destroy(values) {
     safeMirrorDbHandler(() => UnitMirror.destroy(values));
 
     const record = await super.findOne(values.where);
-    const { orgUid } = record.dataValues;
 
-    Unit.changes.next(['units', orgUid]);
+    if (record) {
+      const { orgUid } = record.dataValues;
+      Unit.changes.next(['units', orgUid]);
+    }
 
     return super.destroy(values);
   }
@@ -138,7 +179,7 @@ class Unit extends Model {
 
     let sql = `
     SELECT ${fields} FROM units WHERE MATCH (
-        unitOwnerOrgUid,
+        unitOwner,
         countryJurisdictionOfOwner,
         inCountryJurisdictionOfOwner,
         serialNumberBlock,
@@ -157,7 +198,7 @@ class Unit extends Model {
         unitMarketplaceLink,
         cooresponingAdjustmentDeclaration,
         correspondingAdjustmentStatus
-    ) AGAINST ":search"
+    ) AGAINST '":search"'
     `;
 
     if (orgUid) {
@@ -198,7 +239,19 @@ class Unit extends Model {
       fields = columns.join(', ');
     }
 
-    searchStr = searchStr = searchStr.replaceAll('-', '+');
+    searchStr = sanitizeSqliteFtsQuery(searchStr);
+
+    if (searchStr === '*') {
+      // * isn't a valid matcher on its own. return empty set
+      return {
+        count: 0,
+        rows: [],
+      };
+    }
+
+    if (searchStr.startsWith('+')) {
+      searchStr = searchStr.replace('+', ''); // If query starts with +, replace it
+    }
 
     let sql = `SELECT ${fields} FROM units_fts WHERE units_fts MATCH :search`;
 
@@ -206,7 +259,7 @@ class Unit extends Model {
       sql = `${sql} AND orgUid = :orgUid`;
     }
 
-    const replacements = { search: `${searchStr}*`, orgUid };
+    const replacements = { search: searchStr, orgUid };
 
     const count = (
       await sequelize.query(sql, {
@@ -229,12 +282,70 @@ class Unit extends Model {
       }),
     };
   }
+
+  static generateChangeListFromStagedData(stagedData) {
+    const [insertRecords, updateRecords, deleteChangeList] =
+      Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
+
+    const insertXslsSheets = createXlsFromSequelizeResults(
+      insertRecords,
+      Unit,
+      false,
+      true,
+    );
+
+    const updateXslsSheets = createXlsFromSequelizeResults(
+      updateRecords,
+      Unit,
+      false,
+      true,
+    );
+
+    const primaryKeyMap = {
+      unit: 'warehouseUnitId',
+      labels: 'id',
+      label_units: 'labelunitId',
+      issuances: 'id',
+    };
+
+    const insertChangeList = transformFullXslsToChangeList(
+      insertXslsSheets,
+      'insert',
+      primaryKeyMap,
+    );
+
+    const updateChangeList = transformFullXslsToChangeList(
+      updateXslsSheets,
+      'update',
+      primaryKeyMap,
+    );
+
+    return {
+      units: [
+        ..._.get(insertChangeList, 'unit', []),
+        ..._.get(updateChangeList, 'unit', []),
+        ...deleteChangeList,
+      ],
+      labels: [
+        ..._.get(insertChangeList, 'labels', []),
+        ..._.get(updateChangeList, 'labels', []),
+      ],
+      issuances: [
+        ..._.get(insertChangeList, 'issuances', []),
+        ..._.get(updateChangeList, 'issuances', []),
+      ],
+      labelUnits: [
+        ..._.get(insertChangeList, 'label_units', []),
+        ..._.get(updateChangeList, 'label_units', []),
+      ],
+    };
+  }
 }
 
 Unit.init(Object.assign({}, ModelTypes, virtualFields), {
   sequelize,
   modelName: 'unit',
-  foreignKey: 'unitId',
+  timestamps: true,
 });
 
 export { Unit };

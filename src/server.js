@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 
+import 'regenerator-runtime/runtime.js';
+
 import rootRouter from './routes';
 import http from 'http';
 import { Server } from 'socket.io';
 import Debug from 'debug';
 import { connection } from './websocket';
+import { startDataLayerUpdatePolling } from './fullnode';
 
 const debug = Debug('climate-warehouse:server');
 
@@ -49,5 +52,7 @@ function onListening() {
   const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
   debug('Listening on ' + bind);
 }
+
+startDataLayerUpdatePolling();
 
 export default rootRouter;

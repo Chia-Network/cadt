@@ -5,27 +5,32 @@ const { Model } = Sequelize;
 import { CoBenefitMirror } from './co-benefits.model.mirror';
 import { sequelize, safeMirrorDbHandler } from '../database';
 import { Project } from '../projects';
-import ModelTypes from './co-benifets.modeltypes.cjs';
+import ModelTypes from './co-benefits.modeltypes.cjs';
 
 class CoBenefit extends Model {
   static associate() {
     CoBenefit.belongsTo(Project, {
       onDelete: 'CASCADE',
       targetKey: 'warehouseProjectId',
-      foreignKey: 'projectId',
+      foreignKey: 'warehouseProjectId',
     });
 
     safeMirrorDbHandler(() => {
       CoBenefitMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
-        foreignKey: 'projectId',
+        foreignKey: 'warehouseProjectId',
       });
     });
   }
 
   static async create(values, options) {
     safeMirrorDbHandler(() => CoBenefitMirror.create(values, options));
+    return super.create(values, options);
+  }
+
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => CoBenefitMirror.upsert(values, options));
     return super.create(values, options);
   }
 
@@ -38,6 +43,7 @@ class CoBenefit extends Model {
 CoBenefit.init(ModelTypes, {
   sequelize,
   modelName: 'coBenefit',
+  timestamps: true,
 });
 
 export { CoBenefit };

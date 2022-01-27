@@ -1,65 +1,59 @@
 'use strict';
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
+  up: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE projects_fts USING fts5(
-        orgUid,
         warehouseProjectId,
-        projectId,
-        projectLocationId,
+        orgUid,
         currentRegistry,
+        projectId,
         registryOfOrigin,
-        originProjectId,
         program,
         projectName,
         projectLink,
         projectDeveloper,
         sector,
         projectType,
-        coveredByNDC,
-        NDCLinkage,
+        projectTags,
+        ndcInformation,
         projectStatus,
         projectStatusDate,
         unitMetric,
         methodology,
-        methodologyVersion,
-        validationApproach,
-        validationDate,
-        projectTag,
-        estimatedAnnualAverageEmissionReduction
+        validationBody,
+        validationDate
       );
       `);
       await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE units_fts USING fts5(
-          warehouseUnitId,
-          orgUid,
-          unitOwnerOrgUid,
-          countryJurisdictionOfOwner,
-          inCountryJurisdictionOfOwner,
-          serialNumberBlock,
-          unitIdentifier,
-          unitType,
-          intendedBuyerOrgUid,
-          marketplace,
-          tags,
-          unitStatus,
-          unitTransactionType,
-          unitStatusReason,
-          tokenIssuanceHash,
-          marketplaceIdentifier,
-          unitsIssuanceLocation,
-          unitRegistryLink,
-          unitMarketplaceLink,
-          correspondingAdjustmentDeclaration,
-          correspondingAdjustmentStatus
-        );
+        warehouseUnitId,
+        issuanceId,
+        projectLocationId,
+        orgUid,
+        unitOwner,
+        countryJurisdictionOfOwner,
+        inCountryJurisdictionOfOwner,
+        serialNumberBlock,
+        serialNumberPattern,
+        vintageYear,
+        unitType,
+        marketplace,
+        marketplaceLink,
+        marketplaceIdentifier,
+        unitTags,
+        unitStatus,
+        unitStatusReason,
+        unitRegistryLink,
+        correspondingAdjustmentDeclaration,
+        correspondingAdjustmentStatus
+      );
       `);
     }
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`drop table projects_fts;`);
       await queryInterface.sequelize.query('drop table units_fts;');

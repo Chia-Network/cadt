@@ -1,0 +1,44 @@
+{
+  "info": {
+    "_postman_id": "abed9564-7b06-498b-a4d8-572d78e80944",
+    "name": "Vintages API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET Vintages",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{api_url_v1}}/vintages",
+          "host": ["{{api_url_v1}}"],
+          "path": ["vintages"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "<Basic Auth Username>",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "<Basic Auth Password>",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "localhost:3000",
+      "type": "string"
+    }
+  ]
+}

@@ -1,54 +1,50 @@
 'use strict';
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
+  up: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`
       CREATE TRIGGER project_insert_fts AFTER INSERT ON projects BEGIN
         INSERT INTO projects_fts(
+          warehouseProjectId,
           orgUid,
-          warehouseProjectId, 
-          currentRegistry, 
+          currentRegistry,
+          projectId,
           registryOfOrigin,
-          originProjectId, 
-          program, 
-          projectName, 
-          projectLink, 
+          program,
+          projectName,
+          projectLink,
           projectDeveloper,
-          sector, 
-          projectType, 
-          coveredByNDC, 
-          NDCLinkage, 
+          sector,
+          projectType,
+          projectTags,
+          ndcInformation,
           projectStatus,
-          projectStatusDate, 
-          unitMetric, 
-          methodology, 
-          methodologyVersion,
-          validationApproach, 
-          validationDate,
-          projectTag
+          projectStatusDate,
+          unitMetric,
+          methodology,
+          validationBody,
+          validationDate
         ) VALUES (
-          new.orgUid,
           new.warehouseProjectId,
+          new.orgUid,
           new.currentRegistry,
+          new.projectId,
           new.registryOfOrigin,
-          new.originProjectId,
           new.program,
           new.projectName,
           new.projectLink,
           new.projectDeveloper,
           new.sector,
           new.projectType,
-          new.coveredByNDC,
-          new.NDCLinkage,
+          new.projectTags,
+          new.ndcInformation,
           new.projectStatus,
           new.projectStatusDate,
           new.unitMetric,
           new.methodology,
-          new.methodologyVersion,
-          new.validationApproach,
-          new.validationDate,
-          new.projectTag
+          new.validationBody,
+          new.validationDate
         );
       END;`);
 
@@ -62,56 +58,52 @@ module.exports = {
       CREATE TRIGGER project_update_fts AFTER UPDATE ON projects BEGIN
         DELETE FROM projects_fts WHERE warehouseProjectId = old.warehouseProjectId;
         INSERT INTO projects_fts(
+          warehouseProjectId,
           orgUid,
-          warehouseProjectId, 
-          currentRegistry, 
+          currentRegistry,
+          projectId,
           registryOfOrigin,
-          originProjectId, 
-          program, 
-          projectName, 
-          projectLink, 
+          program,
+          projectName,
+          projectLink,
           projectDeveloper,
-          sector, 
-          projectType, 
-          coveredByNDC, 
-          NDCLinkage, 
+          sector,
+          projectType,
+          projectTags,
+          ndcInformation,
           projectStatus,
-          projectStatusDate, 
-          unitMetric, 
-          methodology, 
-          methodologyVersion,
-          validationApproach, 
-          validationDate,
-          projectTag
+          projectStatusDate,
+          unitMetric,
+          methodology,
+          validationBody,
+          validationDate
         ) VALUES (
-          new.orgUid,
           new.warehouseProjectId,
+          new.orgUid,
           new.currentRegistry,
+          new.projectId,
           new.registryOfOrigin,
-          new.originProjectId,
           new.program,
           new.projectName,
           new.projectLink,
           new.projectDeveloper,
           new.sector,
           new.projectType,
-          new.coveredByNDC,
-          new.NDCLinkage,
+          new.projectTags,
+          new.ndcInformation,
           new.projectStatus,
           new.projectStatusDate,
           new.unitMetric,
           new.methodology,
-          new.methodologyVersion,
-          new.validationApproach,
-          new.validationDate,
-          new.projectTag
+          new.validationBody,
+          new.validationDate
         );
       END;
       `);
     }
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query('DROP TRIGGER project_insert_fts;');
       await queryInterface.sequelize.query('DROP TRIGGER project_delete_fts;');

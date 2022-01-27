@@ -8,12 +8,30 @@ module.exports = {
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
-  countryRegion: Sequelize.STRING,
-  country: Sequelize.STRING,
-  projectId: {
+  warehouseProjectId: {
     type: Sequelize.INTEGER,
+    required: true,
     onDelete: 'CASCADE',
   },
-  createdAt: Sequelize.DATE,
-  updatedAt: Sequelize.DATE,
+  country: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  inCountryRegion: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  geographicIdentifier: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  createdAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+  },
+  updatedAt: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+    allowNull: false,
+  },
 };

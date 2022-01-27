@@ -1,21 +1,26 @@
 'use strict';
+
+/* TODO: Fix seeddata for latest models
 const ProjectStub = require('../src/models/projects/projects.stub.json');
 const CoBenifetStub = require('../src/models/co-benefits/co-benefits.stub.json');
 const RelatedProjectStub = require('../src/models/related-projects/related-projects.stub.json');
-const QualificationStub = require('../src/models/qualifications/qualifications.stub.json');
+const LabelStub = require('../src/models/labels/labels.stub.json');
 const RatingsStub = require('../src/models/ratings/ratings.stub.json');
-const VintagesStub = require('../src/models/vintages/vintages.stub.json');
+const IssuanceStub = require('../src/models/issuances/issuances.stub.json');
 const LocationsStub = require('../src/models/locations/locations.stub.json');
-
+*/
 module.exports = {
+  // eslint-disable-next-line no-unused-vars
   up: async (queryInterface) => {
+    /* TODO: Fix seeddata for latest models
     await queryInterface.bulkInsert('projects', ProjectStub, {});
     await queryInterface.bulkInsert('coBenefits', CoBenifetStub, {});
     await queryInterface.bulkInsert('relatedProjects', RelatedProjectStub, {});
-    await queryInterface.bulkInsert('qualifications', QualificationStub, {});
+    await queryInterface.bulkInsert('labels', LabelStub, {});
     await queryInterface.bulkInsert('projectRatings', RatingsStub, {});
-    await queryInterface.bulkInsert('vintages', VintagesStub, {});
+    await queryInterface.bulkInsert('issuances', IssuanceStub, {});
     await queryInterface.bulkInsert('projectLocations', LocationsStub, {});
+    */
   },
 
   down: async (queryInterface) => {

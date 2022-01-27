@@ -12,14 +12,14 @@ class Rating extends Model {
     Rating.belongsTo(Project, {
       onDelete: 'CASCADE',
       targetKey: 'warehouseProjectId',
-      foreignKey: 'projectId',
+      foreignKey: 'warehouseProjectId',
     });
 
     safeMirrorDbHandler(() => {
       RatingMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
-        foreignKey: 'projectId',
+        foreignKey: 'warehouseProjectId',
       });
     });
   }
@@ -33,11 +33,17 @@ class Rating extends Model {
     safeMirrorDbHandler(() => RatingMirror.destroy(values));
     return super.destroy(values);
   }
+
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => RatingMirror.upsert(values, options));
+    return super.create(values, options);
+  }
 }
 
 Rating.init(ModelTypes, {
   sequelize,
   modelName: 'projectRating',
+  timestamps: true,
 });
 
 export { Rating };

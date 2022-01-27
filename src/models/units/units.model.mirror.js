@@ -11,7 +11,8 @@ safeMirrorDbHandler(() => {
   UnitMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
     modelName: 'unit',
-    foreignKey: 'unitId',
+    foreignKey: 'warehouseUnitId',
+    timestamps: true,
   });
 });
 

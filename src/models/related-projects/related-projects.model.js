@@ -13,14 +13,14 @@ class RelatedProject extends Model {
     RelatedProject.belongsTo(Project, {
       onDelete: 'CASCADE',
       targetKey: 'warehouseProjectId',
-      foreignKey: 'projectId',
+      foreignKey: 'warehouseProjectId',
     });
 
     safeMirrorDbHandler(() => {
       RelatedProjectMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
-        foreignKey: 'projectId',
+        foreignKey: 'warehouseProjectId',
       });
     });
   }
@@ -34,11 +34,17 @@ class RelatedProject extends Model {
     safeMirrorDbHandler(() => RelatedProjectMirror.destroy(values));
     return super.destroy(values);
   }
+
+  static async upsert(values, options) {
+    safeMirrorDbHandler(() => RelatedProjectMirror.upsert(values, options));
+    return super.create(values, options);
+  }
 }
 
 RelatedProject.init(ModelTypes, {
   sequelize,
   modelName: 'relatedProject',
+  timestamps: true,
 });
 
 export { RelatedProject };

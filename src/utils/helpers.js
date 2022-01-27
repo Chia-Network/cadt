@@ -40,15 +40,27 @@ export const columnsToInclude = (userColumns, foreignKeys) => {
   const attributeModelMap = foreignKeys.map(
     (relationship) => relationship.name + 's',
   );
+
+  const filteredIncludes = _.intersection(userColumns, attributeModelMap).map(
+    (fk) =>
+      foreignKeys.find((model) => {
+        return model.name === fk.substring(0, fk.length - 1);
+      }),
+  );
+
   return {
     attributes: userColumns.filter(
       (column) => !attributeModelMap.includes(column),
     ),
-    include: _.intersection(userColumns, attributeModelMap).map((fk) =>
-      foreignKeys.find((model) => {
-        return model.name === fk.substring(0, fk.length - 1);
-      }),
-    ),
+    include: filteredIncludes.map((include) => {
+      if (include.name === 'label') {
+        return {
+          model: include,
+          as: include.name + 's',
+        };
+      }
+      return include;
+    }),
   };
 };
 
@@ -57,7 +69,7 @@ export const defaultSerialNumberPattern = /[.*\D]+([0-9]+)+[-][.*\D]+([0-9]+)$/;
 export const transformSerialNumberBlock = (
   serialNumberBlock,
   // serial number format: ABC1000-ABC1010
-  serialNumberPattern = defaultSerialNumberPattern,
+  serialNumberPattern,
 ) => {
   const unitBlocks = serialNumberBlock.match(serialNumberPattern);
 

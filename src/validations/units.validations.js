@@ -1,14 +1,15 @@
 import Joi from 'joi';
 import { transformSerialNumberBlock } from '../utils/helpers';
-import { newVintageScheme, existingVintageSchema } from './vintages.validation';
+import { issuanceSchema } from './issuances.validation';
+import { labelSchema } from './labels.validations';
 
 const customSerialNumberValidator = (obj, helper) => {
-  const { serialNumberBlock, customSerialNumberPattern } = obj;
+  const { serialNumberBlock, serialNumberPattern } = obj;
 
   // eslint-disable-next-line no-unused-vars
   const [_, __, unitCount] = transformSerialNumberBlock(
     serialNumberBlock,
-    customSerialNumberPattern || undefined,
+    new RegExp(serialNumberPattern),
   );
 
   if (!unitCount) {
@@ -26,33 +27,37 @@ const customSerialNumberValidator = (obj, helper) => {
 };
 
 const unitsBaseSchema = {
+  // warehouseUnitId - derived upon unit creation
+  // issuanceId - derived upon unit creation
+  // orgUid - derived upon unit creation
+  projectLocationId: Joi.string().required(),
+  unitOwner: Joi.string().required(),
   countryJurisdictionOfOwner: Joi.string().required(),
-  inCountryJurisdictionOfOwner: Joi.string().optional(),
+  inCountryJurisdictionOfOwner: Joi.string().required(),
   // must be in the form ABC123-XYZ456
   serialNumberBlock: Joi.string().required(),
-  customSerialNumberPattern: Joi.string().optional(),
-  unitIdentifier: Joi.string().required(),
+  serialNumberPattern: Joi.string().required().messages({
+    'any.required':
+      'serialNumberPattern is required. This pattern must be a regex expression with 2 match groups to match block start and block end. Example: [.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$ that matches ABC1000-ABC1010 TODO: ADD LINK HERE FOR DOCUMENTATION',
+  }),
+  // match 4 digit year
+  vintageYear: Joi.number().integer().min(1900).max(3000),
   unitType: Joi.string().valid('heard reduction', 'removal').required(),
-  intendedBuyerOrgUid: Joi.string().optional(),
   marketplace: Joi.string().optional(),
-  tags: Joi.string().allow('').optional(),
-  unitStatus: Joi.string().valid('Held', 'For Sale', 'Retired').required(),
-  unitTransactionType: Joi.string().optional(),
-  unitStatusReason: Joi.string().optional(),
-  tokenIssuanceHash: Joi.string().optional(),
+  marketplaceLink: Joi.string().optional(),
   marketplaceIdentifier: Joi.string().optional(),
-  unitsIssuanceLocation: Joi.string().required(),
+  unitTags: Joi.string().allow('').optional(),
+  unitStatus: Joi.string().valid('Held', 'For Sale', 'Retired').required(),
+  unitStatusReason: Joi.string().optional(),
   unitRegistryLink: Joi.string().required(),
-  unitMarketplaceLink: Joi.string().optional(),
   correspondingAdjustmentDeclaration: Joi.string()
     .valid('Commited', 'Not Required', 'Unknown')
     .required(),
   correspondingAdjustmentStatus: Joi.string()
-    .valid('Not Started', 'Pending')
+    .valid('Unknown', 'Not Started', 'Pending')
     .required(),
-  vintages: Joi.alternatives()
-    .try(newVintageScheme, existingVintageSchema)
-    .optional(),
+  issuance: issuanceSchema.optional(),
+  labels: Joi.array().items(labelSchema).optional(),
 };
 
 export const unitsPostSchema = Joi.object({
@@ -67,6 +72,7 @@ export const unitsGetQuerySchema = Joi.object()
     warehouseUnitId: Joi.string(),
     columns: Joi.array().items(Joi.string()).single(),
     orgUid: Joi.string(),
+    xls: Joi.boolean(),
   })
   .with('page', 'limit');
 
@@ -85,7 +91,7 @@ export const unitsSplitSchema = Joi.object({
     .items(
       Joi.object().keys({
         unitCount: Joi.number().required(),
-        unitOwnerOrgUid: Joi.string().optional(),
+        unitOwner: Joi.string().optional(),
       }),
     )
     .min(2)

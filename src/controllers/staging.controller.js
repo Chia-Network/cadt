@@ -1,122 +1,55 @@
 import _ from 'lodash';
-import * as fullNode from '../fullnode';
 
-import { Staging, Project, Unit } from '../models';
+import { Staging } from '../models';
 import { assertStagingRecordExists } from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
-  const stagingData = await Staging.findAll();
+  try {
+    const stagingData = await Staging.findAll();
 
-  const response = await Promise.all(
-    stagingData.map(async (data) => {
-      const workingData = _.cloneDeep(data.dataValues);
-      workingData.diff = {};
-      if (workingData.action === 'INSERT') {
-        workingData.diff.original = {};
-        workingData.diff.change = JSON.parse(workingData.data);
-      }
+    const response = await Promise.all(
+      stagingData.map(async (stagingRecord) => {
+        const { uuid, table, action, data } = stagingRecord;
+        const workingData = _.cloneDeep(stagingRecord.dataValues);
+        workingData.diff = await Staging.getDiffObject(
+          uuid,
+          table,
+          action,
+          data,
+        );
 
-      if (workingData.action === 'UPDATE') {
-        let original;
-        if (workingData.table === 'Projects') {
-          original = await Project.findOne({
-            where: { warehouseProjectId: workingData.uuid },
-          });
-        }
+        delete workingData.data;
 
-        if (workingData.table === 'Units') {
-          original = await Unit.findOne({
-            where: { warehouseUnitId: workingData.uuid },
-          });
-        }
+        return workingData;
+      }),
+    );
 
-        workingData.diff.original = original;
-        workingData.diff.change = JSON.parse(workingData.data);
-      }
-
-      if (workingData.action === 'DELETE') {
-        let original;
-        if (workingData.table === 'Projects') {
-          original = await Project.findOne({
-            where: { warehouseProjectId: workingData.uuid },
-          });
-        }
-
-        if (workingData.table === 'Units') {
-          original = await Unit.findOne({
-            where: { warehouseUnitId: workingData.uuid },
-          });
-        }
-
-        workingData.diff.original = original;
-        workingData.diff.change = {};
-      }
-
-      delete workingData.data;
-
-      return workingData;
-    }),
-  );
-
-  res.json(response);
+    res.json(response);
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error retreiving staging table',
+      error: error.message,
+    });
+  }
 };
 
 export const commit = async (req, res) => {
-  const queryResponses = await Staging.findAll();
+  try {
+    await Staging.pushToDataLayer();
+    res.json({ message: 'Staging Table committed to full node' });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error commiting staging table',
+      error: error.message,
+    });
 
-  queryResponses.map(async (queryResponse) => {
-    const stagingRecord = queryResponse.dataValues;
-
-    const {
-      id: stagingRecordId,
-      uuid,
-      table,
-      action,
-      commited,
-      data: rawData,
-    } = stagingRecord;
-    let data = JSON.parse(rawData);
-
-    // set the commited flag to true
-    await Staging.update(
-      { commited: true },
-      { where: { id: stagingRecordId } },
-    );
-
-    if (table === 'Projects' && !commited) {
-      switch (action) {
-        case 'INSERT':
-          data.warehouseUnitId = uuid;
-          fullNode.createProjectRecord(uuid, data, stagingRecordId);
-          break;
-        case 'UPDATE':
-          fullNode.updateProjectRecord(uuid, data, stagingRecordId);
-          break;
-        case 'DELETE':
-          fullNode.deleteProjectRecord(uuid, stagingRecordId);
-          break;
-      }
-    } else if (table === 'Units' && !commited) {
-      switch (action) {
-        case 'INSERT':
-          fullNode.createUnitRecord(uuid, data, stagingRecordId);
-          break;
-        case 'UPDATE':
-          fullNode.updateUnitRecord(uuid, data, stagingRecordId);
-          break;
-        case 'DELETE':
-          fullNode.deleteUnitRecord(uuid, stagingRecordId);
-          break;
-      }
-    }
-  });
-
-  res.json({ message: 'Staging Table committed to full node' });
+    console.trace(error);
+  }
 };
 
 export const destroy = async (req, res) => {
   try {
-    assertStagingRecordExists(req.body.uuid);
+    await assertStagingRecordExists(req.body.uuid);
     await Staging.destroy({
       where: {
         uuid: req.body.uuid,

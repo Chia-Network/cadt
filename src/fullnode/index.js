@@ -1,1 +1,2 @@
-export * from './fullnode';
+export * from './writeService';
+export * from './syncService';

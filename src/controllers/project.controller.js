@@ -1,15 +1,13 @@
 import _ from 'lodash';
 
-import csv from 'csvtojson';
-import { Readable } from 'stream';
 import { uuid as uuidv4 } from 'uuidv4';
 
 import {
   Staging,
   Project,
   ProjectLocation,
-  Qualification,
-  Vintage,
+  Label,
+  Issuance,
   CoBenefit,
   RelatedProject,
   Organization,
@@ -24,36 +22,43 @@ import {
 import {
   assertOrgIsHomeOrg,
   assertProjectRecordExists,
+  assertCsvFileInRequest,
+  assertHomeOrgExists,
 } from '../utils/data-assertions';
 
+import { createProjectRecordsFromCsv } from '../utils/csv-utils';
+import { createXlsFromSequelizeResults, sendXls } from '../utils/xls';
+
 export const create = async (req, res) => {
-  const newRecord = _.cloneDeep(req.body);
-  // When creating new projects assign a uuid to is so
-  // multiple organizations will always have unique ids
-  const uuid = uuidv4();
-
-  newRecord.warehouseProjectId = uuid;
-
-  // All new projects are assigned to the home orgUid
-  const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
-  newRecord.orgUid = orgUid;
-
-  // The new project is getting created in this registry
-  newRecord.currentRegistry = orgUid;
-
-  // Unless we are overriding, a new project originates in this org
-  if (!newRecord.registryOfOrigin) {
-    newRecord.registryOfOrigin = orgUid;
-  }
-
   try {
+    await assertHomeOrgExists();
+
+    const newRecord = _.cloneDeep(req.body);
+    // When creating new projects assign a uuid to is so
+    // multiple organizations will always have unique ids
+    const uuid = uuidv4();
+
+    newRecord.warehouseProjectId = uuid;
+
+    // All new projects are assigned to the home orgUid
+    const { orgUid } = await Organization.getHomeOrg();
+    newRecord.orgUid = orgUid;
+
+    // The new project is getting created in this registry
+    newRecord.currentRegistry = orgUid;
+
+    // Unless we are overriding, a new project originates in this org
+    if (!newRecord.registryOfOrigin) {
+      newRecord.registryOfOrigin = orgUid;
+    }
+
     await Staging.create({
       uuid,
       action: 'INSERT',
-      table: 'Projects',
+      table: Project.stagingTableName,
       data: JSON.stringify([newRecord]),
     });
-    res.json('Added project to stage');
+    res.json({ message: 'Project staged successfully' });
   } catch (err) {
     res.status(400).json({
       message: 'Error creating new project',
@@ -63,16 +68,10 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, search, orgUid, columns } = req.query;
+  let { page, limit, search, orgUid, columns, xls } = req.query;
   let where = orgUid ? { orgUid } : undefined;
 
-  const includes = [
-    ProjectLocation,
-    Qualification,
-    Vintage,
-    CoBenefit,
-    RelatedProject,
-  ];
+  const includes = Project.getAssociatedModels();
 
   if (columns) {
     // Remove any unsupported columns
@@ -82,7 +81,9 @@ export const findAll = async (req, res) => {
         .includes(col),
     );
   } else {
-    columns = Project.defaultColumns;
+    columns = Project.defaultColumns.concat(
+      includes.map((model) => model.name + 's'),
+    );
   }
 
   // If only FK fields have been specified, select just ID
@@ -91,20 +92,20 @@ export const findAll = async (req, res) => {
   }
 
   let results;
+  let pagination = paginationParams(page, limit);
+
+  if (xls) {
+    pagination = { page: undefined, limit: undefined };
+  }
 
   if (search) {
-    results = await Project.fts(
-      search,
-      orgUid,
-      paginationParams(page, limit),
-      columns,
-    );
+    results = await Project.fts(search, orgUid, pagination, columns);
   }
 
   if (!results) {
     const query = {
       ...columnsToInclude(columns, includes),
-      ...paginationParams(page, limit),
+      ...pagination,
     };
 
     results = await Project.findAndCountAll({
@@ -114,19 +115,23 @@ export const findAll = async (req, res) => {
     });
   }
 
-  return res.json(optionallyPaginatedResponse(results, page, limit));
+  const response = optionallyPaginatedResponse(results, page, limit);
+
+  if (!xls) {
+    return res.json(response);
+  } else {
+    return sendXls(
+      Project.name,
+      createXlsFromSequelizeResults(response, Project),
+      res,
+    );
+  }
 };
 
 export const findOne = async (req, res) => {
   const query = {
-    where: { warehouseProjectId: res.query.warehouseProjectId },
-    include: [
-      ProjectLocation,
-      Qualification,
-      Vintage,
-      CoBenefit,
-      RelatedProject,
-    ],
+    where: { warehouseProjectId: req.query.warehouseProjectId },
+    include: [ProjectLocation, Label, Issuance, CoBenefit, RelatedProject],
   };
 
   res.json(await Project.findOne(query));
@@ -134,17 +139,25 @@ export const findOne = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
+
+    // merge the new record into the old record
+    let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
+    stagedRecord = stagedRecord.map((record) =>
+      Object.assign({}, originalRecord, record),
+    );
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
       action: 'UPDATE',
-      table: 'Projects',
-      data: JSON.stringify(Array.isArray(req.body) ? req.body : [req.body]),
+      table: Project.stagingTableName,
+      data: JSON.stringify(stagedRecord),
     };
 
     await Staging.upsert(stagedData);
@@ -162,16 +175,18 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
     );
 
-    assertOrgIsHomeOrg(res, originalRecord.orgUid);
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
       action: 'DELETE',
-      table: 'Projects',
+      table: Project.stagingTableName,
     };
 
     await Staging.create(stagedData);
@@ -188,65 +203,20 @@ export const destroy = async (req, res) => {
 };
 
 export const batchUpload = async (req, res) => {
-  if (!_.get(req, 'files.csv')) {
-    res
-      .status(400)
-      .json({ message: 'Can not file the required csv file in request' });
-    return;
-  }
+  try {
+    await assertHomeOrgExists();
 
-  const csvFile = req.files.csv;
-  const buffer = csvFile.data;
-  const stream = Readable.from(buffer.toString('utf8'));
+    const csvFile = assertCsvFileInRequest(req);
+    await createProjectRecordsFromCsv(csvFile);
 
-  csv()
-    .fromStream(stream)
-    .subscribe(async (newRecord) => {
-      let action = 'UPDATE';
-
-      if (newRecord.warehouseProjectId) {
-        // Fail if they supplied their own warehouseUnitId and it doesnt exist
-        const possibleExistingRecord = await assertProjectRecordExists(
-          newRecord.warehouseProjectId,
-        );
-
-        assertOrgIsHomeOrg(res, possibleExistingRecord.dataValues.orgUid);
-      } else {
-        // When creating new unitd assign a uuid to is so
-        // multiple organizations will always have unique ids
-        const uuid = uuidv4();
-        newRecord.warehouseProjectId = uuid;
-
-        action = 'INSERT';
-      }
-
-      const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
-
-      // All new records are registered within this org, but give them a chance to override this
-      if (!newRecord.orgUid) {
-        newRecord.orgUid = orgUid;
-      }
-
-      const stagedData = {
-        uuid: newRecord.warehouseProjectId,
-        action: action,
-        table: 'Projects',
-        data: JSON.stringify([newRecord]),
-      };
-
-      await Staging.upsert(stagedData);
-    })
-    .on('error', (error) => {
-      if (!res.headersSent) {
-        res.status(400).json({
-          message: 'Batch Upload Failed.',
-          error: error.message,
-        });
-      }
-    })
-    .on('done', () => {
-      if (!res.headersSent) {
-        res.json({ message: 'CSV processing complete' });
-      }
+    res.json({
+      message:
+        'CSV processing complete, your records have been added to the staging table.',
     });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
+    });
+  }
 };
