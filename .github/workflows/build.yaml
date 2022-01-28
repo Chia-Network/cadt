@@ -66,7 +66,7 @@ jobs:
         run: ${{ matrix.build-command }}
 
       - name: Make executable
-        run: chmod +x climate-warehouse
+        run: chmod +x dist/climate-warehouse
 
       - name: Copy sqlite3
         run: cp ${{ matrix.sqlite3-path }} ./dist/
