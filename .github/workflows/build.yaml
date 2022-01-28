@@ -46,7 +46,7 @@ jobs:
 
       - name: Ignore Husky
         run: npm set-script prepare ""
-        if: ${{ matrix.runs-on }} != "windows-latest"
+        if: matrix.runs-on != "windows-latest"
 
       - name: npm install
         run: npm install
