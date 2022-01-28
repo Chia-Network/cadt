@@ -35,6 +35,7 @@
     "express-joi-validation": "^5.0.0",
     "joi": "^17.5.0",
     "lodash": "^4.17.21",
+    "log-update": "^4.0.0",
     "mysql2": "^2.3.3",
     "node-xlsx": "^0.21.0",
     "random-hash": "^4.0.1",

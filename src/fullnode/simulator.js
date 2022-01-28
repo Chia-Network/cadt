@@ -2,8 +2,11 @@ import { uuid as uuidv4 } from 'uuidv4';
 import { Simulator, Organization } from '../models';
 import { Sequelize } from 'sequelize';
 import { createHash } from 'crypto';
+import logUpdate from 'log-update';
 
 const Op = Sequelize.Op;
+
+const frames = ['-', '\\', '|', '/'];
 
 export const createDataLayerStore = async () => {
   return uuidv4();
@@ -67,7 +70,11 @@ export const getRoot = async (storeId) => {
   });
 
   if (!myOrganization) {
-    console.log('Cant get root, Home org does not yet exist');
+    logUpdate(
+      `Cant get root, Home org does not yet exist ${
+        frames[Math.floor(Math.random() * 3)]
+      }`,
+    );
     return Promise.resolve({
       hash: null,
       success: false,
@@ -94,7 +101,11 @@ export const getRoots = async (storeIds) => {
   });
 
   if (!myOrganization) {
-    console.log('Cant get root, Home org does not yet exist');
+    logUpdate(
+      `Cant get root, Home org does not yet exist ${
+        frames[Math.floor(Math.random() * 3)]
+      }`,
+    );
     return Promise.resolve({
       hash: null,
       success: false,
