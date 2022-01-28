@@ -18,6 +18,7 @@ module.exports = {
     required: true,
   },
   creditingPeriodStart: {
+    // this should be a DATE not a string.
     type: Sequelize.STRING,
     required: true,
   },
