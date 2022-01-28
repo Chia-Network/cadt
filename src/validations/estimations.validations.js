@@ -11,6 +11,7 @@ const baseSchema = {
   unitCount: Joi.number().integer().required(),
   verificationDate: Joi.date().required(),
   verificationBody: Joi.string().required(),
+  // Not sure where 'verificationDate' and 'verificationBody' fields are coming from. They are not supposed to be in the estimations table.
 };
 
 export const newEstimationSchema = Joi.object({ ...baseSchema });
