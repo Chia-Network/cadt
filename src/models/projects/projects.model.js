@@ -18,6 +18,8 @@ import {
   ProjectLocation,
   CoBenefit,
   Staging,
+  ProjectRating,
+  Estimation,
 } from '../';
 
 import {
@@ -38,6 +40,8 @@ class Project extends Model {
     Issuance,
     CoBenefit,
     RelatedProject,
+    ProjectRating,
+    Estimation,
   ];
 
   static associate() {

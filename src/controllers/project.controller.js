@@ -11,6 +11,8 @@ import {
   CoBenefit,
   RelatedProject,
   Organization,
+  ProjectRating,
+  Estimation,
 } from '../models';
 
 import {
@@ -131,7 +133,15 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   const query = {
     where: { warehouseProjectId: req.query.warehouseProjectId },
-    include: [ProjectLocation, Label, Issuance, CoBenefit, RelatedProject],
+    include: [
+      ProjectLocation,
+      Label,
+      Issuance,
+      CoBenefit,
+      RelatedProject,
+      ProjectRating,
+      Estimation,
+    ],
   };
 
   res.json(await Project.findOne(query));
