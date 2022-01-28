@@ -63,6 +63,9 @@ jobs:
       - name: create distributions
         run: ${{ matrix.build-command }}
 
+      - name: Make executable
+        run: chmod +x climate-warehouse
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
