@@ -40,6 +40,8 @@ class Project extends Model {
     Issuance,
     CoBenefit,
     RelatedProject,
+    Rating,
+    Estimation,
   ];
 
   static associate() {
