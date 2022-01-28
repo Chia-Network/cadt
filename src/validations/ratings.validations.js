@@ -7,4 +7,5 @@ export const ratingSchema = Joi.object({
   ratingRangeLowest: Joi.number().integer().required(),
   rating: Joi.number().integer().required(),
   ratingLink: Joi.string().optional(),
+  //'ratingLink' should be required.
 });

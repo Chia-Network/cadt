@@ -14,7 +14,11 @@ export const baseSchema = {
   currentRegistry: Joi.string().required(),
   projectId: Joi.string().required(),
   registryOfOrigin: Joi.string().required(),
+  // Need to add 'originProjectId' as a new field. It will be required and STRING type.
+  // If current registry is the same as registry of origin, then ID will be the same.
+  // If current registry is different from registry of origin, then we will have different IDs.
   program: Joi.string().required(),
+  // 'program' should be optional.
   projectName: Joi.string().required(),
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
@@ -23,12 +27,14 @@ export const baseSchema = {
   projectTags: Joi.string().optional(),
   coveredByNDC: Joi.string().required(),
   ndcInformation: Joi.string().required(),
+  // 'ndcInformation' should be optional, but should carry an additional validation. If 'coveredByNDC' field selects "Inside NDC", then 'ndcInformation' becomes required field.
   projectStatus: Joi.string().required(),
   projectStatusDate: Joi.date().required(),
   unitMetric: Joi.string().required(),
   methodology: Joi.string().required(),
   validationBody: Joi.string().optional(),
   validationDate: Joi.string().optional(),
+  // should be DATE instead of string.
 
   /* Child Tables */
   labels: Joi.array().items(labelSchema).min(1).optional(),

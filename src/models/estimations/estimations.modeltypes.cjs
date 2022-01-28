@@ -9,37 +9,27 @@ module.exports = {
     primaryKey: true,
   },
   warehouseProjectId: {
+    type: Sequelize.INTEGER,
+    onDelete: 'CASCADE',
+    required: true,
+  },
+  orgUid: {
     type: Sequelize.STRING,
     required: true,
   },
-  label: {
+  creditingPeriodStart: {
+    // this should be a DATE not a string.
     type: Sequelize.STRING,
-    require: true,
-    // Need to include another field 'labelType' which will be required and is STRING type.
+    required: true,
   },
-  creditingPeriodStartDate: {
+  creditingPeriodEnd: {
     type: Sequelize.DATE,
-    require: true,
+    defaultValue: Sequelize.NOW,
+    // Need to add required to this field. Any estimatations will require an end date. It is fine to default to NOW, but should still be required.
   },
-  creditingPeriodEndDate: {
-    type: Sequelize.DATE,
-    require: true,
-  },
-  validityStartDate: {
-    type: Sequelize.DATE,
-    require: true,
-  },
-  validityPeriodEndDate: {
-    type: Sequelize.DATE,
-    require: true,
-  },
-  unitQuantity: {
+  unitCount: {
     type: Sequelize.INTEGER,
-    require: true,
-  },
-  labelLink: {
-    type: Sequelize.STRING,
-    require: true,
+    required: true,
   },
   createdAt: {
     type: Sequelize.DATE,
