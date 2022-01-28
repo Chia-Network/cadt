@@ -69,7 +69,7 @@ jobs:
         run: chmod +x climate-warehouse
 
       - name: Copy sqlite3
-        run: cp ${{ sqlite3-path }} ./dist/
+        run: cp ${{ matrix.sqlite3-path }} ./dist/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
