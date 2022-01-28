@@ -11,7 +11,7 @@ import {
   CoBenefit,
   RelatedProject,
   Organization,
-  ProjectRating,
+  Rating,
   Estimation,
 } from '../models';
 
@@ -139,7 +139,7 @@ export const findOne = async (req, res) => {
       Issuance,
       CoBenefit,
       RelatedProject,
-      ProjectRating,
+      Rating,
       Estimation,
     ],
   };
