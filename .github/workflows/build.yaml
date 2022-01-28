@@ -1,0 +1,120 @@
+name: Build Binaries
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Binaries
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        include:
+          - runs-on: ubuntu-latest
+            artifact-name: linux-x64
+            build-command: npm run create-linux-x64-dist
+          - runs-on: macos-latest
+            artifact-name: macos-x64
+            build-command: npm run create-mac-x64-dist
+          - runs-on: windows-latest
+            artifact-name: windows-x64
+            build-command: npm run create-win-x64-dist
+
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Setup Node 16.x
+        uses: actions/setup-node@v2.4.1
+        with:
+          node-version: '16.x'
+
+      - name: Ignore Husky
+        run: npm set-script prepare ""
+        if: matrix.runs-on != 'windows-latest'
+
+      - name: npm install
+        run: npm install
+
+      - name: npm cache clear --force
+        run: npm cache clear --force
+
+      - name: npm cache rm
+        run: npm cache rm --force
+
+      - name: npm cache verify
+        run: npm cache verify
+
+      - name: install global packages
+        run: npm i -g @babel/cli @babel/preset-env pkg
+
+      - name: create distributions
+        run: ${{ matrix.build-command }}
+
+      - name: Make executable
+        run: chmod +x dist/climate-warehouse
+
+      - name: Copy sqlite3 (non windows)
+        run: cp ./node_modules/sqlite3/build/Release/node_sqlite3.node ./dist/
+        if: matrix.runs-on != 'windows-latest'
+
+      - name: Copy sqlite3 (windows)
+        run: cp .\node_modules\sqlite3\build\Release\node_sqlite3.node .\dist\
+        if: matrix.runs-on == 'windows-latest'
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ github.workspace }}/dist
+
+  release:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs:
+      - build
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: windows-x64
+          path: windows-x64
+
+      - name: Download MacOS artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: macos-x64
+          path: macos-x64
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: linux-x64
+          path: linux-x64
+
+      - name: Create zips
+        run: |
+          zip -r windows-x64.zip windows-x64
+          zip -r macos-x64.zip macos-x64
+          zip -r linux-x64.zip linux-x64
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            windows-x64.zip
+            macos-x64.zip
+            linux-x64.zip
