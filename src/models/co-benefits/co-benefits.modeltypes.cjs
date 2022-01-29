@@ -13,7 +13,10 @@ module.exports = {
     onDelete: 'CASCADE',
     required: true,
   },
-  // Cobenefits are not required. Not sure how that affects the 'id' field above, but users may not have any cobenefits to add. 'Cobenefit' field should be optional.
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
+  },
   cobenefit: {
     type: Sequelize.STRING,
     required: true,
