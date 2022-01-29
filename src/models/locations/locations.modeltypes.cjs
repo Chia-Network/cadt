@@ -21,7 +21,6 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
-  // Need to make 'inCountryRegion' field optional. Some countries may have use regions while others do not and that is ok.
   inCountryRegion: {
     type: Sequelize.STRING,
     required: true,

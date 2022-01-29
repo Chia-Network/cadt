@@ -21,7 +21,6 @@ module.exports = {
   label: {
     type: Sequelize.STRING,
     require: true,
-    // Need to include another field 'labelType' which will be required and is STRING type.
   },
   creditingPeriodStartDate: {
     type: Sequelize.DATE,
