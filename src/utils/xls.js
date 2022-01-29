@@ -207,6 +207,7 @@ export const tableDataFromXlsx = (xlsx, model) => {
           }
           row[columnNames[columnIndex]] = columnData;
         }
+        delete row.orgUid;
         stagingData[dataModel.name].data.push(row);
       }
     }
