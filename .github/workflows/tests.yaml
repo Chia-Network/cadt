@@ -36,11 +36,8 @@ jobs:
       - name: npm cache verify
         run: npm cache verify
 
-      - name: install sequelize-cli globally
-        run: npm i -g sequelize-cli
-
-      - name: install cross-env globally
-        run: npm install -g cross-env
+      - name: install global packages
+        run: npm i -g @babel/cli sequelize-cli cross-env
 
       - name: npm tests
         run: npm run test

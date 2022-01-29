@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import logUpdate from 'log-update';
 
 import {
   Organization,
@@ -18,16 +19,25 @@ import { sequelize, sequelizeMirror } from '../models/database';
 import * as dataLayer from './persistance';
 import * as simulator from './simulator';
 
-export const POLLING_INTERVAL = 10000;
+export const POLLING_INTERVAL = 5000;
+const frames = ['-', '\\', '|', '/'];
 
+console.log('Start Datalayer Update Polling');
 export const startDataLayerUpdatePolling = async () => {
-  console.log('Start Datalayer Update Polling');
-
   const tablesToUpdate = await dataLayerWasUpdated();
   await Promise.all(
     _.keys(tablesToUpdate).map(async (storeId) => {
       if (tablesToUpdate[storeId]) {
+        logUpdate(
+          `Updates found syncing storeId: ${storeId} ${
+            frames[Math.floor(Math.random() * 3)]
+          }`,
+        );
         await syncDataLayerStoreToClimateWarehouse(storeId);
+      } else {
+        logUpdate(
+          `No updates found yet ${frames[Math.floor(Math.random() * 3)]}`,
+        );
       }
     }),
   );
@@ -48,6 +58,7 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
   const organizationToTrucate = await Organization.findOne({
     where: { registryId: storeId },
     attributes: ['orgUid'],
+    raw: true,
   });
 
   try {

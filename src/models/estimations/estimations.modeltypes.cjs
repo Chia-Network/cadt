@@ -13,8 +13,22 @@ module.exports = {
     onDelete: 'CASCADE',
     required: true,
   },
-  cobenefit: {
+  orgUid: {
     type: Sequelize.STRING,
+    required: true,
+  },
+  creditingPeriodStart: {
+    // this should be a DATE not a string.
+    type: Sequelize.STRING,
+    required: true,
+  },
+  creditingPeriodEnd: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+    // Need to add required to this field. Any estimatations will require an end date. It is fine to default to NOW, but should still be required.
+  },
+  unitCount: {
+    type: Sequelize.INTEGER,
     required: true,
   },
   createdAt: {

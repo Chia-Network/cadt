@@ -27,7 +27,10 @@ app.use((err, req, res, next) => {
       // format Joi validation errors
       return res.status(400).json({
         message: 'API Validation error',
-        errors: err.error.details.map((detail) => detail.message),
+        errors: err.error.details.map((detail) => {
+          console.log(detail);
+          return _.get(detail, 'context.message', detail.message);
+        }),
       });
     }
 

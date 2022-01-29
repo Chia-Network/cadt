@@ -1,35 +1,34 @@
 import { assert } from 'chai';
-import { createServer } from "http";
-import { io as Client } from "socket.io-client";
-import { Server } from "socket.io";
+import { createServer } from 'http';
+import { io as Client } from 'socket.io-client';
+import { Server } from 'socket.io';
 
-describe("my awesome project", () => {
+describe('my awesome project', function () {
   let io, serverSocket, clientSocket;
 
-  before((done) => {
+  before(function (done) {
     const httpServer = createServer();
     io = new Server(httpServer);
     httpServer.listen(() => {
       const port = httpServer.address().port;
       clientSocket = new Client(`http://localhost:${port}`);
-      io.on("connection", (socket) => {
+      io.on('connection', (socket) => {
         serverSocket = socket;
       });
-      clientSocket.on("connect", done);
+      clientSocket.on('connect', done);
     });
   });
 
-  after(() => {
+  after(function () {
     io.close();
     clientSocket.close();
   });
 
-  it("should work", (done) => {
-    clientSocket.on("connection", (arg) => {
-      assert.equal(arg, "projects");
+  it('should work', function (done) {
+    clientSocket.on('connection', function (arg) {
+      assert.equal(arg, 'projects');
       done();
     });
-    serverSocket.emit("connection", "projects");
+    serverSocket.emit('connection', 'projects');
   });
-
 });
