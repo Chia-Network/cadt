@@ -12,10 +12,15 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
+  // The orgUid is the singeltonId of the
+  // organizations tables on the datalayer
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
+  },
   label: {
     type: Sequelize.STRING,
     require: true,
-    // Need to include another field 'labelType' which will be required and is STRING type.
   },
   creditingPeriodStartDate: {
     type: Sequelize.DATE,

@@ -2,55 +2,12 @@
   {
     "id": "a6745831-5d5e-45ed-b9fe-fd6aa129df25",
     "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
+    "warehouseProjectId": "11954678-f7a5-47d2-94f8-f4f3138a529c",
     "startDate": "2019-02-03 00:05:45.701 +00:00",
     "endDate": "2029-03-12 00:05:45.701 +00:00",
-    "verificationDate": "2022-01-18 00:05:45.701 +00:00",
+    "verificationApproach": "TEST",
+    "verificationReportDate": "2022-01-18 00:05:45.701 +00:00",
     "verificationBody": "This is verified",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
-    "createdAt": "2022-01-18 00:05:45.701 +00:00",
-    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
-  },
-  {
-    "id": "3d5a8ed2-e5a7-4275-a36e-3456812e39b7",
-    "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
-    "startDate": "2004-03-21 00:05:45.701 +00:00",
-    "endDate": "2005-08-11 00:05:45.701 +00:00",
-    "verificationDate": "2022-01-18 00:05:45.701 +00:00",
-    "verificationBody": "This is verified",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
-    "createdAt": "2022-01-18 00:05:45.701 +00:00",
-    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
-  },
-  {
-    "id": "57c1859d-6aa4-4c57-9dfb-6438e0d4653e",
-    "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
-    "startDate": "2012-01-18 00:05:45.701 +00:00",
-    "endDate": "2013-06-22 00:05:45.701 +00:00",
-    "verificationDate": "2022-01-18 00:05:45.701 +00:00",
-    "verificationBody": "This is verified",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
-    "createdAt": "2022-01-18 00:05:45.701 +00:00",
-    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
-  },
-  {
-    "id": "74887b22-da3b-4c2b-b945-670319193cdd",
-    "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
-    "startDate": "2014-02-18 00:05:45.701 +00:00",
-    "endDate": "2016-04-18 00:05:45.701 +00:00",
-    "verificationDate": "2022-01-18 00:05:45.701 +00:00",
-    "verificationBody": "This is verified",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
-    "createdAt": "2022-02-18 00:05:45.701 +00:00",
-    "updatedAt": "2022-08-18 00:05:45.701 +00:00"
-  },
-  {
-    "id": "7f7f23a5-3e1a-43b4-82d8-b4156b158f88",
-    "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
-    "startDate": "2020-05-18 00:05:45.701 +00:00",
-    "endDate": "2021-03-22 00:05:45.701 +00:00",
-    "verificationDate": "2022-01-18 00:05:45.701 +00:00",
-    "verificationBody": "This is verified",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
     "createdAt": "2022-01-18 00:05:45.701 +00:00",
     "updatedAt": "2022-01-18 00:05:45.701 +00:00"
   }

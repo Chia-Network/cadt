@@ -13,6 +13,12 @@ module.exports = {
     required: true,
     onDelete: 'CASCADE',
   },
+  // The orgUid is the singeltonId of the
+  // organizations tables on the datalayer
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
+  },
   ratingType: {
     type: Sequelize.STRING,
     required: true,
@@ -30,7 +36,6 @@ module.exports = {
     requred: true,
   },
   ratingLink: Sequelize.STRING,
-  // 'ratingLink' is a required field.
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
