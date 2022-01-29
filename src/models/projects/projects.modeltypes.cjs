@@ -4,6 +4,7 @@ const Sequelize = require('sequelize');
 module.exports = {
   warehouseProjectId: {
     type: Sequelize.STRING,
+    allowNull: false,
     unique: true,
     defaultValue: () => uuidv4(),
     primaryKey: true,
@@ -26,7 +27,7 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
-  // Need to add 'originProjectID' field and make it a required field with type STRING. 
+  // Need to add 'originProjectID' field and make it a required field with type STRING.
   // This field could be the exact same as 'projectID', but it could also be different. Both are required fields.
   program: {
     type: Sequelize.STRING,
@@ -62,7 +63,7 @@ module.exports = {
   ndcInformation: {
     type: Sequelize.STRING,
     required: true,
-    // 'ndcInformation' field should be optional. 
+    // 'ndcInformation' field should be optional.
   },
   projectStatus: {
     type: Sequelize.STRING,

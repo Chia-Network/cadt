@@ -1,6 +1,7 @@
 import Joi from 'joi';
 
 export const relatedProjectSchema = Joi.object({
+  // orgUid - derived upon creation
   // warehouseProjectId - derived upon creation
   id: Joi.string().optional(),
   // Need to add 'relatedProjectId' as an optional field with STRING type.

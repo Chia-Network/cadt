@@ -4,6 +4,7 @@ const Sequelize = require('sequelize');
 module.exports = {
   id: {
     type: Sequelize.STRING,
+    allowNull: false,
     unique: true,
     defaultValue: () => uuidv4(),
     primaryKey: true,
@@ -30,7 +31,7 @@ module.exports = {
     type: Sequelize.DATE,
     require: true,
   },
-  validityStartDate: {
+  validityPeriodStartDate: {
     type: Sequelize.DATE,
     require: true,
   },

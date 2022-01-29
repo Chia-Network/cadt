@@ -1,0 +1,41 @@
+{
+  "unitOwner": "f1c54511-865e-4611-976c-7c3c1f704662",
+  "countryJurisdictionOfOwner": "USA",
+  "projectLocationId": "TEST",
+  "inCountryJurisdictionOfOwner": "Maryland",
+  "serialNumberBlock": "AXJJFSLGHSHEJ1000-AXJJFSLGHSHEJ1010",
+  "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+  "vintageYear": 1998,
+  "unitType": "heard reduction",
+  "marketplace": "Demo Marketplace",
+  "marketplaceLink": "http://climateWarehouse.com/myMarketplace",
+  "marketplaceIdentifier": "AKFEE3",
+  "unitTags": "Demo, Wind Energy",
+  "unitStatus": "Held",
+  "unitStatusReason": "Retired Status",
+  "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
+  "correspondingAdjustmentDeclaration": "Commited",
+  "correspondingAdjustmentStatus": "Not Started",
+  "labels": [
+    {
+      "warehouseProjectId": "11954678-f7a5-47d2-94f8-f4f3138a529c",
+      "label": "label 1",
+      "labelType": "TEST",
+      "creditingPeriodStartDate": "2022-01-10T00:05:45.701Z",
+      "creditingPeriodEndDate": "2022-01-18T00:05:45.701Z",
+      "validityPeriodStartDate": "2022-01-18T00:05:45.701Z",
+      "validityPeriodEndDate": "2022-01-18T00:05:45.701Z",
+      "unitQuantity": 5,
+      "labelLink": "https://label.link/1"
+    }
+  ],
+  "issuance": {
+    "warehouseProjectId": "11954678-f7a5-47d2-94f8-f4f3138a529c",
+    "startDate": "2019-02-03T00:05:45.701Z",
+    "endDate": "2029-03-12T00:05:45.701Z",
+    "verificationApproach": "TEST",
+    "verificationReportDate": "2022-01-18T00:05:45.701Z",
+    "verificationBody": "This is verified",
+    "verificationDate": "2029-03-12T00:05:45.701Z"
+  }
+}
