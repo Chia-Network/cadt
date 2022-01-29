@@ -46,6 +46,32 @@ export const create = async (req, res) => {
     const { orgUid } = await Organization.getHomeOrg();
     newRecord.orgUid = orgUid;
 
+    const childRecords = [
+      'projectLocations',
+      'issuances',
+      'coBenefits',
+      'relatedProjects',
+      'projectRatings',
+      'estimations',
+      'labels',
+    ];
+
+    childRecords.forEach((childRecordKey) => {
+      if (newRecord[childRecordKey]) {
+        newRecord[childRecordKey].map((childRecord) => {
+          childRecord.id = uuidv4();
+          childRecord.orgUid = orgUid;
+
+          // labels use a junction table
+          if (childRecordKey !== 'labels') {
+            childRecord.warehouseProjectId = uuid;
+          }
+
+          return childRecord;
+        });
+      }
+    });
+
     // The new project is getting created in this registry
     newRecord.currentRegistry = orgUid;
 

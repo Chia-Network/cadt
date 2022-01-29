@@ -28,7 +28,6 @@ app.use((err, req, res, next) => {
       return res.status(400).json({
         message: 'API Validation error',
         errors: err.error.details.map((detail) => {
-          console.log(detail);
           return _.get(detail, 'context.message', detail.message);
         }),
       });
