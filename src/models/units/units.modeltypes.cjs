@@ -24,6 +24,8 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
+  //There doesn't appear to be a reference to label ID. We must reference labels table to understand if any labels get applied to specific units.
+  // Please insert reference to labels table.
   unitOwner: {
     type: Sequelize.STRING,
     required: true,
@@ -35,6 +37,7 @@ module.exports = {
   inCountryJurisdictionOfOwner: {
     type: Sequelize.STRING,
     required: true,
+    // This 'inCountryJurisdictionOfOwner' should be an optional field.
   },
   serialNumberBlock: {
     type: Sequelize.STRING,
@@ -47,6 +50,7 @@ module.exports = {
   vintageYear: {
     type: Sequelize.STRING,
     required: true,
+    // This 'vintageYear' field should technically be always be in YYYY date format. Not sure if that makes it a DATE type.
   },
   unitType: {
     type: Sequelize.STRING,

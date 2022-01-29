@@ -6,6 +6,7 @@ import { Rating } from './ratings';
 import { RelatedProject } from './related-projects';
 import { Unit } from './units';
 import { Issuance } from './issuances';
+import { Estimation } from './estimations';
 
 Project.associate();
 CoBenefit.associate();
@@ -15,6 +16,7 @@ Rating.associate();
 RelatedProject.associate();
 Unit.associate();
 Issuance.associate();
+Estimation.associate();
 
 export * from './projects';
 export * from './co-benefits';
@@ -29,3 +31,4 @@ export * from './organizations';
 export * from './meta';
 export * from './simulator';
 export * from './labelUnits';
+export * from './estimations';

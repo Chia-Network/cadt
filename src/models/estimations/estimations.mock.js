@@ -1,6 +1,6 @@
-import stub from './simulator.stub.json';
+import stub from './estimations.modeltypes.cjs';
 
-export const SimulatorMock = {
+export const EstimationMock = {
   findAll: () => stub,
   findOne: (id) => {
     return stub.find((record) => record.id == id);

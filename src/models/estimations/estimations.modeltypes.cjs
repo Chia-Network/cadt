@@ -10,20 +10,27 @@ module.exports = {
   },
   warehouseProjectId: {
     type: Sequelize.INTEGER,
-    required: true,
     onDelete: 'CASCADE',
+    required: true,
   },
-  // The orgUid is the singeltonId of the
-  // organizations tables on the datalayer
   orgUid: {
     type: Sequelize.STRING,
     required: true,
   },
-  // Need to add field 'relatedProjectID' with type STRING and make it optional.
-  // This is because a related project may not be in the warehouse, so we can't rely on warehouseProjectId field.
-  // This would be the field a user would use to find the related project within the registry listed below.
-  relationshipType: Sequelize.STRING,
-  registry: Sequelize.STRING,
+  creditingPeriodStart: {
+    // this should be a DATE not a string.
+    type: Sequelize.STRING,
+    required: true,
+  },
+  creditingPeriodEnd: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+    // Need to add required to this field. Any estimatations will require an end date. It is fine to default to NOW, but should still be required.
+  },
+  unitCount: {
+    type: Sequelize.INTEGER,
+    required: true,
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

@@ -2,7 +2,7 @@
 
 import _ from 'lodash';
 import Sequelize from 'sequelize';
-import rxjs from 'rxjs';
+import * as rxjs from 'rxjs';
 import {
   sequelize,
   safeMirrorDbHandler,
