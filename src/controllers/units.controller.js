@@ -150,7 +150,7 @@ export const findAll = async (req, res) => {
   } else {
     return sendXls(
       Unit.name,
-      createXlsFromSequelizeResults(response, Unit),
+      createXlsFromSequelizeResults(response, Unit, false, false, true),
       res,
     );
   }

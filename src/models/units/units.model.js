@@ -16,6 +16,7 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls';
+import {unitsUpdateSchema} from "../../validations/index.js";
 
 const { Model } = Sequelize;
 
@@ -58,7 +59,8 @@ const virtualFields = {
 class Unit extends Model {
   static stagingTableName = 'Units';
   static changes = new rxjs.Subject();
-
+  static validateImport = unitsUpdateSchema;
+  
   static defaultColumns = Object.keys(
     Object.assign({}, ModelTypes, virtualFields),
   );

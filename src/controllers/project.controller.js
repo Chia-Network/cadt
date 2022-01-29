@@ -129,7 +129,7 @@ export const findAll = async (req, res) => {
   } else {
     return sendXls(
       Project.name,
-      createXlsFromSequelizeResults(response, Project),
+      createXlsFromSequelizeResults(response, Project, false, false, true),
       res,
     );
   }

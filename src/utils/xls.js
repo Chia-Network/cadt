@@ -49,6 +49,7 @@ export const createXlsFromSequelizeResults = (
   model,
   hex = false,
   toStructuredCsv = false,
+  excludeOrgUid = false,
 ) => {
   rows = JSON.parse(JSON.stringify(rows)); // Sadly this is the best way to simplify sequelize's return shape
 
@@ -96,7 +97,9 @@ export const createXlsFromSequelizeResults = (
           sheets[mainColName + 's'] = {
             name: mainColName + 's',
             data: [
-              Object.keys(row[mainColName]).concat([
+              Object.keys(row[mainColName].filter(colName => {
+                return !(excludeOrgUid && colName === 'orgUid');
+              })).concat([
                 model.name.split('_').join('') + 'Id',
               ]),
             ],
@@ -113,7 +116,9 @@ export const createXlsFromSequelizeResults = (
         if (row[mainColName] === null) {
           row[mainColName] = 'null';
         }
-        mainXlsRow.push(encodeValue(row[mainColName], hex));
+        if (!(excludeOrgUid && mainColName === 'orgUid')) {
+          mainXlsRow.push(encodeValue(row[mainColName], hex));
+        }
       }
     }
 
@@ -235,13 +240,20 @@ export const updateTablesWithData = async (tableData) => {
           // Assign the newly created record to this home org
           row.orgUid = orgUid;
         }
+  
+        const validation = model.validateImport.validate(row);
 
-        await Staging.upsert({
-          uuid: data[model.primaryKeyAttributes[0]],
-          action: exists ? 'UPDATE' : 'INSERT',
-          table: model.tableName,
-          data: JSON.stringify(row),
-        });
+        if (!validation.error) {
+          await Staging.upsert({
+            uuid: data[model.primaryKeyAttributes[0]],
+            action: exists ? 'UPDATE' : 'INSERT',
+            table: model.tableName,
+            data: JSON.stringify(row),
+          });
+        } else {
+          validation.error.message += ' on ' + model.name;
+          throw validation.error;
+        }
       }
     }
   });
