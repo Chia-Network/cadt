@@ -25,11 +25,10 @@ class Organization extends Model {
   static async getOrgsMap() {
     const organizations = await Organization.findAll({
       attributes: ['orgUid', 'name', 'icon', 'isHome', 'subscribed'],
-      raw: true,
     });
 
     return organizations.reduce((map, current) => {
-      map[current.orgUid] = current;
+      map[current.orgUid] = current.dataValues;
       return map;
     }, {});
   }

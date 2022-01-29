@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import 'regenerator-runtime/runtime.js';
+
 import rootRouter from './routes';
 import http from 'http';
 import { Server } from 'socket.io';

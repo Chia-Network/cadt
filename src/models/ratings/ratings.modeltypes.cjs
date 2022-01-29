@@ -36,6 +36,7 @@ module.exports = {
     requred: true,
   },
   ratingLink: Sequelize.STRING,
+  // 'ratingLink' is a required field.
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
