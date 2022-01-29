@@ -12,9 +12,8 @@ import {
   ProjectLocation,
   LabelUnit,
   Staging,
+  Rating,
 } from '../models';
-
-import { sequelize, sequelizeMirror } from '../models/database';
 
 import * as dataLayer from './persistance';
 import * as simulator from './simulator';
@@ -63,63 +62,84 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
 
   try {
     // Create a transaction for both the main db and the mirror db
-    await sequelize.transaction(async () => {
-      return sequelizeMirror.transaction(async () => {
-        if (organizationToTrucate) {
-          await Promise.all([
-            // the child table records should cascade delete so we only need to
-            // truncate the primary tables
-            Unit.destroy({ where: { orgUid: organizationToTrucate.orgUid } }),
-            Project.destroy({
-              where: { orgUid: organizationToTrucate.orgUid },
-            }),
-            LabelUnit.destroy({
-              where: { orgUid: organizationToTrucate.orgUid },
-            }),
-          ]);
+    //await sequelize.transaction(async () => {
+    //  return sequelizeMirror.transaction(async () => {
+    if (organizationToTrucate) {
+      await Promise.all([
+        // the child table records should cascade delete so we only need to
+        // truncate the primary tables
+        Unit.destroy({ where: { orgUid: organizationToTrucate.orgUid } }),
+        Project.destroy({
+          where: { orgUid: organizationToTrucate.orgUid },
+        }),
+        LabelUnit.destroy({
+          where: { orgUid: organizationToTrucate.orgUid },
+        }),
+        RelatedProject.destroy({
+          where: { orgUid: organizationToTrucate.orgUid },
+        }),
+        CoBenefit.destroy({
+          where: { orgUid: organizationToTrucate.orgUid },
+        }),
+        Issuance.destroy({
+          where: { orgUid: organizationToTrucate.orgUid },
+        }),
+        Label.destroy({
+          where: { orgUid: organizationToTrucate.orgUid },
+        }),
+        Rating.destroy({
+          where: { orgUid: organizationToTrucate.orgUid },
+        }),
+        ProjectLocation.destroy({
+          where: { orgUid: organizationToTrucate.orgUid },
+        }),
+      ]);
+    }
+
+    await Promise.all(
+      storeData.keys_values.map(async (kv) => {
+        const key = new Buffer(
+          kv.key.replace(`${storeId}_`, ''),
+          'hex',
+        ).toString();
+        const value = JSON.parse(new Buffer(kv.value, 'hex').toString());
+        if (key.includes('unit_')) {
+          await Unit.upsert(value);
+          await Staging.destroy({
+            where: { uuid: value.warehouseUnitId },
+          });
+        } else if (key.includes('project_')) {
+          await Project.upsert(value);
+          await Staging.destroy({
+            where: { uuid: value.warehouseProjectId },
+          });
+        } else if (key.includes('relatedProjects_')) {
+          await RelatedProject.upsert(value);
+        } else if (key.includes('label_units_')) {
+          await LabelUnit.upsert(value);
+        } else if (key.includes('coBenefits_')) {
+          await CoBenefit.upsert(value);
+        } else if (key.includes('issuances_')) {
+          await Issuance.upsert(value);
+        } else if (key.includes('projectLocations_')) {
+          console.log(value);
+          await ProjectLocation.upsert(value);
+        } else if (key.includes('labels_')) {
+          await Label.upsert(value);
+        } else if (key.includes('projectRatings_')) {
+          await Rating.upsert(value);
         }
+      }),
+    );
 
-        await Promise.all(
-          storeData.keys_values.map(async (kv) => {
-            const key = new Buffer(
-              kv.key.replace(`${storeId}_`, ''),
-              'hex',
-            ).toString();
-            const value = JSON.parse(new Buffer(kv.value, 'hex').toString());
-            if (key.includes('unit')) {
-              await Unit.upsert(value);
-              await Staging.destroy({
-                where: { uuid: value.warehouseUnitId },
-              });
-            } else if (key.includes('project')) {
-              await Project.upsert(value);
-              await Staging.destroy({
-                where: { uuid: value.warehouseProjectId },
-              });
-            } else if (key.includes('relatedProjects')) {
-              await RelatedProject.upsert(value);
-            } else if (key.includes('labels_units')) {
-              await LabelUnit.upsert(value);
-            } else if (key.includes('coBenefits')) {
-              await CoBenefit.upsert(value);
-            } else if (key.includes('issuances')) {
-              await Issuance.upsert(value);
-            } else if (key.includes('projectLocations')) {
-              await ProjectLocation.upsert(value);
-            } else if (key.includes('labels')) {
-              await Label.upsert(value);
-            }
-          }),
-        );
-
-        // clean up any staging records than involved delete commands,
-        // since we cant track that they came in through the uuid,
-        // we can infer this because diff.original is null instead of empty object.
-        await Staging.cleanUpCommitedAndInvalidRecords();
-      });
-    });
+    // clean up any staging records than involved delete commands,
+    // since we cant track that they came in through the uuid,
+    // we can infer this because diff.original is null instead of empty object.
+    await Staging.cleanUpCommitedAndInvalidRecords();
+    //  });
+    //  });
   } catch (error) {
-    console.log('ERROR DURING SYNC TRANSACTION', error);
+    console.trace('ERROR DURING SYNC TRANSACTION', error);
   }
 };
 

@@ -1,7 +1,10 @@
 import _ from 'lodash';
 
 import { Staging } from '../models';
-import { assertStagingRecordExists } from '../utils/data-assertions';
+import {
+  assertStagingRecordExists,
+  assertHomeOrgExists,
+} from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
   try {
@@ -35,6 +38,8 @@ export const findAll = async (req, res) => {
 
 export const commit = async (req, res) => {
   try {
+    await assertHomeOrgExists();
+
     await Staging.pushToDataLayer();
     res.json({ message: 'Staging Table committed to full node' });
   } catch (error) {
@@ -42,13 +47,12 @@ export const commit = async (req, res) => {
       message: 'Error commiting staging table',
       error: error.message,
     });
-
-    console.trace(error);
   }
 };
 
 export const destroy = async (req, res) => {
   try {
+    await assertHomeOrgExists();
     await assertStagingRecordExists(req.body.uuid);
     await Staging.destroy({
       where: {
@@ -68,6 +72,7 @@ export const destroy = async (req, res) => {
 
 export const clean = async (req, res) => {
   try {
+    await assertHomeOrgExists();
     await Staging.destroy({
       where: {},
       truncate: true,

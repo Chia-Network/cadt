@@ -281,44 +281,42 @@ export const transformFullXslsToChangeList = (
         return item === primaryKeyNames[key];
       });
 
-      changeList[key] = [];
+      if (!changeList[key]) {
+        changeList[key] = [];
+      }
 
-      sheet.data.forEach((row) => {
+      // filter out the header row
+      _.tail(sheet.data).forEach((row) => {
         const rows = checkArrayOfArrays(row) ? row : [row];
-        return (
-          rows
-            // filter out the header row
-            .filter((r) => r[primaryKeyIndex] !== headerRow[primaryKeyIndex])
-            .forEach((r) => {
-              const dataLayerKey = Buffer.from(
-                `${key}_${r[primaryKeyIndex]}`,
-              ).toString('hex');
+        return rows.forEach((r) => {
+          const dataLayerKey = Buffer.from(
+            `${key}_${r[primaryKeyIndex]}`,
+          ).toString('hex');
 
-              if (action === 'update') {
-                changeList[key].push(
-                  {
-                    action: 'delete',
-                    key: dataLayerKey,
-                  },
-                  {
-                    action: 'insert',
-                    key: dataLayerKey,
-                    value: Buffer.from(
-                      JSON.stringify(_.zipObject(headerRow, r)),
-                    ).toString('hex'),
-                  },
-                );
-              } else {
-                changeList[key].push({
-                  action: action,
-                  key: dataLayerKey,
-                  value: Buffer.from(
-                    JSON.stringify(_.zipObject(headerRow, r)),
-                  ).toString('hex'),
-                });
-              }
-            })
-        );
+          if (action === 'update') {
+            changeList[key].push(
+              {
+                action: 'delete',
+                key: dataLayerKey,
+              },
+              {
+                action: 'insert',
+                key: dataLayerKey,
+                value: Buffer.from(
+                  JSON.stringify(_.zipObject(headerRow, r)),
+                ).toString('hex'),
+              },
+            );
+          } else {
+            changeList[key].push({
+              action: action,
+              key: dataLayerKey,
+              value: Buffer.from(
+                JSON.stringify(_.zipObject(headerRow, r)),
+              ).toString('hex'),
+            });
+          }
+        });
       });
     }
   });

@@ -296,6 +296,8 @@ class Unit extends Model {
       true,
     );
 
+    console.log(insertXslsSheets);
+
     const updateXslsSheets = createXlsFromSequelizeResults(
       updateRecords,
       Unit,
@@ -306,7 +308,7 @@ class Unit extends Model {
     const primaryKeyMap = {
       unit: 'warehouseUnitId',
       labels: 'id',
-      label_units: 'labelunitId',
+      label_units: 'id',
       issuances: 'id',
     };
 

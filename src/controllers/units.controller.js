@@ -45,6 +45,25 @@ export const create = async (req, res) => {
     const { orgUid } = await Organization.getHomeOrg();
     newRecord.orgUid = orgUid;
 
+    if (newRecord.labels) {
+      newRecord.labels.map((childRecord) => {
+        childRecord.id = uuidv4();
+        childRecord.orgUid = orgUid;
+        childRecord.label_unit = {};
+        childRecord.label_unit.id = uuidv4();
+        childRecord.label_unit.orgUid = orgUid;
+        childRecord.label_unit.warehouseUnitId = uuid;
+        childRecord.label_unit.labelId = childRecord.id;
+
+        return childRecord;
+      });
+    }
+
+    if (newRecord.issuance) {
+      newRecord.labels.id = uuidv4();
+      newRecord.labels.orgUid = orgUid;
+    }
+
     const stagedData = {
       uuid,
       action: 'INSERT',

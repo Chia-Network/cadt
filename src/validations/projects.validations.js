@@ -6,6 +6,7 @@ import {
   relatedProjectSchema,
   labelSchema,
   issuanceSchema,
+  estimationSchema,
 } from '../validations';
 
 export const baseSchema = {
@@ -43,6 +44,7 @@ export const baseSchema = {
   relatedProjects: Joi.array().items(relatedProjectSchema).min(1).optional(),
   projectLocations: Joi.array().items(locationSchema).min(1).optional(),
   projectRatings: Joi.array().items(ratingSchema).min(1).optional(),
+  estimations: Joi.array().items(estimationSchema).min(1).optional(),
 };
 
 export const projectsGetQuerySchema = Joi.object()
