@@ -29,11 +29,15 @@ import {
 
 import ModelTypes from './projects.modeltypes.cjs';
 import { ProjectMirror } from './projects.model.mirror';
+import { projectsUpdateSchema } from '../../validations/index';
 
 class Project extends Model {
   static stagingTableName = 'Projects';
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
+  static validateImport = projectsUpdateSchema
+  static virtualFieldList = {};
+  
   static getAssociatedModels = () => [
     ProjectLocation,
     Label,

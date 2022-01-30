@@ -8,4 +8,6 @@ export const relatedProjectSchema = Joi.object({
   // A project may not exist in the warehouse, so we need to list the project ID as it would appear in the associated registry.
   relationshipType: Joi.string().optional(),
   registry: Joi.string().optional(),
+  updatedAt: Joi.date().optional(),
+  createdAt: Joi.date().optional(),
 });

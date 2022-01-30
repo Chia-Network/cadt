@@ -1,5 +1,5 @@
 import _ from 'lodash';
-
+import xlsx from 'node-xlsx';
 import { uuid as uuidv4 } from 'uuidv4';
 
 import {
@@ -29,7 +29,12 @@ import {
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
-import { createXlsFromSequelizeResults, sendXls } from '../utils/xls';
+import {
+  tableDataFromXlsx,
+  createXlsFromSequelizeResults,
+  sendXls,
+  updateTableWithData, collapseTablesData,
+} from '../utils/xls';
 
 export const create = async (req, res) => {
   try {
@@ -150,7 +155,7 @@ export const findAll = async (req, res) => {
   } else {
     return sendXls(
       Project.name,
-      createXlsFromSequelizeResults(response, Project),
+      createXlsFromSequelizeResults(response, Project, false, false, true),
       res,
     );
   }
@@ -171,6 +176,31 @@ export const findOne = async (req, res) => {
   };
 
   res.json(await Project.findOne(query));
+};
+
+export const updateFromXLS = async (req, res) => {
+  try {
+    await assertHomeOrgExists();
+
+    const { files } = req;
+
+    if (!files || !files.xlsx) {
+      throw new Error('File Not Received');
+    }
+
+    const xlsxParsed = xlsx.parse(files.xlsx.data);
+    const stagedDataItems = tableDataFromXlsx(xlsxParsed, Project);
+    await updateTableWithData(collapseTablesData(stagedDataItems, Project), Project);
+
+    res.json({
+      message: 'Updates from xlsx added to staging',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
+    });
+  }
 };
 
 export const update = async (req, res) => {

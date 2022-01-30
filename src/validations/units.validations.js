@@ -61,6 +61,8 @@ const unitsBaseSchema = {
     .required(),
   issuance: issuanceSchema.optional(),
   labels: Joi.array().items(labelSchema).optional(),
+  updatedAt: Joi.date().optional(),
+  createdAt: Joi.date().optional(),
 };
 
 export const unitsPostSchema = Joi.object({
