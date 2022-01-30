@@ -36,6 +36,8 @@ class Project extends Model {
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
   static validateImport = projectsUpdateSchema
+  static virtualFieldList = {};
+  
   static getAssociatedModels = () => [
     ProjectLocation,
     Label,

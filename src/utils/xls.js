@@ -77,7 +77,9 @@ export const createXlsFromSequelizeResults = (
   const initialReduceValue = {};
   initialReduceValue[model.name] = {
     name: model.name + 's',
-    data: [columnsInMainSheet],
+    data: [columnsInMainSheet.filter(colName => {
+      return !(excludeOrgUid && colName === 'orgUid');
+    })],
   };
 
   const xlsData = rows.reduce((sheets, row) => {
@@ -97,13 +99,17 @@ export const createXlsFromSequelizeResults = (
           sheets[mainColName + 's'] = {
             name: mainColName + 's',
             data: [
-              Object.keys(row[mainColName].filter(colName => {
-                return !(excludeOrgUid && colName === 'orgUid');
-              })).concat([
+              Object.keys(row[mainColName]).concat([
                 model.name.split('_').join('') + 'Id',
               ]),
             ],
-          };
+          }
+          
+          console.log(Object.keys(row[mainColName]).filter(colName => {
+            return !(excludeOrgUid && colName === 'orgUid');
+          }).concat([
+            model.name.split('_').join('') + 'Id',
+          ]))
         }
         sheets[mainColName + 's'].data.push(
           Object.values(row[mainColName])
@@ -116,7 +122,9 @@ export const createXlsFromSequelizeResults = (
         if (row[mainColName] === null) {
           row[mainColName] = 'null';
         }
+        //console.log(mainColName, "//")
         if (!(excludeOrgUid && mainColName === 'orgUid')) {
+          //console.log(mainColName, "!!!");
           mainXlsRow.push(encodeValue(row[mainColName], hex));
         }
       }
@@ -210,7 +218,10 @@ export const tableDataFromXlsx = (xlsx, model) => {
           if (columnData === 'null') {
             columnData = null;
           }
-          row[columnNames[columnIndex]] = columnData;
+          // Ignore virtual fields
+          if (!Object.keys(model.virtualFieldList).includes(columnNames[columnIndex])) {
+            row[columnNames[columnIndex]] = columnData;
+          }
         }
         delete row.orgUid;
         stagingData[dataModel.name].data.push(row);
@@ -220,11 +231,42 @@ export const tableDataFromXlsx = (xlsx, model) => {
   }, {});
 };
 
-export const updateTablesWithData = async (tableData) => {
+export const collapseTablesData = (tableData, model) => {
+  const collapsed = {[model.name]: tableData[model.name]};
+  
+  let associations = model.getAssociatedModels().map((model) => {
+    if (typeof model === 'object') {
+      return model.model;
+    } else {
+      return model;
+    }
+  });
+  
+  for (const [i, data] of collapsed[model.name].data.entries()) {
+    for (const {name: association} of associations) {
+      if (['issuance'].includes(association)) {
+        collapsed[model.name].data[i][association] = tableData[association].data.find((row) => {
+          return row[model.name + 'Id'] === collapsed[model.name].data[i][association + 'Id'];
+        })
+      } else {
+        collapsed[model.name].data[i][association + 's'] = tableData[association].data.filter((row) => {
+          return row[model.name + 'Id'] === collapsed[model.name].data[i][tableData[model.name].model.primaryKeyAttributes[0]];
+        });
+      }
+    }
+  }
+  
+  return collapsed;
+}
+
+export const updateTableWithData = async (tableData, model) => {
+  if (!['project', 'unit'].includes(model.name)) {
+    throw 'Bulk import is only supported for projects and units';
+  }
   // using a transaction ensures either everything is uploaded or everything fails
   await sequelize.transaction(async () => {
     const { orgUid } = await Organization.getHomeOrg();
-
+    
     for (let [, { model, data }] of Object.values(tableData).entries()) {
       for (let row of data) {
         const existingRecord = await model.findByPk(
@@ -241,7 +283,7 @@ export const updateTablesWithData = async (tableData) => {
           row.orgUid = orgUid;
         }
   
-        const validation = model.validateImport.validate(row);
+        const validation = model.validateImport.validate(row, { stripUnknown: true });
 
         if (!validation.error) {
           await Staging.upsert({

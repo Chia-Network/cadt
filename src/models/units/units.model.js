@@ -60,6 +60,7 @@ class Unit extends Model {
   static stagingTableName = 'Units';
   static changes = new rxjs.Subject();
   static validateImport = unitsUpdateSchema;
+  static virtualFieldList = virtualFields;
   
   static defaultColumns = Object.keys(
     Object.assign({}, ModelTypes, virtualFields),

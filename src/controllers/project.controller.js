@@ -33,7 +33,7 @@ import {
   tableDataFromXlsx,
   createXlsFromSequelizeResults,
   sendXls,
-  updateTablesWithData,
+  updateTableWithData, collapseTablesData,
 } from '../utils/xls';
 
 export const create = async (req, res) => {
@@ -190,7 +190,7 @@ export const updateFromXLS = async (req, res) => {
 
     const xlsxParsed = xlsx.parse(files.xlsx.data);
     const stagedDataItems = tableDataFromXlsx(xlsxParsed, Project);
-    await updateTablesWithData(stagedDataItems);
+    await updateTableWithData(collapseTablesData(stagedDataItems, Project), Project);
 
     res.json({
       message: 'Updates from xlsx added to staging',

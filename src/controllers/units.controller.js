@@ -22,10 +22,11 @@ import {
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
 import {
+  collapseTablesData,
   createXlsFromSequelizeResults,
   sendXls,
   tableDataFromXlsx,
-  updateTablesWithData,
+  updateTableWithData,
 } from '../utils/xls';
 import xlsx from 'node-xlsx';
 
@@ -196,7 +197,7 @@ export const updateFromXLS = async (req, res) => {
 
     const xlsxParsed = xlsx.parse(files.xlsx.data);
     const stagedDataItems = tableDataFromXlsx(xlsxParsed, Unit);
-    await updateTablesWithData(stagedDataItems);
+    await updateTableWithData(collapseTablesData(stagedDataItems, Unit), Unit);
 
     res.json({
       message: 'Updates from xlsx added to staging',
