@@ -12,7 +12,6 @@ import {
 export const baseSchema = {
   // warehouseProjectId - derived upon creation
   // orgUid - derived upon creation
-  currentRegistry: Joi.string().required(),
   projectId: Joi.string().required(),
   registryOfOrigin: Joi.string().required(),
   // Need to add 'originProjectId' as a new field. It will be required and STRING type.

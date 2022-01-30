@@ -12,7 +12,7 @@ import * as testFixtures from '../test-fixtures';
 import { POLLING_INTERVAL } from '../../src/fullnode';
 const TEST_WAIT_TIME = POLLING_INTERVAL * 2;
 
-describe('Create Unit Integration', function () {
+describe('Unit Resource Integration Tests', function () {
   let homeOrgUid;
 
   beforeEach(async function () {
@@ -21,9 +21,15 @@ describe('Create Unit Integration', function () {
     homeOrgUid = await testFixtures.getHomeOrgId();
   });
 
-  it.only('deletes a unit end-to-end (with simulator)', async function () {
+  it('deletes a unit end-to-end (with simulator)', async function () {
+    /*
+      Basic Idea for this test is that we are going to create a unit and verify that
+      the new unit propagates through the data layer and into our db. Then we are going
+      to delete the same unit and make sure the delete command propagates through the datalayer 
+      then gets removed from our db.
+    */
     // create and commit the unit to be deleted
-    const newUnit = await testFixtures.createNewUnit();
+    const newUnitPayload = await testFixtures.createNewUnit();
 
     // Get the staging record we just created
     const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
@@ -31,12 +37,18 @@ describe('Create Unit Integration', function () {
     // There is no original record when creating new units
     expect(stagingRecord.diff.original).to.deep.equal({});
 
+    // Change records are always in an array
     const changeRecord = _.head(stagingRecord.diff.change);
 
     // make sure the inferred data was set to the staging record
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
 
+    // make sure an warehouseUnitId was created
+    // (this has to be done in the controller since we
+    // send to the datalayer before it goes to our database,
+    // so thres no oppertunity to have the id autoassigned)
     const warehouseUnitId = changeRecord.warehouseUnitId;
+    expect(warehouseUnitId).to.be.ok;
 
     // Now push the staging table live
     await testFixtures.commitStagingRecords();
@@ -47,48 +59,41 @@ describe('Create Unit Integration', function () {
       undefined,
     );
 
+    // Make sure the newly created unit is in our Db
+    await testFixtures.checkUnitRecordExists(warehouseUnitId);
+
     // Make sure the newly created unit is in the mirrorDb
-    await testFixtures.checkMirrorRecordExists(warehouseUnitId);
+    await testFixtures.checkUnitMirrorRecordExists(warehouseUnitId);
 
     // Now time to delete the unit
-    const deleteRes = await supertest(app)
-      .delete('/v1/units')
-      .send({ warehouseUnitId });
-
-    expect(deleteRes.statusCode).to.equal(200);
-    expect(deleteRes.body).to.deep.equal({
-      message: 'Unit deleted successfully',
-    });
+    await testFixtures.deleteUnit(warehouseUnitId);
 
     // Get the staging record we just created
-    const deleteStagingRes = await supertest(app).get('/v1/staging');
-    const deleteStagingRecord = _.head(deleteStagingRes.body);
+    const deleteStagingRecord =
+      await testFixtures.getLastCreatedStagingRecord();
 
-    // There is no original when creating new units
+    // When deleting the change record should be empty, since the record is going away
     expect(deleteStagingRecord.diff.change).to.deep.equal({});
 
-    const deleteOriginalRecord = deleteStagingRecord.diff.original;
-
-    console.log(deleteOriginalRecord);
-
-    expect(
-      _.pick(deleteOriginalRecord, [...Object.keys(newUnit)]),
-    ).to.deep.equal(newUnit);
+    // make sure all the data that was added during the creation
+    // process in included in the record we are about to delete
+    // Since some data is derived and not in the creation payload,
+    // we need to test against the subset of the delete record
+    // We alreay asserted existance of the derived data above
+    testFixtures.objectContainsSubSet(
+      deleteStagingRecord.diff.original,
+      newUnitPayload,
+    );
 
     // Now push the staging table live
     await testFixtures.commitStagingRecords();
     await testFixtures.waitForDataLayerSync();
 
-    // Now check if the unit is still in the DB
-    const getDeletedRecordResult = await supertest(app)
-      .get('/v1/units')
-      .query({ warehouseUnitId });
-
-    expect(getDeletedRecordResult.statusCode).to.equal(200);
-    expect(getDeletedRecordResult.body).to.equal(null);
+    // make sure the record is no longer in the db after the datalayer synced
+    await testFixtures.checkUnitRecordDoesNotExist(warehouseUnitId);
 
     // Verify the record is no longer in the mirror db
-    await testFixtures.checkMirrorRecordDoesNotExist(warehouseUnitId);
+    await testFixtures.checkUnitMirrorRecordDoesNotExist(warehouseUnitId);
   }).timeout(TEST_WAIT_TIME * 10);
 
   it('splits an existing unit end-to-end (with simulator)', async function () {

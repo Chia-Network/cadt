@@ -13,6 +13,7 @@ import {
   LabelUnit,
   Staging,
   Rating,
+  Estimation,
 } from '../models';
 
 import * as dataLayer from './persistance';
@@ -93,6 +94,9 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
         ProjectLocation.destroy({
           where: { orgUid: organizationToTrucate.orgUid },
         }),
+        Estimation.destroy({
+          where: { orgUid: organizationToTrucate.orgUid },
+        }),
       ]);
     }
 
@@ -102,6 +106,7 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
           kv.key.replace(`${storeId}_`, ''),
           'hex',
         ).toString();
+
         const value = JSON.parse(new Buffer(kv.value, 'hex').toString());
         if (key.includes('unit_')) {
           await Unit.upsert(value);
@@ -128,6 +133,8 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
           await Label.upsert(value);
         } else if (key.includes('projectRatings_')) {
           await Rating.upsert(value);
+        } else if (key.includes('estimations_')) {
+          await Estimation.upsert(value);
         }
       }),
     );
