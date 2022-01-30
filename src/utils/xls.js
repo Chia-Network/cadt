@@ -77,9 +77,11 @@ export const createXlsFromSequelizeResults = (
   const initialReduceValue = {};
   initialReduceValue[model.name] = {
     name: model.name + 's',
-    data: [columnsInMainSheet.filter(colName => {
-      return !(excludeOrgUid && colName === 'orgUid');
-    })],
+    data: [
+      columnsInMainSheet.filter((colName) => {
+        return !(excludeOrgUid && colName === 'orgUid');
+      }),
+    ],
   };
 
   const xlsData = rows.reduce((sheets, row) => {
@@ -103,13 +105,7 @@ export const createXlsFromSequelizeResults = (
                 model.name.split('_').join('') + 'Id',
               ]),
             ],
-          }
-          
-          console.log(Object.keys(row[mainColName]).filter(colName => {
-            return !(excludeOrgUid && colName === 'orgUid');
-          }).concat([
-            model.name.split('_').join('') + 'Id',
-          ]))
+          };
         }
         sheets[mainColName + 's'].data.push(
           Object.values(row[mainColName])
@@ -122,9 +118,7 @@ export const createXlsFromSequelizeResults = (
         if (row[mainColName] === null) {
           row[mainColName] = 'null';
         }
-        //console.log(mainColName, "//")
         if (!(excludeOrgUid && mainColName === 'orgUid')) {
-          //console.log(mainColName, "!!!");
           mainXlsRow.push(encodeValue(row[mainColName], hex));
         }
       }
@@ -219,7 +213,11 @@ export const tableDataFromXlsx = (xlsx, model) => {
             columnData = null;
           }
           // Ignore virtual fields
-          if (!Object.keys(model.virtualFieldList).includes(columnNames[columnIndex])) {
+          if (
+            !Object.keys(model.virtualFieldList).includes(
+              columnNames[columnIndex],
+            )
+          ) {
             row[columnNames[columnIndex]] = columnData;
           }
         }
@@ -232,8 +230,8 @@ export const tableDataFromXlsx = (xlsx, model) => {
 };
 
 export const collapseTablesData = (tableData, model) => {
-  const collapsed = {[model.name]: tableData[model.name]};
-  
+  const collapsed = { [model.name]: tableData[model.name] };
+
   let associations = model.getAssociatedModels().map((model) => {
     if (typeof model === 'object') {
       return model.model;
@@ -241,23 +239,35 @@ export const collapseTablesData = (tableData, model) => {
       return model;
     }
   });
-  
-  for (const [i, data] of collapsed[model.name].data.entries()) {
-    for (const {name: association} of associations) {
+
+  for (const [i] of collapsed[model.name].data.entries()) {
+    for (const { name: association } of associations) {
       if (['issuance'].includes(association)) {
-        collapsed[model.name].data[i][association] = tableData[association].data.find((row) => {
-          return row[model.name + 'Id'] === collapsed[model.name].data[i][association + 'Id'];
-        })
+        collapsed[model.name].data[i][association] = tableData[
+          association
+        ].data.find((row) => {
+          return (
+            row[model.name + 'Id'] ===
+            collapsed[model.name].data[i][association + 'Id']
+          );
+        });
       } else {
-        collapsed[model.name].data[i][association + 's'] = tableData[association].data.filter((row) => {
-          return row[model.name + 'Id'] === collapsed[model.name].data[i][tableData[model.name].model.primaryKeyAttributes[0]];
+        collapsed[model.name].data[i][association + 's'] = tableData[
+          association
+        ].data.filter((row) => {
+          return (
+            row[model.name + 'Id'] ===
+            collapsed[model.name].data[i][
+              tableData[model.name].model.primaryKeyAttributes[0]
+            ]
+          );
         });
       }
     }
   }
-  
+
   return collapsed;
-}
+};
 
 export const updateTableWithData = async (tableData, model) => {
   if (!['project', 'unit'].includes(model.name)) {
@@ -266,7 +276,7 @@ export const updateTableWithData = async (tableData, model) => {
   // using a transaction ensures either everything is uploaded or everything fails
   await sequelize.transaction(async () => {
     const { orgUid } = await Organization.getHomeOrg();
-    
+
     for (let [, { model, data }] of Object.values(tableData).entries()) {
       for (let row of data) {
         const existingRecord = await model.findByPk(
@@ -282,8 +292,10 @@ export const updateTableWithData = async (tableData, model) => {
           // Assign the newly created record to this home org
           row.orgUid = orgUid;
         }
-  
-        const validation = model.validateImport.validate(row, { stripUnknown: true });
+
+        const validation = model.validateImport.validate(row, {
+          stripUnknown: true,
+        });
 
         if (!validation.error) {
           await Staging.upsert({
