@@ -3,7 +3,7 @@ import _ from 'lodash';
 import xlsx from 'node-xlsx';
 import stream from 'stream';
 
-import { Staging, Organization } from './../models';
+import { Staging, Organization, LabelUnit } from './../models';
 import { sequelize } from '../models/database';
 import { assertOrgIsHomeOrg } from '../utils/data-assertions';
 
@@ -45,6 +45,7 @@ export const encodeValue = (value, hex = false) => {
 };
 
 export const createXlsFromSequelizeResults = (
+  // todo recursion
   rows,
   model,
   hex = false,
@@ -192,8 +193,9 @@ export const createXlsFromSequelizeResults = (
 };
 
 export const tableDataFromXlsx = (xlsx, model) => {
+  // Todo recursion
   return xlsx.reduce((stagingData, { data, name }) => {
-    const dataModel = [...associations(model), model].find((m) => {
+    let dataModel = [...associations(model), model].find((m) => {
       const modelName = name.slice(0, -1);
       const assocModelName = modelName.split('_');
       if (assocModelName.length > 1) {
@@ -201,35 +203,40 @@ export const tableDataFromXlsx = (xlsx, model) => {
       }
       return m.name === name.slice(0, -1) || m.name === assocModelName.join('');
     });
-    if (dataModel) {
-      const columnNames = data.shift();
-      for (const [, dataRow] of data.entries()) {
-        if (!Object.keys(stagingData).includes(dataModel.name)) {
-          stagingData[dataModel.name] = { model: dataModel, data: [] };
-        }
-        const row = {};
-        for (let [columnIndex, columnData] of dataRow.entries()) {
-          if (columnData === 'null') {
-            columnData = null;
-          }
-          // Ignore virtual fields
-          if (
-            !Object.keys(model.virtualFieldList).includes(
-              columnNames[columnIndex],
-            )
-          ) {
-            row[columnNames[columnIndex]] = columnData;
-          }
-        }
-        delete row.orgUid;
-        stagingData[dataModel.name].data.push(row);
+
+    if (model.name === 'unit' && dataModel === undefined) {
+      // todo clean this up
+      dataModel = LabelUnit;
+    }
+
+    const columnNames = data.shift();
+    for (const [, dataRow] of data.entries()) {
+      if (!Object.keys(stagingData).includes(dataModel.name)) {
+        stagingData[dataModel.name] = { model: dataModel, data: [] };
       }
+      const row = {};
+      for (let [columnIndex, columnData] of dataRow.entries()) {
+        if (columnData === 'null') {
+          columnData = null;
+        }
+        // Ignore virtual fields
+        if (
+          !Object.keys(model.virtualFieldList).includes(
+            columnNames[columnIndex],
+          )
+        ) {
+          row[columnNames[columnIndex]] = columnData;
+        }
+      }
+      delete row.orgUid;
+      stagingData[dataModel.name].data.push(row);
     }
     return stagingData;
   }, {});
 };
 
 export const collapseTablesData = (tableData, model) => {
+  // Todo recursion
   const collapsed = { [model.name]: tableData[model.name] };
 
   let associations = model.getAssociatedModels().map((model) => {
@@ -243,24 +250,59 @@ export const collapseTablesData = (tableData, model) => {
   for (const [i] of collapsed[model.name].data.entries()) {
     for (const { name: association } of associations) {
       if (['issuance'].includes(association)) {
+        // Todo: make generic
         collapsed[model.name].data[i][association] = tableData[
           association
         ].data.find((row) => {
-          return (
+          let found = false;
+
+          if (
             row[model.name + 'Id'] ===
             collapsed[model.name].data[i][association + 'Id']
-          );
+          ) {
+            found = true;
+            delete row[model.name + 'Id'];
+          }
+          return found;
         });
       } else {
         collapsed[model.name].data[i][association + 's'] = tableData[
           association
         ].data.filter((row) => {
-          return (
+          let found = false;
+          if (
             row[model.name + 'Id'] ===
-            collapsed[model.name].data[i][
+            tableData[model.name].data[i][
               tableData[model.name].model.primaryKeyAttributes[0]
             ]
-          );
+          ) {
+            delete row[model.name + 'Id'];
+            found = true;
+          }
+          return found;
+        });
+      }
+    }
+  }
+
+  for (const [i] of collapsed[model.name].data.entries()) {
+    for (const { name: association } of associations) {
+      if (['label'].includes(association)) {
+        // Todo: make generic
+        const tData = tableData['label_unit'].data.find((row) => {
+          return tableData[model.name].data[i].labels
+            .map((l) => l.id)
+            .includes(row['labelunitId']);
+        });
+
+        collapsed[model.name].data[i][association + 's'][0]['label_unit'] =
+          tData;
+
+        collapsed[model.name].data[i].labels = collapsed[model.name].data[
+          i
+        ].labels.map((l) => {
+          delete l.label_unit.labelunitId;
+          return l;
         });
       }
     }
@@ -271,7 +313,7 @@ export const collapseTablesData = (tableData, model) => {
 
 export const updateTableWithData = async (tableData, model) => {
   if (!['project', 'unit'].includes(model.name)) {
-    throw 'Bulk import is only supported for projects and units';
+    throw 'Bulk import is only supported for projects and units'; // Technically, updateTableWithData can support any model
   }
   // using a transaction ensures either everything is uploaded or everything fails
   await sequelize.transaction(async () => {
@@ -285,6 +327,13 @@ export const updateTableWithData = async (tableData, model) => {
 
         const exists = Boolean(existingRecord);
 
+        // Stripping out issuanceId if its included. Need to take another look at this
+        if (model.name === 'unit') {
+          delete row['issuanceId'];
+        }
+
+        const validation = model.validateImport.validate(row);
+
         if (exists) {
           // Assert the original record is a record your allowed to modify
           await assertOrgIsHomeOrg(existingRecord.orgUid);
@@ -292,10 +341,6 @@ export const updateTableWithData = async (tableData, model) => {
           // Assign the newly created record to this home org
           row.orgUid = orgUid;
         }
-
-        const validation = model.validateImport.validate(row, {
-          stripUnknown: true,
-        });
 
         if (!validation.error) {
           await Staging.upsert({

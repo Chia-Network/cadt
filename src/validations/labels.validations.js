@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { labelUnitSchema } from './labelUnit.validations';
 
 export const labelSchema = Joi.object({
   // orgUid - derived upon creation
@@ -19,4 +20,5 @@ export const labelSchema = Joi.object({
   labelLink: Joi.string().required(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
+  label_unit: labelUnitSchema.optional(),
 });
