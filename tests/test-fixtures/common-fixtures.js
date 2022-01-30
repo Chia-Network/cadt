@@ -20,7 +20,6 @@ export const objectContainsSubSet = (obj, objSubset) => {
     if (Array.isArray(objSubset[key])) {
       objSubset[key].forEach((childRecord, index) => {
         Object.keys(childRecord).forEach((childkey) => {
-          console.log(key);
           expect(obj[key][index][childkey], childkey).to.deep.equal(
             objSubset[key][index][childkey],
           );

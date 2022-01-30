@@ -198,7 +198,7 @@ export const transformFullXslsToChangeList = (
         const rows = checkArrayOfArrays(row) ? row : [row];
         return rows.forEach((r) => {
           const dataLayerKey = Buffer.from(
-            `${key}_${r[primaryKeyIndex]}`,
+            `${key}|${r[primaryKeyIndex]}`,
           ).toString('hex');
 
           if (action === 'update') {

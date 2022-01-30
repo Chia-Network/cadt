@@ -76,7 +76,6 @@ describe('Project Resource Integration Tests', function () {
     // Since some data is derived and not in the creation payload,
     // we need to test against the subset of the delete record
     // We alreay asserted existance of the derived data above
-    console.log(deleteStagingRecord.diff.original);
     testFixtures.objectContainsSubSet(
       deleteStagingRecord.diff.original,
       newProjectPayload,
