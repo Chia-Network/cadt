@@ -249,6 +249,9 @@ export const collapseTablesData = (tableData, model) => {
 
   for (const [i] of collapsed[model.name].data.entries()) {
     for (const { name: association } of associations) {
+      // To account for 1st level custom mappings, need to handle one-off per associated field.
+      // You can possibly roll these up into one handler by adding to the includes() target,
+      // but most likely will need a custom handler per non-simple mapping.
       if (['issuance'].includes(association)) {
         // Todo: make generic
         collapsed[model.name].data[i][association] = tableData[
@@ -285,6 +288,7 @@ export const collapseTablesData = (tableData, model) => {
     }
   }
 
+  // Put any handlers for nested complex mappings here.
   for (const [i] of collapsed[model.name].data.entries()) {
     for (const { name: association } of associations) {
       if (['label'].includes(association)) {
