@@ -5,4 +5,6 @@ export const cobenefitSchema = Joi.object({
   // warehouseProjectId - derived upon creation
   id: Joi.string().optional(),
   cobenefit: Joi.string().required(),
+  updatedAt: Joi.date().timestamp().optional(),
+  createdAt: Joi.date().timestamp().optional(),
 });
