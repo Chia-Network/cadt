@@ -7,7 +7,6 @@ export const issuanceSchema = Joi.object({
   startDate: Joi.date().required(),
   endDate: Joi.date().min(Joi.ref('startDate')).required(),
   verificationApproach: Joi.string().required(),
-  verificationDate: Joi.date().required(),
   verificationBody: Joi.string().required(),
   verificationReportDate: Joi.date().required(),
   updatedAt: Joi.date().optional(),
