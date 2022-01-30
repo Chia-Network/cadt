@@ -23,6 +23,10 @@ module.exports = {
     type: Sequelize.STRING,
     require: true,
   },
+  labelType: {
+    type: Sequelize.STRING,
+    require: true,
+  },
   creditingPeriodStartDate: {
     type: Sequelize.DATE,
     require: true,
