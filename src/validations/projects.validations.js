@@ -45,8 +45,8 @@ export const baseSchema = {
   projectLocations: Joi.array().items(locationSchema).min(1).optional(),
   projectRatings: Joi.array().items(ratingSchema).min(1).optional(),
   estimations: Joi.array().items(estimationSchema).min(1).optional(),
-  updatedAt: Joi.date().timestamp().optional(),
-  createdAt: Joi.date().timestamp().optional(),
+  updatedAt: Joi.date().optional(),
+  createdAt: Joi.date().optional(),
 };
 
 export const projectsGetQuerySchema = Joi.object()

@@ -17,6 +17,6 @@ export const labelSchema = Joi.object({
     .required(),
   unitQuantity: Joi.number().integer().required(),
   labelLink: Joi.string().required(),
-  updatedAt: Joi.date().timestamp().optional(),
-  createdAt: Joi.date().timestamp().optional(),
+  updatedAt: Joi.date().optional(),
+  createdAt: Joi.date().optional(),
 });
