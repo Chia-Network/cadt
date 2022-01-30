@@ -16,4 +16,6 @@ export const ratingSchema = Joi.object({
     .max(Joi.ref('ratingRangeHighest'))
     .required(),
   ratingLink: Joi.string().required(),
+  updatedAt: Joi.date().optional(),
+  createdAt: Joi.date().optional(),
 });

@@ -8,4 +8,6 @@ export const locationSchema = Joi.object({
   inCountryRegion: Joi.string().required(),
   // Please make 'inCountryRegion' optional.
   geographicIdentifier: Joi.string().required(),
+  updatedAt: Joi.date().optional(),
+  createdAt: Joi.date().optional(),
 });

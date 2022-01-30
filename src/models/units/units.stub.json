@@ -1,6 +1,8 @@
 [
   {
     "warehouseUnitId": "5c960ac1-a180-45a4-9850-be177e26d2fb",
+    "projectLocationId": "89adcb9a-dc10-41aa-8606-c1ce1545dcbd",
+    "vintageYear": 2020,
     "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
     "unitOwner": "f1c54511-865e-4611-976c-7c3c1f704662",
     "countryJurisdictionOfOwner": "USA",

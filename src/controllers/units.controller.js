@@ -21,7 +21,14 @@ import {
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
-import { createXlsFromSequelizeResults, sendXls } from '../utils/xls';
+import {
+  collapseTablesData,
+  createXlsFromSequelizeResults,
+  sendXls,
+  tableDataFromXlsx,
+  updateTableWithData,
+} from '../utils/xls';
+import xlsx from 'node-xlsx';
 
 export const create = async (req, res) => {
   try {
@@ -163,7 +170,7 @@ export const findAll = async (req, res) => {
   } else {
     return sendXls(
       Unit.name,
-      createXlsFromSequelizeResults(response, Unit),
+      createXlsFromSequelizeResults(response, Unit, false, false, true),
       res,
     );
   }
@@ -176,6 +183,31 @@ export const findOne = async (req, res) => {
       include: Unit.getAssociatedModels(),
     }),
   );
+};
+
+export const updateFromXLS = async (req, res) => {
+  try {
+    await assertHomeOrgExists();
+
+    const { files } = req;
+
+    if (!files || !files.xlsx) {
+      throw new Error('File Not Received');
+    }
+
+    const xlsxParsed = xlsx.parse(files.xlsx.data);
+    const stagedDataItems = tableDataFromXlsx(xlsxParsed, Unit);
+    await updateTableWithData(collapseTablesData(stagedDataItems, Unit), Unit);
+
+    res.json({
+      message: 'Updates from xlsx added to staging',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
+    });
+  }
 };
 
 export const update = async (req, res) => {

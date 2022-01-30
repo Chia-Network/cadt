@@ -35,7 +35,6 @@
     "endDate": "2029-03-12T00:05:45.701Z",
     "verificationApproach": "TEST",
     "verificationReportDate": "2022-01-18T00:05:45.701Z",
-    "verificationBody": "This is verified",
-    "verificationDate": "2029-03-12T00:05:45.701Z"
+    "verificationBody": "This is verified"
   }
 }

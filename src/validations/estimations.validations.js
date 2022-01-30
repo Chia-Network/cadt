@@ -8,4 +8,6 @@ export const estimationSchema = Joi.object({
     .min(Joi.ref('creditingPeriodStart'))
     .required(),
   unitCount: Joi.number().integer().required(),
+  updatedAt: Joi.date().optional(),
+  createdAt: Joi.date().optional(),
 });

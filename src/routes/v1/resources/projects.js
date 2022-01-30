@@ -32,6 +32,11 @@ ProjectRouter.put(
   ProjectController.update,
 );
 
+ProjectRouter.put(
+  '/xlsx',
+  ProjectController.updateFromXLS,
+);
+
 ProjectRouter.delete(
   '/',
   validator.body(projectsDeleteSchema),
