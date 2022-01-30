@@ -79,12 +79,14 @@ class Staging extends Model {
       if (table === 'Projects') {
         original = await Project.findOne({
           where: { warehouseProjectId: uuid },
+          include: Unit.getAssociatedModels(),
         });
       }
 
       if (table === 'Units') {
         original = await Unit.findOne({
           where: { warehouseUnitId: uuid },
+          include: Unit.getAssociatedModels(),
         });
       }
 

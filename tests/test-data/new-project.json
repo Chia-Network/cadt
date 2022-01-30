@@ -60,8 +60,8 @@
   "projectRatings": [
     {
       "ratingType": "number",
-      "ratingRangeHighest": 1,
-      "ratingRangeLowest": 10,
+      "ratingRangeHighest": 10,
+      "ratingRangeLowest": 1,
       "rating": 5,
       "ratingLink": "TEST"
     }

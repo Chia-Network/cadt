@@ -2,93 +2,53 @@ import _ from 'lodash';
 
 import chai from 'chai';
 import supertest from 'supertest';
-import app from '../../src/server';
-
-import { UnitMirror } from '../../src/models';
-
 const { expect } = chai;
 
-import { POLLING_INTERVAL } from '../../src/fullnode';
+import app from '../../src/server';
+import { UnitMirror } from '../../src/models';
 
+import * as testFixtures from '../test-fixtures';
+
+import { POLLING_INTERVAL } from '../../src/fullnode';
 const TEST_WAIT_TIME = POLLING_INTERVAL * 2;
 
 describe('Create Unit Integration', function () {
+  let homeOrgUid;
+
   beforeEach(async function () {
-    await supertest(app).get(`/v1/staging/clean`);
-    await supertest(app).post(`/v1/organizations`).send({
-      name: 'My Org',
-      icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
-    });
+    await testFixtures.resetStagingTable();
+    await testFixtures.createTestHomeOrg();
+    homeOrgUid = await testFixtures.getHomeOrgId();
   });
 
-  it('deletes a unit end-to-end (with simulator)', async function () {
+  it.only('deletes a unit end-to-end (with simulator)', async function () {
     // create and commit the unit to be deleted
-    const payload = {
-      serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
-      serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
-      countryJurisdictionOfOwner: 'USA',
-      unitType: 'removal',
-      unitStatus: 'Held',
-      unitOwner: 'TEST_UNIT_OWNER',
-      correspondingAdjustmentDeclaration: 'Commited',
-      correspondingAdjustmentStatus: 'Pending',
-      inCountryJurisdictionOfOwner: 'Maryland',
-      unitRegistryLink: 'https://test.link',
-      // TODO: make initial project in beforeEach and assign id here
-      // This will be validated appropriatly later
-      projectLocationId: 'TEST_LOCATION_ID',
-    };
-    const unitRes = await supertest(app).post('/v1/units').send(payload);
-
-    expect(unitRes.body).to.deep.equal({
-      message: 'Unit staged successfully',
-    });
-    expect(unitRes.statusCode).to.equal(200);
-
-    // Get the organizations so we can check the right org was set
-    const organizationResults = await supertest(app).get('/v1/organizations');
-    const orgUid = Object.keys(organizationResults.body).find(
-      (key) => organizationResults.body[key].isHome,
-    );
+    const newUnit = await testFixtures.createNewUnit();
 
     // Get the staging record we just created
-    const stagingRes = await supertest(app).get('/v1/staging');
-    const stagingRecord = _.head(stagingRes.body);
+    const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
 
-    // There is no original when creating new units
+    // There is no original record when creating new units
     expect(stagingRecord.diff.original).to.deep.equal({});
 
     const changeRecord = _.head(stagingRecord.diff.change);
 
     // make sure the inferred data was set to the staging record
-    expect(changeRecord.orgUid).to.equal(orgUid);
+    expect(changeRecord.orgUid).to.equal(homeOrgUid);
 
     const warehouseUnitId = changeRecord.warehouseUnitId;
 
     // Now push the staging table live
-    const commitRes = await supertest(app).post('/v1/staging/commit');
-    expect(commitRes.statusCode).to.equal(200);
-    expect(commitRes.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
-    });
+    await testFixtures.commitStagingRecords();
+    await testFixtures.waitForDataLayerSync();
 
-    // The node simulator runs on an async process, we are importing
-    // the WAIT_TIME constant from the simulator, padding it and waiting for the
-    // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, TEST_WAIT_TIME);
-    });
-
-    // Get the staging record we just created
-    const stagingRes2 = await supertest(app).get('/v1/staging');
-    expect(stagingRes2.body).to.deep.equal([]);
+    // The staging table should be empty after committing
+    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
+      undefined,
+    );
 
     // Make sure the newly created unit is in the mirrorDb
-    let mirrorRecord = await UnitMirror.findByPk(warehouseUnitId);
-
-    expect(mirrorRecord).to.be.ok;
+    await testFixtures.checkMirrorRecordExists(warehouseUnitId);
 
     // Now time to delete the unit
     const deleteRes = await supertest(app)
@@ -109,25 +69,15 @@ describe('Create Unit Integration', function () {
 
     const deleteOriginalRecord = deleteStagingRecord.diff.original;
 
+    console.log(deleteOriginalRecord);
+
     expect(
-      _.pick(deleteOriginalRecord, [...Object.keys(payload)]),
-    ).to.deep.equal(payload);
+      _.pick(deleteOriginalRecord, [...Object.keys(newUnit)]),
+    ).to.deep.equal(newUnit);
 
     // Now push the staging table live
-    const commitRes3 = await supertest(app).post('/v1/staging/commit');
-    expect(commitRes3.statusCode).to.equal(200);
-    expect(commitRes3.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
-    });
-
-    // The node simulator runs on an async process, we are importing
-    // the WAIT_TIME constant from the simulator, padding it and waiting for the
-    // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, TEST_WAIT_TIME);
-    });
+    await testFixtures.commitStagingRecords();
+    await testFixtures.waitForDataLayerSync();
 
     // Now check if the unit is still in the DB
     const getDeletedRecordResult = await supertest(app)
@@ -138,8 +88,7 @@ describe('Create Unit Integration', function () {
     expect(getDeletedRecordResult.body).to.equal(null);
 
     // Verify the record is no longer in the mirror db
-    mirrorRecord = await UnitMirror.findByPk(warehouseUnitId);
-    expect(mirrorRecord).to.equal(null);
+    await testFixtures.checkMirrorRecordDoesNotExist(warehouseUnitId);
   }).timeout(TEST_WAIT_TIME * 10);
 
   it('splits an existing unit end-to-end (with simulator)', async function () {
