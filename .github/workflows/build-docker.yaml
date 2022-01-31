@@ -23,7 +23,6 @@ jobs:
         include:
           - runs-on: ubuntu-latest
             artifact-name: linux-x64
-            build-command: npm run create-linux-x64-dist
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -55,8 +54,8 @@ jobs:
       - name: install global packages
         run: npm i -g @babel/cli @babel/preset-env pkg
 
-      - name: create distributions
-        run: ${{ matrix.build-command }}
+      - name: npm run build
+        run: npm run build
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
