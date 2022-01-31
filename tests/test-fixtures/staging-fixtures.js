@@ -6,13 +6,16 @@ import supertest from 'supertest';
 
 import app from '../../src/server';
 
-export const resetStagingTable = () => {
-  return supertest(app).get(`/v1/staging/clean`);
+export const resetStagingTable = async () => {
+  await supertest(app).get(`/v1/staging/clean`);
+  const result = await supertest(app).get('/v1/staging');
+  expect(result.body).to.deep.equal([]);
 };
 
 export const getLastCreatedStagingRecord = async () => {
-  const stagingRes = await supertest(app).get('/v1/staging');
-  return _.last(stagingRes.body);
+  const result = await supertest(app).get('/v1/staging');
+  expect(result.body).to.be.an('array');
+  return _.last(result.body);
 };
 
 export const commitStagingRecords = async () => {

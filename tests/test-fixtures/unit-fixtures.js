@@ -28,6 +28,16 @@ export const deleteUnit = async (warehouseUnitId) => {
   return result;
 };
 
+export const getUnit = async (warehouseUnitId) => {
+  const result = await supertest(app)
+    .get('/v1/units')
+    .query({ warehouseUnitId });
+  expect(result.body).to.be.an('object');
+  expect(result.body.warehouseUnitId).to.equal(warehouseUnitId);
+  expect(result.statusCode).to.equal(200);
+  return result.body;
+};
+
 export const checkUnitRecordExists = async (warehouseUnitId) => {
   const record = await Unit.findByPk(warehouseUnitId);
   expect(record).to.be.ok;

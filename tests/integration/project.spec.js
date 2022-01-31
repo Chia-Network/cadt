@@ -35,6 +35,8 @@ describe('Project Resource Integration Tests', function () {
 
     // Change records are always in an array
     const changeRecord = _.head(stagingRecord.diff.change);
+    await testFixtures.childTablesIncludeOrgUid(changeRecord);
+    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
 
     // make sure the inferred data was set to the staging record
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
@@ -87,6 +89,9 @@ describe('Project Resource Integration Tests', function () {
 
     // make sure the record is no longer in the db after the datalayer synced
     await testFixtures.checkProjectRecordDoesNotExist(warehouseProjectId);
+    await testFixtures.assertChildTablesDontExist(
+      deleteStagingRecord.diff.original,
+    );
 
     // Verify the record is no longer in the mirror db
     await testFixtures.checkProjectMirrorRecordDoesNotExist(warehouseProjectId);
