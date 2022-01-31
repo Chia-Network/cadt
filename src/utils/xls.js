@@ -86,7 +86,7 @@ export const createXlsFromSequelizeResults = (
     data: [
       columnsInMainSheet.filter((colName) => {
         return !(excludeOrgUid && colName === 'orgUid');
-      }),
+      }).map(colName => colName === 'issuance' ? 'issuanceId' : colName), // todo make this generic
     ],
   };
 
@@ -182,6 +182,13 @@ export const createXlsFromSequelizeResults = (
                 sheets[associatedModel].data.push(xlsRow);
               }
             }
+          }
+        } else {
+          if (columnName === 'issuanceId') {
+            const lastRow = sheets[model.name].data.pop();
+            lastRow.pop();
+            lastRow.push(columnValue);
+            sheets[model.name].data.push(lastRow);
           }
         }
       }
@@ -352,6 +359,8 @@ export const updateTableWithData = async (tableData, model) => {
         }
 
         if (!validation.error) {
+          console.log(JSON.stringify(row))
+          console.log("WEFwefs")
           await Staging.upsert({
             uuid: data[model.primaryKeyAttributes[0]],
             action: exists ? 'UPDATE' : 'INSERT',
