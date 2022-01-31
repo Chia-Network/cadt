@@ -39,6 +39,8 @@ describe('Unit Resource Integration Tests', function () {
 
     // Change records are always in an array
     const changeRecord = _.head(stagingRecord.diff.change);
+    await testFixtures.childTablesIncludeOrgUid(changeRecord);
+    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
 
     // make sure the inferred data was set to the staging record
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
@@ -91,6 +93,9 @@ describe('Unit Resource Integration Tests', function () {
 
     // make sure the record is no longer in the db after the datalayer synced
     await testFixtures.checkUnitRecordDoesNotExist(warehouseUnitId);
+    await testFixtures.assertChildTablesDontExist(
+      deleteStagingRecord.diff.original,
+    );
 
     // Verify the record is no longer in the mirror db
     await testFixtures.checkUnitMirrorRecordDoesNotExist(warehouseUnitId);
@@ -348,108 +353,45 @@ describe('Unit Resource Integration Tests', function () {
     // 5. verify the unit was commited to the database
     // 6. verify the staging table was cleaned up
 
-    const payload = {
-      serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
-      serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
-      countryJurisdictionOfOwner: 'USA',
-      unitType: 'removal',
-      unitStatus: 'Held',
-      unitOwner: 'TEST_UNIT_OWNER',
-      correspondingAdjustmentDeclaration: 'Commited',
-      correspondingAdjustmentStatus: 'Pending',
-      inCountryJurisdictionOfOwner: 'Maryland',
-      unitRegistryLink: 'https://test.link',
-      // TODO: make initial project in beforeEach and assign id here
-      // This will be validated appropriatly later
-      projectLocationId: 'TEST_LOCATION_ID',
-    };
-    const unitRes = await supertest(app).post('/v1/units').send(payload);
-
-    expect(unitRes.body).to.deep.equal({
-      message: 'Unit staged successfully',
-    });
-    expect(unitRes.statusCode).to.equal(200);
-
-    // Get the organizations so we can check the right org was set
-    const organizationResults = await supertest(app).get('/v1/organizations');
-    const orgUid = Object.keys(organizationResults.body).find(
-      (key) => organizationResults.body[key].isHome,
-    );
+    // create and commit the unit to be deleted
+    const newUnitPayload = await testFixtures.createNewUnit();
 
     // Get the staging record we just created
-    const stagingRes = await supertest(app).get('/v1/staging');
-    const stagingRecord = _.head(stagingRes.body);
+    const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
 
     // There is no original when creating new units
     expect(stagingRecord.diff.original).to.deep.equal({});
-
     const changeRecord = _.head(stagingRecord.diff.change);
 
-    // make sure the inferred data was set to the staging record
-    expect(changeRecord.orgUid).to.equal(orgUid);
+    await testFixtures.childTablesIncludeOrgUid(changeRecord);
+    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
 
+    // make sure the inferred data was set to the staging record
+    expect(changeRecord.orgUid).to.equal(homeOrgUid);
     const warehouseUnitId = changeRecord.warehouseUnitId;
 
-    expect(stagingRes.statusCode).to.equal(200);
-
     // Now push the staging table live
-    const commitRes = await supertest(app).post('/v1/staging/commit');
-    expect(stagingRes.statusCode).to.equal(200);
-    expect(commitRes.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
-    });
+    await testFixtures.commitStagingRecords();
 
     // After commiting the true flag should be set to this staging record
-    const stagingRes2 = await supertest(app).get('/v1/staging');
-    expect(_.head(stagingRes2.body).commited).to.equal(true);
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(true);
 
-    // The node simulator runs on an async process, we are importing
-    // the WAIT_TIME constant from the simulator, padding it and waiting for the
-    // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, TEST_WAIT_TIME);
-    });
+    await testFixtures.waitForDataLayerSync();
 
     // Make sure the staging table is cleaned up
-    const stagingRes3 = await supertest(app).get('/v1/staging');
-
-    // There should be no staging records left
-    expect(stagingRes3.body.length).to.equal(0);
-
-    const warehouseRes = await supertest(app)
-      .get(`/v1/units`)
-      .query({ warehouseUnitId });
-
-    const newRecord = warehouseRes.body;
-
-    expect(newRecord.warehouseUnitId).to.equal(warehouseUnitId);
-    expect(newRecord.orgUid).to.equal(orgUid);
-    expect(newRecord.serialNumberBlock).to.equal(payload.serialNumberBlock);
-    expect(newRecord.countryJuridictionOfOwner).to.equal(
-      payload.countryJuridictionOfOwner,
+    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
+      undefined,
     );
-    expect(newRecord.inCountryJuridictionOfOwner).to.equal(
-      payload.inCountryJuridictionOfOwner,
-    );
+
+    const newUnit = await testFixtures.getUnit(warehouseUnitId);
+
+    testFixtures.objectContainsSubSet(newUnit, newUnitPayload);
+    await testFixtures.childTablesIncludeOrgUid(newUnit);
+    await testFixtures.childTablesIncludePrimaryKey(newUnit);
 
     // Make sure the newly created unit is in the mirrorDb
-    const mirrorRecord = await UnitMirror.findByPk(newRecord.warehouseUnitId);
-
-    // filter out the fields we dont care about in this test, including the virtual fields
-    expect(
-      _.omit(mirrorRecord.dataValues, ['createdAt', 'updatedAt']),
-    ).to.deep.equal(
-      _.omit(newRecord, [
-        'labels', // mapped associated field
-        'issuance', // mapped associated field
-        'unitBlockStart', // virtual field
-        'unitBlockEnd', // virtual field
-        'unitCount', // virtual field
-        'createdAt', // meta field
-        'updatedAt', // meta field
-      ]),
-    );
+    await testFixtures.checkUnitRecordExists(warehouseUnitId);
   }).timeout(TEST_WAIT_TIME * 10);
 });

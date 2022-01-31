@@ -28,6 +28,16 @@ export const deleteProject = async (warehouseProjectId) => {
   return result;
 };
 
+export const getProject = async (warehouseProjectId) => {
+  const result = await supertest(app)
+    .get('/v1/units')
+    .query({ warehouseProjectId });
+  expect(result.body).to.be.an('object');
+  expect(result.body.warehouseUnitId).to.equal(warehouseProjectId);
+  expect(result.statusCode).to.equal(200);
+  return result.body;
+};
+
 export const checkProjectRecordExists = async (warehouseProjectId) => {
   const record = await Project.findByPk(warehouseProjectId);
   expect(record).to.be.ok;
