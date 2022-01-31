@@ -57,6 +57,9 @@ jobs:
       - name: npm run build
         run: npm run build
 
+      - name: CleanDB
+        run: npm run cleandb
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
