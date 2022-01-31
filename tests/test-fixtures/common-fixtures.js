@@ -25,10 +25,16 @@ export const objectContainsSubSet = (obj, objSubset) => {
           );
         });
       });
+    } else if (Object.keys(objSubset[key]).length) {
+      Object.keys(objSubset[key]).forEach((childkey) => {
+        expect(obj[key][childkey], childkey).to.deep.equal(
+          objSubset[key][childkey],
+        );
+      });
     } else {
       expect(
         objSubset[key],
-        `${key}: ${objSubset[key]} does not equal {${key}: ${obj[key]}}`,
+        `{${key}: ${objSubset[key]}} does not equal {${key}: ${obj[key]}}`,
       ).to.deep.equal(obj[key]);
     }
   });

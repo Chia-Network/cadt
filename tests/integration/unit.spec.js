@@ -21,7 +21,7 @@ describe('Unit Resource Integration Tests', function () {
     homeOrgUid = await testFixtures.getHomeOrgId();
   });
 
-  it.only('deletes a unit end-to-end (with simulator)', async function () {
+  it('deletes a unit end-to-end (with simulator)', async function () {
     /*
       Basic Idea for this test is that we are going to create a unit and verify that
       the new unit propagates through the data layer and into our db. Then we are going
