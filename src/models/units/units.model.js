@@ -11,7 +11,7 @@ import {
 import { Label, Issuance, Staging } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
-
+import util from 'util';
 import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
@@ -290,11 +290,27 @@ class Unit extends Model {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
 
+    console.log(
+      util.inspect(insertRecords, {
+        showHidden: false,
+        depth: null,
+        colors: true,
+      }),
+    );
+
     const insertXslsSheets = createXlsFromSequelizeResults(
       insertRecords,
       Unit,
       false,
       true,
+    );
+
+    console.log(
+      util.inspect(insertXslsSheets, {
+        showHidden: false,
+        depth: null,
+        colors: true,
+      }),
     );
 
     const updateXslsSheets = createXlsFromSequelizeResults(

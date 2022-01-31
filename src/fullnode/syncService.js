@@ -109,6 +109,7 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
         const model = key.split('|')[0];
         const value = JSON.parse(new Buffer(kv.value, 'hex').toString());
 
+        console.log(model, value);
         if (model === 'unit') {
           await Unit.upsert(value);
           await Staging.destroy({
@@ -125,7 +126,7 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
           await LabelUnit.upsert(value);
         } else if (model === 'coBenefits') {
           await CoBenefit.upsert(value);
-        } else if (model === 'issuances') {
+        } else if (model === 'issuances' || model === 'issuance') {
           await Issuance.upsert(value);
         } else if (model === 'projectLocations') {
           await ProjectLocation.upsert(value);

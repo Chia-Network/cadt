@@ -61,8 +61,8 @@ export const create = async (req, res) => {
     }
 
     if (newRecord.issuance) {
-      newRecord.labels.id = uuidv4();
-      newRecord.labels.orgUid = orgUid;
+      newRecord.issuance.id = uuidv4();
+      newRecord.issuance.orgUid = orgUid;
     }
 
     const stagedData = {
