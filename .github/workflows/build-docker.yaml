@@ -1,0 +1,84 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Docker Image
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        include:
+          - runs-on: ubuntu-latest
+            artifact-name: linux-x64
+            build-command: npm run create-linux-x64-dist
+
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Setup Node 16.x
+        uses: actions/setup-node@v2.4.1
+        with:
+          node-version: '16.x'
+
+      - name: Ignore Husky
+        run: npm set-script prepare ""
+        if: matrix.runs-on != 'windows-latest'
+
+      - name: npm install
+        run: npm install
+
+      - name: npm cache clear --force
+        run: npm cache clear --force
+
+      - name: npm cache rm
+        run: npm cache rm --force
+
+      - name: npm cache verify
+        run: npm cache verify
+
+      - name: install global packages
+        run: npm i -g @babel/cli @babel/preset-env pkg
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/chia-network/climate-warehouse
+          tags: |
+            type=raw,value=latest,enable=${{ endsWith(github.ref, github.event.repository.default_branch) }}
+            type=sha,format=long
+
+      - name: Build and push docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          no-cache: true
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
