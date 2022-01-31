@@ -109,7 +109,6 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
         const model = key.split('|')[0];
         const value = JSON.parse(new Buffer(kv.value, 'hex').toString());
 
-        console.log(model, value);
         if (model === 'unit') {
           await Unit.upsert(value);
           await Staging.destroy({
