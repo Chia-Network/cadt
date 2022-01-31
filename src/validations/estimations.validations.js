@@ -5,8 +5,7 @@ export const estimationSchema = Joi.object({
   // warehouseProjectId - derived upon creation
   creditingPeriodStart: Joi.date().required(),
   creditingPeriodEnd: Joi.date()
-    .timestamp()
-    .min(Joi.ref('startDate'))
+    .min(Joi.ref('creditingPeriodStart'))
     .required(),
   unitCount: Joi.number().integer().required(),
   updatedAt: Joi.date().optional(),

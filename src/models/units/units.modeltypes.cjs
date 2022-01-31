@@ -49,9 +49,8 @@ module.exports = {
     defaultValue: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
   },
   vintageYear: {
-    type: Sequelize.STRING,
+    type: Sequelize.INTEGER,
     required: true,
-    // This 'vintageYear' field should technically be always be in YYYY date format. Not sure if that makes it a DATE type.
   },
   unitType: {
     type: Sequelize.STRING,

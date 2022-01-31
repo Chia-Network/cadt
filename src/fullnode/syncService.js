@@ -13,6 +13,7 @@ import {
   LabelUnit,
   Staging,
   Rating,
+  Estimation,
 } from '../models';
 
 import * as dataLayer from './persistance';
@@ -93,41 +94,47 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
         ProjectLocation.destroy({
           where: { orgUid: organizationToTrucate.orgUid },
         }),
+        Estimation.destroy({
+          where: { orgUid: organizationToTrucate.orgUid },
+        }),
       ]);
     }
 
     await Promise.all(
       storeData.keys_values.map(async (kv) => {
-        const key = new Buffer(
+        const key = Buffer.from(
           kv.key.replace(`${storeId}_`, ''),
           'hex',
         ).toString();
+        const model = key.split('|')[0];
         const value = JSON.parse(new Buffer(kv.value, 'hex').toString());
-        if (key.includes('unit_')) {
+
+        if (model === 'unit') {
           await Unit.upsert(value);
           await Staging.destroy({
             where: { uuid: value.warehouseUnitId },
           });
-        } else if (key.includes('project_')) {
+        } else if (model === 'project') {
           await Project.upsert(value);
           await Staging.destroy({
             where: { uuid: value.warehouseProjectId },
           });
-        } else if (key.includes('relatedProjects_')) {
+        } else if (model === 'relatedProjects') {
           await RelatedProject.upsert(value);
-        } else if (key.includes('label_units_')) {
+        } else if (model === 'label_units') {
           await LabelUnit.upsert(value);
-        } else if (key.includes('coBenefits_')) {
+        } else if (model === 'coBenefits') {
           await CoBenefit.upsert(value);
-        } else if (key.includes('issuances_')) {
+        } else if (model === 'issuances' || model === 'issuance') {
           await Issuance.upsert(value);
-        } else if (key.includes('projectLocations_')) {
-          console.log(value);
+        } else if (model === 'projectLocations') {
           await ProjectLocation.upsert(value);
-        } else if (key.includes('labels_')) {
+        } else if (model === 'labels') {
           await Label.upsert(value);
-        } else if (key.includes('projectRatings_')) {
+        } else if (model === 'projectRatings') {
           await Rating.upsert(value);
+        } else if (model === 'estimations') {
+          await Estimation.upsert(value);
         }
       }),
     );

@@ -19,14 +19,12 @@ module.exports = {
     required: true,
   },
   creditingPeriodStart: {
-    // this should be a DATE not a string.
-    type: Sequelize.STRING,
+    type: Sequelize.DATE,
     required: true,
   },
   creditingPeriodEnd: {
     type: Sequelize.DATE,
-    defaultValue: Sequelize.NOW,
-    // Need to add required to this field. Any estimatations will require an end date. It is fine to default to NOW, but should still be required.
+    required: true,
   },
   unitCount: {
     type: Sequelize.INTEGER,

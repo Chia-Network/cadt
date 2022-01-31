@@ -1,5 +1,4 @@
 {
-  "currentRegistry": "TEST",
   "projectId": "c9d147e2-bc07-4e68-a76d-43424fa8cd4e",
   "registryOfOrigin": "TEST",
   "program": "Eimbee",
@@ -12,11 +11,11 @@
   "coveredByNDC": "TEST",
   "ndcInformation": "TEST",
   "projectStatus": "in magna bibendum imperdiet nullam orci pede venenatis non sodales sed tincidunt eu felis fusce posuere felis sed lacus",
-  "projectStatusDate": "2022-01-18",
+  "projectStatusDate": "2022-01-18T00:05:45.701Z",
   "unitMetric": "Fuscia",
   "methodology": "Quatz",
   "validationBody": "TEST",
-  "validationDate": "TEST",
+  "validationDate": "2022-01-18T00:05:45.701Z",
   "projectLocations": [
     {
       "country": "United States",
@@ -59,11 +58,17 @@
   "projectRatings": [
     {
       "ratingType": "number",
-      "ratingRangeHighest": 1,
-      "ratingRangeLowest": 10,
+      "ratingRangeHighest": 10,
+      "ratingRangeLowest": 1,
       "rating": 5,
       "ratingLink": "TEST"
     }
   ],
-  "estimations": []
+  "estimations": [
+    {
+      "creditingPeriodStart": "2018-02-03T00:05:45.701Z",
+      "creditingPeriodEnd": "2029-03-12T00:05:45.701Z",
+      "unitCount": 10
+    }
+  ]
 }

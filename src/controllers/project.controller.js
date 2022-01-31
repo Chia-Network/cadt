@@ -66,12 +66,7 @@ export const create = async (req, res) => {
         newRecord[childRecordKey].map((childRecord) => {
           childRecord.id = uuidv4();
           childRecord.orgUid = orgUid;
-
-          // labels use a junction table
-          if (childRecordKey !== 'labels') {
-            childRecord.warehouseProjectId = uuid;
-          }
-
+          childRecord.warehouseProjectId = uuid;
           return childRecord;
         });
       }
@@ -258,7 +253,7 @@ export const destroy = async (req, res) => {
     await Staging.create(stagedData);
 
     res.json({
-      message: 'Project removal added to stage',
+      message: 'Project deleted successfully',
     });
   } catch (err) {
     res.status(400).json({

@@ -35,7 +35,7 @@ export const sendXls = (name, bytes, response) => {
 export const encodeValue = (value, hex = false) => {
   // Todo: address this elsewhere (hide these columns). This is a quick fix for complex relationships in xlsx
   if (typeof value === 'object') {
-    value = '';
+    value = value.id;
   }
 
   if (hex) {
@@ -407,7 +407,7 @@ export const transformFullXslsToChangeList = (
         const rows = checkArrayOfArrays(row) ? row : [row];
         return rows.forEach((r) => {
           const dataLayerKey = Buffer.from(
-            `${key}_${r[primaryKeyIndex]}`,
+            `${key}|${r[primaryKeyIndex]}`,
           ).toString('hex');
 
           if (action === 'update') {

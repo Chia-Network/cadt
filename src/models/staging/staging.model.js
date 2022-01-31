@@ -79,12 +79,14 @@ class Staging extends Model {
       if (table === 'Projects') {
         original = await Project.findOne({
           where: { warehouseProjectId: uuid },
+          include: Project.getAssociatedModels(),
         });
       }
 
       if (table === 'Units') {
         original = await Unit.findOne({
           where: { warehouseUnitId: uuid },
+          include: Unit.getAssociatedModels(),
         });
       }
 
@@ -120,10 +122,14 @@ class Staging extends Model {
 
           deleteChangeList.push({
             action: 'delete',
-            key: Buffer.from(`${tablePrefix}_${stagingRecord.uuid}`).toString(
+            key: Buffer.from(`${tablePrefix}|${stagingRecord.uuid}`).toString(
               'hex',
             ),
           });
+
+          // TODO: Child table records are getting orphaned in the datalayer,
+          // because we need to generate a delete action for each one
+
           updateRecords.push(...JSON.parse(stagingRecord.data));
         } else if (stagingRecord.action === 'DELETE') {
           let tablePrefix = table.toLowerCase();
@@ -136,10 +142,13 @@ class Staging extends Model {
 
           deleteChangeList.push({
             action: 'delete',
-            key: Buffer.from(`${tablePrefix}_${stagingRecord.uuid}`).toString(
+            key: Buffer.from(`${tablePrefix}|${stagingRecord.uuid}`).toString(
               'hex',
             ),
           });
+
+          // TODO: Child table records are getting orphaned in the datalayer,
+          // because we need to generate a delete action for each one
         }
       });
 
@@ -148,11 +157,13 @@ class Staging extends Model {
 
   static async pushToDataLayer() {
     const stagedRecords = await Staging.findAll({ raw: true });
-    const unitsChangeList =
-      Unit.generateChangeListFromStagedData(stagedRecords);
+    const unitsChangeList = await Unit.generateChangeListFromStagedData(
+      stagedRecords,
+    );
 
-    const projectsChangeList =
-      Project.generateChangeListFromStagedData(stagedRecords);
+    const projectsChangeList = await Project.generateChangeListFromStagedData(
+      stagedRecords,
+    );
 
     const unifiedChangeList = {
       ...projectsChangeList,
