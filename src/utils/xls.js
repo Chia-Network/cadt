@@ -37,7 +37,7 @@ export const encodeValue = (value, hex = false) => {
   if (typeof value === 'object') {
     value = '';
   }
-  
+
   if (hex) {
     try {
       return Buffer.from(value).toString('hex');
@@ -84,9 +84,11 @@ export const createXlsFromSequelizeResults = (
   initialReduceValue[model.name] = {
     name: model.name + 's',
     data: [
-      columnsInMainSheet.filter((colName) => {
-        return !(excludeOrgUid && colName === 'orgUid');
-      }),
+      columnsInMainSheet
+        .filter((colName) => {
+          return !(excludeOrgUid && colName === 'orgUid');
+        })
+        .map((colName) => (colName === 'issuance' ? 'issuanceId' : colName)), // todo make this generic
     ],
   };
 
@@ -182,6 +184,13 @@ export const createXlsFromSequelizeResults = (
                 sheets[associatedModel].data.push(xlsRow);
               }
             }
+          }
+        } else {
+          if (columnName === 'issuanceId') {
+            const lastRow = sheets[model.name].data.pop();
+            lastRow.pop();
+            lastRow.push(columnValue);
+            sheets[model.name].data.push(lastRow);
           }
         }
       }
