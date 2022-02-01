@@ -113,15 +113,25 @@ export const getRoots = async (storeIds) => {
   }
 
   return Promise.resolve({
-    hash: storeIds.map((storeId) => {
+    root_hashes: storeIds.map((storeId) => {
       if (myOrganization.registryId === storeId) {
-        return createHash('md5')
-          .update(JSON.stringify(simulatorTable))
-          .digest('hex');
+        return {
+          hash: createHash('md5')
+            .update(JSON.stringify(simulatorTable))
+            .digest('hex'),
+          id: storeId,
+        };
       }
 
-      return 0;
+      // no hash for non existent org tables
+      return {
+        hash: 0,
+        id: storeId,
+      };
     }),
     success: true,
   });
 };
+
+// eslint-disable-next-line
+export const subscribeToStore = async (storeId) => {};

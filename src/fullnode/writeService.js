@@ -35,3 +35,11 @@ export const pushDataLayerChangeList = async (storeId, changeList) => {
     return dataLayer.pushChangeListToDataLayer(storeId, changeList);
   }
 };
+
+export const subscribeToStore = async (storeId) => {
+  if (process.env.USE_SIMULATOR === 'true') {
+    return simulator.subscribeToStore(storeId);
+  } else {
+    return dataLayer.subscribeToStore(storeId);
+  }
+};

@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import logUpdate from 'log-update';
 
 import {
@@ -24,23 +23,21 @@ const frames = ['-', '\\', '|', '/'];
 
 console.log('Start Datalayer Update Polling');
 export const startDataLayerUpdatePolling = async () => {
-  const tablesToUpdate = await dataLayerWasUpdated();
-  await Promise.all(
-    _.keys(tablesToUpdate).map(async (storeId) => {
-      if (tablesToUpdate[storeId]) {
+  const storeIdsToUpdate = await dataLayerWasUpdated();
+  if (storeIdsToUpdate.length) {
+    await Promise.all(
+      storeIdsToUpdate.map(async (storeId) => {
         logUpdate(
           `Updates found syncing storeId: ${storeId} ${
             frames[Math.floor(Math.random() * 3)]
           }`,
         );
         await syncDataLayerStoreToClimateWarehouse(storeId);
-      } else {
-        logUpdate(
-          `No updates found yet ${frames[Math.floor(Math.random() * 3)]}`,
-        );
-      }
-    }),
-  );
+      }),
+    );
+  } else {
+    logUpdate(`Polling For Updates ${frames[Math.floor(Math.random() * 3)]}`);
+  }
 
   // after all the updates are complete, check again in a bit
   setTimeout(() => startDataLayerUpdatePolling(), POLLING_INTERVAL);
@@ -153,32 +150,53 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
 export const dataLayerWasUpdated = async () => {
   const organizations = await Organization.findAll({
     attributes: ['registryId', 'registryHash'],
+    where: { subscribed: true },
     raw: true,
   });
 
-  let hashMap = {};
-
-  organizations.forEach((org) => {
-    hashMap[org.registryId] = org.registryHash;
-  });
-
-  let newHashes;
-  if (process.env.USE_SIMULATOR === 'true') {
-    newHashes = await simulator.getRoots(_.keys(hashMap));
-  } else {
-    newHashes = await dataLayer.getRoots(_.keys(hashMap));
+  // exit early if there are no subscribed organizations
+  if (!organizations.length) {
+    return [];
   }
 
-  const tablesWereUpdatedMap = {};
-  await Promise.all(
-    _.keys(hashMap).map(async (key, index) => {
+  const subscribedOrgIds = organizations.map((org) => org.registryId);
+
+  if (!subscribedOrgIds.length) {
+    return [];
+  }
+
+  let rootResponse;
+  if (process.env.USE_SIMULATOR === 'true') {
+    rootResponse = await simulator.getRoots(subscribedOrgIds);
+  } else {
+    rootResponse = await dataLayer.getRoots(subscribedOrgIds);
+  }
+
+  if (!rootResponse.success) {
+    return [];
+  }
+
+  const updatedStores = rootResponse.root_hashes.filter((rootHash) => {
+    return subscribedOrgIds.includes(rootHash.id);
+  });
+
+  if (!updatedStores.length) {
+    return [];
+  }
+
+  const updatedStoreIds = await Promise.all(
+    updatedStores.map(async (rootHash) => {
+      const storeId = rootHash.id.replace('0x', '');
+
+      // update the organization with the new hash
       await Organization.update(
-        { registryHash: newHashes.hash[index] },
-        { where: { registryId: key } },
+        { registryHash: rootHash.hash },
+        { where: { registryId: storeId } },
       );
-      tablesWereUpdatedMap[key] = hashMap[key] !== newHashes.hash[index];
+
+      return storeId;
     }),
   );
 
-  return tablesWereUpdatedMap;
+  return updatedStoreIds;
 };
