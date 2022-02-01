@@ -220,11 +220,55 @@ export const update = async (req, res) => {
 
     await assertOrgIsHomeOrg(originalRecord.orgUid);
 
+    const updatedRecord = _.cloneDeep(req.body);
+
+    // All new units are assigned to the home orgUid
+    const { orgUid } = await Organization.getHomeOrg();
+    updatedRecord.orgUid = orgUid;
+
+    if (updatedRecord.labels) {
+      updatedRecord.labels.map((childRecord) => {
+        if (!childRecord.id) {
+          childRecord.id = uuidv4();
+        }
+
+        if (!childRecord.orgUid) {
+          childRecord.orgUid = orgUid;
+        }
+
+        if (!childRecord.label_unit) {
+          childRecord.label_unit = {};
+          childRecord.label_unit.id = uuidv4();
+          childRecord.label_unit.orgUid = orgUid;
+          childRecord.label_unit.warehouseUnitId =
+            updatedRecord.warehouseUnitId;
+          childRecord.label_unit.labelId = childRecord.id;
+        }
+
+        return childRecord;
+      });
+    }
+
+    if (updatedRecord.issuance) {
+      if (!updatedRecord.issuance.id) {
+        updatedRecord.issuance.id = uuidv4();
+      }
+
+      if (!updatedRecord.issuance.orgUid) {
+        updatedRecord.issuance.orgUid = orgUid;
+      }
+    }
+
     // merge the new record into the old record
-    let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
-    stagedRecord = stagedRecord.map((record) =>
-      Object.assign({}, originalRecord, record),
-    );
+    let stagedRecord = Array.isArray(updatedRecord)
+      ? updatedRecord
+      : [updatedRecord];
+    stagedRecord = stagedRecord.map((record) => {
+      return Object.keys(record).reduce((syncedRecord, key) => {
+        syncedRecord[key] = record[key];
+        return syncedRecord;
+      }, originalRecord);
+    });
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
@@ -236,7 +280,7 @@ export const update = async (req, res) => {
     await Staging.upsert(stagedData);
 
     res.json({
-      message: 'Unit updated successfully',
+      message: 'Unit update added to staging',
     });
   } catch (err) {
     res.status(400).json({

@@ -1,4 +1,5 @@
 import _ from 'lodash';
+
 import xlsx from 'node-xlsx';
 import { uuid as uuidv4 } from 'uuidv4';
 
@@ -33,7 +34,8 @@ import {
   tableDataFromXlsx,
   createXlsFromSequelizeResults,
   sendXls,
-  updateTableWithData, collapseTablesData,
+  updateTableWithData,
+  collapseTablesData,
 } from '../utils/xls';
 
 export const create = async (req, res) => {
@@ -185,7 +187,10 @@ export const updateFromXLS = async (req, res) => {
 
     const xlsxParsed = xlsx.parse(files.xlsx.data);
     const stagedDataItems = tableDataFromXlsx(xlsxParsed, Project);
-    await updateTableWithData(collapseTablesData(stagedDataItems, Project), Project);
+    await updateTableWithData(
+      collapseTablesData(stagedDataItems, Project),
+      Project,
+    );
 
     res.json({
       message: 'Updates from xlsx added to staging',
@@ -208,11 +213,48 @@ export const update = async (req, res) => {
 
     await assertOrgIsHomeOrg(originalRecord.orgUid);
 
+    const newRecord = _.cloneDeep(req.body);
+    const { orgUid } = await Organization.getHomeOrg();
+
+    const childRecords = [
+      'projectLocations',
+      'issuances',
+      'coBenefits',
+      'relatedProjects',
+      'projectRatings',
+      'estimations',
+      'labels',
+    ];
+
+    childRecords.forEach((childRecordKey) => {
+      if (newRecord[childRecordKey]) {
+        newRecord[childRecordKey].map((childRecord) => {
+          if (!childRecord.id) {
+            childRecord.id = uuidv4();
+          }
+
+          if (!childRecord.orgUid) {
+            childRecord.orgUid = orgUid;
+          }
+
+          if (!childRecord.warehouseProjectId) {
+            childRecord.warehouseProjectId = newRecord.warehouseProjectId;
+          }
+
+          return childRecord;
+        });
+      }
+    });
+
     // merge the new record into the old record
-    let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
-    stagedRecord = stagedRecord.map((record) =>
-      Object.assign({}, originalRecord, record),
-    );
+    let stagedRecord = Array.isArray(newRecord) ? newRecord : [newRecord];
+
+    stagedRecord = stagedRecord.map((record) => {
+      return Object.keys(record).reduce((syncedRecord, key) => {
+        syncedRecord[key] = record[key];
+        return syncedRecord;
+      }, originalRecord);
+    });
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
