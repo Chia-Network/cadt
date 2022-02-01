@@ -58,9 +58,9 @@
   "projectRatings": [
     {
       "ratingType": "CDP Rating",
-      "ratingRangeHighest": 5,
-      "ratingRangeLowest": 1,
-      "rating": 5,
+      "ratingRangeHighest": "A",
+      "ratingRangeLowest": "Z",
+      "rating": "G",
       "ratingLink": "https://www.cdp.net/en/cities/cities-scores"
     }
   ],

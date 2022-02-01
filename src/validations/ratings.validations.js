@@ -5,16 +5,9 @@ export const ratingSchema = Joi.object({
   // warehouseProjectId - derived upon creation
   id: Joi.string().optional(),
   ratingType: Joi.string().required(),
-  ratingRangeLowest: Joi.number().integer().required(),
-  ratingRangeHighest: Joi.number()
-    .integer()
-    .min(Joi.ref('ratingRangeLowest'))
-    .required(),
-  rating: Joi.number()
-    .integer()
-    .min(Joi.ref('ratingRangeLowest'))
-    .max(Joi.ref('ratingRangeHighest'))
-    .required(),
+  ratingRangeLowest: Joi.string().required(),
+  ratingRangeHighest: Joi.string().required(),
+  rating: Joi.string().required(),
   ratingLink: Joi.string().required(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
