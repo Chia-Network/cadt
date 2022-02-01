@@ -6,7 +6,7 @@
   "serialNumberBlock": "AXJJFSLGHSHEJ1000-AXJJFSLGHSHEJ1010",
   "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
   "vintageYear": 2016,
-  "unitType": "Removal - technical",
+  "unitType": "removal",
   "marketplace": "California Carbon",
   "marketplaceLink": "https://www.californiacarbon.info/",
   "marketplaceIdentifier": "CCMT405",
