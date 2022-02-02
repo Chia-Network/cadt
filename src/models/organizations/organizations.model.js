@@ -83,13 +83,18 @@ class Organization extends Model {
   };
 
   // eslint-disable-next-line
-  static subscribeToOrganization = (orgUid) => {
-    throw new Error('Not implemented yet');
+  static subscribeToOrganization = async (orgUid) => {
+    const exists = await Organization.findOne({ where: { orgUid } });
+    if (exists) {
+      await Organization.update({ subscribed: true }, { orgUid });
+    } else {
+      Organization.importHomeOrganization(orgUid);
+    }
   };
 
   // eslint-disable-next-line
-  static unsubscribeToOrganization = (orgUid) => {
-    throw new Error('Not implemented yet');
+  static unsubscribeToOrganization = async (orgUid) => {
+    await Organization.update({ subscribed: false }, { orgUid });
   };
 }
 

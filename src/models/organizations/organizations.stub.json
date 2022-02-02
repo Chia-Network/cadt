@@ -1,4 +1,3 @@
-
 [
   {
     "orgUid": "a807e453-6524-49df-a32d-785e56cf560e",
@@ -6,15 +5,16 @@
     "subscribed": true,
     "isHome": false
   },
-  {"orgUid": "ca1e1619-d073-4283-bdbc-4ad58838f727",
+  {
+    "orgUid": "ca1e1619-d073-4283-bdbc-4ad58838f727",
     "name": "MOCK2 - VERRA",
     "subscribed": true,
     "isHome": false
   },
-  {"orgUid": "64ea3703-ced3-4e44-aa1f-03ac1a7533da",
+  {
+    "orgUid": "64ea3703-ced3-4e44-aa1f-03ac1a7533da",
     "name": "MOCK2 - United States National Registry",
     "subscribed": true,
     "isHome": false
   }
 ]
-

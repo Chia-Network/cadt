@@ -57,7 +57,7 @@
     "projectName": "A-GAS RemTec",
     "projectLink": "www.remtec.net",
     "projectDeveloper": "Reclamation Technologies, Inc.",
-    "sector": "Fugitive emissions – from Industrial gases (halocarbons and sulphur hexafluoride)",
+    "sector": "Fugitive emissions - from Industrial gases (halocarbons and sulphur hexafluoride)",
     "projectType": "Landfill Gas Capture/Combustion",
     "projectStatus": "Completed",
     "projectStatusDate": "2015-02-14 00:05:45.701 +00:00",
@@ -205,5 +205,5 @@
     "projectTags": "",
     "createdAt": "2015-07-07 00:05:45.701 +00:00",
     "updatedAt": "2022-01-12 00:05:45.701 +00:00"
-  },
+  }
 ]

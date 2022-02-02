@@ -40,7 +40,7 @@ export const createDataLayerStore = async () => {
 
 export const pushChangeListToDataLayer = async (storeId, changelist) => {
   const options = {
-    url: `${rpcUrl}/update_data_store`,
+    url: `${rpcUrl}/batch_update`,
     body: JSON.stringify({
       changelist,
       id: storeId,
@@ -54,6 +54,23 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
   }
 
   throw new Error('Error updating datalayer store');
+};
+
+export const getRoots = async (storeIds) => {
+  const options = {
+    url: `${rpcUrl}/get_roots`,
+    body: JSON.stringify({
+      ids: storeIds,
+    }),
+  };
+
+  const response = request(Object.assign({}, getBaseOptions(), options));
+
+  if (response.body) {
+    return response.body;
+  }
+
+  return [];
 };
 
 export const getRoot = async (storeId) => {
