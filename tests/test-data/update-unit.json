@@ -1,0 +1,40 @@
+{
+  "unitOwner": "UPDATED",
+  "countryJurisdictionOfOwner": "UPDATED",
+  "projectLocationId": "UPDATED",
+  "inCountryJurisdictionOfOwner": "UPDATED",
+  "serialNumberBlock": "AXJJFSLGHSHEJ2000-AXJJFSLGHSHEJ2010",
+  "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+  "vintageYear": 1970,
+  "unitType": "heard reduction",
+  "marketplace": "UPDATED",
+  "marketplaceLink": "UPDATED",
+  "marketplaceIdentifier": "UPDATED",
+  "unitTags": "UPDATED",
+  "unitStatus": "Held",
+  "unitStatusReason": "UPDATED",
+  "unitRegistryLink": "UPDATED",
+  "correspondingAdjustmentDeclaration": "Commited",
+  "correspondingAdjustmentStatus": "Not Started",
+  "labels": [
+    {
+      "warehouseProjectId": "11954678-f7a5-47d2-94f8-f4f3138a529c",
+      "label": "UPDATED",
+      "labelType": "UPDATED",
+      "creditingPeriodStartDate": "1970-01-01T00:00:00.001Z",
+      "creditingPeriodEndDate": "1971-01-01T00:00:00.001Z",
+      "validityPeriodStartDate": "1970-01-01T00:00:00.001Z",
+      "validityPeriodEndDate": "1971-01-01T00:00:00.001Z",
+      "unitQuantity": 5,
+      "labelLink": "UPDATED"
+    }
+  ],
+  "issuance": {
+    "warehouseProjectId": "11954678-f7a5-47d2-94f8-f4f3138a529c",
+    "startDate": "1970-01-01T00:00:00.001Z",
+    "endDate": "1971-01-01T00:00:00.001Z",
+    "verificationApproach": "UPDATED",
+    "verificationReportDate": "1970-01-01T00:00:00.001Z",
+    "verificationBody": "UPDATED"
+  }
+}

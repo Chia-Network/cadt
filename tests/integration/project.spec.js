@@ -96,4 +96,129 @@ describe('Project Resource Integration Tests', function () {
     // Verify the record is no longer in the mirror db
     await testFixtures.checkProjectMirrorRecordDoesNotExist(warehouseProjectId);
   }).timeout(TEST_WAIT_TIME * 10);
+
+  it('creates a new project end-to-end  (with simulator)', async function () {
+    // create and commit the unit to be deleted
+    const newProjectPayload = await testFixtures.createNewProject();
+
+    // Get the staging record we just created
+    const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
+
+    // There is no original when creating new units
+    expect(stagingRecord.diff.original).to.deep.equal({});
+    const changeRecord = _.head(stagingRecord.diff.change);
+
+    await testFixtures.childTablesIncludeOrgUid(changeRecord);
+    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(false);
+
+    // make sure the inferred data was set to the staging record
+    expect(changeRecord.orgUid).to.equal(homeOrgUid);
+    const warehouseProjectId = changeRecord.warehouseProjectId;
+
+    // Now push the staging table live
+    await testFixtures.commitStagingRecords();
+
+    // After commiting the true flag should be set to this staging record
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(true);
+
+    await testFixtures.waitForDataLayerSync();
+
+    // Make sure the staging table is cleaned up
+    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
+      undefined,
+    );
+
+    const newProject = await testFixtures.getProject(warehouseProjectId);
+
+    testFixtures.objectContainsSubSet(newProject, newProjectPayload);
+    testFixtures.childTablesIncludeOrgUid(newProject);
+    testFixtures.childTablesIncludePrimaryKey(newProject);
+
+    // Make sure the newly created unit is in the mirrorDb
+    await testFixtures.checkProjectMirrorRecordExists(warehouseProjectId);
+  }).timeout(TEST_WAIT_TIME * 10);
+
+  it('updates a new project end-to-end  (with simulator)', async function () {
+    // create and commit the unit to be deleted
+    const newProjectPayload = await testFixtures.createNewProject();
+
+    // Get the staging record we just created
+    const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
+
+    // There is no original when creating new units
+    expect(stagingRecord.diff.original).to.deep.equal({});
+    const changeRecord = _.head(stagingRecord.diff.change);
+
+    await testFixtures.childTablesIncludeOrgUid(changeRecord);
+    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
+
+    // make sure the inferred data was set to the staging record
+    expect(changeRecord.orgUid).to.equal(homeOrgUid);
+    const warehouseProjectId = changeRecord.warehouseProjectId;
+
+    // Now push the staging table live
+    await testFixtures.commitStagingRecords();
+
+    // After commiting the true flag should be set to this staging record
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(true);
+
+    await testFixtures.waitForDataLayerSync();
+
+    // Make sure the staging table is cleaned up
+    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
+      undefined,
+    );
+
+    const newProject = await testFixtures.getProject(warehouseProjectId);
+
+    testFixtures.objectContainsSubSet(newProject, newProjectPayload);
+    testFixtures.childTablesIncludeOrgUid(newProject);
+    testFixtures.childTablesIncludePrimaryKey(newProject);
+
+    // Make sure the newly created unit is in the mirrorDb
+    await testFixtures.checkProjectMirrorRecordExists(warehouseProjectId);
+    const updateProjectPayload = await testFixtures.updateProject(
+      warehouseProjectId,
+      changeRecord,
+    );
+
+    // Get the staging record we just created
+    const updatesStagingRecord =
+      await testFixtures.getLastCreatedStagingRecord();
+
+    expect(updatesStagingRecord.diff.original).to.deep.equal(newProject);
+    const updateChangeRecord = _.head(updatesStagingRecord.diff.change);
+
+    testFixtures.objectContainsSubSet(updateChangeRecord, updateProjectPayload);
+    testFixtures.childTablesIncludeOrgUid(updateChangeRecord);
+    testFixtures.childTablesIncludePrimaryKey(updateChangeRecord);
+
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(false);
+
+    await testFixtures.commitStagingRecords();
+
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(true);
+
+    await testFixtures.waitForDataLayerSync();
+
+    const updatedProject = await testFixtures.getProject(warehouseProjectId);
+
+    testFixtures.objectContainsSubSet(updatedProject, updateProjectPayload);
+    testFixtures.childTablesIncludeOrgUid(updatedProject);
+    testFixtures.childTablesIncludePrimaryKey(updatedProject);
+
+    // Make sure the newly created unit is in the mirrorDb
+    await testFixtures.checkProjectMirrorRecordExists(warehouseProjectId);
+  }).timeout(TEST_WAIT_TIME * 10);
 });

@@ -13,7 +13,8 @@ export const baseSchema = {
   // warehouseProjectId - derived upon creation
   // orgUid - derived upon creation
   projectId: Joi.string().required(),
-  registryOfOrigin: Joi.string().required(),
+  // optional because if we dont supply it, it assigns to the users own registry
+  registryOfOrigin: Joi.string().optional(),
   // Need to add 'originProjectId' as a new field. It will be required and STRING type.
   // If current registry is the same as registry of origin, then ID will be the same.
   // If current registry is different from registry of origin, then we will have different IDs.

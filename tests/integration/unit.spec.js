@@ -42,6 +42,10 @@ describe('Unit Resource Integration Tests', function () {
     await testFixtures.childTablesIncludeOrgUid(changeRecord);
     await testFixtures.childTablesIncludePrimaryKey(changeRecord);
 
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(false);
+
     // make sure the inferred data was set to the staging record
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
 
@@ -366,6 +370,10 @@ describe('Unit Resource Integration Tests', function () {
     await testFixtures.childTablesIncludeOrgUid(changeRecord);
     await testFixtures.childTablesIncludePrimaryKey(changeRecord);
 
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(false);
+
     // make sure the inferred data was set to the staging record
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
     const warehouseUnitId = changeRecord.warehouseUnitId;
@@ -393,5 +401,84 @@ describe('Unit Resource Integration Tests', function () {
 
     // Make sure the newly created unit is in the mirrorDb
     await testFixtures.checkUnitRecordExists(warehouseUnitId);
+  }).timeout(TEST_WAIT_TIME * 10);
+
+  it('updates a new unit end-to-end  (with simulator)', async function () {
+    // create and commit the unit to be deleted
+    const newUnitPayload = await testFixtures.createNewUnit();
+
+    // Get the staging record we just created
+    const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
+
+    // There is no original when creating new units
+    expect(stagingRecord.diff.original).to.deep.equal({});
+    const changeRecord = _.head(stagingRecord.diff.change);
+
+    await testFixtures.childTablesIncludeOrgUid(changeRecord);
+    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
+
+    // make sure the inferred data was set to the staging record
+    expect(changeRecord.orgUid).to.equal(homeOrgUid);
+    const warehouseUnitId = changeRecord.warehouseUnitId;
+
+    // Now push the staging table live
+    await testFixtures.commitStagingRecords();
+
+    // After commiting the true flag should be set to this staging record
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(true);
+
+    await testFixtures.waitForDataLayerSync();
+
+    // Make sure the staging table is cleaned up
+    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
+      undefined,
+    );
+
+    const newUnit = await testFixtures.getUnit(warehouseUnitId);
+
+    testFixtures.objectContainsSubSet(newUnit, newUnitPayload);
+    testFixtures.childTablesIncludeOrgUid(newUnit);
+    testFixtures.childTablesIncludePrimaryKey(newUnit);
+
+    // Make sure the newly created unit is in the mirrorDb
+    await testFixtures.checkUnitMirrorRecordExists(warehouseUnitId);
+    const updateUnitPayload = await testFixtures.updateUnit(
+      warehouseUnitId,
+      changeRecord,
+    );
+
+    // Get the staging record we just created
+    const updatesStagingRecord =
+      await testFixtures.getLastCreatedStagingRecord();
+
+    expect(updatesStagingRecord.diff.original).to.deep.equal(newUnit);
+    const updateChangeRecord = _.head(updatesStagingRecord.diff.change);
+
+    testFixtures.objectContainsSubSet(updateChangeRecord, updateUnitPayload);
+    testFixtures.childTablesIncludeOrgUid(updateChangeRecord);
+    testFixtures.childTablesIncludePrimaryKey(updateChangeRecord);
+
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(false);
+
+    await testFixtures.commitStagingRecords();
+
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(true);
+
+    await testFixtures.waitForDataLayerSync();
+
+    const updatedUnit = await testFixtures.getUnit(warehouseUnitId);
+
+    testFixtures.objectContainsSubSet(updatedUnit, updateUnitPayload);
+    testFixtures.childTablesIncludeOrgUid(updatedUnit);
+    testFixtures.childTablesIncludePrimaryKey(updatedUnit);
+
+    // Make sure the newly created unit is in the mirrorDb
+    await testFixtures.checkUnitMirrorRecordExists(warehouseUnitId);
   }).timeout(TEST_WAIT_TIME * 10);
 });

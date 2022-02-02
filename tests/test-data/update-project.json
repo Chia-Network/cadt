@@ -1,0 +1,73 @@
+{
+  "projectId": "c9d147e2-bc07-4e68-a76d-43424fa8cd4e",
+  "program": "UPDATED",
+  "projectName": "UPDATED",
+  "projectLink": "UPDATED",
+  "projectDeveloper": "UPDATED",
+  "sector": "UPDATED",
+  "projectType": "UPDATED",
+  "projectTags": "UPDATED",
+  "coveredByNDC": "UPDATED",
+  "ndcInformation": "UPDATED",
+  "projectStatus": "UPDATED",
+  "projectStatusDate": "1970-01-01T00:00:00.001Z",
+  "unitMetric": "UPDATED",
+  "methodology": "UPDATED",
+  "validationBody": "UPDATED",
+  "validationDate": "1970-01-01T00:00:00.001Z",
+  "projectLocations": [
+    {
+      "country": "UPDATED",
+      "inCountryRegion": "UPDATED",
+      "geographicIdentifier": "UPDATED"
+    }
+  ],
+  "labels": [
+    {
+      "label": "UPDATED",
+      "labelType": "UPDATED",
+      "creditingPeriodStartDate": "1970-01-01T00:00:00.001Z",
+      "creditingPeriodEndDate": "1970-01-01T00:00:00.001Z",
+      "validityPeriodStartDate": "1970-01-01T00:00:00.001Z",
+      "validityPeriodEndDate": "1970-01-01T00:00:00.001Z",
+      "unitQuantity": 7,
+      "labelLink": "UPDATED"
+    }
+  ],
+  "issuances": [
+    {
+      "startDate": "1970-01-01T00:00:00.001Z",
+      "endDate": "1971-01-01T00:00:00.001Z",
+      "verificationApproach": "UPDATED",
+      "verificationReportDate": "1970-01-01T00:00:00.001Z",
+      "verificationBody": "UPDATED"
+    }
+  ],
+  "coBenefits": [
+    {
+      "cobenefit": "UPDATED"
+    }
+  ],
+  "relatedProjects": [
+    {
+      "relationshipType": "UPDATED",
+      "registry": "UPDATED"
+    }
+  ],
+  "projectRatings": [
+    {
+      "ratingType": "UPDATED",
+      "ratingRangeHighest": "AA",
+      "ratingRangeLowest": "ZZ",
+      "rating": "GG",
+      "ratingLink": "UPDATED"
+    }
+  ],
+  "estimations": [
+    {
+      "creditingPeriodStart": "1970-01-01T00:00:00.001Z",
+      "creditingPeriodEnd": "1971-01-01T00:00:00.001Z",
+      "unitCount": 10
+    }
+  ]
+}

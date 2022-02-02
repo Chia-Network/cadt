@@ -104,7 +104,7 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
           'hex',
         ).toString();
         const model = key.split('|')[0];
-        const value = JSON.parse(new Buffer(kv.value, 'hex').toString());
+        const value = JSON.parse(Buffer.from(kv.value, 'hex').toString());
 
         if (model === 'unit') {
           await Unit.upsert(value);
@@ -177,7 +177,8 @@ export const dataLayerWasUpdated = async () => {
   }
 
   const updatedStores = rootResponse.root_hashes.filter((rootHash) => {
-    return subscribedOrgIds.includes(rootHash.id);
+    const org = organizations.find((org) => org.registryId === rootHash.id);
+    return org.registryHash !== rootHash.hash;
   });
 
   if (!updatedStores.length) {

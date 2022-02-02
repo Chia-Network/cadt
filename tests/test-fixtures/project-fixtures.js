@@ -4,6 +4,7 @@ const { expect } = chai;
 
 import app from '../../src/server';
 import newProject from '../test-data/new-project.json';
+import updateProjectJson from '../test-data/update-project.json';
 import { ProjectMirror, Project } from '../../src/models';
 
 export const createNewProject = async (payload = newProject) => {
@@ -15,6 +16,31 @@ export const createNewProject = async (payload = newProject) => {
   expect(result.statusCode).to.equal(200);
 
   return payload;
+};
+
+export const updateProject = async (warehouseProjectId, originalRecord) => {
+  updateProjectJson.warehouseProjectId = warehouseProjectId;
+
+  // Since we are updating, let pull over the child table ids to
+  // update the child tables instead of create new ones
+  Object.keys(updateProjectJson).forEach((key) => {
+    if (Array.isArray(updateProjectJson[key])) {
+      updateProjectJson[key].forEach((record, index) => {
+        record.id = originalRecord[key][index].id;
+      });
+    }
+  });
+
+  const result = await supertest(app)
+    .put('/v1/projects')
+    .send(updateProjectJson);
+
+  expect(result.body).to.deep.equal({
+    message: 'Project update added to staging',
+  });
+  expect(result.statusCode).to.equal(200);
+
+  return updateProjectJson;
 };
 
 export const deleteProject = async (warehouseProjectId) => {
@@ -30,10 +56,10 @@ export const deleteProject = async (warehouseProjectId) => {
 
 export const getProject = async (warehouseProjectId) => {
   const result = await supertest(app)
-    .get('/v1/units')
+    .get('/v1/projects')
     .query({ warehouseProjectId });
   expect(result.body).to.be.an('object');
-  expect(result.body.warehouseUnitId).to.equal(warehouseProjectId);
+  expect(result.body.warehouseProjectId).to.equal(warehouseProjectId);
   expect(result.statusCode).to.equal(200);
   return result.body;
 };

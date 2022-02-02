@@ -31,7 +31,7 @@ export const pushChangeListToDataLayer = async (storeId, changeList) => {
 
 export const getStoreData = async (storeId) => {
   if (storeId) {
-    const results = await await Simulator.findAll({
+    const results = await Simulator.findAll({
       where: {
         key: { [Op.like]: `${storeId}%` },
       },
@@ -107,7 +107,7 @@ export const getRoots = async (storeIds) => {
       }`,
     );
     return Promise.resolve({
-      hash: null,
+      root_hashes: [],
       success: false,
     });
   }
@@ -115,15 +115,16 @@ export const getRoots = async (storeIds) => {
   return Promise.resolve({
     root_hashes: storeIds.map((storeId) => {
       if (myOrganization.registryId === storeId) {
+        // datalayer returns hash starting in 0x
         return {
-          hash: createHash('md5')
+          hash: `0x${createHash('md5')
             .update(JSON.stringify(simulatorTable))
-            .digest('hex'),
+            .digest('hex')}`,
           id: storeId,
         };
       }
 
-      // no hash for non existent org tables
+      // no hash for simulated external org tables (they dont exist in simulator)
       return {
         hash: 0,
         id: storeId,
