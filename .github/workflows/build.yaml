@@ -99,7 +99,7 @@ jobs:
           echo "@TODO Need to sign binaries here"
 
           # Makes the .pkg in ./build-scripts/macos/target/pkg
-          bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh
+          bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh ClimateWarehouse
 
           mkdir -p ${{ github.workspace }}build-scripts/macos/target/pkg-signed
 
