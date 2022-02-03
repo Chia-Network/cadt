@@ -85,7 +85,7 @@ jobs:
       # Sign Things
       - name: Sign windows artifacts
         if: matrix.runs-on == 'windows-latest'
-        uses: chia-network/actions/sign/windows@signing
+        uses: chia-network/actions/sign/windows@main
         with:
           certificate_path: .\win_code_sign_cert.pfx
           certificate_password: ${{ secrets.WIN_CODE_SIGN_PASSWORD }}
