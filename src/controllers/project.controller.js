@@ -27,6 +27,7 @@ import {
   assertProjectRecordExists,
   assertCsvFileInRequest,
   assertHomeOrgExists,
+  assetNoPendingCommits,
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
@@ -41,6 +42,7 @@ import {
 export const create = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    await assetNoPendingCommits();
 
     const newRecord = _.cloneDeep(req.body);
     // When creating new projects assign a uuid to is so
@@ -73,14 +75,6 @@ export const create = async (req, res) => {
         });
       }
     });
-
-    // The new project is getting created in this registry
-    newRecord.currentRegistry = orgUid;
-
-    // Unless we are overriding, a new project originates in this org
-    if (!newRecord.registryOfOrigin) {
-      newRecord.registryOfOrigin = orgUid;
-    }
 
     await Staging.create({
       uuid,
@@ -178,6 +172,7 @@ export const findOne = async (req, res) => {
 export const updateFromXLS = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    await assetNoPendingCommits();
 
     const { files } = req;
 
@@ -206,6 +201,7 @@ export const updateFromXLS = async (req, res) => {
 export const update = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    // await assetNoPendingCommits();
 
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
@@ -241,6 +237,10 @@ export const update = async (req, res) => {
             childRecord.warehouseProjectId = newRecord.warehouseProjectId;
           }
 
+          if (childRecordKey === 'labels' && childRecord.labelUnits) {
+            childRecord.labelUnits.orgUid = orgUid;
+          }
+
           return childRecord;
         });
       }
@@ -273,12 +273,14 @@ export const update = async (req, res) => {
       message: 'Error adding update to stage',
       error: err.message,
     });
+    console.log(err);
   }
 };
 
 export const destroy = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    await assetNoPendingCommits();
 
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
@@ -308,6 +310,7 @@ export const destroy = async (req, res) => {
 export const batchUpload = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    await assetNoPendingCommits();
 
     const csvFile = assertCsvFileInRequest(req);
     await createProjectRecordsFromCsv(csvFile);

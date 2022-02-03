@@ -403,7 +403,7 @@ describe('Unit Resource Integration Tests', function () {
     await testFixtures.checkUnitRecordExists(warehouseUnitId);
   }).timeout(TEST_WAIT_TIME * 10);
 
-  it('updates a new unit end-to-end  (with simulator)', async function () {
+  it('updates a new unit end-to-end (with simulator)', async function () {
     // create and commit the unit to be deleted
     const newUnitPayload = await testFixtures.createNewUnit();
 

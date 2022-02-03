@@ -7,6 +7,7 @@ import { RelatedProject } from './related-projects';
 import { Unit } from './units';
 import { Issuance } from './issuances';
 import { Estimation } from './estimations';
+import { LabelUnit } from './labelUnits';
 
 Project.associate();
 CoBenefit.associate();
@@ -32,3 +33,21 @@ export * from './meta';
 export * from './simulator';
 export * from './labelUnits';
 export * from './estimations';
+
+export const ModelKeys = {
+  unit: Unit,
+  units: Unit,
+  labels: Label,
+  label_unit: LabelUnit,
+  label_units: LabelUnit,
+  labelUnit: LabelUnit,
+  issuance: Issuance,
+  issuances: Issuance,
+  estimations: Estimation,
+  coBenefits: CoBenefit,
+  relatedProjects: RelatedProject,
+  projects: Project,
+  project: Project,
+  projectRatings: Rating,
+  projectLocations: ProjectLocation,
+};

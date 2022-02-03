@@ -31,7 +31,7 @@ export const childTablesIncludeOrgUid = (record) => {
       record[key].forEach((childRecord) => {
         expect(record.orgUid).to.equal(childRecord.orgUid);
       });
-    } else if (typeof record[key] === 'object') {
+    } else if (Boolean(record[key]) && typeof record[key] === 'object') {
       expect(record.orgUid).to.equal(record[key].orgUid);
     }
   });
@@ -46,7 +46,7 @@ export const childTablesIncludePrimaryKey = (record) => {
         expect(childRecord.id).to.be.ok;
         expect(childRecord.id).to.be.an('string');
       });
-    } else if (typeof record[key] === 'object') {
+    } else if (Boolean(record[key]) && typeof record[key] === 'object') {
       expect(record[key].id).to.be.ok;
       expect(record[key].id).to.be.an('string');
     }
@@ -63,7 +63,7 @@ export const objectContainsSubSet = (obj, objSubset) => {
           );
         });
       });
-    } else if (typeof objSubset[key] === 'object') {
+    } else if (Boolean(objSubset[key]) && typeof objSubset[key] === 'object') {
       Object.keys(objSubset[key]).forEach((childkey) => {
         expect(obj[key][childkey], childkey).to.deep.equal(
           objSubset[key][childkey],

@@ -1,5 +1,6 @@
 import * as dataLayer from './persistance';
 import * as simulator from './simulator';
+import { encodeHex } from '../utils/datalayer-utils';
 
 export const createDataLayerStore = async () => {
   let storeId;
@@ -16,24 +17,31 @@ export const syncDataLayer = async (storeId, data) => {
   const changeList = Object.keys(data).map((key) => {
     return {
       action: 'insert',
-      key,
-      value: data[key],
+      key: encodeHex(key),
+      value: encodeHex(data[key]),
     };
   });
 
+  await pushChangesWhenStoreIsAvailable(storeId, changeList);
+};
+
+const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
   if (process.env.USE_SIMULATOR === 'true') {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
-    return dataLayer.pushChangeListToDataLayer(storeId, changeList);
+    const storeExists = await dataLayer.getRoot(storeId);
+    if (storeExists) {
+      return dataLayer.pushChangeListToDataLayer(storeId, changeList);
+    } else {
+      setTimeout(async () => {
+        await pushChangesWhenStoreIsAvailable(storeId, changeList);
+      }, 10000);
+    }
   }
 };
 
-export const pushDataLayerChangeList = async (storeId, changeList) => {
-  if (process.env.USE_SIMULATOR === 'true') {
-    return simulator.pushChangeListToDataLayer(storeId, changeList);
-  } else {
-    return dataLayer.pushChangeListToDataLayer(storeId, changeList);
-  }
+export const pushDataLayerChangeList = (storeId, changeList) => {
+  pushChangesWhenStoreIsAvailable(storeId, changeList);
 };
 
 export const subscribeToStore = async (storeId) => {

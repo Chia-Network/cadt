@@ -114,8 +114,8 @@ class Unit extends Model {
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => UnitMirror.create(values, options));
-    const upsertResult = await super.create(values, options);
+    safeMirrorDbHandler(() => UnitMirror.upsert(values, options));
+    const upsertResult = await super.upsert(values, options);
 
     const { orgUid } = values;
 
@@ -124,8 +124,8 @@ class Unit extends Model {
     return upsertResult;
   }
 
-  static async destroy(values) {
-    safeMirrorDbHandler(() => UnitMirror.destroy(values));
+  static async destroy(values, options) {
+    safeMirrorDbHandler(() => UnitMirror.destroy(values, options));
 
     const record = await super.findOne(values.where);
 
@@ -134,7 +134,7 @@ class Unit extends Model {
       Unit.changes.next(['units', orgUid]);
     }
 
-    return super.destroy(values);
+    return super.destroy(values, options);
   }
 
   static async fts(searchStr, orgUid, pagination, columns = []) {
@@ -286,7 +286,7 @@ class Unit extends Model {
     };
   }
 
-  static generateChangeListFromStagedData(stagedData) {
+  static async generateChangeListFromStagedData(stagedData) {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
 
@@ -311,13 +311,13 @@ class Unit extends Model {
       issuances: 'id',
     };
 
-    const insertChangeList = transformFullXslsToChangeList(
+    const insertChangeList = await transformFullXslsToChangeList(
       insertXslsSheets,
       'insert',
       primaryKeyMap,
     );
 
-    const updateChangeList = transformFullXslsToChangeList(
+    const updateChangeList = await transformFullXslsToChangeList(
       updateXslsSheets,
       'update',
       primaryKeyMap,

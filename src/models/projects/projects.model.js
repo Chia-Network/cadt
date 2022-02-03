@@ -35,9 +35,9 @@ class Project extends Model {
   static stagingTableName = 'Projects';
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
-  static validateImport = projectsUpdateSchema
+  static validateImport = projectsUpdateSchema;
   static virtualFieldList = {};
-  
+
   static getAssociatedModels = () => [
     ProjectLocation,
     Label,
@@ -86,8 +86,8 @@ class Project extends Model {
     return createResult;
   }
 
-  static async destroy(values) {
-    safeMirrorDbHandler(() => ProjectMirror.destroy(values));
+  static async destroy(values, options) {
+    safeMirrorDbHandler(() => ProjectMirror.destroy(values, options));
 
     const record = await super.findOne(values.where);
 
@@ -96,12 +96,12 @@ class Project extends Model {
       Project.changes.next(['projects', orgUid]);
     }
 
-    return super.destroy(values);
+    return super.destroy(values, options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => ProjectMirror.create(values, options));
-    const upsertResult = await super.create(values, options);
+    safeMirrorDbHandler(() => ProjectMirror.upsert(values, options));
+    const upsertResult = await super.upsert(values, options);
 
     const { orgUid } = values;
 
@@ -245,7 +245,7 @@ class Project extends Model {
     };
   }
 
-  static generateChangeListFromStagedData(stagedData) {
+  static async generateChangeListFromStagedData(stagedData) {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Projects');
 
@@ -274,13 +274,13 @@ class Project extends Model {
       projectRatings: 'id',
     };
 
-    const insertChangeList = transformFullXslsToChangeList(
+    const insertChangeList = await transformFullXslsToChangeList(
       insertXslsSheets,
       'insert',
       primaryKeyMap,
     );
 
-    const updateChangeList = transformFullXslsToChangeList(
+    const updateChangeList = await transformFullXslsToChangeList(
       updateXslsSheets,
       'update',
       primaryKeyMap,

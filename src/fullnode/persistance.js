@@ -31,8 +31,10 @@ export const createDataLayerStore = async () => {
 
   const response = await request(Object.assign({}, getBaseOptions(), options));
 
-  if (response.body.id) {
-    return response.body.id;
+  const data = JSON.parse(response);
+
+  if (data.success) {
+    return data.id;
   }
 
   throw new Error('Error creating new datalayer store');
@@ -47,13 +49,15 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
     }),
   };
 
-  const response = request(Object.assign({}, getBaseOptions(), options));
+  const response = await request(Object.assign({}, getBaseOptions(), options));
 
-  if (response.body) {
-    return response.body;
+  const data = JSON.parse(response);
+
+  if (data.success) {
+    return data;
   }
 
-  throw new Error('Error updating datalayer store');
+  console.log(options, data);
 };
 
 export const getRoots = async (storeIds) => {
@@ -64,13 +68,19 @@ export const getRoots = async (storeIds) => {
     }),
   };
 
-  const response = request(Object.assign({}, getBaseOptions(), options));
+  const response = await request(Object.assign({}, getBaseOptions(), options));
 
-  if (response.body) {
-    return response.body;
+  try {
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    return [];
+  } catch (error) {
+    return [];
   }
-
-  return [];
 };
 
 export const getRoot = async (storeId) => {
@@ -81,10 +91,18 @@ export const getRoot = async (storeId) => {
     }),
   };
 
-  const response = request(Object.assign({}, getBaseOptions(), options));
+  const response = await request(Object.assign({}, getBaseOptions(), options));
 
-  if (response.body && response.body.keys_values) {
-    return response.body.keys_values;
+  try {
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    return false;
+  } catch (error) {
+    return false;
   }
 };
 
@@ -97,10 +115,14 @@ export const getStoreData = async (storeId) => {
       }),
     };
 
-    const response = request(Object.assign({}, getBaseOptions(), options));
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
 
-    if (response.body && response.body.keys_values) {
-      return response.body.keys_values;
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
     }
   }
 
