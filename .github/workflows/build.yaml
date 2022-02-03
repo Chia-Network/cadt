@@ -107,6 +107,13 @@ jobs:
 
           echo "@TODO need to notarize here"
 
+      - name: Upload Mac Installer
+        if: matrix.runs-on == 'macos-latest'
+        uses: actions/upload-artifact@v2
+        with:
+          name: mac-installer
+          path: ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
