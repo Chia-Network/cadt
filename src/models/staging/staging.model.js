@@ -4,6 +4,7 @@ import _ from 'lodash';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { Project, Unit, Organization } from '../../models';
+import { encodeHex } from '../../utils/datalayer-utils';
 
 import * as rxjs from 'rxjs';
 import { sequelize } from '../database';
@@ -122,9 +123,7 @@ class Staging extends Model {
 
           deleteChangeList.push({
             action: 'delete',
-            key: Buffer.from(`${tablePrefix}|${stagingRecord.uuid}`).toString(
-              'hex',
-            ),
+            key: encodeHex(`${tablePrefix}|${stagingRecord.uuid}`),
           });
 
           // TODO: Child table records are getting orphaned in the datalayer,
@@ -142,9 +141,7 @@ class Staging extends Model {
 
           deleteChangeList.push({
             action: 'delete',
-            key: Buffer.from(`${tablePrefix}|${stagingRecord.uuid}`).toString(
-              'hex',
-            ),
+            key: encodeHex(`${tablePrefix}|${stagingRecord.uuid}`),
           });
 
           // TODO: Child table records are getting orphaned in the datalayer,
@@ -180,10 +177,16 @@ class Staging extends Model {
       raw: true,
     });
 
+    // sort so that deletes are first and inserts second
+    const finalChangeList = _.uniqBy(
+      _.sortBy(_.flatten(_.values(unifiedChangeList)), 'action'),
+      (v) => [v.action, v.key].join(),
+    );
+
     await pushDataLayerChangeList(
       myOrganization.registryId,
-      // sort so that deletes are first and inserts second
-      _.sortBy(_.flatten(_.values(unifiedChangeList)), 'action'),
+
+      finalChangeList,
     );
   }
 }

@@ -18,6 +18,7 @@ import {
   assertSumOfSplitUnitsIsValid,
   assertCsvFileInRequest,
   assertHomeOrgExists,
+  assetNoPendingCommits,
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
@@ -188,6 +189,7 @@ export const findOne = async (req, res) => {
 export const updateFromXLS = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    await assetNoPendingCommits();
 
     const { files } = req;
 
@@ -213,6 +215,7 @@ export const updateFromXLS = async (req, res) => {
 export const update = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    await assetNoPendingCommits();
 
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
@@ -293,6 +296,7 @@ export const update = async (req, res) => {
 export const destroy = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    await assetNoPendingCommits();
 
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
@@ -321,6 +325,7 @@ export const destroy = async (req, res) => {
 export const split = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    await assetNoPendingCommits();
 
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
@@ -386,6 +391,7 @@ export const split = async (req, res) => {
 export const batchUpload = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    await assetNoPendingCommits();
 
     const csvFile = assertCsvFileInRequest(req);
     await createUnitRecordsFromCsv(csvFile);

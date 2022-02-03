@@ -44,14 +44,14 @@ class Label extends Model {
     return super.create(values, options);
   }
 
-  static async destroy(values) {
-    safeMirrorDbHandler(() => LabelMirror.destroy(values));
-    return super.destroy(values);
+  static async destroy(values, options) {
+    safeMirrorDbHandler(() => LabelMirror.destroy(values, options));
+    return super.destroy(values, options);
   }
 
   static async upsert(values, options) {
     safeMirrorDbHandler(() => LabelMirror.upsert(values, options));
-    return super.create(values, options);
+    return super.upsert(values, options);
   }
 }
 

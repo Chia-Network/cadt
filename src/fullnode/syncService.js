@@ -1,19 +1,7 @@
 import logUpdate from 'log-update';
 
-import {
-  Organization,
-  Unit,
-  Project,
-  RelatedProject,
-  Label,
-  Issuance,
-  CoBenefit,
-  ProjectLocation,
-  LabelUnit,
-  Staging,
-  Rating,
-  Estimation,
-} from '../models';
+import { decodeHex } from '../utils/datalayer-utils';
+import { Organization, Staging, ModelKeys } from '../models';
 
 import * as dataLayer from './persistance';
 import * as simulator from './simulator';
@@ -53,95 +41,49 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
   }
 
   const organizationToTrucate = await Organization.findOne({
-    where: { registryId: storeId },
     attributes: ['orgUid'],
+    where: { registryId: storeId },
     raw: true,
   });
 
   try {
-    // Create a transaction for both the main db and the mirror db
-    //await sequelize.transaction(async () => {
-    //  return sequelizeMirror.transaction(async () => {
     if (organizationToTrucate) {
-      await Promise.all([
-        // the child table records should cascade delete so we only need to
-        // truncate the primary tables
-        Unit.destroy({ where: { orgUid: organizationToTrucate.orgUid } }),
-        Project.destroy({
+      const truncateOrganizationPromises = Object.keys(ModelKeys).map((key) =>
+        ModelKeys[key].destroy({
           where: { orgUid: organizationToTrucate.orgUid },
         }),
-        LabelUnit.destroy({
-          where: { orgUid: organizationToTrucate.orgUid },
+      );
+
+      await Promise.all(truncateOrganizationPromises);
+
+      await Promise.all(
+        storeData.keys_values.map(async (kv) => {
+          const key = decodeHex(kv.key.replace(`${storeId}_`, ''));
+          const modelKey = key.split('|')[0];
+          const value = JSON.parse(decodeHex(kv.value));
+
+          await ModelKeys[modelKey].upsert(value);
+
+          const stagingUuid =
+            modelKey === 'unit'
+              ? value.warehouseUnitId
+              : modelKey === 'project'
+              ? value.warehouseProjectId
+              : undefined;
+
+          if (stagingUuid) {
+            await Staging.destroy({
+              where: { uuid: stagingUuid },
+            });
+          }
         }),
-        RelatedProject.destroy({
-          where: { orgUid: organizationToTrucate.orgUid },
-        }),
-        CoBenefit.destroy({
-          where: { orgUid: organizationToTrucate.orgUid },
-        }),
-        Issuance.destroy({
-          where: { orgUid: organizationToTrucate.orgUid },
-        }),
-        Label.destroy({
-          where: { orgUid: organizationToTrucate.orgUid },
-        }),
-        Rating.destroy({
-          where: { orgUid: organizationToTrucate.orgUid },
-        }),
-        ProjectLocation.destroy({
-          where: { orgUid: organizationToTrucate.orgUid },
-        }),
-        Estimation.destroy({
-          where: { orgUid: organizationToTrucate.orgUid },
-        }),
-      ]);
+      );
+
+      // clean up any staging records than involved delete commands,
+      // since we cant track that they came in through the uuid,
+      // we can infer this because diff.original is null instead of empty object.
+      await Staging.cleanUpCommitedAndInvalidRecords();
     }
-
-    await Promise.all(
-      storeData.keys_values.map(async (kv) => {
-        const key = Buffer.from(
-          kv.key.replace(`${storeId}_`, ''),
-          'hex',
-        ).toString();
-        const model = key.split('|')[0];
-        const value = JSON.parse(Buffer.from(kv.value, 'hex').toString());
-
-        if (model === 'unit') {
-          await Unit.upsert(value);
-          await Staging.destroy({
-            where: { uuid: value.warehouseUnitId },
-          });
-        } else if (model === 'project') {
-          await Project.upsert(value);
-          await Staging.destroy({
-            where: { uuid: value.warehouseProjectId },
-          });
-        } else if (model === 'relatedProjects') {
-          await RelatedProject.upsert(value);
-        } else if (model === 'label_units') {
-          await LabelUnit.upsert(value);
-        } else if (model === 'coBenefits') {
-          await CoBenefit.upsert(value);
-        } else if (model === 'issuances' || model === 'issuance') {
-          await Issuance.upsert(value);
-        } else if (model === 'projectLocations') {
-          await ProjectLocation.upsert(value);
-        } else if (model === 'labels') {
-          await Label.upsert(value);
-        } else if (model === 'projectRatings') {
-          await Rating.upsert(value);
-        } else if (model === 'estimations') {
-          await Estimation.upsert(value);
-        }
-      }),
-    );
-
-    // clean up any staging records than involved delete commands,
-    // since we cant track that they came in through the uuid,
-    // we can infer this because diff.original is null instead of empty object.
-    await Staging.cleanUpCommitedAndInvalidRecords();
-    //  });
-    //  });
   } catch (error) {
     console.trace('ERROR DURING SYNC TRANSACTION', error);
   }
@@ -177,8 +119,15 @@ export const dataLayerWasUpdated = async () => {
   }
 
   const updatedStores = rootResponse.root_hashes.filter((rootHash) => {
-    const org = organizations.find((org) => org.registryId === rootHash.id);
-    return org.registryHash !== rootHash.hash;
+    const org = organizations.find(
+      (org) => org.registryId == rootHash.id.replace('0x', ''),
+    );
+
+    if (org) {
+      return org.registryHash !== rootHash.hash;
+    }
+
+    return false;
   });
 
   if (!updatedStores.length) {

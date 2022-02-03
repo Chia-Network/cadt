@@ -4,6 +4,7 @@ import { Staging } from '../models';
 import {
   assertStagingRecordExists,
   assertHomeOrgExists,
+  assetNoPendingCommits,
 } from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
@@ -39,6 +40,7 @@ export const findAll = async (req, res) => {
 export const commit = async (req, res) => {
   try {
     await assertHomeOrgExists();
+    await assetNoPendingCommits();
 
     await Staging.pushToDataLayer();
     res.json({ message: 'Staging Table committed to full node' });

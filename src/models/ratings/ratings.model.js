@@ -29,14 +29,14 @@ class Rating extends Model {
     return super.create(values, options);
   }
 
-  static async destroy(values) {
-    safeMirrorDbHandler(() => RatingMirror.destroy(values));
-    return super.destroy(values);
+  static async destroy(values, options) {
+    safeMirrorDbHandler(() => RatingMirror.destroy(values, options));
+    return super.destroy(values, options);
   }
 
   static async upsert(values, options) {
     safeMirrorDbHandler(() => RatingMirror.upsert(values, options));
-    return super.create(values, options);
+    return super.upsert(values, options);
   }
 }
 

@@ -32,6 +32,7 @@ export const pushChangeListToDataLayer = async (storeId, changeList) => {
 export const getStoreData = async (storeId) => {
   if (storeId) {
     const results = await Simulator.findAll({
+      attributes: ['key', 'value'],
       where: {
         key: { [Op.like]: `${storeId}%` },
       },

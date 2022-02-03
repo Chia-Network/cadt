@@ -5,6 +5,19 @@ import _ from 'lodash';
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
 
+export const assetNoPendingCommits = async () => {
+  const pendingCommits = await Staging.findAll({
+    where: { commited: true },
+    raw: true,
+  });
+
+  if (pendingCommits.length > 0) {
+    throw new Error(
+      'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
+    );
+  }
+};
+
 export const assertHomeOrgExists = async () => {
   const homeOrg = await Organization.getHomeOrg();
   if (!homeOrg) {

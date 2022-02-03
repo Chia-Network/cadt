@@ -3,9 +3,11 @@ import _ from 'lodash';
 import xlsx from 'node-xlsx';
 import stream from 'stream';
 
-import { Staging, Organization, LabelUnit } from './../models';
+import { Staging, Organization, LabelUnit, ModelKeys } from './../models';
+
 import { sequelize } from '../models/database';
 import { assertOrgIsHomeOrg } from '../utils/data-assertions';
+import { encodeHex } from '../utils/datalayer-utils';
 
 const associations = (model) =>
   model.getAssociatedModels().map((model) => {
@@ -40,7 +42,7 @@ export const encodeValue = (value, hex = false) => {
 
   if (hex) {
     try {
-      return Buffer.from(value).toString('hex');
+      return encodeHex(value);
     } catch (e) {
       return '';
     }
@@ -382,61 +384,83 @@ const checkArrayOfArrays = (a) => {
   });
 };
 
-export const transformFullXslsToChangeList = (
+export const transformFullXslsToChangeList = async (
   xsls,
   action,
   primaryKeyNames,
 ) => {
-  const models = Object.keys(primaryKeyNames);
-  const changeList = {};
+  try {
+    const models = Object.keys(primaryKeyNames);
+    const changeList = {};
 
-  models.forEach((key) => {
-    let sheet = xsls[key];
-    if (sheet) {
-      const headerRow = sheet.data[0];
-      const primaryKeyIndex = headerRow.findIndex((item) => {
-        return item === primaryKeyNames[key];
-      });
+    await Promise.all(
+      models.map(async (key) => {
+        let sheet = xsls[key];
+        if (sheet) {
+          const headerRow = sheet.data[0];
+          const primaryKeyIndex = headerRow.findIndex((item) => {
+            return item === primaryKeyNames[key];
+          });
 
-      if (!changeList[key]) {
-        changeList[key] = [];
-      }
-
-      // filter out the header row
-      _.tail(sheet.data).forEach((row) => {
-        const rows = checkArrayOfArrays(row) ? row : [row];
-        return rows.forEach((r) => {
-          const dataLayerKey = Buffer.from(
-            `${key}|${r[primaryKeyIndex]}`,
-          ).toString('hex');
-
-          if (action === 'update') {
-            changeList[key].push(
-              {
-                action: 'delete',
-                key: dataLayerKey,
-              },
-              {
-                action: 'insert',
-                key: dataLayerKey,
-                value: Buffer.from(
-                  JSON.stringify(_.zipObject(headerRow, r)),
-                ).toString('hex'),
-              },
-            );
-          } else {
-            changeList[key].push({
-              action: action,
-              key: dataLayerKey,
-              value: Buffer.from(
-                JSON.stringify(_.zipObject(headerRow, r)),
-              ).toString('hex'),
-            });
+          if (!changeList[key]) {
+            changeList[key] = [];
           }
-        });
-      });
-    }
-  });
 
-  return changeList;
+          // filter out the header row
+          await Promise.all(
+            _.tail(sheet.data).map(async (row) => {
+              const rows = checkArrayOfArrays(row) ? row : [row];
+              await Promise.all(
+                rows.map(async (r) => {
+                  const dataLayerKey = encodeHex(
+                    `${key}|${r[primaryKeyIndex]}`,
+                  );
+
+                  if (action === 'update') {
+                    let isUpdate = await ModelKeys[key].findByPk(
+                      r[primaryKeyIndex],
+                    );
+
+                    if (isUpdate) {
+                      const alreadyPushed = changeList[key].find(
+                        (change) =>
+                          change.action === 'delete' &&
+                          change.key === dataLayerKey,
+                      );
+
+                      if (!alreadyPushed) {
+                        changeList[key].push({
+                          action: 'delete',
+                          key: dataLayerKey,
+                        });
+                      }
+                    }
+                    changeList[key].push({
+                      action: 'insert',
+                      key: dataLayerKey,
+                      value: encodeHex(
+                        JSON.stringify(_.zipObject(headerRow, r)),
+                      ),
+                    });
+                  } else {
+                    changeList[key].push({
+                      action: action,
+                      key: dataLayerKey,
+                      value: encodeHex(
+                        JSON.stringify(_.zipObject(headerRow, r)),
+                      ),
+                    });
+                  }
+                }),
+              );
+            }),
+          );
+        }
+      }),
+    );
+
+    return changeList;
+  } catch (error) {
+    console.log(error);
+  }
 };

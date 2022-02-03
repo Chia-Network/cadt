@@ -143,7 +143,7 @@ describe('Project Resource Integration Tests', function () {
     await testFixtures.checkProjectMirrorRecordExists(warehouseProjectId);
   }).timeout(TEST_WAIT_TIME * 10);
 
-  it('updates a new project end-to-end  (with simulator)', async function () {
+  it('updates a new project end-to-end (with simulator)', async function () {
     // create and commit the unit to be deleted
     const newProjectPayload = await testFixtures.createNewProject();
 
