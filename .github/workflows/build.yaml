@@ -75,6 +75,7 @@ jobs:
         run: cp .\node_modules\sqlite3\build\Release\node_sqlite3.node .\dist\
         if: matrix.runs-on == 'windows-latest'
 
+      # Windows Code Signing
       - name: Decode code signing cert into an encrypted file
         if: matrix.runs-on == 'windows-latest'
         uses: kitek/decode-base64-into-file-action@1.0
@@ -82,7 +83,6 @@ jobs:
           encoded-value: ${{ secrets.WIN_CODE_SIGN_CERT }}
           destination-file: .\win_code_sign_cert.pfx
 
-      # Sign Things
       - name: Sign windows artifacts
         if: matrix.runs-on == 'windows-latest'
         uses: chia-network/actions/sign/windows@main
@@ -90,6 +90,22 @@ jobs:
           certificate_path: .\win_code_sign_cert.pfx
           certificate_password: ${{ secrets.WIN_CODE_SIGN_PASSWORD }}
           file: ${{ github.workspace }}/dist/climate-warehouse.exe
+
+      # Mac .pkg build + sign
+      - name: Build Mac .pkg
+        if: matrix.runs-on == 'macos-latest'
+        run: |
+          cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
+          echo "@TODO Need to sign binaries here"
+
+          # Makes the .pkg in ./build-scripts/macos/target/pkg
+          bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh
+
+          mkdir -p ${{ github.workspace }}build-scripts/macos/target/pkg-signed
+
+          echo "@TODO need to sign the installer here"
+
+          echo "@TODO need to notarize here"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
