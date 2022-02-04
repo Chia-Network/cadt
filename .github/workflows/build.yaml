@@ -95,7 +95,8 @@ jobs:
       - name: Build Mac .pkg
         if: matrix.runs-on == 'macos-latest'
         run: |
-          cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/darwin/application
+          rm -rf ${{ github.workspace }}/build-scripts/macos/darwin/application || true
+          cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
           echo "@TODO Need to sign binaries here"
 
           # Makes the .pkg in ./build-scripts/macos/target/pkg
