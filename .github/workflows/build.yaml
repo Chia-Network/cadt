@@ -105,7 +105,7 @@ jobs:
 
           echo "@TODO need to sign the installer here"
           echo "Copying unsigned installer to final destination for now"
-          cp ${{ github.workspace }}build-scripts/macos/target/pkg/* ${{ github.workspace }}build-scripts/macos/target/pkg-signed/
+          cp ${{ github.workspace }}/build-scripts/macos/target/pkg/* ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/
 
           echo "@TODO need to notarize here"
 
