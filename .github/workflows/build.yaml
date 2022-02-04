@@ -95,13 +95,13 @@ jobs:
       - name: Build Mac .pkg
         if: matrix.runs-on == 'macos-latest'
         run: |
-          cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
+          cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/darwin/application
           echo "@TODO Need to sign binaries here"
 
           # Makes the .pkg in ./build-scripts/macos/target/pkg
           bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh ClimateWarehouse
 
-          mkdir -p ${{ github.workspace }}build-scripts/macos/target/pkg-signed
+          mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
           echo "@TODO need to sign the installer here"
           echo "Copying unsigned installer to final destination for now"
