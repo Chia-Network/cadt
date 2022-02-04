@@ -94,6 +94,7 @@ jobs:
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
         #if: steps.check_secrets.outputs.HAS_SECRET
+        if: matrix.runs-on == 'macos-latest'
         uses: Apple-Actions/import-codesign-certs@v1
         with:
           p12-file-base64: ${{ secrets.APPLE_DEV_ID_INSTALLER }}
