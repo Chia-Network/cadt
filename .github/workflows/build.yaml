@@ -100,11 +100,22 @@ jobs:
           p12-file-base64: ${{ secrets.APPLE_DEV_ID_INSTALLER }}
           p12-password: ${{ secrets.APPLE_DEV_ID_INSTALLER_PASS }}
 
+      - name: Import Apple Application signing certificate
+        #if: steps.check_secrets.outputs.HAS_SECRET
+        if: matrix.runs-on == 'macos-latest'
+        uses: Apple-Actions/import-codesign-certs@v1
+        with:
+          p12-file-base64: ${{ secrets.APPLE_DEV_ID_APP }}
+          p12-password: ${{ secrets.APPLE_DEV_ID_APP_PASS }}
+
       - name: Build Mac .pkg
         if: matrix.runs-on == 'macos-latest'
         run: |
           rm -rf ${{ github.workspace }}/build-scripts/macos/darwin/application || true
           cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
+
+          codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application/climate-warehouse
+          codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp ${{ github.workspace }}/build-scripts/macos/application/node_sqlite3.node
           echo "@TODO Need to sign binaries here"
 
           # Makes the .pkg in ./build-scripts/macos/target/pkg
