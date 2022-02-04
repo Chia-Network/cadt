@@ -97,6 +97,7 @@ jobs:
         if: matrix.runs-on == 'macos-latest'
         uses: Apple-Actions/import-codesign-certs@v1
         with:
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
           p12-file-base64: ${{ secrets.APPLE_DEV_ID_INSTALLER }}
           p12-password: ${{ secrets.APPLE_DEV_ID_INSTALLER_PASS }}
 
@@ -106,6 +107,7 @@ jobs:
         uses: Apple-Actions/import-codesign-certs@v1
         with:
           create-keychain: false # Created when importing the first cert
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
           p12-file-base64: ${{ secrets.APPLE_DEV_ID_APP }}
           p12-password: ${{ secrets.APPLE_DEV_ID_APP_PASS }}
 
