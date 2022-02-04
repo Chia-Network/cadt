@@ -117,18 +117,26 @@ jobs:
           rm -rf ${{ github.workspace }}/build-scripts/macos/darwin/application || true
           cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
 
+          echo "Signing the binaries"
           codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/build-scripts/macos/application/climate-warehouse
           codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp ${{ github.workspace }}/build-scripts/macos/application/node_sqlite3.node
-          echo "@TODO Need to sign binaries here"
 
           # Makes the .pkg in ./build-scripts/macos/target/pkg
+          echo "Building the .pkg"
           bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh ClimateWarehouse
 
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
+          echo "Signing the .pkg"
           productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/ClimateWarehouse-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/ClimateWarehouse-macos-installer-x64.pkg
 
-          echo "@TODO need to notarize here"
+          echo "Notarizing the .pkg"
+          npm install -g notarize-cli
+          notarize-cli \
+            --file=${{ github.workspace }}/build-scripts/macos/target/pkg-signed/ClimateWarehouse-macos-installer-x64.pkg \
+            --bundle-id net.chia.climate-warehouse \
+            --username "${{ secrets.APPLE_NOTARIZE_USERNAME }}" \
+            --password "${{ secrets.APPLE_NOTARIZE_PASSWORD }}"
 
       - name: Upload Mac Installer
         if: matrix.runs-on == 'macos-latest'
