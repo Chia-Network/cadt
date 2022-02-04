@@ -92,6 +92,13 @@ jobs:
           file: ${{ github.workspace }}/dist/climate-warehouse.exe
 
       # Mac .pkg build + sign
+      - name: Import Apple installer signing certificate
+        #if: steps.check_secrets.outputs.HAS_SECRET
+        uses: Apple-Actions/import-codesign-certs@v1
+        with:
+          p12-file-base64: ${{ secrets.APPLE_DEV_ID_INSTALLER }}
+          p12-password: ${{ secrets.APPLE_DEV_ID_INSTALLER_PASS }}
+
       - name: Build Mac .pkg
         if: matrix.runs-on == 'macos-latest'
         run: |
@@ -104,9 +111,7 @@ jobs:
 
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
-          echo "@TODO need to sign the installer here"
-          echo "Copying unsigned installer to final destination for now"
-          cp ${{ github.workspace }}/build-scripts/macos/target/pkg/* ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/
+          productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/ClimateWarehouse-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/ClimateWarehouse-macos-installer-x64.pkg
 
           echo "@TODO need to notarize here"
 
