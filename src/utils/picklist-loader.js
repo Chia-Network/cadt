@@ -12,6 +12,4 @@ export const pullPickListValues = async () => {
   };
 
   downloadedValues = JSON.parse(await request(Object.assign({}, options)));
-
-  //console.log(downloadedValues);
 };

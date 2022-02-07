@@ -9,7 +9,7 @@ export const pickListValidation = (field, name) => (value, helper) => {
 
   return helper.message(
     `${name || field} does not include a valid option ${pickList[field].join(
-      ',',
+      ', ',
     )}`,
   );
 };
