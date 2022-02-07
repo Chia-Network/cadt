@@ -1,4 +1,4 @@
-import { Issuance, Organization } from '../models';
+import { Label, Organization } from '../models';
 
 import { assertHomeOrgExists } from '../utils/data-assertions';
 
@@ -8,13 +8,13 @@ export const findAll = async (req, res) => {
     const homeOrg = await Organization.getHomeOrg();
 
     return res.json(
-      await Issuance.findAll({
+      await Label.findAll({
         where: { orgUid: homeOrg.orgUid },
       }),
     );
   } catch (error) {
     res.status(400).json({
-      message: 'Can not retreive issuances',
+      message: 'Can not retreive labels',
       error: error.message,
     });
   }
