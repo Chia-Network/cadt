@@ -75,6 +75,7 @@ jobs:
         run: cp .\node_modules\sqlite3\build\Release\node_sqlite3.node .\dist\
         if: matrix.runs-on == 'windows-latest'
 
+      # Windows Code Signing
       - name: Decode code signing cert into an encrypted file
         if: matrix.runs-on == 'windows-latest'
         uses: kitek/decode-base64-into-file-action@1.0
@@ -82,7 +83,6 @@ jobs:
           encoded-value: ${{ secrets.WIN_CODE_SIGN_CERT }}
           destination-file: .\win_code_sign_cert.pfx
 
-      # Sign Things
       - name: Sign windows artifacts
         if: matrix.runs-on == 'windows-latest'
         uses: chia-network/actions/sign/windows@main
@@ -90,6 +90,60 @@ jobs:
           certificate_path: .\win_code_sign_cert.pfx
           certificate_password: ${{ secrets.WIN_CODE_SIGN_PASSWORD }}
           file: ${{ github.workspace }}/dist/climate-warehouse.exe
+
+      # Mac .pkg build + sign
+      - name: Import Apple installer signing certificate
+        #if: steps.check_secrets.outputs.HAS_SECRET
+        if: matrix.runs-on == 'macos-latest'
+        uses: Apple-Actions/import-codesign-certs@v1
+        with:
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
+          p12-file-base64: ${{ secrets.APPLE_DEV_ID_INSTALLER }}
+          p12-password: ${{ secrets.APPLE_DEV_ID_INSTALLER_PASS }}
+
+      - name: Import Apple Application signing certificate
+        #if: steps.check_secrets.outputs.HAS_SECRET
+        if: matrix.runs-on == 'macos-latest'
+        uses: Apple-Actions/import-codesign-certs@v1
+        with:
+          create-keychain: false # Created when importing the first cert
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
+          p12-file-base64: ${{ secrets.APPLE_DEV_ID_APP }}
+          p12-password: ${{ secrets.APPLE_DEV_ID_APP_PASS }}
+
+      - name: Build Mac .pkg
+        if: matrix.runs-on == 'macos-latest'
+        run: |
+          rm -rf ${{ github.workspace }}/build-scripts/macos/darwin/application || true
+          cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
+
+          echo "Signing the binaries"
+          codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/build-scripts/macos/application/climate-warehouse
+          codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp ${{ github.workspace }}/build-scripts/macos/application/node_sqlite3.node
+
+          # Makes the .pkg in ./build-scripts/macos/target/pkg
+          echo "Building the .pkg"
+          bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh ClimateWarehouse
+
+          mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
+
+          echo "Signing the .pkg"
+          productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/ClimateWarehouse-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/ClimateWarehouse-macos-installer-x64.pkg
+
+          echo "Notarizing the .pkg"
+          npm install -g notarize-cli
+          notarize-cli \
+            --file=${{ github.workspace }}/build-scripts/macos/target/pkg-signed/ClimateWarehouse-macos-installer-x64.pkg \
+            --bundle-id net.chia.climate-warehouse \
+            --username "${{ secrets.APPLE_NOTARIZE_USERNAME }}" \
+            --password "${{ secrets.APPLE_NOTARIZE_PASSWORD }}"
+
+      - name: Upload Mac Installer
+        if: matrix.runs-on == 'macos-latest'
+        uses: actions/upload-artifact@v2
+        with:
+          name: mac-installer
+          path: ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
