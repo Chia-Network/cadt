@@ -126,7 +126,7 @@ class Project extends Model {
         .filter((col) => !['createdAt', 'updatedAt'].includes(col))
         .filter(
           (col) =>
-            ![ProjectLocation, Label, Issuance, CoBenefit, RelatedProject]
+            !Project.getAssociatedModels()
               .map((model) => model.name + 's')
               .includes(col),
         ),

@@ -15,6 +15,7 @@ module.exports = {
         projectLink,
         projectDeveloper,
         sector,
+        coveredByNDC,
         projectType,
         projectTags,
         ndcInformation,
