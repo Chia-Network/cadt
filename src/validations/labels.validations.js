@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { labelUnitSchema } from './labelUnit.validations';
+import { pickListValidation } from '../utils/validation-utils';
 
 export const labelSchema = Joi.object({
   // orgUid - derived upon creation
@@ -7,7 +8,7 @@ export const labelSchema = Joi.object({
   id: Joi.string().optional(),
   warehouseProjectId: Joi.string().optional(),
   label: Joi.string().required(),
-  labelType: Joi.string().required(),
+  labelType: Joi.string().custom(pickListValidation('labelType')).required(),
   creditingPeriodStartDate: Joi.date().required(),
   creditingPeriodEndDate: Joi.date()
     .min(Joi.ref('creditingPeriodStartDate'))

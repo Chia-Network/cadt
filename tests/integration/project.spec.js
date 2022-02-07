@@ -4,12 +4,17 @@ import chai from 'chai';
 const { expect } = chai;
 
 import * as testFixtures from '../test-fixtures';
+import { pullPickListValues } from '../../src/utils/picklist-loader';
 
 import { POLLING_INTERVAL } from '../../src/fullnode';
 const TEST_WAIT_TIME = POLLING_INTERVAL * 2;
 
 describe('Project Resource Integration Tests', function () {
   let homeOrgUid;
+
+  before(async function () {
+    await pullPickListValues();
+  });
 
   beforeEach(async function () {
     await testFixtures.resetStagingTable();

@@ -6,7 +6,7 @@ const { expect } = chai;
 
 import app from '../../src/server';
 import { UnitMirror } from '../../src/models';
-
+import { pullPickListValues } from '../../src/utils/picklist-loader';
 import * as testFixtures from '../test-fixtures';
 
 import { POLLING_INTERVAL } from '../../src/fullnode';
@@ -14,6 +14,10 @@ const TEST_WAIT_TIME = POLLING_INTERVAL * 2;
 
 describe('Unit Resource Integration Tests', function () {
   let homeOrgUid;
+
+  before(async function () {
+    await pullPickListValues();
+  });
 
   beforeEach(async function () {
     await testFixtures.resetStagingTable();
@@ -110,12 +114,12 @@ describe('Unit Resource Integration Tests', function () {
     const createdUnitResult = await supertest(app).post('/v1/units').send({
       serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
       serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
-      countryJurisdictionOfOwner: 'USA',
+      countryJurisdictionOfOwner: 'Austria',
       unitOwner: 'TEST_OWNER',
-      unitType: 'removal',
+      unitType: 'Reduction - nature',
       unitStatus: 'Held',
       vintageYear: 2020,
-      correspondingAdjustmentDeclaration: 'Commited',
+      correspondingAdjustmentDeclaration: 'Committed',
       correspondingAdjustmentStatus: 'Pending',
       inCountryJurisdictionOfOwner: 'Maryland',
       unitRegistryLink: 'https://test.link',
