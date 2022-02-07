@@ -78,7 +78,8 @@ export const assertUnitRecordExists = async (
 };
 
 export const assertStagingRecordExists = async (stagingId) => {
-  const record = await Staging.findByPk(stagingId);
+  const record = await Staging.findOne({ where: { uuid: stagingId } });
+
   if (!record) {
     throw new Error(
       `The staging record for the staging ID: ${stagingId} does not exist.`,
