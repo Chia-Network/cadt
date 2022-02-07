@@ -363,6 +363,16 @@ export const split = async (req, res) => {
           newRecord.unitOwner = record.unitOwner;
         }
 
+        if (record.countryJurisdictionOfOwner) {
+          newRecord.countryJurisdictionOfOwner =
+            record.countryJurisdictionOfOwner;
+        }
+
+        if (record.inCountryJurisdictionOfOwner) {
+          newRecord.inCountryJurisdictionOfOwner =
+            record.inCountryJurisdictionOfOwner;
+        }
+
         return newRecord;
       }),
     );

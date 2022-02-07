@@ -33,8 +33,7 @@ const unitsBaseSchema = {
   projectLocationId: Joi.string().required(),
   unitOwner: Joi.string().required(),
   countryJurisdictionOfOwner: Joi.string().required(),
-  inCountryJurisdictionOfOwner: Joi.string().required(),
-  //'inCountryJurisdictionOfOwner' should be optional.
+  inCountryJurisdictionOfOwner: Joi.string().optional(),
   // must be in the form ABC123-XYZ456
   serialNumberBlock: Joi.string().required(),
   serialNumberPattern: Joi.string().required().messages({
@@ -42,8 +41,7 @@ const unitsBaseSchema = {
       'serialNumberPattern is required. This pattern must be a regex expression with 2 match groups to match block start and block end. Example: [.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$ that matches ABC1000-ABC1010 TODO: ADD LINK HERE FOR DOCUMENTATION',
   }),
   // match 4 digit year
-  vintageYear: Joi.number().integer().min(1900).max(3000),
-  //'vintageYear' should be required.
+  vintageYear: Joi.number().integer().min(1900).max(3000).required(),
   unitType: Joi.string().valid('heard reduction', 'removal').required(),
   marketplace: Joi.string().optional(),
   marketplaceLink: Joi.string().optional(),
@@ -97,8 +95,11 @@ export const unitsSplitSchema = Joi.object({
       Joi.object().keys({
         unitCount: Joi.number().required(),
         unitOwner: Joi.string().optional(),
+        countryJurisdictionOfOwner: Joi.string().optional(),
+        inCountryJurisdictionOfOwner: Joi.string().optional(),
       }),
     )
     .min(2)
-    .max(2),
+    .max(2)
+    .required(),
 });
