@@ -4,20 +4,20 @@
   "projectName": "UPDATED",
   "projectLink": "UPDATED",
   "projectDeveloper": "UPDATED",
-  "sector": "UPDATED",
-  "projectType": "UPDATED",
+  "sector": "Energy demand",
+  "projectType": "Organic Waste Composting",
   "projectTags": "UPDATED",
-  "coveredByNDC": "UPDATED",
+  "coveredByNDC": "Outside NDC",
   "ndcInformation": "UPDATED",
-  "projectStatus": "UPDATED",
+  "projectStatus": "Completed",
   "projectStatusDate": "1970-01-01T00:00:00.001Z",
-  "unitMetric": "UPDATED",
-  "methodology": "UPDATED",
-  "validationBody": "UPDATED",
+  "unitMetric": "tCO2e",
+  "methodology": "Decomposition of fluoroform (HFC-23) waste streams --- Version 6.0.0",
+  "validationBody": "4K Earth Science Private Limited",
   "validationDate": "1970-01-01T00:00:00.001Z",
   "projectLocations": [
     {
-      "country": "UPDATED",
+      "country": "Australia",
       "inCountryRegion": "UPDATED",
       "geographicIdentifier": "UPDATED"
     }
@@ -25,7 +25,7 @@
   "labels": [
     {
       "label": "UPDATED",
-      "labelType": "UPDATED",
+      "labelType": "Certification",
       "creditingPeriodStartDate": "1970-01-01T00:00:00.001Z",
       "creditingPeriodEndDate": "1970-01-01T00:00:00.001Z",
       "validityPeriodStartDate": "1970-01-01T00:00:00.001Z",
@@ -56,7 +56,7 @@
   ],
   "projectRatings": [
     {
-      "ratingType": "UPDATED",
+      "ratingType": "CDP",
       "ratingRangeHighest": "AA",
       "ratingRangeLowest": "ZZ",
       "rating": "GG",

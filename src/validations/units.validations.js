@@ -3,6 +3,8 @@ import { transformSerialNumberBlock } from '../utils/helpers';
 import { issuanceSchema } from './issuances.validation';
 import { labelSchema } from './labels.validations';
 
+import { pickListValidation } from '../utils/validation-utils';
+
 const customSerialNumberValidator = (obj, helper) => {
   const { serialNumberBlock, serialNumberPattern } = obj;
 
@@ -32,7 +34,9 @@ const unitsBaseSchema = {
   // orgUid - derived upon unit creation
   projectLocationId: Joi.string().required(),
   unitOwner: Joi.string().required(),
-  countryJurisdictionOfOwner: Joi.string().required(),
+  countryJurisdictionOfOwner: Joi.string()
+    .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
+    .required(),
   inCountryJurisdictionOfOwner: Joi.string().optional(),
   // must be in the form ABC123-XYZ456
   serialNumberBlock: Joi.string().required(),
@@ -42,20 +46,20 @@ const unitsBaseSchema = {
   }),
   // match 4 digit year
   vintageYear: Joi.number().integer().min(1900).max(3000).required(),
-  unitType: Joi.string().valid('heard reduction', 'removal').required(),
+  unitType: Joi.string().custom(pickListValidation('unitType')).required(),
   marketplace: Joi.string().optional(),
   marketplaceLink: Joi.string().optional(),
   marketplaceIdentifier: Joi.string().optional(),
   unitTags: Joi.string().allow('').optional(),
-  unitStatus: Joi.string().valid('Held', 'For Sale', 'Retired').required(),
+  unitStatus: Joi.string().custom(pickListValidation('unitStatus')).required(),
   unitStatusReason: Joi.string().optional(),
   //'unitStatusReason' should have additional validation based on entry in 'unitStatus'. If user enters "cancelled" or "retired", then 'unitStatusReason' field becomes required.
   unitRegistryLink: Joi.string().required(),
   correspondingAdjustmentDeclaration: Joi.string()
-    .valid('Commited', 'Not Required', 'Unknown')
+    .custom(pickListValidation('correspondingAdjustmentDeclaration'))
     .required(),
   correspondingAdjustmentStatus: Joi.string()
-    .valid('Unknown', 'Not Started', 'Pending')
+    .custom(pickListValidation('correspondingAdjustmentStatus'))
     .required(),
   issuance: issuanceSchema.optional(),
   labels: Joi.array().items(labelSchema).optional(),
@@ -95,7 +99,9 @@ export const unitsSplitSchema = Joi.object({
       Joi.object().keys({
         unitCount: Joi.number().required(),
         unitOwner: Joi.string().optional(),
-        countryJurisdictionOfOwner: Joi.string().optional(),
+        countryJurisdictionOfOwner: Joi.string()
+          .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
+          .optional(),
         inCountryJurisdictionOfOwner: Joi.string().optional(),
       }),
     )
