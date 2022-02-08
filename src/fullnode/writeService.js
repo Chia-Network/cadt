@@ -51,3 +51,11 @@ export const subscribeToStore = async (storeId) => {
     return dataLayer.subscribeToStore(storeId);
   }
 };
+
+export const dataLayerAvailable = async () => {
+  if (process.env.USE_SIMULATOR === 'true') {
+    return simulator.dataLayerAvailable();
+  } else {
+    return dataLayer.dataLayerAvailable();
+  }
+};
