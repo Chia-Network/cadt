@@ -4,6 +4,15 @@ import _ from 'lodash';
 
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
+import { dataLayerAvailable } from '../fullnode';
+
+export const assertDataLayerAvailable = async () => {
+  const isAvailable = await dataLayerAvailable();
+
+  if (!isAvailable) {
+    throw new Error('Can not establish connection to Chia Datalayer');
+  }
+};
 
 export const assetNoPendingCommits = async () => {
   const pendingCommits = await Staging.findAll({

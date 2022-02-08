@@ -30,6 +30,7 @@ import {
   assertHomeOrgExists,
   assetNoPendingCommits,
   assertRecordExistance,
+  assertDataLayerAvailable,
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
@@ -45,6 +46,7 @@ export const create = async (req, res) => {
   try {
     await assertHomeOrgExists();
     await assetNoPendingCommits();
+    await assertDataLayerAvailable();
 
     const newRecord = _.cloneDeep(req.body);
     // When creating new projects assign a uuid to is so
@@ -107,85 +109,103 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, search, orgUid, columns, xls } = req.query;
-  let where = orgUid ? { orgUid } : undefined;
+  try {
+    await assertDataLayerAvailable();
+    let { page, limit, search, orgUid, columns, xls } = req.query;
+    let where = orgUid ? { orgUid } : undefined;
 
-  const includes = Project.getAssociatedModels();
+    const includes = Project.getAssociatedModels();
 
-  if (columns) {
-    // Remove any unsupported columns
-    columns = columns.filter((col) =>
-      Project.defaultColumns
-        .concat(includes.map((model) => model.name + 's'))
-        .includes(col),
-    );
-  } else {
-    columns = Project.defaultColumns.concat(
-      includes.map((model) => model.name + 's'),
-    );
-  }
+    if (columns) {
+      // Remove any unsupported columns
+      columns = columns.filter((col) =>
+        Project.defaultColumns
+          .concat(includes.map((model) => model.name + 's'))
+          .includes(col),
+      );
+    } else {
+      columns = Project.defaultColumns.concat(
+        includes.map((model) => model.name + 's'),
+      );
+    }
 
-  // If only FK fields have been specified, select just ID
-  if (!columns.length) {
-    columns = ['warehouseProjectId'];
-  }
+    // If only FK fields have been specified, select just ID
+    if (!columns.length) {
+      columns = ['warehouseProjectId'];
+    }
 
-  let results;
-  let pagination = paginationParams(page, limit);
+    let results;
+    let pagination = paginationParams(page, limit);
 
-  if (xls) {
-    pagination = { page: undefined, limit: undefined };
-  }
+    if (xls) {
+      pagination = { page: undefined, limit: undefined };
+    }
 
-  if (search) {
-    results = await Project.fts(search, orgUid, pagination, columns);
-  }
+    if (search) {
+      results = await Project.fts(search, orgUid, pagination, columns);
+    }
 
-  if (!results) {
-    const query = {
-      ...columnsToInclude(columns, includes),
-      ...pagination,
-    };
+    if (!results) {
+      const query = {
+        ...columnsToInclude(columns, includes),
+        ...pagination,
+      };
 
-    results = await Project.findAndCountAll({
-      distinct: true,
-      where,
-      ...query,
+      results = await Project.findAndCountAll({
+        distinct: true,
+        where,
+        ...query,
+      });
+    }
+
+    const response = optionallyPaginatedResponse(results, page, limit);
+
+    if (!xls) {
+      return res.json(response);
+    } else {
+      return sendXls(
+        Project.name,
+        createXlsFromSequelizeResults(response, Project, false, false, true),
+        res,
+      );
+    }
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error retrieving projects',
+      error: error.message,
     });
-  }
-
-  const response = optionallyPaginatedResponse(results, page, limit);
-
-  if (!xls) {
-    return res.json(response);
-  } else {
-    return sendXls(
-      Project.name,
-      createXlsFromSequelizeResults(response, Project, false, false, true),
-      res,
-    );
   }
 };
 
 export const findOne = async (req, res) => {
-  const query = {
-    where: { warehouseProjectId: req.query.warehouseProjectId },
-    include: [
-      ProjectLocation,
-      Label,
-      Issuance,
-      CoBenefit,
-      RelatedProject,
-      Rating,
-      Estimation,
-    ],
-  };
+  try {
+    await assertDataLayerAvailable();
 
-  res.json(await Project.findOne(query));
+    const query = {
+      where: { warehouseProjectId: req.query.warehouseProjectId },
+      include: [
+        ProjectLocation,
+        Label,
+        Issuance,
+        CoBenefit,
+        RelatedProject,
+        Rating,
+        Estimation,
+      ],
+    };
+
+    res.json(await Project.findOne(query));
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error retrieving projects',
+      error: error.message,
+    });
+  }
 };
 
 export const updateFromXLS = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
@@ -215,8 +235,9 @@ export const updateFromXLS = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    // await assetNoPendingCommits();
+    await assetNoPendingCommits();
 
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
@@ -303,6 +324,7 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
@@ -333,6 +355,7 @@ export const destroy = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 

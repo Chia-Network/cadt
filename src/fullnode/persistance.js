@@ -68,9 +68,11 @@ export const getRoots = async (storeIds) => {
     }),
   };
 
-  const response = await request(Object.assign({}, getBaseOptions(), options));
-
   try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
     const data = JSON.parse(response);
 
     if (data.success) {
@@ -127,4 +129,27 @@ export const getStoreData = async (storeId) => {
   }
 
   return new Error('Error getting datalayer store data');
+};
+
+export const dataLayerAvailable = async () => {
+  const options = {
+    url: `${rpcUrl}/get_value`,
+    body: JSON.stringify({}),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (Object.keys(data).includes('success')) {
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    return false;
+  }
 };
