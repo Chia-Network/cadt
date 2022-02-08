@@ -8,8 +8,7 @@ export const locationSchema = Joi.object({
   country: Joi.string()
     .custom(pickListValidation('countries', 'ProjectLocation Country'))
     .required(),
-  inCountryRegion: Joi.string().required(),
-  // Please make 'inCountryRegion' optional.
+  inCountryRegion: Joi.string().optional(),
   geographicIdentifier: Joi.string().required(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
