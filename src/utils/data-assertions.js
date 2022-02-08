@@ -18,6 +18,13 @@ export const assetNoPendingCommits = async () => {
   }
 };
 
+export const assertRecordExistance = async (Model, pk) => {
+  const record = await Model.findByPk(pk);
+  if (!record) {
+    throw new Error(`${Model.name} does not have a record for ${pk}`);
+  }
+};
+
 export const assertHomeOrgExists = async () => {
   const homeOrg = await Organization.getHomeOrg();
   if (!homeOrg) {

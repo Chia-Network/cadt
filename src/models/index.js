@@ -37,6 +37,7 @@ export * from './estimations';
 export const ModelKeys = {
   unit: Unit,
   units: Unit,
+  label: Label,
   labels: Label,
   label_unit: LabelUnit,
   label_units: LabelUnit,

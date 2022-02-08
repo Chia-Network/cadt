@@ -14,6 +14,7 @@ import {
   Organization,
   Rating,
   Estimation,
+  ModelKeys,
 } from '../models';
 
 import {
@@ -28,6 +29,7 @@ import {
   assertCsvFileInRequest,
   assertHomeOrgExists,
   assetNoPendingCommits,
+  assertRecordExistance,
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
@@ -55,7 +57,7 @@ export const create = async (req, res) => {
     const { orgUid } = await Organization.getHomeOrg();
     newRecord.orgUid = orgUid;
 
-    const childRecords = [
+    const childRecordsKeys = [
       'projectLocations',
       'issuances',
       'coBenefits',
@@ -65,16 +67,28 @@ export const create = async (req, res) => {
       'labels',
     ];
 
-    childRecords.forEach((childRecordKey) => {
-      if (newRecord[childRecordKey]) {
-        newRecord[childRecordKey].map((childRecord) => {
-          childRecord.id = uuidv4();
+    const existingChildRecordKeys = childRecordsKeys.filter((key) =>
+      Boolean(newRecord[key]),
+    );
+
+    for (let i = 0; i < existingChildRecordKeys.length; i++) {
+      const key = existingChildRecordKeys[i];
+      await Promise.all(
+        newRecord[key].map(async (childRecord) => {
+          if (childRecord.id) {
+            // If we are reusing an existing child record,
+            // Make sure it exists
+            await assertRecordExistance(ModelKeys[key], childRecord.id);
+          } else {
+            childRecord.id = uuidv4();
+          }
+
           childRecord.orgUid = orgUid;
           childRecord.warehouseProjectId = uuid;
           return childRecord;
-        });
-      }
-    });
+        }),
+      );
+    }
 
     await Staging.create({
       uuid,
@@ -82,6 +96,7 @@ export const create = async (req, res) => {
       table: Project.stagingTableName,
       data: JSON.stringify([newRecord]),
     });
+
     res.json({ message: 'Project staged successfully' });
   } catch (err) {
     res.status(400).json({
@@ -212,7 +227,7 @@ export const update = async (req, res) => {
     const newRecord = _.cloneDeep(req.body);
     const { orgUid } = await Organization.getHomeOrg();
 
-    const childRecords = [
+    const childRecordsKeys = [
       'projectLocations',
       'issuances',
       'coBenefits',
@@ -222,10 +237,19 @@ export const update = async (req, res) => {
       'labels',
     ];
 
-    childRecords.forEach((childRecordKey) => {
-      if (newRecord[childRecordKey]) {
-        newRecord[childRecordKey].map((childRecord) => {
-          if (!childRecord.id) {
+    const existingChildRecordKeys = childRecordsKeys.filter((key) =>
+      Boolean(newRecord[key]),
+    );
+
+    for (let i = 0; i < existingChildRecordKeys.length; i++) {
+      const key = existingChildRecordKeys[i];
+      await Promise.all(
+        newRecord[key].map(async (childRecord) => {
+          if (childRecord.id) {
+            // If we are reusing an existing child record,
+            // Make sure it exists
+            await assertRecordExistance(ModelKeys[key], childRecord.id);
+          } else {
             childRecord.id = uuidv4();
           }
 
@@ -237,14 +261,14 @@ export const update = async (req, res) => {
             childRecord.warehouseProjectId = newRecord.warehouseProjectId;
           }
 
-          if (childRecordKey === 'labels' && childRecord.labelUnits) {
+          if (key === 'labels' && childRecord.labelUnits) {
             childRecord.labelUnits.orgUid = orgUid;
           }
 
           return childRecord;
-        });
-      }
-    });
+        }),
+      );
+    }
 
     // merge the new record into the old record
     let stagedRecord = Array.isArray(newRecord) ? newRecord : [newRecord];
