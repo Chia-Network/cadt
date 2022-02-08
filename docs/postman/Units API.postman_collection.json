@@ -43,13 +43,13 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/projects?search=Eimbee",
+          "raw": "{{api_url_v1}}/projects?search=United Kingdom",
           "host": ["{{api_url_v1}}"],
           "path": ["projects"],
           "query": [
             {
               "key": "search",
-              "value": "Eimbee"
+              "value": "United Kingdom"
             }
           ]
         }
@@ -169,7 +169,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?page=1&limit=5&search=Eimbee",
+          "raw": "{{api_url_v1}}/units?page=1&limit=5&search=United Kingdom",
           "host": ["{{api_url_v1}}"],
           "path": ["units"],
           "query": [
@@ -183,7 +183,7 @@
             },
             {
               "key": "search",
-              "value": "Eimbee"
+              "value": "United Kingdom"
             }
           ]
         }
@@ -196,7 +196,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?page=1&limit=5&orgUid=f1c54511-865e-4611-976c-7c3c1f704662&search=Eimbee",
+          "raw": "{{api_url_v1}}/units?page=1&limit=5&orgUid=f1c54511-865e-4611-976c-7c3c1f704662&search=United Kingdom",
           "host": ["{{api_url_v1}}"],
           "path": ["units"],
           "query": [
@@ -214,7 +214,7 @@
             },
             {
               "key": "search",
-              "value": "Eimbee"
+              "value": "United Kingdom"
             }
           ]
         }
@@ -279,7 +279,7 @@
             },
             {
               "key": "search",
-              "value": "Netherlands"
+              "value": "USA"
             }
           ]
         }
@@ -302,7 +302,7 @@
             },
             {
               "key": "search",
-              "value": "Netherlands"
+              "value": "USA"
             },
             {
               "key": "orgUid",
@@ -600,7 +600,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"projectLocationId\": \"USA-M\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"USA\",\r\n    \"inCountryJurisdictionOfOwner\": \"Michigan\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 1998,\r\n    \"unitType\": \"removal\",\r\n    \"marketplace\": \"MP Test\",\r\n    \"marketplaceLink\": \"http://climateWarehouse.com/myMarketplace\",\r\n    \"marketplaceIdentifier\": \"ADIV223\",\r\n    \"unitTags\": \"TEST_TAG\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitStatusReason\": \"reason\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\",\r\n    \"issuance\": {\r\n        \"startDate\": \"2022-02-15\",\r\n        \"endDate\": \"1647900000000\",\r\n        \"verificationApproach\": \"sustainable fuel\",\r\n        \"verificationBody\": \"An audit conducted by the FIA found that F1’s driving activities produce approximately 256,000 tonnes of carbon dioxide per year\",\r\n        \"verificationReportDate\": \"2022-03-22\"\r\n    },\r\n    \"labels\": [\r\n        {\r\n            \"label\": \"global\",\r\n            \"labelType\": \"T2\",\r\n            \"creditingPeriodStartDate\": \"2022-02-15\",\r\n            \"creditingPeriodEndDate\": \"2022-03-22\",\r\n            \"validityPeriodStartDate\": \"2022-02-15\",\r\n            \"validityPeriodEndDate\": \"2022-03-22\",\r\n            \"unitQuantity\": \"10\",\r\n            \"labelLink\": \"https://www.chia.net/\"\r\n        },\r\n        {\r\n            \"label\": \"mclaren\",\r\n            \"labelType\": \"T4\",\r\n            \"creditingPeriodStartDate\": \"2022-02-03\",\r\n            \"creditingPeriodEndDate\": \"2022-03-04\",\r\n            \"validityPeriodStartDate\": \"2022-02-03\",\r\n            \"validityPeriodEndDate\": \"2022-03-04\",\r\n            \"unitQuantity\": \"10\",\r\n            \"labelLink\": \"https://www.chia.net/\"\r\n        }\r\n    ]\r\n}",
+          "raw": "{\r\n    \"projectLocationId\": \"USA-M\",\r\n    \"unitOwner\": \"Milo\",\r\n    \"countryJurisdictionOfOwner\": \"Bahrain\",\r\n    \"inCountryJurisdictionOfOwner\": \"Bahrain\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 1998,\r\n    \"unitType\": \"Reduction - technical\",\r\n    \"marketplace\": \"MP Test\",\r\n    \"marketplaceLink\": \"http://climateWarehouse.com/myMarketplace\",\r\n    \"marketplaceIdentifier\": \"ADIV223\",\r\n    \"unitTags\": \"TEST_TAG\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitStatusReason\": \"reason\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\",\r\n    \"issuance\": {\r\n        \"startDate\": \"2022-02-15\",\r\n        \"endDate\": \"1647900000000\",\r\n        \"verificationApproach\": \"sustainable fuel\",\r\n        \"verificationBody\": \"An audit conducted by the FIA found that F1’s driving activities produce approximately 256,000 tonnes of carbon dioxide per year\",\r\n        \"verificationReportDate\": \"2022-03-22\"\r\n    },\r\n    \"labels\": [\r\n        {\r\n            \"label\": \"global\",\r\n            \"labelType\": \"Endorsement\",\r\n            \"creditingPeriodStartDate\": \"2022-02-15\",\r\n            \"creditingPeriodEndDate\": \"2022-03-22\",\r\n            \"validityPeriodStartDate\": \"2022-02-15\",\r\n            \"validityPeriodEndDate\": \"2022-03-22\",\r\n            \"unitQuantity\": \"10\",\r\n            \"labelLink\": \"https://www.chia.net/\"\r\n        },\r\n        {\r\n            \"label\": \"mclaren\",\r\n            \"labelType\": \"Endorsement\",\r\n            \"creditingPeriodStartDate\": \"2022-02-03\",\r\n            \"creditingPeriodEndDate\": \"2022-03-04\",\r\n            \"validityPeriodStartDate\": \"2022-02-03\",\r\n            \"validityPeriodEndDate\": \"2022-03-04\",\r\n            \"unitQuantity\": \"10\",\r\n            \"labelLink\": \"https://www.chia.net/\"\r\n        }\r\n    ]\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -622,7 +622,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"projectLocationId\": \"ID_USA\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"USA\",\r\n    \"inCountryJurisdictionOfOwner\": \"Michigan\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 1998,\r\n    \"unitType\": \"removal\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
+          "raw": "{\r\n    \"projectLocationId\": \"ID_USA\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"United Kingdom\",\r\n    \"inCountryJurisdictionOfOwner\": \"United Kingdom\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 1998,\r\n    \"unitType\": \"Reduction - technical\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -644,7 +644,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"projectLocationId\": \"ID_USA\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"USA\",\r\n    \"inCountryJurisdictionOfOwner\": \"Michigan\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 1998,\r\n    \"unitType\": \"removal\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
+          "raw": "{\r\n    \"projectLocationId\": \"ID_USA\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"Afghanistan\",\r\n    \"inCountryJurisdictionOfOwner\": \"Afghanistan\",\r\n    \"serialNumberBlock\": \"QWERTY9900-ASDFGH9950\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 2002,\r\n    \"unitType\": \"Removal - nature\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -666,7 +666,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"warehouseUnitId\": \"5ef46efc-1838-424e-ba57-ca7beb969f05\",\r\n    \"projectLocationId\": \"ID_USA\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"USA\",\r\n    \"inCountryJurisdictionOfOwner\": \"Michigan\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 2002,\r\n    \"unitType\": \"heard reduction\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
+          "raw": "{\r\n    \"warehouseUnitId\": \"5ef46efc-1838-424e-ba57-ca7beb969f05\",\r\n    \"projectLocationId\": \"ADR\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"Andorra\",\r\n    \"inCountryJurisdictionOfOwner\": \"Michigan\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 2002,\r\n    \"unitType\": \"Reduction - technical\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -733,7 +733,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"warehouseUnitId\": \"7eeca0c9-0045-4f6f-92af-7462c23b1164\",\r\n    \"records\": [\r\n        {\r\n            \"unitCount\": 26,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 24,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        }\r\n    ]\r\n}",
+          "raw": "{\r\n    \"warehouseUnitId\": \"1cf56421-222c-4ff0-add4-98d494cebc90\",\r\n    \"records\": [\r\n        {\r\n            \"unitCount\": 26,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        },\r\n        {\r\n            \"unitCount\": 24,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Italy\",\r\n            \"inCountryJurisdictionOfOwner\": \"Italy\"\r\n        }\r\n    ]\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -755,7 +755,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"warehouseUnitId\": \"7eeca0c9-0045-4f6f-92af-7462c23b1164\",\r\n    \"records\": [\r\n        {\r\n            \"unitCount\": 15,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 20,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 2,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 8,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 5,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        }\r\n    ]\r\n}",
+          "raw": "{\r\n    \"warehouseUnitId\": \"1cf56421-222c-4ff0-add4-98d494cebc90\",\r\n    \"records\": [\r\n        {\r\n            \"unitCount\": 15,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        },\r\n        {\r\n            \"unitCount\": 20,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        },\r\n        {\r\n            \"unitCount\": 2,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        },\r\n        {\r\n            \"unitCount\": 8,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        },\r\n        {\r\n            \"unitCount\": 5,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        }\r\n    ]\r\n}",
           "options": {
             "raw": {
               "language": "json"
