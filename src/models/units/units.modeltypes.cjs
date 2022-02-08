@@ -37,8 +37,6 @@ module.exports = {
   },
   inCountryJurisdictionOfOwner: {
     type: Sequelize.STRING,
-    required: true,
-    // This 'inCountryJurisdictionOfOwner' should be an optional field.
   },
   serialNumberBlock: {
     type: Sequelize.STRING,

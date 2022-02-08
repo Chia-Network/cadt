@@ -24,7 +24,6 @@ module.exports = {
   },
   inCountryRegion: {
     type: Sequelize.STRING,
-    required: true,
   },
   geographicIdentifier: {
     type: Sequelize.STRING,

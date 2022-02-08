@@ -15,15 +15,11 @@ export const baseSchema = {
   // warehouseProjectId - derived upon creation
   // orgUid - derived upon creation
   projectId: Joi.string().required(),
-  // optional because if we dont supply it, it assigns to the users own registry
+  originProjectId: Joi.string().required(),
   registryOfOrigin: Joi.string()
     .custom(pickListValidation('registries', 'registryOfOrigin'))
-    .optional(),
-  // Need to add 'originProjectId' as a new field. It will be required and STRING type.
-  // If current registry is the same as registry of origin, then ID will be the same.
-  // If current registry is different from registry of origin, then we will have different IDs.
-  program: Joi.string().required(),
-  // 'program' should be optional.
+    .required(),
+  program: Joi.string().optional(),
   projectName: Joi.string().required(),
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
@@ -37,8 +33,10 @@ export const baseSchema = {
   coveredByNDC: Joi.string()
     .custom(pickListValidation('coveredByNDC'))
     .required(),
-  ndcInformation: Joi.string().required(),
-  // 'ndcInformation' should be optional, but should carry an additional validation. If 'coveredByNDC' field selects "Inside NDC", then 'ndcInformation' becomes required field.
+  ndcInformation: Joi.string().when('coveredByNDC', {
+    is: Joi.exist().valid('Inside NDC'),
+    then: Joi.required(),
+  }),
   projectStatus: Joi.string()
     .custom(pickListValidation('projectStatusValues', 'projectStatus'))
     .required(),
@@ -50,8 +48,7 @@ export const baseSchema = {
   validationBody: Joi.string()
     .custom(pickListValidation('validationBody'))
     .optional(),
-  validationDate: Joi.string().optional(),
-  // should be DATE instead of string.
+  validationDate: Joi.date().optional(),
 
   /* Child Tables */
   labels: Joi.array().items(labelSchema).min(1).optional(),

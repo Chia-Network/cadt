@@ -52,8 +52,10 @@ const unitsBaseSchema = {
   marketplaceIdentifier: Joi.string().optional(),
   unitTags: Joi.string().allow('').optional(),
   unitStatus: Joi.string().custom(pickListValidation('unitStatus')).required(),
-  unitStatusReason: Joi.string().optional(),
-  //'unitStatusReason' should have additional validation based on entry in 'unitStatus'. If user enters "cancelled" or "retired", then 'unitStatusReason' field becomes required.
+  unitStatusReason: Joi.string().when('unitStatus', {
+    is: Joi.exist().valid('cancelled', 'retired'),
+    then: Joi.required(),
+  }),
   unitRegistryLink: Joi.string().required(),
   correspondingAdjustmentDeclaration: Joi.string()
     .custom(pickListValidation('correspondingAdjustmentDeclaration'))
