@@ -19,6 +19,7 @@ import {
   assertCsvFileInRequest,
   assertHomeOrgExists,
   assetNoPendingCommits,
+  assertRecordExistance,
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
@@ -48,8 +49,14 @@ export const create = async (req, res) => {
     newRecord.orgUid = orgUid;
 
     if (newRecord.labels) {
-      newRecord.labels.map((childRecord) => {
-        childRecord.id = uuidv4();
+      const promises = newRecord.labels.map(async (childRecord) => {
+        if (childRecord.id) {
+          // if we are reusing a record, make sure it exists
+          await assertRecordExistance(Label, childRecord.id);
+        } else {
+          childRecord.id = uuidv4();
+        }
+
         childRecord.orgUid = orgUid;
         childRecord.label_unit = {};
         childRecord.label_unit.id = uuidv4();
@@ -59,6 +66,8 @@ export const create = async (req, res) => {
 
         return childRecord;
       });
+
+      await Promise.all(promises);
     }
 
     if (newRecord.issuance) {
@@ -80,7 +89,7 @@ export const create = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({
-      message: 'Batch Upload Failed.',
+      message: 'Unit Insert Failed to stage.',
       error: error.message,
     });
   }
@@ -178,12 +187,18 @@ export const findAll = async (req, res) => {
 };
 
 export const findOne = async (req, res) => {
-  console.info('req.query', req.query);
-  res.json(
-    await Unit.findByPk(req.query.warehouseUnitId, {
-      include: Unit.getAssociatedModels(),
-    }),
-  );
+  try {
+    res.json(
+      await Unit.findByPk(req.query.warehouseUnitId, {
+        include: Unit.getAssociatedModels(),
+      }),
+    );
+  } catch (error) {
+    res.status(400).json({
+      message: 'Cant find Unit.',
+      error: error.message,
+    });
+  }
 };
 
 export const updateFromXLS = async (req, res) => {
@@ -230,8 +245,10 @@ export const update = async (req, res) => {
     updatedRecord.orgUid = orgUid;
 
     if (updatedRecord.labels) {
-      updatedRecord.labels.map((childRecord) => {
-        if (!childRecord.id) {
+      const promises = updatedRecord.labels.map(async (childRecord) => {
+        if (childRecord.id) {
+          await assertRecordExistance(Label, childRecord.id);
+        } else {
           childRecord.id = uuidv4();
         }
 
@@ -250,6 +267,8 @@ export const update = async (req, res) => {
 
         return childRecord;
       });
+
+      await Promise.all(promises);
     }
 
     if (updatedRecord.issuance) {
