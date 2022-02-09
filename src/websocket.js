@@ -1,11 +1,11 @@
 'use strict';
 
-import { Project, Unit } from './models/index.js';
+import { Project, Unit, Staging } from './models/index.js';
 
 const socketSubscriptions = {};
 
 //future authentication logic goes here
-const authenticate = (_payload) => true;
+const authenticate = () => true;
 
 export const connection = (socket) => {
   socket.on('authentication', () => {
@@ -50,9 +50,10 @@ export const connection = (socket) => {
         } else {
           callback('already subscribed');
         }
+        break;
       case 'staging':
         if (!socketSubscriptions[socket.id].includes('staging')) {
-          Unit.changes.subscribe((data) => {
+          Staging.changes.subscribe((data) => {
             socket.emit('change:staging', data);
           });
           socketSubscriptions[socket.id].push('staging');

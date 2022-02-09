@@ -21,4 +21,8 @@ describe('Staging Resource CRUD', function () {
   describe('DELETE - Clears the staging table', function () {
     it('Clears the staging table', function () {});
   });
+
+  describe('websocket', function () {
+    it('flags a change when staging is updated', function () {});
+  });
 });

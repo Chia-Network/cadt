@@ -77,4 +77,8 @@ describe('Project Resource CRUD', function () {
       it('updates a new project with all child tables', function () {});
     });
   });
+
+  describe('websocket', function () {
+    it('flags a change when projects are updated', function () {});
+  });
 });
