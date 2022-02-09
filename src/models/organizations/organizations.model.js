@@ -3,7 +3,7 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
-import { createDataLayerStore, syncDataLayer } from '../../fullnode';
+import { createDataLayerStore, syncDataLayer } from '../../datalayer';
 
 import ModelTypes from './organizations.modeltypes.cjs';
 

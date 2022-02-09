@@ -11,7 +11,7 @@ import {
   Estimation,
 } from '../../src/models';
 
-import { POLLING_INTERVAL } from '../../src/fullnode';
+import { POLLING_INTERVAL } from '../../src/datalayer';
 const TEST_WAIT_TIME = POLLING_INTERVAL * 2;
 
 // The node simulator runs on an async process, we are importing
