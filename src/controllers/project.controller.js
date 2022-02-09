@@ -44,9 +44,9 @@ import {
 
 export const create = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
-    await assertDataLayerAvailable();
 
     const newRecord = _.cloneDeep(req.body);
     // When creating new projects assign a uuid to is so
