@@ -10,6 +10,7 @@ module.exports = {
         currentRegistry,
         projectId,
         registryOfOrigin,
+        originProjectId,
         program,
         projectName,
         projectLink,
