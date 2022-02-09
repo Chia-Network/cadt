@@ -42,7 +42,7 @@ export const commit = async (req, res) => {
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
-    await Staging.pushToDataLayer();
+    await Staging.pushToDataLayer(_.get(req, 'query.table', null));
     res.json({ message: 'Staging Table committed to full node' });
   } catch (error) {
     res.status(400).json({

@@ -10,6 +10,8 @@ describe('Staging Resource CRUD', function () {
     it('Staging record is removed when Insert records propagate through the datalayer', function () {});
     it('Staging record is removed when Update records propagate through the datalayer', function () {});
     it('Staging record is removed when Delete records propagate through the datalayer', function () {});
+    it('can commit just the project staging records optionally', function () {});
+    it('can commit just the unit staging records optionally', function () {});
   });
 
   describe('DELETE - Delete a single staging record', function () {

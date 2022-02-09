@@ -152,8 +152,17 @@ class Staging extends Model {
     return [insertRecords, updateRecords, deleteChangeList];
   };
 
-  static async pushToDataLayer() {
-    const stagedRecords = await Staging.findAll({ raw: true });
+  static async pushToDataLayer(tableToPush) {
+    let stagedRecords;
+    if (tableToPush) {
+      stagedRecords = await Staging.findAll({
+        where: { table: tableToPush },
+        raw: true,
+      });
+    } else {
+      stagedRecords = await Staging.findAll({ raw: true });
+    }
+
     const unitsChangeList = await Unit.generateChangeListFromStagedData(
       stagedRecords,
     );
