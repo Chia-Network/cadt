@@ -26,6 +26,11 @@ class Staging extends Model {
     return super.destroy(values);
   }
 
+  static async upsert(values, options) {
+    Staging.changes.next(['staging']);
+    return super.upsert(values, options);
+  }
+
   // If the record was commited but the diff.original is null
   // that means that the original record no longer exists and
   // the staging record should be cleaned up.

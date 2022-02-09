@@ -89,4 +89,8 @@ describe('Units Resource CRUD', function () {
       it('properly splits the unit', function () {});
     });
   });
+
+  describe('websocket', function () {
+    it('flags a change when units are updated', function () {});
+  });
 });
