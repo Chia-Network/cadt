@@ -9,7 +9,7 @@ import { encodeHex } from '../../utils/datalayer-utils';
 import * as rxjs from 'rxjs';
 import { sequelize } from '../database';
 
-import { pushDataLayerChangeList } from '../../fullnode';
+import { pushDataLayerChangeList } from '../../datalayer';
 
 import ModelTypes from './staging.modeltypes.cjs';
 

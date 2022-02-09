@@ -7,7 +7,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import Debug from 'debug';
 import { connection } from './websocket';
-import { startDataLayerUpdatePolling } from './fullnode';
+import { startDataLayerUpdatePolling } from './datalayer';
 import { pullPickListValues } from './utils/picklist-loader';
 
 const debug = Debug('climate-warehouse:server');

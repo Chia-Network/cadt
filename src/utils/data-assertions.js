@@ -4,7 +4,7 @@ import _ from 'lodash';
 
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
-import { dataLayerAvailable } from '../fullnode';
+import { dataLayerAvailable } from '../datalayer';
 
 export const assertDataLayerAvailable = async () => {
   const isAvailable = await dataLayerAvailable();

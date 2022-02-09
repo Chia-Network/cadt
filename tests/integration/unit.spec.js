@@ -9,7 +9,7 @@ import { UnitMirror } from '../../src/models';
 import { pullPickListValues } from '../../src/utils/picklist-loader';
 import * as testFixtures from '../test-fixtures';
 
-import { POLLING_INTERVAL } from '../../src/fullnode';
+import { POLLING_INTERVAL } from '../../src/datalayer';
 const TEST_WAIT_TIME = POLLING_INTERVAL * 2;
 
 describe('Unit Resource Integration Tests', function () {
