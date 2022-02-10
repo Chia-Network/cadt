@@ -64,6 +64,13 @@ export const getProject = async (warehouseProjectId) => {
   return result.body;
 };
 
+export const getProjectByQuery = async (query = {}) => {
+  const result = await supertest(app).get('/v1/projects').query(query);
+  // expect(result.body).to.be.an('array');
+  expect(result.statusCode).to.equal(200);
+  return result.body;
+};
+
 export const checkProjectRecordExists = async (warehouseProjectId) => {
   const record = await Project.findByPk(warehouseProjectId);
   expect(record).to.be.ok;
