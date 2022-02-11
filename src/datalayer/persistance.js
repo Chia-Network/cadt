@@ -1,17 +1,19 @@
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
+import os from 'os';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const rpcUrl = process.env.DATALAYER_URL;
 
 const getBaseOptions = () => {
+  const homeDir = os.homedir();
   const certFile = path.resolve(
-    `${process.env.CHIA_ROOT}/config/ssl/data_layer/private_data_layer.crt`,
+    `${homeDir}/.chia/mainnet/config/ssl/data_layer/private_data_layer.crt`,
   );
   const keyFile = path.resolve(
-    `${process.env.CHIA_ROOT}/config/ssl/data_layer/private_data_layer.key`,
+    `${homeDir}/.chia/mainnet/config/ssl/data_layer/private_data_layer.key`,
   );
 
   const baseOptions = {

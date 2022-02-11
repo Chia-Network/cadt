@@ -1,19 +1,25 @@
 [
   {
-    "orgUid": "a807e453-6524-49df-a32d-785e56cf560e",
-    "name": "MOCK - Climate Action Reserve",
-    "subscribed": true,
+    "orgUid": "78b472ff171a20a9de44555d8df2dc1d4c44bae5f700453a1e59ea6b2609dc5c",
+    "name": "My Org",
+    "registryId": "c1c017b595356361c09f9d2f7720c7da637548191764c5d6df547ddd25144d58",
+    "icon": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg",
+    "subscribed": false,
     "isHome": false
   },
   {
     "orgUid": "ca1e1619-d073-4283-bdbc-4ad58838f727",
-    "name": "MOCK2 - VERRA",
+    "name": "Earl Registrt",
+    "registryId": "047b74ea567f7591f463f29dcec4cab1e760ef181c006fb3865a3e20ca6144aa",
+    "icon": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/austria.svg",
     "subscribed": true,
     "isHome": false
   },
   {
-    "orgUid": "64ea3703-ced3-4e44-aa1f-03ac1a7533da",
-    "name": "MOCK2 - United States National Registry",
+    "orgUid": "37af613ae4547d3061f210aaad8cf92be7ddd199a8f344a0173bd95d150210a9",
+    "name": "Alexa Registry",
+    "registryId": "1dbe4373d76a60916a885fa662de042eb93149a9562ba99713428780bd443d8b",
+    "icon": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/denmark.svg",
     "subscribed": true,
     "isHome": false
   }
