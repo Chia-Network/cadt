@@ -16,7 +16,7 @@ jobs:
     name: NPM Tests
     runs-on: ubuntu-latest
     container:
-      image: node:lts
+      image: node:16.0.0
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main

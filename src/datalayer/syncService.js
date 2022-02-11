@@ -63,7 +63,6 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
           const value = JSON.parse(decodeHex(kv.value));
 
           await ModelKeys[modelKey].upsert(value);
-
           const stagingUuid =
             modelKey === 'unit'
               ? value.warehouseUnitId
@@ -124,7 +123,7 @@ export const dataLayerWasUpdated = async () => {
     );
 
     if (org) {
-      return org.registryHash !== rootHash.hash;
+      return org.registryHash != rootHash.hash;
     }
 
     return false;
