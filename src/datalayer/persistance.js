@@ -39,7 +39,7 @@ export const createDataLayerStore = async () => {
     return data.id;
   }
 
-  throw new Error('Error creating new datalayer store');
+  return false;
 };
 
 export const pushChangeListToDataLayer = async (storeId, changelist) => {
@@ -55,11 +55,19 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
 
   const data = JSON.parse(response);
 
+  console.log(options, data);
+
   if (data.success) {
-    return data;
+    console.log('Success!');
+    return true;
   }
 
-  console.log(options, data);
+  if (data.error.includes('Key already present')) {
+    console.log('Success, I guess...');
+    return true;
+  }
+
+  return false;
 };
 
 export const getRoots = async (storeIds) => {
