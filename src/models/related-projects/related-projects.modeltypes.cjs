@@ -10,7 +10,7 @@ module.exports = {
     primaryKey: true,
   },
   warehouseProjectId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     required: true,
     onDelete: 'CASCADE',
   },
@@ -20,9 +20,9 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
-  // Need to add field 'relatedProjectID' with type STRING and make it optional.
-  // This is because a related project may not be in the warehouse, so we can't rely on warehouseProjectId field.
-  // This would be the field a user would use to find the related project within the registry listed below.
+  relatedProjectId: {
+    type: Sequelize.STRING,
+  },
   relationshipType: Sequelize.STRING,
   registry: Sequelize.STRING,
   createdAt: {

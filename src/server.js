@@ -7,7 +7,8 @@ import http from 'http';
 import { Server } from 'socket.io';
 import Debug from 'debug';
 import { connection } from './websocket';
-import { startDataLayerUpdatePolling } from './fullnode';
+import { startDataLayerUpdatePolling } from './datalayer';
+import { pullPickListValues } from './utils/picklist-loader';
 
 const debug = Debug('climate-warehouse:server');
 
@@ -47,7 +48,16 @@ function onError(error) {
  * Event listener for HTTP server "listening" event.
  */
 
+const syncPickList = () => {
+  console.log('Syncing PickLists');
+  pullPickListValues();
+};
+
 function onListening() {
+  syncPickList();
+  setInterval(async () => {
+    syncPickList();
+  }, 86400000 /* 1 day */);
   const addr = server.address();
   const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
   debug('Listening on ' + bind);

@@ -4,6 +4,15 @@ import _ from 'lodash';
 
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
+import { dataLayerAvailable } from '../datalayer';
+
+export const assertDataLayerAvailable = async () => {
+  const isAvailable = await dataLayerAvailable();
+
+  if (!isAvailable) {
+    throw new Error('Can not establish connection to Chia Datalayer');
+  }
+};
 
 export const assetNoPendingCommits = async () => {
   const pendingCommits = await Staging.findAll({
@@ -15,6 +24,13 @@ export const assetNoPendingCommits = async () => {
     throw new Error(
       'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
     );
+  }
+};
+
+export const assertRecordExistance = async (Model, pk) => {
+  const record = await Model.findByPk(pk);
+  if (!record) {
+    throw new Error(`${Model.name} does not have a record for ${pk}`);
   }
 };
 

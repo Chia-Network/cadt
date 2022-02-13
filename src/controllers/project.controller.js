@@ -3,18 +3,7 @@ import _ from 'lodash';
 import xlsx from 'node-xlsx';
 import { uuid as uuidv4 } from 'uuidv4';
 
-import {
-  Staging,
-  Project,
-  ProjectLocation,
-  Label,
-  Issuance,
-  CoBenefit,
-  RelatedProject,
-  Organization,
-  Rating,
-  Estimation,
-} from '../models';
+import { Staging, Project, Organization, ModelKeys } from '../models';
 
 import {
   columnsToInclude,
@@ -28,6 +17,8 @@ import {
   assertCsvFileInRequest,
   assertHomeOrgExists,
   assetNoPendingCommits,
+  assertRecordExistance,
+  assertDataLayerAvailable,
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
@@ -41,6 +32,7 @@ import {
 
 export const create = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
@@ -55,7 +47,7 @@ export const create = async (req, res) => {
     const { orgUid } = await Organization.getHomeOrg();
     newRecord.orgUid = orgUid;
 
-    const childRecords = [
+    const childRecordsKeys = [
       'projectLocations',
       'issuances',
       'coBenefits',
@@ -65,16 +57,28 @@ export const create = async (req, res) => {
       'labels',
     ];
 
-    childRecords.forEach((childRecordKey) => {
-      if (newRecord[childRecordKey]) {
-        newRecord[childRecordKey].map((childRecord) => {
-          childRecord.id = uuidv4();
+    const existingChildRecordKeys = childRecordsKeys.filter((key) =>
+      Boolean(newRecord[key]),
+    );
+
+    for (let i = 0; i < existingChildRecordKeys.length; i++) {
+      const key = existingChildRecordKeys[i];
+      await Promise.all(
+        newRecord[key].map(async (childRecord) => {
+          if (childRecord.id) {
+            // If we are reusing an existing child record,
+            // Make sure it exists
+            await assertRecordExistance(ModelKeys[key], childRecord.id);
+          } else {
+            childRecord.id = uuidv4();
+          }
+
           childRecord.orgUid = orgUid;
           childRecord.warehouseProjectId = uuid;
           return childRecord;
-        });
-      }
-    });
+        }),
+      );
+    }
 
     await Staging.create({
       uuid,
@@ -82,6 +86,7 @@ export const create = async (req, res) => {
       table: Project.stagingTableName,
       data: JSON.stringify([newRecord]),
     });
+
     res.json({ message: 'Project staged successfully' });
   } catch (err) {
     res.status(400).json({
@@ -92,85 +97,95 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, search, orgUid, columns, xls } = req.query;
-  let where = orgUid ? { orgUid } : undefined;
+  try {
+    await assertDataLayerAvailable();
+    let { page, limit, search, orgUid, columns, xls } = req.query;
+    let where = orgUid ? { orgUid } : undefined;
 
-  const includes = Project.getAssociatedModels();
+    const includes = Project.getAssociatedModels();
 
-  if (columns) {
-    // Remove any unsupported columns
-    columns = columns.filter((col) =>
-      Project.defaultColumns
-        .concat(includes.map((model) => model.name + 's'))
-        .includes(col),
-    );
-  } else {
-    columns = Project.defaultColumns.concat(
-      includes.map((model) => model.name + 's'),
-    );
-  }
+    if (columns) {
+      // Remove any unsupported columns
+      columns = columns.filter((col) =>
+        Project.defaultColumns
+          .concat(includes.map((model) => model.name + 's'))
+          .includes(col),
+      );
+    } else {
+      columns = Project.defaultColumns.concat(
+        includes.map((model) => model.name + 's'),
+      );
+    }
 
-  // If only FK fields have been specified, select just ID
-  if (!columns.length) {
-    columns = ['warehouseProjectId'];
-  }
+    // If only FK fields have been specified, select just ID
+    if (!columns.length) {
+      columns = ['warehouseProjectId'];
+    }
 
-  let results;
-  let pagination = paginationParams(page, limit);
+    let results;
+    let pagination = paginationParams(page, limit);
 
-  if (xls) {
-    pagination = { page: undefined, limit: undefined };
-  }
+    if (xls) {
+      pagination = { page: undefined, limit: undefined };
+    }
 
-  if (search) {
-    results = await Project.fts(search, orgUid, pagination, columns);
-  }
+    if (search) {
+      results = await Project.fts(search, orgUid, pagination, columns);
+    }
 
-  if (!results) {
-    const query = {
-      ...columnsToInclude(columns, includes),
-      ...pagination,
-    };
+    if (!results) {
+      const query = {
+        ...columnsToInclude(columns, includes),
+        ...pagination,
+      };
 
-    results = await Project.findAndCountAll({
-      distinct: true,
-      where,
-      ...query,
+      results = await Project.findAndCountAll({
+        distinct: true,
+        where,
+        ...query,
+      });
+    }
+
+    const response = optionallyPaginatedResponse(results, page, limit);
+
+    if (!xls) {
+      return res.json(response);
+    } else {
+      return sendXls(
+        Project.name,
+        createXlsFromSequelizeResults(response, Project, false, false, true),
+        res,
+      );
+    }
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error retrieving projects',
+      error: error.message,
     });
-  }
-
-  const response = optionallyPaginatedResponse(results, page, limit);
-
-  if (!xls) {
-    return res.json(response);
-  } else {
-    return sendXls(
-      Project.name,
-      createXlsFromSequelizeResults(response, Project, false, false, true),
-      res,
-    );
   }
 };
 
 export const findOne = async (req, res) => {
-  const query = {
-    where: { warehouseProjectId: req.query.warehouseProjectId },
-    include: [
-      ProjectLocation,
-      Label,
-      Issuance,
-      CoBenefit,
-      RelatedProject,
-      Rating,
-      Estimation,
-    ],
-  };
+  try {
+    await assertDataLayerAvailable();
 
-  res.json(await Project.findOne(query));
+    const query = {
+      where: { warehouseProjectId: req.query.warehouseProjectId },
+      include: Project.getAssociatedModels(),
+    };
+
+    res.json(await Project.findOne(query));
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error retrieving projects',
+      error: error.message,
+    });
+  }
 };
 
 export const updateFromXLS = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
@@ -200,8 +215,9 @@ export const updateFromXLS = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    // await assetNoPendingCommits();
+    await assetNoPendingCommits();
 
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
@@ -212,7 +228,7 @@ export const update = async (req, res) => {
     const newRecord = _.cloneDeep(req.body);
     const { orgUid } = await Organization.getHomeOrg();
 
-    const childRecords = [
+    const childRecordsKeys = [
       'projectLocations',
       'issuances',
       'coBenefits',
@@ -222,10 +238,19 @@ export const update = async (req, res) => {
       'labels',
     ];
 
-    childRecords.forEach((childRecordKey) => {
-      if (newRecord[childRecordKey]) {
-        newRecord[childRecordKey].map((childRecord) => {
-          if (!childRecord.id) {
+    const existingChildRecordKeys = childRecordsKeys.filter((key) =>
+      Boolean(newRecord[key]),
+    );
+
+    for (let i = 0; i < existingChildRecordKeys.length; i++) {
+      const key = existingChildRecordKeys[i];
+      await Promise.all(
+        newRecord[key].map(async (childRecord) => {
+          if (childRecord.id) {
+            // If we are reusing an existing child record,
+            // Make sure it exists
+            await assertRecordExistance(ModelKeys[key], childRecord.id);
+          } else {
             childRecord.id = uuidv4();
           }
 
@@ -237,14 +262,14 @@ export const update = async (req, res) => {
             childRecord.warehouseProjectId = newRecord.warehouseProjectId;
           }
 
-          if (childRecordKey === 'labels' && childRecord.labelUnits) {
+          if (key === 'labels' && childRecord.labelUnits) {
             childRecord.labelUnits.orgUid = orgUid;
           }
 
           return childRecord;
-        });
-      }
-    });
+        }),
+      );
+    }
 
     // merge the new record into the old record
     let stagedRecord = Array.isArray(newRecord) ? newRecord : [newRecord];
@@ -279,6 +304,7 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
@@ -309,6 +335,7 @@ export const destroy = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 

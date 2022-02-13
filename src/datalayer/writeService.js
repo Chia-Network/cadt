@@ -14,6 +14,7 @@ export const createDataLayerStore = async () => {
 };
 
 export const syncDataLayer = async (storeId, data) => {
+  console.log(`Syncing ${storeId}: ${JSON.stringify(data)}`);
   const changeList = Object.keys(data).map((key) => {
     return {
       action: 'insert',
@@ -26,16 +27,26 @@ export const syncDataLayer = async (storeId, data) => {
 };
 
 const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
+  const retry = () => {
+    setTimeout(async () => {
+      console.log('Retrying...');
+      await pushChangesWhenStoreIsAvailable(storeId, changeList);
+    }, 5000);
+  };
   if (process.env.USE_SIMULATOR === 'true') {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
     const storeExists = await dataLayer.getRoot(storeId);
     if (storeExists) {
-      return dataLayer.pushChangeListToDataLayer(storeId, changeList);
+      const success = await dataLayer.pushChangeListToDataLayer(
+        storeId,
+        changeList,
+      );
+      if (!success) {
+        retry();
+      }
     } else {
-      setTimeout(async () => {
-        await pushChangesWhenStoreIsAvailable(storeId, changeList);
-      }, 10000);
+      retry();
     }
   }
 };
@@ -49,5 +60,13 @@ export const subscribeToStore = async (storeId) => {
     return simulator.subscribeToStore(storeId);
   } else {
     return dataLayer.subscribeToStore(storeId);
+  }
+};
+
+export const dataLayerAvailable = async () => {
+  if (process.env.USE_SIMULATOR === 'true') {
+    return simulator.dataLayerAvailable();
+  } else {
+    return dataLayer.dataLayerAvailable();
   }
 };

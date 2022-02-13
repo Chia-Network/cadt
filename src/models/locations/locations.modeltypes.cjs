@@ -10,7 +10,7 @@ module.exports = {
     primaryKey: true,
   },
   warehouseProjectId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     required: true,
     onDelete: 'CASCADE',
   },
@@ -24,7 +24,6 @@ module.exports = {
   },
   inCountryRegion: {
     type: Sequelize.STRING,
-    required: true,
   },
   geographicIdentifier: {
     type: Sequelize.STRING,

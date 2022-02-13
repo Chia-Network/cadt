@@ -135,5 +135,9 @@ export const getRoots = async (storeIds) => {
   });
 };
 
+export const dataLayerAvailable = async () => {
+  return Promise.resolve(true);
+};
+
 // eslint-disable-next-line
 export const subscribeToStore = async (storeId) => {};

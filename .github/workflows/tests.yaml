@@ -8,12 +8,15 @@ on:
     branches:
       - '**'
 
+env:
+  PICKLIST_URL: https://climate-warehouse.s3.us-west-2.amazonaws.com/public/picklists.json
+
 jobs:
   test:
     name: NPM Tests
     runs-on: ubuntu-latest
     container:
-      image: node:lts
+      image: node:16.0.0
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main

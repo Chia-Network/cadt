@@ -9,7 +9,7 @@ import { encodeHex } from '../../utils/datalayer-utils';
 import * as rxjs from 'rxjs';
 import { sequelize } from '../database';
 
-import { pushDataLayerChangeList } from '../../fullnode';
+import { pushDataLayerChangeList } from '../../datalayer';
 
 import ModelTypes from './staging.modeltypes.cjs';
 
@@ -24,6 +24,11 @@ class Staging extends Model {
   static async destroy(values) {
     Staging.changes.next(['staging']);
     return super.destroy(values);
+  }
+
+  static async upsert(values, options) {
+    Staging.changes.next(['staging']);
+    return super.upsert(values, options);
   }
 
   // If the record was commited but the diff.original is null
@@ -152,8 +157,17 @@ class Staging extends Model {
     return [insertRecords, updateRecords, deleteChangeList];
   };
 
-  static async pushToDataLayer() {
-    const stagedRecords = await Staging.findAll({ raw: true });
+  static async pushToDataLayer(tableToPush) {
+    let stagedRecords;
+    if (tableToPush) {
+      stagedRecords = await Staging.findAll({
+        where: { table: tableToPush },
+        raw: true,
+      });
+    } else {
+      stagedRecords = await Staging.findAll({ raw: true });
+    }
+
     const unitsChangeList = await Unit.generateChangeListFromStagedData(
       stagedRecords,
     );

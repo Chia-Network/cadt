@@ -1,17 +1,19 @@
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
+import os from 'os';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const rpcUrl = process.env.DATALAYER_URL;
 
 const getBaseOptions = () => {
+  const homeDir = os.homedir();
   const certFile = path.resolve(
-    `${process.env.CHIA_ROOT}/config/ssl/data_layer/private_data_layer.crt`,
+    `${homeDir}/.chia/mainnet/config/ssl/data_layer/private_data_layer.crt`,
   );
   const keyFile = path.resolve(
-    `${process.env.CHIA_ROOT}/config/ssl/data_layer/private_data_layer.key`,
+    `${homeDir}/.chia/mainnet/config/ssl/data_layer/private_data_layer.key`,
   );
 
   const baseOptions = {
@@ -37,7 +39,7 @@ export const createDataLayerStore = async () => {
     return data.id;
   }
 
-  throw new Error('Error creating new datalayer store');
+  return false;
 };
 
 export const pushChangeListToDataLayer = async (storeId, changelist) => {
@@ -53,11 +55,19 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
 
   const data = JSON.parse(response);
 
+  console.log(options, data);
+
   if (data.success) {
-    return data;
+    console.log('Success!');
+    return true;
   }
 
-  console.log(options, data);
+  if (data.error.includes('Key already present')) {
+    console.log('Success, I guess...');
+    return true;
+  }
+
+  return false;
 };
 
 export const getRoots = async (storeIds) => {
@@ -68,9 +78,11 @@ export const getRoots = async (storeIds) => {
     }),
   };
 
-  const response = await request(Object.assign({}, getBaseOptions(), options));
-
   try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
     const data = JSON.parse(response);
 
     if (data.success) {
@@ -127,4 +139,27 @@ export const getStoreData = async (storeId) => {
   }
 
   return new Error('Error getting datalayer store data');
+};
+
+export const dataLayerAvailable = async () => {
+  const options = {
+    url: `${rpcUrl}/get_value`,
+    body: JSON.stringify({}),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (Object.keys(data).includes('success')) {
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    return false;
+  }
 };

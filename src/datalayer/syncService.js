@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import logUpdate from 'log-update';
 
 import { decodeHex } from '../utils/datalayer-utils';
@@ -47,7 +49,7 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
   });
 
   try {
-    if (organizationToTrucate) {
+    if (_.get(organizationToTrucate, 'orgUid')) {
       const truncateOrganizationPromises = Object.keys(ModelKeys).map((key) =>
         ModelKeys[key].destroy({
           where: { orgUid: organizationToTrucate.orgUid },
@@ -63,7 +65,6 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
           const value = JSON.parse(decodeHex(kv.value));
 
           await ModelKeys[modelKey].upsert(value);
-
           const stagingUuid =
             modelKey === 'unit'
               ? value.warehouseUnitId
@@ -124,7 +125,7 @@ export const dataLayerWasUpdated = async () => {
     );
 
     if (org) {
-      return org.registryHash !== rootHash.hash;
+      return org.registryHash != rootHash.hash;
     }
 
     return false;

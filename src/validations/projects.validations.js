@@ -9,33 +9,46 @@ import {
   estimationSchema,
 } from '../validations';
 
+import { pickListValidation } from '../utils/validation-utils';
+
 export const baseSchema = {
   // warehouseProjectId - derived upon creation
   // orgUid - derived upon creation
   projectId: Joi.string().required(),
-  // optional because if we dont supply it, it assigns to the users own registry
-  registryOfOrigin: Joi.string().optional(),
-  // Need to add 'originProjectId' as a new field. It will be required and STRING type.
-  // If current registry is the same as registry of origin, then ID will be the same.
-  // If current registry is different from registry of origin, then we will have different IDs.
-  program: Joi.string().required(),
-  // 'program' should be optional.
+  originProjectId: Joi.string().required(),
+  registryOfOrigin: Joi.string()
+    .custom(pickListValidation('registries', 'registryOfOrigin'))
+    .required(),
+  program: Joi.string().optional(),
   projectName: Joi.string().required(),
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
-  sector: Joi.string().required(),
-  projectType: Joi.string().required(),
+  sector: Joi.string()
+    .custom(pickListValidation('projectSector', 'sector'))
+    .required(),
+  projectType: Joi.string()
+    .custom(pickListValidation('projectType'))
+    .required(),
   projectTags: Joi.string().optional(),
-  coveredByNDC: Joi.string().required(),
-  ndcInformation: Joi.string().required(),
-  // 'ndcInformation' should be optional, but should carry an additional validation. If 'coveredByNDC' field selects "Inside NDC", then 'ndcInformation' becomes required field.
-  projectStatus: Joi.string().required(),
+  coveredByNDC: Joi.string()
+    .custom(pickListValidation('coveredByNDC'))
+    .required(),
+  ndcInformation: Joi.string().when('coveredByNDC', {
+    is: Joi.exist().valid('Inside NDC'),
+    then: Joi.required(),
+  }),
+  projectStatus: Joi.string()
+    .custom(pickListValidation('projectStatusValues', 'projectStatus'))
+    .required(),
   projectStatusDate: Joi.date().required(),
-  unitMetric: Joi.string().required(),
-  methodology: Joi.string().required(),
-  validationBody: Joi.string().optional(),
-  validationDate: Joi.string().optional(),
-  // should be DATE instead of string.
+  unitMetric: Joi.string().custom(pickListValidation('unitMetric')).required(),
+  methodology: Joi.string()
+    .custom(pickListValidation('methodology'))
+    .required(),
+  validationBody: Joi.string()
+    .custom(pickListValidation('validationBody'))
+    .optional(),
+  validationDate: Joi.date().optional(),
 
   /* Child Tables */
   labels: Joi.array().items(labelSchema).min(1).optional(),

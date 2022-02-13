@@ -19,6 +19,8 @@ import {
   assertCsvFileInRequest,
   assertHomeOrgExists,
   assetNoPendingCommits,
+  assertRecordExistance,
+  assertDataLayerAvailable,
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
@@ -33,6 +35,8 @@ import xlsx from 'node-xlsx';
 
 export const create = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
+    await assetNoPendingCommits();
     await assertHomeOrgExists();
 
     const newRecord = _.cloneDeep(req.body);
@@ -48,8 +52,14 @@ export const create = async (req, res) => {
     newRecord.orgUid = orgUid;
 
     if (newRecord.labels) {
-      newRecord.labels.map((childRecord) => {
-        childRecord.id = uuidv4();
+      const promises = newRecord.labels.map(async (childRecord) => {
+        if (childRecord.id) {
+          // if we are reusing a record, make sure it exists
+          await assertRecordExistance(Label, childRecord.id);
+        } else {
+          childRecord.id = uuidv4();
+        }
+
         childRecord.orgUid = orgUid;
         childRecord.label_unit = {};
         childRecord.label_unit.id = uuidv4();
@@ -59,6 +69,8 @@ export const create = async (req, res) => {
 
         return childRecord;
       });
+
+      await Promise.all(promises);
     }
 
     if (newRecord.issuance) {
@@ -80,114 +92,131 @@ export const create = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({
-      message: 'Batch Upload Failed.',
+      message: 'Unit Insert Failed to stage.',
       error: error.message,
     });
   }
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, columns, orgUid, search, xls } = req.query;
-  let where = orgUid ? { orgUid } : undefined;
+  try {
+    await assertDataLayerAvailable();
 
-  const includes = [Label, Issuance];
+    let { page, limit, columns, orgUid, search, xls } = req.query;
+    let where = orgUid ? { orgUid } : undefined;
 
-  if (columns) {
-    // Remove any unsupported columns
-    columns = columns.filter((col) =>
-      Unit.defaultColumns
-        .concat(includes.map((model) => model.name + 's'))
-        .includes(col),
-    );
-  } else {
-    columns = Unit.defaultColumns.concat(
-      includes.map((model) => model.name + 's'),
-    );
-  }
+    const includes = [Label, Issuance];
 
-  // If only FK fields have been specified, select just ID
-  if (!columns.length) {
-    columns = ['warehouseUnitId'];
-  }
+    if (columns) {
+      // Remove any unsupported columns
+      columns = columns.filter((col) =>
+        Unit.defaultColumns
+          .concat(includes.map((model) => model.name + 's'))
+          .includes(col),
+      );
+    } else {
+      columns = Unit.defaultColumns.concat(
+        includes.map((model) => model.name + 's'),
+      );
+    }
 
-  let results;
-  let pagination = paginationParams(page, limit);
+    // If only FK fields have been specified, select just ID
+    if (!columns.length) {
+      columns = ['warehouseUnitId'];
+    }
 
-  if (xls) {
-    pagination = { page: undefined, limit: undefined };
-  }
+    let results;
+    let pagination = paginationParams(page, limit);
 
-  if (search) {
-    results = await Unit.fts(search, orgUid, pagination, Unit.defaultColumns);
+    if (xls) {
+      pagination = { page: undefined, limit: undefined };
+    }
 
-    // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
+    if (search) {
+      results = await Unit.fts(search, orgUid, pagination, Unit.defaultColumns);
 
-    if (columns.includes('labels')) {
-      results.rows = await Promise.all(
-        results.rows.map(async (result) => {
-          result.dataValues.labels = await Label.findAll({
-            include: [
-              {
-                model: Unit,
-                where: {
-                  warehouseUnitId: result.dataValues.warehouseUnitId,
+      // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
+
+      if (columns.includes('labels')) {
+        results.rows = await Promise.all(
+          results.rows.map(async (result) => {
+            result.dataValues.labels = await Label.findAll({
+              include: [
+                {
+                  model: Unit,
+                  where: {
+                    warehouseUnitId: result.dataValues.warehouseUnitId,
+                  },
+                  attributes: [],
+                  as: 'unit',
+                  require: true,
                 },
-                attributes: [],
-                as: 'unit',
-                require: true,
-              },
-            ],
-          });
-          return result;
-        }),
-      );
+              ],
+            });
+            return result;
+          }),
+        );
+      }
+
+      if (columns.includes('issuances')) {
+        results.rows = await Promise.all(
+          results.rows.map(async (result) => {
+            result.dataValues.issuance = await Issuance.findByPk(
+              result.dataValues.issuanceId,
+            );
+            return result;
+          }),
+        );
+      }
     }
 
-    if (columns.includes('issuances')) {
-      results.rows = await Promise.all(
-        results.rows.map(async (result) => {
-          result.dataValues.issuance = await Issuance.findByPk(
-            result.dataValues.issuanceId,
-          );
-          return result;
-        }),
+    if (!results) {
+      results = await Unit.findAndCountAll({
+        where,
+        distinct: true,
+        ...columnsToInclude(columns, includes),
+        ...paginationParams(page, limit),
+      });
+    }
+
+    const response = optionallyPaginatedResponse(results, page, limit);
+
+    if (!xls) {
+      return res.json(response);
+    } else {
+      return sendXls(
+        Unit.name,
+        createXlsFromSequelizeResults(response, Unit, false, false, true),
+        res,
       );
     }
-  }
-
-  if (!results) {
-    results = await Unit.findAndCountAll({
-      where,
-      distinct: true,
-      ...columnsToInclude(columns, includes),
-      ...paginationParams(page, limit),
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error retrieving units',
+      error: error.message,
     });
-  }
-
-  const response = optionallyPaginatedResponse(results, page, limit);
-
-  if (!xls) {
-    return res.json(response);
-  } else {
-    return sendXls(
-      Unit.name,
-      createXlsFromSequelizeResults(response, Unit, false, false, true),
-      res,
-    );
   }
 };
 
 export const findOne = async (req, res) => {
-  console.info('req.query', req.query);
-  res.json(
-    await Unit.findByPk(req.query.warehouseUnitId, {
-      include: Unit.getAssociatedModels(),
-    }),
-  );
+  try {
+    await assertDataLayerAvailable();
+    res.json(
+      await Unit.findByPk(req.query.warehouseUnitId, {
+        include: Unit.getAssociatedModels(),
+      }),
+    );
+  } catch (error) {
+    res.status(400).json({
+      message: 'Cant find Unit.',
+      error: error.message,
+    });
+  }
 };
 
 export const updateFromXLS = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
@@ -214,6 +243,7 @@ export const updateFromXLS = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
@@ -230,8 +260,10 @@ export const update = async (req, res) => {
     updatedRecord.orgUid = orgUid;
 
     if (updatedRecord.labels) {
-      updatedRecord.labels.map((childRecord) => {
-        if (!childRecord.id) {
+      const promises = updatedRecord.labels.map(async (childRecord) => {
+        if (childRecord.id) {
+          await assertRecordExistance(Label, childRecord.id);
+        } else {
           childRecord.id = uuidv4();
         }
 
@@ -250,6 +282,8 @@ export const update = async (req, res) => {
 
         return childRecord;
       });
+
+      await Promise.all(promises);
     }
 
     if (updatedRecord.issuance) {
@@ -295,6 +329,7 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
@@ -324,6 +359,7 @@ export const destroy = async (req, res) => {
 
 export const split = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
@@ -363,6 +399,16 @@ export const split = async (req, res) => {
           newRecord.unitOwner = record.unitOwner;
         }
 
+        if (record.countryJurisdictionOfOwner) {
+          newRecord.countryJurisdictionOfOwner =
+            record.countryJurisdictionOfOwner;
+        }
+
+        if (record.inCountryJurisdictionOfOwner) {
+          newRecord.inCountryJurisdictionOfOwner =
+            record.inCountryJurisdictionOfOwner;
+        }
+
         return newRecord;
       }),
     );
@@ -390,6 +436,7 @@ export const split = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assetNoPendingCommits();
 
