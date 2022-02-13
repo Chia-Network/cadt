@@ -3,19 +3,7 @@ import _ from 'lodash';
 import xlsx from 'node-xlsx';
 import { uuid as uuidv4 } from 'uuidv4';
 
-import {
-  Staging,
-  Project,
-  ProjectLocation,
-  Label,
-  Issuance,
-  CoBenefit,
-  RelatedProject,
-  Organization,
-  Rating,
-  Estimation,
-  ModelKeys,
-} from '../models';
+import { Staging, Project, Organization, ModelKeys } from '../models';
 
 import {
   columnsToInclude,
@@ -183,15 +171,7 @@ export const findOne = async (req, res) => {
 
     const query = {
       where: { warehouseProjectId: req.query.warehouseProjectId },
-      include: [
-        ProjectLocation,
-        Label,
-        Issuance,
-        CoBenefit,
-        RelatedProject,
-        Rating,
-        Estimation,
-      ],
+      include: Project.getAssociatedModels(),
     };
 
     res.json(await Project.findOne(query));

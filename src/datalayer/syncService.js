@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import logUpdate from 'log-update';
 
 import { decodeHex } from '../utils/datalayer-utils';
@@ -47,7 +49,7 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
   });
 
   try {
-    if (organizationToTrucate) {
+    if (_.get(organizationToTrucate, 'orgUid')) {
       const truncateOrganizationPromises = Object.keys(ModelKeys).map((key) =>
         ModelKeys[key].destroy({
           where: { orgUid: organizationToTrucate.orgUid },

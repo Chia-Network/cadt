@@ -1,8 +1,7 @@
-// import chai from 'chai';
-//import supertest from 'supertest';
-//import app from '../../src/server';
+import chai from 'chai';
+import * as testFixtures from '../test-fixtures';
 
-// const { expect } = chai;
+const { expect } = chai;
 
 describe('Project Resource CRUD', function () {
   describe('GET projects', function () {
@@ -11,23 +10,67 @@ describe('Project Resource CRUD', function () {
     });
 
     describe('success states', function () {
-      it('gets all the projects available', function () {
+      it('gets all the projects available', async function () {
         // no query params
+        const projects = await testFixtures.getProjectByQuery();
+        expect(projects.length).to.equal(8);
       });
-      it('gets all the projects filtered by orgUid', function () {
+
+      it('gets all the projects filtered by orgUid', async function () {
         // ?orgUid=XXXX
+        const projects = await testFixtures.getProjectByQuery({
+          orgUid: 'a807e453-6524-49df-a32d-785e56cf560e',
+        });
+        expect(projects.length).to.equal(3);
       });
-      it('gets all the projects for a search term', function () {
+
+      it('gets all the projects for a search term', async function () {
         // ?search=XXXX
+        const projects = await testFixtures.getProjectByQuery({
+          search: 'City of Arcata',
+        });
+        expect(projects.length).to.equal(1);
       });
-      it('gets all the projects for a search term filtered by orgUid', function () {
+
+      it('gets all the projects for a search term filtered by orgUid', async function () {
         // ?orgUid=XXXX&search=XXXX
+        const projects = await testFixtures.getProjectByQuery({
+          orgUid: 'a807e453-6524-49df-a32d-785e56cf560e',
+          search: 'City of Arcata',
+        });
+        expect(projects.length).to.equal(1);
       });
-      it('gets optional paginated results', function () {
+
+      it('gets optional paginated results', async function () {
         // ?page=X&limit=10
+        const projectsPage1 = await testFixtures.getProjectByQuery({
+          page: 1,
+          limit: 3,
+        });
+        expect(projectsPage1.data.length).to.equal(3);
+
+        const projectsPage2 = await testFixtures.getProjectByQuery({
+          page: 2,
+          limit: 3,
+        });
+        expect(projectsPage2.data.length).to.equal(3);
+        expect(projectsPage1.data).to.not.deep.equal(projectsPage2.data);
+
+        const projectsLimit2 = await testFixtures.getProjectByQuery({
+          page: 1,
+          limit: 2,
+        });
+        expect(projectsLimit2.data.length).to.equal(2);
       });
-      it('finds a single result by warehouseProjectId', function () {
+
+      it('finds a single result by warehouseProjectId', async function () {
         // ?warehouseProjectId=XXXX
+        const projects = await testFixtures.getProjectByQuery({
+          warehouseProjectId: '7f3a656e-d21c-409f-ae38-f97c89f0ae66',
+        });
+
+        // should get only 1 result
+        expect(projects).to.be.a('object');
       });
     });
   });
