@@ -33,11 +33,12 @@ const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
       await pushChangesWhenStoreIsAvailable(storeId, changeList);
     }, 5000);
   };
+
   if (process.env.USE_SIMULATOR === 'true') {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
-    const storeExists = await dataLayer.getRoot(storeId);
-    if (storeExists) {
+    const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
+    if (storeExistAndIsConfirmed) {
       const success = await dataLayer.pushChangeListToDataLayer(
         storeId,
         changeList,

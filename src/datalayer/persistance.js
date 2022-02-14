@@ -112,7 +112,7 @@ export const getRoot = async (storeId) => {
   try {
     const data = JSON.parse(response);
 
-    if (data.success) {
+    if (data.status === 1) {
       return data;
     }
 
