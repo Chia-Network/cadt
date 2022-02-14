@@ -39,7 +39,9 @@ export const createDataLayerStore = async () => {
     return data.id;
   }
 
-  return false;
+  console.log(data);
+
+  throw new Error(data.error);
 };
 
 export const pushChangeListToDataLayer = async (storeId, changelist) => {
@@ -67,7 +69,9 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
     return true;
   }
 
-  return false;
+  console.log(data);
+
+  throw new Error(data.error);
 };
 
 export const getRoots = async (storeIds) => {
