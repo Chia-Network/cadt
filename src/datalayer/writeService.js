@@ -1,4 +1,5 @@
 import * as dataLayer from './persistance';
+import * as wallet from './wallet';
 import * as simulator from './simulator';
 import { encodeHex } from '../utils/datalayer-utils';
 
@@ -37,8 +38,10 @@ const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
   if (process.env.USE_SIMULATOR === 'true') {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
+    const hasUnconfirmedTransactions =
+      await wallet.hasUnconfirmedTransactions();
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
-    if (storeExistAndIsConfirmed) {
+    if (!hasUnconfirmedTransactions && storeExistAndIsConfirmed) {
       const success = await dataLayer.pushChangeListToDataLayer(
         storeId,
         changeList,
