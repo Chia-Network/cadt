@@ -125,7 +125,8 @@ export const dataLayerWasUpdated = async () => {
     );
 
     if (org) {
-      return org.registryHash != rootHash.hash;
+      // store has been updated if its confirmed and the hash has changed
+      return rootHash.status === 1 && org.registryHash != rootHash.hash;
     }
 
     return false;
