@@ -4,7 +4,7 @@ import _ from 'lodash';
 
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
-import { dataLayerAvailable } from '../datalayer';
+import { dataLayerAvailable, hasUnconfirmedTransactions } from '../datalayer';
 
 export const assertDataLayerAvailable = async () => {
   const isAvailable = await dataLayerAvailable();
@@ -15,12 +15,7 @@ export const assertDataLayerAvailable = async () => {
 };
 
 export const assetNoPendingCommits = async () => {
-  const pendingCommits = await Staging.findAll({
-    where: { commited: true },
-    raw: true,
-  });
-
-  if (pendingCommits.length > 0) {
+  if (await hasUnconfirmedTransactions()) {
     throw new Error(
       'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
     );

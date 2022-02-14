@@ -56,7 +56,7 @@ class Organization extends Model {
     });
 
     //sync the registry store
-    syncDataLayer(newRegistryId, {
+    await syncDataLayer(newRegistryId, {
       [dataVersion]: registryVersionId,
     });
 

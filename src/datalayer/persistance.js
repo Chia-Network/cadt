@@ -71,7 +71,7 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
 
   console.log(data);
 
-  throw new Error(data.error);
+  return false;
 };
 
 export const getRoots = async (storeIds) => {
