@@ -71,7 +71,7 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
 
   console.log(data);
 
-  throw new Error(data.error);
+  return false;
 };
 
 export const getRoots = async (storeIds) => {
@@ -111,8 +111,8 @@ export const getRoot = async (storeId) => {
 
   try {
     const data = JSON.parse(response);
-
-    if (data.status === 1) {
+    console.log(data);
+    if (data.status === 2) {
       return data;
     }
 
