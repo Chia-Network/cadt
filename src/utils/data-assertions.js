@@ -15,10 +15,23 @@ export const assertDataLayerAvailable = async () => {
 };
 
 export const assetNoPendingCommits = async () => {
-  if (await hasUnconfirmedTransactions()) {
-    throw new Error(
-      'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
-    );
+  if (process.env.USE_SIMULATOR === 'true') {
+    const pendingCommits = await Staging.findAll({
+      where: { commited: true },
+      raw: true,
+    });
+
+    if (pendingCommits.length > 0) {
+      throw new Error(
+        'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
+      );
+    }
+  } else {
+    if (await hasUnconfirmedTransactions()) {
+      throw new Error(
+        'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
+      );
+    }
   }
 };
 

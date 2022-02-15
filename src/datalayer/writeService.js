@@ -27,30 +27,33 @@ export const syncDataLayer = async (storeId, data) => {
   await pushChangesWhenStoreIsAvailable(storeId, changeList);
 };
 
-const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
-  const retry = () => {
-    setTimeout(async () => {
-      console.log('Retrying...');
-      await pushChangesWhenStoreIsAvailable(storeId, changeList);
-    }, 5000);
-  };
+const retry = (storeId, changeList) => {
+  setTimeout(async () => {
+    console.log('Retrying...', storeId);
+    await pushChangesWhenStoreIsAvailable(storeId, changeList);
+  }, 30000);
+};
 
+const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
   if (process.env.USE_SIMULATOR === 'true') {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
     const hasUnconfirmedTransactions =
       await wallet.hasUnconfirmedTransactions();
+
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
+
     if (!hasUnconfirmedTransactions && storeExistAndIsConfirmed) {
       const success = await dataLayer.pushChangeListToDataLayer(
         storeId,
         changeList,
       );
+
       if (!success) {
-        retry();
+        retry(storeId, changeList);
       }
     } else {
-      retry();
+      retry(storeId, changeList);
     }
   }
 };
