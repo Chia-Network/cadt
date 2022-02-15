@@ -115,6 +115,8 @@ export const dataLayerWasUpdated = async () => {
     rootResponse = await dataLayer.getRoots(subscribedOrgIds);
   }
 
+  console.log(rootResponse);
+
   if (!rootResponse.success) {
     return [];
   }
@@ -125,8 +127,9 @@ export const dataLayerWasUpdated = async () => {
     );
 
     if (org) {
+      console.log(rootHash);
       // store has been updated if its confirmed and the hash has changed
-      return rootHash.status == 2 && org.registryHash != rootHash.hash;
+      return rootHash.status === 2 && org.registryHash != rootHash.hash;
     }
 
     return false;
