@@ -3,7 +3,12 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
-import { createDataLayerStore, syncDataLayer } from '../../datalayer';
+import {
+  createDataLayerStore,
+  syncDataLayer,
+  subscribeToStoreOnDataLayer,
+  getSubscribedStoreData,
+} from '../../datalayer';
 
 import ModelTypes from './organizations.modeltypes.cjs';
 
@@ -78,8 +83,48 @@ class Organization extends Model {
   };
 
   // eslint-disable-next-line
-  static importHomeOrganization = (orgUid) => {
-    throw new Error('Not implemented yet');
+  static importOrganization = async (orgUid, ip, port) => {
+    const orgData = await getSubscribedStoreData(orgUid, ip, port);
+
+    if (!orgData.registryId) {
+      throw new Error(
+        'Currupted organization, no registryId on the datalayer, can not import',
+      );
+    }
+
+    console.log('IMPORTING REGISTRY: ', orgData.registryId);
+
+    const registryData = await getSubscribedStoreData(
+      orgData.registryId,
+      ip,
+      port,
+    );
+
+    if (!registryData.v1) {
+      throw new Error('Organization has no registry, can not import');
+    }
+
+    console.log('IMPORTING REGISTRY V1: ', registryData.v1);
+
+    await subscribeToStoreOnDataLayer(registryData.v1, ip, port);
+
+    console.log({
+      orgUid,
+      name: orgData.name,
+      icon: orgData.icon,
+      registryId: registryData.v1,
+      subscribed: true,
+      isHome: false,
+    });
+
+    await Organization.upsert({
+      orgUid,
+      name: orgData.name,
+      icon: orgData.icon,
+      registryId: registryData.v1,
+      subscribed: true,
+      isHome: false,
+    });
   };
 
   // eslint-disable-next-line
@@ -88,7 +133,7 @@ class Organization extends Model {
     if (exists) {
       await Organization.update({ subscribed: true }, { orgUid });
     } else {
-      Organization.importHomeOrganization(orgUid);
+      Organization.importOrganization(orgUid);
     }
   };
 
