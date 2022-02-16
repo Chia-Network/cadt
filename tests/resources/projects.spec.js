@@ -1,3 +1,4 @@
+import 'regenerator-runtime/runtime.js';
 import chai from 'chai';
 import * as testFixtures from '../test-fixtures';
 
@@ -13,7 +14,8 @@ describe('Project Resource CRUD', function () {
       it('gets all the projects available', async function () {
         // no query params
         const projects = await testFixtures.getProjectByQuery();
-        expect(projects.length).to.equal(9);
+
+        expect(projects.length).to.equal(11);
       });
 
       it('gets all the projects filtered by orgUid', async function () {
@@ -38,6 +40,7 @@ describe('Project Resource CRUD', function () {
           orgUid: 'a807e453-6524-49df-a32d-785e56cf560e',
           search: 'City of Arcata',
         });
+
         expect(projects.length).to.equal(1);
       });
 
@@ -53,6 +56,8 @@ describe('Project Resource CRUD', function () {
           page: 2,
           limit: 3,
         });
+
+        console.log(projectsPage2);
         expect(projectsPage2.data.length).to.equal(3);
         expect(projectsPage1.data).to.not.deep.equal(projectsPage2.data);
 

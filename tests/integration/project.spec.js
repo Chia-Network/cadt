@@ -9,7 +9,7 @@ import { pullPickListValues } from '../../src/utils/picklist-loader';
 import { POLLING_INTERVAL } from '../../src/datalayer';
 const TEST_WAIT_TIME = POLLING_INTERVAL * 2;
 
-describe('Project Resource Integration Tests', function () {
+describe.only('Project Resource Integration Tests', function () {
   let homeOrgUid;
 
   beforeAll(function () {
@@ -22,7 +22,7 @@ describe('Project Resource Integration Tests', function () {
     homeOrgUid = await testFixtures.getHomeOrgId();
   });
 
-  it(
+  it.only(
     'deletes a project end-to-end (with simulator)',
     async function () {
       /*

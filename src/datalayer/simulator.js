@@ -144,4 +144,4 @@ export const dataLayerAvailable = async () => {
 };
 
 // eslint-disable-next-line
-export const subscribeToStore = async (storeId) => {};
+export const subscribeToStoreOnDataLayer = async (storeId) => {};

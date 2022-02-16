@@ -2,7 +2,7 @@ import _ from 'lodash';
 
 import logUpdate from 'log-update';
 
-import { decodeHex } from '../utils/datalayer-utils';
+import { decodeHex, decodeDataLayerResponse } from '../utils/datalayer-utils';
 import { Organization, Staging, ModelKeys } from '../models';
 
 import * as dataLayer from './persistance';
@@ -115,8 +115,6 @@ export const dataLayerWasUpdated = async () => {
     rootResponse = await dataLayer.getRoots(subscribedOrgIds);
   }
 
-  // console.log(rootResponse);
-
   if (!rootResponse.success) {
     return [];
   }
@@ -127,7 +125,6 @@ export const dataLayerWasUpdated = async () => {
     );
 
     if (org) {
-      // console.log(rootHash);
       // store has been updated if its confirmed and the hash has changed
       return rootHash.status === 2 && org.registryHash != rootHash.hash;
     }
@@ -154,4 +151,65 @@ export const dataLayerWasUpdated = async () => {
   );
 
   return updatedStoreIds;
+};
+
+export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
+  if (process.env.USE_SIMULATOR === 'true') {
+    return simulator.subscribeToStoreOnDataLayer(storeId, ip, port);
+  } else {
+    return dataLayer.subscribeToStoreOnDataLayer(storeId, ip, port);
+  }
+};
+
+export const getSubscribedStoreData = async (
+  storeId,
+  ip,
+  port,
+  alreadySubscribed = false,
+  retry = 0,
+) => {
+  if (retry > 30) {
+    throw new Error('Max retrys exceeded, Can not subscribe to organization');
+  }
+
+  if (!alreadySubscribed) {
+    const response = await subscribeToStoreOnDataLayer(storeId, ip, port);
+    if (!response.success) {
+      console.log(`Retrying...`, retry + 1);
+      console.log('...');
+      await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+      return getSubscribedStoreData(storeId, ip, port, false, retry + 1);
+    }
+  }
+
+  if (process.env.USE_SIMULATOR !== 'true') {
+    const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
+    if (!storeExistAndIsConfirmed) {
+      console.log(`Retrying...`, retry + 1);
+      console.log('...');
+      await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+      return getSubscribedStoreData(storeId, ip, port, true, retry + 1);
+    }
+  }
+
+  let encodedData;
+  if (process.env.USE_SIMULATOR === 'true') {
+    encodedData = await simulator.getStoreData(storeId);
+  } else {
+    encodedData = await dataLayer.getStoreData(storeId);
+  }
+
+  if (!encodedData) {
+    console.log(`Retrying...`, retry + 1);
+    console.log('...');
+    await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+    return getSubscribedStoreData(storeId, ip, port, true, retry + 1);
+  }
+
+  const decodedData = decodeDataLayerResponse(encodedData);
+
+  return decodedData.reduce((obj, current) => {
+    obj[current.key] = current.value;
+    return obj;
+  }, {});
 };

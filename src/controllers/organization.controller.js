@@ -31,7 +31,23 @@ export const create = async (req, res) => {
 };
 
 // eslint-disable-next-line
-export const importOrg = async (req, res) => {};
+export const importOrg = async (req, res) => {
+  const { orgUid, ip, port } = req.body;
+  try {
+    res.json({
+      message:
+        'Importing and subscribing organization this can take a few mins.',
+    });
+
+    return Organization.importOrganization(orgUid, ip, port);
+  } catch (error) {
+    console.trace(error);
+    res.status(400).json({
+      message: 'Error importing organization',
+      error: error.message,
+    });
+  }
+};
 
 export const subscribeToOrganization = async (req, res) => {
   try {
