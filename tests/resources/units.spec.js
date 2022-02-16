@@ -1,15 +1,36 @@
-//import chai from 'chai';
+import chai, { expect } from 'chai';
+import sinon from 'sinon';
 ///import chaiHttp from 'chai-http';
 //import app from './../../src/server';
+// import { restore } from '../../src/utils/data-assertions';
+// import { findAll } from '../../src/controllers/units.controller';
+
+const mockResponse = () => {
+  const res = {};
+  res.status = sinon.stub().returns(res);
+  res.json = sinon.stub().returns(res);
+  return res;
+};
 
 describe('Units Resource CRUD', function () {
+  afterEach(function () {
+    // restore();
+  });
   describe('GET Units', function () {
+    let assertDataLayerAvailableStub;
+    beforeEach(function () {
+      // assertDataLayerAvailableStub = sinon.stub(dataAssertions, 'assertDataLayerAvailable');
+    });
+
     describe('error states', function () {
       it('errors if there if there is no connection to the datalayer', function () {});
     });
 
     describe('success states', function () {
       it('gets all the units available', function () {
+        // const res = mockResponse();
+        // expect(assertDataLayerAvailableStub.callCount).to.equal(0);
+        // await findAll({ query: {} }, res);
         // no query params
       });
       it('gets all the units filtered by orgUid', function () {

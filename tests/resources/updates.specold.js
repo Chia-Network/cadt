@@ -6,7 +6,7 @@ import { Server } from 'socket.io';
 describe('my awesome project', function () {
   let io, serverSocket, clientSocket;
 
-  before(function (done) {
+  beforeAll(function (done) {
     const httpServer = createServer();
     io = new Server(httpServer);
     httpServer.listen(() => {
@@ -19,7 +19,7 @@ describe('my awesome project', function () {
     });
   });
 
-  after(function () {
+  afterAll(function () {
     io.close();
     clientSocket.close();
   });

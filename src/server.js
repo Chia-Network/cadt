@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import 'regenerator-runtime/runtime.js';
+// import 'regenerator-runtime/runtime.js';
 
 import rootRouter from './routes';
 import http from 'http';
@@ -37,7 +37,7 @@ function onError(error) {
       break;
     case 'EADDRINUSE':
       console.error(bind + ' is already in use');
-      process.exit(1);
+      // process.exit(1);
       break;
     default:
       throw error;

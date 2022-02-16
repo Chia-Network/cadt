@@ -10,7 +10,8 @@
   "scripts": {
     "requirements-check": "node --experimental-json-modules check_node_version.js",
     "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
-    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha tests/**/*.spec.js --reporter spec --exit --timeout 30000",
+    "test": "npm run resetTestDb && NODE_ENV=test USE_SIMULATOR=true jest --maxWorkers 4",
+    "test1": "npx cross-env NODE_ENV=test USE_SIMULATOR=false mocha tests/**/*.spec.js --reporter spec --exit --timeout 30000 --require babel-register",
     "release": "./node_modules/.bin/standard-version && git push --tags",
     "postinstall": "npm run requirements-check",
     "resetdb": "rm -f ./data.sqlite3 && npx sequelize-cli db:migrate --env local && npx sequelize-cli db:seed:all --debug --env local",
@@ -25,6 +26,7 @@
     "create-linux-x64-dist": "rm -rf dist && mkdir dist && npm run build && npm run prepare-binary && pkg package.json -t node16-linux-x64 --out-path dist"
   },
   "dependencies": {
+    "babel-plugin-rewire-exports": "^2.3.0",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "csvtojson": "^2.0.10",
@@ -58,6 +60,8 @@
     "@commitlint/config-conventional": "^14.1.0",
     "babel-eslint": "^10.1.0",
     "babel-plugin-module-resolver": "^4.1.0",
+    "babel-plugin-rewire": "^1.2.0",
+    "babel-register": "^6.26.0",
     "chai": "^4.3.4",
     "chai-http": "^4.3.0",
     "eslint-plugin-mocha": "^9.0.0",

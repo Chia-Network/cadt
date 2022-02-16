@@ -13,7 +13,7 @@ describe('Project Resource CRUD', function () {
       it('gets all the projects available', async function () {
         // no query params
         const projects = await testFixtures.getProjectByQuery();
-        expect(projects.length).to.equal(8);
+        expect(projects.length).to.equal(9);
       });
 
       it('gets all the projects filtered by orgUid', async function () {
