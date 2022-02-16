@@ -111,8 +111,8 @@ export const getRoot = async (storeId) => {
 
   try {
     const data = JSON.parse(response);
-    console.log(data);
-    if (data.status === 2) {
+    console.log(`Root for ${storeId}`, data);
+    if (data.status === 2 && !data.hash.includes('0x00000000000')) {
       return data;
     }
 
@@ -138,11 +138,14 @@ export const getStoreData = async (storeId) => {
     const data = JSON.parse(response);
 
     if (data.success) {
+      console.log('Downloaded Data', data);
       return data;
     }
+
+    console.log('&&&&', data);
   }
 
-  return new Error('Error getting datalayer store data');
+  return false;
 };
 
 export const dataLayerAvailable = async () => {
@@ -158,12 +161,43 @@ export const dataLayerAvailable = async () => {
 
     const data = JSON.parse(response);
 
-    if (Object.keys(data).includes('success')) {
+    if (Object.keys(data).includes('success') && data.success) {
       return true;
     }
 
     return false;
   } catch (error) {
+    return false;
+  }
+};
+
+export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
+  const options = {
+    url: `${rpcUrl}/subscribe`,
+    body: JSON.stringify({
+      id: storeId,
+      ip,
+      port,
+    }),
+  };
+
+  console.log('Subscribing to: ', storeId, ip, port);
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (Object.keys(data).includes('success') && data.success) {
+      console.log('Successfully Subscribed: ', storeId, ip, port);
+      return data;
+    }
+
+    return false;
+  } catch (error) {
+    console.log('Error Subscribing: ', error);
     return false;
   }
 };

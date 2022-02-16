@@ -62,14 +62,6 @@ export const pushDataLayerChangeList = (storeId, changeList) => {
   pushChangesWhenStoreIsAvailable(storeId, changeList);
 };
 
-export const subscribeToStore = async (storeId) => {
-  if (process.env.USE_SIMULATOR === 'true') {
-    return simulator.subscribeToStore(storeId);
-  } else {
-    return dataLayer.subscribeToStore(storeId);
-  }
-};
-
 export const dataLayerAvailable = async () => {
   if (process.env.USE_SIMULATOR === 'true') {
     return simulator.dataLayerAvailable();

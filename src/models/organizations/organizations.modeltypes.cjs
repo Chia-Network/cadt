@@ -10,6 +10,7 @@ module.exports = {
     type: Sequelize.STRING,
     unique: true,
   },
+  orgHash: Sequelize.STRING,
   name: Sequelize.STRING,
   icon: Sequelize.STRING,
   registryId: Sequelize.STRING,

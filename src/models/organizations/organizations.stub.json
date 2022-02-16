@@ -1,18 +1,18 @@
 [
   {
-    "orgUid": "78b472ff171a20a9de44555d8df2dc1d4c44bae5f700453a1e59ea6b2609dc5c",
+    "orgUid": "a807e453-6524-49df-a32d-785e56cf5600",
     "name": "My Org",
-    "registryId": "c1c017b595356361c09f9d2f7720c7da637548191764c5d6df547ddd25144d58",
+    "registryId": "9144c974e146920088514534c89371dc269d1b894a2c7f6cedeb80b804c6cd02",
     "icon": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg",
-    "subscribed": false,
-    "isHome": false
+    "subscribed": true,
+    "isHome": true
   },
   {
     "orgUid": "ca1e1619-d073-4283-bdbc-4ad58838f727",
-    "name": "Earl Registrt",
+    "name": "Earl Registry",
     "registryId": "047b74ea567f7591f463f29dcec4cab1e760ef181c006fb3865a3e20ca6144aa",
     "icon": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/austria.svg",
-    "subscribed": true,
+    "subscribed": false,
     "isHome": false
   },
   {
@@ -20,7 +20,7 @@
     "name": "Kyles Org Registry",
     "registryId": "eb9f9440f11f2705dd97da824f6f27079cbde3ad4ff4252539f17c8f0c08a4f9",
     "icon": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/denmark.svg",
-    "subscribed": true,
+    "subscribed": false,
     "isHome": false
   }
 ]
