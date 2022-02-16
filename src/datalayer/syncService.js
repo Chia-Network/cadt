@@ -126,7 +126,7 @@ export const dataLayerWasUpdated = async () => {
 
     if (org) {
       // store has been updated if its confirmed and the hash has changed
-      return rootHash.status === 2 && org.registryHash != rootHash.hash;
+      return rootHash.confirmed && org.registryHash != rootHash.hash;
     }
 
     return false;
@@ -168,7 +168,8 @@ export const getSubscribedStoreData = async (
   alreadySubscribed = false,
   retry = 0,
 ) => {
-  if (retry > 30) {
+  console.log('Subscribing to', storeId, ip, port);
+  if (retry > 10) {
     throw new Error('Max retrys exceeded, Can not subscribe to organization');
   }
 

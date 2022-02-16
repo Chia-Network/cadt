@@ -112,7 +112,7 @@ export const getRoot = async (storeId) => {
   try {
     const data = JSON.parse(response);
     console.log(`Root for ${storeId}`, data);
-    if (data.status === 2 && !data.hash.includes('0x00000000000')) {
+    if (data.cinfirmed && !data.hash.includes('0x00000000000')) {
       return data;
     }
 

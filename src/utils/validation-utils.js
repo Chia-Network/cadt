@@ -1,4 +1,4 @@
-import { getPicklistValues } from './picklist-loader';
+import { getPicklistValues } from './data-loaders';
 
 export const pickListValidation = (field, name) => (value, helper) => {
   const pickList = getPicklistValues();
