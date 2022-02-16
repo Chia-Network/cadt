@@ -37,7 +37,6 @@
     "lodash": "^4.17.21",
     "log-update": "^4.0.0",
     "mysql2": "^2.3.3",
-    "node-status-check": "^0.0.1",
     "node-xlsx": "^0.21.0",
     "random-hash": "^4.0.1",
     "regenerator-runtime": "^0.13.9",

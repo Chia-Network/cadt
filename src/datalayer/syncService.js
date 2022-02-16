@@ -184,7 +184,7 @@ export const getSubscribedStoreData = async (
   }
 
   if (process.env.USE_SIMULATOR !== 'true') {
-    const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
+    const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
     if (!storeExistAndIsConfirmed) {
       console.log(`Retrying...`, retry + 1);
       console.log('...');
