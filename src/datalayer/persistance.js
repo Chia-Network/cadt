@@ -166,7 +166,8 @@ export const dataLayerAvailable = async () => {
 
     const data = JSON.parse(response);
 
-    if (Object.keys(data).includes('success') && data.success) {
+    // We just care that we got some response, not what the response is
+    if (Object.keys(data).includes('success')) {
       return true;
     }
 
