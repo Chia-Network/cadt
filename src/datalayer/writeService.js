@@ -1,5 +1,5 @@
 import * as dataLayer from './persistance';
-import * as wallet from './wallet';
+import wallet from './wallet';
 import * as simulator from './simulator';
 import { encodeHex } from '../utils/datalayer-utils';
 
