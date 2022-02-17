@@ -1,12 +1,27 @@
 import chai from 'chai';
 import * as testFixtures from '../test-fixtures';
-
+import sinon from 'sinon';
+import datalayer from '../../src/datalayer';
 const { expect } = chai;
 
+import supertest from 'supertest';
+import app from '../../src/server';
+
 describe('Project Resource CRUD', function () {
+  afterEach(function () {
+    sinon.restore();
+  });
+
   describe('GET projects', function () {
     describe('error states', function () {
-      it('errors if there if there is no connection to the datalayer', function () {});
+      it('errors if there if there is no connection to the datalayer', async function () {
+        sinon.stub(datalayer, 'dataLayerAvailable').resolves(false);
+        const response = await supertest(app).get('/v1/projects');
+        expect(response.statusCode).to.equal(400);
+        expect(response.body.error).to.equal(
+          'Can not establish connection to Chia Datalayer',
+        );
+      });
     });
 
     describe('success states', function () {
@@ -55,7 +70,6 @@ describe('Project Resource CRUD', function () {
           limit: 3,
         });
 
-        console.log(projectsPage2);
         expect(projectsPage2.data.length).to.equal(3);
         expect(projectsPage1.data).to.not.deep.equal(projectsPage2.data);
 

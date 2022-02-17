@@ -4,12 +4,7 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
 
-import {
-  createDataLayerStore,
-  syncDataLayer,
-  subscribeToStoreOnDataLayer,
-  getSubscribedStoreData,
-} from '../../datalayer';
+import datalayer from '../../datalayer';
 
 import {
   getDefaultOrganizationList,
@@ -54,20 +49,20 @@ class Organization extends Model {
     const newOrganizationId =
       process.env.USE_SIMULATOR === 'true'
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
-        : await createDataLayerStore();
+        : await datalayer.createDataLayerStore();
 
-    const newRegistryId = await createDataLayerStore();
-    const registryVersionId = await createDataLayerStore();
+    const newRegistryId = await datalayer.createDataLayerStore();
+    const registryVersionId = await datalayer.createDataLayerStore();
 
     // sync the organization store
-    await syncDataLayer(newOrganizationId, {
+    await datalayer.syncDataLayer(newOrganizationId, {
       registryId: newRegistryId,
       name,
       icon,
     });
 
     //sync the registry store
-    await syncDataLayer(newRegistryId, {
+    await datalayer.syncDataLayer(newRegistryId, {
       [dataVersion]: registryVersionId,
     });
 
@@ -91,7 +86,7 @@ class Organization extends Model {
   // eslint-disable-next-line
   static importOrganization = async (orgUid, ip, port) => {
     try {
-      const orgData = await getSubscribedStoreData(orgUid, ip, port);
+      const orgData = await datalayer.getSubscribedStoreData(orgUid, ip, port);
 
       if (!orgData.registryId) {
         throw new Error(
@@ -101,7 +96,7 @@ class Organization extends Model {
 
       console.log('IMPORTING REGISTRY: ', orgData.registryId);
 
-      const registryData = await getSubscribedStoreData(
+      const registryData = await datalayer.getSubscribedStoreData(
         orgData.registryId,
         ip,
         port,
@@ -113,7 +108,7 @@ class Organization extends Model {
 
       console.log('IMPORTING REGISTRY V1: ', registryData.v1);
 
-      await subscribeToStoreOnDataLayer(registryData.v1, ip, port);
+      await datalayer.subscribeToStoreOnDataLayer(registryData.v1, ip, port);
 
       console.log({
         orgUid,

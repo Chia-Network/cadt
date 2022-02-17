@@ -7,7 +7,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import Debug from 'debug';
 import { connection } from './websocket';
-import { startDataLayerUpdatePolling } from './datalayer';
+import datalayer from './datalayer';
 import { pullPickListValues } from './utils/data-loaders';
 import { Organization } from './models';
 
@@ -65,24 +65,26 @@ function onListening() {
     syncPickList();
   }, 86400000 /* 1 day */);
 
-  try {
-    subscribeToOrganizations();
-  } catch (error) {
-    console.log(error);
-  }
-  setInterval(async () => {
+  if (process.env.USE_SIMULATOR === 'false') {
     try {
       subscribeToOrganizations();
     } catch (error) {
       console.log(error);
     }
-  }, 86400000 /* 1 day */);
+    setInterval(async () => {
+      try {
+        subscribeToOrganizations();
+      } catch (error) {
+        console.log(error);
+      }
+    }, 86400000 /* 1 day */);
+  }
 
   const addr = server.address();
   const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
   debug('Listening on ' + bind);
 }
 
-startDataLayerUpdatePolling();
+datalayer.startDataLayerUpdatePolling();
 
 export default rootRouter;

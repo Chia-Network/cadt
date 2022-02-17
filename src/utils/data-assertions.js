@@ -4,10 +4,10 @@ import _ from 'lodash';
 
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
-import { dataLayerAvailable, hasUnconfirmedTransactions } from '../datalayer';
+import datalayer from '../datalayer';
 
 export const assertDataLayerAvailable = async () => {
-  const isAvailable = await dataLayerAvailable();
+  const isAvailable = await datalayer.dataLayerAvailable();
 
   if (!isAvailable) {
     throw new Error('Can not establish connection to Chia Datalayer');
@@ -27,7 +27,7 @@ export const assetNoPendingCommits = async () => {
       );
     }
   } else {
-    if (await hasUnconfirmedTransactions()) {
+    if (await datalayer.hasUnconfirmedTransactions()) {
       throw new Error(
         'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
       );
