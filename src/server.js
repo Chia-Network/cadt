@@ -7,8 +7,9 @@ import http from 'http';
 import { Server } from 'socket.io';
 import Debug from 'debug';
 import { connection } from './websocket';
-import { startDataLayerUpdatePolling } from './datalayer';
-import { pullPickListValues } from './utils/picklist-loader';
+import datalayer from './datalayer';
+import { pullPickListValues } from './utils/data-loaders';
+import { Organization } from './models';
 
 const debug = Debug('climate-warehouse:server');
 
@@ -53,16 +54,37 @@ const syncPickList = () => {
   pullPickListValues();
 };
 
+const subscribeToOrganizations = () => {
+  console.log('Subscribing to default organizations');
+  Organization.subscribeToDefaultOrganizations();
+};
+
 function onListening() {
   syncPickList();
   setInterval(async () => {
     syncPickList();
   }, 86400000 /* 1 day */);
+
+  if (process.env.USE_SIMULATOR === 'false') {
+    try {
+      subscribeToOrganizations();
+    } catch (error) {
+      console.log(error);
+    }
+    setInterval(async () => {
+      try {
+        subscribeToOrganizations();
+      } catch (error) {
+        console.log(error);
+      }
+    }, 86400000 /* 1 day */);
+  }
+
   const addr = server.address();
   const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
   debug('Listening on ' + bind);
 }
 
-startDataLayerUpdatePolling();
+datalayer.startDataLayerUpdatePolling();
 
 export default rootRouter;

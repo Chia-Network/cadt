@@ -8,11 +8,11 @@ import { Organization, Staging, ModelKeys } from '../models';
 import * as dataLayer from './persistance';
 import * as simulator from './simulator';
 
-export const POLLING_INTERVAL = 5000;
+const POLLING_INTERVAL = 5000;
 const frames = ['-', '\\', '|', '/'];
 
 console.log('Start Datalayer Update Polling');
-export const startDataLayerUpdatePolling = async () => {
+const startDataLayerUpdatePolling = async () => {
   const storeIdsToUpdate = await dataLayerWasUpdated();
   if (storeIdsToUpdate.length) {
     await Promise.all(
@@ -33,7 +33,7 @@ export const startDataLayerUpdatePolling = async () => {
   setTimeout(() => startDataLayerUpdatePolling(), POLLING_INTERVAL);
 };
 
-export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
+const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
   let storeData;
 
   if (process.env.USE_SIMULATOR === 'true') {
@@ -90,7 +90,7 @@ export const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
   }
 };
 
-export const dataLayerWasUpdated = async () => {
+const dataLayerWasUpdated = async () => {
   const organizations = await Organization.findAll({
     attributes: ['registryId', 'registryHash'],
     where: { subscribed: true },
@@ -126,7 +126,7 @@ export const dataLayerWasUpdated = async () => {
 
     if (org) {
       // store has been updated if its confirmed and the hash has changed
-      return rootHash.status === 2 && org.registryHash != rootHash.hash;
+      return rootHash.confirmed && org.registryHash != rootHash.hash;
     }
 
     return false;
@@ -153,7 +153,7 @@ export const dataLayerWasUpdated = async () => {
   return updatedStoreIds;
 };
 
-export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
+const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
   if (process.env.USE_SIMULATOR === 'true') {
     return simulator.subscribeToStoreOnDataLayer(storeId, ip, port);
   } else {
@@ -161,14 +161,15 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
   }
 };
 
-export const getSubscribedStoreData = async (
+const getSubscribedStoreData = async (
   storeId,
   ip,
   port,
   alreadySubscribed = false,
   retry = 0,
 ) => {
-  if (retry > 30) {
+  console.log('Subscribing to', storeId, ip, port);
+  if (retry > 10) {
     throw new Error('Max retrys exceeded, Can not subscribe to organization');
   }
 
@@ -183,7 +184,7 @@ export const getSubscribedStoreData = async (
   }
 
   if (process.env.USE_SIMULATOR !== 'true') {
-    const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
+    const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
     if (!storeExistAndIsConfirmed) {
       console.log(`Retrying...`, retry + 1);
       console.log('...');
@@ -212,4 +213,13 @@ export const getSubscribedStoreData = async (
     obj[current.key] = current.value;
     return obj;
   }, {});
+};
+
+export default {
+  startDataLayerUpdatePolling,
+  syncDataLayerStoreToClimateWarehouse,
+  dataLayerWasUpdated,
+  subscribeToStoreOnDataLayer,
+  getSubscribedStoreData,
+  POLLING_INTERVAL,
 };

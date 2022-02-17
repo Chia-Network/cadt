@@ -78,7 +78,7 @@ export const getRoot = async (storeId) => {
     );
     return Promise.resolve({
       hash: null,
-      status: 2,
+      confirmed: true,
       success: false,
     });
   }
@@ -91,7 +91,7 @@ export const getRoot = async (storeId) => {
 
   return Promise.resolve({
     hash,
-    status: 2,
+    confirmed: true,
     success: true,
   });
 };
@@ -124,7 +124,7 @@ export const getRoots = async (storeIds) => {
             .update(JSON.stringify(simulatorTable))
             .digest('hex')}`,
           id: storeId,
-          status: 2,
+          confirmed: true,
         };
       }
 
@@ -132,7 +132,7 @@ export const getRoots = async (storeIds) => {
       return {
         hash: 0,
         id: storeId,
-        status: 2,
+        confirmed: true,
       };
     }),
     success: true,

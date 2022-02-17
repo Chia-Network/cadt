@@ -9,7 +9,7 @@ import { encodeHex } from '../../utils/datalayer-utils';
 import * as rxjs from 'rxjs';
 import { sequelize } from '../database';
 
-import { pushDataLayerChangeList } from '../../datalayer';
+import datalayer from '../../datalayer';
 
 import ModelTypes from './staging.modeltypes.cjs';
 
@@ -197,9 +197,8 @@ class Staging extends Model {
       (v) => [v.action, v.key].join(),
     );
 
-    await pushDataLayerChangeList(
+    await datalayer.pushDataLayerChangeList(
       myOrganization.registryId,
-
       finalChangeList,
     );
   }

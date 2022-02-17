@@ -3,7 +3,7 @@ import * as wallet from './wallet';
 import * as simulator from './simulator';
 import { encodeHex } from '../utils/datalayer-utils';
 
-export const createDataLayerStore = async () => {
+const createDataLayerStore = async () => {
   let storeId;
   if (process.env.USE_SIMULATOR === 'true') {
     storeId = await simulator.createDataLayerStore();
@@ -14,7 +14,7 @@ export const createDataLayerStore = async () => {
   return storeId;
 };
 
-export const syncDataLayer = async (storeId, data) => {
+const syncDataLayer = async (storeId, data) => {
   console.log(`Syncing ${storeId}: ${JSON.stringify(data)}`);
   const changeList = Object.keys(data).map((key) => {
     return {
@@ -58,14 +58,21 @@ const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
   }
 };
 
-export const pushDataLayerChangeList = (storeId, changeList) => {
+const pushDataLayerChangeList = (storeId, changeList) => {
   pushChangesWhenStoreIsAvailable(storeId, changeList);
 };
 
-export const dataLayerAvailable = async () => {
+const dataLayerAvailable = async () => {
   if (process.env.USE_SIMULATOR === 'true') {
     return simulator.dataLayerAvailable();
   } else {
     return dataLayer.dataLayerAvailable();
   }
+};
+
+export default {
+  dataLayerAvailable,
+  pushDataLayerChangeList,
+  syncDataLayer,
+  createDataLayerStore,
 };

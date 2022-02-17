@@ -1,3 +1,9 @@
-export * from './writeService';
-export * from './syncService';
-export * from './wallet';
+import writeService from './writeService';
+import syncService from './syncService';
+import wallet from './wallet';
+
+export default {
+  ...writeService,
+  ...syncService,
+  ...wallet,
+};

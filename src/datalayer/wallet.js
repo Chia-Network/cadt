@@ -25,7 +25,7 @@ const getBaseOptions = () => {
   return baseOptions;
 };
 
-export const hasUnconfirmedTransactions = async () => {
+const hasUnconfirmedTransactions = async () => {
   const options = {
     url: `${rpcUrl}/get_transactions`,
     body: JSON.stringify({}),
@@ -40,4 +40,8 @@ export const hasUnconfirmedTransactions = async () => {
   }
 
   return false;
+};
+
+export default {
+  hasUnconfirmedTransactions,
 };

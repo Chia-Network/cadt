@@ -3,12 +3,13 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../database';
+
+import datalayer from '../../datalayer';
+
 import {
-  createDataLayerStore,
-  syncDataLayer,
-  subscribeToStoreOnDataLayer,
-  getSubscribedStoreData,
-} from '../../datalayer';
+  getDefaultOrganizationList,
+  serverAvailable,
+} from '../../utils/data-loaders';
 
 import ModelTypes from './organizations.modeltypes.cjs';
 
@@ -48,20 +49,20 @@ class Organization extends Model {
     const newOrganizationId =
       process.env.USE_SIMULATOR === 'true'
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
-        : await createDataLayerStore();
+        : await datalayer.createDataLayerStore();
 
-    const newRegistryId = await createDataLayerStore();
-    const registryVersionId = await createDataLayerStore();
+    const newRegistryId = await datalayer.createDataLayerStore();
+    const registryVersionId = await datalayer.createDataLayerStore();
 
     // sync the organization store
-    await syncDataLayer(newOrganizationId, {
+    await datalayer.syncDataLayer(newOrganizationId, {
       registryId: newRegistryId,
       name,
       icon,
     });
 
     //sync the registry store
-    await syncDataLayer(newRegistryId, {
+    await datalayer.syncDataLayer(newRegistryId, {
       [dataVersion]: registryVersionId,
     });
 
@@ -84,47 +85,51 @@ class Organization extends Model {
 
   // eslint-disable-next-line
   static importOrganization = async (orgUid, ip, port) => {
-    const orgData = await getSubscribedStoreData(orgUid, ip, port);
+    try {
+      const orgData = await datalayer.getSubscribedStoreData(orgUid, ip, port);
 
-    if (!orgData.registryId) {
-      throw new Error(
-        'Currupted organization, no registryId on the datalayer, can not import',
+      if (!orgData.registryId) {
+        throw new Error(
+          'Currupted organization, no registryId on the datalayer, can not import',
+        );
+      }
+
+      console.log('IMPORTING REGISTRY: ', orgData.registryId);
+
+      const registryData = await datalayer.getSubscribedStoreData(
+        orgData.registryId,
+        ip,
+        port,
       );
+
+      if (!registryData.v1) {
+        throw new Error('Organization has no registry, can not import');
+      }
+
+      console.log('IMPORTING REGISTRY V1: ', registryData.v1);
+
+      await datalayer.subscribeToStoreOnDataLayer(registryData.v1, ip, port);
+
+      console.log({
+        orgUid,
+        name: orgData.name,
+        icon: orgData.icon,
+        registryId: registryData.v1,
+        subscribed: true,
+        isHome: false,
+      });
+
+      await Organization.upsert({
+        orgUid,
+        name: orgData.name,
+        icon: orgData.icon,
+        registryId: registryData.v1,
+        subscribed: true,
+        isHome: false,
+      });
+    } catch (error) {
+      console.log(error.message);
     }
-
-    console.log('IMPORTING REGISTRY: ', orgData.registryId);
-
-    const registryData = await getSubscribedStoreData(
-      orgData.registryId,
-      ip,
-      port,
-    );
-
-    if (!registryData.v1) {
-      throw new Error('Organization has no registry, can not import');
-    }
-
-    console.log('IMPORTING REGISTRY V1: ', registryData.v1);
-
-    await subscribeToStoreOnDataLayer(registryData.v1, ip, port);
-
-    console.log({
-      orgUid,
-      name: orgData.name,
-      icon: orgData.icon,
-      registryId: registryData.v1,
-      subscribed: true,
-      isHome: false,
-    });
-
-    await Organization.upsert({
-      orgUid,
-      name: orgData.name,
-      icon: orgData.icon,
-      registryId: registryData.v1,
-      subscribed: true,
-      isHome: false,
-    });
   };
 
   // eslint-disable-next-line
@@ -133,13 +138,42 @@ class Organization extends Model {
     if (exists) {
       await Organization.update({ subscribed: true }, { orgUid });
     } else {
-      Organization.importOrganization(orgUid);
+      throw new Error(
+        'Can not subscribe, please import this organization first',
+      );
     }
   };
 
   // eslint-disable-next-line
   static unsubscribeToOrganization = async (orgUid) => {
     await Organization.update({ subscribed: false }, { orgUid });
+  };
+
+  static subscribeToDefaultOrganizations = async () => {
+    try {
+      const defaultOrgs = await getDefaultOrganizationList();
+      if (!Array.isArray(defaultOrgs)) {
+        console.log(
+          'ERROR: Default Organization List Not found, This instance may be missing data from default orgs',
+        );
+      }
+
+      await Promise.all(
+        defaultOrgs.map(async (org) => {
+          const exists = await Organization.findOne({
+            where: { orgUid: org.orgUid },
+          });
+
+          if (!exists) {
+            if (serverAvailable(org.ip, org.port)) {
+              Organization.importOrganization(org.orgUid, org.ip, org.port);
+            }
+          }
+        }),
+      );
+    } catch (error) {
+      console.log(error);
+    }
   };
 }
 

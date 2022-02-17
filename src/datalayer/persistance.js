@@ -99,7 +99,7 @@ export const getRoots = async (storeIds) => {
   }
 };
 
-export const getRoot = async (storeId) => {
+export const getRoot = async (storeId, ignoreEmptyStore = false) => {
   const options = {
     url: `${rpcUrl}/get_root`,
     body: JSON.stringify({
@@ -112,7 +112,12 @@ export const getRoot = async (storeId) => {
   try {
     const data = JSON.parse(response);
     console.log(`Root for ${storeId}`, data);
-    if (data.status === 2 && !data.hash.includes('0x00000000000')) {
+    if (
+      (data.confirmed && !ignoreEmptyStore) ||
+      (data.confirmed &&
+        ignoreEmptyStore &&
+        !data.hash.includes('0x00000000000'))
+    ) {
       return data;
     }
 

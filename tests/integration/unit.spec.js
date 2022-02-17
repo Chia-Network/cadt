@@ -6,11 +6,11 @@ const { expect } = chai;
 
 import app from '../../src/server';
 import { UnitMirror } from '../../src/models';
-import { pullPickListValues } from '../../src/utils/picklist-loader';
+import { pullPickListValues } from '../../src/utils/data-loaders';
 import * as testFixtures from '../test-fixtures';
 
-import { POLLING_INTERVAL } from '../../src/datalayer';
-const TEST_WAIT_TIME = POLLING_INTERVAL * 2;
+import datalayer from '../../src/datalayer';
+const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
 describe('Unit Resource Integration Tests', function () {
   let homeOrgUid;
