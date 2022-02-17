@@ -40,14 +40,16 @@ jobs:
       - name: Setup Node 16.x
         uses: actions/setup-node@v2.4.1
         with:
-          node-version: '16.x'
+          node-version: '16.0.0'
 
       - name: Ignore Husky
         run: npm set-script prepare ""
         if: matrix.runs-on != 'windows-latest'
 
       - name: npm install
-        run: npm install
+        run: |
+          node --version
+          npm install
 
       - name: npm cache clear --force
         run: npm cache clear --force
