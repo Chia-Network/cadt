@@ -47,7 +47,9 @@ jobs:
         if: matrix.runs-on != 'windows-latest'
 
       - name: npm install
-        run: npm install
+        run: |
+          node --version
+          npm install
 
       - name: npm cache clear --force
         run: npm cache clear --force
