@@ -1,5 +1,7 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Organization } from '../models';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const task = new Task('sync-organizations', () => {
   console.log('Subscribing to default organizations');

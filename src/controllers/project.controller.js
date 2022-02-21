@@ -16,7 +16,7 @@ import {
   assertProjectRecordExists,
   assertCsvFileInRequest,
   assertHomeOrgExists,
-  assetNoPendingCommits,
+  assertNoPendingCommits,
   assertRecordExistance,
   assertDataLayerAvailable,
 } from '../utils/data-assertions';
@@ -34,7 +34,7 @@ export const create = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const newRecord = _.cloneDeep(req.body);
     // When creating new projects assign a uuid to is so
@@ -187,7 +187,7 @@ export const updateFromXLS = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const { files } = req;
 
@@ -217,7 +217,7 @@ export const update = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
@@ -306,7 +306,7 @@ export const destroy = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
@@ -337,7 +337,7 @@ export const batchUpload = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const csvFile = assertCsvFileInRequest(req);
     await createProjectRecordsFromCsv(csvFile);

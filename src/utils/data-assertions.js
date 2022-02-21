@@ -14,7 +14,7 @@ export const assertDataLayerAvailable = async () => {
   }
 };
 
-export const assetNoPendingCommits = async () => {
+export const assertNoPendingCommits = async () => {
   if (process.env.USE_SIMULATOR === 'true') {
     const pendingCommits = await Staging.findAll({
       where: { commited: true },
@@ -30,6 +30,16 @@ export const assetNoPendingCommits = async () => {
     if (await datalayer.hasUnconfirmedTransactions()) {
       throw new Error(
         'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
+      );
+    }
+  }
+};
+
+export const assertWalletIsSynced = async () => {
+  if (process.env.USE_SIMULATOR === 'false') {
+    if (!(await datalayer.walletIsSynced())) {
+      throw new Error(
+        'Your wallet is syncing, please wait for it to sync and try again',
       );
     }
   }
