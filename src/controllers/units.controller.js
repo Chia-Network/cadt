@@ -74,8 +74,13 @@ export const create = async (req, res) => {
     }
 
     if (newRecord.issuance) {
-      newRecord.issuance.id = uuidv4();
-      newRecord.issuance.orgUid = orgUid;
+      if (newRecord.issuance.id) {
+        // if we are reusing a record, make sure it exists
+        await assertRecordExistance(Issuance, newRecord.issuance.id);
+      } else {
+        newRecord.issuance.id = uuidv4();
+        newRecord.issuance.orgUid = orgUid;
+      }
     }
 
     const stagedData = {
