@@ -28,12 +28,7 @@ const getBaseOptions = () => {
 const walletIsSynced = async () => {
   const options = {
     url: `${rpcUrl}/get_sync_status`,
-    body: JSON.stringify({
-      genesis_initialized: true,
-      success: true,
-      synced: true,
-      syncing: false,
-    }),
+    body: JSON.stringify({}),
   };
 
   const response = await request(Object.assign({}, getBaseOptions(), options));
