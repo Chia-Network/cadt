@@ -151,13 +151,6 @@ const dataLayerWasUpdated = async () => {
   const updateStoreInfo = await Promise.all(
     updatedStores.map(async (rootHash) => {
       const storeId = rootHash.id.replace('0x', '');
-
-      // update the organization with the new hash
-      /*  await Organization.update(
-        { registryHash: rootHash.hash },
-        { where: { registryId: storeId } },
-      );*/
-
       return { storeId, rootHash: rootHash.hash };
     }),
   );

@@ -39,7 +39,7 @@ export const importOrg = async (req, res) => {
         'Importing and subscribing organization this can take a few mins.',
     });
 
-    return Organization.subscribeToOrganization(orgUid, ip, port);
+    return Organization.importOrganization(orgUid, ip, port);
   } catch (error) {
     console.trace(error);
     res.status(400).json({
