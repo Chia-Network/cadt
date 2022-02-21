@@ -34,7 +34,7 @@ export const serverAvailable = async (server, port) => {
     return true;
   } catch (err) {
     if (JSON.stringify(err).includes('Python')) {
-      console.log('SERVER IS AVAILABLE');
+      console.log('SERVER IS AVAILABLE', server);
       return true;
     } else {
       return false;
