@@ -94,6 +94,7 @@ class Organization extends Model {
   // eslint-disable-next-line
   static importOrganization = async (orgUid, ip, port) => {
     try {
+      console.log('Subscribing to', orgUid, ip, port);
       const orgData = await datalayer.getSubscribedStoreData(orgUid, ip, port);
 
       console.log(orgData);
