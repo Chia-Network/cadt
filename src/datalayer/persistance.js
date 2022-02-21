@@ -127,13 +127,19 @@ export const getRoot = async (storeId, ignoreEmptyStore = false) => {
   }
 };
 
-export const getStoreData = async (storeId) => {
+export const getStoreData = async (storeId, rootHash) => {
   if (storeId) {
+    const payload = {
+      id: storeId,
+    };
+
+    if (rootHash) {
+      payload.root_hash = rootHash;
+    }
+
     const options = {
       url: `${rpcUrl}/get_keys_values`,
-      body: JSON.stringify({
-        id: storeId,
-      }),
+      body: JSON.stringify(payload),
     };
 
     const response = await request(
