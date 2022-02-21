@@ -28,12 +28,7 @@ const startDataLayerUpdatePolling = async () => {
         );
       }),
     );
-  } else {
-    logUpdate(`Polling For Updates ${frames[Math.floor(Math.random() * 3)]}`);
   }
-
-  // after all the updates are complete, check again in a bit
-  setTimeout(() => startDataLayerUpdatePolling(), POLLING_INTERVAL);
 };
 
 const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
