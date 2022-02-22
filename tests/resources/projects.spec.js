@@ -200,7 +200,7 @@ describe('Project Resource CRUD', function () {
     });
   });
 
-  describe.only('PUT Projects - Update', function () {
+  describe('PUT Projects - Update', function () {
     describe('error states', function () {
       it('errors if no home organization exists', async function () {
         const responseCreate = await supertest(app)
