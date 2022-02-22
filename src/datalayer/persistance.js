@@ -193,7 +193,7 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
     }),
   };
 
-  console.log('RPC Call: '`${rpcUrl}/subscribe`, storeId, ip, port);
+  console.log('RPC Call: ', `${rpcUrl}/subscribe`, storeId, ip, port);
 
   try {
     const response = await request(
