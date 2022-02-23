@@ -18,7 +18,7 @@ import {
   assertSumOfSplitUnitsIsValid,
   assertCsvFileInRequest,
   assertHomeOrgExists,
-  assetNoPendingCommits,
+  assertNoPendingCommits,
   assertRecordExistance,
   assertDataLayerAvailable,
 } from '../utils/data-assertions';
@@ -36,7 +36,7 @@ import xlsx from 'node-xlsx';
 export const create = async (req, res) => {
   try {
     await assertDataLayerAvailable();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
     await assertHomeOrgExists();
 
     const newRecord = _.cloneDeep(req.body);
@@ -223,7 +223,7 @@ export const updateFromXLS = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const { files } = req;
 
@@ -250,7 +250,7 @@ export const update = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
@@ -336,7 +336,7 @@ export const destroy = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
@@ -366,7 +366,7 @@ export const split = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
@@ -443,7 +443,7 @@ export const batchUpload = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const csvFile = assertCsvFileInRequest(req);
     await createUnitRecordsFromCsv(csvFile);

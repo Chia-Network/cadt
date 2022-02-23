@@ -153,7 +153,7 @@ export const getStoreData = async (storeId, rootHash) => {
       return data;
     }
 
-    console.log('&&&&', data);
+    console.log(data);
   }
 
   return false;
@@ -193,7 +193,7 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
     }),
   };
 
-  console.log('Subscribing to: ', storeId, ip, port);
+  console.log('RPC Call: ', `${rpcUrl}/subscribe`, storeId, ip, port);
 
   try {
     const response = await request(

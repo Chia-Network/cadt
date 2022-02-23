@@ -168,8 +168,7 @@ const getSubscribedStoreData = async (
   alreadySubscribed = false,
   retry = 0,
 ) => {
-  console.log('Subscribing to', storeId, ip, port);
-  if (retry > 10) {
+  if (retry >= 20) {
     throw new Error('Max retrys exceeded, Can not subscribe to organization');
   }
 
