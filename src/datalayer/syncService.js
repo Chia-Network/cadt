@@ -216,11 +216,25 @@ const getSubscribedStoreData = async (
   }, {});
 };
 
+const getRootHistory = (storeId) => {
+  if (process.env.USE_SIMULATOR !== 'true') {
+    return dataLayer.getRootHistory(storeId);
+  }
+};
+
+const getRootDiff = (storeId, root1, root2) => {
+  if (process.env.USE_SIMULATOR !== 'true') {
+    return dataLayer.getRootDiff(storeId, root1, root2);
+  }
+};
+
 export default {
   startDataLayerUpdatePolling,
   syncDataLayerStoreToClimateWarehouse,
   dataLayerWasUpdated,
   subscribeToStoreOnDataLayer,
   getSubscribedStoreData,
+  getRootHistory,
+  getRootDiff,
   POLLING_INTERVAL,
 };

@@ -33,6 +33,7 @@ export * from './meta';
 export * from './simulator';
 export * from './labelUnits';
 export * from './estimations';
+export * from './audit';
 
 export const ModelKeys = {
   unit: Unit,

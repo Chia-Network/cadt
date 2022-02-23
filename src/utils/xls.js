@@ -36,7 +36,7 @@ export const sendXls = (name, bytes, response) => {
 
 export const encodeValue = (value, hex = false) => {
   // Todo: address this elsewhere (hide these columns). This is a quick fix for complex relationships in xlsx
-  if (typeof value === 'object') {
+  if (value && typeof value === 'object') {
     value = value.id;
   }
 

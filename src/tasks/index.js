@@ -3,6 +3,7 @@ import { ToadScheduler } from 'toad-scheduler';
 import syncDataLayer from './sync-datalayer';
 import syncOrganizations from './sync-organizations';
 import syncPickLists from './sync-picklists';
+import syncAudit from './sync-audit-table';
 
 const scheduler = new ToadScheduler();
 
@@ -15,7 +16,12 @@ const addJobToScheduler = (job) => {
 
 const start = () => {
   // add default jobs
-  const defaultJobs = [syncDataLayer, syncOrganizations, syncPickLists];
+  const defaultJobs = [
+    syncDataLayer,
+    syncOrganizations,
+    syncPickLists,
+    syncAudit,
+  ];
   defaultJobs.forEach((defaultJob) => {
     jobRegistry[defaultJob.id] = defaultJob;
     scheduler.addSimpleIntervalJob(defaultJob);
