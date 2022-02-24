@@ -9,3 +9,4 @@ export * from './relatedProjects.validations';
 export * from './estimations.validations';
 export * from './projects.validations';
 export * from './units.validations';
+export * from './audit.validations';

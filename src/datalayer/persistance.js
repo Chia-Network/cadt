@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
@@ -211,5 +213,57 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
   } catch (error) {
     console.log('Error Subscribing: ', error);
     return false;
+  }
+};
+
+export const getRootHistory = async (storeId) => {
+  const options = {
+    url: `${rpcUrl}/get_root_history`,
+    body: JSON.stringify({
+      id: storeId,
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return _.get(data, 'root_history', []);
+    }
+
+    return [];
+  } catch (error) {
+    return [];
+  }
+};
+
+export const getRootDiff = async (storeId, root1, root2) => {
+  const options = {
+    url: `${rpcUrl}/get_kv_diff`,
+    body: JSON.stringify({
+      id: storeId,
+      hash_1: root1,
+      hash_2: root2,
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return _.get(data, 'diff', []);
+    }
+
+    return [];
+  } catch (error) {
+    return [];
   }
 };
