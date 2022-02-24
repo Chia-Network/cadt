@@ -27,7 +27,7 @@ jobs:
           - runs-on: macos-latest
             artifact-name: macos-x64
             build-command: npm run create-mac-x64-dist
-          - runs-on: windows-latest
+          - runs-on: windows-2019
             artifact-name: windows-x64
             build-command: npm run create-win-x64-dist
 
