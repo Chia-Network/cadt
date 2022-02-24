@@ -3,7 +3,7 @@ import supertest from 'supertest';
 import newProject from '../test-data/new-project.json';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import { expect } from 'chai';
-describe.only('Staging Resource CRUD', function () {
+describe('Staging Resource CRUD', function () {
   before(async function () {
     await pullPickListValues();
   });
@@ -42,7 +42,9 @@ describe.only('Staging Resource CRUD', function () {
     it('Staging record is removed when Insert records propagate through the datalayer', function () {});
     it('Staging record is removed when Update records propagate through the datalayer', function () {});
     it('Staging record is removed when Delete records propagate through the datalayer', function () {});
-    it('can commit just the project staging records optionally', function () {});
+    it('can commit just the project staging records optionally', async function () {
+      await supertest(app).post('/v1/projects').send(newProject);
+    });
     it('can commit just the unit staging records optionally', function () {});
   });
 
