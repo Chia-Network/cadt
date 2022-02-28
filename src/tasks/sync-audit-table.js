@@ -18,7 +18,7 @@ const task = new Task('sync-audit', async () => {
 });
 
 const job = new SimpleIntervalJob(
-  { minutes: 5, runImmediately: true },
+  { seconds: 30, runImmediately: true },
   task,
   'sync-audit',
 );
