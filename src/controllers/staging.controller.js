@@ -7,6 +7,7 @@ import {
   assertNoPendingCommits,
   assertWalletIsSynced,
   assertDataLayerAvailable,
+  assertIfReadOnlyMode,
 } from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
@@ -41,6 +42,7 @@ export const findAll = async (req, res) => {
 
 export const commit = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertHomeOrgExists();
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
@@ -58,6 +60,7 @@ export const commit = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertHomeOrgExists();
     await assertStagingRecordExists(req.body.uuid);
     await Staging.destroy({
@@ -78,6 +81,7 @@ export const destroy = async (req, res) => {
 
 export const clean = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertHomeOrgExists();
     await Staging.destroy({
       where: {},
