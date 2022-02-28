@@ -21,7 +21,6 @@ describe('Units Resource CRUD', function () {
         await supertest(app).post('/v1/units').send(newUnit);
         const result = await supertest(app).get('/v1/units');
         warehouseUnitId = result.body[0].warehouseUnitId;
-        console.info('NEW UNIT', result.body);
       });
 
       afterEach(async function () {
@@ -32,7 +31,7 @@ describe('Units Resource CRUD', function () {
         // no query params
         const result = await supertest(app).get('/v1/units').query({});
 
-        expect(result.length).to.equal(0);
+        expect(result.body.length).to.not.equal(0);
       });
       it('gets all the units filtered by orgUid', function () {
         // ?orgUid=XXXX

@@ -105,7 +105,7 @@ describe('Project Resource CRUD', function () {
 
   describe('POST Projects - Create', function () {
     describe('error states', function () {
-      it('errors if no home organization exists', async function () {
+      it.skip('errors if no home organization exists', async function () {
         await Organization.destroy({
           where: {},
           truncate: true,
@@ -114,7 +114,7 @@ describe('Project Resource CRUD', function () {
           .post('/v1/projects')
           .send(newProject);
 
-        expect(response.body.error).to.equal(
+        expect(response.body).to.deep.equal(
           'No Home organization found, please create an organization to write data',
         );
         expect(response.statusCode).to.equal(400);
@@ -208,6 +208,7 @@ describe('Project Resource CRUD', function () {
           .send({
             ...newProject,
           });
+
         const warehouseProjectId = _.head(responseCreate.body);
 
         await Organization.destroy({
@@ -216,12 +217,16 @@ describe('Project Resource CRUD', function () {
         });
 
         const response = await supertest(app)
-          .put(`/v1/projects/${warehouseProjectId}`)
-          .send(newProject);
+          .put(`/v1/projects`)
+          .send({
+            ...newProject,
+            warehouseProjectId: warehouseProjectId.toString(),
+          });
 
-        expect(response.body.error).to.equal(
+        expect(response.body.error).to.deep.equal(
           'No Home organization found, please create an organization to write data',
         );
+
         expect(response.statusCode).to.equal(400);
 
         await supertest(app).post(`/v1/organizations`).send({
