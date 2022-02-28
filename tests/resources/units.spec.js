@@ -1,16 +1,37 @@
 //import chai from 'chai';
 ///import chaiHttp from 'chai-http';
 //import app from './../../src/server';
-
+import app from '../../src/server';
+import supertest from 'supertest';
+import newUnit from '../test-data/new-unit.json';
+import { pullPickListValues } from '../../src/utils/data-loaders';
+import { expect } from 'chai';
 describe('Units Resource CRUD', function () {
+  before(async function () {
+    await pullPickListValues();
+  });
   describe('GET Units', function () {
     describe('error states', function () {
       it('errors if there if there is no connection to the datalayer', function () {});
     });
 
     describe('success states', function () {
-      it('gets all the units available', function () {
+      let warehouseUnitId;
+      beforeEach(async function () {
+        await supertest(app).post('/v1/units').send(newUnit);
+        const result = await supertest(app).get('/v1/units');
+        warehouseUnitId = result.body[0].warehouseUnitId;
+      });
+
+      afterEach(async function () {
+        await supertest(app).delete('/v1/units').send(newUnit);
+      });
+
+      it('gets all the units available', async function () {
         // no query params
+        const result = await supertest(app).get('/v1/units').query({});
+
+        expect(result.body.length).to.not.equal(0);
       });
       it('gets all the units filtered by orgUid', function () {
         // ?orgUid=XXXX
