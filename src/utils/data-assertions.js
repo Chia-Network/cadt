@@ -14,6 +14,12 @@ export const assertDataLayerAvailable = async () => {
   }
 };
 
+export const assertIfReadOnlyMode = async () => {
+  if (process.env.READ_ONLY === 'true') {
+    throw new Error('You can not use this API in read-only mode');
+  }
+};
+
 export const assertNoPendingCommits = async () => {
   if (process.env.USE_SIMULATOR === 'true') {
     const pendingCommits = await Staging.findAll({

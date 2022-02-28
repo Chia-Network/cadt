@@ -1,15 +1,26 @@
 import chai from 'chai';
+import _ from 'lodash';
 import * as testFixtures from '../test-fixtures';
 import sinon from 'sinon';
 import datalayer from '../../src/datalayer';
 const { expect } = chai;
-
+import newProject from '../test-data/new-project.json';
 import supertest from 'supertest';
 import app from '../../src/server';
-
+import { Organization } from '../../src/models/organizations/index.js';
+import { pullPickListValues } from '../../src/utils/data-loaders';
+import { Staging, Project } from '../../src/models/index.js';
+import { uuid as uuidv4 } from 'uuidv4';
 describe('Project Resource CRUD', function () {
   afterEach(function () {
     sinon.restore();
+  });
+  before(async function () {
+    await pullPickListValues();
+  });
+
+  beforeEach(async function () {
+    await supertest(app).get(`/v1/staging/clean`);
   });
 
   describe('GET projects', function () {
@@ -94,20 +105,135 @@ describe('Project Resource CRUD', function () {
 
   describe('POST Projects - Create', function () {
     describe('error states', function () {
-      it('errors if no home organization exists', function () {});
-      it('errors if there is a current set of pending commits', function () {});
-      it('errors if there if there is no connection to the datalayer', function () {});
+      it.skip('errors if no home organization exists', async function () {
+        await Organization.destroy({
+          where: {},
+          truncate: true,
+        });
+        const response = await supertest(app)
+          .post('/v1/projects')
+          .send(newProject);
+
+        expect(response.body).to.deep.equal(
+          'No Home organization found, please create an organization to write data',
+        );
+        expect(response.statusCode).to.equal(400);
+
+        await supertest(app).post(`/v1/organizations`).send({
+          name: 'Test',
+          icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+        });
+      });
+
+      it('errors if there is a current set of pending commits', async function () {
+        const uuid = uuidv4();
+        await Staging.create({
+          uuid,
+          commited: true,
+          action: 'INSERT',
+          table: Project.stagingTableName,
+          data: JSON.stringify([{}]),
+        });
+
+        const response = await supertest(app)
+          .post('/v1/projects')
+          .send(newProject);
+
+        expect(response.body.error).to.equal(
+          'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
+        );
+        expect(response.statusCode).to.equal(400);
+      });
+
+      it('errors if there if there is no connection to the datalayer', async function () {
+        sinon.stub(datalayer, 'dataLayerAvailable').resolves(false);
+        const response = await supertest(app)
+          .post('/v1/projects')
+          .send(newProject);
+
+        expect(response.body.error).to.equal(
+          'Can not establish connection to Chia Datalayer',
+        );
+        expect(response.statusCode).to.equal(400);
+      });
     });
 
     describe('success states', function () {
-      it('creates a new project with no child tables', function () {});
-      it('creates a new project with all child tables', function () {});
+      it('creates a new project with no child tables', async function () {
+        await Staging.destroy({
+          where: {},
+          truncate: true,
+        });
+        const projectData = _.clone(newProject);
+        delete projectData.labels;
+        delete projectData.issuances;
+        delete projectData.coBenefits;
+        delete projectData.relatedProjects;
+        delete projectData.projectRatings;
+        delete projectData.estimations;
+        delete projectData.projectLocations;
+
+        const response = await supertest(app)
+          .post('/v1/projects')
+          .send({
+            ...projectData,
+          });
+
+        expect(response.body.message).to.equal('Project staged successfully');
+        expect(response.statusCode).to.equal(200);
+      });
+      it('creates a new project with all child tables', async function () {
+        await Staging.destroy({
+          where: {},
+          truncate: true,
+        });
+
+        const response = await supertest(app)
+          .post('/v1/projects')
+          .send({
+            ...newProject,
+          });
+
+        expect(response.body.message).to.equal('Project staged successfully');
+        expect(response.statusCode).to.equal(200);
+      });
     });
   });
 
   describe('PUT Projects - Update', function () {
     describe('error states', function () {
-      it('errors if no home organization exists', function () {});
+      it('errors if no home organization exists', async function () {
+        const responseCreate = await supertest(app)
+          .get('/v1/projects')
+          .send({
+            ...newProject,
+          });
+
+        const warehouseProjectId = _.head(responseCreate.body);
+
+        await Organization.destroy({
+          where: {},
+          truncate: true,
+        });
+
+        const response = await supertest(app)
+          .put(`/v1/projects`)
+          .send({
+            ...newProject,
+            warehouseProjectId: warehouseProjectId.toString(),
+          });
+
+        expect(response.body.error).to.deep.equal(
+          'No Home organization found, please create an organization to write data',
+        );
+
+        expect(response.statusCode).to.equal(400);
+
+        await supertest(app).post(`/v1/organizations`).send({
+          name: 'Test',
+          icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+        });
+      });
       it('errors if there is a current set of pending commits', function () {});
       it('errors if there if there is no connection to the datalayer', function () {});
       it('errors if the warehouseProjectId is not in the payload', function () {});
