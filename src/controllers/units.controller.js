@@ -21,6 +21,7 @@ import {
   assertNoPendingCommits,
   assertRecordExistance,
   assertDataLayerAvailable,
+  assertIfReadOnlyMode,
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
@@ -35,6 +36,7 @@ import xlsx from 'node-xlsx';
 
 export const create = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertNoPendingCommits();
     await assertHomeOrgExists();
@@ -222,6 +224,7 @@ export const findOne = async (req, res) => {
 
 export const updateFromXLS = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
@@ -249,6 +252,7 @@ export const updateFromXLS = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
@@ -335,6 +339,7 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
@@ -365,6 +370,7 @@ export const destroy = async (req, res) => {
 
 export const split = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
@@ -442,6 +448,7 @@ export const split = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();

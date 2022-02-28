@@ -4,6 +4,7 @@ import {
   assertHomeOrgExists,
   assertWalletIsSynced,
   assertDataLayerAvailable,
+  assertIfReadOnlyMode,
 } from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
@@ -12,6 +13,7 @@ export const findAll = async (req, res) => {
 
 export const create = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
@@ -40,6 +42,7 @@ export const create = async (req, res) => {
 // eslint-disable-next-line
 export const importOrg = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
@@ -62,6 +65,7 @@ export const importOrg = async (req, res) => {
 
 export const subscribeToOrganization = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
