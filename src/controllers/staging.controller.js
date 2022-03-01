@@ -5,6 +5,9 @@ import {
   assertStagingRecordExists,
   assertHomeOrgExists,
   assertNoPendingCommits,
+  assertWalletIsSynced,
+  assertDataLayerAvailable,
+  assertIfReadOnlyMode,
 } from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
@@ -39,7 +42,10 @@ export const findAll = async (req, res) => {
 
 export const commit = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertHomeOrgExists();
+    await assertDataLayerAvailable();
+    await assertWalletIsSynced();
     await assertNoPendingCommits();
 
     await Staging.pushToDataLayer(_.get(req, 'query.table', null));
@@ -54,6 +60,7 @@ export const commit = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertHomeOrgExists();
     await assertStagingRecordExists(req.body.uuid);
     await Staging.destroy({
@@ -74,6 +81,7 @@ export const destroy = async (req, res) => {
 
 export const clean = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertHomeOrgExists();
     await Staging.destroy({
       where: {},

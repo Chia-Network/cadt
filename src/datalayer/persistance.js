@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
@@ -127,13 +129,19 @@ export const getRoot = async (storeId, ignoreEmptyStore = false) => {
   }
 };
 
-export const getStoreData = async (storeId) => {
+export const getStoreData = async (storeId, rootHash) => {
   if (storeId) {
+    const payload = {
+      id: storeId,
+    };
+
+    if (rootHash) {
+      payload.root_hash = rootHash;
+    }
+
     const options = {
       url: `${rpcUrl}/get_keys_values`,
-      body: JSON.stringify({
-        id: storeId,
-      }),
+      body: JSON.stringify(payload),
     };
 
     const response = await request(
@@ -147,7 +155,7 @@ export const getStoreData = async (storeId) => {
       return data;
     }
 
-    console.log('&&&&', data);
+    console.log(data);
   }
 
   return false;
@@ -187,7 +195,7 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
     }),
   };
 
-  console.log('Subscribing to: ', storeId, ip, port);
+  console.log('RPC Call: ', `${rpcUrl}/subscribe`, storeId, ip, port);
 
   try {
     const response = await request(
@@ -205,5 +213,57 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
   } catch (error) {
     console.log('Error Subscribing: ', error);
     return false;
+  }
+};
+
+export const getRootHistory = async (storeId) => {
+  const options = {
+    url: `${rpcUrl}/get_root_history`,
+    body: JSON.stringify({
+      id: storeId,
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return _.get(data, 'root_history', []);
+    }
+
+    return [];
+  } catch (error) {
+    return [];
+  }
+};
+
+export const getRootDiff = async (storeId, root1, root2) => {
+  const options = {
+    url: `${rpcUrl}/get_kv_diff`,
+    body: JSON.stringify({
+      id: storeId,
+      hash_1: root1,
+      hash_2: root2,
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return _.get(data, 'diff', []);
+    }
+
+    return [];
+  } catch (error) {
+    return [];
   }
 };

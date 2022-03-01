@@ -13,34 +13,41 @@ const frames = ['-', '\\', '|', '/'];
 
 console.log('Start Datalayer Update Polling');
 const startDataLayerUpdatePolling = async () => {
-  const storeIdsToUpdate = await dataLayerWasUpdated();
-  if (storeIdsToUpdate.length) {
+  const updateStoreInfo = await dataLayerWasUpdated();
+  if (updateStoreInfo.length) {
     await Promise.all(
-      storeIdsToUpdate.map(async (storeId) => {
+      updateStoreInfo.map(async (store) => {
         logUpdate(
-          `Updates found syncing storeId: ${storeId} ${
+          `Updates found syncing storeId: ${store.storeId} ${
             frames[Math.floor(Math.random() * 3)]
           }`,
         );
-        await syncDataLayerStoreToClimateWarehouse(storeId);
+        await syncDataLayerStoreToClimateWarehouse(
+          store.storeId,
+          store.rootHash,
+        );
       }),
     );
-  } else {
-    logUpdate(`Polling For Updates ${frames[Math.floor(Math.random() * 3)]}`);
   }
-
-  // after all the updates are complete, check again in a bit
-  setTimeout(() => startDataLayerUpdatePolling(), POLLING_INTERVAL);
 };
 
-const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
+const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
   let storeData;
 
   if (process.env.USE_SIMULATOR === 'true') {
-    storeData = await simulator.getStoreData(storeId);
+    storeData = await simulator.getStoreData(storeId, rootHash);
   } else {
-    storeData = await dataLayer.getStoreData(storeId);
+    storeData = await dataLayer.getStoreData(storeId, rootHash);
   }
+
+  if (!_.get(storeData, 'keys_values', []).length) {
+    return;
+  }
+
+  await Organization.update(
+    { registryHash: rootHash },
+    { where: { registryId: storeId } },
+  );
 
   const organizationToTruncate = await Organization.findOne({
     attributes: ['orgUid'],
@@ -86,7 +93,7 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
       await Staging.cleanUpCommitedAndInvalidRecords();
     }
   } catch (error) {
-    console.trace('ERROR DURING SYNC TRANSACTION', error);
+    console.trace('ERROR DURING SYNC TRANSACTION', error, '!!!', storeData);
   }
 };
 
@@ -136,21 +143,14 @@ const dataLayerWasUpdated = async () => {
     return [];
   }
 
-  const updatedStoreIds = await Promise.all(
+  const updateStoreInfo = await Promise.all(
     updatedStores.map(async (rootHash) => {
       const storeId = rootHash.id.replace('0x', '');
-
-      // update the organization with the new hash
-      await Organization.update(
-        { registryHash: rootHash.hash },
-        { where: { registryId: storeId } },
-      );
-
-      return storeId;
+      return { storeId, rootHash: rootHash.hash };
     }),
   );
 
-  return updatedStoreIds;
+  return updateStoreInfo;
 };
 
 const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
@@ -168,9 +168,8 @@ const getSubscribedStoreData = async (
   alreadySubscribed = false,
   retry = 0,
 ) => {
-  console.log('Subscribing to', storeId, ip, port);
-  if (retry > 10) {
-    throw new Error('Max retries exceeded, Can not subscribe to organization');
+  if (retry >= 20) {
+    throw new Error('Max retrys exceeded, Can not subscribe to organization');
   }
 
   if (!alreadySubscribed) {
@@ -200,7 +199,9 @@ const getSubscribedStoreData = async (
     encodedData = await dataLayer.getStoreData(storeId);
   }
 
-  if (!encodedData) {
+  console.log('!!!!', encodedData?.keys_values);
+
+  if (_.isEmpty(encodedData?.keys_values)) {
     console.log(`Retrying...`, retry + 1);
     console.log('...');
     await new Promise((resolve) => setTimeout(() => resolve(), 30000));
@@ -215,11 +216,25 @@ const getSubscribedStoreData = async (
   }, {});
 };
 
+const getRootHistory = (storeId) => {
+  if (process.env.USE_SIMULATOR !== 'true') {
+    return dataLayer.getRootHistory(storeId);
+  }
+};
+
+const getRootDiff = (storeId, root1, root2) => {
+  if (process.env.USE_SIMULATOR !== 'true') {
+    return dataLayer.getRootDiff(storeId, root1, root2);
+  }
+};
+
 export default {
   startDataLayerUpdatePolling,
   syncDataLayerStoreToClimateWarehouse,
   dataLayerWasUpdated,
   subscribeToStoreOnDataLayer,
   getSubscribedStoreData,
+  getRootHistory,
+  getRootDiff,
   POLLING_INTERVAL,
 };

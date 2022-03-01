@@ -50,9 +50,17 @@ class Organization extends Model {
       process.env.USE_SIMULATOR === 'true'
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
         : await datalayer.createDataLayerStore();
-
+    console.log({
+      newOrganizationId,
+    });
     const newRegistryId = await datalayer.createDataLayerStore();
+    console.log({
+      newRegistryId,
+    });
     const registryVersionId = await datalayer.createDataLayerStore();
+    console.log({
+      registryVersionId,
+    });
 
     // sync the organization store
     await datalayer.syncDataLayer(newOrganizationId, {
@@ -86,7 +94,10 @@ class Organization extends Model {
   // eslint-disable-next-line
   static importOrganization = async (orgUid, ip, port) => {
     try {
+      console.log('Subscribing to', orgUid, ip, port);
       const orgData = await datalayer.getSubscribedStoreData(orgUid, ip, port);
+
+      console.log(orgData);
 
       if (!orgData.registryId) {
         throw new Error(

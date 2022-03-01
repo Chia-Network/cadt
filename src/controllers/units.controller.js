@@ -21,6 +21,7 @@ import {
   assertNoPendingCommits,
   assertRecordExistance,
   assertDataLayerAvailable,
+  assertIfReadOnlyMode,
 } from '../utils/data-assertions';
 
 import { createUnitRecordsFromCsv } from '../utils/csv-utils';
@@ -35,6 +36,7 @@ import xlsx from 'node-xlsx';
 
 export const create = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertNoPendingCommits();
     await assertHomeOrgExists();
@@ -74,8 +76,13 @@ export const create = async (req, res) => {
     }
 
     if (newRecord.issuance) {
-      newRecord.issuance.id = uuidv4();
-      newRecord.issuance.orgUid = orgUid;
+      if (newRecord.issuance.id) {
+        // if we are reusing a record, make sure it exists
+        await assertRecordExistance(Issuance, newRecord.issuance.id);
+      } else {
+        newRecord.issuance.id = uuidv4();
+        newRecord.issuance.orgUid = orgUid;
+      }
     }
 
     const stagedData = {
@@ -206,6 +213,7 @@ export const findAll = async (req, res) => {
       );
     }
   } catch (error) {
+    console.trace(error);
     res.status(400).json({
       message: 'Error retrieving units',
       error: error.message,
@@ -233,6 +241,7 @@ export const findOne = async (req, res) => {
 
 export const updateFromXLS = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
@@ -260,6 +269,7 @@ export const updateFromXLS = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
@@ -346,6 +356,7 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
@@ -376,6 +387,7 @@ export const destroy = async (req, res) => {
 
 export const split = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
@@ -453,6 +465,7 @@ export const split = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();

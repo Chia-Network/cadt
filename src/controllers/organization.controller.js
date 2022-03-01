@@ -1,6 +1,11 @@
 import { Organization } from '../models/organizations';
 
-import { assertHomeOrgExists } from '../utils/data-assertions';
+import {
+  assertHomeOrgExists,
+  assertWalletIsSynced,
+  assertDataLayerAvailable,
+  assertIfReadOnlyMode,
+} from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
@@ -8,6 +13,10 @@ export const findAll = async (req, res) => {
 
 export const create = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertWalletIsSynced();
+
     const myOrganization = await Organization.getHomeOrg();
 
     if (myOrganization) {
@@ -32,14 +41,19 @@ export const create = async (req, res) => {
 
 // eslint-disable-next-line
 export const importOrg = async (req, res) => {
-  const { orgUid, ip, port } = req.body;
   try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertWalletIsSynced();
+
+    const { orgUid, ip, port } = req.body;
+
     res.json({
       message:
         'Importing and subscribing organization this can take a few mins.',
     });
 
-    return Organization.subscribeToOrganization(orgUid, ip, port);
+    return Organization.importOrganization(orgUid, ip, port);
   } catch (error) {
     console.trace(error);
     res.status(400).json({
@@ -51,6 +65,9 @@ export const importOrg = async (req, res) => {
 
 export const subscribeToOrganization = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertWalletIsSynced();
     await assertHomeOrgExists();
 
     await Organization.subscribeToOrganization(req.body.orgUid);

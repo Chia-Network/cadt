@@ -25,15 +25,15 @@ module.exports = {
     required: true,
   },
   ratingRangeHighest: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     required: true,
   },
   ratingRangeLowest: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     requred: true,
   },
   rating: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     requred: true,
   },
   ratingLink: Sequelize.STRING,

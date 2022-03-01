@@ -25,6 +25,23 @@ const getBaseOptions = () => {
   return baseOptions;
 };
 
+const walletIsSynced = async () => {
+  const options = {
+    url: `${rpcUrl}/get_sync_status`,
+    body: JSON.stringify({}),
+  };
+
+  const response = await request(Object.assign({}, getBaseOptions(), options));
+
+  const data = JSON.parse(response);
+
+  if (data.success) {
+    return data.synced;
+  }
+
+  return false;
+};
+
 const hasUnconfirmedTransactions = async () => {
   const options = {
     url: `${rpcUrl}/get_transactions`,
@@ -44,4 +61,5 @@ const hasUnconfirmedTransactions = async () => {
 
 export default {
   hasUnconfirmedTransactions,
+  walletIsSynced,
 };
