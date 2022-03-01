@@ -16,7 +16,7 @@ import {
   assertProjectRecordExists,
   assertCsvFileInRequest,
   assertHomeOrgExists,
-  assetNoPendingCommits,
+  assertNoPendingCommits,
   assertRecordExistance,
   assertDataLayerAvailable,
 } from '../utils/data-assertions';
@@ -34,7 +34,7 @@ export const create = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const newRecord = _.cloneDeep(req.body);
     // When creating new projects assign a uuid to is so
@@ -108,12 +108,19 @@ export const findAll = async (req, res) => {
       // Remove any unsupported columns
       columns = columns.filter((col) =>
         Project.defaultColumns
-          .concat(includes.map((model) => model.name + 's'))
+          .concat(
+            includes.map(
+              (include) =>
+                `${include.model.name}${include.pluralize ? 's' : ''}`,
+            ),
+          )
           .includes(col),
       );
     } else {
       columns = Project.defaultColumns.concat(
-        includes.map((model) => model.name + 's'),
+        includes.map(
+          (include) => `${include.model.name}${include.pluralize ? 's' : ''}`,
+        ),
       );
     }
 
@@ -153,7 +160,14 @@ export const findAll = async (req, res) => {
     } else {
       return sendXls(
         Project.name,
-        createXlsFromSequelizeResults(response, Project, false, false, true),
+        createXlsFromSequelizeResults({
+          rows: response,
+          model: Project,
+          hex: false,
+          toStructuredCsv: false,
+          excludeOrgUid: true,
+          isUserFriendlyFormat: true,
+        }),
         res,
       );
     }
@@ -171,7 +185,9 @@ export const findOne = async (req, res) => {
 
     const query = {
       where: { warehouseProjectId: req.query.warehouseProjectId },
-      include: Project.getAssociatedModels(),
+      include: Project.getAssociatedModels().map(
+        (association) => association.model,
+      ),
     };
 
     res.json(await Project.findOne(query));
@@ -187,7 +203,7 @@ export const updateFromXLS = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const { files } = req;
 
@@ -217,7 +233,7 @@ export const update = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
@@ -306,7 +322,7 @@ export const destroy = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
@@ -337,7 +353,7 @@ export const batchUpload = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const csvFile = assertCsvFileInRequest(req);
     await createProjectRecordsFromCsv(csvFile);

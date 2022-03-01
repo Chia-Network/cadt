@@ -42,17 +42,17 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId) => {
     storeData = await dataLayer.getStoreData(storeId);
   }
 
-  const organizationToTrucate = await Organization.findOne({
+  const organizationToTruncate = await Organization.findOne({
     attributes: ['orgUid'],
     where: { registryId: storeId },
     raw: true,
   });
 
   try {
-    if (_.get(organizationToTrucate, 'orgUid')) {
+    if (_.get(organizationToTruncate, 'orgUid')) {
       const truncateOrganizationPromises = Object.keys(ModelKeys).map((key) =>
         ModelKeys[key].destroy({
-          where: { orgUid: organizationToTrucate.orgUid },
+          where: { orgUid: organizationToTruncate.orgUid },
         }),
       );
 
@@ -170,7 +170,7 @@ const getSubscribedStoreData = async (
 ) => {
   console.log('Subscribing to', storeId, ip, port);
   if (retry > 10) {
-    throw new Error('Max retrys exceeded, Can not subscribe to organization');
+    throw new Error('Max retries exceeded, Can not subscribe to organization');
   }
 
   if (!alreadySubscribed) {

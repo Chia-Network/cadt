@@ -17,6 +17,7 @@ import {
   transformFullXslsToChangeList,
 } from '../../utils/xls';
 import { unitsUpdateSchema } from '../../validations/index.js';
+import { columnsToInclude } from '../../utils/helpers.js';
 
 const { Model } = Sequelize;
 
@@ -69,9 +70,12 @@ class Unit extends Model {
   static getAssociatedModels = () => [
     {
       model: Label,
-      as: 'labels',
+      pluralize: true,
     },
-    Issuance,
+    {
+      model: Issuance,
+      pluralize: false,
+    },
   ];
 
   static associate() {
@@ -181,27 +185,29 @@ class Unit extends Model {
     }
 
     let sql = `
-    SELECT ${fields} FROM units WHERE MATCH (
-        unitOwner,
-        countryJurisdictionOfOwner,
-        inCountryJurisdictionOfOwner,
-        serialNumberBlock,
-        unitIdentifier,
-        unitType,
-        intendedBuyerOrgUid,
-        marketplace,
-        tags,
-        unitStatus,
-        unitTransactionType,
-        unitStatusReason,
-        tokenIssuanceHash,
-        marketplaceIdentifier,
-        unitsIssuanceLocation,
-        unitRegistryLink,
-        unitMarketplaceLink,
-        cooresponingAdjustmentDeclaration,
-        correspondingAdjustmentStatus
-    ) AGAINST '":search"'
+        SELECT ${fields}
+        FROM units
+        WHERE MATCH (
+            unitOwner
+            , countryJurisdictionOfOwner
+            , inCountryJurisdictionOfOwner
+            , serialNumberBlock
+            , unitIdentifier
+            , unitType
+            , intendedBuyerOrgUid
+            , marketplace
+            , tags
+            , unitStatus
+            , unitTransactionType
+            , unitStatusReason
+            , tokenIssuanceHash
+            , marketplaceIdentifier
+            , unitsIssuanceLocation
+            , unitRegistryLink
+            , unitMarketplaceLink
+            , cooresponingAdjustmentDeclaration
+            , correspondingAdjustmentStatus
+            ) AGAINST '":search"'
     `;
 
     if (orgUid) {
@@ -290,26 +296,41 @@ class Unit extends Model {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
 
-    const insertXslsSheets = createXlsFromSequelizeResults(
-      insertRecords,
-      Unit,
-      false,
-      true,
-    );
-
-    const updateXslsSheets = createXlsFromSequelizeResults(
-      updateRecords,
-      Unit,
-      false,
-      true,
-    );
-
     const primaryKeyMap = {
       unit: 'warehouseUnitId',
       labels: 'id',
       label_units: 'id',
       issuances: 'id',
     };
+
+    const deletedRecords = await getDeletedItems(updateRecords, primaryKeyMap);
+
+    const insertXslsSheets = createXlsFromSequelizeResults({
+      rows: insertRecords,
+      model: Unit,
+      hex: false,
+      toStructuredCsv: true,
+      excludeOrgUid: false,
+      isUserFriendlyFormat: false,
+    });
+
+    const updateXslsSheets = createXlsFromSequelizeResults({
+      rows: updateRecords,
+      model: Unit,
+      hex: false,
+      toStructuredCsv: true,
+      excludeOrgUid: false,
+      isUserFriendlyFormat: false,
+    });
+
+    const deleteXslsSheets = createXlsFromSequelizeResults({
+      rows: deletedRecords,
+      model: Unit,
+      hex: false,
+      toStructuredCsv: true,
+      excludeOrgUid: false,
+      isUserFriendlyFormat: false,
+    });
 
     const insertChangeList = await transformFullXslsToChangeList(
       insertXslsSheets,
@@ -323,6 +344,12 @@ class Unit extends Model {
       primaryKeyMap,
     );
 
+    const deletedAssociationsChangeList = await transformFullXslsToChangeList(
+      deleteXslsSheets,
+      'delete',
+      primaryKeyMap,
+    );
+
     return {
       units: [
         ..._.get(insertChangeList, 'unit', []),
@@ -332,17 +359,92 @@ class Unit extends Model {
       labels: [
         ..._.get(insertChangeList, 'labels', []),
         ..._.get(updateChangeList, 'labels', []),
+        ..._.get(deletedAssociationsChangeList, 'labels', []),
       ],
       issuances: [
         ..._.get(insertChangeList, 'issuances', []),
         ..._.get(updateChangeList, 'issuances', []),
+        ..._.get(deletedAssociationsChangeList, 'issuances', []),
       ],
       labelUnits: [
         ..._.get(insertChangeList, 'label_units', []),
         ..._.get(updateChangeList, 'label_units', []),
+        ..._.get(deletedAssociationsChangeList, 'label_units', []),
       ],
     };
   }
+}
+
+/**
+ * Finds the deleted sub-items (e.g. labels)
+ * @param updatedItems {Array<Object>} - The projects updated by the user
+ * @param primaryKeyMap {Object} - Object map containing the primary keys for all tables
+ */
+async function getDeletedItems(updatedItems, primaryKeyMap) {
+  const updatedUnitIds = updatedItems
+    .map((record) => record[primaryKeyMap['unit']])
+    .filter(Boolean);
+
+  let originalProjects = [];
+  if (updatedUnitIds.length > 0) {
+    const includes = Unit.getAssociatedModels();
+
+    const columns = [primaryKeyMap['unit']].concat(
+      includes.map(
+        (include) => `${include.model.name}${include.pluralize ? 's' : ''}`,
+      ),
+    );
+
+    const query = {
+      ...columnsToInclude(columns, includes),
+    };
+
+    const op = Sequelize.Op;
+    originalProjects = await Unit.findAll({
+      where: {
+        [primaryKeyMap['unit']]: {
+          [op.in]: updatedUnitIds,
+        },
+      },
+      ...query,
+    });
+  }
+
+  const associatedColumns = Unit.getAssociatedModels().map(
+    (association) =>
+      `${association.model.name}${association.pluralize ? 's' : ''}`,
+  );
+
+  return originalProjects.map((originalItem) => {
+    const result = { ...originalItem.dataValues };
+
+    const updatedItem = updatedItems.find(
+      (item) =>
+        item[primaryKeyMap['unit']] === originalItem[primaryKeyMap['unit']],
+    );
+    if (updatedItem == null) return;
+
+    associatedColumns.forEach((column) => {
+      if (originalItem[column] == null || !Array.isArray(originalItem[column]))
+        return;
+      if (updatedItem[column] == null || !Array.isArray(updatedItem[column]))
+        return;
+
+      result[column] = [...originalItem[column]];
+      for (let index = originalItem[column].length - 1; index >= 0; --index) {
+        const item = originalItem[column][index];
+        if (
+          updatedItem[column].findIndex(
+            (searchedItem) =>
+              searchedItem[primaryKeyMap[column]] ===
+              item[primaryKeyMap[column]],
+          ) >= 0
+        )
+          result[column].splice(index, 1);
+      }
+    });
+    return result;
+  });
 }
 
 Unit.init(Object.assign({}, ModelTypes, virtualFields), {

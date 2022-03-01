@@ -18,7 +18,7 @@ import {
   assertSumOfSplitUnitsIsValid,
   assertCsvFileInRequest,
   assertHomeOrgExists,
-  assetNoPendingCommits,
+  assertNoPendingCommits,
   assertRecordExistance,
   assertDataLayerAvailable,
 } from '../utils/data-assertions';
@@ -36,7 +36,7 @@ import xlsx from 'node-xlsx';
 export const create = async (req, res) => {
   try {
     await assertDataLayerAvailable();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
     await assertHomeOrgExists();
 
     const newRecord = _.cloneDeep(req.body);
@@ -105,18 +105,25 @@ export const findAll = async (req, res) => {
     let { page, limit, columns, orgUid, search, xls } = req.query;
     let where = orgUid ? { orgUid } : undefined;
 
-    const includes = [Label, Issuance];
+    const includes = Unit.getAssociatedModels();
 
     if (columns) {
       // Remove any unsupported columns
       columns = columns.filter((col) =>
         Unit.defaultColumns
-          .concat(includes.map((model) => model.name + 's'))
+          .concat(
+            includes.map(
+              (include) =>
+                `${include.model.name}${include.pluralize ? 's' : ''}`,
+            ),
+          )
           .includes(col),
       );
     } else {
       columns = Unit.defaultColumns.concat(
-        includes.map((model) => model.name + 's'),
+        includes.map(
+          (include) => `${include.model.name}${include.pluralize ? 's' : ''}`,
+        ),
       );
     }
 
@@ -137,6 +144,7 @@ export const findAll = async (req, res) => {
 
       // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
 
+      // TODO MariusD: Don't check with the string directly
       if (columns.includes('labels')) {
         results.rows = await Promise.all(
           results.rows.map(async (result) => {
@@ -158,7 +166,7 @@ export const findAll = async (req, res) => {
         );
       }
 
-      if (columns.includes('issuances')) {
+      if (columns.includes('issuance')) {
         results.rows = await Promise.all(
           results.rows.map(async (result) => {
             result.dataValues.issuance = await Issuance.findByPk(
@@ -186,7 +194,14 @@ export const findAll = async (req, res) => {
     } else {
       return sendXls(
         Unit.name,
-        createXlsFromSequelizeResults(response, Unit, false, false, true),
+        createXlsFromSequelizeResults({
+          rows: response,
+          model: Unit,
+          hex: false,
+          toStructuredCsv: false,
+          excludeOrgUid: true,
+          isUserFriendlyFormat: true,
+        }),
         res,
       );
     }
@@ -203,7 +218,9 @@ export const findOne = async (req, res) => {
     await assertDataLayerAvailable();
     res.json(
       await Unit.findByPk(req.query.warehouseUnitId, {
-        include: Unit.getAssociatedModels(),
+        include: Unit.getAssociatedModels().map(
+          (association) => association.model,
+        ),
       }),
     );
   } catch (error) {
@@ -218,7 +235,7 @@ export const updateFromXLS = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const { files } = req;
 
@@ -245,7 +262,7 @@ export const update = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
@@ -331,7 +348,7 @@ export const destroy = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
@@ -361,7 +378,7 @@ export const split = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertUnitRecordExists(
       req.body.warehouseUnitId,
@@ -438,7 +455,7 @@ export const batchUpload = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     await assertHomeOrgExists();
-    await assetNoPendingCommits();
+    await assertNoPendingCommits();
 
     const csvFile = assertCsvFileInRequest(req);
     await createUnitRecordsFromCsv(csvFile);
