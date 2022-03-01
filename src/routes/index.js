@@ -33,8 +33,11 @@ app.use(function (req, res, next) {
 
 // Add readonly header if set in .env file
 app.use(function (req, res, next) {
+  res.setHeader('Access-Control-Expose-Headers', 'cw-read-only');
   if (process.env.READ_ONLY) {
     res.setHeader('cw-read-only', process.env.READ_ONLY);
+  } else {
+    res.setHeader('cw-read-only', false);
   }
 
   next();
