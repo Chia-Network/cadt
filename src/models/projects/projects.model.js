@@ -161,9 +161,7 @@ class Project extends Model {
         projectTag,
         estimatedAnnualAverageEmissionReduction,
         timeStaged
-    ) 
-    AGAINST ':search' 
-    ORDER BY timeStaged DESC
+    ) AGAINST ':search' 
     `;
 
     if (orgUid) {

@@ -202,9 +202,7 @@ class Unit extends Model {
         cooresponingAdjustmentDeclaration,
         correspondingAdjustmentStatus,
         timeStaged
-    ) 
-    AGAINST ':search' 
-    ORDER BY timeStaged DESC
+    ) AGAINST ':search' 
     `;
 
     if (orgUid) {
