@@ -48,6 +48,7 @@ export const create = async (req, res) => {
     const uuid = uuidv4();
 
     newRecord.warehouseUnitId = uuid;
+    newRecord.timeStaged = Math.floor(Date.now() / 1000);
 
     // All new units are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
@@ -181,6 +182,7 @@ export const findAll = async (req, res) => {
       results = await Unit.findAndCountAll({
         where,
         distinct: true,
+        order: [['timeStaged', 'DESC']],
         ...columnsToInclude(columns, includes),
         ...paginationParams(page, limit),
       });

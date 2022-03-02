@@ -82,6 +82,9 @@ module.exports = {
   },
   validationBody: Sequelize.STRING,
   validationDate: Sequelize.DATE,
+  timeStaged: {
+    type: 'TIMESTAMP',
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

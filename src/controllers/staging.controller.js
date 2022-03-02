@@ -8,6 +8,7 @@ import {
   assertWalletIsSynced,
   assertDataLayerAvailable,
   assertIfReadOnlyMode,
+  assertStagingTableNotEmpty,
 } from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
@@ -43,6 +44,7 @@ export const findAll = async (req, res) => {
 export const commit = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
+    await assertStagingTableNotEmpty();
     await assertHomeOrgExists();
     await assertDataLayerAvailable();
     await assertWalletIsSynced();

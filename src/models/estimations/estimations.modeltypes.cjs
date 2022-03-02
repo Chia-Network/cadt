@@ -30,6 +30,9 @@ module.exports = {
     type: Sequelize.INTEGER,
     required: true,
   },
+  timeStaged: {
+    type: 'TIMESTAMP',
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
