@@ -44,6 +44,7 @@ export const create = async (req, res) => {
     const uuid = uuidv4();
 
     newRecord.warehouseProjectId = uuid;
+    newRecord.timeStaged = Math.floor(Date.now() / 1000);
 
     // All new projects are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
@@ -144,6 +145,7 @@ export const findAll = async (req, res) => {
       results = await Project.findAndCountAll({
         distinct: true,
         where,
+        order: [['timeStaged', 'DESC']],
         ...query,
       });
     }

@@ -159,8 +159,11 @@ class Project extends Model {
         methodologyVersion,
         validationApproach,
         projectTag,
-        estimatedAnnualAverageEmissionReduction
-    ) AGAINST ":search"
+        estimatedAnnualAverageEmissionReduction,
+        timeStaged
+    ) 
+    AGAINST ':search' 
+    ORDER BY timeStaged DESC
     `;
 
     if (orgUid) {

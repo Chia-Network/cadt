@@ -12,7 +12,7 @@ import * as testFixtures from '../test-fixtures';
 import datalayer from '../../src/datalayer';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
-describe('Unit Resource Integration Tests', function () {
+describe.only('Unit Resource Integration Tests', function () {
   let homeOrgUid;
 
   before(async function () {
@@ -109,248 +109,258 @@ describe('Unit Resource Integration Tests', function () {
     await testFixtures.checkUnitMirrorRecordDoesNotExist(warehouseUnitId);
   }).timeout(TEST_WAIT_TIME * 10);
 
-  it('splits an existing unit end-to-end (with simulator)', async function () {
-    // create and commit the unit to be deleted
-    const createdUnitResult = await supertest(app).post('/v1/units').send({
-      serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
-      serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
-      countryJurisdictionOfOwner: 'Austria',
-      unitOwner: 'TEST_OWNER',
-      unitType: 'Reduction - nature',
-      unitStatus: 'Held',
-      vintageYear: 2020,
-      correspondingAdjustmentDeclaration: 'Committed',
-      correspondingAdjustmentStatus: 'Pending',
-      inCountryJurisdictionOfOwner: 'Maryland',
-      unitRegistryLink: 'https://test.link',
-      marketplace: 'TEST_MARKETPLACE',
-      marketplaceIdentifier: 'TEST_MARKETPLACE_IDENTIFIER',
-      marketplaceLink: 'https://link.link',
-      unitTags: 'TEST_TAGS, TEST_TAG2',
-      unitStatusReason: 'TEST_REASON',
-      // TODO: make initial project in beforeEach and assign id here
-      // This will be validated appropriatly later
-      projectLocationId: 'TEST_LOCATION_ID',
-    });
+  it.only(
+    'splits an existing unit end-to-end (with simulator)',
+    async function () {
+      // create and commit the unit to be deleted
+      const createdUnitResult = await supertest(app).post('/v1/units').send({
+        serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
+        serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
+        countryJurisdictionOfOwner: 'Austria',
+        unitOwner: 'TEST_OWNER',
+        unitType: 'Reduction - nature',
+        unitStatus: 'Held',
+        vintageYear: 2020,
+        correspondingAdjustmentDeclaration: 'Committed',
+        correspondingAdjustmentStatus: 'Pending',
+        inCountryJurisdictionOfOwner: 'Maryland',
+        unitRegistryLink: 'https://test.link',
+        marketplace: 'TEST_MARKETPLACE',
+        marketplaceIdentifier: 'TEST_MARKETPLACE_IDENTIFIER',
+        marketplaceLink: 'https://link.link',
+        unitTags: 'TEST_TAGS, TEST_TAG2',
+        unitStatusReason: 'TEST_REASON',
+        // TODO: make initial project in beforeEach and assign id here
+        // This will be validated appropriatly later
+        projectLocationId: 'TEST_LOCATION_ID',
+      });
 
-    expect(createdUnitResult.body).to.deep.equal({
-      message: 'Unit staged successfully',
-    });
+      expect(createdUnitResult.body).to.deep.equal({
+        message: 'Unit staged successfully',
+      });
 
-    expect(createdUnitResult.statusCode).to.equal(200);
+      expect(createdUnitResult.statusCode).to.equal(200);
 
-    await supertest(app).get('/v1/staging');
+      const stagingResults = await supertest(app).get('/v1/staging');
+      expect(stagingResults.body.length).to.equal(1);
 
-    const createdCommitResult = await supertest(app).post('/v1/staging/commit');
-    expect(createdCommitResult.statusCode).to.equal(200);
-    expect(createdCommitResult.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
-    });
+      const createdCommitResult = await supertest(app).post(
+        '/v1/staging/commit',
+      );
+      expect(createdCommitResult.statusCode).to.equal(200);
+      expect(createdCommitResult.body).to.deep.equal({
+        message: 'Staging Table committed to full node',
+      });
 
-    // The node simulator runs on an async process, we are importing
-    // the WAIT_TIME constant from the simulator, padding it and waiting for the
-    // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, TEST_WAIT_TIME);
-    });
+      // The node simulator runs on an async process, we are importing
+      // the WAIT_TIME constant from the simulator, padding it and waiting for the
+      // appropriate amount of time for the simulator to finish its operations
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          resolve();
+        }, TEST_WAIT_TIME);
+      });
 
-    // Get a unit to split
-    const allUnitsResult = await supertest(app).get('/v1/units');
+      // Get a unit to split
+      const allUnitsResult = await supertest(app).get('/v1/units');
 
-    const unitRecord = _.last(allUnitsResult.body);
+      const unitRecord = _.head(allUnitsResult.body);
 
-    const warehouseUnitIdToSplit = unitRecord.warehouseUnitId;
-    const newUnitOwner = '35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf';
+      const warehouseUnitIdToSplit = unitRecord.warehouseUnitId;
+      const newUnitOwner = '35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf';
 
-    const payload = {
-      warehouseUnitId: warehouseUnitIdToSplit,
-      records: [
-        {
-          unitCount: unitRecord.unitCount - 1,
-          unitOwner: newUnitOwner,
-        },
-        {
-          unitCount: 1,
-        },
-      ],
-    };
+      const payload = {
+        warehouseUnitId: warehouseUnitIdToSplit,
+        records: [
+          {
+            unitCount: unitRecord.unitCount - 1,
+            unitOwner: newUnitOwner,
+          },
+          {
+            unitCount: 1,
+          },
+        ],
+      };
 
-    const unitRes = await supertest(app).post('/v1/units/split').send(payload);
+      console.log('!!!!!', homeOrgUid);
+      const unitRes = await supertest(app)
+        .post('/v1/units/split')
+        .send(payload);
 
-    expect(unitRes.body).to.deep.equal({
-      message: 'Unit split successful',
-    });
-    expect(unitRes.statusCode).to.equal(200);
+      expect(unitRes.body).to.deep.equal({
+        message: 'Unit split successful',
+      });
 
-    // Get the staging record we just created
-    const stagingRes = await supertest(app).get('/v1/staging');
-    const stagingRecord = _.head(stagingRes.body);
+      expect(unitRes.statusCode).to.equal(200);
 
-    const originalRecord = stagingRecord.diff.original;
+      // Get the staging record we just created
+      const stagingRes = await supertest(app).get('/v1/staging');
+      const stagingRecord = _.head(stagingRes.body);
 
-    // The orginal record should be the original unit before the split
-    expect(originalRecord).to.deep.equal(unitRecord);
+      const originalRecord = stagingRecord.diff.original;
 
-    // Check that the 2 split records have set up their data correctly
-    const splitRecord1 = stagingRecord.diff.change[0];
-    const splitRecord2 = stagingRecord.diff.change[1];
+      // The orginal record should be the original unit before the split
+      expect(originalRecord).to.deep.equal(unitRecord);
 
-    // They should be getting their own ids
-    expect(splitRecord1.warehouseUnitId).to.not.equal(warehouseUnitIdToSplit);
-    expect(splitRecord2.warehouseUnitId).to.not.equal(warehouseUnitIdToSplit);
+      // Check that the 2 split records have set up their data correctly
+      const splitRecord1 = stagingRecord.diff.change[0];
+      const splitRecord2 = stagingRecord.diff.change[1];
 
-    // The first unitOwner is was reassigned,
-    // the second we not reassigned and should match the original ownership
-    expect(splitRecord1.unitOwner).to.equal(newUnitOwner);
-    expect(splitRecord2.unitOwner).to.equal(unitRecord.unitOwner);
+      // They should be getting their own ids
+      expect(splitRecord1.warehouseUnitId).to.not.equal(warehouseUnitIdToSplit);
+      expect(splitRecord2.warehouseUnitId).to.not.equal(warehouseUnitIdToSplit);
 
-    expect(splitRecord1.unitCount).to.equal(9);
-    expect(splitRecord2.unitCount).to.equal(1);
+      // The first unitOwner is was reassigned,
+      // the second we not reassigned and should match the original ownership
+      expect(splitRecord1.unitOwner).to.equal(newUnitOwner);
+      expect(splitRecord2.unitOwner).to.equal(unitRecord.unitOwner);
 
-    // Expect the split unitscounts to add up to the original unit count
-    expect(splitRecord1.unitCount + splitRecord2.unitCount).to.equal(
-      originalRecord.unitCount,
-    );
+      expect(splitRecord1.unitCount).to.equal(9);
+      expect(splitRecord2.unitCount).to.equal(1);
 
-    // The rest of the fields should match the original for each split unit
-    expect(splitRecord1.countryJurisdictionOfOwner).to.equal(
-      unitRecord.countryJurisdictionOfOwner,
-    );
-    expect(splitRecord1.inCountryJurisdictionOfOwner).to.equal(
-      unitRecord.inCountryJurisdictionOfOwner,
-    );
-    expect(splitRecord1.unitTags).to.equal(unitRecord.unitTags);
+      // Expect the split unitscounts to add up to the original unit count
+      expect(splitRecord1.unitCount + splitRecord2.unitCount).to.equal(
+        originalRecord.unitCount,
+      );
 
-    expect(splitRecord2.countryJurisdictionOfOwner).to.equal(
-      unitRecord.countryJurisdictionOfOwner,
-    );
-    expect(splitRecord2.inCountryJurisdictionOfOwner).to.equal(
-      unitRecord.inCountryJurisdictionOfOwner,
-    );
-    expect(splitRecord2.unitTags).to.equal(unitRecord.unitTags);
+      // The rest of the fields should match the original for each split unit
+      expect(splitRecord1.countryJurisdictionOfOwner).to.equal(
+        unitRecord.countryJurisdictionOfOwner,
+      );
+      expect(splitRecord1.inCountryJurisdictionOfOwner).to.equal(
+        unitRecord.inCountryJurisdictionOfOwner,
+      );
+      expect(splitRecord1.unitTags).to.equal(unitRecord.unitTags);
 
-    // Now push the staging table live
-    const commitRes = await supertest(app).post('/v1/staging/commit');
-    expect(stagingRes.statusCode).to.equal(200);
-    expect(commitRes.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
-    });
+      expect(splitRecord2.countryJurisdictionOfOwner).to.equal(
+        unitRecord.countryJurisdictionOfOwner,
+      );
+      expect(splitRecord2.inCountryJurisdictionOfOwner).to.equal(
+        unitRecord.inCountryJurisdictionOfOwner,
+      );
+      expect(splitRecord2.unitTags).to.equal(unitRecord.unitTags);
 
-    // After commiting the true flag should be set to this staging record
-    const stagingRes2 = await supertest(app).get('/v1/staging');
-    expect(_.head(stagingRes2.body).commited).to.equal(true);
+      // Now push the staging table live
+      const commitRes = await supertest(app).post('/v1/staging/commit');
+      expect(stagingRes.statusCode).to.equal(200);
+      expect(commitRes.body).to.deep.equal({
+        message: 'Staging Table committed to full node',
+      });
 
-    // The node simulator runs on an async process, we are importing
-    // the WAIT_TIME constant from the simulator, padding it and waiting for the
-    // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, TEST_WAIT_TIME);
-    });
+      // After commiting the true flag should be set to this staging record
+      const stagingRes2 = await supertest(app).get('/v1/staging');
+      expect(_.head(stagingRes2.body).commited).to.equal(true);
 
-    const warehouseRes = await supertest(app)
-      .get(`/v1/units`)
-      .query({ warehouseUnitId: splitRecord1.warehouseUnitId });
+      // The node simulator runs on an async process, we are importing
+      // the WAIT_TIME constant from the simulator, padding it and waiting for the
+      // appropriate amount of time for the simulator to finish its operations
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          resolve();
+        }, TEST_WAIT_TIME);
+      });
 
-    const newRecord1 = warehouseRes.body;
+      const warehouseRes = await supertest(app)
+        .get(`/v1/units`)
+        .query({ warehouseUnitId: splitRecord1.warehouseUnitId });
 
-    expect(newRecord1.warehouseUnitId).to.equal(splitRecord1.warehouseUnitId);
-    expect(newRecord1.orgUid).to.equal(splitRecord1.orgUid);
-    expect(newRecord1.unitOwner).to.equal(splitRecord1.unitOwner);
-    expect(newRecord1.serialNumberBlock).to.equal(
-      splitRecord1.serialNumberBlock,
-    );
-    expect(newRecord1.countryJuridictionOfOwner).to.equal(
-      splitRecord1.countryJuridictionOfOwner,
-    );
-    expect(newRecord1.inCountryJuridictionOfOwner).to.equal(
-      splitRecord1.inCountryJuridictionOfOwner,
-    );
+      const newRecord1 = warehouseRes.body;
 
-    // Make sure the newly created unit is in the mirrorDb
-    const mirrorRecord1 = await UnitMirror.findByPk(
-      splitRecord1.warehouseUnitId,
-    );
+      expect(newRecord1.warehouseUnitId).to.equal(splitRecord1.warehouseUnitId);
+      expect(newRecord1.orgUid).to.equal(splitRecord1.orgUid);
+      expect(newRecord1.unitOwner).to.equal(splitRecord1.unitOwner);
+      expect(newRecord1.serialNumberBlock).to.equal(
+        splitRecord1.serialNumberBlock,
+      );
+      expect(newRecord1.countryJuridictionOfOwner).to.equal(
+        splitRecord1.countryJuridictionOfOwner,
+      );
+      expect(newRecord1.inCountryJuridictionOfOwner).to.equal(
+        splitRecord1.inCountryJuridictionOfOwner,
+      );
 
-    // filter out the fields we dont care about in this test, including the virtual fields
-    expect(
-      _.omit(mirrorRecord1.dataValues, [
-        'createdAt',
-        'updatedAt',
-        'issuanceId',
-      ]),
-    ).to.deep.equal(
-      _.omit(splitRecord1, [
-        'labels', // mapped associated field
-        'issuance', // mapped associated field
-        'issuanceId',
-        'unitBlockStart', // virtual field
-        'unitBlockEnd', // virtual field
-        'unitCount', // virtual field
-        'createdAt', // meta field
-        'updatedAt', // meta field
-      ]),
-    );
+      // Make sure the newly created unit is in the mirrorDb
+      const mirrorRecord1 = await UnitMirror.findByPk(
+        splitRecord1.warehouseUnitId,
+      );
 
-    const warehouse2Res = await supertest(app)
-      .get(`/v1/units`)
-      .query({ warehouseUnitId: splitRecord2.warehouseUnitId });
+      // filter out the fields we dont care about in this test, including the virtual fields
+      expect(
+        _.omit(mirrorRecord1.dataValues, [
+          'createdAt',
+          'updatedAt',
+          'issuanceId',
+        ]),
+      ).to.deep.equal(
+        _.omit(splitRecord1, [
+          'labels', // mapped associated field
+          'issuance', // mapped associated field
+          'issuanceId',
+          'unitBlockStart', // virtual field
+          'unitBlockEnd', // virtual field
+          'unitCount', // virtual field
+          'createdAt', // meta field
+          'updatedAt', // meta field
+        ]),
+      );
 
-    const newRecord2 = warehouse2Res.body;
+      const warehouse2Res = await supertest(app)
+        .get(`/v1/units`)
+        .query({ warehouseUnitId: splitRecord2.warehouseUnitId });
 
-    expect(newRecord2.warehouseUnitId).to.equal(splitRecord2.warehouseUnitId);
-    expect(newRecord2.orgUid).to.equal(splitRecord2.orgUid);
-    expect(newRecord2.unitOwner).to.equal(splitRecord2.unitOwner);
-    expect(newRecord1.serialNumberBlock).to.equal(
-      splitRecord1.serialNumberBlock,
-    );
-    expect(newRecord2.countryJuridictionOfOwner).to.equal(
-      splitRecord2.countryJuridictionOfOwner,
-    );
-    expect(newRecord2.inCountryJuridictionOfOwner).to.equal(
-      splitRecord2.inCountryJuridictionOfOwner,
-    );
+      const newRecord2 = warehouse2Res.body;
 
-    // Make sure the newly created unit is in the mirrorDb
-    const mirrorRecord2 = await UnitMirror.findByPk(
-      splitRecord2.warehouseUnitId,
-    );
+      expect(newRecord2.warehouseUnitId).to.equal(splitRecord2.warehouseUnitId);
+      expect(newRecord2.orgUid).to.equal(splitRecord2.orgUid);
+      expect(newRecord2.unitOwner).to.equal(splitRecord2.unitOwner);
+      expect(newRecord1.serialNumberBlock).to.equal(
+        splitRecord1.serialNumberBlock,
+      );
+      expect(newRecord2.countryJuridictionOfOwner).to.equal(
+        splitRecord2.countryJuridictionOfOwner,
+      );
+      expect(newRecord2.inCountryJuridictionOfOwner).to.equal(
+        splitRecord2.inCountryJuridictionOfOwner,
+      );
 
-    // filter out the fields we dont care about in this test, including the virtual fields
-    expect(
-      _.omit(mirrorRecord2.dataValues, [
-        'createdAt',
-        'updatedAt',
-        'issuanceId',
-      ]),
-    ).to.deep.equal(
-      _.omit(splitRecord2, [
-        'labels', // mapped associated field
-        'issuance', // mapped associated field
-        'issuanceId',
-        'unitBlockStart', // virtual field
-        'unitBlockEnd', // virtual field
-        'unitCount', // virtual field
-        'createdAt', // meta field
-        'updatedAt', // meta field
-      ]),
-    );
+      // Make sure the newly created unit is in the mirrorDb
+      const mirrorRecord2 = await UnitMirror.findByPk(
+        splitRecord2.warehouseUnitId,
+      );
 
-    // make sure the original record was deleted
-    const warehouse3Res = await supertest(app)
-      .get(`/v1/units`)
-      .query({ warehouseUnitId: warehouseUnitIdToSplit });
-    expect(warehouse3Res.body).to.equal(null);
+      // filter out the fields we dont care about in this test, including the virtual fields
+      expect(
+        _.omit(mirrorRecord2.dataValues, [
+          'createdAt',
+          'updatedAt',
+          'issuanceId',
+        ]),
+      ).to.deep.equal(
+        _.omit(splitRecord2, [
+          'labels', // mapped associated field
+          'issuance', // mapped associated field
+          'issuanceId',
+          'unitBlockStart', // virtual field
+          'unitBlockEnd', // virtual field
+          'unitCount', // virtual field
+          'createdAt', // meta field
+          'updatedAt', // meta field
+        ]),
+      );
 
-    // Make sure the staging table is cleaned up
-    const stagingRes3 = await supertest(app).get('/v1/staging');
+      // make sure the original record was deleted
+      const warehouse3Res = await supertest(app)
+        .get(`/v1/units`)
+        .query({ warehouseUnitId: warehouseUnitIdToSplit });
+      expect(warehouse3Res.body).to.equal(null);
 
-    // There should be no staging records left
-    expect(stagingRes3.body.length).to.equal(0);
-  }).timeout(TEST_WAIT_TIME * 10);
+      // Make sure the staging table is cleaned up
+      const stagingRes3 = await supertest(app).get('/v1/staging');
+
+      // There should be no staging records left
+      expect(stagingRes3.body.length).to.equal(0);
+    },
+  ).timeout(TEST_WAIT_TIME * 10);
 
   it('creates a new unit end-to-end  (with simulator)', async function () {
     // 1. Create a new unit

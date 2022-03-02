@@ -21,6 +21,9 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
+  timeStaged: {
+    type: 'TIMESTAMP',
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
