@@ -1,5 +1,6 @@
 import _ from 'lodash';
 
+import { Sequelize } from 'sequelize';
 import xlsx from 'node-xlsx';
 import { uuid as uuidv4 } from 'uuidv4';
 
@@ -133,7 +134,18 @@ export const findAll = async (req, res) => {
     }
 
     if (search) {
-      results = await Project.fts(search, orgUid, pagination, columns);
+      const ftsResults = await Project.fts(search, orgUid, pagination, columns);
+      const mappedResults = ftsResults.rows.map((ftsResult) =>
+        _.get(ftsResult, 'dataValues.warehouseProjectId'),
+      );
+
+      if (!where) {
+        where = {};
+      }
+
+      where.warehouseProjectId = {
+        [Sequelize.Op.in]: mappedResults,
+      };
     }
 
     if (!results) {

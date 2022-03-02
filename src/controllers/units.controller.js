@@ -2,6 +2,7 @@
 
 import _ from 'lodash';
 import { uuid as uuidv4 } from 'uuidv4';
+import { Sequelize } from 'sequelize';
 
 import { Staging, Unit, Label, Issuance, Organization } from '../models';
 
@@ -141,41 +142,23 @@ export const findAll = async (req, res) => {
     }
 
     if (search) {
-      results = await Unit.fts(search, orgUid, pagination, Unit.defaultColumns);
+      const ftsResults = await Unit.fts(
+        search,
+        orgUid,
+        pagination,
+        Unit.defaultColumns,
+      );
+      const mappedResults = ftsResults.rows.map((ftsResult) =>
+        _.get(ftsResult, 'dataValues.warehouseUnitId'),
+      );
 
-      // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
-
-      if (columns.includes('labels')) {
-        results.rows = await Promise.all(
-          results.rows.map(async (result) => {
-            result.dataValues.labels = await Label.findAll({
-              include: [
-                {
-                  model: Unit,
-                  where: {
-                    warehouseUnitId: result.dataValues.warehouseUnitId,
-                  },
-                  attributes: [],
-                  as: 'unit',
-                  require: true,
-                },
-              ],
-            });
-            return result;
-          }),
-        );
+      if (!where) {
+        where = {};
       }
 
-      if (columns.includes('issuances')) {
-        results.rows = await Promise.all(
-          results.rows.map(async (result) => {
-            result.dataValues.issuance = await Issuance.findByPk(
-              result.dataValues.issuanceId,
-            );
-            return result;
-          }),
-        );
-      }
+      where.warehouseProjectId = {
+        [Sequelize.Op.in]: mappedResults,
+      };
     }
 
     if (!results) {
