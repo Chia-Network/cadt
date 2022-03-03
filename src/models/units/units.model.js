@@ -200,8 +200,9 @@ class Unit extends Model {
         unitRegistryLink,
         unitMarketplaceLink,
         cooresponingAdjustmentDeclaration,
-        correspondingAdjustmentStatus
-    ) AGAINST '":search"'
+        correspondingAdjustmentStatus,
+        timeStaged
+    ) AGAINST ':search' 
     `;
 
     if (orgUid) {

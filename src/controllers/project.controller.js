@@ -1,5 +1,6 @@
 import _ from 'lodash';
 
+import { Sequelize } from 'sequelize';
 import xlsx from 'node-xlsx';
 import { uuid as uuidv4 } from 'uuidv4';
 
@@ -44,6 +45,7 @@ export const create = async (req, res) => {
     const uuid = uuidv4();
 
     newRecord.warehouseProjectId = uuid;
+    newRecord.timeStaged = Math.floor(Date.now() / 1000);
 
     // All new projects are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
@@ -132,7 +134,18 @@ export const findAll = async (req, res) => {
     }
 
     if (search) {
-      results = await Project.fts(search, orgUid, pagination, columns);
+      const ftsResults = await Project.fts(search, orgUid, pagination, columns);
+      const mappedResults = ftsResults.rows.map((ftsResult) =>
+        _.get(ftsResult, 'dataValues.warehouseProjectId'),
+      );
+
+      if (!where) {
+        where = {};
+      }
+
+      where.warehouseProjectId = {
+        [Sequelize.Op.in]: mappedResults,
+      };
     }
 
     if (!results) {
@@ -144,6 +157,7 @@ export const findAll = async (req, res) => {
       results = await Project.findAndCountAll({
         distinct: true,
         where,
+        order: [['timeStaged', 'DESC']],
         ...query,
       });
     }

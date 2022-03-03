@@ -25,7 +25,8 @@ module.exports = {
         unitMetric,
         methodology,
         validationBody,
-        validationDate
+        validationDate,
+        timeStaged
       );
       `);
       await queryInterface.sequelize.query(`
@@ -49,7 +50,8 @@ module.exports = {
         unitStatusReason,
         unitRegistryLink,
         correspondingAdjustmentDeclaration,
-        correspondingAdjustmentStatus
+        correspondingAdjustmentStatus,
+        timeStaged
       );
       `);
     }

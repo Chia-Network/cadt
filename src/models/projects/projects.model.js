@@ -159,8 +159,9 @@ class Project extends Model {
         methodologyVersion,
         validationApproach,
         projectTag,
-        estimatedAnnualAverageEmissionReduction
-    ) AGAINST ":search"
+        estimatedAnnualAverageEmissionReduction,
+        timeStaged
+    ) AGAINST ':search' 
     `;
 
     if (orgUid) {

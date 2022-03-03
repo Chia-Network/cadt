@@ -37,6 +37,9 @@ module.exports = {
     requred: true,
   },
   ratingLink: Sequelize.STRING,
+  timeStaged: {
+    type: 'TIMESTAMP',
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
