@@ -38,14 +38,16 @@ class Staging extends Model {
   static cleanUpCommitedAndInvalidRecords = async () => {
     const stagingRecords = await Staging.findAll({ raw: true });
 
-    const stagingRecordsToDelete = stagingRecords.filter((record) => {
-      if (record.commited === 1) {
-        const { uuid, table, action, data } = record;
-        const diff = Staging.getDiffObject(uuid, table, action, data);
-        return diff.original == null;
-      }
-      return false;
-    });
+    const stagingRecordsToDelete = await Promise.all(
+      stagingRecords.filter(async (record) => {
+        if (record.commited === 1) {
+          const { uuid, table, action, data } = record;
+          const diff = await Staging.getDiffObject(uuid, table, action, data);
+          return diff.original == null;
+        }
+        return false;
+      }),
+    );
 
     await Staging.destroy({
       where: { uuid: stagingRecordsToDelete.map((record) => record.uuid) },
