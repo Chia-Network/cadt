@@ -1,8 +1,9 @@
+import logUpdate from 'log-update';
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { pullPickListValues } from '../utils/data-loaders';
 
 const task = new Task('sync-picklist', () => {
-  console.log('Syncing Picklist Values');
+  logUpdate('Syncing Picklist Values');
   pullPickListValues();
 });
 
