@@ -4,12 +4,13 @@ import { uuid as uuidv4 } from 'uuidv4';
 import csv from 'csvtojson';
 import { Readable } from 'stream';
 
-import { Staging, Organization, Unit, Project } from '../models';
+import { Organization, Project, Staging, Unit } from '../models';
 
 import {
   assertOrgIsHomeOrg,
+  assertProjectRecordExists,
   assertUnitRecordExists,
-} from '../utils/data-assertions';
+} from './data-assertions.js';
 
 export const createUnitRecordsFromCsv = (csvFile) => {
   const buffer = csvFile.data;
@@ -82,22 +83,21 @@ export const createProjectRecordsFromCsv = (csvFile) => {
 
         if (newRecord.warehouseProjectId) {
           // Fail if they supplied their own warehouseUnitId and it doesnt exist
-          const possibleExistingRecord = await assertUnitRecordExists(
+          const possibleExistingRecord = await assertProjectRecordExists(
             newRecord.warehouseProjectId,
           );
 
-          await assertOrgIsHomeOrg(possibleExistingRecord.dataValues.orgUid);
+          await assertOrgIsHomeOrg(possibleExistingRecord.orgUid);
         } else {
-          // When creating new unitd assign a uuid to is so
+          // When creating new project assign a uuid to is so
           // multiple organizations will always have unique ids
-          const uuid = uuidv4();
-          newRecord.warehouseProjectId = uuid;
-
-          const orgUid = _.head(Object.keys(await Organization.getHomeOrg()));
-          newRecord.orgUid = orgUid;
+          newRecord.warehouseProjectId = uuidv4();
+          newRecord.orgUid = (await Organization.getHomeOrg())?.orgUid;
 
           action = 'INSERT';
         }
+
+        updateProjectProperties(newRecord);
 
         const stagedData = {
           uuid: newRecord.warehouseProjectId,
@@ -114,7 +114,8 @@ export const createProjectRecordsFromCsv = (csvFile) => {
       .on('done', async () => {
         if (recordsToCreate.length) {
           await Staging.bulkCreate(recordsToCreate, {
-            updateOnDuplicate: ['warehouseProjectId'],
+            logging: console.log,
+            updateOnDuplicate: undefined, // TODO MariusD: find a solution for this
           });
 
           resolve();
@@ -124,3 +125,31 @@ export const createProjectRecordsFromCsv = (csvFile) => {
       });
   });
 };
+
+function updateProjectProperties(project) {
+  if (typeof project !== 'object') return;
+
+  updateProjectArrayProp(project, 'projectLocations');
+  updateProjectArrayProp(project, 'labels');
+  updateProjectArrayProp(project, 'issuances');
+  updateProjectArrayProp(project, 'coBenefits');
+  updateProjectArrayProp(project, 'relatedProjects');
+  updateProjectArrayProp(project, 'projectRatings');
+  updateProjectArrayProp(project, 'estimations');
+}
+
+function updateProjectArrayProp(project, propName) {
+  if (
+    project == null ||
+    !Object.prototype.hasOwnProperty.call(project, propName) ||
+    project[propName] == null
+  )
+    return;
+
+  project[propName] = JSON.parse(project[propName]);
+  if (Array.isArray(project[propName])) {
+    project[propName].forEach((item) => {
+      item.warehouseProjectId = project.warehouseProjectId;
+    });
+  }
+}

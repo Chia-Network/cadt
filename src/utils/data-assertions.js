@@ -105,7 +105,12 @@ export const assertUnitRecordExists = async (
   customMessage,
 ) => {
   const record = await Unit.findByPk(warehouseUnitId, {
-    include: Unit.getAssociatedModels(),
+    include: Unit.getAssociatedModels().map((association) => {
+      return {
+        model: association.model,
+        as: `${association.model.name}${association.pluralize ? 's' : ''}`,
+      };
+    }),
   });
   if (!record) {
     throw new Error(
@@ -142,7 +147,9 @@ export const assertProjectRecordExists = async (
   customMessage,
 ) => {
   const record = await Project.findByPk(warehouseProjectId, {
-    include: Project.getAssociatedModels(),
+    include: Project.getAssociatedModels().map(
+      (association) => association.model,
+    ),
   });
 
   if (!record) {

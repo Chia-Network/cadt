@@ -112,12 +112,19 @@ export const findAll = async (req, res) => {
       // Remove any unsupported columns
       columns = columns.filter((col) =>
         Project.defaultColumns
-          .concat(includes.map((model) => model.name + 's'))
+          .concat(
+            includes.map(
+              (include) =>
+                `${include.model.name}${include.pluralize ? 's' : ''}`,
+            ),
+          )
           .includes(col),
       );
     } else {
       columns = Project.defaultColumns.concat(
-        includes.map((model) => model.name + 's'),
+        includes.map(
+          (include) => `${include.model.name}${include.pluralize ? 's' : ''}`,
+        ),
       );
     }
 
@@ -169,7 +176,14 @@ export const findAll = async (req, res) => {
     } else {
       return sendXls(
         Project.name,
-        createXlsFromSequelizeResults(response, Project, false, false, true),
+        createXlsFromSequelizeResults({
+          rows: response,
+          model: Project,
+          hex: false,
+          toStructuredCsv: false,
+          excludeOrgUid: true,
+          isUserFriendlyFormat: true,
+        }),
         res,
       );
     }
@@ -187,7 +201,9 @@ export const findOne = async (req, res) => {
 
     const query = {
       where: { warehouseProjectId: req.query.warehouseProjectId },
-      include: Project.getAssociatedModels(),
+      include: Project.getAssociatedModels().map(
+        (association) => association.model,
+      ),
     };
 
     res.json(await Project.findOne(query));
