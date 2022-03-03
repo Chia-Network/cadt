@@ -26,7 +26,8 @@ module.exports = {
           unitMetric,
           methodology,
           validationBody,
-          validationDate
+          validationDate,
+          timeStaged
         ) VALUES (
           new.warehouseProjectId,
           new.orgUid,
@@ -48,7 +49,8 @@ module.exports = {
           new.unitMetric,
           new.methodology,
           new.validationBody,
-          new.validationDate
+          new.validationDate,
+          new.timeStaged
         );
       END;`);
 
@@ -82,7 +84,8 @@ module.exports = {
           unitMetric,
           methodology,
           validationBody,
-          validationDate
+          validationDate,
+          timeStaged
         ) VALUES (
           new.warehouseProjectId,
           new.orgUid,
@@ -104,7 +107,8 @@ module.exports = {
           new.unitMetric,
           new.methodology,
           new.validationBody,
-          new.validationDate
+          new.validationDate,
+          new.timeStaged
         );
       END;
       `);

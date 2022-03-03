@@ -25,7 +25,8 @@ module.exports = {
           unitStatusReason,
           unitRegistryLink,
           correspondingAdjustmentDeclaration,
-          correspondingAdjustmentStatus
+          correspondingAdjustmentStatus,
+          timeStaged
         ) VALUES (
           new.warehouseUnitId,
           new.issuanceId,
@@ -46,7 +47,8 @@ module.exports = {
           new.unitStatusReason,
           new.unitRegistryLink,
           new.correspondingAdjustmentDeclaration,
-          new.correspondingAdjustmentStatus
+          new.correspondingAdjustmentStatus,
+          new.timeStaged
         );
       END;`);
 

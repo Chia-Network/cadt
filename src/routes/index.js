@@ -17,6 +17,7 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(fileUpload());
 
+// Add optional API key if set in .env file
 app.use(function (req, res, next) {
   if (process.env.API_KEY) {
     const apikey = req.header('x-api-key');
@@ -28,6 +29,18 @@ app.use(function (req, res, next) {
   } else {
     next();
   }
+});
+
+// Add readonly header if set in .env file
+app.use(function (req, res, next) {
+  res.setHeader('Access-Control-Expose-Headers', 'cw-read-only');
+  if (process.env.READ_ONLY) {
+    res.setHeader('cw-read-only', process.env.READ_ONLY);
+  } else {
+    res.setHeader('cw-read-only', false);
+  }
+
+  next();
 });
 
 app.use('/v1', V1Router);

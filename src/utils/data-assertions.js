@@ -122,6 +122,14 @@ export const assertUnitRecordExists = async (
   return record.dataValues;
 };
 
+export const assertStagingTableNotEmpty = async () => {
+  const records = await Staging.findAll({ raw: true });
+
+  if (!records || records.length === 0) {
+    throw new Error(`Cant commit empty staging table`);
+  }
+};
+
 export const assertStagingRecordExists = async (stagingId) => {
   const record = await Staging.findOne({ where: { uuid: stagingId } });
 

@@ -169,27 +169,26 @@ class Project extends Model {
     }
 
     let sql = `
-        SELECT ${fields}
-        FROM projects
-        WHERE MATCH (
-            warehouseProjectId
-            , currentRegistry
-            , registryOfOrigin
-            , program
-            , projectName
-            , projectLink
-            , projectDeveloper
-            , sector
-            , projectType
-            , NDCLinkage
-            , projectStatus
-            , unitMetric
-            , methodology
-            , methodologyVersion
-            , validationApproach
-            , projectTag
-            , estimatedAnnualAverageEmissionReduction
-            ) AGAINST ":search"
+    SELECT ${fields} FROM projects WHERE MATCH (
+        warehouseProjectId,
+        currentRegistry,
+        registryOfOrigin,
+        program,
+        projectName,
+        projectLink,
+        projectDeveloper,
+        sector,
+        projectType,
+        NDCLinkage,
+        projectStatus,
+        unitMetric,
+        methodology,
+        methodologyVersion,
+        validationApproach,
+        projectTag,
+        estimatedAnnualAverageEmissionReduction,
+        timeStaged
+    ) AGAINST ':search' 
     `;
 
     if (orgUid) {

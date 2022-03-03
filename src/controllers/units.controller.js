@@ -2,6 +2,7 @@
 
 import _ from 'lodash';
 import { uuid as uuidv4 } from 'uuidv4';
+import { Sequelize } from 'sequelize';
 
 import { Staging, Unit, Label, Issuance, Organization } from '../models';
 
@@ -48,6 +49,7 @@ export const create = async (req, res) => {
     const uuid = uuidv4();
 
     newRecord.warehouseUnitId = uuid;
+    newRecord.timeStaged = Math.floor(Date.now() / 1000);
 
     // All new units are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
@@ -147,7 +149,15 @@ export const findAll = async (req, res) => {
     }
 
     if (search) {
-      results = await Unit.fts(search, orgUid, pagination, Unit.defaultColumns);
+      const ftsResults = await Unit.fts(
+        search,
+        orgUid,
+        pagination,
+        Unit.defaultColumns,
+      );
+      const mappedResults = ftsResults.rows.map((ftsResult) =>
+        _.get(ftsResult, 'dataValues.warehouseUnitId'),
+      );
 
       // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
 
@@ -173,22 +183,20 @@ export const findAll = async (req, res) => {
         );
       }
 
-      if (columns.includes('issuance')) {
-        results.rows = await Promise.all(
-          results.rows.map(async (result) => {
-            result.dataValues.issuance = await Issuance.findByPk(
-              result.dataValues.issuanceId,
-            );
-            return result;
-          }),
-        );
+      if (!where) {
+        where = {};
       }
+
+      where.warehouseProjectId = {
+        [Sequelize.Op.in]: mappedResults,
+      };
     }
 
     if (!results) {
       results = await Unit.findAndCountAll({
         where,
         distinct: true,
+        order: [['timeStaged', 'DESC']],
         ...columnsToInclude(columns, includes),
         ...paginationParams(page, limit),
       });

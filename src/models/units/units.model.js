@@ -185,29 +185,28 @@ class Unit extends Model {
     }
 
     let sql = `
-        SELECT ${fields}
-        FROM units
-        WHERE MATCH (
-            unitOwner
-            , countryJurisdictionOfOwner
-            , inCountryJurisdictionOfOwner
-            , serialNumberBlock
-            , unitIdentifier
-            , unitType
-            , intendedBuyerOrgUid
-            , marketplace
-            , tags
-            , unitStatus
-            , unitTransactionType
-            , unitStatusReason
-            , tokenIssuanceHash
-            , marketplaceIdentifier
-            , unitsIssuanceLocation
-            , unitRegistryLink
-            , unitMarketplaceLink
-            , cooresponingAdjustmentDeclaration
-            , correspondingAdjustmentStatus
-            ) AGAINST '":search"'
+    SELECT ${fields} FROM units WHERE MATCH (
+        unitOwner,
+        countryJurisdictionOfOwner,
+        inCountryJurisdictionOfOwner,
+        serialNumberBlock,
+        unitIdentifier,
+        unitType,
+        intendedBuyerOrgUid,
+        marketplace,
+        tags,
+        unitStatus,
+        unitTransactionType,
+        unitStatusReason,
+        tokenIssuanceHash,
+        marketplaceIdentifier,
+        unitsIssuanceLocation,
+        unitRegistryLink,
+        unitMarketplaceLink,
+        cooresponingAdjustmentDeclaration,
+        correspondingAdjustmentStatus,
+        timeStaged
+    ) AGAINST ':search' 
     `;
 
     if (orgUid) {

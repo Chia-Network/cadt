@@ -715,7 +715,7 @@ export const transformFullXslsToChangeList = async (
                     `${key}|${r[primaryKeyIndex]}`,
                   );
 
-                  if (action === 'update') {
+                  if (['update', 'insert'].includes(action)) {
                     let isUpdate = await ModelKeys[key].findByPk(
                       r[primaryKeyIndex],
                     );
