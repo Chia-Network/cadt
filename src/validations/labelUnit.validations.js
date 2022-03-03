@@ -7,6 +7,7 @@ export const labelUnitSchema = Joi.object({
   orgUid: Joi.string(),
   warehouseUnitId: Joi.string(),
   labelId: Joi.string(),
+  timeStaged: Joi.date().timestamp().optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
 });
