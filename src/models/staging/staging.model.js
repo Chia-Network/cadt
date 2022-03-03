@@ -42,7 +42,7 @@ class Staging extends Model {
       if (record.commited === 1) {
         const { uuid, table, action, data } = record;
         const diff = Staging.getDiffObject(uuid, table, action, data);
-        return diff.original === null;
+        return diff.original == null;
       }
       return false;
     });
