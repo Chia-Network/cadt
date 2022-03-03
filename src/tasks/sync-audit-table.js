@@ -1,5 +1,6 @@
 import _ from 'lodash';
 
+import logUpdate from 'log-update';
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Organization, Audit } from '../models';
 import datalayer from '../datalayer';
@@ -8,7 +9,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const task = new Task('sync-audit', async () => {
-  console.log('Syncing Audit Information');
+  logUpdate('Syncing Audit Information');
   if (process.env.USE_SIMULATOR === 'false') {
     const organizations = await Organization.findAll({ raw: true });
     await Promise.all(
@@ -25,7 +26,7 @@ const job = new SimpleIntervalJob(
 
 const syncOrganizationAudit = async (organization) => {
   try {
-    console.log('Syncing Audit:', organization.name);
+    logUpdate('Syncing Audit:', organization.name);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     const lastRootSaved = await Audit.findOne({
