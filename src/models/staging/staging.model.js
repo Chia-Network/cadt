@@ -12,6 +12,7 @@ import { sequelize } from '../database';
 import datalayer from '../../datalayer';
 
 import ModelTypes from './staging.modeltypes.cjs';
+import { formatModelAssociationName } from '../../utils/model-utils.js';
 
 class Staging extends Model {
   static changes = new rxjs.Subject();
@@ -37,15 +38,15 @@ class Staging extends Model {
   static cleanUpCommitedAndInvalidRecords = async () => {
     const stagingRecords = await Staging.findAll({ raw: true });
 
-    const stagingRecordsToDelete = await stagingRecords.filter(
-      async (record) => {
+    const stagingRecordsToDelete = await Promise.all(
+      stagingRecords.filter(async (record) => {
         if (record.commited === 1) {
           const { uuid, table, action, data } = record;
           const diff = await Staging.getDiffObject(uuid, table, action, data);
-          return diff.original === null;
+          return diff.original == null;
         }
         return false;
-      },
+      }),
     );
 
     await Staging.destroy({
@@ -62,17 +63,26 @@ class Staging extends Model {
 
     if (action === 'UPDATE') {
       let original;
+
       if (table === 'Projects') {
         original = await Project.findOne({
           where: { warehouseProjectId: uuid },
-          include: Project.getAssociatedModels(),
+          include: Project.getAssociatedModels().map((association) => {
+            return {
+              model: association.model,
+              as: formatModelAssociationName(association),
+            };
+          }),
         });
-      }
-
-      if (table === 'Units') {
+      } else if (table === 'Units') {
         original = await Unit.findOne({
           where: { warehouseUnitId: uuid },
-          include: Unit.getAssociatedModels(),
+          include: Unit.getAssociatedModels().map((association) => {
+            return {
+              model: association.model,
+              as: formatModelAssociationName(association),
+            };
+          }),
         });
       }
 
@@ -82,17 +92,26 @@ class Staging extends Model {
 
     if (action === 'DELETE') {
       let original;
+
       if (table === 'Projects') {
         original = await Project.findOne({
           where: { warehouseProjectId: uuid },
-          include: Project.getAssociatedModels(),
+          include: Project.getAssociatedModels().map((association) => {
+            return {
+              model: association.model,
+              as: formatModelAssociationName(association),
+            };
+          }),
         });
-      }
-
-      if (table === 'Units') {
+      } else if (table === 'Units') {
         original = await Unit.findOne({
           where: { warehouseUnitId: uuid },
-          include: Unit.getAssociatedModels(),
+          include: Unit.getAssociatedModels().map((association) => {
+            return {
+              model: association.model,
+              as: formatModelAssociationName(association),
+            };
+          }),
         });
       }
 

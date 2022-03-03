@@ -49,17 +49,17 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
     { where: { registryId: storeId } },
   );
 
-  const organizationToTrucate = await Organization.findOne({
+  const organizationToTruncate = await Organization.findOne({
     attributes: ['orgUid'],
     where: { registryId: storeId },
     raw: true,
   });
 
   try {
-    if (_.get(organizationToTrucate, 'orgUid')) {
+    if (_.get(organizationToTruncate, 'orgUid')) {
       const truncateOrganizationPromises = Object.keys(ModelKeys).map((key) =>
         ModelKeys[key].destroy({
-          where: { orgUid: organizationToTrucate.orgUid },
+          where: { orgUid: organizationToTruncate.orgUid },
         }),
       );
 

@@ -34,6 +34,7 @@ import {
   updateTableWithData,
 } from '../utils/xls';
 import xlsx from 'node-xlsx';
+import { formatModelAssociationName } from '../utils/model-utils.js';
 
 export const create = async (req, res) => {
   try {
@@ -112,20 +113,20 @@ export const findAll = async (req, res) => {
     await assertDataLayerAvailable();
 
     let { page, limit, columns, orgUid, search, xls } = req.query;
-    let where = orgUid ? { orgUid } : undefined;
+    let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
-    const includes = [Label, Issuance];
+    const includes = Unit.getAssociatedModels();
 
     if (columns) {
       // Remove any unsupported columns
       columns = columns.filter((col) =>
         Unit.defaultColumns
-          .concat(includes.map((model) => model.name + 's'))
+          .concat(includes.map(formatModelAssociationName))
           .includes(col),
       );
     } else {
       columns = Unit.defaultColumns.concat(
-        includes.map((model) => model.name + 's'),
+        includes.map(formatModelAssociationName),
       );
     }
 
@@ -148,6 +149,7 @@ export const findAll = async (req, res) => {
         pagination,
         Unit.defaultColumns,
       );
+
       const mappedResults = ftsResults.rows.map((ftsResult) =>
         _.get(ftsResult, 'dataValues.warehouseUnitId'),
       );
@@ -178,7 +180,11 @@ export const findAll = async (req, res) => {
     } else {
       return sendXls(
         Unit.name,
-        createXlsFromSequelizeResults(response, Unit, false, false, true),
+        createXlsFromSequelizeResults({
+          rows: response,
+          model: Unit,
+          toStructuredCsv: false,
+        }),
         res,
       );
     }
@@ -196,7 +202,16 @@ export const findOne = async (req, res) => {
     await assertDataLayerAvailable();
     res.json(
       await Unit.findByPk(req.query.warehouseUnitId, {
-        include: Unit.getAssociatedModels(),
+        include: Unit.getAssociatedModels().map((association) => {
+          if (association.pluralize) {
+            return {
+              model: association.model,
+              as: association.model.name + 's',
+            };
+          }
+
+          return association.model;
+        }),
       }),
     );
   } catch (error) {
@@ -375,9 +390,13 @@ export const split = async (req, res) => {
     let lastAvailableUnitBlock = unitBlockStart;
 
     const splitRecords = await Promise.all(
-      req.body.records.map(async (record) => {
+      req.body.records.map(async (record, index) => {
         const newRecord = _.cloneDeep(originalRecord);
-        newRecord.warehouseUnitId = uuidv4();
+
+        if (index > 0) {
+          newRecord.warehouseUnitId = uuidv4();
+        }
+
         newRecord.unitCount = record.unitCount;
 
         const newUnitBlockStart = lastAvailableUnitBlock;
