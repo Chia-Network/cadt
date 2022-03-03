@@ -54,12 +54,14 @@ export const encodeValue = (value, hex = false) => {
  * @param toStructuredCsv {Boolean} - Whether to generate an XLS/CSV
  * @param excludeOrgUid {Boolean} - Whether to exclude the organization id from the result
  */
-export function createXlsFromResults({
+export function createXlsFromSequelizeResults({
   rows,
   model,
   toStructuredCsv = false,
   excludeOrgUid = false,
 }) {
+  // TODO MariusD: Test with null values
+
   // Unsure if this is need, therefore just left the semi-deep-clone here. The assumption is that it wants to remove all functions from the prototypes.
   const rowsClone = JSON.parse(JSON.stringify(rows)); // Sadly this is the best way to simplify sequelize's return shape
 
@@ -285,7 +287,7 @@ function buildObjectXlsData({
   return aggregatedData;
 }
 
-export const createXlsFromSequelizeResults = ({
+export const createXlsFromSequelizeResults_old = ({
   rows,
   model,
   hex = false,
@@ -293,16 +295,6 @@ export const createXlsFromSequelizeResults = ({
   excludeOrgUid = false,
   isUserFriendlyFormat = true,
 }) => {
-  return createXlsFromResults({
-    rows,
-    model,
-    toStructuredCsv,
-    excludeOrgUid,
-  });
-  // TODO MariusD: Test with null values
-
-  /* eslint-disable no-unreachable */
-
   rows = JSON.parse(JSON.stringify(rows)); // Sadly this is the best way to simplify sequelize's return shape
 
   let columnsInResults = [];
@@ -466,8 +458,6 @@ export const createXlsFromSequelizeResults = ({
   } else {
     return xlsData;
   }
-
-  /* eslint-enable no-unreachable */
 };
 
 export const tableDataFromXlsx = (xlsx, model) => {
