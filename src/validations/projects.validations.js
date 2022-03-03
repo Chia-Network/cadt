@@ -58,6 +58,7 @@ export const baseSchema = {
   projectLocations: Joi.array().items(locationSchema).min(1).optional(),
   projectRatings: Joi.array().items(ratingSchema).min(1).optional(),
   estimations: Joi.array().items(estimationSchema).min(1).optional(),
+  timeStaged: Joi.date().timestamp().optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
 };

@@ -5,6 +5,7 @@ import _ from 'lodash';
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
 import datalayer from '../datalayer';
+import { formatModelAssociationName } from './model-utils.js';
 
 export const assertDataLayerAvailable = async () => {
   const isAvailable = await datalayer.dataLayerAvailable();
@@ -105,7 +106,12 @@ export const assertUnitRecordExists = async (
   customMessage,
 ) => {
   const record = await Unit.findByPk(warehouseUnitId, {
-    include: Unit.getAssociatedModels(),
+    include: Unit.getAssociatedModels().map((association) => {
+      return {
+        model: association.model,
+        as: formatModelAssociationName(association),
+      };
+    }),
   });
   if (!record) {
     throw new Error(
@@ -142,7 +148,9 @@ export const assertProjectRecordExists = async (
   customMessage,
 ) => {
   const record = await Project.findByPk(warehouseProjectId, {
-    include: Project.getAssociatedModels(),
+    include: Project.getAssociatedModels().map(
+      (association) => association.model,
+    ),
   });
 
   if (!record) {

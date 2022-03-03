@@ -207,7 +207,7 @@ describe.only('Unit Resource Integration Tests', function () {
       const splitRecord2 = stagingRecord.diff.change[1];
 
       // They should be getting their own ids
-      expect(splitRecord1.warehouseUnitId).to.not.equal(warehouseUnitIdToSplit);
+      expect(splitRecord1.warehouseUnitId).to.equal(warehouseUnitIdToSplit);
       expect(splitRecord2.warehouseUnitId).to.not.equal(warehouseUnitIdToSplit);
 
       // The first unitOwner is was reassigned,
@@ -347,12 +347,6 @@ describe.only('Unit Resource Integration Tests', function () {
           'updatedAt', // meta field
         ]),
       );
-
-      // make sure the original record was deleted
-      const warehouse3Res = await supertest(app)
-        .get(`/v1/units`)
-        .query({ warehouseUnitId: warehouseUnitIdToSplit });
-      expect(warehouse3Res.body).to.equal(null);
 
       // Make sure the staging table is cleaned up
       const stagingRes3 = await supertest(app).get('/v1/staging');

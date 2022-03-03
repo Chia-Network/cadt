@@ -7,6 +7,7 @@ export const relatedProjectSchema = Joi.object({
   relatedProjectId: Joi.string().required(),
   relationshipType: Joi.string().optional(),
   registry: Joi.string().optional(),
+  timeStaged: Joi.date().timestamp().optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
 });

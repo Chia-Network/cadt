@@ -18,6 +18,7 @@ export const labelSchema = Joi.object({
     .min(Joi.ref('validityPeriodStartDate'))
     .required(),
   unitQuantity: Joi.number().integer().required(),
+  timeStaged: Joi.date().timestamp().optional(),
   labelLink: Joi.string().required(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),

@@ -9,6 +9,7 @@ export const issuanceSchema = Joi.object({
   verificationApproach: Joi.string().required(),
   verificationBody: Joi.string().required(),
   verificationReportDate: Joi.date().required(),
+  timeStaged: Joi.date().timestamp().optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
 });

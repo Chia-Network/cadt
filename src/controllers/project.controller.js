@@ -31,6 +31,7 @@ import {
   updateTableWithData,
   collapseTablesData,
 } from '../utils/xls';
+import { formatModelAssociationName } from '../utils/model-utils.js';
 
 export const create = async (req, res) => {
   try {
@@ -104,7 +105,7 @@ export const findAll = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     let { page, limit, search, orgUid, columns, xls } = req.query;
-    let where = orgUid ? { orgUid } : undefined;
+    let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
     const includes = Project.getAssociatedModels();
 
@@ -112,12 +113,12 @@ export const findAll = async (req, res) => {
       // Remove any unsupported columns
       columns = columns.filter((col) =>
         Project.defaultColumns
-          .concat(includes.map((model) => model.name + 's'))
+          .concat(includes.map(formatModelAssociationName))
           .includes(col),
       );
     } else {
       columns = Project.defaultColumns.concat(
-        includes.map((model) => model.name + 's'),
+        includes.map(formatModelAssociationName),
       );
     }
 
@@ -169,7 +170,11 @@ export const findAll = async (req, res) => {
     } else {
       return sendXls(
         Project.name,
-        createXlsFromSequelizeResults(response, Project, false, false, true),
+        createXlsFromSequelizeResults({
+          rows: response,
+          model: Project,
+          toStructuredCsv: false,
+        }),
         res,
       );
     }
@@ -187,7 +192,9 @@ export const findOne = async (req, res) => {
 
     const query = {
       where: { warehouseProjectId: req.query.warehouseProjectId },
-      include: Project.getAssociatedModels(),
+      include: Project.getAssociatedModels().map(
+        (association) => association.model,
+      ),
     };
 
     res.json(await Project.findOne(query));

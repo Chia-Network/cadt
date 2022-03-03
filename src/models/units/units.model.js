@@ -17,6 +17,7 @@ import {
   transformFullXslsToChangeList,
 } from '../../utils/xls';
 import { unitsUpdateSchema } from '../../validations/index.js';
+import { getDeletedItems } from '../../utils/model-utils.js';
 
 const { Model } = Sequelize;
 
@@ -69,9 +70,12 @@ class Unit extends Model {
   static getAssociatedModels = () => [
     {
       model: Label,
-      as: 'labels',
+      pluralize: true,
     },
-    Issuance,
+    {
+      model: Issuance,
+      pluralize: false,
+    },
   ];
 
   static associate() {
@@ -291,26 +295,37 @@ class Unit extends Model {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
 
-    const insertXslsSheets = createXlsFromSequelizeResults(
-      insertRecords,
-      Unit,
-      false,
-      true,
-    );
-
-    const updateXslsSheets = createXlsFromSequelizeResults(
-      updateRecords,
-      Unit,
-      false,
-      true,
-    );
-
     const primaryKeyMap = {
       unit: 'warehouseUnitId',
       labels: 'id',
       label_units: 'id',
       issuances: 'id',
     };
+
+    const deletedRecords = await getDeletedItems(
+      updateRecords,
+      primaryKeyMap,
+      Unit,
+      'unit',
+    );
+
+    const insertXslsSheets = createXlsFromSequelizeResults({
+      rows: insertRecords,
+      model: Unit,
+      toStructuredCsv: true,
+    });
+
+    const updateXslsSheets = createXlsFromSequelizeResults({
+      rows: updateRecords,
+      model: Unit,
+      toStructuredCsv: true,
+    });
+
+    const deleteXslsSheets = createXlsFromSequelizeResults({
+      rows: deletedRecords,
+      model: Unit,
+      toStructuredCsv: true,
+    });
 
     const insertChangeList = await transformFullXslsToChangeList(
       insertXslsSheets,
@@ -324,6 +339,12 @@ class Unit extends Model {
       primaryKeyMap,
     );
 
+    const deletedAssociationsChangeList = await transformFullXslsToChangeList(
+      deleteXslsSheets,
+      'delete',
+      primaryKeyMap,
+    );
+
     return {
       units: [
         ..._.get(insertChangeList, 'unit', []),
@@ -333,14 +354,17 @@ class Unit extends Model {
       labels: [
         ..._.get(insertChangeList, 'labels', []),
         ..._.get(updateChangeList, 'labels', []),
+        ..._.get(deletedAssociationsChangeList, 'labels', []),
       ],
       issuances: [
         ..._.get(insertChangeList, 'issuances', []),
         ..._.get(updateChangeList, 'issuances', []),
+        ..._.get(deletedAssociationsChangeList, 'issuances', []),
       ],
       labelUnits: [
         ..._.get(insertChangeList, 'label_units', []),
         ..._.get(updateChangeList, 'label_units', []),
+        ..._.get(deletedAssociationsChangeList, 'label_units', []),
       ],
     };
   }
