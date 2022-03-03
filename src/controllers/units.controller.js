@@ -34,6 +34,7 @@ import {
   updateTableWithData,
 } from '../utils/xls';
 import xlsx from 'node-xlsx';
+import { formatModelAssociationName } from '../utils/model-utils.js';
 
 export const create = async (req, res) => {
   try {
@@ -120,19 +121,12 @@ export const findAll = async (req, res) => {
       // Remove any unsupported columns
       columns = columns.filter((col) =>
         Unit.defaultColumns
-          .concat(
-            includes.map(
-              (include) =>
-                `${include.model.name}${include.pluralize ? 's' : ''}`,
-            ),
-          )
+          .concat(includes.map(formatModelAssociationName))
           .includes(col),
       );
     } else {
       columns = Unit.defaultColumns.concat(
-        includes.map(
-          (include) => `${include.model.name}${include.pluralize ? 's' : ''}`,
-        ),
+        includes.map(formatModelAssociationName),
       );
     }
 
@@ -155,33 +149,10 @@ export const findAll = async (req, res) => {
         pagination,
         Unit.defaultColumns,
       );
+
       const mappedResults = ftsResults.rows.map((ftsResult) =>
         _.get(ftsResult, 'dataValues.warehouseUnitId'),
       );
-
-      // Lazy load the associations when doing fts search, not ideal but the page sizes should be small
-
-      // TODO MariusD: Don't check with the string directly
-      if (columns.includes('labels')) {
-        results.rows = await Promise.all(
-          results.rows.map(async (result) => {
-            result.dataValues.labels = await Label.findAll({
-              include: [
-                {
-                  model: Unit,
-                  where: {
-                    warehouseUnitId: result.dataValues.warehouseUnitId,
-                  },
-                  attributes: [],
-                  as: 'unit',
-                  require: true,
-                },
-              ],
-            });
-            return result;
-          }),
-        );
-      }
 
       if (!where) {
         where = {};
@@ -213,7 +184,6 @@ export const findAll = async (req, res) => {
           rows: response,
           model: Unit,
           toStructuredCsv: false,
-          excludeOrgUid: true,
         }),
         res,
       );

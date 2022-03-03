@@ -30,7 +30,10 @@ import {
 import ModelTypes from './projects.modeltypes.cjs';
 import { ProjectMirror } from './projects.model.mirror';
 import { projectsUpdateSchema } from '../../validations/index';
-import { columnsToInclude } from '../../utils/helpers.js';
+import {
+  formatModelAssociationName,
+  getDeletedItems,
+} from '../../utils/model-utils.js';
 
 class Project extends Model {
   static stagingTableName = 'Projects';
@@ -149,12 +152,7 @@ class Project extends Model {
         .filter(
           (col) =>
             !Project.getAssociatedModels()
-              .map(
-                (association) =>
-                  `${association.model.name}${
-                    association.pluralize ? 's' : ''
-                  }`,
-              )
+              .map(formatModelAssociationName)
               .includes(col),
         ),
     );
@@ -288,27 +286,29 @@ class Project extends Model {
       projectRatings: 'id',
     };
 
-    const deletedRecords = await getDeletedItems(updateRecords, primaryKeyMap);
+    const deletedRecords = await getDeletedItems(
+      updateRecords,
+      primaryKeyMap,
+      Project,
+      'project',
+    );
 
     const insertXslsSheets = createXlsFromSequelizeResults({
       rows: insertRecords,
       model: Project,
       toStructuredCsv: true,
-      excludeOrgUid: false,
     });
 
     const updateXslsSheets = createXlsFromSequelizeResults({
       rows: updateRecords,
       model: Project,
       toStructuredCsv: true,
-      excludeOrgUid: false,
     });
 
     const deleteXslsSheets = createXlsFromSequelizeResults({
       rows: deletedRecords,
       model: Project,
       toStructuredCsv: true,
-      excludeOrgUid: false,
     });
 
     const insertChangeList = await transformFullXslsToChangeList(
@@ -372,79 +372,6 @@ class Project extends Model {
       ],
     };
   }
-}
-
-/**
- * Finds the deleted sub-items (e.g. labels)
- * @param updatedItems {Array} - The projects updated by the user
- * @param primaryKeyMap {Object} - Object map containing the primary keys for all tables
- */
-async function getDeletedItems(updatedItems, primaryKeyMap) {
-  const updatedProductIds = updatedItems
-    .map((record) => record[primaryKeyMap['project']])
-    .filter(Boolean);
-  const associations = Project.getAssociatedModels();
-
-  let originalProjects = [];
-  if (updatedProductIds.length > 0) {
-    const columns = [primaryKeyMap['project']].concat(
-      associations.map(
-        (association) =>
-          `${association.model.name}${association.pluralize ? 's' : ''}`,
-      ),
-    );
-
-    const query = {
-      ...columnsToInclude(columns, associations),
-    };
-
-    const op = Sequelize.Op;
-    originalProjects = await Project.findAll({
-      where: {
-        [primaryKeyMap['project']]: {
-          [op.in]: updatedProductIds,
-        },
-      },
-      ...query,
-    });
-  }
-
-  const associatedColumns = associations.map(
-    (association) =>
-      `${association.model.name}${association.pluralize ? 's' : ''}`,
-  );
-
-  return originalProjects.map((originalItem) => {
-    const result = { ...originalItem.dataValues };
-
-    const updatedItem = updatedItems.find(
-      (item) =>
-        item[primaryKeyMap['project']] ===
-        originalItem[primaryKeyMap['project']],
-    );
-    if (updatedItem == null) return;
-
-    associatedColumns.forEach((column) => {
-      if (originalItem[column] == null || !Array.isArray(originalItem[column]))
-        return;
-      if (updatedItem[column] == null || !Array.isArray(updatedItem[column]))
-        return;
-
-      result[column] = [...originalItem[column]];
-      for (let index = originalItem[column].length - 1; index >= 0; --index) {
-        const item = originalItem[column][index];
-        if (
-          updatedItem[column].findIndex(
-            (searchedItem) =>
-              searchedItem[primaryKeyMap[column]] ===
-              item[primaryKeyMap[column]],
-          ) >= 0
-        )
-          result[column].splice(index, 1);
-      }
-    });
-    return result;
-  });
 }
 
 Project.init(ModelTypes, {

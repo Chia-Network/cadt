@@ -10,6 +10,7 @@ import { assertOrgIsHomeOrg } from './data-assertions';
 import { encodeHex } from './datalayer-utils';
 
 import { isPluralized } from './string-utils.js';
+import { formatModelAssociationName } from './model-utils.js';
 
 const associations = (model) =>
   model.getAssociatedModels().map((model) => model.model);
@@ -30,35 +31,16 @@ export const sendXls = (name, bytes, response) => {
   readStream.pipe(response);
 };
 
-export const encodeValue = (value, hex = false) => {
-  // Todo: address this elsewhere (hide these columns). This is a quick fix for complex relationships in xlsx
-  if (value != null && typeof value === 'object') {
-    value = value.id;
-  }
-
-  if (hex) {
-    try {
-      return encodeHex(value);
-    } catch (e) {
-      return '';
-    }
-  } else {
-    return value;
-  }
-};
-
 /**
  * Generates either an XLS or the non-built data behind the XLS (the list of rows in plain JS object)
  * @param rows {Object[]} - The items to add into the XLS
  * @param model {Object} - The class model to work on (e.g. Unit or Project)
  * @param toStructuredCsv {Boolean} - Whether to generate an XLS/CSV
- * @param excludeOrgUid {Boolean} - Whether to exclude the organization id from the result
  */
 export function createXlsFromSequelizeResults({
   rows,
   model,
   toStructuredCsv = false,
-  excludeOrgUid = false,
 }) {
   // TODO MariusD: Test with null values
 
@@ -66,16 +48,6 @@ export function createXlsFromSequelizeResults({
   const rowsClone = JSON.parse(JSON.stringify(rows)); // Sadly this is the best way to simplify sequelize's return shape
 
   const uniqueColumns = buildColumnMap(rowsClone);
-
-  if (excludeOrgUid) {
-    uniqueColumns.columns.forEach((columns, key, map) => {
-      const orgUidIndex = columns.findIndex((column) => column === 'orgUid');
-      if (orgUidIndex >= 0) {
-        columns.splice(orgUidIndex, 1);
-        map.set(key, columns);
-      }
-    });
-  }
 
   const columnTransformations = {
     [model.name]: {
@@ -268,16 +240,16 @@ function buildObjectXlsData({
       // Add the id of the child item as well if the child item is an object
       const valuePrimaryKeyProp =
         primaryKeyMap[column] ?? primaryKeyMap['default'];
-      xlsRowData.push(encodeValue(itemValue[valuePrimaryKeyProp], false));
+      xlsRowData.push(itemValue[valuePrimaryKeyProp]);
     } else {
       // Add the value of current item to the sheet if the item is not an object
-      xlsRowData.push(encodeValue(itemValue, false));
+      xlsRowData.push(itemValue);
     }
   });
 
   // Also add the primary key value of the parent item
   if (primaryKeyValue != null) {
-    xlsRowData.push(encodeValue(primaryKeyValue, false));
+    xlsRowData.push(primaryKeyValue);
   }
 
   if (xlsRowData.length) {
@@ -290,7 +262,6 @@ function buildObjectXlsData({
 export const createXlsFromSequelizeResults_old = ({
   rows,
   model,
-  hex = false,
   toStructuredCsv = false,
   excludeOrgUid = false,
   isUserFriendlyFormat = true,
@@ -381,12 +352,12 @@ export const createXlsFromSequelizeResults_old = ({
         }
         sheets[columnName + 's'].data.push(
           Object.values(rowValue)
-            .map((val1) => encodeValue(val1, hex))
-            .concat([encodeValue(rowValue.id, hex)]),
+            .map((val1) => val1)
+            .concat([rowValue.id]),
         );
       }
 
-      mainXlsRow.push(encodeValue(rowValue, hex));
+      mainXlsRow.push(rowValue);
     });
 
     if (mainXlsRow.length) {
@@ -430,19 +401,19 @@ export const createXlsFromSequelizeResults_old = ({
                   associationColumnsMap.get(column) ?? Object.keys(rowValue);
                 sheets[column + 's'].data.push(
                   columns
-                    .map((currentCol) => encodeValue(rowValue[currentCol], hex))
-                    .concat([encodeValue(value.id, hex)]),
+                    .map((currentCol) => rowValue[currentCol])
+                    .concat([value.id]),
                 );
               }
             }
 
-            xlsRow.push(encodeValue(rowValue, hex));
+            xlsRow.push(rowValue);
           },
         );
 
         if (xlsRow.length > 0) {
           if ((model.primaryKeyAttributes?.length ?? 0) > 0) {
-            xlsRow.push(encodeValue(row[model.primaryKeyAttributes[0]], hex));
+            xlsRow.push(row[model.primaryKeyAttributes[0]]);
           }
 
           sheets[column].data.push(xlsRow);
@@ -521,9 +492,7 @@ export const collapseTablesData = (tableData, model) => {
       )
         return;
 
-      const dataKey = `${association.model.name}${
-        association.pluralize ? 's' : ''
-      }`;
+      const dataKey = formatModelAssociationName(association);
       data[dataKey] = tableData[association.model.name]?.data?.find((row) => {
         let found = false;
 
@@ -575,9 +544,7 @@ export const collapseTablesData = (tableData, model) => {
           .includes(row['labelunitId']);
       });
 
-      const dataKey = `${association.model.name}${
-        association.pluralize ? 's' : ''
-      }`;
+      const dataKey = formatModelAssociationName(association);
 
       if (data[dataKey] != null) {
         if (data[dataKey].length > 0)
