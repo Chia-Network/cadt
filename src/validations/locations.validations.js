@@ -10,6 +10,7 @@ export const locationSchema = Joi.object({
     .required(),
   inCountryRegion: Joi.string().optional(),
   geographicIdentifier: Joi.string().required(),
+  timeStaged: Joi.date().timestamp().optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
 });
