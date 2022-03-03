@@ -307,28 +307,22 @@ class Unit extends Model {
     const insertXslsSheets = createXlsFromSequelizeResults({
       rows: insertRecords,
       model: Unit,
-      hex: false,
       toStructuredCsv: true,
       excludeOrgUid: false,
-      isUserFriendlyFormat: false,
     });
 
     const updateXslsSheets = createXlsFromSequelizeResults({
       rows: updateRecords,
       model: Unit,
-      hex: false,
       toStructuredCsv: true,
       excludeOrgUid: false,
-      isUserFriendlyFormat: false,
     });
 
     const deleteXslsSheets = createXlsFromSequelizeResults({
       rows: deletedRecords,
       model: Unit,
-      hex: false,
       toStructuredCsv: true,
       excludeOrgUid: false,
-      isUserFriendlyFormat: false,
     });
 
     const insertChangeList = await transformFullXslsToChangeList(

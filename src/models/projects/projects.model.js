@@ -293,28 +293,22 @@ class Project extends Model {
     const insertXslsSheets = createXlsFromSequelizeResults({
       rows: insertRecords,
       model: Project,
-      hex: false,
       toStructuredCsv: true,
       excludeOrgUid: false,
-      isUserFriendlyFormat: false,
     });
 
     const updateXslsSheets = createXlsFromSequelizeResults({
       rows: updateRecords,
       model: Project,
-      hex: false,
       toStructuredCsv: true,
       excludeOrgUid: false,
-      isUserFriendlyFormat: false,
     });
 
     const deleteXslsSheets = createXlsFromSequelizeResults({
       rows: deletedRecords,
       model: Project,
-      hex: false,
       toStructuredCsv: true,
       excludeOrgUid: false,
-      isUserFriendlyFormat: false,
     });
 
     const insertChangeList = await transformFullXslsToChangeList(

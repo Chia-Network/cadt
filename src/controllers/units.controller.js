@@ -212,10 +212,8 @@ export const findAll = async (req, res) => {
         createXlsFromSequelizeResults({
           rows: response,
           model: Unit,
-          hex: false,
           toStructuredCsv: false,
           excludeOrgUid: true,
-          isUserFriendlyFormat: true,
         }),
         res,
       );
