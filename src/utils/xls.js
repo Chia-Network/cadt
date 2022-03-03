@@ -520,6 +520,14 @@ export const tableDataFromXlsx = (xlsx, model) => {
 
 export const collapseTablesData = (tableData, model) => {
   // Todo recursion
+  const removeModelKeyInModels = [
+    'projectLocations',
+    'coBenefits',
+    'relatedProjects',
+    'projectRatings',
+    'estimations',
+  ];
+
   const collapsed = { [model.name]: tableData[model.name] };
 
   let associations = model.getAssociatedModels();
@@ -536,7 +544,7 @@ export const collapseTablesData = (tableData, model) => {
       data[dataKey] = tableData[association.model.name]?.data?.find((row) => {
         let found = false;
 
-        if (association.model.name === 'issuance') {
+        if (association.model.name === 'issuance' && !association.pluralize) {
           if (row[model.name + 'Id'] === data[association.model.name + 'Id']) {
             found = true;
             delete row[model.name + 'Id'];
@@ -562,6 +570,23 @@ export const collapseTablesData = (tableData, model) => {
 
         return found;
       });
+    });
+  });
+
+  collapsed[model.name]?.data?.forEach((data) => {
+    associations.forEach((association) => {
+      if (!association.pluralize) return;
+
+      const key = formatModelAssociationName(association);
+      if (data[key] != null && !Array.isArray(data[key])) {
+        data[key] = [data[key]];
+      }
+
+      if (removeModelKeyInModels.includes(key)) {
+        data[key].forEach((data) => {
+          delete data[model.primaryKeyAttributes[0]];
+        });
+      }
     });
   });
 
