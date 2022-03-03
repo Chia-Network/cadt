@@ -1,5 +1,5 @@
 import { columnsToInclude } from './helpers.js';
-import Sequelize from 'sequelize/types/index.js';
+import Sequelize from 'sequelize';
 
 export function formatModelAssociationName(model) {
   if (model == null || model.model == null) return '';
