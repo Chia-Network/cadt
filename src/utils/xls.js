@@ -44,10 +44,40 @@ export function createXlsFromSequelizeResults({
 }) {
   // TODO MariusD: Test with null values
 
-  // Unsure if this is need, therefore just left the semi-deep-clone here. The assumption is that it wants to remove all functions from the prototypes.
   const rowsClone = JSON.parse(JSON.stringify(rows)); // Sadly this is the best way to simplify sequelize's return shape
 
   const uniqueColumns = buildColumnMap(rowsClone);
+
+  if (!toStructuredCsv) {
+    // Remove auto-generated columns that don't make sense to the user
+    const columnsToRemove = ['createdAt', 'updatedAt', 'timeStaged'];
+    uniqueColumns.columns.forEach((columns, key, map) => {
+      let indexesToRemove = [];
+
+      columnsToRemove.forEach((columnToRemove) => {
+        indexesToRemove.push(
+          columns.findIndex((column) => column === columnToRemove),
+        );
+      });
+
+      indexesToRemove = indexesToRemove.filter((index) => index >= 0);
+
+      // Sort the indexes in reverse order
+      indexesToRemove.sort((first, second) => {
+        return second - first;
+      });
+
+      if (indexesToRemove.length > 0) {
+        const newColumns = [...columns];
+
+        indexesToRemove.forEach((index) => {
+          newColumns.splice(index, 1);
+        });
+
+        map.set(key, newColumns);
+      }
+    });
+  }
 
   const columnTransformations = {
     [model.name]: {

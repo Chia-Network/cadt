@@ -113,7 +113,7 @@ export const findAll = async (req, res) => {
     await assertDataLayerAvailable();
 
     let { page, limit, columns, orgUid, search, xls } = req.query;
-    let where = orgUid ? { orgUid } : undefined;
+    let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
     const includes = Unit.getAssociatedModels();
 
@@ -383,9 +383,13 @@ export const split = async (req, res) => {
     let lastAvailableUnitBlock = unitBlockStart;
 
     const splitRecords = await Promise.all(
-      req.body.records.map(async (record) => {
+      req.body.records.map(async (record, index) => {
         const newRecord = _.cloneDeep(originalRecord);
-        newRecord.warehouseUnitId = uuidv4();
+
+        if (index > 0) {
+          newRecord.warehouseUnitId = uuidv4();
+        }
+
         newRecord.unitCount = record.unitCount;
 
         const newUnitBlockStart = lastAvailableUnitBlock;

@@ -105,7 +105,7 @@ export const findAll = async (req, res) => {
   try {
     await assertDataLayerAvailable();
     let { page, limit, search, orgUid, columns, xls } = req.query;
-    let where = orgUid ? { orgUid } : undefined;
+    let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
     const includes = Project.getAssociatedModels();
 
