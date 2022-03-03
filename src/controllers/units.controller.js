@@ -34,6 +34,7 @@ import {
   updateTableWithData,
 } from '../utils/xls';
 import xlsx from 'node-xlsx';
+import { formatModelAssociationName } from '../utils/model-utils.js';
 
 export const create = async (req, res) => {
   try {
@@ -120,19 +121,12 @@ export const findAll = async (req, res) => {
       // Remove any unsupported columns
       columns = columns.filter((col) =>
         Unit.defaultColumns
-          .concat(
-            includes.map(
-              (include) =>
-                `${include.model.name}${include.pluralize ? 's' : ''}`,
-            ),
-          )
+          .concat(includes.map(formatModelAssociationName))
           .includes(col),
       );
     } else {
       columns = Unit.defaultColumns.concat(
-        includes.map(
-          (include) => `${include.model.name}${include.pluralize ? 's' : ''}`,
-        ),
+        includes.map(formatModelAssociationName),
       );
     }
 
@@ -155,6 +149,7 @@ export const findAll = async (req, res) => {
         pagination,
         Unit.defaultColumns,
       );
+
       const mappedResults = ftsResults.rows.map((ftsResult) =>
         _.get(ftsResult, 'dataValues.warehouseUnitId'),
       );
@@ -189,7 +184,6 @@ export const findAll = async (req, res) => {
           rows: response,
           model: Unit,
           toStructuredCsv: false,
-          excludeOrgUid: true,
         }),
         res,
       );

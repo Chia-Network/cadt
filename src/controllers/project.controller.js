@@ -31,6 +31,7 @@ import {
   updateTableWithData,
   collapseTablesData,
 } from '../utils/xls';
+import { formatModelAssociationName } from '../utils/model-utils.js';
 
 export const create = async (req, res) => {
   try {
@@ -112,19 +113,12 @@ export const findAll = async (req, res) => {
       // Remove any unsupported columns
       columns = columns.filter((col) =>
         Project.defaultColumns
-          .concat(
-            includes.map(
-              (include) =>
-                `${include.model.name}${include.pluralize ? 's' : ''}`,
-            ),
-          )
+          .concat(includes.map(formatModelAssociationName))
           .includes(col),
       );
     } else {
       columns = Project.defaultColumns.concat(
-        includes.map(
-          (include) => `${include.model.name}${include.pluralize ? 's' : ''}`,
-        ),
+        includes.map(formatModelAssociationName),
       );
     }
 
@@ -180,7 +174,6 @@ export const findAll = async (req, res) => {
           rows: response,
           model: Project,
           toStructuredCsv: false,
-          excludeOrgUid: true,
         }),
         res,
       );

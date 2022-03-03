@@ -12,6 +12,7 @@ import { sequelize } from '../database';
 import datalayer from '../../datalayer';
 
 import ModelTypes from './staging.modeltypes.cjs';
+import { formatModelAssociationName } from '../../utils/model-utils.js';
 
 class Staging extends Model {
   static changes = new rxjs.Subject();
@@ -67,9 +68,7 @@ class Staging extends Model {
           include: Project.getAssociatedModels().map((association) => {
             return {
               model: association.model,
-              as: `${association.model.name}${
-                association.pluralize ? 's' : ''
-              }`,
+              as: formatModelAssociationName(association),
             };
           }),
         });
@@ -79,9 +78,7 @@ class Staging extends Model {
           include: Unit.getAssociatedModels().map((association) => {
             return {
               model: association.model,
-              as: `${association.model.name}${
-                association.pluralize ? 's' : ''
-              }`,
+              as: formatModelAssociationName(association),
             };
           }),
         });
@@ -100,9 +97,7 @@ class Staging extends Model {
           include: Project.getAssociatedModels().map((association) => {
             return {
               model: association.model,
-              as: `${association.model.name}${
-                association.pluralize ? 's' : ''
-              }`,
+              as: formatModelAssociationName(association),
             };
           }),
         });
@@ -112,9 +107,7 @@ class Staging extends Model {
           include: Unit.getAssociatedModels().map((association) => {
             return {
               model: association.model,
-              as: `${association.model.name}${
-                association.pluralize ? 's' : ''
-              }`,
+              as: formatModelAssociationName(association),
             };
           }),
         });

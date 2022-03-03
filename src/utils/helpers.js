@@ -3,6 +3,7 @@
 import _ from 'lodash';
 
 import { isPluralized } from './string-utils.js';
+import { formatModelAssociationName } from './model-utils.js';
 
 export const paginationParams = (page, limit) => {
   if (page === undefined || limit === undefined) {
@@ -46,10 +47,7 @@ export const optionallyPaginatedResponse = ({ count, rows }, page, limit) => {
  */
 export const columnsToInclude = (userColumns, foreignKeys) => {
   // TODO MariusD: simplify
-  const attributeModelMap = foreignKeys.map(
-    (relationship) =>
-      `${relationship.model.name}${relationship.pluralize ? 's' : ''}`,
-  );
+  const attributeModelMap = foreignKeys.map(formatModelAssociationName);
 
   const filteredIncludes = _.intersection(userColumns, attributeModelMap).map(
     (fk) =>

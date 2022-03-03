@@ -17,7 +17,7 @@ import {
   transformFullXslsToChangeList,
 } from '../../utils/xls';
 import { unitsUpdateSchema } from '../../validations/index.js';
-import { columnsToInclude } from '../../utils/helpers.js';
+import { getDeletedItems } from '../../utils/model-utils.js';
 
 const { Model } = Sequelize;
 
@@ -302,27 +302,29 @@ class Unit extends Model {
       issuances: 'id',
     };
 
-    const deletedRecords = await getDeletedItems(updateRecords, primaryKeyMap);
+    const deletedRecords = await getDeletedItems(
+      updateRecords,
+      primaryKeyMap,
+      Unit,
+      'unit',
+    );
 
     const insertXslsSheets = createXlsFromSequelizeResults({
       rows: insertRecords,
       model: Unit,
       toStructuredCsv: true,
-      excludeOrgUid: false,
     });
 
     const updateXslsSheets = createXlsFromSequelizeResults({
       rows: updateRecords,
       model: Unit,
       toStructuredCsv: true,
-      excludeOrgUid: false,
     });
 
     const deleteXslsSheets = createXlsFromSequelizeResults({
       rows: deletedRecords,
       model: Unit,
       toStructuredCsv: true,
-      excludeOrgUid: false,
     });
 
     const insertChangeList = await transformFullXslsToChangeList(
@@ -366,78 +368,6 @@ class Unit extends Model {
       ],
     };
   }
-}
-
-/**
- * Finds the deleted sub-items (e.g. labels)
- * @param updatedItems {Array<Object>} - The projects updated by the user
- * @param primaryKeyMap {Object} - Object map containing the primary keys for all tables
- */
-async function getDeletedItems(updatedItems, primaryKeyMap) {
-  const updatedUnitIds = updatedItems
-    .map((record) => record[primaryKeyMap['unit']])
-    .filter(Boolean);
-
-  let originalProjects = [];
-  if (updatedUnitIds.length > 0) {
-    const includes = Unit.getAssociatedModels();
-
-    const columns = [primaryKeyMap['unit']].concat(
-      includes.map(
-        (include) => `${include.model.name}${include.pluralize ? 's' : ''}`,
-      ),
-    );
-
-    const query = {
-      ...columnsToInclude(columns, includes),
-    };
-
-    const op = Sequelize.Op;
-    originalProjects = await Unit.findAll({
-      where: {
-        [primaryKeyMap['unit']]: {
-          [op.in]: updatedUnitIds,
-        },
-      },
-      ...query,
-    });
-  }
-
-  const associatedColumns = Unit.getAssociatedModels().map(
-    (association) =>
-      `${association.model.name}${association.pluralize ? 's' : ''}`,
-  );
-
-  return originalProjects.map((originalItem) => {
-    const result = { ...originalItem.dataValues };
-
-    const updatedItem = updatedItems.find(
-      (item) =>
-        item[primaryKeyMap['unit']] === originalItem[primaryKeyMap['unit']],
-    );
-    if (updatedItem == null) return;
-
-    associatedColumns.forEach((column) => {
-      if (originalItem[column] == null || !Array.isArray(originalItem[column]))
-        return;
-      if (updatedItem[column] == null || !Array.isArray(updatedItem[column]))
-        return;
-
-      result[column] = [...originalItem[column]];
-      for (let index = originalItem[column].length - 1; index >= 0; --index) {
-        const item = originalItem[column][index];
-        if (
-          updatedItem[column].findIndex(
-            (searchedItem) =>
-              searchedItem[primaryKeyMap[column]] ===
-              item[primaryKeyMap[column]],
-          ) >= 0
-        )
-          result[column].splice(index, 1);
-      }
-    });
-    return result;
-  });
 }
 
 Unit.init(Object.assign({}, ModelTypes, virtualFields), {

@@ -5,6 +5,7 @@ import _ from 'lodash';
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
 import datalayer from '../datalayer';
+import { formatModelAssociationName } from './model-utils.js';
 
 export const assertDataLayerAvailable = async () => {
   const isAvailable = await datalayer.dataLayerAvailable();
@@ -108,7 +109,7 @@ export const assertUnitRecordExists = async (
     include: Unit.getAssociatedModels().map((association) => {
       return {
         model: association.model,
-        as: `${association.model.name}${association.pluralize ? 's' : ''}`,
+        as: formatModelAssociationName(association),
       };
     }),
   });
