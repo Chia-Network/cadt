@@ -202,9 +202,16 @@ export const findOne = async (req, res) => {
     await assertDataLayerAvailable();
     res.json(
       await Unit.findByPk(req.query.warehouseUnitId, {
-        include: Unit.getAssociatedModels().map(
-          (association) => association.model,
-        ),
+        include: Unit.getAssociatedModels().map((association) => {
+          if (association.pluralize) {
+            return {
+              model: association.model,
+              as: association.model.name + 's',
+            };
+          }
+
+          return association.model;
+        }),
       }),
     );
   } catch (error) {
