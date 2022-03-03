@@ -137,8 +137,9 @@ function buildObjectXlsData({
   columnsWithSpecialTreatment[name]?.forEach((specialColumn) => {
     if (excludedColumns.includes(specialColumn)) {
       const specialColumnIndex = excludedColumns.indexOf(specialColumn);
-      if (specialColumnIndex >= 0)
+      if (specialColumnIndex >= 0) {
         excludedColumns.splice(specialColumnIndex, 1);
+      }
     }
   });
 
@@ -162,10 +163,11 @@ function buildObjectXlsData({
       )
         .replace('_', '')
         .concat('Id');
-      if (aggregatedData[sheetName].data[0].includes(singularIdName))
+      if (aggregatedData[sheetName].data[0].includes(singularIdName)) {
         singularIdName = (isPluralized(name) ? name.slice(0, -1) : name)
           .replace('_', '')
           .concat('Id');
+      }
 
       aggregatedData[sheetName].data[0].push(singularIdName);
     }
@@ -232,8 +234,9 @@ function buildObjectXlsData({
         parentPropName == null &&
         (columnsWithSpecialTreatment[name] == null ||
           !columnsWithSpecialTreatment[name].includes(column))
-      )
+      ) {
         return;
+      }
     }
 
     if (itemValue != null && typeof itemValue === 'object') {
@@ -275,7 +278,9 @@ export const createXlsFromSequelizeResults_old = ({
     columnsInResults = Object.keys(rows[0]);
 
     rows.forEach((row, index) => {
-      if (index === 0) return;
+      if (index === 0) {
+        return;
+      }
 
       Object.keys(row).forEach((key) => {
         if (!columnsInResults.includes(key)) columnsInResults.push(key);
@@ -304,7 +309,9 @@ export const createXlsFromSequelizeResults_old = ({
   if (rows.length > 0) {
     associatedModelColumns.forEach((column) => {
       rows.forEach((row) => {
-        if (row[column] == null || typeof row[column] !== 'object') return;
+        if (row[column] == null || typeof row[column] !== 'object') {
+          return;
+        }
 
         if (Array.isArray(row[column])) {
           row[column].forEach((item) => {
@@ -366,7 +373,9 @@ export const createXlsFromSequelizeResults_old = ({
 
     // Populate associated data sheets
     associatedModelColumns.forEach((column) => {
-      if (!Array.isArray(row[column])) return;
+      if (!Array.isArray(row[column])) {
+        return;
+      }
 
       row[column].forEach((value) => {
         const xlsRow = [];
@@ -489,8 +498,9 @@ export const collapseTablesData = (tableData, model) => {
     associations.forEach((association) => {
       if (
         !Object.prototype.hasOwnProperty.call(tableData, association.model.name)
-      )
+      ) {
         return;
+      }
 
       const dataKey = formatModelAssociationName(association);
       data[dataKey] = tableData[association.model.name]?.data?.find((row) => {
@@ -510,8 +520,9 @@ export const collapseTablesData = (tableData, model) => {
             tableData[model.name]?.model?.primaryKeyAttributes[0];
 
           let comparedToData = null;
-          if (tableRowData != null && primaryKey != null)
+          if (tableRowData != null && primaryKey != null) {
             comparedToData = tableRowData[primaryKey];
+          }
 
           if (row[model.name + 'Id'] === comparedToData) {
             found = true;
@@ -526,18 +537,23 @@ export const collapseTablesData = (tableData, model) => {
 
   collapsed[model.name]?.data?.forEach((data, index) => {
     associations.forEach((association) => {
-      if (association.model.name !== 'label') return;
+      if (association.model.name !== 'label') {
+        return;
+      }
 
       const tableUnitData = tableData['label_unit']?.data?.find((row) => {
-        if (tableData[model.name]?.data == null) return false;
+        if (tableData[model.name]?.data == null) {
+          return false;
+        }
 
         if (
           tableData[model.name].data[index]?.labels != null &&
           !Array.isArray(tableData[model.name].data[index].labels)
-        )
+        ) {
           tableData[model.name].data[index].labels = [
             tableData[model.name].data[index].labels,
           ];
+        }
 
         return tableData[model.name].data[index]?.labels
           ?.map((label) => label.id)
@@ -547,15 +563,19 @@ export const collapseTablesData = (tableData, model) => {
       const dataKey = formatModelAssociationName(association);
 
       if (data[dataKey] != null) {
-        if (data[dataKey].length > 0)
+        if (data[dataKey].length > 0) {
           data[dataKey][0]['label_unit'] = tableUnitData;
+        }
 
-        if (data.labels != null && !Array.isArray(data.labels))
+        if (data.labels != null && !Array.isArray(data.labels)) {
           data.labels = [data.labels];
+        }
 
         data.labels = data.labels?.map((label) => {
-          if (label.label_unit?.labelunitId != null)
+          if (label.label_unit?.labelunitId != null) {
             delete label.label_unit.labelunitId;
+          }
+
           return label;
         });
       }
@@ -579,8 +599,9 @@ export const updateTableWithData = async (tableData, model) => {
           data.data == null ||
           data.model == null ||
           !Array.isArray(data.data)
-        )
+        ) {
           return;
+        }
 
         await Promise.all(
           data.data.map(async (row) => {
@@ -733,14 +754,18 @@ function buildColumnMap(items) {
   const result = new Map();
   const topLevelKey = 'top level';
 
-  if (items == null || typeof items !== 'object')
+  if (items == null || typeof items !== 'object') {
     return {
       columns: result,
       topLevelKey: topLevelKey,
     };
+  }
 
-  if (Array.isArray(items)) getArrayColumns(items, topLevelKey, result);
-  else getObjectColumns(items, topLevelKey, result);
+  if (Array.isArray(items)) {
+    getArrayColumns(items, topLevelKey, result);
+  } else {
+    getObjectColumns(items, topLevelKey, result);
+  }
 
   return {
     columns: result,
@@ -755,16 +780,23 @@ function buildColumnMap(items) {
  * @param columnsMap {Map<string, Array<string>>} - The map to populate
  */
 function getObjectColumns(item, propertyName, columnsMap) {
-  if (item == null || typeof item !== 'object') return;
+  if (item == null || typeof item !== 'object') {
+    return;
+  }
 
   if (!Array.isArray(item)) {
     const currentProperties = columnsMap.get(propertyName) ?? [];
 
     Object.entries(item).forEach(([column, value]) => {
-      if (Array.isArray(value)) getArrayColumns(value, column, columnsMap);
-      else if (typeof value === 'object')
+      if (Array.isArray(value)) {
+        getArrayColumns(value, column, columnsMap);
+      } else if (typeof value === 'object') {
         getObjectColumns(value, column, columnsMap);
-      if (!currentProperties.includes(column)) currentProperties.push(column);
+      }
+
+      if (!currentProperties.includes(column)) {
+        currentProperties.push(column);
+      }
     });
 
     columnsMap.set(propertyName, currentProperties);
@@ -778,18 +810,22 @@ function getObjectColumns(item, propertyName, columnsMap) {
  * @param columnsMap {Map<string, Array<string>>} - The map to populate
  */
 function getArrayColumns(items, propertyName, columnsMap) {
-  if (items == null || typeof items !== 'object' || !Array.isArray(items))
+  if (items == null || typeof items !== 'object' || !Array.isArray(items)) {
     return;
+  }
 
   items.forEach((value) => {
-    if (value == null) return;
+    if (value == null) {
+      return;
+    }
 
     if (Array.isArray(value)) {
       getArrayColumns(value, propertyName, columnsMap);
       return;
     }
 
-    if (typeof value === 'object')
+    if (typeof value === 'object') {
       getObjectColumns(value, propertyName, columnsMap);
+    }
   });
 }
