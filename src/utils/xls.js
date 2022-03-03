@@ -66,9 +66,13 @@ export function createXlsFromResults({
   const uniqueColumns = buildColumnMap(rowsClone);
 
   if (excludeOrgUid) {
-    const columns = uniqueColumns.columns.get(uniqueColumns.topLevelKey) ?? [];
-    columns.splice(columns.find((column) => column === 'orgUid'));
-    uniqueColumns.columns.set(uniqueColumns.topLevelKey, columns);
+    uniqueColumns.columns.forEach((columns, key, map) => {
+      const orgUidIndex = columns.findIndex((column) => column === 'orgUid');
+      if (orgUidIndex >= 0) {
+        columns.splice(orgUidIndex, 1);
+        map.set(key, columns);
+      }
+    });
   }
 
   const columnTransformations = {
@@ -289,6 +293,16 @@ export const createXlsFromSequelizeResults = ({
   excludeOrgUid = false,
   isUserFriendlyFormat = true,
 }) => {
+  return createXlsFromResults({
+    rows,
+    model,
+    toStructuredCsv,
+    excludeOrgUid,
+  });
+  // TODO MariusD: Test with null values
+
+  /* eslint-disable no-unreachable */
+
   rows = JSON.parse(JSON.stringify(rows)); // Sadly this is the best way to simplify sequelize's return shape
 
   let columnsInResults = [];
@@ -447,30 +461,30 @@ export const createXlsFromSequelizeResults = ({
     return sheets;
   }, initialReduceValue);
 
-  const asdsad = createXlsFromResults({
-    rows,
-    model,
-    toStructuredCsv,
-    excludeOrgUid,
-  });
-
   if (!toStructuredCsv) {
     return xlsx.build(Object.values(xlsData));
   } else {
-    return asdsad;
+    return xlsData;
   }
+
+  /* eslint-enable no-unreachable */
 };
 
 export const tableDataFromXlsx = (xlsx, model) => {
   // Todo recursion
+  const modelAssociations = [...associations(model), model];
+
   return xlsx.reduce((stagingData, { data, name }) => {
-    let dataModel = [...associations(model), model].find((m) => {
+    let dataModel = modelAssociations.find((model) => {
       const modelName = name.slice(0, -1);
       const assocModelName = modelName.split('_');
       if (assocModelName.length > 1) {
         assocModelName[1] = capitalize(assocModelName[1]);
       }
-      return m.name === name.slice(0, -1) || m.name === assocModelName.join('');
+      return (
+        model.name === name.slice(0, -1) ||
+        model.name === assocModelName.join('')
+      );
     });
 
     if (model.name === 'unit' && dataModel === undefined) {
@@ -479,27 +493,27 @@ export const tableDataFromXlsx = (xlsx, model) => {
     }
 
     const columnNames = data.shift();
-    for (const [, dataRow] of data.entries()) {
-      if (!Object.keys(stagingData).includes(dataModel.name)) {
+    data.forEach((dataRow) => {
+      if (stagingData[dataModel.name] == null) {
         stagingData[dataModel.name] = { model: dataModel, data: [] };
       }
+
       const row = {};
-      for (let [columnIndex, columnData] of dataRow.entries()) {
+      dataRow.forEach((columnData, index) => {
         if (columnData === 'null') {
           columnData = null;
         }
+
         // Ignore virtual fields
-        if (
-          !Object.keys(model.virtualFieldList).includes(
-            columnNames[columnIndex],
-          )
-        ) {
-          row[columnNames[columnIndex]] = columnData;
+        if (model.virtualFieldList[columnNames[index]] == null) {
+          row[columnNames[index]] = columnData;
         }
-      }
+      });
+
       delete row.orgUid;
       stagingData[dataModel.name].data.push(row);
-    }
+    });
+
     return stagingData;
   }, {});
 };
@@ -508,74 +522,88 @@ export const collapseTablesData = (tableData, model) => {
   // Todo recursion
   const collapsed = { [model.name]: tableData[model.name] };
 
-  let associations = model
-    .getAssociatedModels()
-    .map((association) => association.model);
+  let associations = model.getAssociatedModels();
 
-  for (const [i] of collapsed[model.name].data.entries()) {
-    for (const { name: association } of associations) {
-      // To account for 1st level custom mappings, need to handle one-off per associated field.
-      // You can possibly roll these up into one handler by adding to the includes() target,
-      // but most likely will need a custom handler per non-simple mapping.
-      if (['issuance'].includes(association)) {
-        // Todo: make generic
-        collapsed[model.name].data[i][association] = tableData[
-          association
-        ].data.find((row) => {
-          let found = false;
+  collapsed[model.name]?.data?.forEach((data, index) => {
+    associations.forEach((association) => {
+      if (
+        !Object.prototype.hasOwnProperty.call(tableData, association.model.name)
+      )
+        return;
 
-          if (
-            row[model.name + 'Id'] ===
-            collapsed[model.name].data[i][association + 'Id']
-          ) {
+      const dataKey = `${association.model.name}${
+        association.pluralize ? 's' : ''
+      }`;
+      data[dataKey] = tableData[association.model.name]?.data?.find((row) => {
+        let found = false;
+
+        if (association.model.name === 'issuance') {
+          if (row[model.name + 'Id'] === data[association.model.name + 'Id']) {
             found = true;
             delete row[model.name + 'Id'];
           }
-          return found;
-        });
-      } else {
-        collapsed[model.name].data[i][association + 's'] = tableData[
-          association
-        ].data.filter((row) => {
-          let found = false;
-          if (
-            row[model.name + 'Id'] ===
-            tableData[model.name].data[i][
-              tableData[model.name].model.primaryKeyAttributes[0]
-            ]
-          ) {
-            delete row[model.name + 'Id'];
+        } else {
+          const tableRowData =
+            tableData[model.name]?.data != null
+              ? tableData[model.name]?.data[index]
+              : null;
+          const primaryKey =
+            tableData[model.name]?.model?.primaryKeyAttributes[0];
+
+          let comparedToData = null;
+          if (tableRowData != null && primaryKey != null)
+            comparedToData = tableRowData[primaryKey];
+
+          if (row[model.name + 'Id'] === comparedToData) {
             found = true;
+            delete row[model.name + 'Id'];
           }
-          return found;
+        }
+
+        return found;
+      });
+    });
+  });
+
+  collapsed[model.name]?.data?.forEach((data, index) => {
+    associations.forEach((association) => {
+      if (association.model.name !== 'label') return;
+
+      const tableUnitData = tableData['label_unit']?.data?.find((row) => {
+        if (tableData[model.name]?.data == null) return false;
+
+        if (
+          tableData[model.name].data[index]?.labels != null &&
+          !Array.isArray(tableData[model.name].data[index].labels)
+        )
+          tableData[model.name].data[index].labels = [
+            tableData[model.name].data[index].labels,
+          ];
+
+        return tableData[model.name].data[index]?.labels
+          ?.map((label) => label.id)
+          .includes(row['labelunitId']);
+      });
+
+      const dataKey = `${association.model.name}${
+        association.pluralize ? 's' : ''
+      }`;
+
+      if (data[dataKey] != null) {
+        if (data[dataKey].length > 0)
+          data[dataKey][0]['label_unit'] = tableUnitData;
+
+        if (data.labels != null && !Array.isArray(data.labels))
+          data.labels = [data.labels];
+
+        data.labels = data.labels?.map((label) => {
+          if (label.label_unit?.labelunitId != null)
+            delete label.label_unit.labelunitId;
+          return label;
         });
       }
-    }
-  }
-
-  // Put any handlers for nested complex mappings here.
-  for (const [i] of collapsed[model.name].data.entries()) {
-    for (const { name: association } of associations) {
-      if (['label'].includes(association)) {
-        // Todo: make generic
-        const tData = tableData['label_unit'].data.find((row) => {
-          return tableData[model.name].data[i].labels
-            .map((l) => l.id)
-            .includes(row['labelunitId']);
-        });
-
-        collapsed[model.name].data[i][association + 's'][0]['label_unit'] =
-          tData;
-
-        collapsed[model.name].data[i].labels = collapsed[model.name].data[
-          i
-        ].labels.map((l) => {
-          delete l.label_unit.labelunitId;
-          return l;
-        });
-      }
-    }
-  }
+    });
+  });
 
   return collapsed;
 };
@@ -588,42 +616,64 @@ export const updateTableWithData = async (tableData, model) => {
   await sequelize.transaction(async () => {
     const { orgUid } = await Organization.getHomeOrg();
 
-    for (let [, { model, data }] of Object.values(tableData).entries()) {
-      for (let row of data) {
-        const existingRecord = await model.findByPk(
-          row[model.primaryKeyAttributes[0]],
+    await Promise.all(
+      Object.values(tableData).map(async (data) => {
+        if (
+          data.data == null ||
+          data.model == null ||
+          !Array.isArray(data.data)
+        )
+          return;
+
+        await Promise.all(
+          data.data.map(async (row) => {
+            const existingRecord = await data.model.findByPk(
+              row[data.model.primaryKeyAttributes[0]],
+            );
+
+            const exists = Boolean(existingRecord);
+
+            // Stripping out issuanceId if its included. Need to take another look at this
+            if (data.model.name === 'unit') {
+              delete row['issuanceId'];
+            }
+
+            const validation = data.model.validateImport?.validate(row);
+
+            if (exists) {
+              // Assert the original record is a record your allowed to modify
+              await assertOrgIsHomeOrg(existingRecord.orgUid);
+              row.orgUid = existingRecord.orgUid;
+            } else {
+              // Assign the newly created record to this home org
+              row.orgUid = orgUid;
+            }
+
+            // merge the new record into the old record
+            let stagedRecord = Array.isArray(row) ? row : [row];
+
+            stagedRecord = stagedRecord.map((record) => {
+              return Object.keys(record).reduce((syncedRecord, key) => {
+                syncedRecord[key] = record[key];
+                return syncedRecord;
+              }, existingRecord?.dataValues ?? {});
+            });
+
+            if (!validation.error) {
+              await Staging.upsert({
+                uuid: row[model.primaryKeyAttributes[0]],
+                action: exists ? 'UPDATE' : 'INSERT',
+                table: model.stagingTableName,
+                data: JSON.stringify(stagedRecord),
+              });
+            } else {
+              validation.error.message += ' on ' + model.name;
+              throw validation.error;
+            }
+          }),
         );
-
-        const exists = Boolean(existingRecord);
-
-        // Stripping out issuanceId if its included. Need to take another look at this
-        if (model.name === 'unit') {
-          delete row['issuanceId'];
-        }
-
-        const validation = model.validateImport.validate(row);
-
-        if (exists) {
-          // Assert the original record is a record your allowed to modify
-          await assertOrgIsHomeOrg(existingRecord.orgUid);
-        } else {
-          // Assign the newly created record to this home org
-          row.orgUid = orgUid;
-        }
-
-        if (!validation.error) {
-          await Staging.upsert({
-            uuid: data[model.primaryKeyAttributes[0]],
-            action: exists ? 'UPDATE' : 'INSERT',
-            table: model.tableName,
-            data: JSON.stringify(row),
-          });
-        } else {
-          validation.error.message += ' on ' + model.name;
-          throw validation.error;
-        }
-      }
-    }
+      }),
+    );
   });
 };
 
