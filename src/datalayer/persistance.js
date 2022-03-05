@@ -179,8 +179,10 @@ export const dataLayerAvailable = async () => {
       return true;
     }
 
+    console.error(data);
     return false;
   } catch (error) {
+    console.error(error);
     return false;
   }
 };
