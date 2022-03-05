@@ -19,7 +19,7 @@ app.use(fileUpload());
 
 // Add optional API key if set in .env file
 app.use(function (req, res, next) {
-  if (process.env.API_KEY) {
+  if (process.env.API_KEY && process.env.API_KEY !== '') {
     const apikey = req.header('x-api-key');
     if (process.env.API_KEY === apikey) {
       next();
@@ -52,7 +52,7 @@ app.use((err, req, res, next) => {
     if (_.get(err, 'error.details')) {
       // format Joi validation errors
       return res.status(400).json({
-        message: 'API Validation error',
+        message: 'Data Validation error',
         errors: err.error.details.map((detail) => {
           return _.get(detail, 'context.message', detail.message);
         }),
