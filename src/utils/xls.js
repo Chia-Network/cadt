@@ -11,6 +11,7 @@ import { encodeHex } from './datalayer-utils';
 
 import { isPluralized } from './string-utils.js';
 import { formatModelAssociationName } from './model-utils.js';
+import { uuid as uuidv4 } from 'uuidv4';
 
 const associations = (model) =>
   model.getAssociatedModels().map((model) => model.model);
@@ -519,20 +520,23 @@ export const tableDataFromXlsx = (xlsx, model) => {
 };
 
 export const collapseTablesData = (tableData, model) => {
-  // Todo recursion
-  const removeModelKeyInModels = [
-    'projectLocations',
-    'coBenefits',
-    'relatedProjects',
-    'projectRatings',
-    'estimations',
-  ];
-
   const collapsed = { [model.name]: tableData[model.name] };
 
   let associations = model.getAssociatedModels();
 
   collapsed[model.name]?.data?.forEach((data, index) => {
+    const tableRowData =
+      tableData[model.name]?.data != null
+        ? tableData[model.name]?.data[index]
+        : null;
+
+    if (
+      tableRowData != null &&
+      tableRowData[model.primaryKeyAttributes[0]] == null
+    ) {
+      tableRowData[model.primaryKeyAttributes[0]] = uuidv4();
+    }
+
     associations.forEach((association) => {
       if (
         !Object.prototype.hasOwnProperty.call(tableData, association.model.name)
@@ -550,14 +554,10 @@ export const collapseTablesData = (tableData, model) => {
             delete row[model.name + 'Id'];
           }
         } else {
-          const tableRowData =
-            tableData[model.name]?.data != null
-              ? tableData[model.name]?.data[index]
-              : null;
+          let comparedToData = null;
           const primaryKey =
             tableData[model.name]?.model?.primaryKeyAttributes[0];
 
-          let comparedToData = null;
           if (tableRowData != null && primaryKey != null) {
             comparedToData = tableRowData[primaryKey];
           }
@@ -570,23 +570,6 @@ export const collapseTablesData = (tableData, model) => {
 
         return found;
       });
-    });
-  });
-
-  collapsed[model.name]?.data?.forEach((data) => {
-    associations.forEach((association) => {
-      if (!association.pluralize) return;
-
-      const key = formatModelAssociationName(association);
-      if (data[key] != null && !Array.isArray(data[key])) {
-        data[key] = [data[key]];
-      }
-
-      if (removeModelKeyInModels.includes(key)) {
-        data[key].forEach((data) => {
-          delete data[model.primaryKeyAttributes[0]];
-        });
-      }
     });
   });
 
@@ -640,10 +623,61 @@ export const collapseTablesData = (tableData, model) => {
   return collapsed;
 };
 
+/**
+ * Sets or deletes the model key from the children specified in {@param removeModelKeyInChildren}
+ * @param modelAssociations - The associations object for the current model
+ * @param item - The item to remove the model keys from
+ * @param removeModelKeyInChildren - The list of association names to process
+ * @param model - The model used
+ * @param setKey - Whether to set the model key to children or to delete them (false = delete)
+ */
+function updateModelChildIds(
+  modelAssociations,
+  item,
+  removeModelKeyInChildren,
+  model,
+  setKey,
+) {
+  modelAssociations.forEach((association) => {
+    if (!association.pluralize) return;
+
+    const key = formatModelAssociationName(association);
+    if (item[key] != null) {
+      if (!Array.isArray(item[key])) {
+        item[key] = [item[key]];
+      }
+
+      if (removeModelKeyInChildren.includes(key)) {
+        item[key].forEach((childData) => {
+          if (setKey) {
+            childData[model.primaryKeyAttributes[0]] =
+              item[model.primaryKeyAttributes[0]];
+          } else {
+            delete childData[model.primaryKeyAttributes[0]];
+          }
+        });
+      }
+    }
+  });
+}
+
 export const updateTableWithData = async (tableData, model) => {
   if (!['project', 'unit'].includes(model.name)) {
     throw 'Bulk import is only supported for projects and units'; // Technically, updateTableWithData can support any model
   }
+  const modelAssociations = model.getAssociatedModels();
+
+  const removeModelKeyInChildren =
+    model.name === 'project'
+      ? [
+          'projectLocations',
+          'coBenefits',
+          'relatedProjects',
+          'projectRatings',
+          'estimations',
+        ]
+      : [];
+
   // using a transaction ensures either everything is uploaded or everything fails
   await sequelize.transaction(async () => {
     const { orgUid } = await Organization.getHomeOrg();
@@ -670,13 +704,27 @@ export const updateTableWithData = async (tableData, model) => {
             if (data.model.name === 'unit') {
               delete row['issuanceId'];
             }
+            updateModelChildIds(
+              modelAssociations,
+              row,
+              removeModelKeyInChildren,
+              model,
+              false,
+            );
 
             const validation = data.model.validateImport?.validate(row);
+
+            updateModelChildIds(
+              modelAssociations,
+              row,
+              removeModelKeyInChildren,
+              model,
+              true,
+            );
 
             if (exists) {
               // Assert the original record is a record your allowed to modify
               await assertOrgIsHomeOrg(existingRecord.orgUid);
-              row.orgUid = existingRecord.orgUid;
             } else {
               // Assign the newly created record to this home org
               row.orgUid = orgUid;
