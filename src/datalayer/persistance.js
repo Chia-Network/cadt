@@ -47,33 +47,39 @@ export const createDataLayerStore = async () => {
 };
 
 export const pushChangeListToDataLayer = async (storeId, changelist) => {
-  const options = {
-    url: `${rpcUrl}/batch_update`,
-    body: JSON.stringify({
-      changelist,
-      id: storeId,
-    }),
-  };
+  try {
+    const options = {
+      url: `${rpcUrl}/batch_update`,
+      body: JSON.stringify({
+        changelist,
+        id: storeId,
+      }),
+    };
 
-  const response = await request(Object.assign({}, getBaseOptions(), options));
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
 
-  const data = JSON.parse(response);
+    const data = JSON.parse(response);
 
-  console.log(options, data);
+    console.log(options, data);
 
-  if (data.success) {
-    console.log('Success!');
-    return true;
+    if (data.success) {
+      console.log('Success!');
+      return true;
+    }
+
+    if (data.error.includes('Key already present')) {
+      console.log('Success, I guess...');
+      return true;
+    }
+
+    console.log(data);
+
+    return false;
+  } catch (error) {
+    console.log(error);
   }
-
-  if (data.error.includes('Key already present')) {
-    console.log('Success, I guess...');
-    return true;
-  }
-
-  console.log(data);
-
-  return false;
 };
 
 export const getRoots = async (storeIds) => {
