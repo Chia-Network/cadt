@@ -24,9 +24,11 @@ export const assertIfReadOnlyMode = async () => {
 export const assertNoPendingCommits = async () => {
   if (process.env.USE_SIMULATOR === 'true') {
     const pendingCommits = await Staging.findAll({
-      where: { commited: true },
+      where: { commited: true, failedCommit: false },
       raw: true,
     });
+
+    console.log(pendingCommits);
 
     if (pendingCommits.length > 0) {
       throw new Error(

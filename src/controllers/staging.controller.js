@@ -19,12 +19,22 @@ import {
 
 export const findAll = async (req, res) => {
   try {
-    let { page, limit } = req.query;
+    let { page, limit, type } = req.query;
 
     let pagination = paginationParams(page, limit);
 
+    let where = {};
+    if (type === 'staged') {
+      where = { commited: false, failedCommit: false };
+    } else if (type === 'pending') {
+      where = { commited: true, failedCommit: false };
+    } else if (type === 'failed') {
+      where = { failedCommit: true };
+    }
+
     let stagingData = await Staging.findAndCountAll({
       distinct: true,
+      where,
       ...pagination,
     });
 

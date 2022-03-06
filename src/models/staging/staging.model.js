@@ -222,7 +222,7 @@ class Staging extends Model {
       async () => {
         // The push failed so revert the commited staging records.
         await Staging.update(
-          { commited: false },
+          { failedCommit: true },
           { where: { commited: true } },
         );
       },

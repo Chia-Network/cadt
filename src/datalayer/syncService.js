@@ -1,23 +1,25 @@
 import _ from 'lodash';
 
-import logUpdate from 'log-update';
-
 import { decodeHex, decodeDataLayerResponse } from '../utils/datalayer-utils';
 import { Organization, Staging, ModelKeys } from '../models';
 
 import * as dataLayer from './persistance';
 import * as simulator from './simulator';
 
+import Debug from 'debug';
+Debug.enable('climate-warehouse:datalayer:syncService');
+const log = Debug('climate-warehouse:datalayer:syncService');
+
 const POLLING_INTERVAL = 5000;
 const frames = ['-', '\\', '|', '/'];
 
-console.log('Start Datalayer Update Polling');
+log('Start Datalayer Update Polling');
 const startDataLayerUpdatePolling = async () => {
   const updateStoreInfo = await dataLayerWasUpdated();
   if (updateStoreInfo.length) {
     await Promise.all(
       updateStoreInfo.map(async (store) => {
-        logUpdate(
+        log(
           `Updates found syncing storeId: ${store.storeId} ${
             frames[Math.floor(Math.random() * 3)]
           }`,
@@ -178,8 +180,8 @@ const getSubscribedStoreData = async (
   if (!alreadySubscribed) {
     const response = await subscribeToStoreOnDataLayer(storeId, ip, port);
     if (!response.success) {
-      console.log(`Retrying...`, retry + 1);
-      console.log('...');
+      log(`Retrying...`, retry + 1);
+      log('...');
       await new Promise((resolve) => setTimeout(() => resolve(), 30000));
       return getSubscribedStoreData(storeId, ip, port, false, retry + 1);
     }
@@ -188,8 +190,8 @@ const getSubscribedStoreData = async (
   if (process.env.USE_SIMULATOR !== 'true') {
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
     if (!storeExistAndIsConfirmed) {
-      console.log(`Retrying...`, retry + 1);
-      console.log('...');
+      log(`Retrying...`, retry + 1);
+      log('...');
       await new Promise((resolve) => setTimeout(() => resolve(), 30000));
       return getSubscribedStoreData(storeId, ip, port, true, retry + 1);
     }
@@ -202,11 +204,11 @@ const getSubscribedStoreData = async (
     encodedData = await dataLayer.getStoreData(storeId);
   }
 
-  console.log('!!!!', encodedData?.keys_values);
+  log(encodedData?.keys_values);
 
   if (_.isEmpty(encodedData?.keys_values)) {
-    console.log(`Retrying...`, retry + 1);
-    console.log('...');
+    log(`Retrying...`, retry + 1);
+    log('...');
     await new Promise((resolve) => setTimeout(() => resolve(), 30000));
     return getSubscribedStoreData(storeId, ip, port, true, retry + 1);
   }

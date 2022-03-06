@@ -11,6 +11,10 @@ import {
   serverAvailable,
 } from '../../utils/data-loaders';
 
+import Debug from 'debug';
+Debug.enable('climate-warehouse:organizations');
+const log = Debug('climate-warehouse:organizations');
+
 import ModelTypes from './organizations.modeltypes.cjs';
 
 class Organization extends Model {
@@ -50,29 +54,33 @@ class Organization extends Model {
       process.env.USE_SIMULATOR === 'true'
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
         : await datalayer.createDataLayerStore();
-    console.log({
-      newOrganizationId,
-    });
+
     const newRegistryId = await datalayer.createDataLayerStore();
-    console.log({
-      newRegistryId,
-    });
     const registryVersionId = await datalayer.createDataLayerStore();
-    console.log({
-      registryVersionId,
-    });
+
+    const revertOrganizationIfFailed = async () => {
+      await Organization.destroy({ where: { orgUid: newOrganizationId } });
+    };
 
     // sync the organization store
-    await datalayer.syncDataLayer(newOrganizationId, {
-      registryId: newRegistryId,
-      name,
-      icon,
-    });
+    await datalayer.syncDataLayer(
+      newOrganizationId,
+      {
+        registryId: newRegistryId,
+        name,
+        icon,
+      },
+      revertOrganizationIfFailed,
+    );
 
     //sync the registry store
-    await datalayer.syncDataLayer(newRegistryId, {
-      [dataVersion]: registryVersionId,
-    });
+    await datalayer.syncDataLayer(
+      newRegistryId,
+      {
+        [dataVersion]: registryVersionId,
+      },
+      revertOrganizationIfFailed,
+    );
 
     await Organization.create({
       orgUid: newOrganizationId,
@@ -94,10 +102,10 @@ class Organization extends Model {
   // eslint-disable-next-line
   static importOrganization = async (orgUid, ip, port) => {
     try {
-      console.log('Subscribing to', orgUid, ip, port);
+      log('Subscribing to', orgUid, ip, port);
       const orgData = await datalayer.getSubscribedStoreData(orgUid, ip, port);
 
-      console.log(orgData);
+      log(orgData);
 
       if (!orgData.registryId) {
         throw new Error(
@@ -105,7 +113,7 @@ class Organization extends Model {
         );
       }
 
-      console.log('IMPORTING REGISTRY: ', orgData.registryId);
+      log('IMPORTING REGISTRY: ', orgData.registryId);
 
       const registryData = await datalayer.getSubscribedStoreData(
         orgData.registryId,
@@ -117,11 +125,11 @@ class Organization extends Model {
         throw new Error('Organization has no registry, can not import');
       }
 
-      console.log('IMPORTING REGISTRY V1: ', registryData.v1);
+      log('IMPORTING REGISTRY V1: ', registryData.v1);
 
       await datalayer.subscribeToStoreOnDataLayer(registryData.v1, ip, port);
 
-      console.log({
+      log({
         orgUid,
         name: orgData.name,
         icon: orgData.icon,
@@ -139,7 +147,7 @@ class Organization extends Model {
         isHome: false,
       });
     } catch (error) {
-      console.log(error.message);
+      log(error.message);
     }
   };
 
@@ -164,7 +172,7 @@ class Organization extends Model {
     try {
       const defaultOrgs = await getDefaultOrganizationList();
       if (!Array.isArray(defaultOrgs)) {
-        console.log(
+        log(
           'ERROR: Default Organization List Not found, This instance may be missing data from default orgs',
         );
       }
@@ -183,7 +191,7 @@ class Organization extends Model {
         }),
       );
     } catch (error) {
-      console.log(error);
+      log(error);
     }
   };
 }

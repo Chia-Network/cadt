@@ -8,5 +8,6 @@ export const stagingGetQuerySchema = Joi.object()
   .keys({
     page: Joi.number(),
     limit: Joi.number(),
+    type: Joi.string(),
   })
   .with('page', 'limit');
