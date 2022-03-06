@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import * as dataLayer from './persistance';
 import wallet from './wallet';
 import * as simulator from './simulator';
@@ -27,14 +29,33 @@ const syncDataLayer = async (storeId, data) => {
   await pushChangesWhenStoreIsAvailable(storeId, changeList);
 };
 
-const retry = (storeId, changeList) => {
+const retry = (storeId, changeList, failedCallback, retryAttempts) => {
+  console.log('RETRYING...', retryAttempts);
+  if (retryAttempts >= 10) {
+    console.log(
+      'Could not push changelist to datalayer after retrying 10 times',
+    );
+    failedCallback();
+    return;
+  }
+
   setTimeout(async () => {
     console.log('Retrying...', storeId);
-    await pushChangesWhenStoreIsAvailable(storeId, changeList);
+    await pushChangesWhenStoreIsAvailable(
+      storeId,
+      changeList,
+      failedCallback,
+      retryAttempts + 1,
+    );
   }, 30000);
 };
 
-const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
+const pushChangesWhenStoreIsAvailable = async (
+  storeId,
+  changeList,
+  failedCallback = _.noop,
+  retryAttempts = 0,
+) => {
   if (process.env.USE_SIMULATOR === 'true') {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
@@ -50,16 +71,16 @@ const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
       );
 
       if (!success) {
-        retry(storeId, changeList);
+        retry(storeId, changeList, failedCallback, retryAttempts);
       }
     } else {
-      retry(storeId, changeList);
+      retry(storeId, changeList, failedCallback, retryAttempts);
     }
   }
 };
 
-const pushDataLayerChangeList = (storeId, changeList) => {
-  pushChangesWhenStoreIsAvailable(storeId, changeList);
+const pushDataLayerChangeList = (storeId, changeList, failedCallback) => {
+  pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback);
 };
 
 const dataLayerAvailable = async () => {

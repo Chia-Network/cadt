@@ -78,7 +78,7 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
 
     return false;
   } catch (error) {
-    console.log(error);
+    console.log('There was an error pushing your changes to the datalayer');
   }
 };
 
@@ -189,6 +189,7 @@ export const dataLayerAvailable = async () => {
     return false;
   } catch (error) {
     console.error(error);
+
     return false;
   }
 };

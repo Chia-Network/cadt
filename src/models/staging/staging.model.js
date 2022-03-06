@@ -219,6 +219,13 @@ class Staging extends Model {
     await datalayer.pushDataLayerChangeList(
       myOrganization.registryId,
       finalChangeList,
+      async () => {
+        // The push failed so revert the commited staging records.
+        await Staging.update(
+          { commited: false },
+          { where: { commited: true } },
+        );
+      },
     );
   }
 }
