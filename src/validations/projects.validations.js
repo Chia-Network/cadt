@@ -15,7 +15,7 @@ export const baseSchema = {
   // warehouseProjectId - derived upon creation
   // orgUid - derived upon creation
   projectId: Joi.string().required(),
-  currentRegistry: Joi.string().required(),
+  currentRegistry: Joi.string().optional(),
   originProjectId: Joi.string().required(),
   registryOfOrigin: Joi.string()
     .custom(pickListValidation('registries', 'registryOfOrigin'))
