@@ -5,7 +5,6 @@ import {
   assertWalletIsSynced,
   assertWalletIsAvailable,
   assertDataLayerAvailable,
-  assertWalletIsAvailable,
   assertIfReadOnlyMode,
 } from '../utils/data-assertions';
 
