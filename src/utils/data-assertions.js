@@ -54,6 +54,16 @@ export const assertWalletIsSynced = async () => {
   }
 };
 
+export const assertWalletIsAvailable = async () => {
+  if (process.env.USE_SIMULATOR === 'false') {
+    if (!(await datalayer.walletIsAvailable())) {
+      throw new Error(
+        'Your wallet is not available, please turn it on to continue using climate warehouse',
+      );
+    }
+  }
+};
+
 export const assertRecordExistance = async (Model, pk) => {
   const record = await Model.findByPk(pk);
   if (!record) {

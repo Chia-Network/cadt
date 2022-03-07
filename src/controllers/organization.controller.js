@@ -3,6 +3,7 @@ import { Organization } from '../models/organizations';
 import {
   assertHomeOrgExists,
   assertWalletIsSynced,
+  assertWalletIsAvailable,
   assertDataLayerAvailable,
   assertIfReadOnlyMode,
 } from '../utils/data-assertions';
@@ -15,6 +16,7 @@ export const create = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     const myOrganization = await Organization.getHomeOrg();
@@ -44,6 +46,7 @@ export const importOrg = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     const { orgUid, ip, port } = req.body;
@@ -67,6 +70,7 @@ export const subscribeToOrganization = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
 
