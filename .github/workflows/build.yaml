@@ -177,16 +177,21 @@ jobs:
           name: linux-x64
           path: linux-x64
 
+      - name: Get tag name
+        id: tag-name
+        run: |
+          echo ::set-output name=TAGNAME::$(echo $GITHUB_REF | cut -d / -f 3)
+
       - name: Create zips
         run: |
-          zip -r windows-x64.zip windows-x64
-          zip -r macos-x64.zip macos-x64
-          zip -r linux-x64.zip linux-x64
+          zip -r windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip windows-x64
+          zip -r macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip macos-x64
+          zip -r linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip linux-x64
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            windows-x64.zip
-            macos-x64.zip
-            linux-x64.zip
+            windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
