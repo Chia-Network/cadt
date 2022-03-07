@@ -12,6 +12,7 @@ import {
   assertHomeOrgExists,
   assertNoPendingCommits,
   assertWalletIsSynced,
+  assertWalletIsAvailable,
   assertDataLayerAvailable,
   assertIfReadOnlyMode,
   assertStagingTableNotEmpty,
@@ -74,6 +75,7 @@ export const commit = async (req, res) => {
     await assertStagingTableNotEmpty();
     await assertHomeOrgExists();
     await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertNoPendingCommits();
 
