@@ -1,19 +1,10 @@
 import _ from 'lodash';
 
+import { Sequelize } from 'sequelize';
+import xlsx from 'node-xlsx';
 import { uuid as uuidv4 } from 'uuidv4';
 
-import {
-  Staging,
-  Project,
-  ProjectLocation,
-  Label,
-  Issuance,
-  CoBenefit,
-  RelatedProject,
-  Organization,
-  Rating,
-  Estimation,
-} from '../models';
+import { Staging, Project, Organization, ModelKeys } from '../models';
 
 import {
   columnsToInclude,
@@ -26,14 +17,28 @@ import {
   assertProjectRecordExists,
   assertCsvFileInRequest,
   assertHomeOrgExists,
+  assertNoPendingCommits,
+  assertRecordExistance,
+  assertDataLayerAvailable,
+  assertIfReadOnlyMode,
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
-import { createXlsFromSequelizeResults, sendXls } from '../utils/xls';
+import {
+  tableDataFromXlsx,
+  createXlsFromSequelizeResults,
+  sendXls,
+  updateTableWithData,
+  collapseTablesData,
+} from '../utils/xls';
+import { formatModelAssociationName } from '../utils/model-utils.js';
 
 export const create = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
+    await assertNoPendingCommits();
 
     const newRecord = _.cloneDeep(req.body);
     // When creating new projects assign a uuid to is so
@@ -41,17 +46,43 @@ export const create = async (req, res) => {
     const uuid = uuidv4();
 
     newRecord.warehouseProjectId = uuid;
+    newRecord.timeStaged = Math.floor(Date.now() / 1000);
 
     // All new projects are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
     newRecord.orgUid = orgUid;
 
-    // The new project is getting created in this registry
-    newRecord.currentRegistry = orgUid;
+    const childRecordsKeys = [
+      'projectLocations',
+      'issuances',
+      'coBenefits',
+      'relatedProjects',
+      'projectRatings',
+      'estimations',
+      'labels',
+    ];
 
-    // Unless we are overriding, a new project originates in this org
-    if (!newRecord.registryOfOrigin) {
-      newRecord.registryOfOrigin = orgUid;
+    const existingChildRecordKeys = childRecordsKeys.filter((key) =>
+      Boolean(newRecord[key]),
+    );
+
+    for (let i = 0; i < existingChildRecordKeys.length; i++) {
+      const key = existingChildRecordKeys[i];
+      await Promise.all(
+        newRecord[key].map(async (childRecord) => {
+          if (childRecord.id) {
+            // If we are reusing an existing child record,
+            // Make sure it exists
+            await assertRecordExistance(ModelKeys[key], childRecord.id);
+          } else {
+            childRecord.id = uuidv4();
+          }
+
+          childRecord.orgUid = orgUid;
+          childRecord.warehouseProjectId = uuid;
+          return childRecord;
+        }),
+      );
     }
 
     await Staging.create({
@@ -60,6 +91,7 @@ export const create = async (req, res) => {
       table: Project.stagingTableName,
       data: JSON.stringify([newRecord]),
     });
+
     res.json({ message: 'Project staged successfully' });
   } catch (err) {
     res.status(400).json({
@@ -70,86 +102,147 @@ export const create = async (req, res) => {
 };
 
 export const findAll = async (req, res) => {
-  let { page, limit, search, orgUid, columns, xls } = req.query;
-  let where = orgUid ? { orgUid } : undefined;
+  try {
+    await assertDataLayerAvailable();
+    let { page, limit, search, orgUid, columns, xls } = req.query;
+    let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
-  const includes = Project.getAssociatedModels();
+    const includes = Project.getAssociatedModels();
 
-  if (columns) {
-    // Remove any unsupported columns
-    columns = columns.filter((col) =>
-      Project.defaultColumns
-        .concat(includes.map((model) => model.name + 's'))
-        .includes(col),
-    );
-  } else {
-    columns = Project.defaultColumns.concat(
-      includes.map((model) => model.name + 's'),
-    );
-  }
+    if (columns) {
+      // Remove any unsupported columns
+      columns = columns.filter((col) =>
+        Project.defaultColumns
+          .concat(includes.map(formatModelAssociationName))
+          .includes(col),
+      );
+    } else {
+      columns = Project.defaultColumns.concat(
+        includes.map(formatModelAssociationName),
+      );
+    }
 
-  // If only FK fields have been specified, select just ID
-  if (!columns.length) {
-    columns = ['warehouseProjectId'];
-  }
+    // If only FK fields have been specified, select just ID
+    if (!columns.length) {
+      columns = ['warehouseProjectId'];
+    }
 
-  let results;
-  let pagination = paginationParams(page, limit);
+    let results;
+    let pagination = paginationParams(page, limit);
 
-  if (xls) {
-    pagination = { page: undefined, limit: undefined };
-  }
+    if (xls) {
+      pagination = { page: undefined, limit: undefined };
+    }
 
-  if (search) {
-    results = await Project.fts(search, orgUid, pagination, columns);
-  }
+    if (search) {
+      const ftsResults = await Project.fts(search, orgUid, pagination, columns);
+      const mappedResults = ftsResults.rows.map((ftsResult) =>
+        _.get(ftsResult, 'dataValues.warehouseProjectId'),
+      );
 
-  if (!results) {
-    const query = {
-      ...columnsToInclude(columns, includes),
-      ...pagination,
-    };
+      if (!where) {
+        where = {};
+      }
 
-    results = await Project.findAndCountAll({
-      distinct: true,
-      where,
-      ...query,
+      where.warehouseProjectId = {
+        [Sequelize.Op.in]: mappedResults,
+      };
+    }
+
+    if (!results) {
+      const query = {
+        ...columnsToInclude(columns, includes),
+        ...pagination,
+      };
+
+      results = await Project.findAndCountAll({
+        distinct: true,
+        where,
+        order: [['timeStaged', 'DESC']],
+        ...query,
+      });
+    }
+
+    const response = optionallyPaginatedResponse(results, page, limit);
+
+    if (!xls) {
+      return res.json(response);
+    } else {
+      return sendXls(
+        Project.name,
+        createXlsFromSequelizeResults({
+          rows: response,
+          model: Project,
+          toStructuredCsv: false,
+        }),
+        res,
+      );
+    }
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error retrieving projects',
+      error: error.message,
     });
-  }
-
-  const response = optionallyPaginatedResponse(results, page, limit);
-
-  if (!xls) {
-    return res.json(response);
-  } else {
-    return sendXls(
-      Project.name,
-      createXlsFromSequelizeResults(response, Project),
-      res,
-    );
   }
 };
 
 export const findOne = async (req, res) => {
-  const query = {
-    where: { warehouseProjectId: req.query.warehouseProjectId },
-    include: [
-      ProjectLocation,
-      Label,
-      Issuance,
-      CoBenefit,
-      RelatedProject,
-      Rating,
-      Estimation,
-    ],
-  };
+  try {
+    await assertDataLayerAvailable();
 
-  res.json(await Project.findOne(query));
+    const query = {
+      where: { warehouseProjectId: req.query.warehouseProjectId },
+      include: Project.getAssociatedModels().map(
+        (association) => association.model,
+      ),
+    };
+
+    res.json(await Project.findOne(query));
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error retrieving projects',
+      error: error.message,
+    });
+  }
+};
+
+export const updateFromXLS = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertHomeOrgExists();
+    await assertNoPendingCommits();
+
+    const { files } = req;
+
+    if (!files || !files.xlsx) {
+      throw new Error('File Not Received');
+    }
+
+    const xlsxParsed = xlsx.parse(files.xlsx.data);
+    const stagedDataItems = tableDataFromXlsx(xlsxParsed, Project);
+    await updateTableWithData(
+      collapseTablesData(stagedDataItems, Project),
+      Project,
+    );
+
+    res.json({
+      message: 'Updates from xlsx added to staging',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
+    });
+  }
 };
 
 export const update = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
@@ -157,11 +250,61 @@ export const update = async (req, res) => {
 
     await assertOrgIsHomeOrg(originalRecord.orgUid);
 
-    // merge the new record into the old record
-    let stagedRecord = Array.isArray(req.body) ? req.body : [req.body];
-    stagedRecord = stagedRecord.map((record) =>
-      Object.assign({}, originalRecord, record),
+    const newRecord = _.cloneDeep(req.body);
+    const { orgUid } = await Organization.getHomeOrg();
+
+    const childRecordsKeys = [
+      'projectLocations',
+      'issuances',
+      'coBenefits',
+      'relatedProjects',
+      'projectRatings',
+      'estimations',
+      'labels',
+    ];
+
+    const existingChildRecordKeys = childRecordsKeys.filter((key) =>
+      Boolean(newRecord[key]),
     );
+
+    for (let i = 0; i < existingChildRecordKeys.length; i++) {
+      const key = existingChildRecordKeys[i];
+      await Promise.all(
+        newRecord[key].map(async (childRecord) => {
+          if (childRecord.id) {
+            // If we are reusing an existing child record,
+            // Make sure it exists
+            await assertRecordExistance(ModelKeys[key], childRecord.id);
+          } else {
+            childRecord.id = uuidv4();
+          }
+
+          if (!childRecord.orgUid) {
+            childRecord.orgUid = orgUid;
+          }
+
+          if (!childRecord.warehouseProjectId) {
+            childRecord.warehouseProjectId = newRecord.warehouseProjectId;
+          }
+
+          if (key === 'labels' && childRecord.labelUnits) {
+            childRecord.labelUnits.orgUid = orgUid;
+          }
+
+          return childRecord;
+        }),
+      );
+    }
+
+    // merge the new record into the old record
+    let stagedRecord = Array.isArray(newRecord) ? newRecord : [newRecord];
+
+    stagedRecord = stagedRecord.map((record) => {
+      return Object.keys(record).reduce((syncedRecord, key) => {
+        syncedRecord[key] = record[key];
+        return syncedRecord;
+      }, originalRecord);
+    });
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
@@ -180,12 +323,16 @@ export const update = async (req, res) => {
       message: 'Error adding update to stage',
       error: err.message,
     });
+    console.log(err);
   }
 };
 
 export const destroy = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
+    await assertNoPendingCommits();
 
     const originalRecord = await assertProjectRecordExists(
       req.body.warehouseProjectId,
@@ -202,7 +349,7 @@ export const destroy = async (req, res) => {
     await Staging.create(stagedData);
 
     res.json({
-      message: 'Project removal added to stage',
+      message: 'Project deleted successfully',
     });
   } catch (err) {
     res.status(400).json({
@@ -214,7 +361,10 @@ export const destroy = async (req, res) => {
 
 export const batchUpload = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
     await assertHomeOrgExists();
+    await assertNoPendingCommits();
 
     const csvFile = assertCsvFileInRequest(req);
     await createProjectRecordsFromCsv(csvFile);

@@ -1,22 +1,15 @@
 import Joi from 'joi';
 
-const baseSchema = {
+export const estimationSchema = Joi.object({
   // orgUid - derived upon creation
   // warehouseProjectId - derived upon creation
+  id: Joi.string().optional(),
   creditingPeriodStart: Joi.date().required(),
   creditingPeriodEnd: Joi.date()
-    .timestamp()
-    .min(Joi.ref('startDate'))
+    .min(Joi.ref('creditingPeriodStart'))
     .required(),
   unitCount: Joi.number().integer().required(),
-  verificationDate: Joi.date().required(),
-  verificationBody: Joi.string().required(),
-  // Not sure where 'verificationDate' and 'verificationBody' fields are coming from. They are not supposed to be in the estimations table.
-};
-
-export const newEstimationSchema = Joi.object({ ...baseSchema });
-
-export const existingEstimationSchema = Joi.object({
-  id: Joi.string().required(),
-  ...baseSchema,
+  timeStaged: Joi.date().timestamp().optional(),
+  updatedAt: Joi.date().optional(),
+  createdAt: Joi.date().optional(),
 });

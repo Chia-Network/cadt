@@ -13,14 +13,14 @@ class LabelUnit extends Model {
     return super.create(values, options);
   }
 
-  static async destroy(values) {
-    safeMirrorDbHandler(() => LabelUnitMirror.destroy(values));
-    return super.destroy(values);
+  static async destroy(values, options) {
+    safeMirrorDbHandler(() => LabelUnitMirror.destroy(values, options));
+    return super.destroy(values, options);
   }
 
   static async upsert(values, options) {
     safeMirrorDbHandler(() => LabelUnitMirror.upsert(values, options));
-    return super.create(values, options);
+    return super.upsert(values, options);
   }
 }
 

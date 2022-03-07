@@ -29,19 +29,48 @@ import {
 
 import ModelTypes from './projects.modeltypes.cjs';
 import { ProjectMirror } from './projects.model.mirror';
+import { projectsUpdateSchema } from '../../validations/index';
+import {
+  formatModelAssociationName,
+  getDeletedItems,
+} from '../../utils/model-utils.js';
 
 class Project extends Model {
   static stagingTableName = 'Projects';
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
+  static validateImport = projectsUpdateSchema;
+  static virtualFieldList = {};
+
   static getAssociatedModels = () => [
-    ProjectLocation,
-    Label,
-    Issuance,
-    CoBenefit,
-    RelatedProject,
-    Rating,
-    Estimation,
+    {
+      model: ProjectLocation,
+      pluralize: true,
+    },
+    {
+      model: Label,
+      pluralize: true,
+    },
+    {
+      model: Issuance,
+      pluralize: true,
+    },
+    {
+      model: CoBenefit,
+      pluralize: true,
+    },
+    {
+      model: RelatedProject,
+      pluralize: true,
+    },
+    {
+      model: Rating,
+      pluralize: true,
+    },
+    {
+      model: Estimation,
+      pluralize: true,
+    },
   ];
 
   static associate() {
@@ -82,8 +111,8 @@ class Project extends Model {
     return createResult;
   }
 
-  static async destroy(values) {
-    safeMirrorDbHandler(() => ProjectMirror.destroy(values));
+  static async destroy(values, options) {
+    safeMirrorDbHandler(() => ProjectMirror.destroy(values, options));
 
     const record = await super.findOne(values.where);
 
@@ -92,12 +121,12 @@ class Project extends Model {
       Project.changes.next(['projects', orgUid]);
     }
 
-    return super.destroy(values);
+    return super.destroy(values, options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => ProjectMirror.create(values, options));
-    const upsertResult = await super.create(values, options);
+    safeMirrorDbHandler(() => ProjectMirror.upsert(values, options));
+    const upsertResult = await super.upsert(values, options);
 
     const { orgUid } = values;
 
@@ -122,8 +151,8 @@ class Project extends Model {
         .filter((col) => !['createdAt', 'updatedAt'].includes(col))
         .filter(
           (col) =>
-            ![ProjectLocation, Label, Issuance, CoBenefit, RelatedProject]
-              .map((model) => model.name + 's')
+            !Project.getAssociatedModels()
+              .map(formatModelAssociationName)
               .includes(col),
         ),
     );
@@ -155,8 +184,9 @@ class Project extends Model {
         methodologyVersion,
         validationApproach,
         projectTag,
-        estimatedAnnualAverageEmissionReduction
-    ) AGAINST ":search"
+        estimatedAnnualAverageEmissionReduction,
+        timeStaged
+    ) AGAINST ':search' 
     `;
 
     if (orgUid) {
@@ -241,23 +271,9 @@ class Project extends Model {
     };
   }
 
-  static generateChangeListFromStagedData(stagedData) {
+  static async generateChangeListFromStagedData(stagedData) {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Projects');
-
-    const insertXslsSheets = createXlsFromSequelizeResults(
-      insertRecords,
-      Project,
-      false,
-      true,
-    );
-
-    const updateXslsSheets = createXlsFromSequelizeResults(
-      updateRecords,
-      Project,
-      false,
-      true,
-    );
 
     const primaryKeyMap = {
       project: 'warehouseProjectId',
@@ -270,15 +286,46 @@ class Project extends Model {
       projectRatings: 'id',
     };
 
-    const insertChangeList = transformFullXslsToChangeList(
+    const deletedRecords = await getDeletedItems(
+      updateRecords,
+      primaryKeyMap,
+      Project,
+      'project',
+    );
+
+    const insertXslsSheets = createXlsFromSequelizeResults({
+      rows: insertRecords,
+      model: Project,
+      toStructuredCsv: true,
+    });
+
+    const updateXslsSheets = createXlsFromSequelizeResults({
+      rows: updateRecords,
+      model: Project,
+      toStructuredCsv: true,
+    });
+
+    const deleteXslsSheets = createXlsFromSequelizeResults({
+      rows: deletedRecords,
+      model: Project,
+      toStructuredCsv: true,
+    });
+
+    const insertChangeList = await transformFullXslsToChangeList(
       insertXslsSheets,
       'insert',
       primaryKeyMap,
     );
 
-    const updateChangeList = transformFullXslsToChangeList(
+    const updateChangeList = await transformFullXslsToChangeList(
       updateXslsSheets,
       'update',
+      primaryKeyMap,
+    );
+
+    const deletedAssociationsChangeList = await transformFullXslsToChangeList(
+      deleteXslsSheets,
+      'delete',
       primaryKeyMap,
     );
 
@@ -291,30 +338,37 @@ class Project extends Model {
       labels: [
         ..._.get(insertChangeList, 'labels', []),
         ..._.get(updateChangeList, 'labels', []),
+        ..._.get(deletedAssociationsChangeList, 'labels', []),
       ],
       projectLocations: [
         ..._.get(insertChangeList, 'projectLocations', []),
         ..._.get(updateChangeList, 'projectLocations', []),
+        ..._.get(deletedAssociationsChangeList, 'projectLocations', []),
       ],
       issuances: [
         ..._.get(insertChangeList, 'issuances', []),
         ..._.get(updateChangeList, 'issuances', []),
+        ..._.get(deletedAssociationsChangeList, 'issuances', []),
       ],
       coBenefits: [
         ..._.get(insertChangeList, 'coBenefits', []),
         ..._.get(updateChangeList, 'coBenefits', []),
+        ..._.get(deletedAssociationsChangeList, 'coBenefits', []),
       ],
       relatedProjects: [
         ..._.get(insertChangeList, 'relatedProjects', []),
         ..._.get(updateChangeList, 'relatedProjects', []),
+        ..._.get(deletedAssociationsChangeList, 'relatedProjects', []),
       ],
       estimations: [
         ..._.get(insertChangeList, 'estimations', []),
         ..._.get(updateChangeList, 'estimations', []),
+        ..._.get(deletedAssociationsChangeList, 'estimations', []),
       ],
       projectRatings: [
         ..._.get(insertChangeList, 'projectRatings', []),
         ..._.get(updateChangeList, 'projectRatings', []),
+        ..._.get(deletedAssociationsChangeList, 'projectRatings', []),
       ],
     };
   }

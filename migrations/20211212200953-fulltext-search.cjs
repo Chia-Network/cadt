@@ -10,11 +10,13 @@ module.exports = {
         currentRegistry,
         projectId,
         registryOfOrigin,
+        originProjectId,
         program,
         projectName,
         projectLink,
         projectDeveloper,
         sector,
+        coveredByNDC,
         projectType,
         projectTags,
         ndcInformation,
@@ -23,7 +25,8 @@ module.exports = {
         unitMetric,
         methodology,
         validationBody,
-        validationDate
+        validationDate,
+        timeStaged
       );
       `);
       await queryInterface.sequelize.query(`
@@ -47,7 +50,8 @@ module.exports = {
         unitStatusReason,
         unitRegistryLink,
         correspondingAdjustmentDeclaration,
-        correspondingAdjustmentStatus
+        correspondingAdjustmentStatus,
+        timeStaged
       );
       `);
     }

@@ -4,12 +4,13 @@ const Sequelize = require('sequelize');
 module.exports = {
   id: {
     type: Sequelize.STRING,
+    allowNull: false,
     unique: true,
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
   warehouseProjectId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     onDelete: 'CASCADE',
     required: true,
   },
@@ -18,18 +19,19 @@ module.exports = {
     required: true,
   },
   creditingPeriodStart: {
-    // this should be a DATE not a string.
-    type: Sequelize.STRING,
+    type: Sequelize.DATE,
     required: true,
   },
   creditingPeriodEnd: {
     type: Sequelize.DATE,
-    defaultValue: Sequelize.NOW,
-    // Need to add required to this field. Any estimatations will require an end date. It is fine to default to NOW, but should still be required.
+    required: true,
   },
   unitCount: {
     type: Sequelize.INTEGER,
     required: true,
+  },
+  timeStaged: {
+    type: 'TIMESTAMP',
   },
   createdAt: {
     type: Sequelize.DATE,

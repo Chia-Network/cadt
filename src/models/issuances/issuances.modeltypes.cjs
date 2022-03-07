@@ -4,6 +4,7 @@ const Sequelize = require('sequelize');
 module.exports = {
   id: {
     type: Sequelize.STRING,
+    allowNull: false,
     unique: true,
     defaultValue: () => uuidv4(),
     primaryKey: true,
@@ -35,6 +36,9 @@ module.exports = {
   verificationBody: {
     type: Sequelize.STRING,
     required: true,
+  },
+  timeStaged: {
+    type: 'TIMESTAMP',
   },
   createdAt: {
     type: Sequelize.DATE,

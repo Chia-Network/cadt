@@ -4,33 +4,42 @@ const Sequelize = require('sequelize');
 module.exports = {
   id: {
     type: Sequelize.STRING,
+    allowNull: false,
     unique: true,
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
   warehouseProjectId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     required: true,
     onDelete: 'CASCADE',
+  },
+  // The orgUid is the singeltonId of the
+  // organizations tables on the datalayer
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
   },
   ratingType: {
     type: Sequelize.STRING,
     required: true,
   },
   ratingRangeHighest: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     required: true,
   },
   ratingRangeLowest: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     requred: true,
   },
   rating: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     requred: true,
   },
   ratingLink: Sequelize.STRING,
-  // 'ratingLink' is a required field.
+  timeStaged: {
+    type: 'TIMESTAMP',
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

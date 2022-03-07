@@ -21,12 +21,12 @@ module.exports = {
   test: {
     dialect: 'sqlite',
     storage: './test.sqlite3',
-    logging: true,
+    logging: false,
   },
   mirrorTest: {
     dialect: 'sqlite',
     storage: './testMirror.sqlite3',
-    logging: true,
+    logging: false,
   },
   mirror: {
     username: process.env.DB_USERNAME || '',

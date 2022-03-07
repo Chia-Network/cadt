@@ -1,14 +1,45 @@
 import _ from 'lodash';
 
 import { Staging } from '../models';
-import { assertStagingRecordExists } from '../utils/data-assertions';
+
+import {
+  optionallyPaginatedResponse,
+  paginationParams,
+} from '../utils/helpers';
+
+import {
+  assertStagingRecordExists,
+  assertHomeOrgExists,
+  assertNoPendingCommits,
+  assertWalletIsSynced,
+  assertDataLayerAvailable,
+  assertIfReadOnlyMode,
+  assertStagingTableNotEmpty,
+} from '../utils/data-assertions';
 
 export const findAll = async (req, res) => {
   try {
-    const stagingData = await Staging.findAll();
+    let { page, limit, type } = req.query;
 
-    const response = await Promise.all(
-      stagingData.map(async (stagingRecord) => {
+    let pagination = paginationParams(page, limit);
+
+    let where = {};
+    if (type === 'staged') {
+      where = { commited: false, failedCommit: false };
+    } else if (type === 'pending') {
+      where = { commited: true, failedCommit: false };
+    } else if (type === 'failed') {
+      where = { failedCommit: true };
+    }
+
+    let stagingData = await Staging.findAndCountAll({
+      distinct: true,
+      where,
+      ...pagination,
+    });
+
+    const results = await Promise.all(
+      stagingData.rows.map(async (stagingRecord) => {
         const { uuid, table, action, data } = stagingRecord;
         const workingData = _.cloneDeep(stagingRecord.dataValues);
         workingData.diff = await Staging.getDiffObject(
@@ -24,6 +55,10 @@ export const findAll = async (req, res) => {
       }),
     );
 
+    stagingData.rows = results;
+
+    const response = optionallyPaginatedResponse(stagingData, page, limit);
+
     res.json(response);
   } catch (error) {
     res.status(400).json({
@@ -35,20 +70,27 @@ export const findAll = async (req, res) => {
 
 export const commit = async (req, res) => {
   try {
-    await Staging.pushToDataLayer();
+    await assertIfReadOnlyMode();
+    await assertStagingTableNotEmpty();
+    await assertHomeOrgExists();
+    await assertDataLayerAvailable();
+    await assertWalletIsSynced();
+    await assertNoPendingCommits();
+
+    await Staging.pushToDataLayer(_.get(req, 'query.table', null));
     res.json({ message: 'Staging Table committed to full node' });
   } catch (error) {
     res.status(400).json({
       message: 'Error commiting staging table',
       error: error.message,
     });
-
-    console.trace(error);
   }
 };
 
 export const destroy = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
+    await assertHomeOrgExists();
     await assertStagingRecordExists(req.body.uuid);
     await Staging.destroy({
       where: {
@@ -68,6 +110,8 @@ export const destroy = async (req, res) => {
 
 export const clean = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
+    await assertHomeOrgExists();
     await Staging.destroy({
       where: {},
       truncate: true,

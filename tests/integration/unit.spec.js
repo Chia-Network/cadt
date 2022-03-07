@@ -2,144 +2,111 @@ import _ from 'lodash';
 
 import chai from 'chai';
 import supertest from 'supertest';
-import app from '../../src/server';
-
-import { UnitMirror } from '../../src/models';
-
 const { expect } = chai;
 
-import { POLLING_INTERVAL } from '../../src/fullnode';
+import app from '../../src/server';
+import { UnitMirror } from '../../src/models';
+import { pullPickListValues } from '../../src/utils/data-loaders';
+import * as testFixtures from '../test-fixtures';
 
-const TEST_WAIT_TIME = POLLING_INTERVAL * 2;
+import datalayer from '../../src/datalayer';
+const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
-describe('Create Unit Integration', function () {
+describe('Unit Resource Integration Tests', function () {
+  let homeOrgUid;
+
+  before(async function () {
+    await pullPickListValues();
+  });
+
   beforeEach(async function () {
-    await supertest(app).get(`/v1/staging/clean`);
-    await supertest(app).post(`/v1/organizations`).send({
-      name: 'My Org',
-      icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
-    });
+    await testFixtures.resetStagingTable();
+    await testFixtures.createTestHomeOrg();
+    homeOrgUid = await testFixtures.getHomeOrgId();
   });
 
   it('deletes a unit end-to-end (with simulator)', async function () {
+    /*
+      Basic Idea for this test is that we are going to create a unit and verify that
+      the new unit propagates through the data layer and into our db. Then we are going
+      to delete the same unit and make sure the delete command propagates through the datalayer 
+      then gets removed from our db.
+    */
     // create and commit the unit to be deleted
-    const payload = {
-      serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
-      serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
-      countryJurisdictionOfOwner: 'USA',
-      unitType: 'removal',
-      unitStatus: 'Held',
-      unitOwner: 'TEST_UNIT_OWNER',
-      correspondingAdjustmentDeclaration: 'Commited',
-      correspondingAdjustmentStatus: 'Pending',
-      inCountryJurisdictionOfOwner: 'Maryland',
-      unitRegistryLink: 'https://test.link',
-      // TODO: make initial project in beforeEach and assign id here
-      // This will be validated appropriatly later
-      projectLocationId: 'TEST_LOCATION_ID',
-    };
-    const unitRes = await supertest(app).post('/v1/units').send(payload);
-
-    expect(unitRes.body).to.deep.equal({
-      message: 'Unit staged successfully',
-    });
-    expect(unitRes.statusCode).to.equal(200);
-
-    // Get the organizations so we can check the right org was set
-    const organizationResults = await supertest(app).get('/v1/organizations');
-    const orgUid = Object.keys(organizationResults.body).find(
-      (key) => organizationResults.body[key].isHome,
-    );
+    const newUnitPayload = await testFixtures.createNewUnit();
 
     // Get the staging record we just created
-    const stagingRes = await supertest(app).get('/v1/staging');
-    const stagingRecord = _.head(stagingRes.body);
+    const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
 
-    // There is no original when creating new units
+    // There is no original record when creating new units
     expect(stagingRecord.diff.original).to.deep.equal({});
 
+    // Change records are always in an array
     const changeRecord = _.head(stagingRecord.diff.change);
-
-    // make sure the inferred data was set to the staging record
-    expect(changeRecord.orgUid).to.equal(orgUid);
-
-    const warehouseUnitId = changeRecord.warehouseUnitId;
-
-    // Now push the staging table live
-    const commitRes = await supertest(app).post('/v1/staging/commit');
-    expect(commitRes.statusCode).to.equal(200);
-    expect(commitRes.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
-    });
-
-    // The node simulator runs on an async process, we are importing
-    // the WAIT_TIME constant from the simulator, padding it and waiting for the
-    // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, TEST_WAIT_TIME);
-    });
-
-    // Get the staging record we just created
-    const stagingRes2 = await supertest(app).get('/v1/staging');
-    expect(stagingRes2.body).to.deep.equal([]);
-
-    // Make sure the newly created unit is in the mirrorDb
-    let mirrorRecord = await UnitMirror.findByPk(warehouseUnitId);
-
-    expect(mirrorRecord).to.be.ok;
-
-    // Now time to delete the unit
-    const deleteRes = await supertest(app)
-      .delete('/v1/units')
-      .send({ warehouseUnitId });
-
-    expect(deleteRes.statusCode).to.equal(200);
-    expect(deleteRes.body).to.deep.equal({
-      message: 'Unit deleted successfully',
-    });
-
-    // Get the staging record we just created
-    const deleteStagingRes = await supertest(app).get('/v1/staging');
-    const deleteStagingRecord = _.head(deleteStagingRes.body);
-
-    // There is no original when creating new units
-    expect(deleteStagingRecord.diff.change).to.deep.equal({});
-
-    const deleteOriginalRecord = deleteStagingRecord.diff.original;
+    await testFixtures.childTablesIncludeOrgUid(changeRecord);
+    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
 
     expect(
-      _.pick(deleteOriginalRecord, [...Object.keys(payload)]),
-    ).to.deep.equal(payload);
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(false);
+
+    // make sure the inferred data was set to the staging record
+    expect(changeRecord.orgUid).to.equal(homeOrgUid);
+
+    // make sure an warehouseUnitId was created
+    // (this has to be done in the controller since we
+    // send to the datalayer before it goes to our database,
+    // so thres no oppertunity to have the id autoassigned)
+    const warehouseUnitId = changeRecord.warehouseUnitId;
+    expect(warehouseUnitId).to.be.ok;
 
     // Now push the staging table live
-    const commitRes3 = await supertest(app).post('/v1/staging/commit');
-    expect(commitRes3.statusCode).to.equal(200);
-    expect(commitRes3.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
-    });
+    await testFixtures.commitStagingRecords();
+    await testFixtures.waitForDataLayerSync();
 
-    // The node simulator runs on an async process, we are importing
-    // the WAIT_TIME constant from the simulator, padding it and waiting for the
-    // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, TEST_WAIT_TIME);
-    });
+    // The staging table should be empty after committing
+    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
+      undefined,
+    );
 
-    // Now check if the unit is still in the DB
-    const getDeletedRecordResult = await supertest(app)
-      .get('/v1/units')
-      .query({ warehouseUnitId });
+    // Make sure the newly created unit is in our Db
+    await testFixtures.checkUnitRecordExists(warehouseUnitId);
 
-    expect(getDeletedRecordResult.statusCode).to.equal(200);
-    expect(getDeletedRecordResult.body).to.equal(null);
+    // Make sure the newly created unit is in the mirrorDb
+    await testFixtures.checkUnitMirrorRecordExists(warehouseUnitId);
+
+    // Now time to delete the unit
+    await testFixtures.deleteUnit(warehouseUnitId);
+
+    // Get the staging record we just created
+    const deleteStagingRecord =
+      await testFixtures.getLastCreatedStagingRecord();
+
+    // When deleting the change record should be empty, since the record is going away
+    expect(deleteStagingRecord.diff.change).to.deep.equal({});
+
+    // make sure all the data that was added during the creation
+    // process in included in the record we are about to delete
+    // Since some data is derived and not in the creation payload,
+    // we need to test against the subset of the delete record
+    // We alreay asserted existance of the derived data above
+    testFixtures.objectContainsSubSet(
+      deleteStagingRecord.diff.original,
+      newUnitPayload,
+    );
+
+    // Now push the staging table live
+    await testFixtures.commitStagingRecords();
+    await testFixtures.waitForDataLayerSync();
+
+    // make sure the record is no longer in the db after the datalayer synced
+    await testFixtures.checkUnitRecordDoesNotExist(warehouseUnitId);
+    await testFixtures.assertChildTablesDontExist(
+      deleteStagingRecord.diff.original,
+    );
 
     // Verify the record is no longer in the mirror db
-    mirrorRecord = await UnitMirror.findByPk(warehouseUnitId);
-    expect(mirrorRecord).to.equal(null);
+    await testFixtures.checkUnitMirrorRecordDoesNotExist(warehouseUnitId);
   }).timeout(TEST_WAIT_TIME * 10);
 
   it('splits an existing unit end-to-end (with simulator)', async function () {
@@ -147,12 +114,12 @@ describe('Create Unit Integration', function () {
     const createdUnitResult = await supertest(app).post('/v1/units').send({
       serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
       serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
-      countryJurisdictionOfOwner: 'USA',
+      countryJurisdictionOfOwner: 'Austria',
       unitOwner: 'TEST_OWNER',
-      unitType: 'removal',
+      unitType: 'Reduction - nature',
       unitStatus: 'Held',
       vintageYear: 2020,
-      correspondingAdjustmentDeclaration: 'Commited',
+      correspondingAdjustmentDeclaration: 'Committed',
       correspondingAdjustmentStatus: 'Pending',
       inCountryJurisdictionOfOwner: 'Maryland',
       unitRegistryLink: 'https://test.link',
@@ -172,7 +139,8 @@ describe('Create Unit Integration', function () {
 
     expect(createdUnitResult.statusCode).to.equal(200);
 
-    await supertest(app).get('/v1/staging');
+    const stagingResults = await supertest(app).get('/v1/staging');
+    expect(stagingResults.body.length).to.equal(1);
 
     const createdCommitResult = await supertest(app).post('/v1/staging/commit');
     expect(createdCommitResult.statusCode).to.equal(200);
@@ -192,7 +160,7 @@ describe('Create Unit Integration', function () {
     // Get a unit to split
     const allUnitsResult = await supertest(app).get('/v1/units');
 
-    const unitRecord = _.last(allUnitsResult.body);
+    const unitRecord = _.head(allUnitsResult.body);
 
     const warehouseUnitIdToSplit = unitRecord.warehouseUnitId;
     const newUnitOwner = '35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf';
@@ -210,11 +178,13 @@ describe('Create Unit Integration', function () {
       ],
     };
 
+    console.log('!!!!!', homeOrgUid);
     const unitRes = await supertest(app).post('/v1/units/split').send(payload);
 
     expect(unitRes.body).to.deep.equal({
       message: 'Unit split successful',
     });
+
     expect(unitRes.statusCode).to.equal(200);
 
     // Get the staging record we just created
@@ -231,7 +201,7 @@ describe('Create Unit Integration', function () {
     const splitRecord2 = stagingRecord.diff.change[1];
 
     // They should be getting their own ids
-    expect(splitRecord1.warehouseUnitId).to.not.equal(warehouseUnitIdToSplit);
+    expect(splitRecord1.warehouseUnitId).to.equal(warehouseUnitIdToSplit);
     expect(splitRecord2.warehouseUnitId).to.not.equal(warehouseUnitIdToSplit);
 
     // The first unitOwner is was reassigned,
@@ -372,12 +342,6 @@ describe('Create Unit Integration', function () {
       ]),
     );
 
-    // make sure the original record was deleted
-    const warehouse3Res = await supertest(app)
-      .get(`/v1/units`)
-      .query({ warehouseUnitId: warehouseUnitIdToSplit });
-    expect(warehouse3Res.body).to.equal(null);
-
     // Make sure the staging table is cleaned up
     const stagingRes3 = await supertest(app).get('/v1/staging');
 
@@ -394,108 +358,128 @@ describe('Create Unit Integration', function () {
     // 5. verify the unit was commited to the database
     // 6. verify the staging table was cleaned up
 
-    const payload = {
-      serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
-      serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
-      countryJurisdictionOfOwner: 'USA',
-      unitType: 'removal',
-      unitStatus: 'Held',
-      unitOwner: 'TEST_UNIT_OWNER',
-      correspondingAdjustmentDeclaration: 'Commited',
-      correspondingAdjustmentStatus: 'Pending',
-      inCountryJurisdictionOfOwner: 'Maryland',
-      unitRegistryLink: 'https://test.link',
-      // TODO: make initial project in beforeEach and assign id here
-      // This will be validated appropriatly later
-      projectLocationId: 'TEST_LOCATION_ID',
-    };
-    const unitRes = await supertest(app).post('/v1/units').send(payload);
-
-    expect(unitRes.body).to.deep.equal({
-      message: 'Unit staged successfully',
-    });
-    expect(unitRes.statusCode).to.equal(200);
-
-    // Get the organizations so we can check the right org was set
-    const organizationResults = await supertest(app).get('/v1/organizations');
-    const orgUid = Object.keys(organizationResults.body).find(
-      (key) => organizationResults.body[key].isHome,
-    );
+    // create and commit the unit to be deleted
+    const newUnitPayload = await testFixtures.createNewUnit();
 
     // Get the staging record we just created
-    const stagingRes = await supertest(app).get('/v1/staging');
-    const stagingRecord = _.head(stagingRes.body);
+    const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
 
     // There is no original when creating new units
     expect(stagingRecord.diff.original).to.deep.equal({});
-
     const changeRecord = _.head(stagingRecord.diff.change);
 
-    // make sure the inferred data was set to the staging record
-    expect(changeRecord.orgUid).to.equal(orgUid);
+    await testFixtures.childTablesIncludeOrgUid(changeRecord);
+    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
 
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(false);
+
+    // make sure the inferred data was set to the staging record
+    expect(changeRecord.orgUid).to.equal(homeOrgUid);
     const warehouseUnitId = changeRecord.warehouseUnitId;
 
-    expect(stagingRes.statusCode).to.equal(200);
-
     // Now push the staging table live
-    const commitRes = await supertest(app).post('/v1/staging/commit');
-    expect(stagingRes.statusCode).to.equal(200);
-    expect(commitRes.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
-    });
+    await testFixtures.commitStagingRecords();
 
     // After commiting the true flag should be set to this staging record
-    const stagingRes2 = await supertest(app).get('/v1/staging');
-    expect(_.head(stagingRes2.body).commited).to.equal(true);
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(true);
 
-    // The node simulator runs on an async process, we are importing
-    // the WAIT_TIME constant from the simulator, padding it and waiting for the
-    // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, TEST_WAIT_TIME);
-    });
+    await testFixtures.waitForDataLayerSync();
 
     // Make sure the staging table is cleaned up
-    const stagingRes3 = await supertest(app).get('/v1/staging');
-
-    // There should be no staging records left
-    expect(stagingRes3.body.length).to.equal(0);
-
-    const warehouseRes = await supertest(app)
-      .get(`/v1/units`)
-      .query({ warehouseUnitId });
-
-    const newRecord = warehouseRes.body;
-
-    expect(newRecord.warehouseUnitId).to.equal(warehouseUnitId);
-    expect(newRecord.orgUid).to.equal(orgUid);
-    expect(newRecord.serialNumberBlock).to.equal(payload.serialNumberBlock);
-    expect(newRecord.countryJuridictionOfOwner).to.equal(
-      payload.countryJuridictionOfOwner,
+    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
+      undefined,
     );
-    expect(newRecord.inCountryJuridictionOfOwner).to.equal(
-      payload.inCountryJuridictionOfOwner,
-    );
+
+    const newUnit = await testFixtures.getUnit(warehouseUnitId);
+
+    testFixtures.objectContainsSubSet(newUnit, newUnitPayload);
+    await testFixtures.childTablesIncludeOrgUid(newUnit);
+    await testFixtures.childTablesIncludePrimaryKey(newUnit);
 
     // Make sure the newly created unit is in the mirrorDb
-    const mirrorRecord = await UnitMirror.findByPk(newRecord.warehouseUnitId);
+    await testFixtures.checkUnitRecordExists(warehouseUnitId);
+  }).timeout(TEST_WAIT_TIME * 10);
 
-    // filter out the fields we dont care about in this test, including the virtual fields
+  it('updates a new unit end-to-end (with simulator)', async function () {
+    // create and commit the unit to be deleted
+    const newUnitPayload = await testFixtures.createNewUnit();
+
+    // Get the staging record we just created
+    const stagingRecord = await testFixtures.getLastCreatedStagingRecord();
+
+    // There is no original when creating new units
+    expect(stagingRecord.diff.original).to.deep.equal({});
+    const changeRecord = _.head(stagingRecord.diff.change);
+
+    await testFixtures.childTablesIncludeOrgUid(changeRecord);
+    await testFixtures.childTablesIncludePrimaryKey(changeRecord);
+
+    // make sure the inferred data was set to the staging record
+    expect(changeRecord.orgUid).to.equal(homeOrgUid);
+    const warehouseUnitId = changeRecord.warehouseUnitId;
+
+    // Now push the staging table live
+    await testFixtures.commitStagingRecords();
+
+    // After commiting the true flag should be set to this staging record
     expect(
-      _.omit(mirrorRecord.dataValues, ['createdAt', 'updatedAt']),
-    ).to.deep.equal(
-      _.omit(newRecord, [
-        'labels', // mapped associated field
-        'issuance', // mapped associated field
-        'unitBlockStart', // virtual field
-        'unitBlockEnd', // virtual field
-        'unitCount', // virtual field
-        'createdAt', // meta field
-        'updatedAt', // meta field
-      ]),
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(true);
+
+    await testFixtures.waitForDataLayerSync();
+
+    // Make sure the staging table is cleaned up
+    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
+      undefined,
     );
+
+    const newUnit = await testFixtures.getUnit(warehouseUnitId);
+
+    testFixtures.objectContainsSubSet(newUnit, newUnitPayload);
+    testFixtures.childTablesIncludeOrgUid(newUnit);
+    testFixtures.childTablesIncludePrimaryKey(newUnit);
+
+    // Make sure the newly created unit is in the mirrorDb
+    await testFixtures.checkUnitMirrorRecordExists(warehouseUnitId);
+    const updateUnitPayload = await testFixtures.updateUnit(
+      warehouseUnitId,
+      changeRecord,
+    );
+
+    // Get the staging record we just created
+    const updatesStagingRecord =
+      await testFixtures.getLastCreatedStagingRecord();
+
+    expect(updatesStagingRecord.diff.original).to.deep.equal(newUnit);
+    const updateChangeRecord = _.head(updatesStagingRecord.diff.change);
+
+    testFixtures.objectContainsSubSet(updateChangeRecord, updateUnitPayload);
+    testFixtures.childTablesIncludeOrgUid(updateChangeRecord);
+    testFixtures.childTablesIncludePrimaryKey(updateChangeRecord);
+
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(false);
+
+    await testFixtures.commitStagingRecords();
+
+    expect(
+      (await testFixtures.getLastCreatedStagingRecord()).commited,
+    ).to.equal(true);
+
+    await testFixtures.waitForDataLayerSync();
+
+    const updatedUnit = await testFixtures.getUnit(warehouseUnitId);
+
+    testFixtures.objectContainsSubSet(updatedUnit, updateUnitPayload);
+    testFixtures.childTablesIncludeOrgUid(updatedUnit);
+    testFixtures.childTablesIncludePrimaryKey(updatedUnit);
+
+    // Make sure the newly created unit is in the mirrorDb
+    await testFixtures.checkUnitMirrorRecordExists(warehouseUnitId);
   }).timeout(TEST_WAIT_TIME * 10);
 });

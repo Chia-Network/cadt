@@ -2,6 +2,9 @@
 
 import _ from 'lodash';
 
+import { isPluralized } from './string-utils.js';
+import { formatModelAssociationName } from './model-utils.js';
+
 export const paginationParams = (page, limit) => {
   if (page === undefined || limit === undefined) {
     return {
@@ -36,15 +39,24 @@ export const optionallyPaginatedResponse = ({ count, rows }, page, limit) => {
   }
 };
 
+/**
+ *
+ * @param userColumns {string[]}
+ * @param foreignKeys {{ model: Object, pluralize: boolean }[]}
+ * @return {{include: unknown[], attributes: *}}
+ */
 export const columnsToInclude = (userColumns, foreignKeys) => {
-  const attributeModelMap = foreignKeys.map(
-    (relationship) => relationship.name + 's',
-  );
+  // TODO MariusD: simplify
+  const attributeModelMap = foreignKeys.map(formatModelAssociationName);
 
   const filteredIncludes = _.intersection(userColumns, attributeModelMap).map(
     (fk) =>
       foreignKeys.find((model) => {
-        return model.name === fk.substring(0, fk.length - 1);
+        return (
+          model.model.name === fk ||
+          (isPluralized(fk) &&
+            model.model.name === fk.substring(0, fk.length - 1))
+        );
       }),
   );
 
@@ -53,13 +65,13 @@ export const columnsToInclude = (userColumns, foreignKeys) => {
       (column) => !attributeModelMap.includes(column),
     ),
     include: filteredIncludes.map((include) => {
-      if (include.name === 'label') {
+      if (include.pluralize) {
         return {
-          model: include,
-          as: include.name + 's',
+          model: include.model,
+          as: include.model.name + 's',
         };
       }
-      return include;
+      return include.model;
     }),
   };
 };

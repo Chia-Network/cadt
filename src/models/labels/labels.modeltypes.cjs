@@ -4,6 +4,7 @@ const Sequelize = require('sequelize');
 module.exports = {
   id: {
     type: Sequelize.STRING,
+    allowNull: false,
     unique: true,
     defaultValue: () => uuidv4(),
     primaryKey: true,
@@ -12,10 +13,19 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
+  // The orgUid is the singeltonId of the
+  // organizations tables on the datalayer
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
+  },
   label: {
     type: Sequelize.STRING,
     require: true,
-    // Need to include another field 'labelType' which will be required and is STRING type.
+  },
+  labelType: {
+    type: Sequelize.STRING,
+    require: true,
   },
   creditingPeriodStartDate: {
     type: Sequelize.DATE,
@@ -25,7 +35,7 @@ module.exports = {
     type: Sequelize.DATE,
     require: true,
   },
-  validityStartDate: {
+  validityPeriodStartDate: {
     type: Sequelize.DATE,
     require: true,
   },
@@ -40,6 +50,9 @@ module.exports = {
   labelLink: {
     type: Sequelize.STRING,
     require: true,
+  },
+  timeStaged: {
+    type: 'TIMESTAMP',
   },
   createdAt: {
     type: Sequelize.DATE,

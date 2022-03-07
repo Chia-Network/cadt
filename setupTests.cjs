@@ -1,6 +1,6 @@
 const { exec } = require('child_process');
 
-before(() => {
+before(function () {
   console.log('SETTING UP TEST;');
   return new Promise((resolve, reject) => {
     const migrate = exec('npm run resetdb', { env: process.env }, (err) =>

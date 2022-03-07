@@ -4,20 +4,30 @@ const Sequelize = require('sequelize');
 module.exports = {
   id: {
     type: Sequelize.STRING,
+    allowNull: false,
     unique: true,
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
   warehouseProjectId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     required: true,
     onDelete: 'CASCADE',
   },
-  // Need to add field 'relatedProjectID' with type STRING and make it optional.
-  // This is because a related project may not be in the warehouse, so we can't rely on warehouseProjectId field.
-  // This would be the field a user would use to find the related project within the registry listed below.
+  // The orgUid is the singeltonId of the
+  // organizations tables on the datalayer
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  relatedProjectId: {
+    type: Sequelize.STRING,
+  },
   relationshipType: Sequelize.STRING,
   registry: Sequelize.STRING,
+  timeStaged: {
+    type: 'TIMESTAMP',
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

@@ -16,6 +16,8 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls';
+import { unitsUpdateSchema } from '../../validations/index.js';
+import { getDeletedItems } from '../../utils/model-utils.js';
 
 const { Model } = Sequelize;
 
@@ -58,6 +60,8 @@ const virtualFields = {
 class Unit extends Model {
   static stagingTableName = 'Units';
   static changes = new rxjs.Subject();
+  static validateImport = unitsUpdateSchema;
+  static virtualFieldList = virtualFields;
 
   static defaultColumns = Object.keys(
     Object.assign({}, ModelTypes, virtualFields),
@@ -66,9 +70,12 @@ class Unit extends Model {
   static getAssociatedModels = () => [
     {
       model: Label,
-      as: 'labels',
+      pluralize: true,
     },
-    Issuance,
+    {
+      model: Issuance,
+      pluralize: false,
+    },
   ];
 
   static associate() {
@@ -111,8 +118,8 @@ class Unit extends Model {
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => UnitMirror.create(values, options));
-    const upsertResult = await super.create(values, options);
+    safeMirrorDbHandler(() => UnitMirror.upsert(values, options));
+    const upsertResult = await super.upsert(values, options);
 
     const { orgUid } = values;
 
@@ -121,8 +128,8 @@ class Unit extends Model {
     return upsertResult;
   }
 
-  static async destroy(values) {
-    safeMirrorDbHandler(() => UnitMirror.destroy(values));
+  static async destroy(values, options) {
+    safeMirrorDbHandler(() => UnitMirror.destroy(values, options));
 
     const record = await super.findOne(values.where);
 
@@ -131,7 +138,7 @@ class Unit extends Model {
       Unit.changes.next(['units', orgUid]);
     }
 
-    return super.destroy(values);
+    return super.destroy(values, options);
   }
 
   static async fts(searchStr, orgUid, pagination, columns = []) {
@@ -197,8 +204,9 @@ class Unit extends Model {
         unitRegistryLink,
         unitMarketplaceLink,
         cooresponingAdjustmentDeclaration,
-        correspondingAdjustmentStatus
-    ) AGAINST '":search"'
+        correspondingAdjustmentStatus,
+        timeStaged
+    ) AGAINST ':search' 
     `;
 
     if (orgUid) {
@@ -283,40 +291,57 @@ class Unit extends Model {
     };
   }
 
-  static generateChangeListFromStagedData(stagedData) {
+  static async generateChangeListFromStagedData(stagedData) {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
-
-    const insertXslsSheets = createXlsFromSequelizeResults(
-      insertRecords,
-      Unit,
-      false,
-      true,
-    );
-
-    const updateXslsSheets = createXlsFromSequelizeResults(
-      updateRecords,
-      Unit,
-      false,
-      true,
-    );
 
     const primaryKeyMap = {
       unit: 'warehouseUnitId',
       labels: 'id',
-      label_units: 'labelunitId',
+      label_units: 'id',
       issuances: 'id',
     };
 
-    const insertChangeList = transformFullXslsToChangeList(
+    const deletedRecords = await getDeletedItems(
+      updateRecords,
+      primaryKeyMap,
+      Unit,
+      'unit',
+    );
+
+    const insertXslsSheets = createXlsFromSequelizeResults({
+      rows: insertRecords,
+      model: Unit,
+      toStructuredCsv: true,
+    });
+
+    const updateXslsSheets = createXlsFromSequelizeResults({
+      rows: updateRecords,
+      model: Unit,
+      toStructuredCsv: true,
+    });
+
+    const deleteXslsSheets = createXlsFromSequelizeResults({
+      rows: deletedRecords,
+      model: Unit,
+      toStructuredCsv: true,
+    });
+
+    const insertChangeList = await transformFullXslsToChangeList(
       insertXslsSheets,
       'insert',
       primaryKeyMap,
     );
 
-    const updateChangeList = transformFullXslsToChangeList(
+    const updateChangeList = await transformFullXslsToChangeList(
       updateXslsSheets,
       'update',
+      primaryKeyMap,
+    );
+
+    const deletedAssociationsChangeList = await transformFullXslsToChangeList(
+      deleteXslsSheets,
+      'delete',
       primaryKeyMap,
     );
 
@@ -329,14 +354,17 @@ class Unit extends Model {
       labels: [
         ..._.get(insertChangeList, 'labels', []),
         ..._.get(updateChangeList, 'labels', []),
+        ..._.get(deletedAssociationsChangeList, 'labels', []),
       ],
       issuances: [
         ..._.get(insertChangeList, 'issuances', []),
         ..._.get(updateChangeList, 'issuances', []),
+        ..._.get(deletedAssociationsChangeList, 'issuances', []),
       ],
       labelUnits: [
         ..._.get(insertChangeList, 'label_units', []),
         ..._.get(updateChangeList, 'label_units', []),
+        ..._.get(deletedAssociationsChangeList, 'label_units', []),
       ],
     };
   }

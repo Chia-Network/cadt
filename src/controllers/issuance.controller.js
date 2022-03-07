@@ -9,7 +9,7 @@ export const findAll = async (req, res) => {
 
     return res.json(
       await Issuance.findAll({
-        where: { orgUid: Object.keys(homeOrg)[0] },
+        where: { orgUid: homeOrg.orgUid },
       }),
     );
   } catch (error) {

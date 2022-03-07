@@ -31,14 +31,14 @@ class ProjectLocation extends Model {
     return super.create(values, options);
   }
 
-  static async destroy(values) {
-    safeMirrorDbHandler(() => ProjectLocationMirror.destroy(values));
-    return super.destroy(values);
+  static async destroy(values, options) {
+    safeMirrorDbHandler(() => ProjectLocationMirror.destroy(values, options));
+    return super.destroy(values, options);
   }
 
   static async upsert(values, options) {
     safeMirrorDbHandler(() => ProjectLocationMirror.upsert(values, options));
-    return super.create(values, options);
+    return super.upsert(values, options);
   }
 }
 

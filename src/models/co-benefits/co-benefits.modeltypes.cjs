@@ -4,19 +4,28 @@ const Sequelize = require('sequelize');
 module.exports = {
   id: {
     type: Sequelize.STRING,
+    allowNull: false,
     unique: true,
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
   warehouseProjectId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     onDelete: 'CASCADE',
     required: true,
   },
-  // Cobenefits are not required. Not sure how that affects the 'id' field above, but users may not have any cobenefits to add. 'Cobenefit' field should be optional.
+  // The orgUid is the singeltonId of the
+  // organizations tables on the datalayer
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
+  },
   cobenefit: {
     type: Sequelize.STRING,
     required: true,
+  },
+  timeStaged: {
+    type: 'TIMESTAMP',
   },
   createdAt: {
     type: Sequelize.DATE,

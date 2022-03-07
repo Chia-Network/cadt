@@ -30,14 +30,14 @@ class RelatedProject extends Model {
     return super.create(values, options);
   }
 
-  static async destroy(values) {
-    safeMirrorDbHandler(() => RelatedProjectMirror.destroy(values));
-    return super.destroy(values);
+  static async destroy(values, options) {
+    safeMirrorDbHandler(() => RelatedProjectMirror.destroy(values, options));
+    return super.destroy(values, options);
   }
 
   static async upsert(values, options) {
     safeMirrorDbHandler(() => RelatedProjectMirror.upsert(values, options));
-    return super.create(values, options);
+    return super.upsert(values, options);
   }
 }
 

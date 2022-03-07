@@ -4,27 +4,33 @@ const Sequelize = require('sequelize');
 module.exports = {
   id: {
     type: Sequelize.STRING,
+    allowNull: false,
     unique: true,
     defaultValue: () => uuidv4(),
     primaryKey: true,
   },
   warehouseProjectId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     required: true,
     onDelete: 'CASCADE',
+  },
+  orgUid: {
+    type: Sequelize.STRING,
+    required: true,
   },
   country: {
     type: Sequelize.STRING,
     required: true,
   },
-  // Need to make 'inCountryRegion' field optional. Some countries may have use regions while others do not and that is ok.
   inCountryRegion: {
     type: Sequelize.STRING,
-    required: true,
   },
   geographicIdentifier: {
     type: Sequelize.STRING,
     required: true,
+  },
+  timeStaged: {
+    type: 'TIMESTAMP',
   },
   createdAt: {
     type: Sequelize.DATE,

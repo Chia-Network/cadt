@@ -1,54 +1,17 @@
 [
   {
     "id": "702cafbb-c624-4273-9cdc-c617ad5675df",
-    "type": "basic type",
     "label": "label 1",
+    "orgUid": "f1c54511-865e-4611-976c-7c3c1f704662",
+    "warehouseProjectId": "11954678-f7a5-47d2-94f8-f4f3138a529c",
     "creditingPeriodStartDate": "2011-10-05T14:48:00.000Z",
     "creditingPeriodEndDate": "2022-10-05T14:48:00.000Z",
+    "validityPeriodStartDate": "2022-01-18 00:05:45.701 +00:00",
+    "validityPeriodEndDate": "2022-01-18 00:05:45.701 +00:00",
+    "unitQuantity": 5,
     "labelLink": "https://label.link/1",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
     "createdAt": "2022-01-18 00:05:45.701 +00:00",
-    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
-  },
-  {
-    "id": "76903895-840e-406c-b2a0-f90244acf02d",
-    "type": "basic type",
-    "label": "label 2",
-    "creditingPeriodStartDate": "2011-10-05T14:48:00.000Z",
-    "creditingPeriodEndDate": "2022-10-05T14:48:00.000Z",
-    "labelLink": "https://label.link/2",
-    "warehouseProjectId": "81e05bfa-e93f-458f-b907-96bf170e52cd",
-    "createdAt": "2022-01-18 00:05:45.701 +00:00",
-    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
-  },
-  {
-    "id": "2c9d41fc-1f58-427d-b028-fc83bf45c74f",
-    "type": "basic type",
-    "label": "label 3",
-    "creditingPeriodStartDate": "2010-10-05T14:48:00.000Z",
-    "creditingPeriodEndDate": "2022-10-05T14:48:00.000Z",
-    "labelLink": "https://label.link/3",
-    "createdAt": "2022-01-18 00:05:45.701 +00:00",
-    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
-  },
-  {
-    "id": "2421e951-0a68-4f9f-b760-01528c605237",
-    "type": "basic type",
-    "label": "label 4",
-    "creditingPeriodStartDate": "2011-10-05T14:48:00.000Z",
-    "creditingPeriodEndDate": "2022-10-05T14:48:00.000Z",
-    "labelLink": "https://label.link/4",
-    "createdAt": "2022-01-18 00:05:45.701 +00:00",
-    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
-  },
-  {
-    "id": "df7c1ff8-f669-4028-bcbd-3abedf7b1a49",
-    "type": "basic type",
-    "label": "label 5",
-    "creditingPeriodStartDate": "2010-10-05T14:48:00.000Z",
-    "creditingPeriodEndDate": "2021-10-05T14:48:00.000Z",
-    "labelLink": "https://label.link/5",
-    "createdAt": "2022-01-18 00:05:45.701 +00:00",
-    "updatedAt": "2022-01-18 00:05:45.701 +00:00"
+    "updatedAt": "2022-01-18 00:05:45.701 +00:00",
+    "labelType": "Endorsement"
   }
 ]

@@ -31,7 +31,8 @@ export const pushChangeListToDataLayer = async (storeId, changeList) => {
 
 export const getStoreData = async (storeId) => {
   if (storeId) {
-    const results = await await Simulator.findAll({
+    const results = await Simulator.findAll({
+      attributes: ['key', 'value'],
       where: {
         key: { [Op.like]: `${storeId}%` },
       },
@@ -77,6 +78,7 @@ export const getRoot = async (storeId) => {
     );
     return Promise.resolve({
       hash: null,
+      confirmed: true,
       success: false,
     });
   }
@@ -89,6 +91,7 @@ export const getRoot = async (storeId) => {
 
   return Promise.resolve({
     hash,
+    confirmed: true,
     success: true,
   });
 };
@@ -107,21 +110,38 @@ export const getRoots = async (storeIds) => {
       }`,
     );
     return Promise.resolve({
-      hash: null,
+      root_hashes: [],
       success: false,
     });
   }
 
   return Promise.resolve({
-    hash: storeIds.map((storeId) => {
+    root_hashes: storeIds.map((storeId) => {
       if (myOrganization.registryId === storeId) {
-        return createHash('md5')
-          .update(JSON.stringify(simulatorTable))
-          .digest('hex');
+        // datalayer returns hash starting in 0x
+        return {
+          hash: `0x${createHash('md5')
+            .update(JSON.stringify(simulatorTable))
+            .digest('hex')}`,
+          id: storeId,
+          confirmed: true,
+        };
       }
 
-      return 0;
+      // no hash for simulated external org tables (they dont exist in simulator)
+      return {
+        hash: 0,
+        id: storeId,
+        confirmed: true,
+      };
     }),
     success: true,
   });
 };
+
+export const dataLayerAvailable = async () => {
+  return Promise.resolve(true);
+};
+
+// eslint-disable-next-line
+export const subscribeToStoreOnDataLayer = async (storeId) => {};

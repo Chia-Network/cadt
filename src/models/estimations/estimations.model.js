@@ -31,12 +31,12 @@ class Estimation extends Model {
 
   static async upsert(values, options) {
     safeMirrorDbHandler(() => EstimationMirror.upsert(values, options));
-    return super.create(values, options);
+    return super.upsert(values, options);
   }
 
-  static async destroy(values) {
-    safeMirrorDbHandler(() => EstimationMirror.destroy(values));
-    return super.destroy(values);
+  static async destroy(values, options) {
+    safeMirrorDbHandler(() => EstimationMirror.destroy(values, options));
+    return super.destroy(values, options);
   }
 }
 

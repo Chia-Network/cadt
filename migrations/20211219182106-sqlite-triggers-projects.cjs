@@ -11,11 +11,13 @@ module.exports = {
           currentRegistry,
           projectId,
           registryOfOrigin,
+          originProjectId,
           program,
           projectName,
           projectLink,
           projectDeveloper,
           sector,
+          coveredByNDC,
           projectType,
           projectTags,
           ndcInformation,
@@ -24,18 +26,21 @@ module.exports = {
           unitMetric,
           methodology,
           validationBody,
-          validationDate
+          validationDate,
+          timeStaged
         ) VALUES (
           new.warehouseProjectId,
           new.orgUid,
           new.currentRegistry,
           new.projectId,
           new.registryOfOrigin,
+          new.originProjectId,
           new.program,
           new.projectName,
           new.projectLink,
           new.projectDeveloper,
           new.sector,
+          new.coveredByNDC,
           new.projectType,
           new.projectTags,
           new.ndcInformation,
@@ -44,7 +49,8 @@ module.exports = {
           new.unitMetric,
           new.methodology,
           new.validationBody,
-          new.validationDate
+          new.validationDate,
+          new.timeStaged
         );
       END;`);
 
@@ -63,11 +69,13 @@ module.exports = {
           currentRegistry,
           projectId,
           registryOfOrigin,
+          originProjectId,
           program,
           projectName,
           projectLink,
           projectDeveloper,
           sector,
+          coveredByNDC,
           projectType,
           projectTags,
           ndcInformation,
@@ -76,18 +84,21 @@ module.exports = {
           unitMetric,
           methodology,
           validationBody,
-          validationDate
+          validationDate,
+          timeStaged
         ) VALUES (
           new.warehouseProjectId,
           new.orgUid,
           new.currentRegistry,
           new.projectId,
           new.registryOfOrigin,
+          new.originProjectId,
           new.program,
           new.projectName,
           new.projectLink,
           new.projectDeveloper,
           new.sector,
+          new.coveredByNDC,
           new.projectType,
           new.projectTags,
           new.ndcInformation,
@@ -96,7 +107,8 @@ module.exports = {
           new.unitMetric,
           new.methodology,
           new.validationBody,
-          new.validationDate
+          new.validationDate,
+          new.timeStaged
         );
       END;
       `);

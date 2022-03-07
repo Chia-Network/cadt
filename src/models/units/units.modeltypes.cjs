@@ -4,6 +4,7 @@ const Sequelize = require('sequelize');
 module.exports = {
   warehouseUnitId: {
     type: Sequelize.STRING,
+    allowNull: false,
     unique: true,
     defaultValue: () => uuidv4(),
     primaryKey: true,
@@ -36,8 +37,6 @@ module.exports = {
   },
   inCountryJurisdictionOfOwner: {
     type: Sequelize.STRING,
-    required: true,
-    // This 'inCountryJurisdictionOfOwner' should be an optional field.
   },
   serialNumberBlock: {
     type: Sequelize.STRING,
@@ -48,9 +47,8 @@ module.exports = {
     defaultValue: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
   },
   vintageYear: {
-    type: Sequelize.STRING,
+    type: Sequelize.INTEGER,
     required: true,
-    // This 'vintageYear' field should technically be always be in YYYY date format. Not sure if that makes it a DATE type.
   },
   unitType: {
     type: Sequelize.STRING,
@@ -86,6 +84,9 @@ module.exports = {
   correspondingAdjustmentStatus: {
     type: Sequelize.STRING,
     required: true,
+  },
+  timeStaged: {
+    type: 'TIMESTAMP',
   },
   createdAt: {
     type: Sequelize.DATE,

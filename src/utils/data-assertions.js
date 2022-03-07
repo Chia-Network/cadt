@@ -4,6 +4,62 @@ import _ from 'lodash';
 
 import { Organization, Unit, Project, Staging } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
+import datalayer from '../datalayer';
+import { formatModelAssociationName } from './model-utils.js';
+
+export const assertDataLayerAvailable = async () => {
+  const isAvailable = await datalayer.dataLayerAvailable();
+
+  if (!isAvailable) {
+    throw new Error('Can not establish connection to Chia Datalayer');
+  }
+};
+
+export const assertIfReadOnlyMode = async () => {
+  if (process.env.READ_ONLY === 'true') {
+    throw new Error('You can not use this API in read-only mode');
+  }
+};
+
+export const assertNoPendingCommits = async () => {
+  if (process.env.USE_SIMULATOR === 'true') {
+    const pendingCommits = await Staging.findAll({
+      where: { commited: true, failedCommit: false },
+      raw: true,
+    });
+
+    console.log(pendingCommits);
+
+    if (pendingCommits.length > 0) {
+      throw new Error(
+        'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
+      );
+    }
+  } else {
+    if (await datalayer.hasUnconfirmedTransactions()) {
+      throw new Error(
+        'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
+      );
+    }
+  }
+};
+
+export const assertWalletIsSynced = async () => {
+  if (process.env.USE_SIMULATOR === 'false') {
+    if (!(await datalayer.walletIsSynced())) {
+      throw new Error(
+        'Your wallet is syncing, please wait for it to sync and try again',
+      );
+    }
+  }
+};
+
+export const assertRecordExistance = async (Model, pk) => {
+  const record = await Model.findByPk(pk);
+  if (!record) {
+    throw new Error(`${Model.name} does not have a record for ${pk}`);
+  }
+};
 
 export const assertHomeOrgExists = async () => {
   const homeOrg = await Organization.getHomeOrg();
@@ -52,7 +108,12 @@ export const assertUnitRecordExists = async (
   customMessage,
 ) => {
   const record = await Unit.findByPk(warehouseUnitId, {
-    include: Unit.getAssociatedModels(),
+    include: Unit.getAssociatedModels().map((association) => {
+      return {
+        model: association.model,
+        as: formatModelAssociationName(association),
+      };
+    }),
   });
   if (!record) {
     throw new Error(
@@ -64,8 +125,17 @@ export const assertUnitRecordExists = async (
   return record.dataValues;
 };
 
+export const assertStagingTableNotEmpty = async () => {
+  const records = await Staging.findAll({ raw: true });
+
+  if (!records || records.length === 0) {
+    throw new Error(`Cant commit empty staging table`);
+  }
+};
+
 export const assertStagingRecordExists = async (stagingId) => {
-  const record = await Staging.findByPk(stagingId);
+  const record = await Staging.findOne({ where: { uuid: stagingId } });
+
   if (!record) {
     throw new Error(
       `The staging record for the staging ID: ${stagingId} does not exist.`,
@@ -80,7 +150,9 @@ export const assertProjectRecordExists = async (
   customMessage,
 ) => {
   const record = await Project.findByPk(warehouseProjectId, {
-    include: Project.getAssociatedModels(),
+    include: Project.getAssociatedModels().map(
+      (association) => association.model,
+    ),
   });
 
   if (!record) {
