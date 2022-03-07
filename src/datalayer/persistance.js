@@ -5,6 +5,11 @@ import path from 'path';
 import request from 'request-promise';
 import os from 'os';
 
+import Debug from 'debug';
+Debug.enable('climate-warehouse:datalayer:persistance');
+
+const log = Debug('climate-warehouse:datalayer:persistance');
+
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const rpcUrl = process.env.DATALAYER_URL;
@@ -41,39 +46,45 @@ export const createDataLayerStore = async () => {
     return data.id;
   }
 
-  console.log(data);
+  log(data);
 
   throw new Error(data.error);
 };
 
 export const pushChangeListToDataLayer = async (storeId, changelist) => {
-  const options = {
-    url: `${rpcUrl}/batch_update`,
-    body: JSON.stringify({
-      changelist,
-      id: storeId,
-    }),
-  };
+  try {
+    const options = {
+      url: `${rpcUrl}/batch_update`,
+      body: JSON.stringify({
+        changelist,
+        id: storeId,
+      }),
+    };
 
-  const response = await request(Object.assign({}, getBaseOptions(), options));
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
 
-  const data = JSON.parse(response);
+    const data = JSON.parse(response);
 
-  console.log(options, data);
+    log(options, data);
 
-  if (data.success) {
-    console.log('Success!');
-    return true;
+    if (data.success) {
+      log('Success!');
+      return true;
+    }
+
+    if (data.error.includes('Key already present')) {
+      log('Success, I guess...');
+      return true;
+    }
+
+    log(data);
+
+    return false;
+  } catch (error) {
+    log('There was an error pushing your changes to the datalayer');
   }
-
-  if (data.error.includes('Key already present')) {
-    console.log('Success, I guess...');
-    return true;
-  }
-
-  console.log(data);
-
-  return false;
 };
 
 export const getRoots = async (storeIds) => {
@@ -113,7 +124,7 @@ export const getRoot = async (storeId, ignoreEmptyStore = false) => {
 
   try {
     const data = JSON.parse(response);
-    console.log(`Root for ${storeId}`, data);
+    log(`Root for ${storeId}`, data);
     if (
       (data.confirmed && !ignoreEmptyStore) ||
       (data.confirmed &&
@@ -151,11 +162,13 @@ export const getStoreData = async (storeId, rootHash) => {
     const data = JSON.parse(response);
 
     if (data.success) {
-      console.log('Downloaded Data', data);
+      if (!_.isEmpty(data.keys_values)) {
+        log('Downloaded Data', data);
+      }
       return data;
     }
 
-    console.log(data);
+    log(data);
   }
 
   return false;
@@ -179,10 +192,11 @@ export const dataLayerAvailable = async () => {
       return true;
     }
 
-    console.error(data);
+    log(data);
     return false;
   } catch (error) {
-    console.error(error);
+    log(error);
+
     return false;
   }
 };
@@ -197,7 +211,7 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
     }),
   };
 
-  console.log('RPC Call: ', `${rpcUrl}/subscribe`, storeId, ip, port);
+  log('RPC Call: ', `${rpcUrl}/subscribe`, storeId, ip, port);
 
   try {
     const response = await request(
@@ -207,13 +221,13 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
     const data = JSON.parse(response);
 
     if (Object.keys(data).includes('success') && data.success) {
-      console.log('Successfully Subscribed: ', storeId, ip, port);
+      log('Successfully Subscribed: ', storeId, ip, port);
       return data;
     }
 
     return false;
   } catch (error) {
-    console.log('Error Subscribing: ', error);
+    log('Error Subscribing: ', error);
     return false;
   }
 };

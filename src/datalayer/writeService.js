@@ -1,7 +1,13 @@
+import _ from 'lodash';
+
 import * as dataLayer from './persistance';
 import wallet from './wallet';
 import * as simulator from './simulator';
 import { encodeHex } from '../utils/datalayer-utils';
+
+import Debug from 'debug';
+Debug.enable('climate-warehouse:datalayer:writeService');
+const log = Debug('climate-warehouse:datalayer:writeService');
 
 const createDataLayerStore = async () => {
   let storeId;
@@ -14,8 +20,8 @@ const createDataLayerStore = async () => {
   return storeId;
 };
 
-const syncDataLayer = async (storeId, data) => {
-  console.log(`Syncing ${storeId}: ${JSON.stringify(data)}`);
+const syncDataLayer = async (storeId, data, failedCallback) => {
+  log(`Syncing ${storeId}: ${JSON.stringify(data)}`);
   const changeList = Object.keys(data).map((key) => {
     return {
       action: 'insert',
@@ -24,17 +30,34 @@ const syncDataLayer = async (storeId, data) => {
     };
   });
 
-  await pushChangesWhenStoreIsAvailable(storeId, changeList);
+  await pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback);
 };
 
-const retry = (storeId, changeList) => {
+const retry = (storeId, changeList, failedCallback, retryAttempts) => {
+  log('RETRYING...', retryAttempts);
+  if (retryAttempts >= 10) {
+    log('Could not push changelist to datalayer after retrying 10 times');
+    failedCallback();
+    return;
+  }
+
   setTimeout(async () => {
-    console.log('Retrying...', storeId);
-    await pushChangesWhenStoreIsAvailable(storeId, changeList);
+    log('Retrying...', storeId);
+    await pushChangesWhenStoreIsAvailable(
+      storeId,
+      changeList,
+      failedCallback,
+      retryAttempts + 1,
+    );
   }, 30000);
 };
 
-const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
+const pushChangesWhenStoreIsAvailable = async (
+  storeId,
+  changeList,
+  failedCallback = _.noop,
+  retryAttempts = 0,
+) => {
   if (process.env.USE_SIMULATOR === 'true') {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
@@ -50,16 +73,16 @@ const pushChangesWhenStoreIsAvailable = async (storeId, changeList) => {
       );
 
       if (!success) {
-        retry(storeId, changeList);
+        retry(storeId, changeList, failedCallback, retryAttempts);
       }
     } else {
-      retry(storeId, changeList);
+      retry(storeId, changeList, failedCallback, retryAttempts);
     }
   }
 };
 
-const pushDataLayerChangeList = (storeId, changeList) => {
-  pushChangesWhenStoreIsAvailable(storeId, changeList);
+const pushDataLayerChangeList = (storeId, changeList, failedCallback) => {
+  pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback);
 };
 
 const dataLayerAvailable = async () => {

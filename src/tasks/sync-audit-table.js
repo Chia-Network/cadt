@@ -1,15 +1,19 @@
 import _ from 'lodash';
 
-import logUpdate from 'log-update';
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Organization, Audit } from '../models';
 import datalayer from '../datalayer';
 import { decodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
+import Debug from 'debug';
+Debug.enable('climate-warehouse:task:audit');
+
+const log = Debug('climate-warehouse:datalayer:persistance');
+
 dotenv.config();
 
 const task = new Task('sync-audit', async () => {
-  logUpdate('Syncing Audit Information');
+  log('Syncing Audit Information');
   if (process.env.USE_SIMULATOR === 'false') {
     const organizations = await Organization.findAll({ raw: true });
     await Promise.all(
@@ -26,7 +30,7 @@ const job = new SimpleIntervalJob(
 
 const syncOrganizationAudit = async (organization) => {
   try {
-    logUpdate('Syncing Audit:', organization.name);
+    log('Syncing Audit:', organization.name);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     const lastRootSaved = await Audit.findOne({
@@ -100,7 +104,7 @@ const syncOrganizationAudit = async (organization) => {
       }),
     );
   } catch (error) {
-    console.log(error);
+    log(error);
   }
 };
 

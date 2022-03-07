@@ -1,6 +1,12 @@
 import _ from 'lodash';
 
 import { Staging } from '../models';
+
+import {
+  optionallyPaginatedResponse,
+  paginationParams,
+} from '../utils/helpers';
+
 import {
   assertStagingRecordExists,
   assertHomeOrgExists,
@@ -13,10 +19,27 @@ import {
 
 export const findAll = async (req, res) => {
   try {
-    const stagingData = await Staging.findAll();
+    let { page, limit, type } = req.query;
 
-    const response = await Promise.all(
-      stagingData.map(async (stagingRecord) => {
+    let pagination = paginationParams(page, limit);
+
+    let where = {};
+    if (type === 'staged') {
+      where = { commited: false, failedCommit: false };
+    } else if (type === 'pending') {
+      where = { commited: true, failedCommit: false };
+    } else if (type === 'failed') {
+      where = { failedCommit: true };
+    }
+
+    let stagingData = await Staging.findAndCountAll({
+      distinct: true,
+      where,
+      ...pagination,
+    });
+
+    const results = await Promise.all(
+      stagingData.rows.map(async (stagingRecord) => {
         const { uuid, table, action, data } = stagingRecord;
         const workingData = _.cloneDeep(stagingRecord.dataValues);
         workingData.diff = await Staging.getDiffObject(
@@ -31,6 +54,10 @@ export const findAll = async (req, res) => {
         return workingData;
       }),
     );
+
+    stagingData.rows = results;
+
+    const response = optionallyPaginatedResponse(stagingData, page, limit);
 
     res.json(response);
   } catch (error) {

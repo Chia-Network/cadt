@@ -4,12 +4,15 @@ import express from 'express';
 import joiExpress from 'express-joi-validation';
 import { StagingController } from '../../../controllers';
 
-import { stagingDeleteSchema } from '../../../validations';
+import {
+  stagingDeleteSchema,
+  stagingGetQuerySchema,
+} from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
 const StagingRouter = express.Router();
 
-StagingRouter.get('/', (req, res) => {
+StagingRouter.get('/', validator.query(stagingGetQuerySchema), (req, res) => {
   return StagingController.findAll(req, res);
 });
 

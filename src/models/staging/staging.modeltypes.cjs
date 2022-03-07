@@ -18,6 +18,11 @@ module.exports = {
     allowNull: false,
     defaultValue: false,
   },
+  failedCommit: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

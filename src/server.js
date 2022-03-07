@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import 'regenerator-runtime/runtime.js';
-
 import rootRouter from './routes';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -9,6 +8,7 @@ import Debug from 'debug';
 import { connection } from './websocket';
 import scheduler from './tasks';
 
+Debug.enable('climate-warehouse:*');
 const debug = Debug('climate-warehouse:server');
 
 const port = 3030;
