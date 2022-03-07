@@ -1,0 +1,37 @@
+# Compares the version in package.json to tags on the repo. If the tag doesn't exist, a new tag is created, which
+# then triggers the normal "on tag" release automation in the build job
+name: Auto Tag
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: main-release-check
+
+jobs:
+  check-version:
+    name: Check version increment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout current branch
+        uses: actions/checkout@v2
+        with:
+          # Need REPO_ADMIN token so when the tag is created, the tag automation runs
+          token: ${{ secrets.REPO_ADMIN }}
+
+      - name: Check for current version tag. Create if it doesn't exist
+        run: |
+          version=$(cat $GITHUB_WORKSPACE/package.json | jq -r '.version')
+          echo "Version is: $version"
+
+          if [ $(git tag -l "$version") ]; then
+            echo "Tag exists, nothing to do"
+          else
+            echo "Tag does not exist. Creating and pushing tag"
+            git tag "$version"
+            git push origin "$version"
+          fi
