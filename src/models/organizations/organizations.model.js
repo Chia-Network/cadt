@@ -92,22 +92,24 @@ class Organization extends Model {
       icon,
     });
 
-    if (process.env.USE_SIMULATOR !== 'true') {
-      const onConfirm = () => {
-        log('Organization confirmed, you are ready to go');
-        Organization.update(
-          {
-            subscribed: true,
-          },
-          { where: { orgUid: newOrganizationId } },
-        );
-      };
+    const onConfirm = () => {
+      log('Organization confirmed, you are ready to go');
+      Organization.update(
+        {
+          subscribed: true,
+        },
+        { where: { orgUid: newOrganizationId } },
+      );
+    };
 
+    if (process.env.USE_SIMULATOR !== 'true') {
       datalayer.getStoreData(
         newRegistryId,
         onConfirm,
         revertOrganizationIfFailed,
       );
+    } else {
+      onConfirm();
     }
 
     return newOrganizationId;
