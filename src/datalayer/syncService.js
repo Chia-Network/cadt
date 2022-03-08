@@ -242,12 +242,14 @@ const getRootDiff = (storeId, root1, root2) => {
 };
 
 const getStoreData = async (storeId, callback, onFail, retry = 0) => {
-  if (retry >= 10) {
+  console.log(retry);
+  if (retry <= 10) {
     log('Waiting for New Organization to be confirmed');
     const encodedData = await dataLayer.getStoreData(storeId);
+    console.log(encodedData);
     if (_.isEmpty(encodedData?.keys_values)) {
       await new Promise((resolve) => setTimeout(() => resolve(), 60000));
-      return getStoreData(storeId, callback, retry + 1);
+      return getStoreData(storeId, callback, onFail, retry + 1);
     } else {
       callback(encodedData.keys_values);
     }
