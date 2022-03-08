@@ -1,0 +1,42 @@
+# This workflow runs on any PRs that are targeting main, and ensures that the version in package.json is incremented
+name: Check Version Increment
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+
+concurrency:
+  # SHA is added to the end if on `main` to let all main workflows run
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref == 'refs/heads/main' && github.sha || '' }}
+  cancel-in-progress: true
+
+jobs:
+  check-version:
+    name: Check version increment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout current branch
+        uses: actions/checkout@v2
+        with:
+          path: branch-repo
+
+      - name: Checkout main
+        uses: actions/checkout@v2
+        with:
+          ref: main
+          path: main-repo
+
+      - name: Check Versions
+        run: |
+          main_version=$(cat $GITHUB_WORKSPACE/main-repo/package.json | jq -r '.version')
+          branch_version=$(cat $GITHUB_WORKSPACE/branch-repo/package.json | jq -r '.version')
+          echo "Main version: $main_version"
+          echo "Branch version: $branch_version"
+
+          if [[ "$branch_version" == "$main_version" ]]; then
+            echo "Version in package.json on this branch is not changing. Version must incremenet for a merge to main"
+            exit 1
+          fi
