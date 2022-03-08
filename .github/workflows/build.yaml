@@ -168,8 +168,8 @@ jobs:
       - name: Download MacOS artifacts
         uses: actions/download-artifact@v2
         with:
-          name: macos-x64
-          path: macos-x64
+          name: mac-installer
+          path: mac-installer
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v2
@@ -185,7 +185,7 @@ jobs:
       - name: Create zips
         run: |
           zip -r windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip windows-x64
-          zip -r macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip macos-x64
+          zip -r macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip mac-installer
           zip -r linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip linux-x64
 
       - name: Release

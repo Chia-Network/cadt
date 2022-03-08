@@ -4,6 +4,10 @@ export const stagingDeleteSchema = Joi.object({
   uuid: Joi.string().required(),
 });
 
+export const stagingRetrySchema = Joi.object({
+  uuid: Joi.string().required(),
+});
+
 export const stagingGetQuerySchema = Joi.object()
   .keys({
     page: Joi.number(),

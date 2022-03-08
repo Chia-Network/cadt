@@ -7,6 +7,7 @@ import { StagingController } from '../../../controllers';
 import {
   stagingDeleteSchema,
   stagingGetQuerySchema,
+  stagingRetrySchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -21,6 +22,10 @@ StagingRouter.delete(
   validator.body(stagingDeleteSchema),
   StagingController.destroy,
 );
+
+StagingRouter.post('/retry', validator.body(stagingRetrySchema), (req, res) => {
+  return StagingController.retryRecrod(req, res);
+});
 
 StagingRouter.post('/commit', StagingController.commit);
 
