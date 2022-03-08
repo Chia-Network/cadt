@@ -21,6 +21,10 @@ OrganizationRouter.post(
   },
 );
 
+OrganizationRouter.post('/create', (req, res) => {
+  return OrganizationController.createV2(req, res);
+});
+
 OrganizationRouter.put('/', (req, res) => {
   return OrganizationController.importOrg(req, res);
 });
