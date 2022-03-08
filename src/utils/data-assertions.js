@@ -24,9 +24,11 @@ export const assertIfReadOnlyMode = async () => {
 export const assertNoPendingCommits = async () => {
   if (process.env.USE_SIMULATOR === 'true') {
     const pendingCommits = await Staging.findAll({
-      where: { commited: true },
+      where: { commited: true, failedCommit: false },
       raw: true,
     });
+
+    console.log(pendingCommits);
 
     if (pendingCommits.length > 0) {
       throw new Error(
@@ -47,6 +49,16 @@ export const assertWalletIsSynced = async () => {
     if (!(await datalayer.walletIsSynced())) {
       throw new Error(
         'Your wallet is syncing, please wait for it to sync and try again',
+      );
+    }
+  }
+};
+
+export const assertWalletIsAvailable = async () => {
+  if (process.env.USE_SIMULATOR === 'false') {
+    if (!(await datalayer.walletIsAvailable())) {
+      throw new Error(
+        'Your wallet is not available, please turn it on to continue using climate warehouse',
       );
     }
   }

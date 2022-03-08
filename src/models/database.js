@@ -1,5 +1,9 @@
 import { Sequelize } from 'sequelize';
 import config from '../config/config.cjs';
+import Debug from 'debug';
+Debug.enable('climate-warehouse:mirror-database');
+const log = Debug('climate-warehouse:mirror-database');
+
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -17,7 +21,9 @@ export const safeMirrorDbHandler = (callback) => {
       callback();
     })
     .catch(() => {
-      console.log('Mirror DB not connected');
+      if (process.env.DB_HOST || process.env.DB_HOST !== '') {
+        log('Mirror DB not connected');
+      }
     });
 };
 

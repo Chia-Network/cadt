@@ -3,6 +3,7 @@ import { Organization } from '../models/organizations';
 import {
   assertHomeOrgExists,
   assertWalletIsSynced,
+  assertWalletIsAvailable,
   assertDataLayerAvailable,
   assertIfReadOnlyMode,
 } from '../utils/data-assertions';
@@ -11,10 +12,43 @@ export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
 };
 
+export const createV2 = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
+    await assertWalletIsSynced();
+
+    const myOrganization = await Organization.getHomeOrg();
+
+    if (!myOrganization) {
+      return res.json({
+        message: 'Your organization already exists.',
+        orgId: myOrganization.orgUid,
+      });
+    } else {
+      const { name } = req.body;
+      const buffer = req.files.svg.data;
+      const svgIcon = buffer.toString('utf8');
+
+      return res.json({
+        message: 'New organization created successfully.',
+        orgId: await Organization.createHomeOrganization(name, svgIcon, 'v1'),
+      });
+    }
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error initiating your organization',
+      error: error.message,
+    });
+  }
+};
+
 export const create = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     const myOrganization = await Organization.getHomeOrg();
@@ -44,6 +78,7 @@ export const importOrg = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     const { orgUid, ip, port } = req.body;
@@ -67,6 +102,7 @@ export const subscribeToOrganization = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
 

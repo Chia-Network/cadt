@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 
 import 'regenerator-runtime/runtime.js';
-
 import rootRouter from './routes';
 import http from 'http';
 import { Server } from 'socket.io';
 import Debug from 'debug';
 import { connection } from './websocket';
 import scheduler from './tasks';
+import dotenv from 'dotenv';
+
+dotenv.config();
+Debug.enable('climate-warehouse:*');
 
 const debug = Debug('climate-warehouse:server');
 
-const port = 3030;
+const port = process.env.CW_PORT || 3030;
 const server = http.createServer(rootRouter);
 
 server.on('error', onError);
