@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import { Organization } from '../models/organizations';
 
 import {
@@ -27,9 +29,17 @@ export const createV2 = async (req, res) => {
         orgId: myOrganization.orgUid,
       });
     } else {
+      if (!_.get(req, 'files.svg.data')) {
+        throw new Error('Missing required SVG Icon');
+      }
+
       const { name } = req.body;
       const buffer = req.files.svg.data;
       const svgIcon = buffer.toString('utf8');
+
+      if (!svgIcon.includes('</svg>')) {
+        throw new Error('Currupted SVG Icon');
+      }
 
       return res.json({
         message: 'New organization created successfully.',
