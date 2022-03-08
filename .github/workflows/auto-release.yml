@@ -18,10 +18,11 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout current branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           # Need REPO_ADMIN token so when the tag is created, the tag automation runs
           token: ${{ secrets.REPO_ADMIN }}
+          fetch-depth: 0
 
       - name: Check for current version tag. Create if it doesn't exist
         run: |
@@ -32,6 +33,12 @@ jobs:
             echo "Tag exists, nothing to do"
           else
             echo "Tag does not exist. Creating and pushing tag"
-            git tag "$version"
-            git push origin "$version"
+            npx standard-version
+            git add CHANGELOG.md
+            git config --global user.name 'ChiaAutomation'
+            git config --global user.email 'automation@chia.net'
+            git commit -m "Updating changelog for $version"
+            git tag $version
+            git push origin $version
+            git push origin main
           fi
