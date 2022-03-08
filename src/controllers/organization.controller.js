@@ -21,7 +21,7 @@ export const createV2 = async (req, res) => {
 
     const myOrganization = await Organization.getHomeOrg();
 
-    if (!myOrganization) {
+    if (myOrganization) {
       return res.json({
         message: 'Your organization already exists.',
         orgId: myOrganization.orgUid,
@@ -37,6 +37,7 @@ export const createV2 = async (req, res) => {
       });
     }
   } catch (error) {
+    console.trace(error);
     res.status(400).json({
       message: 'Error initiating your organization',
       error: error.message,
