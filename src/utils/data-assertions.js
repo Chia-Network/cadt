@@ -79,6 +79,12 @@ export const assertHomeOrgExists = async () => {
     );
   }
 
+  if (!homeOrg.subscribed) {
+    throw new Error(
+      `Your Home organization is still confirming, please wait a little longer for it to finished.`,
+    );
+  }
+
   return homeOrg;
 };
 

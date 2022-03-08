@@ -20,7 +20,7 @@ import ModelTypes from './organizations.modeltypes.cjs';
 class Organization extends Model {
   static async getHomeOrg() {
     const myOrganization = await Organization.findOne({
-      attributes: ['orgUid', 'name', 'icon'],
+      attributes: ['orgUid', 'name', 'icon', 'subscribed'],
       where: { isHome: true },
       raw: true,
     });
@@ -59,6 +59,7 @@ class Organization extends Model {
     const registryVersionId = await datalayer.createDataLayerStore();
 
     const revertOrganizationIfFailed = async () => {
+      console.log('Reverting Failed Organization');
       await Organization.destroy({ where: { orgUid: newOrganizationId } });
     };
 
@@ -86,10 +87,30 @@ class Organization extends Model {
       orgUid: newOrganizationId,
       registryId: registryVersionId,
       isHome: true,
-      subscribed: true,
+      subscribed: process.env.USE_SIMULATOR === 'true',
       name,
       icon,
     });
+
+    const onConfirm = () => {
+      log('Organization confirmed, you are ready to go');
+      Organization.update(
+        {
+          subscribed: true,
+        },
+        { where: { orgUid: newOrganizationId } },
+      );
+    };
+
+    if (process.env.USE_SIMULATOR !== 'true') {
+      datalayer.getStoreData(
+        newRegistryId,
+        onConfirm,
+        revertOrganizationIfFailed,
+      );
+    } else {
+      onConfirm();
+    }
 
     return newOrganizationId;
   }
