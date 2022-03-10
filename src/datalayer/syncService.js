@@ -242,17 +242,32 @@ const getRootDiff = (storeId, root1, root2) => {
 };
 
 const getStoreData = async (storeId, callback, onFail, retry = 0) => {
-  if (retry >= 10) {
+  if (retry <= 10) {
     log('Waiting for New Organization to be confirmed');
     const encodedData = await dataLayer.getStoreData(storeId);
     if (_.isEmpty(encodedData?.keys_values)) {
       await new Promise((resolve) => setTimeout(() => resolve(), 60000));
       return getStoreData(storeId, callback, retry + 1);
     } else {
-      callback(encodedData.keys_values);
+      callback(decodeDataLayerResponse(encodedData));
     }
   } else {
     onFail();
+  }
+};
+
+const getStoreIfUpdated = async (
+  storeId,
+  lastRootHash,
+  onUpdate,
+  callback,
+  onFail,
+) => {
+  const rootResponse = await dataLayer.getRoot(storeId);
+  if (rootResponse.confirmed && rootResponse.hash !== lastRootHash) {
+    log(`Updating orgUid ${storeId} with hash ${rootResponse.hash}`);
+    onUpdate(rootResponse.hash);
+    await getStoreData(storeId, callback, onFail);
   }
 };
 
@@ -265,5 +280,6 @@ export default {
   getRootHistory,
   getRootDiff,
   getStoreData,
+  getStoreIfUpdated,
   POLLING_INTERVAL,
 };

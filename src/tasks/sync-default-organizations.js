@@ -8,7 +8,7 @@ Debug.enable('climate-warehouse:task:organizations');
 
 const log = Debug('climate-warehouse:task:organizations');
 
-const task = new Task('sync-organizations', () => {
+const task = new Task('sync-default-organizations', () => {
   log('Subscribing to default organizations');
   if (process.env.USE_SIMULATOR === 'false') {
     Organization.subscribeToDefaultOrganizations();
@@ -18,7 +18,7 @@ const task = new Task('sync-organizations', () => {
 const job = new SimpleIntervalJob(
   { days: 1, runImmediately: true },
   task,
-  'sync-organizations',
+  'sync-default-organizations',
 );
 
 export default job;
