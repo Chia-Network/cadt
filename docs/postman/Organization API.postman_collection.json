@@ -19,6 +19,28 @@
       "response": []
     },
     {
+      "name": "POST Organization",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"name\": \"New Org\",\r\n    \"icon\": \"https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{default}}/organizations/",
+          "host": ["{{default}}"],
+          "path": ["organizations", ""]
+        }
+      },
+      "response": []
+    },
+    {
       "name": "POST Create Organization",
       "request": {
         "method": "POST",
