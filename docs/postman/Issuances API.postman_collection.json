@@ -1,0 +1,22 @@
+{
+  "info": {
+    "_postman_id": "895aae74-6603-4637-a80c-b1e350492631",
+    "name": "Issuances API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET Issuances",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{default}}/issuances",
+          "host": ["{{default}}"],
+          "path": ["issuances"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
