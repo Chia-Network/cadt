@@ -74,7 +74,8 @@ export const projectsGetQuerySchema = Joi.object()
     warehouseProjectId: Joi.string(),
     xls: Joi.boolean(),
   })
-  .with('page', 'limit');
+  .with('page', 'limit')
+  .with('limit', 'page');
 
 export const projectsPostSchema = Joi.object({
   ...baseSchema,
