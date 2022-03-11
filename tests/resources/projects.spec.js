@@ -68,7 +68,7 @@ describe('Project Resource CRUD', function () {
         expect(projects.length).to.equal(1);
       });
 
-      it.only('gets optional paginated results', async function () {
+      it('gets optional paginated results', async function () {
         // ?page=X&limit=10
         const projectsPage1 = await testFixtures.getProjectByQuery({
           page: 1,
