@@ -8,7 +8,7 @@ const fs = require('fs');
 // and then changing the CWD to the actual ClimateWarehouse directory allows it to run launched from the UI or in
 // from $HOME or the actual directory in terminal
 try {
-  fs.accessSync('./ClimateWarehouse/data.sqlite3')
+  fs.accessSync('./ClimateWarehouse/data.sqlite3');
   process.chdir('./ClimateWarehouse');
 } catch (err) {}
 
@@ -16,6 +16,11 @@ module.exports = {
   local: {
     dialect: 'sqlite',
     storage: './data.sqlite3',
+    logging: false,
+  },
+  simulator: {
+    dialect: 'sqlite',
+    storage: './simulator.sqlite3',
     logging: false,
   },
   test: {
