@@ -244,7 +244,6 @@ const getRootDiff = (storeId, root1, root2) => {
 const getStoreData = async (storeId, callback, onFail, retry = 0) => {
   if (retry <= 10) {
     const encodedData = await dataLayer.getStoreData(storeId);
-    console.log(encodedData);
     if (_.isEmpty(encodedData?.keys_values)) {
       await new Promise((resolve) => setTimeout(() => resolve(), 60000));
       return getStoreData(storeId, callback, onFail, retry + 1);
