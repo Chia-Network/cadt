@@ -20,8 +20,8 @@ jobs:
       - name: Checkout current branch
         uses: actions/checkout@v3
         with:
-          # Need REPO_ADMIN token so when the tag is created, the tag automation runs
-          token: ${{ secrets.REPO_ADMIN }}
+          # Need PACKAGE_ADMIN_PAT token so when the tag is created, the tag automation runs
+          token: ${{ secrets.PACKAGE_ADMIN_PAT }}
           fetch-depth: 0
 
       - name: Check for current version tag. Create if it doesn't exist
