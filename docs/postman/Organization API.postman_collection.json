@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "72c8456a-49bd-41f6-b261-40e332358a56",
+    "_postman_id": "bc12dd5d-c38a-4b11-8687-920217e8c3eb",
     "name": "Organization API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -11,9 +11,57 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/organizations",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/organizations",
+          "host": ["{{default}}"],
           "path": ["organizations"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST Organization",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"name\": \"New Org\",\r\n    \"icon\": \"https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{default}}/organizations/",
+          "host": ["{{default}}"],
+          "path": ["organizations", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST Create Organization",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{default}}/organizations/create",
+          "host": ["{{default}}"],
+          "path": ["organizations", "create"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT Organization",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{default}}/organizations/",
+          "host": ["{{default}}"],
+          "path": ["organizations", ""]
         }
       },
       "response": []
