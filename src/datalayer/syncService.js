@@ -95,7 +95,7 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
       await Staging.cleanUpCommitedAndInvalidRecords();
     }
   } catch (error) {
-    console.trace('ERROR DURING SYNC TRANSACTION', error, '!!!', storeData);
+    console.trace('ERROR DURING SYNC TRANSACTION', error, storeData);
   }
 };
 
