@@ -67,6 +67,7 @@ export const getProject = async (warehouseProjectId) => {
 
 export const getProjectByQuery = async (query = {}) => {
   const result = await supertest(app).get('/v1/projects').query(query);
+  console.log(result.body);
   // expect(result.body).to.be.an('array');
   expect(result.statusCode).to.equal(200);
 
