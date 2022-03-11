@@ -178,7 +178,6 @@ describe('Unit Resource Integration Tests', function () {
       ],
     };
 
-    console.log('!!!!!', homeOrgUid);
     const unitRes = await supertest(app).post('/v1/units/split').send(payload);
 
     expect(unitRes.body).to.deep.equal({
