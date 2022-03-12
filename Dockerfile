@@ -3,7 +3,6 @@ FROM node:16
 WORKDIR /usr/src/app
 RUN npm install -g json
 COPY package*.json ./
-COPY data.sqlite3 ./
 COPY .env.copy ./.env
 RUN json -I -f package.json -e "this.type=\"commonjs\""
 RUN npm set-script prepare ""

@@ -6,9 +6,10 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import fileUpload from 'express-fileupload';
-
+import { prepareDb } from '../database';
+import scheduler from '../tasks';
 import { V1Router } from './v1';
-import { sequelize } from '../models/database';
+import { sequelize } from '../database';
 
 const app = express();
 
@@ -45,7 +46,11 @@ app.use(function (req, res, next) {
 
 app.use('/v1', V1Router);
 
-sequelize.authenticate().then(() => console.log('Connected to database'));
+sequelize.authenticate().then(async () => {
+  console.log('Connected to database');
+  await prepareDb();
+  scheduler.start();
+});
 
 app.use((err, req, res, next) => {
   if (err) {

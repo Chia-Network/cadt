@@ -1,7 +1,7 @@
 'use strict';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize, safeMirrorDbHandler } from '../database';
+import { sequelize, safeMirrorDbHandler } from '../../database';
 import { Project } from '../projects/index';
 
 import ModelTypes from './ratings.modeltypes.cjs';

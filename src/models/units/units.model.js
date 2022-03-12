@@ -7,7 +7,7 @@ import {
   sequelize,
   safeMirrorDbHandler,
   sanitizeSqliteFtsQuery,
-} from '../database';
+} from '../../database';
 import { Label, Issuance, Staging } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';

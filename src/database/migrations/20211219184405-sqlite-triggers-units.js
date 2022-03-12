@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = {
+export default {
   up: async (queryInterface) => {
     if (queryInterface.sequelize.getDialect() === 'sqlite') {
       await queryInterface.sequelize.query(`

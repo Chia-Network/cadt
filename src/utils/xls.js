@@ -5,7 +5,7 @@ import stream from 'stream';
 
 import { Staging, Organization, LabelUnit, ModelKeys } from './../models';
 
-import { sequelize } from '../models/database';
+import { sequelize } from '../database';
 import { assertOrgIsHomeOrg } from './data-assertions';
 import { encodeHex } from './datalayer-utils';
 

@@ -1,21 +1,23 @@
-//import chai from 'chai';
-///import chaiHttp from 'chai-http';
-//import app from './../../src/server';
 import app from '../../src/server';
 import supertest from 'supertest';
 import newUnit from '../test-data/new-unit.json';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import { expect } from 'chai';
+import { prepareDb } from '../../src/database';
+
 describe('Units Resource CRUD', function () {
   before(async function () {
     await pullPickListValues();
+    await prepareDb();
   });
+
   describe('GET Units', function () {
     describe('error states', function () {
       it('errors if there if there is no connection to the datalayer', function () {});
     });
 
     describe('success states', function () {
+      // eslint-disable-next-line no-unused-vars
       let warehouseUnitId;
       beforeEach(async function () {
         await supertest(app).post('/v1/units').send(newUnit);
