@@ -1,10 +1,8 @@
 'use strict';
-const OrganizationStub = require('../src/models/organizations/organizations.stub.json');
 
-const dotenv = require('dotenv');
-dotenv.config();
+import OrganizationStub from '../../models/organizations/organizations.stub.json';
 
-module.exports = {
+export default {
   up: async (queryInterface) => {
     await queryInterface.bulkInsert('organizations', OrganizationStub, {});
   },

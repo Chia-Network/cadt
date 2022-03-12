@@ -9,7 +9,7 @@ import {
   sequelize,
   safeMirrorDbHandler,
   sanitizeSqliteFtsQuery,
-} from '../database';
+} from '../../database';
 
 import {
   RelatedProject,
@@ -75,12 +75,24 @@ class Project extends Model {
 
   static associate() {
     Project.hasMany(ProjectLocation, { foreignKey: 'warehouseProjectId' });
-    Project.hasMany(Label, { foreignKey: 'warehouseProjectId' });
-    Project.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
-    Project.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
-    Project.hasMany(RelatedProject, { foreignKey: 'warehouseProjectId' });
-    Project.hasMany(Estimation, { foreignKey: 'warehouseProjectId' });
-    Project.hasMany(Rating, { foreignKey: 'warehouseProjectId' });
+    Project.hasMany(Label, {
+      foreignKey: 'warehouseProjectId',
+    });
+    Project.hasMany(Issuance, {
+      foreignKey: 'warehouseProjectId',
+    });
+    Project.hasMany(CoBenefit, {
+      foreignKey: 'warehouseProjectId',
+    });
+    Project.hasMany(RelatedProject, {
+      foreignKey: 'warehouseProjectId',
+    });
+    Project.hasMany(Estimation, {
+      foreignKey: 'warehouseProjectId',
+    });
+    Project.hasMany(Rating, {
+      foreignKey: 'warehouseProjectId',
+    });
 
     safeMirrorDbHandler(() => {
       ProjectMirror.hasMany(ProjectLocation, {
@@ -89,13 +101,21 @@ class Project extends Model {
       ProjectMirror.hasMany(Label, {
         foreignKey: 'warehouseProjectId',
       });
-      ProjectMirror.hasMany(Issuance, { foreignKey: 'warehouseProjectId' });
-      ProjectMirror.hasMany(CoBenefit, { foreignKey: 'warehouseProjectId' });
+      ProjectMirror.hasMany(Issuance, {
+        foreignKey: 'warehouseProjectId',
+      });
+      ProjectMirror.hasMany(CoBenefit, {
+        foreignKey: 'warehouseProjectId',
+      });
       ProjectMirror.hasMany(RelatedProject, {
         foreignKey: 'warehouseProjectId',
       });
-      ProjectMirror.hasMany(Estimation, { foreignKey: 'warehouseProjectId' });
-      ProjectMirror.hasMany(Rating, { foreignKey: 'warehouseProjectId' });
+      ProjectMirror.hasMany(Estimation, {
+        foreignKey: 'warehouseProjectId',
+      });
+      ProjectMirror.hasMany(Rating, {
+        foreignKey: 'warehouseProjectId',
+      });
     });
   }
 

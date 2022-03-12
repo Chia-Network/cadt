@@ -2,8 +2,14 @@ import supertest from 'supertest';
 import app from '../../src/server';
 import { Organization } from '../../src/models/organizations/index.js';
 import { expect } from 'chai';
+import { prepareDb } from '../../src/database';
+
 const orgName = Math.random().toString();
 describe('Orgainzation Resource CRUD', function () {
+  before(async function () {
+    await prepareDb();
+  });
+
   describe('POST - Creates an organization', function () {
     it('Creates an organization', async function () {
       await Organization.destroy({

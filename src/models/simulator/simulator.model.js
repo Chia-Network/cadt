@@ -2,7 +2,7 @@
 
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize } from '../database';
+import { sequelize } from '../../database';
 
 import ModelTypes from './simulator.modeltypes.cjs';
 
