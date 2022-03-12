@@ -2,7 +2,7 @@
 
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize, safeMirrorDbHandler } from '../database';
+import { sequelize, safeMirrorDbHandler } from '../../database';
 import { Project } from '../projects';
 import { Unit } from '../units';
 
@@ -11,9 +11,6 @@ import { LabelMirror } from './labels.model.mirror';
 
 class Label extends Model {
   static associate() {
-    // When all labels are removed from
-    // all projects and units, remove completly,
-    // otherwise just dissaciate
     Label.belongsTo(Project, {
       targetKey: 'warehouseProjectId',
       foreignKey: 'warehouseProjectId',
@@ -33,6 +30,7 @@ class Label extends Model {
       });
 
       LabelMirror.belongsToMany(Unit, {
+        foreignKey: 'labelId',
         through: 'label_unit',
         as: 'unit',
       });

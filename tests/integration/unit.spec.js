@@ -8,7 +8,7 @@ import app from '../../src/server';
 import { UnitMirror } from '../../src/models';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import * as testFixtures from '../test-fixtures';
-
+import { prepareDb } from '../../src/database';
 import datalayer from '../../src/datalayer';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
@@ -17,6 +17,7 @@ describe('Unit Resource Integration Tests', function () {
 
   before(async function () {
     await pullPickListValues();
+    await prepareDb();
   });
 
   beforeEach(async function () {

@@ -1,9 +1,9 @@
 'use strict';
 
-const UnitStub = require('../src/models/units/units.stub.json');
-const LabelUnitStub = require('../src/models/labelUnits/labelUnits.stub.json');
+import UnitStub from '../../models/units/units.stub.json';
+import LabelUnitStub from '../../models/labelUnits/labelUnits.stub.json';
 
-module.exports = {
+export default {
   // eslint-disable-next-line no-unused-vars
   up: async (queryInterface) => {
     await queryInterface.bulkInsert('units', UnitStub, {});

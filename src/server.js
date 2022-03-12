@@ -6,7 +6,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import Debug from 'debug';
 import { connection } from './websocket';
-import scheduler from './tasks';
+
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -51,7 +51,6 @@ function onError(error) {
  */
 
 function onListening() {
-  scheduler.start();
   const addr = server.address();
   const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
   debug('Listening on ' + bind);
