@@ -28,7 +28,7 @@ export default {
       relationshipType: Sequelize.STRING,
       registry: Sequelize.STRING,
       timeStaged: {
-        type: 'TIMESTAMP',
+        type: Sequelize.STRING,
       },
       createdAt: {
         type: Sequelize.DATE,
