@@ -200,7 +200,9 @@ class Organization extends Model {
         allSubscribedOrganizations.map((organization) => {
           const onResult = (data) => {
             const updateData = data.reduce((update, current) => {
-              update[current.key] = current.value;
+              if (current.key !== 'registryId') {
+                update[current.key] = current.value;
+              }
               return update;
             }, {});
 
