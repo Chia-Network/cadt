@@ -40,7 +40,7 @@ export default {
       },
       ratingLink: Sequelize.STRING,
       timeStaged: {
-        type: 'TIMESTAMP',
+        type: Sequelize.STRING,
       },
       createdAt: {
         type: Sequelize.DATE,

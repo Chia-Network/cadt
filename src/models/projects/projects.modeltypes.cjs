@@ -39,7 +39,7 @@ module.exports = {
     required: true,
   },
   projectLink: {
-    type: Sequelize.STRING,
+    type: Sequelize.STRING(1000),
     required: true,
   },
   projectDeveloper: {
@@ -83,7 +83,7 @@ module.exports = {
   validationBody: Sequelize.STRING,
   validationDate: Sequelize.DATE,
   timeStaged: {
-    type: 'TIMESTAMP',
+    type: Sequelize.STRING,
   },
   createdAt: {
     type: Sequelize.DATE,
