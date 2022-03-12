@@ -39,7 +39,7 @@ export default {
         allowNull: true,
       },
       onchainConfirmationTimeStamp: {
-        type: 'TIMESTAMP',
+        type: Sequelize.STRING,
         required: true,
         allowNull: false,
       },
