@@ -14,7 +14,6 @@ export const resetStagingTable = async () => {
 
 export const getLastCreatedStagingRecord = async () => {
   const result = await supertest(app).get('/v1/staging');
-  console.log('!!!!!!', result.body);
   expect(result.body).to.be.an('array');
   return _.last(result.body);
 };
