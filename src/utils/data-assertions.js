@@ -189,7 +189,7 @@ export const assertSumOfSplitUnitsIsValid = (
   const sumOfSplitUnits = splitRecords.reduce(
     (previousValue, currentValue) =>
       previousValue.unitCount + currentValue.unitCount,
-  ); // Add one to handle inclusiveness boundry
+  );
 
   const [unitBlockStart, unitBlockEnd, unitCount] = transformSerialNumberBlock(
     serialNumberBlock,
