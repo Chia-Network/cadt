@@ -61,6 +61,7 @@ export const baseSchema = {
   estimations: Joi.array().items(estimationSchema).min(1).optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
+  timeStaged: Joi.date().timestamp().allow(null).optional(),
 };
 
 export const projectsGetQuerySchema = Joi.object()
