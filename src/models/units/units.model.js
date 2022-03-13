@@ -64,12 +64,12 @@ const virtualFields = {
       }
 
       const serialNumberPattern = this.getDataValue('serialNumberPattern');
-      const [unitBlockStart, unitBlockEnd] = transformSerialNumberBlock(
+      const [, , unitCount] = transformSerialNumberBlock(
         serialNumberBlock,
         serialNumberPattern,
       );
 
-      return Number(unitBlockEnd) - Number(unitBlockStart);
+      return unitCount;
     },
   },
 };

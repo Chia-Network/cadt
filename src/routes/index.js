@@ -49,7 +49,9 @@ app.use('/v1', V1Router);
 sequelize.authenticate().then(async () => {
   console.log('Connected to database');
   await prepareDb();
-  scheduler.start();
+  setTimeout(() => {
+    scheduler.start();
+  }, 5000);
 });
 
 app.use((err, req, res, next) => {

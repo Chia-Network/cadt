@@ -209,7 +209,7 @@ describe('Unit Resource Integration Tests', function () {
     expect(splitRecord1.unitOwner).to.equal(newUnitOwner);
     expect(splitRecord2.unitOwner).to.equal(unitRecord.unitOwner);
 
-    expect(splitRecord1.unitCount).to.equal(9);
+    expect(splitRecord1.unitCount).to.equal(10);
     expect(splitRecord2.unitCount).to.equal(1);
 
     // Expect the split unitscounts to add up to the original unit count
