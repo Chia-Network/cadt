@@ -19,16 +19,22 @@ const mirrorConfig =
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
 
 export const safeMirrorDbHandler = (callback) => {
-  sequelizeMirror
-    .authenticate()
-    .then(() => {
-      callback();
-    })
-    .catch(() => {
-      if (process.env.DB_HOST && process.env.DB_HOST !== '') {
-        log('Mirror DB not connected');
-      }
-    });
+  try {
+    sequelizeMirror
+      .authenticate()
+      .then(() => {
+        callback();
+      })
+      .catch(() => {
+        if (process.env.DB_HOST && process.env.DB_HOST !== '') {
+          log('Mirror DB not connected');
+        }
+      });
+  } catch (error) {
+    console.log(
+      'MirrorDB tried to update before it was initialize, will try again later',
+    );
+  }
 };
 
 export const sanitizeSqliteFtsQuery = (query) => {
