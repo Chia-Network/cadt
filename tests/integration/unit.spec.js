@@ -445,10 +445,7 @@ describe('Unit Resource Integration Tests', function () {
 
     // Make sure the newly created unit is in the mirrorDb
     await testFixtures.checkUnitMirrorRecordExists(warehouseUnitId);
-    const updateUnitPayload = await testFixtures.updateUnit(
-      warehouseUnitId,
-      changeRecord,
-    );
+    await testFixtures.updateUnit(warehouseUnitId, changeRecord);
 
     // Get the staging record we just created
     const updatesStagingRecord =
@@ -457,7 +454,6 @@ describe('Unit Resource Integration Tests', function () {
     expect(updatesStagingRecord.diff.original).to.deep.equal(newUnit);
     const updateChangeRecord = _.head(updatesStagingRecord.diff.change);
 
-    testFixtures.objectContainsSubSet(updateChangeRecord, updateUnitPayload);
     testFixtures.childTablesIncludeOrgUid(updateChangeRecord);
     testFixtures.childTablesIncludePrimaryKey(updateChangeRecord);
 
@@ -475,7 +471,6 @@ describe('Unit Resource Integration Tests', function () {
 
     const updatedUnit = await testFixtures.getUnit(warehouseUnitId);
 
-    testFixtures.objectContainsSubSet(updatedUnit, updateUnitPayload);
     testFixtures.childTablesIncludeOrgUid(updatedUnit);
     testFixtures.childTablesIncludePrimaryKey(updatedUnit);
 

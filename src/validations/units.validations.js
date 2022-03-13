@@ -67,6 +67,7 @@ const unitsBaseSchema = {
   labels: Joi.array().items(labelSchema).optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
+  timeStaged: Joi.date().timestamp().allow(null).optional(),
 };
 
 export const unitsPostSchema = Joi.object({
