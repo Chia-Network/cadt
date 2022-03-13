@@ -69,6 +69,8 @@ export const assertRecordExistance = async (Model, pk) => {
   if (!record) {
     throw new Error(`${Model.name} does not have a record for ${pk}`);
   }
+
+  return record;
 };
 
 export const assertHomeOrgExists = async () => {

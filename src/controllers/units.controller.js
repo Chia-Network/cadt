@@ -82,6 +82,8 @@ export const create = async (req, res) => {
       if (newRecord.issuance.id) {
         // if we are reusing a record, make sure it exists
         await assertRecordExistance(Issuance, newRecord.issuance.id);
+        newRecord.issuanceId = newRecord.issuance.id;
+        delete newRecord.issuance;
       } else {
         newRecord.issuance.id = uuidv4();
         newRecord.issuance.orgUid = orgUid;
