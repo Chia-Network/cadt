@@ -11,7 +11,7 @@ import {
 import { Label, Issuance, Staging } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
-
+import { transformSerialNumberBlock } from '../../utils/helpers';
 import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
@@ -25,34 +25,51 @@ const virtualFields = {
   unitBlockStart: {
     type: Sequelize.VIRTUAL,
     get() {
-      const rawValue = this.getDataValue('serialNumberBlock');
-      if (!rawValue) {
+      const serialNumberBlock = this.getDataValue('serialNumberBlock');
+      if (!serialNumberBlock) {
         return undefined;
       }
-      return rawValue.split('-')[0];
+      const serialNumberPattern = this.getDataValue('serialNumberPattern');
+      const [unitBlockStart] = transformSerialNumberBlock(
+        serialNumberBlock,
+        serialNumberPattern,
+      );
+
+      return unitBlockStart;
     },
   },
   unitBlockEnd: {
     type: Sequelize.VIRTUAL,
     get() {
-      const rawValue = this.getDataValue('serialNumberBlock');
-      if (!rawValue) {
+      const serialNumberBlock = this.getDataValue('serialNumberBlock');
+      if (!serialNumberBlock) {
         return undefined;
       }
-      return rawValue.split('-')[1];
+
+      const serialNumberPattern = this.getDataValue('serialNumberPattern');
+      const [, unitBlockEnd] = transformSerialNumberBlock(
+        serialNumberBlock,
+        serialNumberPattern,
+      );
+
+      return unitBlockEnd;
     },
   },
   unitCount: {
     type: Sequelize.VIRTUAL,
     get() {
-      const rawValue = this.getDataValue('serialNumberBlock');
-      if (!rawValue) {
+      const serialNumberBlock = this.getDataValue('serialNumberBlock');
+      if (!serialNumberBlock) {
         return undefined;
       }
-      const blocks = rawValue.split('-');
-      const blockStart = Number(blocks[0].split(/(\d+)/)[1]);
-      const blockEnd = Number(blocks[1].split(/(\d+)/)[1]);
-      return blockEnd - blockStart;
+
+      const serialNumberPattern = this.getDataValue('serialNumberPattern');
+      const [unitBlockStart, unitBlockEnd] = transformSerialNumberBlock(
+        serialNumberBlock,
+        serialNumberPattern,
+      );
+
+      return Number(unitBlockEnd) - Number(unitBlockStart);
     },
   },
 };
