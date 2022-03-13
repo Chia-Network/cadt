@@ -69,7 +69,7 @@ const virtualFields = {
         serialNumberPattern,
       );
 
-      return unitCount;
+      return unitCount + 1; // Unit blocks are inclusive bound;
     },
   },
 };

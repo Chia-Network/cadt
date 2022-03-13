@@ -89,7 +89,7 @@ export const transformSerialNumberBlock = (
     return [null, null, null];
   }
 
-  const blockStart = Number(unitBlocks[1]) - 1; // Unit blocks are inclusive bound
+  const blockStart = Number(unitBlocks[1]);
   const blockEnd = Number(unitBlocks[2]);
   return [blockStart, blockEnd, blockEnd - blockStart];
 };
