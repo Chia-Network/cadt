@@ -92,7 +92,7 @@ export const create = async (req, res) => {
       uuid,
       action: 'INSERT',
       table: Unit.stagingTableName,
-      data: JSON.stringify([_.omit(newRecord, 'createdAt', 'updatedAt')]),
+      data: JSON.stringify([newRecord]),
     };
 
     await Staging.create(stagedData);
@@ -321,7 +321,7 @@ export const update = async (req, res) => {
       uuid: req.body.warehouseUnitId,
       action: 'UPDATE',
       table: Unit.stagingTableName,
-      data: JSON.stringify(_.omit(stagedRecord, 'createdAt', 'updatedAt')),
+      data: JSON.stringify(stagedRecord),
     };
 
     await Staging.upsert(stagedData);

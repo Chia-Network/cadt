@@ -86,7 +86,7 @@ class Staging extends Model {
         });
       }
 
-      diff.original = _.omit(original, 'createdAt', 'updatedAt');
+      diff.original = original;
       diff.change = JSON.parse(data);
     }
 
@@ -115,7 +115,7 @@ class Staging extends Model {
         });
       }
 
-      diff.original = _.omit(original, 'createdAt', 'updatedAt');
+      diff.original = original;
       diff.change = {};
     }
 
