@@ -186,11 +186,10 @@ export const assertSumOfSplitUnitsIsValid = (
   serialNumberPattern,
   splitRecords,
 ) => {
-  const sumOfSplitUnits =
-    splitRecords.reduce(
-      (previousValue, currentValue) =>
-        previousValue.unitCount + currentValue.unitCount,
-    ) + 1; // Add one to handle inclusiveness boundry
+  const sumOfSplitUnits = splitRecords.reduce(
+    (previousValue, currentValue) =>
+      previousValue.unitCount + currentValue.unitCount,
+  ); // Add one to handle inclusiveness boundry
 
   const [unitBlockStart, unitBlockEnd, unitCount] = transformSerialNumberBlock(
     serialNumberBlock,
