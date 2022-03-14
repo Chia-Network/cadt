@@ -52,7 +52,7 @@ module.exports = {
     require: true,
   },
   timeStaged: {
-    type: 'TIMESTAMP',
+    type: Sequelize.STRING,
   },
   createdAt: {
     type: Sequelize.DATE,

@@ -59,9 +59,9 @@ export const baseSchema = {
   projectLocations: Joi.array().items(locationSchema).min(1).optional(),
   projectRatings: Joi.array().items(ratingSchema).min(1).optional(),
   estimations: Joi.array().items(estimationSchema).min(1).optional(),
-  timeStaged: Joi.date().timestamp().optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
+  timeStaged: Joi.date().timestamp().allow(null).optional(),
 };
 
 export const projectsGetQuerySchema = Joi.object()
@@ -74,7 +74,8 @@ export const projectsGetQuerySchema = Joi.object()
     warehouseProjectId: Joi.string(),
     xls: Joi.boolean(),
   })
-  .with('page', 'limit');
+  .with('page', 'limit')
+  .with('limit', 'page');
 
 export const projectsPostSchema = Joi.object({
   ...baseSchema,

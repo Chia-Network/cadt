@@ -27,7 +27,7 @@ module.exports = {
     allowNull: false,
   },
   change: {
-    type: Sequelize.STRING,
+    type: Sequelize.TEXT,
     required: true,
     allowNull: true,
   },
@@ -37,7 +37,7 @@ module.exports = {
     allowNull: true,
   },
   onchainConfirmationTimeStamp: {
-    type: 'TIMESTAMP',
+    type: Sequelize.STRING,
     required: true,
     allowNull: false,
   },

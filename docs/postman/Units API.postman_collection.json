@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "a5634501-c735-4c7d-84ef-e6b8b1bbc5f6",
+    "_postman_id": "ab50ecc7-b12b-4612-a9b6-89383a9842ab",
     "name": "Units API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -11,8 +11,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units",
+          "host": ["{{default}}"],
           "path": ["units"]
         }
       },
@@ -24,8 +24,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?projectId=456741",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?projectId=456741",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -43,13 +43,13 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/projects?search=United Kingdom",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/projects?search=Eimbee",
+          "host": ["{{default}}"],
           "path": ["projects"],
           "query": [
             {
               "key": "search",
-              "value": "United Kingdom"
+              "value": "Eimbee"
             }
           ]
         }
@@ -62,8 +62,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?orgUid=f1c54511-865e-4611-976c-7c3c1f704662",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?orgUid=f1c54511-865e-4611-976c-7c3c1f704662",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -81,9 +81,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?page=2",
-          "host": ["{{api_url_v1}}"],
-          "path": ["units"],
+          "raw": "{{default}}units?page=2",
+          "host": ["{{default}}units"],
           "query": [
             {
               "key": "page",
@@ -100,8 +99,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?limit=2",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?limit=2",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -119,8 +118,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?page=1&limit=5",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?page=1&limit=5",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -142,8 +141,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?page=1&limit=5&orgUid=f1c54511-865e-4611-976c-7c3c1f704662",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?page=1&limit=5&orgUid=f1c54511-865e-4611-976c-7c3c1f704662",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -169,8 +168,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?page=1&limit=5&search=United Kingdom",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?page=1&limit=5&search=a",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -183,7 +182,7 @@
             },
             {
               "key": "search",
-              "value": "United Kingdom"
+              "value": "a"
             }
           ]
         }
@@ -196,8 +195,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?page=1&limit=5&orgUid=f1c54511-865e-4611-976c-7c3c1f704662&search=United Kingdom",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?page=1&limit=5&orgUid=f1c54511-865e-4611-976c-7c3c1f704662&search=Eimbee",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -214,7 +213,7 @@
             },
             {
               "key": "search",
-              "value": "United Kingdom"
+              "value": "Eimbee"
             }
           ]
         }
@@ -227,8 +226,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?xls=true",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?xls=true",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -246,8 +245,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?xls=true&orgUid=f1c54511-865e-4611-976c-7c3c1f704662",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?xls=true&orgUid=f1c54511-865e-4611-976c-7c3c1f704662",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -269,8 +268,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?xls=true&search=USA",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?xls=true&search=USA",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -292,8 +291,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?xls=true&search=USA&orgUid=f1c54511-865e-4611-976c-7c3c1f704662",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?xls=true&search=USA&orgUid=f1c54511-865e-4611-976c-7c3c1f704662",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -319,8 +318,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?page=1&limit=10&search=Maryland&warehouseUnitId=5c960ac1-a180-45a4-9850-be177e26d2fb&columns=all&orgUid=f1c54511-865e-4611-976c-7c3c1f704662&xls=false",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?page=1&limit=10&search=Maryland&warehouseUnitId=5c960ac1-a180-45a4-9850-be177e26d2fb&columns=all&orgUid=f1c54511-865e-4611-976c-7c3c1f704662&xls=false",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -362,8 +361,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?page=2&limit=3&columns=countryJurisdictionOfOwner&columns=inCountryJurisdictionOfOwner&columns=serialNumberBlock&columns=unitIdentifier&columns=unitType&columns=intentedBuyerOrgUid&columns=marketplace&columns=tags&columns=unitStatus&columns=unitTransactionType&columns=unitStatusReason&columns=tokenIssuranceHash&columns=marketplaceIdentifier&columns=unitsIssuranceLocation&columns=unitRegistryLink&columns=unitMarkeplaceLink&columns=correspondingAdjusmentDeclaration&columns=correspondingAdjusmentStatus&columns=unitCount",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?page=2&limit=3&columns=countryJurisdictionOfOwner&columns=inCountryJurisdictionOfOwner&columns=serialNumberBlock&columns=unitIdentifier&columns=unitType&columns=intentedBuyerOrgUid&columns=marketplace&columns=tags&columns=unitStatus&columns=unitTransactionType&columns=unitStatusReason&columns=tokenIssuranceHash&columns=marketplaceIdentifier&columns=unitsIssuranceLocation&columns=unitRegistryLink&columns=unitMarkeplaceLink&columns=correspondingAdjusmentDeclaration&columns=correspondingAdjusmentStatus&columns=unitCount",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -461,8 +460,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?columns=countryJurisdictionOfOwner&columns=inCountryJurisdictionOfOwner&columns=serialNumberBlock&columns=unitIdentifier&columns=unitType&columns=intentedBuyerOrgUid&columns=marketplace&columns=tags&columns=unitStatus&columns=unitTransactionType&columns=unitStatusReason&columns=tokenIssuranceHash&columns=marketplaceIdentifier&columns=unitsIssuranceLocation&columns=unitRegistryLink&columns=unitMarkeplaceLink&columns=correspondingAdjusmentDeclaration&columns=correspondingAdjusmentStatus&columns=unitCount",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?columns=countryJurisdictionOfOwner&columns=inCountryJurisdictionOfOwner&columns=serialNumberBlock&columns=unitIdentifier&columns=unitType&columns=intentedBuyerOrgUid&columns=marketplace&columns=tags&columns=unitStatus&columns=unitTransactionType&columns=unitStatusReason&columns=tokenIssuranceHash&columns=marketplaceIdentifier&columns=unitsIssuranceLocation&columns=unitRegistryLink&columns=unitMarkeplaceLink&columns=correspondingAdjusmentDeclaration&columns=correspondingAdjusmentStatus&columns=unitCount",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -552,8 +551,8 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/units?page=1&limit=10&columns=warehouseUnitId&columns=serialNumberBlock&columns=unitIdentifier&columns=unitType&columns=unitStatus&columns=unitCount",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units?page=1&limit=10&columns=warehouseUnitId&columns=serialNumberBlock&columns=unitIdentifier&columns=unitType&columns=unitStatus&columns=unitCount",
+          "host": ["{{default}}"],
           "path": ["units"],
           "query": [
             {
@@ -600,7 +599,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"projectLocationId\": \"USA-M\",\r\n    \"unitOwner\": \"Milo\",\r\n    \"countryJurisdictionOfOwner\": \"Bahrain\",\r\n    \"inCountryJurisdictionOfOwner\": \"Bahrain\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 1998,\r\n    \"unitType\": \"Reduction - technical\",\r\n    \"marketplace\": \"MP Test\",\r\n    \"marketplaceLink\": \"http://climateWarehouse.com/myMarketplace\",\r\n    \"marketplaceIdentifier\": \"ADIV223\",\r\n    \"unitTags\": \"TEST_TAG\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitStatusReason\": \"reason\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\",\r\n    \"issuance\": {\r\n        \"startDate\": \"2022-02-15\",\r\n        \"endDate\": \"1647900000000\",\r\n        \"verificationApproach\": \"sustainable fuel\",\r\n        \"verificationBody\": \"An audit conducted by the FIA found that F1’s driving activities produce approximately 256,000 tonnes of carbon dioxide per year\",\r\n        \"verificationReportDate\": \"2022-03-22\"\r\n    },\r\n    \"labels\": [\r\n        {\r\n            \"label\": \"global\",\r\n            \"labelType\": \"Endorsement\",\r\n            \"creditingPeriodStartDate\": \"2022-02-15\",\r\n            \"creditingPeriodEndDate\": \"2022-03-22\",\r\n            \"validityPeriodStartDate\": \"2022-02-15\",\r\n            \"validityPeriodEndDate\": \"2022-03-22\",\r\n            \"unitQuantity\": \"10\",\r\n            \"labelLink\": \"https://www.chia.net/\"\r\n        },\r\n        {\r\n            \"label\": \"mclaren\",\r\n            \"labelType\": \"Endorsement\",\r\n            \"creditingPeriodStartDate\": \"2022-02-03\",\r\n            \"creditingPeriodEndDate\": \"2022-03-04\",\r\n            \"validityPeriodStartDate\": \"2022-02-03\",\r\n            \"validityPeriodEndDate\": \"2022-03-04\",\r\n            \"unitQuantity\": \"10\",\r\n            \"labelLink\": \"https://www.chia.net/\"\r\n        }\r\n    ]\r\n}",
+          "raw": "{\r\n    \"projectLocationId\": \"USA-M\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"Venezuela\",\r\n    \"inCountryJurisdictionOfOwner\": \"Venezuela\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 1998,\r\n    \"unitType\": \"Removal - nature\",\r\n    \"marketplace\": \"MP Test\",\r\n    \"marketplaceLink\": \"http://climateWarehouse.com/myMarketplace\",\r\n    \"marketplaceIdentifier\": \"ADIV223\",\r\n    \"unitTags\": \"TEST_TAG\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitStatusReason\": \"reason\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\",\r\n    \"issuance\": {\r\n        \"id\": \"existing-issuance-id\",\r\n        \"warehouseProjectId\": \"existing-project-id\",\r\n        \"startDate\": \"2022-02-15\",\r\n        \"endDate\": \"1647900000000\",\r\n        \"verificationApproach\": \"sustainable fuel\",\r\n        \"verificationBody\": \"An audit conducted by the FIA found that F1’s driving activities produce approximately 256,000 tonnes of carbon dioxide per year\",\r\n        \"verificationReportDate\": \"2022-03-22\"\r\n    },\r\n    \"labels\": [\r\n        {\r\n            \"id\": \"existing-issuance-id\",\r\n            \"warehouseProjectId\": \"existing-project-id\",\r\n            \"label\": \"global\",\r\n            \"labelType\": \"Endorsement\",\r\n            \"creditingPeriodStartDate\": \"2022-02-15\",\r\n            \"creditingPeriodEndDate\": \"2022-03-22\",\r\n            \"validityPeriodStartDate\": \"2022-02-15\",\r\n            \"validityPeriodEndDate\": \"2022-03-22\",\r\n            \"unitQuantity\": \"10\",\r\n            \"labelLink\": \"https://www.chia.net/\"\r\n        },\r\n        {\r\n            \"id\": \"existing-issuance-id\",\r\n            \"warehouseProjectId\": \"existing-project-id\",\r\n            \"label\": \"mclaren\",\r\n            \"labelType\": \"Certification\",\r\n            \"creditingPeriodStartDate\": \"2022-02-03\",\r\n            \"creditingPeriodEndDate\": \"2022-03-04\",\r\n            \"validityPeriodStartDate\": \"2022-02-03\",\r\n            \"validityPeriodEndDate\": \"2022-03-04\",\r\n            \"unitQuantity\": \"10\",\r\n            \"labelLink\": \"https://www.chia.net/\"\r\n        }\r\n    ]\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -608,8 +607,8 @@
           }
         },
         "url": {
-          "raw": "{{api_url_v1}}/units",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units",
+          "host": ["{{default}}"],
           "path": ["units"]
         }
       },
@@ -622,7 +621,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"projectLocationId\": \"ID_USA\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"United Kingdom\",\r\n    \"inCountryJurisdictionOfOwner\": \"United Kingdom\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 1998,\r\n    \"unitType\": \"Reduction - technical\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
+          "raw": "{\r\n    \"projectLocationId\": \"ID_USA\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"Andorra\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 1998,\r\n    \"unitType\": \"Removal - technical\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -630,21 +629,21 @@
           }
         },
         "url": {
-          "raw": "{{api_url_v1}}/units",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units",
+          "host": ["{{default}}"],
           "path": ["units"]
         }
       },
       "response": []
     },
     {
-      "name": "POST Units missing required fields: unitIdentifier, unitsIssuanceLocation",
+      "name": "POST Units missing required fields",
       "request": {
         "method": "POST",
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"projectLocationId\": \"ID_USA\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"Afghanistan\",\r\n    \"inCountryJurisdictionOfOwner\": \"Afghanistan\",\r\n    \"serialNumberBlock\": \"QWERTY9900-ASDFGH9950\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 2002,\r\n    \"unitType\": \"Removal - nature\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
+          "raw": "{\r\n    \"projectLocationId\": \"ID_USA\",\r\n    \"countryJurisdictionOfOwner\": \"Andorra\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 1998,\r\n    \"unitType\": \"Removal - technical\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -652,8 +651,8 @@
           }
         },
         "url": {
-          "raw": "{{api_url_v1}}/units",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units",
+          "host": ["{{default}}"],
           "path": ["units"]
         }
       },
@@ -666,7 +665,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"warehouseUnitId\": \"5ef46efc-1838-424e-ba57-ca7beb969f05\",\r\n    \"projectLocationId\": \"ADR\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"Andorra\",\r\n    \"inCountryJurisdictionOfOwner\": \"Michigan\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 2002,\r\n    \"unitType\": \"Reduction - technical\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
+          "raw": "{\r\n    \"warehouseUnitId\": \"5ef46efc-1838-424e-ba57-ca7beb969f05\",\r\n    \"projectLocationId\": \"ID_USA\",\r\n    \"unitOwner\": \"Chia\",\r\n    \"countryJurisdictionOfOwner\": \"Vanuatu\",\r\n    \"serialNumberBlock\": \"QWERTY9800-ASDFGH9850\",\r\n    \"serialNumberPattern\": \"[.*\\\\D]+([0-9]+)+[-][.*\\\\D]+([0-9]+)$\",\r\n    \"vintageYear\": 2002,\r\n    \"unitType\": \"Removal - technical\",\r\n    \"unitStatus\": \"For Sale\",\r\n    \"unitRegistryLink\": \"http://climateWarehouse.com/myRegistry\",\r\n    \"correspondingAdjustmentDeclaration\": \"Unknown\",\r\n    \"correspondingAdjustmentStatus\": \"Not Started\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -674,8 +673,8 @@
           }
         },
         "url": {
-          "raw": "{{api_url_v1}}/units",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units",
+          "host": ["{{default}}"],
           "path": ["units"]
         }
       },
@@ -697,8 +696,8 @@
           ]
         },
         "url": {
-          "raw": "{{api_url_v1}}/units/xlsx",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units/xlsx",
+          "host": ["{{default}}"],
           "path": ["units", "xlsx"]
         }
       },
@@ -711,7 +710,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"warehouseUnitId\": \"fe842d55-9388-4503-ac2e-f736e5d3de03\"\r\n}",
+          "raw": "{\r\n    \"warehouseUnitId\": \"existing-unit-id\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -719,8 +718,8 @@
           }
         },
         "url": {
-          "raw": "{{api_url_v1}}/units",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units",
+          "host": ["{{default}}"],
           "path": ["units"]
         }
       },
@@ -733,7 +732,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"warehouseUnitId\": \"1cf56421-222c-4ff0-add4-98d494cebc90\",\r\n    \"records\": [\r\n        {\r\n            \"unitCount\": 26,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        },\r\n        {\r\n            \"unitCount\": 24,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Italy\",\r\n            \"inCountryJurisdictionOfOwner\": \"Italy\"\r\n        }\r\n    ]\r\n}",
+          "raw": "{\r\n    \"warehouseUnitId\": \"7eeca0c9-0045-4f6f-92af-7462c23b1164\",\r\n    \"records\": [\r\n        {\r\n            \"unitCount\": 26,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 24,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        }\r\n    ]\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -741,8 +740,8 @@
           }
         },
         "url": {
-          "raw": "{{api_url_v1}}/units/split",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units/split",
+          "host": ["{{default}}"],
           "path": ["units", "split"]
         }
       },
@@ -755,7 +754,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"warehouseUnitId\": \"1cf56421-222c-4ff0-add4-98d494cebc90\",\r\n    \"records\": [\r\n        {\r\n            \"unitCount\": 15,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        },\r\n        {\r\n            \"unitCount\": 20,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        },\r\n        {\r\n            \"unitCount\": 2,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        },\r\n        {\r\n            \"unitCount\": 8,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        },\r\n        {\r\n            \"unitCount\": 5,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\",\r\n            \"countryJurisdictionOfOwner\": \"Fiji\",\r\n            \"inCountryJurisdictionOfOwner\": \"Fiji\"\r\n        }\r\n    ]\r\n}",
+          "raw": "{\r\n    \"warehouseUnitId\": \"7eeca0c9-0045-4f6f-92af-7462c23b1164\",\r\n    \"records\": [\r\n        {\r\n            \"unitCount\": 15,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 20,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 2,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 8,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        },\r\n        {\r\n            \"unitCount\": 5,\r\n            \"unitOwner\": \"f1c54511-865e-4611-976c-7c3c1f704662\"\r\n        }\r\n    ]\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -763,32 +762,9 @@
           }
         },
         "url": {
-          "raw": "{{api_url_v1}}/units/split",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/units/split",
+          "host": ["{{default}}"],
           "path": ["units", "split"]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "POST Units batch - create units",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "formdata",
-          "formdata": [
-            {
-              "key": "csv",
-              "type": "file",
-              "src": "/C:/Users/alexa/Desktop/createUnits.csv"
-            }
-          ]
-        },
-        "url": {
-          "raw": "{{api_url_v1}}/units/batch",
-          "host": ["{{api_url_v1}}"],
-          "path": ["units", "batch"]
         }
       },
       "response": []

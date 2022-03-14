@@ -5,7 +5,7 @@ const { expect } = chai;
 
 import * as testFixtures from '../test-fixtures';
 import { pullPickListValues } from '../../src/utils/data-loaders';
-
+import { prepareDb } from '../../src/database';
 import datalayer from '../../src/datalayer';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
@@ -14,6 +14,7 @@ describe('Project Resource Integration Tests', function () {
 
   before(async function () {
     await pullPickListValues();
+    await prepareDb();
   });
 
   beforeEach(async function () {
