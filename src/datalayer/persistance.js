@@ -3,9 +3,12 @@ import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
+import axios from 'axios';
+import https from 'https';
 import os from 'os';
 
 import Debug from 'debug';
+
 Debug.enable('climate-warehouse:datalayer:persistance');
 
 const log = Debug('climate-warehouse:datalayer:persistance');
@@ -38,9 +41,15 @@ export const createDataLayerStore = async () => {
     body: JSON.stringify({}),
   };
 
-  const response = await request(Object.assign({}, getBaseOptions(), options));
+  const baseOptions = getBaseOptions();
 
-  const data = JSON.parse(response);
+  const httpsAgent = new https.Agent({
+    rejectUnauthorized: false,
+    cert: baseOptions.cert,
+    key: baseOptions.key,
+  });
+
+  const { data } = await axios.post(options.url, {}, { httpsAgent });
 
   if (data.success) {
     return data.id;
@@ -61,11 +70,21 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
       }),
     };
 
-    const response = await request(
-      Object.assign({}, getBaseOptions(), options),
-    );
+    const baseOptions = getBaseOptions();
 
-    const data = JSON.parse(response);
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+      cert: baseOptions.cert,
+      key: baseOptions.key,
+    });
+
+    const { data } = await axios.post(
+      options.url,
+      { changelist, id: storeId },
+      {
+        httpsAgent,
+      },
+    );
 
     log(options, data);
 
@@ -96,11 +115,23 @@ export const getRoots = async (storeIds) => {
   };
 
   try {
-    const response = await request(
-      Object.assign({}, getBaseOptions(), options),
-    );
+    const baseOptions = getBaseOptions();
 
-    const data = JSON.parse(response);
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+      cert: baseOptions.cert,
+      key: baseOptions.key,
+    });
+
+    const { data } = await axios.post(
+      options.url,
+      {
+        ids: storeIds,
+      },
+      {
+        httpsAgent,
+      },
+    );
 
     if (data.success) {
       return data;
@@ -120,10 +151,25 @@ export const getRoot = async (storeId, ignoreEmptyStore = false) => {
     }),
   };
 
-  const response = await request(Object.assign({}, getBaseOptions(), options));
-
   try {
-    const data = JSON.parse(response);
+    const baseOptions = getBaseOptions();
+
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+      cert: baseOptions.cert,
+      key: baseOptions.key,
+    });
+
+    const { data } = await axios.post(
+      options.url,
+      {
+        id: storeId,
+      },
+      {
+        httpsAgent,
+      },
+    );
+
     log(`Root for ${storeId}`, data);
     if (
       (data.confirmed && !ignoreEmptyStore) ||
@@ -155,11 +201,17 @@ export const getStoreData = async (storeId, rootHash) => {
       body: JSON.stringify(payload),
     };
 
-    const response = await request(
-      Object.assign({}, getBaseOptions(), options),
-    );
+    const baseOptions = getBaseOptions();
 
-    const data = JSON.parse(response);
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+      cert: baseOptions.cert,
+      key: baseOptions.key,
+    });
+
+    const { data } = await axios.post(options.url, payload, {
+      httpsAgent,
+    });
 
     if (data.success) {
       if (!_.isEmpty(data.keys_values)) {
@@ -181,11 +233,21 @@ export const dataLayerAvailable = async () => {
   };
 
   try {
-    const response = await request(
-      Object.assign({}, getBaseOptions(), options),
-    );
+    const baseOptions = getBaseOptions();
 
-    const data = JSON.parse(response);
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+      cert: baseOptions.cert,
+      key: baseOptions.key,
+    });
+
+    const { data } = await axios.post(
+      options.url,
+      {},
+      {
+        httpsAgent,
+      },
+    );
 
     // We just care that we got some response, not what the response is
     if (Object.keys(data).includes('success')) {
@@ -214,11 +276,25 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
   log('RPC Call: ', `${rpcUrl}/subscribe`, storeId, ip, port);
 
   try {
-    const response = await request(
-      Object.assign({}, getBaseOptions(), options),
-    );
+    const baseOptions = getBaseOptions();
 
-    const data = JSON.parse(response);
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+      cert: baseOptions.cert,
+      key: baseOptions.key,
+    });
+
+    const { data } = await axios.post(
+      options.url,
+      {
+        id: storeId,
+        ip,
+        port,
+      },
+      {
+        httpsAgent,
+      },
+    );
 
     if (Object.keys(data).includes('success') && data.success) {
       log('Successfully Subscribed: ', storeId, ip, port);
@@ -241,11 +317,23 @@ export const getRootHistory = async (storeId) => {
   };
 
   try {
-    const response = await request(
-      Object.assign({}, getBaseOptions(), options),
-    );
+    const baseOptions = getBaseOptions();
 
-    const data = JSON.parse(response);
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+      cert: baseOptions.cert,
+      key: baseOptions.key,
+    });
+
+    const { data } = await axios.post(
+      options.url,
+      {
+        id: storeId,
+      },
+      {
+        httpsAgent,
+      },
+    );
 
     if (data.success) {
       return _.get(data, 'root_history', []);
@@ -268,11 +356,25 @@ export const getRootDiff = async (storeId, root1, root2) => {
   };
 
   try {
-    const response = await request(
-      Object.assign({}, getBaseOptions(), options),
-    );
+    const baseOptions = getBaseOptions();
 
-    const data = JSON.parse(response);
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+      cert: baseOptions.cert,
+      key: baseOptions.key,
+    });
+
+    const { data } = await axios.post(
+      options.url,
+      {
+        id: storeId,
+        hash_1: root1,
+        hash_2: root2,
+      },
+      {
+        httpsAgent,
+      },
+    );
 
     if (data.success) {
       return _.get(data, 'diff', []);
