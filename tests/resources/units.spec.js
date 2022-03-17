@@ -24,15 +24,20 @@ describe('Units Resource CRUD', function () {
     describe('success states', function () {
       let response;
       beforeEach(async function () {
-        await supertest(app).post('/v1/units').send(newUnit);
-        await supertest(app).post('/v1/staging/commit');
+        await testFixtures.createTestHomeOrg();
+        await testFixtures.getHomeOrgId();
+        await testFixtures.createNewUnit();
+        await testFixtures.commitStagingRecords();
         await testFixtures.waitForDataLayerSync();
         const result = await supertest(app).get('/v1/units');
         response = result.body[0];
       });
 
       afterEach(async function () {
-        await supertest(app).delete('/v1/units').send(newUnit);
+        await supertest(app).delete('/v1/units').send({
+          warehouseUnitId: newUnit.warehouseUnitId,
+        });
+        await supertest(app).post('/v1/staging/commit');
       });
 
       it('gets all the units available', async function () {
@@ -42,7 +47,6 @@ describe('Units Resource CRUD', function () {
         expect(result.body.length).to.not.equal(0);
       });
       it('gets all the units filtered by orgUid', async function () {
-        console.info('response', response);
         const result = await supertest(app)
           .get('/v1/units')
           .query({ orgUid: response.orgUid });
@@ -52,7 +56,6 @@ describe('Units Resource CRUD', function () {
       });
       it('gets all the units for a search term', async function () {
         // ?search=XXXX
-        console.info('response', response);
         const result = await supertest(app)
           .get('/v1/units')
           .query({ search: 'Certification' });
@@ -79,7 +82,7 @@ describe('Units Resource CRUD', function () {
         // ?warehouseUnitId=XXXX
         const result = await supertest(app)
           .get('/v1/units')
-          .query({ warehouseUnitId: 1, limit: 1 });
+          .query({ warehouseUnitId: response.warehouseUnitId, limit: 1 });
 
         expect(result.body.length).to.not.equal(1);
       });
@@ -117,15 +120,24 @@ describe('Units Resource CRUD', function () {
 
     describe('success states', function () {
       it('creates a new unit with no child tables', async function () {
+        await testFixtures.createTestHomeOrg();
         const responsePost = await supertest(app)
           .post('/v1/units')
           .send({ ...newUnit });
+
         expect(responsePost.statusCode).to.equal(200);
       });
+
       it('creates a new unit with all child tables', async function () {
+        await testFixtures.createTestHomeOrg();
+        const payload = newUnit;
+        delete payload.labels;
+        delete payload.issuances;
+
         const responsePost = await supertest(app)
           .post('/v1/units')
-          .send({ ...newUnit, labels: null });
+          .send(newUnit);
+
         expect(responsePost.statusCode).to.equal(200);
       });
     });
