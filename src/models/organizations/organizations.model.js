@@ -26,6 +26,7 @@ class Organization extends Model {
     });
 
     if (myOrganization) {
+      myOrganization.xchAddress = await datalayer.getPublicAddress();
       return myOrganization;
     }
 
@@ -37,8 +38,17 @@ class Organization extends Model {
       attributes: ['orgUid', 'name', 'icon', 'isHome', 'subscribed'],
     });
 
+    for (let i = 0; i < organizations.length; i++) {
+      if (organizations[i].dataValues.isHome) {
+        organizations[i].dataValues.xchAddress =
+          await datalayer.getPublicAddress();
+        break;
+      }
+    }
+
     return organizations.reduce((map, current) => {
       map[current.orgUid] = current.dataValues;
+
       return map;
     }, {});
   }
