@@ -28,8 +28,6 @@ export const assertNoPendingCommits = async () => {
       raw: true,
     });
 
-    console.log(pendingCommits);
-
     if (pendingCommits.length > 0) {
       throw new Error(
         'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',

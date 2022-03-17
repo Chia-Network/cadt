@@ -107,6 +107,7 @@ describe('Units Resource CRUD', function () {
       });
       it('errors if there is a current set of pending commits', async function () {});
       it('errors if there if there is no connection to the datalayer', async function () {
+        await testFixtures.createTestHomeOrg();
         sinon.stub(datalayer, 'dataLayerAvailable').resolves(false);
         const responsePost = await supertest(app)
           .post('/v1/units')
@@ -118,14 +119,10 @@ describe('Units Resource CRUD', function () {
       });
     });
 
-    describe('success states', function () {
+    describe.skip('success states', function () {
       it('creates a new unit with no child tables', async function () {
         await testFixtures.createTestHomeOrg();
-        const responsePost = await supertest(app)
-          .post('/v1/units')
-          .send({ ...newUnit });
-
-        expect(responsePost.statusCode).to.equal(200);
+        await testFixtures.createNewUnit(newUnit);
       });
 
       it('creates a new unit with all child tables', async function () {
@@ -134,11 +131,7 @@ describe('Units Resource CRUD', function () {
         delete payload.labels;
         delete payload.issuances;
 
-        const responsePost = await supertest(app)
-          .post('/v1/units')
-          .send(newUnit);
-
-        expect(responsePost.statusCode).to.equal(200);
+        await testFixtures.createNewUnit(payload);
       });
     });
   });
