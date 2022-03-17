@@ -127,3 +127,28 @@ export const clean = async (req, res) => {
     });
   }
 };
+
+export const retryRecrod = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertHomeOrgExists();
+    await assertStagingRecordExists(req.body.uuid);
+
+    await Staging.update(
+      { failedCommit: false, commited: false },
+      {
+        where: {
+          uuid: req.body.uuid,
+        },
+      },
+    );
+    res.json({
+      message: 'Staging record re-staged.',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Staging Record can not be restaged.',
+      error: error.message,
+    });
+  }
+};

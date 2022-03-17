@@ -82,6 +82,8 @@ export const create = async (req, res) => {
       if (newRecord.issuance.id) {
         // if we are reusing a record, make sure it exists
         await assertRecordExistance(Issuance, newRecord.issuance.id);
+        newRecord.issuanceId = newRecord.issuance.id;
+        delete newRecord.issuance;
       } else {
         newRecord.issuance.id = uuidv4();
         newRecord.issuance.orgUid = orgUid;
@@ -297,11 +299,13 @@ export const update = async (req, res) => {
     }
 
     if (updatedRecord.issuance) {
-      if (!updatedRecord.issuance.id) {
+      if (updatedRecord.issuance.id) {
+        // if we are reusing a record, make sure it exists
+        await assertRecordExistance(Issuance, updatedRecord.issuance.id);
+        updatedRecord.issuanceId = updatedRecord.issuance.id;
+        delete updatedRecord.issuance;
+      } else {
         updatedRecord.issuance.id = uuidv4();
-      }
-
-      if (!updatedRecord.issuance.orgUid) {
         updatedRecord.issuance.orgUid = orgUid;
       }
     }
@@ -310,12 +314,6 @@ export const update = async (req, res) => {
     let stagedRecord = Array.isArray(updatedRecord)
       ? updatedRecord
       : [updatedRecord];
-    stagedRecord = stagedRecord.map((record) => {
-      return Object.keys(record).reduce((syncedRecord, key) => {
-        syncedRecord[key] = record[key];
-        return syncedRecord;
-      }, originalRecord);
-    });
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,

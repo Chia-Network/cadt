@@ -2,7 +2,7 @@
 
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize } from '../database';
+import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
 
@@ -20,7 +20,7 @@ import ModelTypes from './organizations.modeltypes.cjs';
 class Organization extends Model {
   static async getHomeOrg() {
     const myOrganization = await Organization.findOne({
-      attributes: ['orgUid', 'name', 'icon'],
+      attributes: ['orgUid', 'name', 'icon', 'subscribed'],
       where: { isHome: true },
       raw: true,
     });
@@ -59,6 +59,7 @@ class Organization extends Model {
     const registryVersionId = await datalayer.createDataLayerStore();
 
     const revertOrganizationIfFailed = async () => {
+      console.log('Reverting Failed Organization');
       await Organization.destroy({ where: { orgUid: newOrganizationId } });
     };
 
@@ -86,10 +87,31 @@ class Organization extends Model {
       orgUid: newOrganizationId,
       registryId: registryVersionId,
       isHome: true,
-      subscribed: true,
+      subscribed: process.env.USE_SIMULATOR === 'true',
       name,
       icon,
     });
+
+    const onConfirm = () => {
+      log('Organization confirmed, you are ready to go');
+      Organization.update(
+        {
+          subscribed: true,
+        },
+        { where: { orgUid: newOrganizationId } },
+      );
+    };
+
+    if (process.env.USE_SIMULATOR !== 'true') {
+      log('Waiting for New Organization to be confirmed');
+      datalayer.getStoreData(
+        newRegistryId,
+        onConfirm,
+        revertOrganizationIfFailed,
+      );
+    } else {
+      onConfirm();
+    }
 
     return newOrganizationId;
   }
@@ -166,6 +188,60 @@ class Organization extends Model {
   // eslint-disable-next-line
   static unsubscribeToOrganization = async (orgUid) => {
     await Organization.update({ subscribed: false }, { orgUid });
+  };
+
+  static syncOrganizationMeta = async () => {
+    try {
+      const allSubscribedOrganizations = await Organization.findAll({
+        subscribed: true,
+      });
+
+      await Promise.all(
+        allSubscribedOrganizations.map((organization) => {
+          const onResult = (data) => {
+            const updateData = data.reduce((update, current) => {
+              // TODO: this needs to pull the v1 record
+              if (current.key !== 'registryId') {
+                update[current.key] = current.value;
+              }
+              return update;
+            }, {});
+
+            Organization.update(
+              { ...updateData },
+              {
+                where: { orgUid: organization.orgUid },
+              },
+            );
+          };
+
+          const onUpdate = (updateHash) => {
+            Organization.update(
+              { orgHash: updateHash },
+              {
+                where: { orgUid: organization.orgUid },
+              },
+            );
+          };
+
+          const onFail = () => {
+            throw new Error(
+              `Unable to sync metadata from ${organization.orgUid}`,
+            );
+          };
+
+          datalayer.getStoreIfUpdated(
+            organization.orgUid,
+            organization.orgHash,
+            onUpdate,
+            onResult,
+            onFail,
+          );
+        }),
+      );
+    } catch (error) {
+      log(error);
+    }
   };
 
   static subscribeToDefaultOrganizations = async () => {

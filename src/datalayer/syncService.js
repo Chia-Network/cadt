@@ -95,7 +95,7 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
       await Staging.cleanUpCommitedAndInvalidRecords();
     }
   } catch (error) {
-    console.trace('ERROR DURING SYNC TRANSACTION', error, '!!!', storeData);
+    console.trace('ERROR DURING SYNC TRANSACTION', error, storeData);
   }
 };
 
@@ -177,12 +177,16 @@ const getSubscribedStoreData = async (
     throw new Error('Max retrys exceeded, Can not subscribe to organization');
   }
 
+  const timeoutInterval = 60000;
+
   if (!alreadySubscribed) {
     const response = await subscribeToStoreOnDataLayer(storeId, ip, port);
     if (!response.success) {
       log(`Retrying...`, retry + 1);
       log('...');
-      await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+      await new Promise((resolve) =>
+        setTimeout(() => resolve(), timeoutInterval),
+      );
       return getSubscribedStoreData(storeId, ip, port, false, retry + 1);
     }
   }
@@ -192,7 +196,9 @@ const getSubscribedStoreData = async (
     if (!storeExistAndIsConfirmed) {
       log(`Retrying...`, retry + 1);
       log('...');
-      await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+      await new Promise((resolve) =>
+        setTimeout(() => resolve(), timeoutInterval),
+      );
       return getSubscribedStoreData(storeId, ip, port, true, retry + 1);
     }
   }
@@ -209,7 +215,9 @@ const getSubscribedStoreData = async (
   if (_.isEmpty(encodedData?.keys_values)) {
     log(`Retrying...`, retry + 1);
     log('...');
-    await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+    await new Promise((resolve) =>
+      setTimeout(() => resolve(), timeoutInterval),
+    );
     return getSubscribedStoreData(storeId, ip, port, true, retry + 1);
   }
 
@@ -233,6 +241,35 @@ const getRootDiff = (storeId, root1, root2) => {
   }
 };
 
+const getStoreData = async (storeId, callback, onFail, retry = 0) => {
+  if (retry <= 10) {
+    const encodedData = await dataLayer.getStoreData(storeId);
+    if (_.isEmpty(encodedData?.keys_values)) {
+      await new Promise((resolve) => setTimeout(() => resolve(), 60000));
+      return getStoreData(storeId, callback, onFail, retry + 1);
+    } else {
+      callback(decodeDataLayerResponse(encodedData));
+    }
+  } else {
+    onFail();
+  }
+};
+
+const getStoreIfUpdated = async (
+  storeId,
+  lastRootHash,
+  onUpdate,
+  callback,
+  onFail,
+) => {
+  const rootResponse = await dataLayer.getRoot(storeId);
+  if (rootResponse.confirmed && rootResponse.hash !== lastRootHash) {
+    log(`Updating orgUid ${storeId} with hash ${rootResponse.hash}`);
+    onUpdate(rootResponse.hash);
+    await getStoreData(storeId, callback, onFail);
+  }
+};
+
 export default {
   startDataLayerUpdatePolling,
   syncDataLayerStoreToClimateWarehouse,
@@ -241,5 +278,7 @@ export default {
   getSubscribedStoreData,
   getRootHistory,
   getRootDiff,
+  getStoreData,
+  getStoreIfUpdated,
   POLLING_INTERVAL,
 };

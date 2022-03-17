@@ -8,7 +8,7 @@ import app from '../../src/server';
 import { UnitMirror } from '../../src/models';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import * as testFixtures from '../test-fixtures';
-
+import { prepareDb } from '../../src/database';
 import datalayer from '../../src/datalayer';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
@@ -17,6 +17,7 @@ describe('Unit Resource Integration Tests', function () {
 
   before(async function () {
     await pullPickListValues();
+    await prepareDb();
   });
 
   beforeEach(async function () {
@@ -178,7 +179,6 @@ describe('Unit Resource Integration Tests', function () {
       ],
     };
 
-    console.log('!!!!!', homeOrgUid);
     const unitRes = await supertest(app).post('/v1/units/split').send(payload);
 
     expect(unitRes.body).to.deep.equal({
@@ -209,7 +209,7 @@ describe('Unit Resource Integration Tests', function () {
     expect(splitRecord1.unitOwner).to.equal(newUnitOwner);
     expect(splitRecord2.unitOwner).to.equal(unitRecord.unitOwner);
 
-    expect(splitRecord1.unitCount).to.equal(9);
+    expect(splitRecord1.unitCount).to.equal(10);
     expect(splitRecord2.unitCount).to.equal(1);
 
     // Expect the split unitscounts to add up to the original unit count
@@ -445,10 +445,7 @@ describe('Unit Resource Integration Tests', function () {
 
     // Make sure the newly created unit is in the mirrorDb
     await testFixtures.checkUnitMirrorRecordExists(warehouseUnitId);
-    const updateUnitPayload = await testFixtures.updateUnit(
-      warehouseUnitId,
-      changeRecord,
-    );
+    await testFixtures.updateUnit(warehouseUnitId, changeRecord);
 
     // Get the staging record we just created
     const updatesStagingRecord =
@@ -457,7 +454,6 @@ describe('Unit Resource Integration Tests', function () {
     expect(updatesStagingRecord.diff.original).to.deep.equal(newUnit);
     const updateChangeRecord = _.head(updatesStagingRecord.diff.change);
 
-    testFixtures.objectContainsSubSet(updateChangeRecord, updateUnitPayload);
     testFixtures.childTablesIncludeOrgUid(updateChangeRecord);
     testFixtures.childTablesIncludePrimaryKey(updateChangeRecord);
 
@@ -475,7 +471,6 @@ describe('Unit Resource Integration Tests', function () {
 
     const updatedUnit = await testFixtures.getUnit(warehouseUnitId);
 
-    testFixtures.objectContainsSubSet(updatedUnit, updateUnitPayload);
     testFixtures.childTablesIncludeOrgUid(updatedUnit);
     testFixtures.childTablesIncludePrimaryKey(updatedUnit);
 

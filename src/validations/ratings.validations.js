@@ -10,7 +10,7 @@ export const ratingSchema = Joi.object({
   ratingRangeHighest: Joi.string().required(),
   rating: Joi.string().required(),
   ratingLink: Joi.string().required(),
-  timeStaged: Joi.date().timestamp().optional(),
+  timeStaged: Joi.date().timestamp().allow(null).optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
 });

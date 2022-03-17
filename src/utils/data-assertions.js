@@ -69,6 +69,8 @@ export const assertRecordExistance = async (Model, pk) => {
   if (!record) {
     throw new Error(`${Model.name} does not have a record for ${pk}`);
   }
+
+  return record;
 };
 
 export const assertHomeOrgExists = async () => {
@@ -76,6 +78,12 @@ export const assertHomeOrgExists = async () => {
   if (!homeOrg) {
     throw new Error(
       `No Home organization found, please create an organization to write data`,
+    );
+  }
+
+  if (!homeOrg.subscribed) {
+    throw new Error(
+      `Your Home organization is still confirming, please wait a little longer for it to finished.`,
     );
   }
 

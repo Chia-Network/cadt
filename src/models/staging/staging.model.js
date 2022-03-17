@@ -7,7 +7,7 @@ import { Project, Unit, Organization } from '../../models';
 import { encodeHex } from '../../utils/datalayer-utils';
 
 import * as rxjs from 'rxjs';
-import { sequelize } from '../database';
+import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
 

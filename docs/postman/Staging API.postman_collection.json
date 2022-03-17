@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "52e11e92-6fa7-4a4f-b88a-16251948dd00",
+    "_postman_id": "30d9502e-b3d3-4ba1-a5a9-faefff12ef7d",
     "name": "Staging API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -11,72 +11,86 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api_url_v1}}/staging",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/staging",
+          "host": ["{{default}}"],
           "path": ["staging"]
         }
       },
       "response": []
     },
     {
-      "name": "DELETE Staging project",
+      "name": "GET Staging with Paging",
       "request": {
-        "method": "DELETE",
+        "method": "GET",
         "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"uuid\": \"8a02a620-8be8-44f9-ba90-eff00ccc3a70\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
         "url": {
-          "raw": "{{api_url_v1}}/staging",
-          "host": ["{{api_url_v1}}"],
-          "path": ["staging"]
+          "raw": "{{default}}/staging?page=1&limit=5&type=projects",
+          "host": ["{{default}}"],
+          "path": ["staging"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "5"
+            },
+            {
+              "key": "type",
+              "value": "projects"
+            }
+          ]
         }
       },
       "response": []
     },
     {
-      "name": "DELETE Staging unit",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"uuid\": \"5c960ac1-a180-45a4-9850-be177e26d2fb\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{api_url_v1}}/staging",
-          "host": ["{{api_url_v1}}"],
-          "path": ["staging"]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "POST Staging commit",
+      "name": "POST Staging Commit",
       "request": {
         "method": "POST",
         "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
         "url": {
-          "raw": "{{api_url_v1}}/staging/commit",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/staging/commit",
+          "host": ["{{default}}"],
           "path": ["staging", "commit"]
         }
       },
       "response": []
     },
     {
-      "name": "DELETE Staging clean",
+      "name": "POST Staging Retry",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"uuid\": \"uuid-of-staging-record\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{default}}/staging/retry",
+          "host": ["{{default}}"],
+          "path": ["staging", "retry"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DELETE Staging Clean",
       "request": {
         "method": "DELETE",
         "header": [],
@@ -90,9 +104,53 @@
           }
         },
         "url": {
-          "raw": "{{api_url_v1}}/staging/clean",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/staging/clean",
+          "host": ["{{default}}"],
           "path": ["staging", "clean"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DELETE Staging Project",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"uuid\": \"uuid-of-staged-project\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{default}}/staging",
+          "host": ["{{default}}"],
+          "path": ["staging"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DELETE Staging Unit",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"uuid\": \"uuid-of-staged-unit\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{api_url_v1}}/staging",
+          "host": ["{{api_url_v1}}"],
+          "path": ["staging"]
         }
       },
       "response": []

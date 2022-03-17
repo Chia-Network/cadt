@@ -11,12 +11,17 @@ import { Organization } from '../../src/models/organizations/index.js';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import { Staging, Project } from '../../src/models/index.js';
 import { uuid as uuidv4 } from 'uuidv4';
+import { prepareDb, seedDb, sequelize } from '../../src/database';
+
 describe('Project Resource CRUD', function () {
   afterEach(function () {
     sinon.restore();
   });
+
   before(async function () {
     await pullPickListValues();
+    await prepareDb();
+    await seedDb(sequelize);
   });
 
   beforeEach(async function () {

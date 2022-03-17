@@ -1,18 +1,21 @@
-//import chai from 'chai';
-///import chaiHttp from 'chai-http';
-//import app from './../../src/server';
-import app from '../../src/server';
 import supertest from 'supertest';
+import { expect } from 'chai';
+import sinon from 'sinon';
+
+import { Organization } from '../../src/models';
+import app from '../../src/server';
+import * as testFixtures from '../test-fixtures';
+import datalayer from '../../src/datalayer';
+import { prepareDb } from '../../src/database';
 import newUnit from '../test-data/new-unit.json';
 import { pullPickListValues } from '../../src/utils/data-loaders';
-import { expect } from 'chai';
-import * as testFixtures from '../test-fixtures';
-import sinon from 'sinon';
-import datalayer from '../../src/datalayer';
+
 describe('Units Resource CRUD', function () {
   before(async function () {
     await pullPickListValues();
+    await prepareDb();
   });
+
   describe('GET Units', function () {
     describe('error states', function () {
       it('errors if there if there is no connection to the datalayer', function () {});

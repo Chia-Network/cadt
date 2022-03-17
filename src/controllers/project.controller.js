@@ -251,7 +251,9 @@ export const update = async (req, res) => {
     await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const newRecord = _.cloneDeep(req.body);
+
     const { orgUid } = await Organization.getHomeOrg();
+    newRecord.orgUid = orgUid;
 
     const childRecordsKeys = [
       'projectLocations',
@@ -298,13 +300,6 @@ export const update = async (req, res) => {
 
     // merge the new record into the old record
     let stagedRecord = Array.isArray(newRecord) ? newRecord : [newRecord];
-
-    stagedRecord = stagedRecord.map((record) => {
-      return Object.keys(record).reduce((syncedRecord, key) => {
-        syncedRecord[key] = record[key];
-        return syncedRecord;
-      }, originalRecord);
-    });
 
     const stagedData = {
       uuid: req.body.warehouseProjectId,
