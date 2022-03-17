@@ -2,7 +2,7 @@ var path = require('path');
 
 module.exports = {
   config: path.resolve('./src', 'config', 'config.cjs'),
-  'migrations-path': path.resolve('./migrations'),
+  'migrations-path': path.resolve('./src', 'database', 'migrations'),
   'models-path': path.resolve('./src', 'models'),
-  'seeders-path': path.resolve('./seeders'),
+  'seeders-path': path.resolve('./src', 'database', 'seeders'),
 };

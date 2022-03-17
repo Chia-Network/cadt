@@ -124,7 +124,7 @@ export const getRoot = async (storeId, ignoreEmptyStore = false) => {
 
   try {
     const data = JSON.parse(response);
-    log(`Root for ${storeId}`, data);
+
     if (
       (data.confirmed && !ignoreEmptyStore) ||
       (data.confirmed &&
