@@ -80,8 +80,30 @@ const hasUnconfirmedTransactions = async () => {
   return false;
 };
 
+const getPublicAddress = async () => {
+  if (process.env.USE_SIMULATOR === 'true') {
+    return Promise.resolve('xch33300ddsje98f33hkkdf9dfuSIMULATED_ADDRESS');
+  }
+
+  const options = {
+    url: `${rpcUrl}/get_next_address`,
+    body: JSON.stringify({ wallet_id: 1, new_address: false }),
+  };
+
+  const response = await request(Object.assign({}, getBaseOptions(), options));
+
+  const data = JSON.parse(response);
+
+  if (data.success) {
+    return data.address;
+  }
+
+  return false;
+};
+
 export default {
   hasUnconfirmedTransactions,
   walletIsSynced,
   walletIsAvailable,
+  getPublicAddress,
 };
