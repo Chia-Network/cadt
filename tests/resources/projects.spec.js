@@ -12,6 +12,7 @@ import { pullPickListValues } from '../../src/utils/data-loaders';
 import { Staging, Project } from '../../src/models/index.js';
 import { uuid as uuidv4 } from 'uuidv4';
 import { prepareDb, seedDb, sequelize } from '../../src/database';
+const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
 describe('Project Resource CRUD', function () {
   afterEach(function () {
@@ -37,7 +38,7 @@ describe('Project Resource CRUD', function () {
         expect(response.body.error).to.equal(
           'Can not establish connection to Chia Datalayer',
         );
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
     });
 
     describe('success states', function () {
@@ -45,7 +46,7 @@ describe('Project Resource CRUD', function () {
         // no query params
         const projects = await testFixtures.getProjectByQuery();
         expect(projects.length).to.equal(11);
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects filtered by orgUid', async function () {
         // ?orgUid=XXXX
@@ -53,7 +54,7 @@ describe('Project Resource CRUD', function () {
           orgUid: 'a807e453-6524-49df-a32d-785e56cf560e',
         });
         expect(projects.length).to.equal(3);
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects for a search term', async function () {
         // ?search=XXXX
@@ -61,7 +62,7 @@ describe('Project Resource CRUD', function () {
           search: 'City of Arcata',
         });
         expect(projects.length).to.equal(1);
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects for a search term filtered by orgUid', async function () {
         // ?orgUid=XXXX&search=XXXX
@@ -71,7 +72,7 @@ describe('Project Resource CRUD', function () {
         });
 
         expect(projects.length).to.equal(1);
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets optional paginated results', async function () {
         // ?page=X&limit=10
@@ -94,7 +95,7 @@ describe('Project Resource CRUD', function () {
           limit: 2,
         });
         expect(projectsLimit2.data.length).to.equal(2);
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
 
       it('finds a single result by warehouseProjectId', async function () {
         // ?warehouseProjectId=XXXX
@@ -104,7 +105,7 @@ describe('Project Resource CRUD', function () {
 
         // should get only 1 result
         expect(projects).to.be.a('object');
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
     });
   });
 
@@ -148,7 +149,7 @@ describe('Project Resource CRUD', function () {
           'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
         );
         expect(response.statusCode).to.equal(400);
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
 
       it('errors if there if there is no connection to the datalayer', async function () {
         sinon.stub(datalayer, 'dataLayerAvailable').resolves(false);
@@ -160,7 +161,7 @@ describe('Project Resource CRUD', function () {
           'Can not establish connection to Chia Datalayer',
         );
         expect(response.statusCode).to.equal(400);
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
     });
 
     describe('success states', function () {
@@ -186,7 +187,8 @@ describe('Project Resource CRUD', function () {
 
         expect(response.body.message).to.equal('Project staged successfully');
         expect(response.statusCode).to.equal(200);
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
+
       it('creates a new project with all child tables', async function () {
         await Staging.destroy({
           where: {},
@@ -201,7 +203,7 @@ describe('Project Resource CRUD', function () {
 
         expect(response.body.message).to.equal('Project staged successfully');
         expect(response.statusCode).to.equal(200);
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
     });
   });
 
@@ -238,7 +240,7 @@ describe('Project Resource CRUD', function () {
           name: 'Test',
           icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
         });
-      });
+      }).timeout(TEST_WAIT_TIME * 10);
       it('errors if there is a current set of pending commits', function () {});
       it('errors if there if there is no connection to the datalayer', function () {});
       it('errors if the warehouseProjectId is not in the payload', function () {});

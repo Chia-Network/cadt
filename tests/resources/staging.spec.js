@@ -4,6 +4,8 @@ import newProject from '../test-data/new-project.json';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import { expect } from 'chai';
 import { prepareDb } from '../../src/database';
+import datalayer from '../../src/datalayer';
+const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
 describe('Staging Resource CRUD', function () {
   before(async function () {
@@ -21,7 +23,7 @@ describe('Staging Resource CRUD', function () {
 
       const response = await supertest(app).get('/v1/staging');
       expect(response.body.length).to.equal(1);
-    });
+    }).timeout(TEST_WAIT_TIME * 10);
     it('generates a diff object for the change', async function () {
       const responseCreate = await supertest(app)
         .post('/v1/projects')
@@ -36,7 +38,7 @@ describe('Staging Resource CRUD', function () {
       ).to.deep.equal(
         'Biodiversity through planting a variety of trees that are home to many native Singaporean species',
       );
-    });
+    }).timeout(TEST_WAIT_TIME * 10);
   });
 
   describe('POST - Commit Records to datalayer', function () {
