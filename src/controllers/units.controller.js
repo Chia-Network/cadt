@@ -160,7 +160,7 @@ export const findAll = async (req, res) => {
         where = {};
       }
 
-      where.warehouseProjectId = {
+      where.warehouseUnitId = {
         [Sequelize.Op.in]: mappedResults,
       };
     }

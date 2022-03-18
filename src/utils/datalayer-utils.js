@@ -13,3 +13,22 @@ export const decodeDataLayerResponse = (data) => {
     value: decodeHex(item.value),
   }));
 };
+
+export const keyValueToChangeList = (key, value, includeDelete) => {
+  const changeList = [];
+
+  if (includeDelete) {
+    changeList.push({
+      action: 'delete',
+      key: encodeHex(key),
+    });
+  }
+
+  changeList.push({
+    action: 'insert',
+    key: encodeHex(key),
+    value: encodeHex(value),
+  });
+
+  return changeList;
+};
