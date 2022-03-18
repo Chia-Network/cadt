@@ -15,7 +15,10 @@ dotenv.config();
 const task = new Task('sync-audit', async () => {
   log('Syncing Audit Information');
   if (process.env.USE_SIMULATOR === 'false') {
-    const organizations = await Organization.findAll({ raw: true });
+    const organizations = await Organization.findAll({
+      where: { subscribed: true },
+      raw: true,
+    });
     await Promise.all(
       organizations.map((organization) => syncOrganizationAudit(organization)),
     );

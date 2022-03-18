@@ -4,7 +4,12 @@ import express from 'express';
 import joiExpress from 'express-joi-validation';
 
 import { OrganizationController } from '../../../controllers';
-import { newOrganizationSchema } from '../../../validations';
+import {
+  newOrganizationSchema,
+  unsubscribeOrganizationSchema,
+  subscribeOrganizationSchema,
+  importOrganizationSchema,
+} from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
 const OrganizationRouter = express.Router();
@@ -28,5 +33,29 @@ OrganizationRouter.post('/create', (req, res) => {
 OrganizationRouter.put('/', (req, res) => {
   return OrganizationController.importOrg(req, res);
 });
+
+OrganizationRouter.put(
+  '/import',
+  validator.body(importOrganizationSchema),
+  (req, res) => {
+    return OrganizationController.importOrg(req, res);
+  },
+);
+
+OrganizationRouter.put(
+  '/subscribe',
+  validator.body(subscribeOrganizationSchema),
+  (req, res) => {
+    return OrganizationController.subscribeToOrganization(req, res);
+  },
+);
+
+OrganizationRouter.put(
+  '/unsubscribe',
+  validator.body(unsubscribeOrganizationSchema),
+  (req, res) => {
+    return OrganizationController.unsubscribeToOrganization(req, res);
+  },
+);
 
 export { OrganizationRouter };
