@@ -10,6 +10,8 @@ import {
   assertIfReadOnlyMode,
 } from '../utils/data-assertions';
 
+import { ModelKeys, Audit } from '../models';
+
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
 };
@@ -125,6 +127,39 @@ export const subscribeToOrganization = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: 'Error subscribing to organization',
+      error: error.message,
+    });
+  }
+};
+
+export const unsubscribeToOrganization = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    await Organization.update(
+      { subscribed: false, registryHash: '0' },
+      { where: { orgUid: req.body.orgUid } },
+    );
+
+    await Promise.all([
+      ...Object.keys(ModelKeys).map(
+        async (key) =>
+          await ModelKeys[key].destroy({ where: { orgUid: req.body.orgUid } }),
+      ),
+      Audit.destroy({ where: { orgUid: req.body.orgUid } }),
+    ]);
+
+    return res.json({
+      message:
+        'UnSubscribed to organization, you will no longer receive updates.',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error unsubscribing to organization',
       error: error.message,
     });
   }

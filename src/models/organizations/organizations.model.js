@@ -202,7 +202,7 @@ class Organization extends Model {
   static subscribeToOrganization = async (orgUid) => {
     const exists = await Organization.findOne({ where: { orgUid } });
     if (exists) {
-      await Organization.update({ subscribed: true }, { orgUid });
+      await Organization.update({ subscribed: true }, { where: { orgUid } });
     } else {
       throw new Error(
         'Can not subscribe, please import this organization first',
