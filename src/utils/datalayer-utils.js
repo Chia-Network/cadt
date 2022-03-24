@@ -7,7 +7,6 @@ export const decodeHex = (str) => {
 };
 
 export const decodeDataLayerResponse = (data) => {
-  console.log(data);
   return data.keys_values.map((item) => ({
     key: decodeHex(item.key),
     value: decodeHex(item.value),

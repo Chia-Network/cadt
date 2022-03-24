@@ -1,6 +1,6 @@
-import stub from './meta.stub.json';
+import stub from './governance.stub.json';
 
-export const MetaMock = {
+export const GovernanceMock = {
   findAll: () => stub,
   findOne: (id) => {
     return stub.find((record) => record.id == id);

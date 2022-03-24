@@ -9,8 +9,12 @@ module.exports = {
   metaKey: {
     type: Sequelize.STRING,
     unique: true,
+    required: true,
   },
-  metaValue: Sequelize.STRING,
+  metaValue: {
+    type: Sequelize.STRING,
+    required: true,
+  },
   confirmed: {
     type: Sequelize.BOOLEAN,
     defaultValue: false,

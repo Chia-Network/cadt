@@ -21,15 +21,51 @@ class Governance extends Model {
 
     await Meta.upsert({
       metaKey: 'goveranceBodyId',
-      goveranceBodyId,
+      metaValue: goveranceBodyId,
     });
 
     return goveranceBodyId;
   }
 
+  static async sync() {
+    const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
+      process.env;
+
+    if (!GOVERANCE_BODY_ID || !GOVERNANCE_BODY_IP || !GOVERNANCE_BODY_PORT) {
+      throw new Error('Missing information in env to sync Governance data');
+    }
+
+    const governanceData = await datalayer.getSubscribedStoreData(
+      GOVERANCE_BODY_ID,
+      GOVERNANCE_BODY_IP,
+      GOVERNANCE_BODY_PORT,
+    );
+
+    const updates = [];
+
+    if (governanceData.orgList) {
+      updates.push({
+        metaKey: 'orgList',
+        metaValue: governanceData.orgList,
+        confirmed: true,
+      });
+    }
+
+    if (governanceData.pickList) {
+      updates.push({
+        metaKey: 'pickList',
+        metaValue: governanceData.pickList,
+        confirmed: true,
+      });
+    }
+
+    await Promise.all(updates.map(async (update) => Governance.upsert(update)));
+  }
+
   static async updateGoveranceBodyData(keyValueArray) {
-    const goveranceBodyId = await Meta.find({
+    const goveranceBodyId = await Meta.findOne({
       where: { metaKey: 'goveranceBodyId' },
+      raw: true,
     });
 
     if (!goveranceBodyId) {
@@ -38,7 +74,7 @@ class Governance extends Model {
       );
     }
 
-    const existingRecords = Governance.findAll({ raw: true });
+    const existingRecords = await Governance.findAll({ raw: true });
 
     const changeList = [];
 
@@ -53,13 +89,20 @@ class Governance extends Model {
           metaValue: keyValue.value,
           confirmed: false,
         });
+
         changeList.push(
-          keyValueToChangeList(keyValue.key, keyValue.value, valueExists),
+          ...keyValueToChangeList(keyValue.key, keyValue.value, valueExists),
         );
       }),
     );
 
     const rollbackChangesIfFailed = async () => {
+      console.log('Reverting Goverance Records');
+      await Governance.destroy({
+        where: {},
+        truncate: true,
+      });
+
       await Promise.all(
         existingRecords.map(async (record) => await Governance.upsert(record)),
       );
@@ -77,15 +120,22 @@ class Governance extends Model {
       );
     };
 
-    await datalayer.pushDataLayerChangeList(goveranceBodyId, changeList);
+    await datalayer.pushDataLayerChangeList(
+      goveranceBodyId.metaValue,
+      changeList,
+    );
 
-    datalayer.getStoreData(goveranceBodyId, onConfirm, rollbackChangesIfFailed);
+    datalayer.getStoreData(
+      goveranceBodyId.metaValue,
+      onConfirm,
+      rollbackChangesIfFailed,
+    );
   }
 }
 
 Governance.init(ModelTypes, {
   sequelize,
-  modelName: 'meta',
+  modelName: 'governance',
   freezeTableName: true,
   timestamps: false,
   createdAt: false,
