@@ -1,5 +1,5 @@
 import _ from 'lodash';
-
+import { sequelize } from '../database';
 import { Organization } from '../models/organizations';
 
 import {
@@ -8,6 +8,7 @@ import {
   assertWalletIsAvailable,
   assertDataLayerAvailable,
   assertIfReadOnlyMode,
+  assertCanDeleteOrg,
 } from '../utils/data-assertions';
 
 import { ModelKeys, Audit } from '../models';
@@ -132,13 +133,55 @@ export const subscribeToOrganization = async (req, res) => {
   }
 };
 
-export const unsubscribeToOrganization = async (req, res) => {
+export const deleteImportedOrg = async (req, res) => {
+  let transaction;
   try {
     await assertIfReadOnlyMode();
     await assertDataLayerAvailable();
     await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
+    await assertCanDeleteOrg(req.body.orgUid);
+
+    transaction = await sequelize.transaction();
+
+    await Organization.destroy({ where: { orgUid: req.body.orgUid } });
+
+    await Promise.all([
+      ...Object.keys(ModelKeys).map(
+        async (key) =>
+          await ModelKeys[key].destroy({ where: { orgUid: req.body.orgUid } }),
+      ),
+      Audit.destroy({ where: { orgUid: req.body.orgUid } }),
+    ]);
+
+    await transaction.commit();
+
+    return res.json({
+      message:
+        'UnSubscribed to organization, you will no longer receive updates.',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error unsubscribing to organization',
+      error: error.message,
+    });
+    if (transaction) {
+      await transaction.rollback();
+    }
+  }
+};
+
+export const unsubscribeToOrganization = async (req, res) => {
+  let transaction;
+  try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    transaction = await sequelize.transaction();
 
     await Organization.update(
       { subscribed: false, registryHash: '0' },
@@ -153,6 +196,8 @@ export const unsubscribeToOrganization = async (req, res) => {
       Audit.destroy({ where: { orgUid: req.body.orgUid } }),
     ]);
 
+    await transaction.commit();
+
     return res.json({
       message:
         'UnSubscribed to organization, you will no longer receive updates.',
@@ -162,5 +207,9 @@ export const unsubscribeToOrganization = async (req, res) => {
       message: 'Error unsubscribing to organization',
       error: error.message,
     });
+
+    if (transaction) {
+      await transaction.rollback();
+    }
   }
 };

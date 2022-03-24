@@ -71,6 +71,13 @@ export const assertRecordExistance = async (Model, pk) => {
   return record;
 };
 
+export const assertCanDeleteOrg = async (orgUid) => {
+  const homeOrg = await Organization.getHomeOrg();
+  if (homeOrg.orgUid === orgUid) {
+    throw new Error(`Cant delete your own organization`);
+  }
+};
+
 export const assertHomeOrgExists = async () => {
   const homeOrg = await Organization.getHomeOrg();
   if (!homeOrg) {
