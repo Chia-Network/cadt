@@ -42,6 +42,14 @@ OrganizationRouter.put(
   },
 );
 
++OrganizationRouter.delete(
+  '/import',
+  validator.body(importOrganizationSchema),
+  (req, res) => {
+    return OrganizationController.deleteImportedOrg(req, res);
+  },
+);
+
 OrganizationRouter.put(
   '/subscribe',
   validator.body(subscribeOrganizationSchema),
