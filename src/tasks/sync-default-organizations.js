@@ -16,7 +16,7 @@ const task = new Task('sync-default-organizations', () => {
 });
 
 const job = new SimpleIntervalJob(
-  { days: 1, runImmediately: true },
+  { seconds: 30, runImmediately: true },
   task,
   'sync-default-organizations',
 );

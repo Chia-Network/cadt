@@ -73,7 +73,8 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
           const modelKey = key.split('|')[0];
           const value = JSON.parse(decodeHex(kv.value));
 
-          await ModelKeys[modelKey].upsert(value);
+          await ModelKeys[modelKey].create(value);
+
           const stagingUuid =
             modelKey === 'unit'
               ? value.warehouseUnitId

@@ -17,6 +17,7 @@ import CreateOrganizationTable from './20220122164836-create-organization-table'
 import CreateEstimationTable from './20220127190529-create-estimation-table';
 import CreateAuditTable from './20220222204323-create-audit-table';
 import CreateMetaTable from './20220119211024-create-meta-table';
+import CreateGoveranceTable from './20220315134151-create-governance-table';
 
 export const migrations = [
   {
@@ -98,5 +99,9 @@ export const migrations = [
   {
     migration: AddOrgUidIndex,
     name: '20220115134849-add-orgUid-index.js',
+  },
+  {
+    migration: CreateGoveranceTable,
+    name: '20220315134151-create-governance-table',
   },
 ];
