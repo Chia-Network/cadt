@@ -3,7 +3,7 @@
 import _ from 'lodash';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { Project, Unit, Organization } from '../../models';
+import { Project, Unit, Organization, Issuance } from '../../models';
 import { encodeHex } from '../../utils/datalayer-utils';
 
 import * as rxjs from 'rxjs';
@@ -62,6 +62,8 @@ class Staging extends Model {
     }
 
     if (action === 'UPDATE') {
+      diff.change = JSON.parse(data);
+
       let original;
 
       if (table === 'Projects') {
@@ -74,6 +76,20 @@ class Staging extends Model {
             };
           }),
         });
+
+        // Show the issuance data if its being reused
+        // this is just for view purposes onlys
+        await Promise.all(
+          diff.change.map(async (record) => {
+            if (record.issuanceId) {
+              const issuance = await Issuance.findOne({
+                where: { id: record.issuanceId },
+              });
+
+              record.issuance = issuance.dataValues;
+            }
+          }),
+        );
       } else if (table === 'Units') {
         original = await Unit.findOne({
           where: { warehouseUnitId: uuid },
@@ -84,10 +100,23 @@ class Staging extends Model {
             };
           }),
         });
+
+        // Show the issuance data if its being reused,
+        // this is just for view purposes onlys
+        await Promise.all(
+          diff.change.map(async (record) => {
+            if (record.issuanceId) {
+              const issuance = await Issuance.findOne({
+                where: { id: record.issuanceId },
+              });
+
+              record.issuance = issuance.dataValues;
+            }
+          }),
+        );
       }
 
       diff.original = original;
-      diff.change = JSON.parse(data);
     }
 
     if (action === 'DELETE') {
