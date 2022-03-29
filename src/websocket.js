@@ -8,7 +8,6 @@ const socketSubscriptions = {};
 const authenticate = () => true;
 
 export const connection = (socket) => {
-  console.log(socketSubscriptions);
   socket.on('authentication', () => {
     if (!authenticate(socket)) {
       console.log('authentication failure');

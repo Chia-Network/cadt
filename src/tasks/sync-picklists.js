@@ -11,7 +11,7 @@ const task = new Task('sync-picklist', () => {
 });
 
 const job = new SimpleIntervalJob(
-  { days: 1, runImmediately: true },
+  { seconds: 30, runImmediately: true },
   task,
   'sync-picklist',
 );
