@@ -34,6 +34,7 @@ export * from './simulator';
 export * from './labelUnits';
 export * from './estimations';
 export * from './audit';
+export * from './governance';
 
 export const ModelKeys = {
   unit: Unit,

@@ -11,6 +11,7 @@ import {
   IssuanceRouter,
   LabelRouter,
   AuditRouter,
+  GovernanceRouter,
 } from './resources';
 
 V1Router.use('/projects', ProjectRouter);
@@ -20,5 +21,6 @@ V1Router.use('/organizations', OrganizationRouter);
 V1Router.use('/issuances', IssuanceRouter);
 V1Router.use('/labels', LabelRouter);
 V1Router.use('/audit', AuditRouter);
+V1Router.use('/governance', GovernanceRouter);
 
 export { V1Router };

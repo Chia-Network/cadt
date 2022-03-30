@@ -67,6 +67,7 @@ const pushChangesWhenStoreIsAvailable = async (
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
 
     if (!hasUnconfirmedTransactions && storeExistAndIsConfirmed) {
+      console.log('pushing to datalayer', { storeId, changeList });
       const success = await dataLayer.pushChangeListToDataLayer(
         storeId,
         changeList,

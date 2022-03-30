@@ -42,6 +42,8 @@ export const createDataLayerStore = async () => {
 
   const data = JSON.parse(response);
 
+  console.log(data);
+
   if (data.success) {
     return data.id;
   }
@@ -124,7 +126,7 @@ export const getRoot = async (storeId, ignoreEmptyStore = false) => {
 
   try {
     const data = JSON.parse(response);
-    log(`Root for ${storeId}`, data);
+
     if (
       (data.confirmed && !ignoreEmptyStore) ||
       (data.confirmed &&

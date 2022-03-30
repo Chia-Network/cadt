@@ -1,26 +1,35 @@
+import _ from 'lodash';
+
 import request from 'request-promise';
-import dotenv from 'dotenv';
-dotenv.config();
+
+import { Governance } from '../models';
+import PickListStub from '../models/governance/governance.stub.json';
 
 let downloadedPickList = {};
 export const getPicklistValues = () => downloadedPickList;
 
 export const pullPickListValues = async () => {
-  const options = {
-    method: 'GET',
-    url: process.env.PICKLIST_URL,
-  };
+  if (process.env.USE_SIMULATOR === 'true') {
+    downloadedPickList = PickListStub;
+  } else {
+    const goveranceData = await Governance.findOne({
+      where: { metaKey: 'pickList' },
+      raw: true,
+    });
 
-  downloadedPickList = JSON.parse(await request(Object.assign({}, options)));
+    if (_.get(goveranceData, 'metaValue')) {
+      downloadedPickList = JSON.parse(goveranceData.metaValue);
+    }
+  }
 };
 
 export const getDefaultOrganizationList = async () => {
-  const options = {
-    method: 'GET',
-    url: process.env.DEFAULT_ORGANIZATIONS,
-  };
+  const goveranceData = await Governance.findOne({
+    where: { metaKey: 'orgList' },
+    raw: true,
+  });
 
-  return JSON.parse(await request(Object.assign({}, options)));
+  return JSON.parse(_.get(goveranceData, 'metaValue', '[]'));
 };
 
 export const serverAvailable = async (server, port) => {

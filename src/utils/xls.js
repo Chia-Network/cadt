@@ -49,6 +49,8 @@ export function createXlsFromSequelizeResults({
 
   const uniqueColumns = buildColumnMap(rowsClone);
 
+  const excludedColumns = getExcludedColumns(rowsClone);
+
   if (!toStructuredCsv) {
     // Remove auto-generated columns that don't make sense to the user
     const columnsToRemove = ['createdAt', 'updatedAt', 'timeStaged'];
@@ -98,6 +100,7 @@ export function createXlsFromSequelizeResults({
       item: row,
       name: model.name,
       uniqueColumns: uniqueColumns,
+      excludedColumns: excludedColumns,
       columnsMapKey: null,
       columnTransformations: columnTransformations,
       primaryKeyMap: primaryKey,
@@ -116,6 +119,7 @@ export function createXlsFromSequelizeResults({
  * @param item {Object | Object[]} - The item to build the XLS data for
  * @param name {string} - The name of the parent property for this item or a custom name. Used to generate the sheet name and to get the available transformations, primary key and other mappings
  * @param uniqueColumns {{ columns: Map<string, string>, topLevelKey: string }} - The list of all columns/props for each property name (retrieved using {@ref buildColumnMap}
+ * @param excludedColumns {string[]} - The list of columns that should be excluded from the xls
  * @param columnsMapKey {string} - The key from {@param uniqueColumns} that contains the list of columns/props for the current item
  * @param columnTransformations {Object} - The mapping for column/prop name transformation for all items and sub-objects (mapped with the {@param name} prop)
  * @param primaryKeyMap {Object} - The mapping for the name of the primary key for all items and sub-objects (mapped with the {@param name} prop)
@@ -129,6 +133,7 @@ function buildObjectXlsData({
   item,
   name,
   uniqueColumns,
+  excludedColumns,
   columnsMapKey,
   columnTransformations,
   primaryKeyMap,
@@ -148,21 +153,6 @@ function buildObjectXlsData({
     uniqueColumns.columns.get(columnsMapKey ?? uniqueColumns.topLevelKey) ?? [];
   const transformations =
     columnTransformations[name ?? uniqueColumns.topLevelKey] ?? {};
-
-  const excludedColumns = [];
-
-  // Exclude property names that map to objects or arrays
-  if (item != null && typeof item === 'object' && !Array.isArray(item)) {
-    excludedColumns.push(
-      ...Object.entries(item)
-        .map(([column, value]) =>
-          parentPropName == null && value != null && typeof value === 'object'
-            ? column
-            : undefined,
-        )
-        .filter(Boolean),
-    );
-  }
 
   // Special case for Unit issuance. This shouldn't exist, but it has far too many special cases.
   columnsWithSpecialTreatment[name]?.forEach((specialColumn) => {
@@ -228,6 +218,7 @@ function buildObjectXlsData({
           item: itemValue,
           name: column,
           uniqueColumns: uniqueColumns,
+          excludedColumns: [],
           columnsMapKey: column,
           aggregatedData: aggregatedData,
           primaryKeyMap: primaryKeyMap,
@@ -249,6 +240,7 @@ function buildObjectXlsData({
               item: val,
               name: column,
               uniqueColumns: uniqueColumns,
+              excludedColumns: [],
               columnsMapKey: column,
               aggregatedData: aggregatedData,
               primaryKeyMap: primaryKeyMap,
@@ -275,7 +267,7 @@ function buildObjectXlsData({
       const valuePrimaryKeyProp =
         primaryKeyMap[column] ?? primaryKeyMap['default'];
       xlsRowData.push(itemValue[valuePrimaryKeyProp]);
-    } else {
+    } else if (!excludedColumns.includes(column)) {
       // Add the value of current item to the sheet if the item is not an object
       xlsRowData.push(itemValue);
     }
@@ -931,4 +923,29 @@ function getArrayColumns(items, propertyName, columnsMap) {
       getObjectColumns(value, propertyName, columnsMap);
     }
   });
+}
+
+/**
+ * Builds the list of columns that should be excluded from the xls (props that have objects as values)
+ * @param items {Object[] | Object} - The items to go through and extract the columns
+ * @returns string[] - The list of columns to be excluded from xls
+ */
+function getExcludedColumns(items) {
+  if (items == null) return [];
+  const itemsList = Array.isArray(items) ? items : [items];
+
+  const excludedColumns = [];
+  itemsList.forEach((item) => {
+    Object.entries(item).forEach(([column, value]) => {
+      if (
+        value != null &&
+        typeof value === 'object' &&
+        !excludedColumns.includes(column)
+      ) {
+        excludedColumns.push(column);
+      }
+    });
+  });
+
+  return excludedColumns;
 }

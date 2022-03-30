@@ -1,5 +1,5 @@
 import _ from 'lodash';
-
+import { sequelize } from '../database';
 import { Organization } from '../models/organizations';
 
 import {
@@ -8,7 +8,10 @@ import {
   assertWalletIsAvailable,
   assertDataLayerAvailable,
   assertIfReadOnlyMode,
+  assertCanDeleteOrg,
 } from '../utils/data-assertions';
+
+import { ModelKeys, Audit } from '../models';
 
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
@@ -127,5 +130,86 @@ export const subscribeToOrganization = async (req, res) => {
       message: 'Error subscribing to organization',
       error: error.message,
     });
+  }
+};
+
+export const deleteImportedOrg = async (req, res) => {
+  let transaction;
+  try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+    await assertCanDeleteOrg(req.body.orgUid);
+
+    transaction = await sequelize.transaction();
+
+    await Organization.destroy({ where: { orgUid: req.body.orgUid } });
+
+    await Promise.all([
+      ...Object.keys(ModelKeys).map(
+        async (key) =>
+          await ModelKeys[key].destroy({ where: { orgUid: req.body.orgUid } }),
+      ),
+      Audit.destroy({ where: { orgUid: req.body.orgUid } }),
+    ]);
+
+    await transaction.commit();
+
+    return res.json({
+      message:
+        'UnSubscribed to organization, you will no longer receive updates.',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error unsubscribing to organization',
+      error: error.message,
+    });
+    if (transaction) {
+      await transaction.rollback();
+    }
+  }
+};
+
+export const unsubscribeToOrganization = async (req, res) => {
+  let transaction;
+  try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    transaction = await sequelize.transaction();
+
+    await Organization.update(
+      { subscribed: false, registryHash: '0' },
+      { where: { orgUid: req.body.orgUid } },
+    );
+
+    await Promise.all([
+      ...Object.keys(ModelKeys).map(
+        async (key) =>
+          await ModelKeys[key].destroy({ where: { orgUid: req.body.orgUid } }),
+      ),
+      Audit.destroy({ where: { orgUid: req.body.orgUid } }),
+    ]);
+
+    await transaction.commit();
+
+    return res.json({
+      message:
+        'UnSubscribed to organization, you will no longer receive updates.',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error unsubscribing to organization',
+      error: error.message,
+    });
+
+    if (transaction) {
+      await transaction.rollback();
+    }
   }
 };

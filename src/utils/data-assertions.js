@@ -2,10 +2,30 @@
 
 import _ from 'lodash';
 
-import { Organization, Unit, Project, Staging } from '../models';
+import { Organization, Unit, Project, Staging, Meta } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
 import datalayer from '../datalayer';
 import { formatModelAssociationName } from './model-utils.js';
+
+export const assertCanBeGovernanceBody = async () => {
+  if (process.env.IS_GOVERNANCE_BODY !== 'true') {
+    throw new Error(
+      'You are not an governance body and can not use this functionality',
+    );
+  }
+};
+
+export const assertIsActiveGovernanceBody = async () => {
+  const governanceBodyIsSetUp = Meta.findAll({
+    where: { metaKey: 'goveranceBodyId' },
+  });
+
+  if (!governanceBodyIsSetUp) {
+    throw new Error(
+      'You are not an governance body and can not use this functionality',
+    );
+  }
+};
 
 export const assertDataLayerAvailable = async () => {
   const isAvailable = await datalayer.dataLayerAvailable();
@@ -27,8 +47,6 @@ export const assertNoPendingCommits = async () => {
       where: { commited: true, failedCommit: false },
       raw: true,
     });
-
-    console.log(pendingCommits);
 
     if (pendingCommits.length > 0) {
       throw new Error(
@@ -71,6 +89,13 @@ export const assertRecordExistance = async (Model, pk) => {
   }
 
   return record;
+};
+
+export const assertCanDeleteOrg = async (orgUid) => {
+  const homeOrg = await Organization.getHomeOrg();
+  if (homeOrg.orgUid === orgUid) {
+    throw new Error(`Cant delete your own organization`);
+  }
 };
 
 export const assertHomeOrgExists = async () => {

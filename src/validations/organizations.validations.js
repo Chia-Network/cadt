@@ -8,3 +8,11 @@ export const newOrganizationSchema = Joi.object({
 export const importOrganizationSchema = Joi.object({
   orgUid: Joi.string().required(),
 });
+
+export const unsubscribeOrganizationSchema = Joi.object({
+  orgUid: Joi.string().required(),
+});
+
+export const subscribeOrganizationSchema = Joi.object({
+  orgUid: Joi.string().required(),
+});

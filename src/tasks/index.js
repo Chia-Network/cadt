@@ -5,6 +5,7 @@ import syncDefaultOrganizations from './sync-default-organizations';
 import syncPickLists from './sync-picklists';
 import syncAudit from './sync-audit-table';
 import syncOrganizationMeta from './sync-organization-meta';
+import syncGovernanceBody from './sync-governance-body';
 
 const scheduler = new ToadScheduler();
 
@@ -18,6 +19,7 @@ const addJobToScheduler = (job) => {
 const start = () => {
   // add default jobs
   const defaultJobs = [
+    syncGovernanceBody,
     syncDataLayer,
     syncDefaultOrganizations,
     syncPickLists,

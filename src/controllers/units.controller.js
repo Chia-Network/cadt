@@ -160,7 +160,7 @@ export const findAll = async (req, res) => {
         where = {};
       }
 
-      where.warehouseProjectId = {
+      where.warehouseUnitId = {
         [Sequelize.Op.in]: mappedResults,
       };
     }
@@ -303,6 +303,7 @@ export const update = async (req, res) => {
         // if we are reusing a record, make sure it exists
         await assertRecordExistance(Issuance, updatedRecord.issuance.id);
         updatedRecord.issuanceId = updatedRecord.issuance.id;
+
         delete updatedRecord.issuance;
       } else {
         updatedRecord.issuance.id = uuidv4();

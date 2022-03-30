@@ -7,9 +7,27 @@ export const decodeHex = (str) => {
 };
 
 export const decodeDataLayerResponse = (data) => {
-  console.log(data);
   return data.keys_values.map((item) => ({
     key: decodeHex(item.key),
     value: decodeHex(item.value),
   }));
+};
+
+export const keyValueToChangeList = (key, value, includeDelete) => {
+  const changeList = [];
+
+  if (includeDelete) {
+    changeList.push({
+      action: 'delete',
+      key: encodeHex(key),
+    });
+  }
+
+  changeList.push({
+    action: 'insert',
+    key: encodeHex(key),
+    value: encodeHex(value),
+  });
+
+  return changeList;
 };

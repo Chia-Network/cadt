@@ -5,3 +5,4 @@ export * from './organization';
 export * from './issuances';
 export * from './labels';
 export * from './audit';
+export * from './governance';
