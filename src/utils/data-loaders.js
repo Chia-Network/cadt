@@ -9,7 +9,10 @@ let downloadedPickList = {};
 export const getPicklistValues = () => downloadedPickList;
 
 export const pullPickListValues = async () => {
-  if (process.env.USE_SIMULATOR === 'true') {
+  if (
+    process.env.USE_SIMULATOR === 'true' ||
+    process.env.CHIA_NETWORK === 'testnet'
+  ) {
     downloadedPickList = PickListStub;
   } else {
     const goveranceData = await Governance.findOne({
@@ -24,12 +27,24 @@ export const pullPickListValues = async () => {
 };
 
 export const getDefaultOrganizationList = async () => {
-  const goveranceData = await Governance.findOne({
-    where: { metaKey: 'orgList' },
-    raw: true,
-  });
+  if (
+    process.env.USE_SIMULATOR === 'true' ||
+    process.env.CHIA_NETWORK === 'testnet'
+  ) {
+    const options = {
+      method: 'GET',
+      url: process.env.TESTNET_DEFAULT_ORGANIZATIONS,
+    };
 
-  return JSON.parse(_.get(goveranceData, 'metaValue', '[]'));
+    return JSON.parse(await request(Object.assign({}, options)));
+  } else {
+    const goveranceData = await Governance.findOne({
+      where: { metaKey: 'orgList' },
+      raw: true,
+    });
+
+    return JSON.parse(_.get(goveranceData, 'metaValue', '[]'));
+  }
 };
 
 export const serverAvailable = async (server, port) => {
