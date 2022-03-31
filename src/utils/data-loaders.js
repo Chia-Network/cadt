@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import request from 'request-promise';
 
 import { Governance } from '../models';
@@ -15,7 +17,7 @@ export const pullPickListValues = async () => {
       raw: true,
     });
 
-    if (goveranceData.metaValue) {
+    if (_.get(goveranceData, 'metaValue')) {
       downloadedPickList = JSON.parse(goveranceData.metaValue);
     }
   }
@@ -27,7 +29,7 @@ export const getDefaultOrganizationList = async () => {
     raw: true,
   });
 
-  return JSON.parse(goveranceData.metaValue);
+  return JSON.parse(_.get(goveranceData, 'metaValue', '[]'));
 };
 
 export const serverAvailable = async (server, port) => {
