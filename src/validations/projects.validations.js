@@ -43,9 +43,7 @@ export const baseSchema = {
     .required(),
   projectStatusDate: Joi.date().required(),
   unitMetric: Joi.string().custom(pickListValidation('unitMetric')).required(),
-  methodology: Joi.string()
-    .custom(pickListValidation('methodology'))
-    .required(),
+  methodology: Joi.string().required(),
   validationBody: Joi.string()
     .custom(pickListValidation('validationBody'))
     .optional(),
