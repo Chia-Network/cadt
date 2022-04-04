@@ -73,7 +73,16 @@ export const create = async (req, res) => {
           if (childRecord.id) {
             // If we are reusing an existing child record,
             // Make sure it exists
-            await assertRecordExistance(ModelKeys[key], childRecord.id);
+            const exists = await assertRecordExistance(
+              ModelKeys[key],
+              childRecord.id,
+            );
+
+            if (exists && ['issuances', 'labels'].includes(key)) {
+              throw new Error(
+                `Projects can not use existing ${key}, you must create a new one`,
+              );
+            }
           } else {
             childRecord.id = uuidv4();
           }
@@ -276,7 +285,16 @@ export const update = async (req, res) => {
           if (childRecord.id) {
             // If we are reusing an existing child record,
             // Make sure it exists
-            await assertRecordExistance(ModelKeys[key], childRecord.id);
+            const exists = await assertRecordExistance(
+              ModelKeys[key],
+              childRecord.id,
+            );
+
+            if (exists && ['issuances', 'labels'].includes(key)) {
+              throw new Error(
+                `Projects can not use existing ${key}, you must create a new one`,
+              );
+            }
           } else {
             childRecord.id = uuidv4();
           }

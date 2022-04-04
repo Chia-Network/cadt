@@ -85,8 +85,7 @@ export const create = async (req, res) => {
         newRecord.issuanceId = newRecord.issuance.id;
         delete newRecord.issuance;
       } else {
-        newRecord.issuance.id = uuidv4();
-        newRecord.issuance.orgUid = orgUid;
+        throw new Error('Units can only use existing issuances');
       }
     }
 
@@ -306,8 +305,7 @@ export const update = async (req, res) => {
 
         delete updatedRecord.issuance;
       } else {
-        updatedRecord.issuance.id = uuidv4();
-        updatedRecord.issuance.orgUid = orgUid;
+        throw new Error('Units can only use existing issuances');
       }
     }
 
