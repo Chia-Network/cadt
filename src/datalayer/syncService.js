@@ -174,11 +174,11 @@ const getSubscribedStoreData = async (
   alreadySubscribed = false,
   retry = 0,
 ) => {
-  if (retry >= 20) {
+  if (retry >= 60) {
     throw new Error('Max retrys exceeded, Can not subscribe to organization');
   }
 
-  const timeoutInterval = 60000;
+  const timeoutInterval = 30000;
 
   if (!alreadySubscribed) {
     const response = await subscribeToStoreOnDataLayer(storeId, ip, port);
