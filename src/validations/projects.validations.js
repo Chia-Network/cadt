@@ -22,9 +22,7 @@ export const baseSchema = {
   projectName: Joi.string().required(),
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
-  sector: Joi.string()
-    .custom(pickListValidation('projectSector', 'sector'))
-    .required(),
+  sector: Joi.string().required(),
   projectType: Joi.string()
     .custom(pickListValidation('projectType'))
     .required(),
