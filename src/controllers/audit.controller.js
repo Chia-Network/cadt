@@ -7,21 +7,20 @@ import {
 
 export const findAll = async (req, res) => {
   try {
-    let { page, limit, orgUid } = req.query;
+    let { page, limit, orgUid, order } = req.query;
 
     let pagination = paginationParams(page, limit);
 
     const auditResults = await Audit.findAndCountAll({
       where: { orgUid },
+      order: [['onchainConfirmationTimeStamp', order || 'DESC']],
       ...pagination,
     });
-
-    console.log(auditResults);
 
     return res.json(optionallyPaginatedResponse(auditResults, page, limit));
   } catch (error) {
     res.status(400).json({
-      message: 'Can not retreive issuances',
+      message: 'Can not retreive audit data',
       error: error.message,
     });
   }
