@@ -303,12 +303,14 @@ export const update = async (req, res) => {
         // if we are reusing a record, make sure it exists
         await assertRecordExistance(Issuance, updatedRecord.issuance.id);
         updatedRecord.issuanceId = updatedRecord.issuance.id;
-
-        delete updatedRecord.issuance;
+        updatedRecord.issuance.orgUid = orgUid;
       } else {
         updatedRecord.issuance.id = uuidv4();
         updatedRecord.issuance.orgUid = orgUid;
       }
+    } else {
+      updatedRecord.issuance = originalRecord.issuance;
+      updatedRecord.issuanceId = null;
     }
 
     // merge the new record into the old record

@@ -17,16 +17,12 @@ export const baseSchema = {
   projectId: Joi.string().required(),
   currentRegistry: Joi.string().optional(),
   originProjectId: Joi.string().required(),
-  registryOfOrigin: Joi.string()
-    .custom(pickListValidation('registries', 'registryOfOrigin'))
-    .required(),
+  registryOfOrigin: Joi.string().required(),
   program: Joi.string().optional(),
   projectName: Joi.string().required(),
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
-  sector: Joi.string()
-    .custom(pickListValidation('projectSector', 'sector'))
-    .required(),
+  sector: Joi.string().required(),
   projectType: Joi.string()
     .custom(pickListValidation('projectType'))
     .required(),
