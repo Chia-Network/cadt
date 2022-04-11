@@ -308,6 +308,9 @@ export const update = async (req, res) => {
         updatedRecord.issuance.id = uuidv4();
         updatedRecord.issuance.orgUid = orgUid;
       }
+    } else {
+      updatedRecord.issuance = originalRecord.issuance;
+      updatedRecord.issuanceId = null;
     }
 
     // merge the new record into the old record
