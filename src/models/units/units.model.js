@@ -344,6 +344,28 @@ class Unit extends Model {
       toStructuredCsv: true,
     });
 
+    if (deleteXslsSheets.labels?.data.length > 1) {
+      const warehouseProjectIdIndex =
+        deleteXslsSheets.labels.data[0].indexOf('warehouseProjectId');
+      if (warehouseProjectIdIndex >= 0) {
+        for (
+          let index = deleteXslsSheets.labels.data.length - 1;
+          index > 0;
+          --index
+        ) {
+          if (
+            deleteXslsSheets.labels.data[index][warehouseProjectIdIndex] != null
+          ) {
+            deleteXslsSheets.labels.data.splice(index, 1);
+          }
+        }
+      }
+
+      if (deleteXslsSheets.labels.data.length === 1) {
+        delete deleteXslsSheets.labels;
+      }
+    }
+
     const insertChangeList = await transformFullXslsToChangeList(
       insertXslsSheets,
       'insert',
