@@ -178,7 +178,7 @@ export const getStoreData = async (storeId, rootHash) => {
 
 export const dataLayerAvailable = async () => {
   const options = {
-    url: `${rpcUrl}/get_value`,
+    url: `${rpcUrl}/get_routes`,
     body: JSON.stringify({}),
   };
 
