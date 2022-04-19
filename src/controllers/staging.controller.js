@@ -20,7 +20,7 @@ import {
 
 export const findAll = async (req, res) => {
   try {
-    let { page, limit, type } = req.query;
+    let { page, limit, type, table } = req.query;
 
     let pagination = paginationParams(page, limit);
 
@@ -31,6 +31,10 @@ export const findAll = async (req, res) => {
       where = { commited: true, failedCommit: false };
     } else if (type === 'failed') {
       where = { failedCommit: true };
+    }
+
+    if (table) {
+      where.table = table;
     }
 
     let stagingData = await Staging.findAndCountAll({
