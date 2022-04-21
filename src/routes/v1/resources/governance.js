@@ -17,6 +17,14 @@ GovernanceRouter.get('/', (req, res) => {
   return GovernanceController.findAll(req, res);
 });
 
+GovernanceRouter.get('/meta/orgList', (req, res) => {
+  return GovernanceController.findOrgList(req, res);
+});
+
+GovernanceRouter.get('/meta/pickList', (req, res) => {
+  return GovernanceController.findPickList(req, res);
+});
+
 GovernanceRouter.post('/', (req, res) => {
   return GovernanceController.createGoveranceBody(req, res);
 });
