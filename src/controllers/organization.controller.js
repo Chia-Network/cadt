@@ -87,6 +87,26 @@ export const create = async (req, res) => {
   }
 };
 
+export const resetHomeOrg = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
+    await assertWalletIsSynced();
+
+    await Organization.destroy({ where: { isHome: true } });
+
+    res.json({
+      message: 'Your home organization was reset, please create a new one.',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error resetting your organization',
+      error: error.message,
+    });
+  }
+};
+
 // eslint-disable-next-line
 export const importOrg = async (req, res) => {
   try {

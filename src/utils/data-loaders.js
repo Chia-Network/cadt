@@ -4,15 +4,16 @@ import request from 'request-promise';
 
 import { Governance } from '../models';
 import PickListStub from '../models/governance/governance.stub.json';
+import { getConfig } from '../utils/config-loader';
+
+const { USE_SIMULATOR, CHIA_NETWORK } = getConfig().APP;
+const { TESTNET_DEFAULT_ORGANIZATIONS } = getConfig().TESTNET;
 
 let downloadedPickList = {};
 export const getPicklistValues = () => downloadedPickList;
 
 export const pullPickListValues = async () => {
-  if (
-    process.env.USE_SIMULATOR === 'true' ||
-    process.env.CHIA_NETWORK === 'testnet'
-  ) {
+  if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
     downloadedPickList = PickListStub;
   } else {
     const goveranceData = await Governance.findOne({
@@ -27,13 +28,10 @@ export const pullPickListValues = async () => {
 };
 
 export const getDefaultOrganizationList = async () => {
-  if (
-    process.env.USE_SIMULATOR === 'true' ||
-    process.env.CHIA_NETWORK === 'testnet'
-  ) {
+  if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
     const options = {
       method: 'GET',
-      url: process.env.TESTNET_DEFAULT_ORGANIZATIONS,
+      url: TESTNET_DEFAULT_ORGANIZATIONS,
     };
 
     return JSON.parse(await request(Object.assign({}, options)));

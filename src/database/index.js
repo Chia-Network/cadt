@@ -4,6 +4,7 @@ import Debug from 'debug';
 Debug.enable('climate-warehouse:mirror-database');
 const log = Debug('climate-warehouse:mirror-database');
 import mysql from 'mysql2/promise';
+import { getConfig } from '../utils/config-loader';
 
 import { migrations } from './migrations';
 import { seeders } from './seeders';
@@ -26,7 +27,10 @@ export const safeMirrorDbHandler = (callback) => {
         callback();
       })
       .catch(() => {
-        if (process.env.DB_HOST && process.env.DB_HOST !== '') {
+        if (
+          getConfig().MIRROR_DB.DB_HOST &&
+          getConfig().MIRROR_DB.DB_HOST !== ''
+        ) {
           log('Mirror DB not connected');
         }
       });
@@ -99,18 +103,18 @@ export const prepareDb = async () => {
 
   if (
     mirrorConfig == 'mirror' &&
-    process.env.DB_HOST &&
-    process.env.DB_HOST !== ''
+    getConfig().MIRROR_DB.DB_HOST &&
+    getConfig().MIRROR_DB.DB_HOST !== ''
   ) {
     const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
+      host: getConfig().MIRROR_DB.DB_HOST,
       port: 3306,
-      user: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
+      user: getConfig().MIRROR_DB.DB_USERNAME,
+      password: getConfig().MIRROR_DB.DB_PASSWORD,
     });
 
     await connection.query(
-      `CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME}\`;`,
+      `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}\`;`,
     );
 
     const db = new Sequelize(config[mirrorConfig]);

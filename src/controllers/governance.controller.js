@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import { Governance } from '../models';
 
 import {
@@ -13,6 +15,32 @@ export const findAll = async (req, res) => {
   try {
     const results = await Governance.findAll();
     return res.json(results);
+  } catch (error) {
+    res.status(400).json({
+      message: 'Can not retreive Governance Data',
+      error: error.message,
+    });
+  }
+};
+
+export const findOrgList = async (req, res) => {
+  try {
+    const results = await Governance.findOne({ where: { metaKey: 'orgList' } });
+    return res.json(JSON.parse(_.get(results, 'metaValue', {})));
+  } catch (error) {
+    res.status(400).json({
+      message: 'Can not retreive Governance Data',
+      error: error.message,
+    });
+  }
+};
+
+export const findPickList = async (req, res) => {
+  try {
+    const results = await Governance.findOne({
+      where: { metaKey: 'pickList' },
+    });
+    return res.json(JSON.parse(_.get(results, 'metaValue', {})));
   } catch (error) {
     res.status(400).json({
       message: 'Can not retreive Governance Data',

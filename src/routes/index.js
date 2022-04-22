@@ -10,7 +10,9 @@ import { prepareDb } from '../database';
 import scheduler from '../tasks';
 import { V1Router } from './v1';
 import { sequelize } from '../database';
+import { getConfig } from '../utils/config-loader';
 
+const { API_KEY, READ_ONLY } = getConfig().APP;
 const app = express();
 
 app.use(cors());
@@ -20,9 +22,9 @@ app.use(fileUpload());
 
 // Add optional API key if set in .env file
 app.use(function (req, res, next) {
-  if (process.env.API_KEY && process.env.API_KEY !== '') {
+  if (API_KEY && API_KEY !== '') {
     const apikey = req.header('x-api-key');
-    if (process.env.API_KEY === apikey) {
+    if (API_KEY === apikey) {
       next();
     } else {
       res.status(403).json({ message: 'API key not found' });
@@ -35,8 +37,8 @@ app.use(function (req, res, next) {
 // Add readonly header if set in .env file
 app.use(function (req, res, next) {
   res.setHeader('Access-Control-Expose-Headers', 'cw-read-only');
-  if (process.env.READ_ONLY) {
-    res.setHeader('cw-read-only', process.env.READ_ONLY);
+  if (READ_ONLY) {
+    res.setHeader('cw-read-only', READ_ONLY);
   } else {
     res.setHeader('cw-read-only', false);
   }

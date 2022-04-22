@@ -5,23 +5,38 @@ import { Organization, Audit } from '../models';
 import datalayer from '../datalayer';
 import { decodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
+
+import {
+  assertDataLayerAvailable,
+  assertWalletIsSynced,
+} from '../utils/data-assertions';
 import Debug from 'debug';
 Debug.enable('climate-warehouse:task:audit');
-
-const log = Debug('climate-warehouse:datalayer:persistance');
-
+const log = Debug('climate-warehouse:datalayer:audit');
 dotenv.config();
+import { getConfig } from '../utils/config-loader';
+
+const { USE_SIMULATOR } = getConfig().APP;
 
 const task = new Task('sync-audit', async () => {
-  log('Syncing Audit Information');
-  if (process.env.USE_SIMULATOR === 'false') {
-    const organizations = await Organization.findAll({
-      where: { subscribed: true },
-      raw: true,
-    });
-    await Promise.all(
-      organizations.map((organization) => syncOrganizationAudit(organization)),
-    );
+  try {
+    await assertDataLayerAvailable();
+    await assertWalletIsSynced();
+
+    log('Syncing Audit Information');
+    if (process.env.USE_SIMULATOR === 'false') {
+      const organizations = await Organization.findAll({
+        where: { subscribed: true },
+        raw: true,
+      });
+      await Promise.all(
+        organizations.map((organization) =>
+          syncOrganizationAudit(organization),
+        ),
+      );
+    }
+  } catch (error) {
+    log(`${error.message} retrying in 30 seconds`);
   }
 });
 

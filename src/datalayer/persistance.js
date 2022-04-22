@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
 import os from 'os';
+import { getConfig } from '../utils/config-loader';
 
 import Debug from 'debug';
 Debug.enable('climate-warehouse:datalayer:persistance');
@@ -12,7 +13,7 @@ const log = Debug('climate-warehouse:datalayer:persistance');
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
-const rpcUrl = process.env.DATALAYER_URL;
+const rpcUrl = getConfig().APP.DATALAYER_URL;
 
 const getBaseOptions = () => {
   const homeDir = os.homedir();
@@ -197,8 +198,6 @@ export const dataLayerAvailable = async () => {
     log(data);
     return false;
   } catch (error) {
-    log(error);
-
     return false;
   }
 };

@@ -26,6 +26,10 @@ OrganizationRouter.post(
   },
 );
 
+OrganizationRouter.delete('/', (req, res) => {
+  return OrganizationController.resetHomeOrg(req, res);
+});
+
 OrganizationRouter.post('/create', (req, res) => {
   return OrganizationController.createV2(req, res);
 });
@@ -42,13 +46,9 @@ OrganizationRouter.put(
   },
 );
 
-+OrganizationRouter.delete(
-  '/import',
-  validator.body(importOrganizationSchema),
-  (req, res) => {
-    return OrganizationController.deleteImportedOrg(req, res);
-  },
-);
+OrganizationRouter.delete('/import', (req, res) => {
+  return OrganizationController.deleteImportedOrg(req, res);
+});
 
 OrganizationRouter.put(
   '/subscribe',

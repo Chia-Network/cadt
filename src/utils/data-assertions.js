@@ -6,9 +6,12 @@ import { Organization, Unit, Project, Staging, Meta } from '../models';
 import { transformSerialNumberBlock } from '../utils/helpers';
 import datalayer from '../datalayer';
 import { formatModelAssociationName } from './model-utils.js';
+import { getConfig } from '../utils/config-loader';
+
+const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR } = getConfig().APP;
 
 export const assertCanBeGovernanceBody = async () => {
-  if (process.env.IS_GOVERNANCE_BODY !== 'true') {
+  if (IS_GOVERNANCE_BODY !== 'true') {
     throw new Error(
       'You are not an governance body and can not use this functionality',
     );
@@ -36,13 +39,13 @@ export const assertDataLayerAvailable = async () => {
 };
 
 export const assertIfReadOnlyMode = async () => {
-  if (process.env.READ_ONLY === 'true') {
+  if (READ_ONLY) {
     throw new Error('You can not use this API in read-only mode');
   }
 };
 
 export const assertNoPendingCommits = async () => {
-  if (process.env.USE_SIMULATOR === 'true') {
+  if (USE_SIMULATOR) {
     const pendingCommits = await Staging.findAll({
       where: { commited: true, failedCommit: false },
       raw: true,
@@ -63,7 +66,7 @@ export const assertNoPendingCommits = async () => {
 };
 
 export const assertWalletIsSynced = async () => {
-  if (process.env.USE_SIMULATOR === 'false') {
+  if (!USE_SIMULATOR) {
     if (!(await datalayer.walletIsSynced())) {
       throw new Error(
         'Your wallet is syncing, please wait for it to sync and try again',
@@ -73,7 +76,7 @@ export const assertWalletIsSynced = async () => {
 };
 
 export const assertWalletIsAvailable = async () => {
-  if (process.env.USE_SIMULATOR === 'false') {
+  if (!USE_SIMULATOR) {
     if (!(await datalayer.walletIsAvailable())) {
       throw new Error(
         'Your wallet is not available, please turn it on to continue using climate warehouse',

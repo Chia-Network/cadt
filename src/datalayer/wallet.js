@@ -2,10 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
 import os from 'os';
+import { getConfig } from '../utils/config-loader';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
-const rpcUrl = process.env.WALLET_URL;
+const rpcUrl = getConfig().APP.WALLET_URL;
 
 const getBaseOptions = () => {
   const homeDir = os.homedir();
@@ -81,7 +82,7 @@ const hasUnconfirmedTransactions = async () => {
 };
 
 const getPublicAddress = async () => {
-  if (process.env.USE_SIMULATOR === 'true') {
+  if (getConfig().APP.USE_SIMULATOR) {
     return Promise.resolve('xch33300ddsje98f33hkkdf9dfuSIMULATED_ADDRESS');
   }
 
