@@ -7,14 +7,15 @@ import { decodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 import Debug from 'debug';
 Debug.enable('climate-warehouse:task:audit');
-
 const log = Debug('climate-warehouse:datalayer:persistance');
-
 dotenv.config();
+import { getConfig } from '../utils/config-loader';
+
+const { USE_SIMULATOR } = getConfig().APP;
 
 const task = new Task('sync-audit', async () => {
   log('Syncing Audit Information');
-  if (process.env.USE_SIMULATOR === 'false') {
+  if (!USE_SIMULATOR) {
     const organizations = await Organization.findAll({
       where: { subscribed: true },
       raw: true,
