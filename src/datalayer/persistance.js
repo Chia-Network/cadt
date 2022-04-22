@@ -198,8 +198,6 @@ export const dataLayerAvailable = async () => {
     log(data);
     return false;
   } catch (error) {
-    log(error);
-
     return false;
   }
 };
