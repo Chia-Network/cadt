@@ -1,17 +1,28 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { pullPickListValues } from '../utils/data-loaders';
 import Debug from 'debug';
-Debug.enable('climate-warehouse:task:picklists');
+import {
+  assertDataLayerAvailable,
+  assertWalletIsSynced,
+} from '../utils/data-assertions';
+Debug.enable('climate-warehouse:task:sync-picklists');
 
-const log = Debug('climate-warehouse:task:picklists');
+const log = Debug('climate-warehouse:task:sync-picklists');
 
-const task = new Task('sync-picklist', () => {
-  log('Syncing Picklist Values');
-  pullPickListValues();
+const retryInSeconds = 30;
+
+const task = new Task('sync-picklist', async () => {
+  try {
+    await assertDataLayerAvailable();
+    await assertWalletIsSynced();
+    pullPickListValues();
+  } catch (error) {
+    log(`${error.message} retrying in ${retryInSeconds} seconds`);
+  }
 });
 
 const job = new SimpleIntervalJob(
-  { seconds: 30, runImmediately: true },
+  { seconds: retryInSeconds, runImmediately: true },
   task,
   'sync-picklist',
 );
