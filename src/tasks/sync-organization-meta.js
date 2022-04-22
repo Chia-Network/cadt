@@ -1,5 +1,8 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Organization } from '../models';
+import { getConfig } from '../utils/config-loader';
+const { USE_SIMULATOR } = getConfig().APP;
+
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -10,7 +13,7 @@ const log = Debug('climate-warehouse:task:organizations');
 
 const task = new Task('sync-organization-meta', () => {
   log('Syncing subscribed organizations');
-  if (process.env.USE_SIMULATOR === 'false') {
+  if (!USE_SIMULATOR) {
     Organization.syncOrganizationMeta();
   }
 });

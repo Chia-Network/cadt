@@ -11,6 +11,9 @@ import {
   serverAvailable,
 } from '../../utils/data-loaders';
 
+import { getConfig } from '../../utils/config-loader';
+const { USE_SIMULATOR } = getConfig().APP;
+
 import Debug from 'debug';
 Debug.enable('climate-warehouse:organizations');
 const log = Debug('climate-warehouse:organizations');
@@ -60,10 +63,9 @@ class Organization extends Model {
       return myOrganization.orgUid;
     }
 
-    const newOrganizationId =
-      process.env.USE_SIMULATOR === 'true'
-        ? 'f1c54511-865e-4611-976c-7c3c1f704662'
-        : await datalayer.createDataLayerStore();
+    const newOrganizationId = USE_SIMULATOR
+      ? 'f1c54511-865e-4611-976c-7c3c1f704662'
+      : await datalayer.createDataLayerStore();
 
     const newRegistryId = await datalayer.createDataLayerStore();
     const registryVersionId = await datalayer.createDataLayerStore();
@@ -97,7 +99,7 @@ class Organization extends Model {
       orgUid: newOrganizationId,
       registryId: registryVersionId,
       isHome: true,
-      subscribed: process.env.USE_SIMULATOR === 'true',
+      subscribed: USE_SIMULATOR,
       name,
       icon,
     });
@@ -112,7 +114,7 @@ class Organization extends Model {
       );
     };
 
-    if (process.env.USE_SIMULATOR !== 'true') {
+    if (!USE_SIMULATOR) {
       log('Waiting for New Organization to be confirmed');
       datalayer.getStoreData(
         newRegistryId,

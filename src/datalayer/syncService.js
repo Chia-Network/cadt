@@ -2,6 +2,7 @@ import _ from 'lodash';
 
 import { decodeHex, decodeDataLayerResponse } from '../utils/datalayer-utils';
 import { Organization, Staging, ModelKeys } from '../models';
+import { getConfig } from '../utils/config-loader';
 
 import * as dataLayer from './persistance';
 import * as simulator from './simulator';
@@ -9,6 +10,8 @@ import * as simulator from './simulator';
 import Debug from 'debug';
 Debug.enable('climate-warehouse:datalayer:syncService');
 const log = Debug('climate-warehouse:datalayer:syncService');
+
+const { USE_SIMULATOR } = getConfig().APP;
 
 const POLLING_INTERVAL = 5000;
 const frames = ['-', '\\', '|', '/'];
@@ -36,7 +39,7 @@ const startDataLayerUpdatePolling = async () => {
 const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
   let storeData;
 
-  if (process.env.USE_SIMULATOR === 'true') {
+  if (USE_SIMULATOR) {
     storeData = await simulator.getStoreData(storeId, rootHash);
   } else {
     storeData = await dataLayer.getStoreData(storeId, rootHash);
@@ -119,7 +122,7 @@ const dataLayerWasUpdated = async () => {
   }
 
   let rootResponse;
-  if (process.env.USE_SIMULATOR === 'true') {
+  if (USE_SIMULATOR) {
     rootResponse = await simulator.getRoots(subscribedOrgIds);
   } else {
     rootResponse = await dataLayer.getRoots(subscribedOrgIds);
@@ -160,7 +163,7 @@ const dataLayerWasUpdated = async () => {
 };
 
 const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
-  if (process.env.USE_SIMULATOR === 'true') {
+  if (USE_SIMULATOR) {
     return simulator.subscribeToStoreOnDataLayer(storeId, ip, port);
   } else {
     return dataLayer.subscribeToStoreOnDataLayer(storeId, ip, port);
@@ -192,7 +195,7 @@ const getSubscribedStoreData = async (
     }
   }
 
-  if (process.env.USE_SIMULATOR !== 'true') {
+  if (!USE_SIMULATOR) {
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
     if (!storeExistAndIsConfirmed) {
       log(`Retrying...`, retry + 1);
@@ -205,7 +208,7 @@ const getSubscribedStoreData = async (
   }
 
   let encodedData;
-  if (process.env.USE_SIMULATOR === 'true') {
+  if (USE_SIMULATOR) {
     encodedData = await simulator.getStoreData(storeId);
   } else {
     encodedData = await dataLayer.getStoreData(storeId);
@@ -231,13 +234,13 @@ const getSubscribedStoreData = async (
 };
 
 const getRootHistory = (storeId) => {
-  if (process.env.USE_SIMULATOR !== 'true') {
+  if (!USE_SIMULATOR) {
     return dataLayer.getRootHistory(storeId);
   }
 };
 
 const getRootDiff = (storeId, root1, root2) => {
-  if (process.env.USE_SIMULATOR !== 'true') {
+  if (!USE_SIMULATOR) {
     return dataLayer.getRootDiff(storeId, root1, root2);
   }
 };
