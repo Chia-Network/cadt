@@ -1,6 +1,6 @@
 {
   "name": "climate-warehouse",
-  "version": "0.0.26",
+  "version": "0.0.28",
   "private": true,
   "bin": "build/server.js",
   "type": "module",
@@ -19,7 +19,7 @@
     "prepare": "husky install",
     "build": "babel src --keep-file-extension --out-dir build --copy-files",
     "build-migrations": "babel migrations --keep-file-extension --out-dir dist/migrations --copy-files",
-    "prepare-binary": "rm -rf dist && mkdir dist && cp .env.copy dist/.env",
+    "prepare-binary": "rm -rf dist && mkdir dist",
     "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-win-x64 --out-path dist",
     "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-macos-x64 --out-path dist",
     "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-linux-x64 --out-path dist"
@@ -37,6 +37,7 @@
     "express-fileupload": "^1.2.1",
     "express-joi-validation": "^5.0.0",
     "joi": "^17.5.0",
+    "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
     "log-update": "^4.0.0",
     "mysql2": "^2.3.3",

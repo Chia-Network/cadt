@@ -6,6 +6,10 @@ import { sequelize } from '../../database';
 import { Meta } from '../../models';
 import datalayer from '../../datalayer';
 import { keyValueToChangeList } from '../../utils/datalayer-utils';
+import { getConfig } from '../../utils/config-loader';
+
+const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
+  getConfig().GOVERNANCE;
 
 import ModelTypes from './governance.modeltypes.cjs';
 
@@ -13,7 +17,7 @@ class Governance extends Model {
   static async createGoveranceBody() {
     const goveranceBodyId = await datalayer.createDataLayerStore();
 
-    if (process.env.GOVERANCE_BODY_ID && process.env.GOVERANCE_BODY_ID !== '') {
+    if (GOVERANCE_BODY_ID && GOVERANCE_BODY_ID !== '') {
       throw new Error(
         'You are already listening to another governance body. Please clear GOVERANCE_BODY_ID from your env and try again',
       );
@@ -28,38 +32,41 @@ class Governance extends Model {
   }
 
   static async sync() {
-    const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
-      process.env;
+    try {
+      if (!GOVERANCE_BODY_ID || !GOVERNANCE_BODY_IP || !GOVERNANCE_BODY_PORT) {
+        throw new Error('Missing information in env to sync Governance data');
+      }
 
-    if (!GOVERANCE_BODY_ID || !GOVERNANCE_BODY_IP || !GOVERNANCE_BODY_PORT) {
-      throw new Error('Missing information in env to sync Governance data');
+      const governanceData = await datalayer.getSubscribedStoreData(
+        GOVERANCE_BODY_ID,
+        GOVERNANCE_BODY_IP,
+        GOVERNANCE_BODY_PORT,
+      );
+
+      const updates = [];
+
+      if (governanceData.orgList) {
+        updates.push({
+          metaKey: 'orgList',
+          metaValue: governanceData.orgList,
+          confirmed: true,
+        });
+      }
+
+      if (governanceData.pickList) {
+        updates.push({
+          metaKey: 'pickList',
+          metaValue: governanceData.pickList,
+          confirmed: true,
+        });
+      }
+
+      await Promise.all(
+        updates.map(async (update) => Governance.upsert(update)),
+      );
+    } catch (error) {
+      console.log(error.message);
     }
-
-    const governanceData = await datalayer.getSubscribedStoreData(
-      GOVERANCE_BODY_ID,
-      GOVERNANCE_BODY_IP,
-      GOVERNANCE_BODY_PORT,
-    );
-
-    const updates = [];
-
-    if (governanceData.orgList) {
-      updates.push({
-        metaKey: 'orgList',
-        metaValue: governanceData.orgList,
-        confirmed: true,
-      });
-    }
-
-    if (governanceData.pickList) {
-      updates.push({
-        metaKey: 'pickList',
-        metaValue: governanceData.pickList,
-        confirmed: true,
-      });
-    }
-
-    await Promise.all(updates.map(async (update) => Governance.upsert(update)));
   }
 
   static async updateGoveranceBodyData(keyValueArray) {

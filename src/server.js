@@ -6,6 +6,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import Debug from 'debug';
 import { connection } from './websocket';
+import { getConfig } from './utils/config-loader';
 
 import dotenv from 'dotenv';
 
@@ -14,7 +15,7 @@ Debug.enable('climate-warehouse:*');
 
 const debug = Debug('climate-warehouse:server');
 
-const port = process.env.CW_PORT || 3030;
+const port = getConfig().APP.CW_PORT || 3030;
 const server = http.createServer(rootRouter);
 
 server.on('error', onError);

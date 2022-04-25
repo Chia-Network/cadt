@@ -4,14 +4,17 @@ import * as dataLayer from './persistance';
 import wallet from './wallet';
 import * as simulator from './simulator';
 import { encodeHex } from '../utils/datalayer-utils';
+import { getConfig } from '../utils/config-loader';
 
 import Debug from 'debug';
 Debug.enable('climate-warehouse:datalayer:writeService');
 const log = Debug('climate-warehouse:datalayer:writeService');
 
+const { USE_SIMULATOR } = getConfig().APP;
+
 const createDataLayerStore = async () => {
   let storeId;
-  if (process.env.USE_SIMULATOR === 'true') {
+  if (USE_SIMULATOR) {
     storeId = await simulator.createDataLayerStore();
   } else {
     storeId = await dataLayer.createDataLayerStore();
@@ -58,7 +61,7 @@ const pushChangesWhenStoreIsAvailable = async (
   failedCallback = _.noop,
   retryAttempts = 0,
 ) => {
-  if (process.env.USE_SIMULATOR === 'true') {
+  if (USE_SIMULATOR) {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
     const hasUnconfirmedTransactions =
@@ -87,7 +90,7 @@ const pushDataLayerChangeList = (storeId, changeList, failedCallback) => {
 };
 
 const dataLayerAvailable = async () => {
-  if (process.env.USE_SIMULATOR === 'true') {
+  if (USE_SIMULATOR) {
     return simulator.dataLayerAvailable();
   } else {
     return dataLayer.dataLayerAvailable();
