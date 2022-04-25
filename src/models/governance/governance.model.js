@@ -32,35 +32,41 @@ class Governance extends Model {
   }
 
   static async sync() {
-    if (!GOVERANCE_BODY_ID || !GOVERNANCE_BODY_IP || !GOVERNANCE_BODY_PORT) {
-      throw new Error('Missing information in env to sync Governance data');
+    try {
+      if (!GOVERANCE_BODY_ID || !GOVERNANCE_BODY_IP || !GOVERNANCE_BODY_PORT) {
+        throw new Error('Missing information in env to sync Governance data');
+      }
+
+      const governanceData = await datalayer.getSubscribedStoreData(
+        GOVERANCE_BODY_ID,
+        GOVERNANCE_BODY_IP,
+        GOVERNANCE_BODY_PORT,
+      );
+
+      const updates = [];
+
+      if (governanceData.orgList) {
+        updates.push({
+          metaKey: 'orgList',
+          metaValue: governanceData.orgList,
+          confirmed: true,
+        });
+      }
+
+      if (governanceData.pickList) {
+        updates.push({
+          metaKey: 'pickList',
+          metaValue: governanceData.pickList,
+          confirmed: true,
+        });
+      }
+
+      await Promise.all(
+        updates.map(async (update) => Governance.upsert(update)),
+      );
+    } catch (error) {
+      console.log(error.message);
     }
-
-    const governanceData = await datalayer.getSubscribedStoreData(
-      GOVERANCE_BODY_ID,
-      GOVERNANCE_BODY_IP,
-      GOVERNANCE_BODY_PORT,
-    );
-
-    const updates = [];
-
-    if (governanceData.orgList) {
-      updates.push({
-        metaKey: 'orgList',
-        metaValue: governanceData.orgList,
-        confirmed: true,
-      });
-    }
-
-    if (governanceData.pickList) {
-      updates.push({
-        metaKey: 'pickList',
-        metaValue: governanceData.pickList,
-        confirmed: true,
-      });
-    }
-
-    await Promise.all(updates.map(async (update) => Governance.upsert(update)));
   }
 
   static async updateGoveranceBodyData(keyValueArray) {
