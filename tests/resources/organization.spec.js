@@ -21,7 +21,7 @@ describe('Orgainzation Resource CRUD', function () {
 
       const response = await supertest(app).post(`/v1/organizations`).send({
         name: orgName,
-        icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+        file: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
       });
 
       expect(response.body.message).to.equal(
@@ -32,7 +32,7 @@ describe('Orgainzation Resource CRUD', function () {
       const response = await supertest(app).get(`/v1/organizations`).send();
 
       expect(Object.values(response.body)[0].name).to.equal(orgName);
-      expect(Object.values(response.body)[0].icon).to.equal(
+      expect(Object.values(response.body)[0].file).to.equal(
         'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
       );
     }).timeout(TEST_WAIT_TIME * 10);

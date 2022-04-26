@@ -38,7 +38,7 @@ export const createV2 = async (req, res) => {
 
       const { name } = req.body;
       const buffer = req.files.file.data;
-      const icon = buffer.toString('base64');
+      const icon = `data:image/png;base64, ${buffer.toString('base64')}`;
 
       return res.json({
         message: 'New organization created successfully.',
