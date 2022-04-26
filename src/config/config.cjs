@@ -12,7 +12,7 @@ const persistanceFolder = `${homeDir}/.chia/climate-warehouse`;
 
 // Adding this duplicate function here because im having trouble
 // importing it in from utils folder
-const getConfig = _.memoize(() => {
+const getConfig = () => {
   const configFile = path.resolve(
     `${homeDir}/.chia/climate-warehouse/config.yaml`,
   );
@@ -44,7 +44,7 @@ const getConfig = _.memoize(() => {
   } catch (e) {
     console.log(e, `Config file not found at ${configFile}`);
   }
-});
+};
 
 module.exports = {
   local: {

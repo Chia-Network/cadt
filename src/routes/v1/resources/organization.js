@@ -5,7 +5,6 @@ import joiExpress from 'express-joi-validation';
 
 import { OrganizationController } from '../../../controllers';
 import {
-  newOrganizationSchema,
   unsubscribeOrganizationSchema,
   subscribeOrganizationSchema,
   importOrganizationSchema,
@@ -17,14 +16,6 @@ const OrganizationRouter = express.Router();
 OrganizationRouter.get('/', (req, res) => {
   return OrganizationController.findAll(req, res);
 });
-
-OrganizationRouter.post(
-  '/',
-  validator.body(newOrganizationSchema),
-  (req, res) => {
-    return OrganizationController.create(req, res);
-  },
-);
 
 OrganizationRouter.delete('/', (req, res) => {
   return OrganizationController.resetHomeOrg(req, res);

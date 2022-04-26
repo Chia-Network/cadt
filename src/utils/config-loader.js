@@ -19,9 +19,7 @@ export const getConfig = _.memoize(() => {
       } catch (err) {
         // if it still doesnt exist that means we are in an env without write permissions
         // so just load the default env
-        console.log('$$$$$$$$$$$$$$$', process.env.USE_SIMULATOR);
-        if (process.env.USE_SIMULATOR) {
-          console.log('################', _.get(process, 'env.USE_SIMULATOR'));
+        if (typeof process.env.USE_SIMULATOR === 'string') {
           defaultConfig.APP.USE_SIMULATOR =
             _.get(process, 'env.USE_SIMULATOR', 'false') === 'true';
         }
@@ -32,6 +30,6 @@ export const getConfig = _.memoize(() => {
 
     return yaml.load(fs.readFileSync(configFile, 'utf8'));
   } catch (e) {
-    console.log(`Config file not found at ${configFile}`);
+    console.log(`Config file not found at ${configFile}`.e);
   }
 });

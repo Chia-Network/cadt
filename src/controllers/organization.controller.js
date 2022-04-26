@@ -32,21 +32,17 @@ export const createV2 = async (req, res) => {
         orgId: myOrganization.orgUid,
       });
     } else {
-      if (!_.get(req, 'files.svg.data')) {
-        throw new Error('Missing required SVG Icon');
+      if (!_.get(req, 'files.file.data')) {
+        throw new Error('Missing required Icon');
       }
 
       const { name } = req.body;
-      const buffer = req.files.svg.data;
-      const svgIcon = buffer.toString('utf8');
-
-      if (!svgIcon.includes('</svg>')) {
-        throw new Error('Currupted SVG Icon');
-      }
+      const buffer = req.files.file.data;
+      const icon = buffer.toString('base64');
 
       return res.json({
         message: 'New organization created successfully.',
-        orgId: await Organization.createHomeOrganization(name, svgIcon, 'v1'),
+        orgId: await Organization.createHomeOrganization(name, icon, 'v1'),
       });
     }
   } catch (error) {
