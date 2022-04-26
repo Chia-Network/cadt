@@ -24,7 +24,7 @@ const task = new Task('sync-audit', async () => {
     await assertWalletIsSynced();
 
     log('Syncing Audit Information');
-    if (process.env.USE_SIMULATOR === 'false') {
+    if (!USE_SIMULATOR) {
       const organizations = await Organization.findAll({
         where: { subscribed: true },
         raw: true,

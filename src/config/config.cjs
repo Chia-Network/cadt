@@ -12,7 +12,7 @@ const persistanceFolder = `${homeDir}/.chia/climate-warehouse`;
 
 // Adding this duplicate function here because im having trouble
 // importing it in from utils folder
-const getConfig = () => {
+const getConfig = _.memoize(() => {
   const configFile = path.resolve(
     `${homeDir}/.chia/climate-warehouse/config.yaml`,
   );
@@ -25,7 +25,7 @@ const getConfig = () => {
       // if it still doesnt exist that means we are in an env without write permissions
       // so just load the default en
       if (typeof process.env.USE_SIMULATOR === 'string') {
-        defaultConfig.APP.USE_SIMULATOR = process.env.USE_SIMULATOR === 'true';
+        defaultConfig.APP.USE_SIMULATOR = true;
       }
 
       console.log('Cant write config file, falling back to defaults');
@@ -37,14 +37,14 @@ const getConfig = () => {
     const yml = yaml.load(fs.readFileSync(configFile, 'utf8'));
 
     if (typeof process.env.USE_SIMULATOR === 'string') {
-      yml.APP.USE_SIMULATOR = process.env.USE_SIMULATOR === 'true';
+      yml.APP.USE_SIMULATOR = true;
     }
 
     return yml;
   } catch (e) {
     console.log(e, `Config file not found at ${configFile}`);
   }
-};
+});
 
 module.exports = {
   local: {
