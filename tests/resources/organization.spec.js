@@ -5,11 +5,15 @@ import { expect } from 'chai';
 import { prepareDb } from '../../src/database';
 import datalayer from '../../src/datalayer';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
+import * as testFixtures from '../test-fixtures';
 
-const orgName = Math.random().toString();
 describe('Orgainzation Resource CRUD', function () {
   before(async function () {
     await prepareDb();
+  });
+
+  beforeEach(async function () {
+    await testFixtures.createTestHomeOrg();
   });
 
   describe('POST - Creates an organization', function () {
@@ -20,8 +24,8 @@ describe('Orgainzation Resource CRUD', function () {
       });
 
       const response = await supertest(app).post(`/v1/organizations`).send({
-        name: orgName,
-        file: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+        name: 'My Org',
+        icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
       });
 
       expect(response.body.message).to.equal(
@@ -31,8 +35,10 @@ describe('Orgainzation Resource CRUD', function () {
     it('Organization can be retreived from datalayer', async function () {
       const response = await supertest(app).get(`/v1/organizations`).send();
 
-      expect(Object.values(response.body)[0].name).to.equal(orgName);
-      expect(Object.values(response.body)[0].file).to.equal(
+      console.log('!!!!', response.body);
+
+      expect(Object.values(response.body)[0].name).to.equal('My Org');
+      expect(Object.values(response.body)[0].icon).to.equal(
         'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
       );
     }).timeout(TEST_WAIT_TIME * 10);
