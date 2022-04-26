@@ -237,9 +237,7 @@ class Organization extends Model {
           };
 
           const onFail = () => {
-            throw new Error(
-              `Unable to sync metadata from ${organization.orgUid}`,
-            );
+            log(`Unable to sync metadata from ${organization.orgUid}`);
           };
 
           datalayer.getStoreIfUpdated(
