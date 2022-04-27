@@ -22,11 +22,7 @@ const task = new Task('sync-governance-meta', async () => {
     await assertWalletIsSynced();
 
     log('Syncing governance data');
-    if (
-      process.env.GOVERANCE_BODY_ID &&
-      process.env.GOVERNANCE_BODY_IP &&
-      process.env.GOVERNANCE_BODY_PORT
-    ) {
+    if (GOVERANCE_BODY_ID && GOVERNANCE_BODY_IP && GOVERNANCE_BODY_PORT) {
       Governance.sync();
     }
   } catch (error) {

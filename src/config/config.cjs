@@ -25,7 +25,7 @@ const getConfig = _.memoize(() => {
       // if it still doesnt exist that means we are in an env without write permissions
       // so just load the default en
       if (typeof process.env.USE_SIMULATOR === 'string') {
-        defaultConfig.APP.USE_SIMULATOR = process.env.USE_SIMULATOR === 'true';
+        defaultConfig.APP.USE_SIMULATOR = true;
       }
 
       console.log('Cant write config file, falling back to defaults');
@@ -37,7 +37,7 @@ const getConfig = _.memoize(() => {
     const yml = yaml.load(fs.readFileSync(configFile, 'utf8'));
 
     if (typeof process.env.USE_SIMULATOR === 'string') {
-      yml.APP.USE_SIMULATOR = process.env.USE_SIMULATOR === 'true';
+      yml.APP.USE_SIMULATOR = true;
     }
 
     return yml;

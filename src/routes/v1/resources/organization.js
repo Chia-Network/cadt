@@ -18,6 +18,10 @@ OrganizationRouter.get('/', (req, res) => {
   return OrganizationController.findAll(req, res);
 });
 
+OrganizationRouter.delete('/', (req, res) => {
+  return OrganizationController.resetHomeOrg(req, res);
+});
+
 OrganizationRouter.post(
   '/',
   validator.body(newOrganizationSchema),
@@ -25,10 +29,6 @@ OrganizationRouter.post(
     return OrganizationController.create(req, res);
   },
 );
-
-OrganizationRouter.delete('/', (req, res) => {
-  return OrganizationController.resetHomeOrg(req, res);
-});
 
 OrganizationRouter.post('/create', (req, res) => {
   return OrganizationController.createV2(req, res);
