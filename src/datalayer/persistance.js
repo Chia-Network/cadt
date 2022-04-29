@@ -6,10 +6,9 @@ import request from 'request-promise';
 import os from 'os';
 import { getConfig } from '../utils/config-loader';
 
-import Debug from 'debug';
-Debug.enable('climate-warehouse:datalayer:persistance');
+import { logger } from '../config/logger.cjs';
 
-const log = Debug('climate-warehouse:datalayer:persistance');
+logger.info('climate-warehouse:datalayer:persistance');
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
@@ -43,13 +42,11 @@ export const createDataLayerStore = async () => {
 
   const data = JSON.parse(response);
 
-  console.log(data);
-
   if (data.success) {
     return data.id;
   }
 
-  log(data);
+  logger.info(data);
 
   throw new Error(data.error);
 };
@@ -70,23 +67,24 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
 
     const data = JSON.parse(response);
 
-    log(options, data);
+    logger.info(options);
+    logger.info(data);
 
     if (data.success) {
-      log('Success!');
+      logger.info('Success!');
       return true;
     }
 
     if (data.error.includes('Key already present')) {
-      log('Success, I guess...');
+      logger.info('Success, I guess...');
       return true;
     }
 
-    log(data);
+    logger.info(data);
 
     return false;
   } catch (error) {
-    log('There was an error pushing your changes to the datalayer');
+    logger.info('There was an error pushing your changes to the datalayer');
   }
 };
 
@@ -166,12 +164,12 @@ export const getStoreData = async (storeId, rootHash) => {
 
     if (data.success) {
       if (!_.isEmpty(data.keys_values)) {
-        log('Downloaded Data', data);
+        logger.info(`Downloaded Data: ${data}`);
       }
       return data;
     }
 
-    log(data);
+    logger.info(data);
   }
 
   return false;
@@ -195,7 +193,7 @@ export const dataLayerAvailable = async () => {
       return true;
     }
 
-    log(data);
+    logger.info(data);
     return false;
   } catch (error) {
     return false;
@@ -212,7 +210,7 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
     }),
   };
 
-  log('RPC Call: ', `${rpcUrl}/subscribe`, storeId, ip, port);
+  logger.info(`RPC Call: ${rpcUrl}/subscribe ${storeId} ${ip} ${port}`);
 
   try {
     const response = await request(
@@ -222,13 +220,13 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
     const data = JSON.parse(response);
 
     if (Object.keys(data).includes('success') && data.success) {
-      log('Successfully Subscribed: ', storeId, ip, port);
+      logger.info(`Successfully Subscribed: ${storeId}  ${ip} ${port}`);
       return data;
     }
 
     return false;
   } catch (error) {
-    log('Error Subscribing: ', error);
+    logger.info(`Error Subscribing: ${error}`);
     return false;
   }
 };

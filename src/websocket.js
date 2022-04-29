@@ -1,6 +1,7 @@
 'use strict';
 
 import { Project, Unit, Staging } from './models/index.js';
+import { logger } from './config/logger.cjs';
 
 const socketSubscriptions = {};
 
@@ -10,7 +11,7 @@ const authenticate = () => true;
 export const connection = (socket) => {
   socket.on('authentication', () => {
     if (!authenticate(socket)) {
-      console.log('authentication failure');
+      logger.error('authentication failure');
       return socket.disconnect();
     } else {
       socket.emit('authenticated');

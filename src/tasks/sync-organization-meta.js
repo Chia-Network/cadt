@@ -5,25 +5,25 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
+import { logger } from '../config/logger.cjs';
+
 const { USE_SIMULATOR } = getConfig().APP;
 
 import dotenv from 'dotenv';
 dotenv.config();
 
-import Debug from 'debug';
-Debug.enable('climate-warehouse:task:sync-organizations');
+logger.info('climate-warehouse:task:sync-organizations');
 
-const log = Debug('climate-warehouse:task:sync-organizations');
 const task = new Task('sync-organization-meta', async () => {
   try {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
-    log('Syncing subscribed organizations');
+    logger.info('Syncing subscribed organizations');
     if (!USE_SIMULATOR) {
       Organization.syncOrganizationMeta();
     }
   } catch (error) {
-    log(`${error.message} retrying in 24 hours`);
+    logger.error('Retrying in 24 hours', error);
   }
 });
 

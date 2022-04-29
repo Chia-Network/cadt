@@ -11,6 +11,7 @@ import scheduler from '../tasks';
 import { V1Router } from './v1';
 import { sequelize } from '../database';
 import { getConfig } from '../utils/config-loader';
+import { logger } from '../config/logger.cjs';
 
 const { API_KEY, READ_ONLY } = getConfig().APP;
 const app = express();
@@ -49,7 +50,7 @@ app.use(function (req, res, next) {
 app.use('/v1', V1Router);
 
 sequelize.authenticate().then(async () => {
-  console.log('Connected to database');
+  logger.info('Connected to database');
   await prepareDb();
   setTimeout(() => {
     scheduler.start();
