@@ -3,26 +3,23 @@ import _ from 'lodash';
 import { decodeHex, decodeDataLayerResponse } from '../utils/datalayer-utils';
 import { Organization, Staging, ModelKeys } from '../models';
 import { getConfig } from '../utils/config-loader';
+import { logger } from '../config/logger.cjs';
 
 import * as dataLayer from './persistance';
 import * as simulator from './simulator';
-
-import Debug from 'debug';
-Debug.enable('climate-warehouse:datalayer:syncService');
-const log = Debug('climate-warehouse:datalayer:syncService');
 
 const { USE_SIMULATOR } = getConfig().APP;
 
 const POLLING_INTERVAL = 5000;
 const frames = ['-', '\\', '|', '/'];
 
-log('Start Datalayer Update Polling');
+logger.debug('Start Datalayer Update Polling');
 const startDataLayerUpdatePolling = async () => {
   const updateStoreInfo = await dataLayerWasUpdated();
   if (updateStoreInfo.length) {
     await Promise.all(
       updateStoreInfo.map(async (store) => {
-        log(
+        logger.debug(
           `Updates found syncing storeId: ${store.storeId} ${
             frames[Math.floor(Math.random() * 3)]
           }`,
@@ -186,8 +183,8 @@ const getSubscribedStoreData = async (
   if (!alreadySubscribed) {
     const response = await subscribeToStoreOnDataLayer(storeId, ip, port);
     if (!response.success) {
-      log(`Retrying...`, retry + 1);
-      log('...');
+      logger.debug(`Retrying...`, retry + 1);
+      logger.debug('...');
       await new Promise((resolve) =>
         setTimeout(() => resolve(), timeoutInterval),
       );
@@ -198,8 +195,8 @@ const getSubscribedStoreData = async (
   if (!USE_SIMULATOR) {
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
     if (!storeExistAndIsConfirmed) {
-      log(`Retrying...`, retry + 1);
-      log('...');
+      logger.debug(`Retrying...`, retry + 1);
+      logger.debug('...');
       await new Promise((resolve) =>
         setTimeout(() => resolve(), timeoutInterval),
       );
@@ -214,11 +211,11 @@ const getSubscribedStoreData = async (
     encodedData = await dataLayer.getStoreData(storeId);
   }
 
-  log(encodedData?.keys_values);
+  logger.debug(encodedData?.keys_values);
 
   if (_.isEmpty(encodedData?.keys_values)) {
-    log(`Retrying...`, retry + 1);
-    log('...');
+    logger.debug(`Retrying...`, retry + 1);
+    logger.debug('...');
     await new Promise((resolve) =>
       setTimeout(() => resolve(), timeoutInterval),
     );
@@ -268,7 +265,7 @@ const getStoreIfUpdated = async (
 ) => {
   const rootResponse = await dataLayer.getRoot(storeId);
   if (rootResponse.confirmed && rootResponse.hash !== lastRootHash) {
-    log(`Updating orgUid ${storeId} with hash ${rootResponse.hash}`);
+    logger.debug(`Updating orgUid ${storeId} with hash ${rootResponse.hash}`);
     onUpdate(rootResponse.hash);
     await getStoreData(storeId, callback, onFail);
   }

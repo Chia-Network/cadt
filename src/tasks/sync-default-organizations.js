@@ -4,16 +4,14 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
+import { logger } from '../config/logger.cjs';
 import { getConfig } from '../utils/config-loader';
 const { USE_SIMULATOR } = getConfig().APP;
 
 import dotenv from 'dotenv';
 dotenv.config();
 
-import Debug from 'debug';
-Debug.enable('climate-warehouse:task:default-organizations');
-
-const log = Debug('climate-warehouse:task:default-organizations');
+logger.info('climate-warehouse:task:default-organizations');
 
 const task = new Task('sync-default-organizations', async () => {
   try {
@@ -23,7 +21,7 @@ const task = new Task('sync-default-organizations', async () => {
       Organization.subscribeToDefaultOrganizations();
     }
   } catch (error) {
-    log(`${error.message} retrying in 30 seconds`);
+    logger.error('Retrying in 30 seconds', error);
   }
 });
 

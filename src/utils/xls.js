@@ -3,6 +3,8 @@ import _ from 'lodash';
 import xlsx from 'node-xlsx';
 import stream from 'stream';
 
+import { logger } from '../config/logger.cjs';
+
 import { Staging, Organization, LabelUnit, ModelKeys } from './../models';
 
 import { sequelize } from '../database';
@@ -833,7 +835,10 @@ export const transformFullXslsToChangeList = async (
 
     return changeList;
   } catch (error) {
-    console.log(error);
+    logger.error(
+      'Error transformFullXslsToChangeList: ${error.message}',
+      error,
+    );
   }
 };
 
