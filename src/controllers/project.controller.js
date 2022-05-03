@@ -6,6 +6,8 @@ import { uuid as uuidv4 } from 'uuidv4';
 
 import { Staging, Project, Organization, ModelKeys } from '../models';
 
+import { logger } from '../config/logger.cjs';
+
 import {
   columnsToInclude,
   optionallyPaginatedResponse,
@@ -318,7 +320,7 @@ export const update = async (req, res) => {
       message: 'Error adding update to stage',
       error: err.message,
     });
-    console.log(err);
+    logger.error('Error adding update to stage', err);
   }
 };
 

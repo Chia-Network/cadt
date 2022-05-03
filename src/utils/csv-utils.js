@@ -4,6 +4,8 @@ import { uuid as uuidv4 } from 'uuidv4';
 import csv from 'csvtojson';
 import { Readable } from 'stream';
 
+import { logger } from '../config/logger.cjs';
+
 import { Organization, Project, Staging, Unit } from '../models';
 
 import {
@@ -114,7 +116,7 @@ export const createProjectRecordsFromCsv = (csvFile) => {
       .on('done', async () => {
         if (recordsToCreate.length) {
           await Staging.bulkCreate(recordsToCreate, {
-            logging: console.log,
+            logging: (msg) => logger.info(msg),
             updateOnDuplicate: undefined, // TODO MariusD: find a solution for this
           });
 

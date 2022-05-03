@@ -6,13 +6,12 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
+import { logger } from '../config/logger.cjs';
+
 const Spinner = cliSpinner.Spinner;
 dotenv.config();
 
-import Debug from 'debug';
-Debug.enable('climate-warehouse:task:sync-datalayer');
-
-const log = Debug('climate-warehouse:task:sync-datalayer');
+logger.info('climate-warehouse:task:sync-datalayer');
 
 const spinner = new Spinner('Waiting for Updates %s');
 spinner.setSpinnerString('|/-\\');
@@ -27,7 +26,7 @@ const task = new Task('sync-datalayer', async () => {
     spinner.start();
     datalayer.startDataLayerUpdatePolling();
   } catch (error) {
-    log(`${error.message} retrying in 60 seconds`);
+    logger.error('Retrying in 60 seconds', error);
   }
 });
 
