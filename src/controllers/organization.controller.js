@@ -11,7 +11,7 @@ import {
   assertCanDeleteOrg,
 } from '../utils/data-assertions';
 
-import { ModelKeys, Audit } from '../models';
+import { ModelKeys, Audit, Staging } from '../models';
 
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
@@ -90,7 +90,13 @@ export const resetHomeOrg = async (req, res) => {
     await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
-    await Organization.destroy({ where: { isHome: true } });
+    await Promise.all([
+      Organization.destroy({ where: { isHome: true } }),
+      Staging.destroy({
+        where: {},
+        truncate: true,
+      }),
+    ]);
 
     res.json({
       message: 'Your home organization was reset, please create a new one.',
