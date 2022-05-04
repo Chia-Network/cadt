@@ -21,14 +21,14 @@ logger.info('climate-warehouse:organizations');
 import ModelTypes from './organizations.modeltypes.cjs';
 
 class Organization extends Model {
-  static async getHomeOrg() {
+  static async getHomeOrg(includeAddress = true) {
     const myOrganization = await Organization.findOne({
-      attributes: ['orgUid', 'name', 'icon', 'subscribed'],
+      attributes: ['orgUid', 'name', 'icon', 'subscribed', 'registryId'],
       where: { isHome: true },
       raw: true,
     });
 
-    if (myOrganization) {
+    if (myOrganization && includeAddress) {
       myOrganization.xchAddress = await datalayer.getPublicAddress();
       return myOrganization;
     }

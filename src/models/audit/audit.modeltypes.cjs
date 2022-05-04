@@ -41,6 +41,9 @@ module.exports = {
     required: true,
     allowNull: false,
   },
+  comment: {
+    type: Sequelize.STRING,
+  },
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

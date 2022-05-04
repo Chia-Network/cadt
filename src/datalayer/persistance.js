@@ -164,7 +164,7 @@ export const getStoreData = async (storeId, rootHash) => {
 
     if (data.success) {
       if (!_.isEmpty(data.keys_values)) {
-        logger.info(`Downloaded Data: ${data}`);
+        logger.info(`Downloaded Data: ${JSON.stringify(data)}`);
       }
       return data;
     }

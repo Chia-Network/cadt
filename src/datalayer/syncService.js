@@ -71,21 +71,29 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
         storeData.keys_values.map(async (kv) => {
           const key = decodeHex(kv.key.replace(`${storeId}_`, ''));
           const modelKey = key.split('|')[0];
-          const value = JSON.parse(decodeHex(kv.value));
+          let value;
 
-          await ModelKeys[modelKey].create(value);
+          try {
+            value = JSON.parse(decodeHex(kv.value));
+          } catch (err) {
+            logger.error(`Cant parse json value: ${decodeHex(kv.value)}`);
+          }
 
-          const stagingUuid =
-            modelKey === 'unit'
-              ? value.warehouseUnitId
-              : modelKey === 'project'
-              ? value.warehouseProjectId
-              : undefined;
+          if (ModelKeys[modelKey]) {
+            await ModelKeys[modelKey].upsert(value);
 
-          if (stagingUuid) {
-            await Staging.destroy({
-              where: { uuid: stagingUuid },
-            });
+            const stagingUuid =
+              modelKey === 'unit'
+                ? value.warehouseUnitId
+                : modelKey === 'project'
+                ? value.warehouseProjectId
+                : undefined;
+
+            if (stagingUuid) {
+              await Staging.destroy({
+                where: { uuid: stagingUuid },
+              });
+            }
           }
         }),
       );
@@ -256,6 +264,19 @@ const getStoreData = async (storeId, callback, onFail, retry = 0) => {
   }
 };
 
+const getCurrentStoreData = async (storeId) => {
+  if (USE_SIMULATOR) {
+    return [];
+  }
+
+  const encodedData = await dataLayer.getStoreData(storeId);
+  if (encodedData) {
+    return decodeDataLayerResponse(encodedData);
+  } else {
+    return [];
+  }
+};
+
 const getStoreIfUpdated = async (
   storeId,
   lastRootHash,
@@ -282,4 +303,5 @@ export default {
   getStoreData,
   getStoreIfUpdated,
   POLLING_INTERVAL,
+  getCurrentStoreData,
 };

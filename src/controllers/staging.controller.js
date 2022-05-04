@@ -83,9 +83,13 @@ export const commit = async (req, res) => {
     await assertWalletIsSynced();
     await assertNoPendingCommits();
 
-    await Staging.pushToDataLayer(_.get(req, 'query.table', null));
+    await Staging.pushToDataLayer(
+      _.get(req, 'query.table', null),
+      _.get(req, 'body.comment', ''),
+    );
     res.json({ message: 'Staging Table committed to full node' });
   } catch (error) {
+    console.trace(error);
     res.status(400).json({
       message: 'Error commiting staging table',
       error: error.message,

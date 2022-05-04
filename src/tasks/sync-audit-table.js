@@ -49,7 +49,7 @@ const job = new SimpleIntervalJob(
 
 const syncOrganizationAudit = async (organization) => {
   try {
-    logger.info('Syncing Audit:', organization);
+    logger.info(`Syncing Audit: ${_.get(organization, 'name')}`);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     const lastRootSaved = await Audit.findOne({
@@ -107,19 +107,32 @@ const syncOrganizationAudit = async (organization) => {
       return;
     }
 
+    // 0x636f6d6d656e74 is hex for 'comment'
+    const comment = kvDiff.filter(
+      (diff) =>
+        diff.key === '636f6d6d656e74' || diff.key === '0x636f6d6d656e74',
+    );
+
     await Promise.all(
       kvDiff.map(async (diff) => {
         const key = decodeHex(diff.key);
         const modelKey = key.split('|')[0];
-        Audit.create({
-          orgUid: organization.orgUid,
-          registryId: organization.registryId,
-          rootHash: root2.root_hash,
-          type: diff.type,
-          table: modelKey,
-          change: decodeHex(diff.value),
-          onchainConfirmationTimeStamp: root2.timestamp,
-        });
+        if (key !== 'comment') {
+          Audit.create({
+            orgUid: organization.orgUid,
+            registryId: organization.registryId,
+            rootHash: root2.root_hash,
+            type: diff.type,
+            table: modelKey,
+            change: decodeHex(diff.value),
+            onchainConfirmationTimeStamp: root2.timestamp,
+            comment: _.get(
+              JSON.parse(decodeHex(_.get(comment, '[0].value', '7b7d'))),
+              'comment',
+              '',
+            ),
+          });
+        }
       }),
     );
   } catch (error) {
