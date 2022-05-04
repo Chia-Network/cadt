@@ -265,6 +265,10 @@ const getStoreData = async (storeId, callback, onFail, retry = 0) => {
 };
 
 const getCurrentStoreData = async (storeId) => {
+  if (USE_SIMULATOR) {
+    return [];
+  }
+
   const encodedData = await dataLayer.getStoreData(storeId);
   if (encodedData) {
     return decodeDataLayerResponse(encodedData);

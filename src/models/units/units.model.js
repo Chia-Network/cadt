@@ -314,13 +314,6 @@ class Unit extends Model {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
 
-    console.log(
-      '##############',
-      insertRecords,
-      updateRecords,
-      deleteChangeList,
-    );
-
     const primaryKeyMap = {
       unit: 'warehouseUnitId',
       labels: 'id',
