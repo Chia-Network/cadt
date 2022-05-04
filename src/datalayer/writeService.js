@@ -23,7 +23,7 @@ const createDataLayerStore = async () => {
 };
 
 const syncDataLayer = async (storeId, data, failedCallback) => {
-  logger.info(`Syncing ${storeId}: ${JSON.stringify(data)}`);
+  logger.info(`Syncing ${storeId}`);
   const changeList = Object.keys(data).map((key) => {
     return {
       action: 'insert',
@@ -71,7 +71,9 @@ const pushChangesWhenStoreIsAvailable = async (
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
 
     if (!hasUnconfirmedTransactions && storeExistAndIsConfirmed) {
-      logger.info('pushing to datalayer', { storeId, changeList });
+      logger.info(
+        `pushing to datalayer ${storeId} ${JSON.stringify(changeList)}`,
+      );
       const success = await dataLayer.pushChangeListToDataLayer(
         storeId,
         changeList,

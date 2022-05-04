@@ -8,6 +8,7 @@ import {
   stagingDeleteSchema,
   stagingGetQuerySchema,
   stagingRetrySchema,
+  commitStagingSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -27,7 +28,11 @@ StagingRouter.post('/retry', validator.body(stagingRetrySchema), (req, res) => {
   return StagingController.retryRecrod(req, res);
 });
 
-StagingRouter.post('/commit', StagingController.commit);
+StagingRouter.post(
+  '/commit',
+  validator.body(commitStagingSchema),
+  StagingController.commit,
+);
 
 // Empty entire stagin table
 StagingRouter.delete('/clean', StagingController.clean);

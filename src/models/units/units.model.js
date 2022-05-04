@@ -8,7 +8,7 @@ import {
   safeMirrorDbHandler,
   sanitizeSqliteFtsQuery,
 } from '../../database';
-import { Label, Issuance, Staging } from '../../models';
+import { Label, Issuance, Staging, Organization } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
 import { transformSerialNumberBlock } from '../../utils/helpers';
@@ -16,8 +16,10 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls';
+import { keyValueToChangeList } from '../../utils/datalayer-utils';
 import { unitsUpdateSchema } from '../../validations/index.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
+import dataLayer from '../../datalayer';
 
 const { Model } = Sequelize;
 
@@ -308,7 +310,7 @@ class Unit extends Model {
     };
   }
 
-  static async generateChangeListFromStagedData(stagedData) {
+  static async generateChangeListFromStagedData(stagedData, comment) {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
 
@@ -384,6 +386,18 @@ class Unit extends Model {
       primaryKeyMap,
     );
 
+    const { registryId } = await Organization.getHomeOrg();
+    const currentDataLayer = await dataLayer.getCurrentStoreData(registryId);
+    const currentComment = currentDataLayer.filter(
+      (kv) => kv.key === 'comment',
+    );
+    const isUpdateComment = currentComment.length > 0;
+    const commentChangeList = keyValueToChangeList(
+      'comment',
+      `{"comment": "${comment}"}`,
+      isUpdateComment,
+    );
+
     return {
       units: [
         ..._.get(insertChangeList, 'unit', []),
@@ -405,6 +419,7 @@ class Unit extends Model {
         ..._.get(updateChangeList, 'label_units', []),
         ..._.get(deletedAssociationsChangeList, 'label_units', []),
       ],
+      comment: commentChangeList,
     };
   }
 }

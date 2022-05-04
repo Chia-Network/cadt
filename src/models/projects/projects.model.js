@@ -20,6 +20,7 @@ import {
   Staging,
   Estimation,
   Rating,
+  Organization,
 } from '../';
 
 import {
@@ -34,6 +35,8 @@ import {
   formatModelAssociationName,
   getDeletedItems,
 } from '../../utils/model-utils.js';
+import { keyValueToChangeList } from '../../utils/datalayer-utils';
+import dataLayer from '../../datalayer';
 
 class Project extends Model {
   static stagingTableName = 'Projects';
@@ -291,7 +294,7 @@ class Project extends Model {
     };
   }
 
-  static async generateChangeListFromStagedData(stagedData) {
+  static async generateChangeListFromStagedData(stagedData, comment) {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Projects');
 
@@ -349,6 +352,20 @@ class Project extends Model {
       primaryKeyMap,
     );
 
+    const { registryId } = await Organization.getHomeOrg();
+    const currentDataLayer = await dataLayer.getCurrentStoreData(registryId);
+    const currentComment = currentDataLayer.filter(
+      (kv) => kv.key === 'comment',
+    );
+    const isUpdateComment = currentComment.length > 0;
+    const commentChangeList = keyValueToChangeList(
+      'comment',
+      `{"comment": "${comment}"}`,
+      isUpdateComment,
+    );
+
+    console.log('#############', commentChangeList);
+
     return {
       projects: [
         ..._.get(insertChangeList, 'project', []),
@@ -390,6 +407,7 @@ class Project extends Model {
         ..._.get(updateChangeList, 'projectRatings', []),
         ..._.get(deletedAssociationsChangeList, 'projectRatings', []),
       ],
+      comment: commentChangeList,
     };
   }
 }
