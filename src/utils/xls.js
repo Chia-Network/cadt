@@ -486,22 +486,15 @@ export const tableDataFromXlsx = (xlsx, model) => {
       // todo clean this up
       dataModel = LabelUnit;
     }
-
-    const columnNames = data.shift();
     data.forEach((dataRow) => {
       if (stagingData[dataModel.name] == null) {
         stagingData[dataModel.name] = { model: dataModel, data: [] };
       }
 
       const row = {};
-      dataRow.forEach((columnData, index) => {
+      dataRow.forEach((columnData) => {
         if (columnData === 'null') {
           columnData = null;
-        }
-
-        // Ignore virtual fields
-        if (model.virtualFieldList[columnNames[index]] == null) {
-          row[columnNames[index]] = columnData;
         }
       });
 

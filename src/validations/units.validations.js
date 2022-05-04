@@ -1,32 +1,9 @@
 import Joi from 'joi';
-import { transformSerialNumberBlock } from '../utils/helpers';
+
 import { issuanceSchema } from './issuances.validation';
 import { labelSchema } from './labels.validations';
 
 import { pickListValidation } from '../utils/validation-utils';
-
-const customSerialNumberValidator = (obj, helper) => {
-  const { serialNumberBlock, serialNumberPattern } = obj;
-
-  // eslint-disable-next-line no-unused-vars
-  const [_, __, unitCount] = transformSerialNumberBlock(
-    serialNumberBlock,
-    new RegExp(serialNumberPattern),
-  );
-
-  if (!unitCount) {
-    return helper.message(
-      `serialNumberBlock could not be parsed, invalid pattern found`,
-    );
-  }
-
-  if (unitCount < 1) {
-    return helper.message(
-      `serialNumberBlock must have a positive non-zero number, received ${unitCount}`,
-    );
-  }
-  return obj;
-};
 
 const unitsBaseSchema = {
   // warehouseUnitId - derived upon unit creation
@@ -40,10 +17,9 @@ const unitsBaseSchema = {
   inCountryJurisdictionOfOwner: Joi.string().optional(),
   // must be in the form ABC123-XYZ456
   serialNumberBlock: Joi.string().required(),
-  serialNumberPattern: Joi.string().required().messages({
-    'any.required':
-      'serialNumberPattern is required. This pattern must be a regex expression with 2 match groups to match block start and block end. Example: [.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$ that matches ABC1000-ABC1010 TODO: ADD LINK HERE FOR DOCUMENTATION',
-  }),
+  unitBlockStart: Joi.string().required(),
+  unitBlockEnd: Joi.string().required(),
+  unitCount: Joi.number().integer().required(),
   // match 4 digit year
   vintageYear: Joi.number().integer().min(1900).max(3000).required(),
   unitType: Joi.string().custom(pickListValidation('unitType')).required(),
@@ -72,7 +48,7 @@ const unitsBaseSchema = {
 
 export const unitsPostSchema = Joi.object({
   ...unitsBaseSchema,
-}).custom(customSerialNumberValidator);
+});
 
 export const unitsGetQuerySchema = Joi.object()
   .keys({
@@ -89,7 +65,7 @@ export const unitsGetQuerySchema = Joi.object()
 export const unitsUpdateSchema = Joi.object({
   warehouseUnitId: Joi.string().required(),
   ...unitsBaseSchema,
-}).custom(customSerialNumberValidator);
+});
 
 export const unitsDeleteSchema = Joi.object({
   warehouseUnitId: Joi.string().required(),
