@@ -5,14 +5,15 @@ import { Organization, Audit } from '../models';
 import datalayer from '../datalayer';
 import { decodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
+import { logger } from '../config/logger.cjs';
 
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
-import Debug from 'debug';
-Debug.enable('climate-warehouse:task:audit');
-const log = Debug('climate-warehouse:datalayer:audit');
+
+logger.info('climate-warehouse:task:audit');
+
 dotenv.config();
 import { getConfig } from '../utils/config-loader';
 
@@ -23,7 +24,7 @@ const task = new Task('sync-audit', async () => {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    log('Syncing Audit Information');
+    logger.info('Syncing Audit Information');
     if (!USE_SIMULATOR) {
       const organizations = await Organization.findAll({
         where: { subscribed: true },
@@ -36,7 +37,7 @@ const task = new Task('sync-audit', async () => {
       );
     }
   } catch (error) {
-    log(`${error.message} retrying in 30 seconds`);
+    logger.error(`Retrying in 30 seconds`, error);
   }
 });
 
@@ -48,7 +49,7 @@ const job = new SimpleIntervalJob(
 
 const syncOrganizationAudit = async (organization) => {
   try {
-    log('Syncing Audit:', organization.name);
+    logger.info(`Syncing Audit: ${_.get(organization, 'name')}`);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     const lastRootSaved = await Audit.findOne({
@@ -106,23 +107,36 @@ const syncOrganizationAudit = async (organization) => {
       return;
     }
 
+    // 0x636f6d6d656e74 is hex for 'comment'
+    const comment = kvDiff.filter(
+      (diff) =>
+        diff.key === '636f6d6d656e74' || diff.key === '0x636f6d6d656e74',
+    );
+
     await Promise.all(
       kvDiff.map(async (diff) => {
         const key = decodeHex(diff.key);
         const modelKey = key.split('|')[0];
-        Audit.create({
-          orgUid: organization.orgUid,
-          registryId: organization.registryId,
-          rootHash: root2.root_hash,
-          type: diff.type,
-          table: modelKey,
-          change: decodeHex(diff.value),
-          onchainConfirmationTimeStamp: root2.timestamp,
-        });
+        if (key !== 'comment') {
+          Audit.create({
+            orgUid: organization.orgUid,
+            registryId: organization.registryId,
+            rootHash: root2.root_hash,
+            type: diff.type,
+            table: modelKey,
+            change: decodeHex(diff.value),
+            onchainConfirmationTimeStamp: root2.timestamp,
+            comment: _.get(
+              JSON.parse(decodeHex(_.get(comment, '[0].value', '7b7d'))),
+              'comment',
+              '',
+            ),
+          });
+        }
       }),
     );
   } catch (error) {
-    log(error);
+    logger.error('Error syncing org audit', error);
   }
 };
 

@@ -18,6 +18,7 @@ import CreateEstimationTable from './20220127190529-create-estimation-table';
 import CreateAuditTable from './20220222204323-create-audit-table';
 import CreateMetaTable from './20220119211024-create-meta-table';
 import CreateGoveranceTable from './20220315134151-create-governance-table';
+import AddCommentColumnToDataModelTables from './20220428144558-add-comment-column-to-all-datamodels';
 
 export const migrations = [
   {
@@ -103,5 +104,9 @@ export const migrations = [
   {
     migration: CreateGoveranceTable,
     name: '20220315134151-create-governance-table',
+  },
+  {
+    migration: AddCommentColumnToDataModelTables,
+    name: '20220428144558-add-comment-column-to-all-datamodels',
   },
 ];

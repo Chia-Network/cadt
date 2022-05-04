@@ -7,6 +7,7 @@ import { Meta } from '../../models';
 import datalayer from '../../datalayer';
 import { keyValueToChangeList } from '../../utils/datalayer-utils';
 import { getConfig } from '../../utils/config-loader';
+import { logger } from '../../config/logger.cjs';
 
 const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
   getConfig().GOVERNANCE;
@@ -65,7 +66,7 @@ class Governance extends Model {
         updates.map(async (update) => Governance.upsert(update)),
       );
     } catch (error) {
-      console.log(error.message);
+      logger.error('Error getting subscribed store data', error);
     }
   }
 
@@ -104,7 +105,7 @@ class Governance extends Model {
     );
 
     const rollbackChangesIfFailed = async () => {
-      console.log('Reverting Goverance Records');
+      logger.info('Reverting Goverance Records');
       await Governance.destroy({
         where: {},
         truncate: true,

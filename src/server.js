@@ -4,16 +4,15 @@ import 'regenerator-runtime/runtime.js';
 import rootRouter from './routes';
 import http from 'http';
 import { Server } from 'socket.io';
-import Debug from 'debug';
 import { connection } from './websocket';
 import { getConfig } from './utils/config-loader';
+import { logger } from './config/logger.cjs';
 
 import dotenv from 'dotenv';
 
 dotenv.config();
-Debug.enable('climate-warehouse:*');
 
-const debug = Debug('climate-warehouse:server');
+logger.info('climate-warehouse:server');
 
 const port = getConfig().APP.CW_PORT || 3030;
 const server = http.createServer(rootRouter);
@@ -54,7 +53,7 @@ function onError(error) {
 function onListening() {
   const addr = server.address();
   const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
-  debug('Listening on ' + bind);
+  logger.info('Listening on ' + bind);
 }
 
 export default rootRouter;

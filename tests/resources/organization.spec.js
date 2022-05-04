@@ -35,8 +35,6 @@ describe('Orgainzation Resource CRUD', function () {
     it('Organization can be retreived from datalayer', async function () {
       const response = await supertest(app).get(`/v1/organizations`).send();
 
-      console.log('!!!!', response.body);
-
       expect(Object.values(response.body)[0].name).to.equal('My Org');
       expect(Object.values(response.body)[0].icon).to.equal(
         'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',

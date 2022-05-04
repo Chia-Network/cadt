@@ -4,6 +4,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
+import { logger } from '../config/logger.cjs';
+
 import defaultConfig from './defaultConfig.json';
 
 export const getConfig = _.memoize(() => {
@@ -37,9 +39,9 @@ export const getConfig = _.memoize(() => {
 
       return yml;
     } catch (e) {
-      console.log(e, `Config file not found at ${configFile}`);
+      logger.error(`Config file not found at ${configFile}`, e);
     }
   } catch (e) {
-    console.log(`Config file not found at ${configFile}`);
+    logger.error(`Config file not found at ${configFile}`, e);
   }
 });

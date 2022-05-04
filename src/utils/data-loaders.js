@@ -5,6 +5,7 @@ import request from 'request-promise';
 import { Governance } from '../models';
 import PickListStub from '../models/governance/governance.stub.json';
 import { getConfig } from '../utils/config-loader';
+import { logger } from '../config/logger.cjs';
 
 const { USE_SIMULATOR, CHIA_NETWORK } = getConfig().APP;
 const { TESTNET_DEFAULT_ORGANIZATIONS } = getConfig().TESTNET;
@@ -56,7 +57,7 @@ export const serverAvailable = async (server, port) => {
     return true;
   } catch (err) {
     if (JSON.stringify(err).includes('Python')) {
-      console.log('SERVER IS AVAILABLE', server);
+      logger.info(`SERVER IS AVAILABLE ${server}`);
       return true;
     } else {
       return false;

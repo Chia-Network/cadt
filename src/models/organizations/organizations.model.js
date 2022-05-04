@@ -6,6 +6,8 @@ import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
 
+import { logger } from '../../config/logger.cjs';
+
 import {
   getDefaultOrganizationList,
   serverAvailable,
@@ -14,21 +16,19 @@ import {
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR } = getConfig().APP;
 
-import Debug from 'debug';
-Debug.enable('climate-warehouse:organizations');
-const log = Debug('climate-warehouse:organizations');
+logger.info('climate-warehouse:organizations');
 
 import ModelTypes from './organizations.modeltypes.cjs';
 
 class Organization extends Model {
-  static async getHomeOrg() {
+  static async getHomeOrg(includeAddress = true) {
     const myOrganization = await Organization.findOne({
-      attributes: ['orgUid', 'name', 'icon', 'subscribed'],
+      attributes: ['orgUid', 'name', 'icon', 'subscribed', 'registryId'],
       where: { isHome: true },
       raw: true,
     });
 
-    if (myOrganization) {
+    if (myOrganization && includeAddress) {
       myOrganization.xchAddress = await datalayer.getPublicAddress();
       return myOrganization;
     }
@@ -71,7 +71,7 @@ class Organization extends Model {
     const registryVersionId = await datalayer.createDataLayerStore();
 
     const revertOrganizationIfFailed = async () => {
-      console.log('Reverting Failed Organization');
+      logger.info('Reverting Failed Organization');
       await Organization.destroy({ where: { orgUid: newOrganizationId } });
     };
 
@@ -105,7 +105,7 @@ class Organization extends Model {
     });
 
     const onConfirm = () => {
-      log('Organization confirmed, you are ready to go');
+      logger.info('Organization confirmed, you are ready to go');
       Organization.update(
         {
           subscribed: true,
@@ -115,7 +115,7 @@ class Organization extends Model {
     };
 
     if (!USE_SIMULATOR) {
-      log('Waiting for New Organization to be confirmed');
+      logger.info('Waiting for New Organization to be confirmed');
       datalayer.getStoreData(
         newRegistryId,
         onConfirm,
@@ -136,10 +136,10 @@ class Organization extends Model {
   // eslint-disable-next-line
   static importOrganization = async (orgUid, ip, port) => {
     try {
-      log('Subscribing to', orgUid, ip, port);
+      logger.info('Subscribing to', orgUid, ip, port);
       const orgData = await datalayer.getSubscribedStoreData(orgUid, ip, port);
 
-      log(orgData);
+      logger.info(orgData);
 
       if (!orgData.registryId) {
         throw new Error(
@@ -147,7 +147,7 @@ class Organization extends Model {
         );
       }
 
-      log('IMPORTING REGISTRY: ', orgData.registryId);
+      logger.info('IMPORTING REGISTRY: ', orgData.registryId);
 
       const registryData = await datalayer.getSubscribedStoreData(
         orgData.registryId,
@@ -159,11 +159,11 @@ class Organization extends Model {
         throw new Error('Organization has no registry, can not import');
       }
 
-      log('IMPORTING REGISTRY V1: ', registryData.v1);
+      logger.info('IMPORTING REGISTRY V1: ', registryData.v1);
 
       await datalayer.subscribeToStoreOnDataLayer(registryData.v1, ip, port);
 
-      log({
+      logger.info({
         orgUid,
         name: orgData.name,
         icon: orgData.icon,
@@ -181,7 +181,7 @@ class Organization extends Model {
         isHome: false,
       });
     } catch (error) {
-      log(error.message);
+      logger.info(error.message);
     }
   };
 
@@ -237,7 +237,7 @@ class Organization extends Model {
           };
 
           const onFail = () => {
-            log(`Unable to sync metadata from ${organization.orgUid}`);
+            logger.info(`Unable to sync metadata from ${organization.orgUid}`);
           };
 
           datalayer.getStoreIfUpdated(
@@ -250,7 +250,7 @@ class Organization extends Model {
         }),
       );
     } catch (error) {
-      log(error);
+      logger.info(error);
     }
   };
 
@@ -258,7 +258,7 @@ class Organization extends Model {
     try {
       const defaultOrgs = await getDefaultOrganizationList();
       if (!Array.isArray(defaultOrgs)) {
-        log(
+        logger.info(
           'ERROR: Default Organization List Not found, This instance may be missing data from default orgs',
         );
       }
@@ -277,7 +277,7 @@ class Organization extends Model {
         }),
       );
     } catch (error) {
-      log(error);
+      logger.info(error);
     }
   };
 }

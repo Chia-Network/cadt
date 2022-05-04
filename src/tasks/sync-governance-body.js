@@ -5,28 +5,27 @@ import {
   assertWalletIsSynced,
 } from '../utils/data-assertions';
 import { getConfig } from '../utils/config-loader';
+import { logger } from '../config/logger.cjs';
+
 const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
   getConfig().GOVERNANCE;
 
 import dotenv from 'dotenv';
 dotenv.config();
 
-import Debug from 'debug';
-Debug.enable('climate-warehouse:task:governance');
-
-const log = Debug('climate-warehouse:task:governance');
+logger.info('climate-warehouse:task:governance');
 
 const task = new Task('sync-governance-meta', async () => {
   try {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    log('Syncing governance data');
+    logger.info('Syncing governance data');
     if (GOVERANCE_BODY_ID && GOVERNANCE_BODY_IP && GOVERNANCE_BODY_PORT) {
       Governance.sync();
     }
   } catch (error) {
-    log(`${error.message} retrying in 24 hours`);
+    logger.error('Retrying in 24 hours', error);
   }
 });
 
