@@ -216,15 +216,21 @@ class Staging extends Model {
       stagedRecords = await Staging.findAll({ raw: true });
     }
 
+    console.log('!!!!!!!!!!!!!!!', 1);
+
     const unitsChangeList = await Unit.generateChangeListFromStagedData(
       stagedRecords,
       comment,
     );
 
+    console.log('!!!!!!!!!!!!!!!', 2);
+
     const projectsChangeList = await Project.generateChangeListFromStagedData(
       stagedRecords,
       comment,
     );
+
+    console.log('!!!!!!!!!!!!!!!', 3);
 
     const unifiedChangeList = {
       ...projectsChangeList,

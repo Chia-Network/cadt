@@ -266,7 +266,11 @@ const getStoreData = async (storeId, callback, onFail, retry = 0) => {
 
 const getCurrentStoreData = async (storeId) => {
   const encodedData = await dataLayer.getStoreData(storeId);
-  return decodeDataLayerResponse(encodedData);
+  if (encodedData) {
+    return decodeDataLayerResponse(encodedData);
+  } else {
+    return [];
+  }
 };
 
 const getStoreIfUpdated = async (

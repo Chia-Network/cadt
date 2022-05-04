@@ -21,6 +21,7 @@ export const getLastCreatedStagingRecord = async () => {
 export const commitStagingRecords = async () => {
   const results = await supertest(app).post('/v1/staging/commit');
 
+  console.log(results.body);
   expect(results.statusCode).to.equal(200);
   expect(results.body).to.deep.equal({
     message: 'Staging Table committed to full node',
