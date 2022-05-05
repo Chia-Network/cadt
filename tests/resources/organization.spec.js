@@ -60,4 +60,19 @@ describe('Orgainzation Resource CRUD', function () {
       );
     }).timeout(TEST_WAIT_TIME * 10);
   });
+
+  describe('PUT - Resyncs an organization', function () {
+    it('resyncs organization', async function () {
+      // add a project to the staging table
+      await testFixtures.createNewProject();
+
+      const response = await supertest(app).put(`/v1/organizations/resync`).send({
+        orgUid: '1',
+      });
+
+      expect(response.body.message).to.equal(
+        'Resyncing organization completed',
+      );
+    }).timeout(TEST_WAIT_TIME * 10);
+  });
 });
