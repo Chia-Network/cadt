@@ -5,10 +5,11 @@ import joiExpress from 'express-joi-validation';
 
 import { OrganizationController } from '../../../controllers';
 import {
-  newOrganizationSchema,
-  unsubscribeOrganizationSchema,
-  subscribeOrganizationSchema,
   importOrganizationSchema,
+  newOrganizationSchema,
+  resyncOrganizationSchema,
+  subscribeOrganizationSchema,
+  unsubscribeOrganizationSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -63,6 +64,14 @@ OrganizationRouter.put(
   validator.body(unsubscribeOrganizationSchema),
   (req, res) => {
     return OrganizationController.unsubscribeToOrganization(req, res);
+  },
+);
+
+OrganizationRouter.put(
+  '/resync',
+  validator.body(resyncOrganizationSchema),
+  (req, res) => {
+    return OrganizationController.resyncOrganization(req, res);
   },
 );
 

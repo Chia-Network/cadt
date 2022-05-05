@@ -235,3 +235,45 @@ export const unsubscribeToOrganization = async (req, res) => {
     }
   }
 };
+
+export const resyncOrganization = async (req, res) => {
+  let transaction;
+  try {
+    await assertIfReadOnlyMode();
+    await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    transaction = await sequelize.transaction();
+
+    await Organization.update(
+      { registryHash: '0' },
+      { where: { orgUid: req.body.orgUid } },
+    );
+
+    await Promise.all([
+      ...Object.keys(ModelKeys).map(
+        async (key) =>
+          await ModelKeys[key].destroy({ where: { orgUid: req.body.orgUid } }),
+      ),
+      Audit.destroy({ where: { orgUid: req.body.orgUid } }),
+    ]);
+
+    await transaction.commit();
+
+    return res.json({
+      message:
+        'Resyncing organization completed',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error resyncing organization',
+      error: error.message,
+    });
+
+    if (transaction) {
+      await transaction.rollback();
+    }
+  }
+};
