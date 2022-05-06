@@ -1,0 +1,448 @@
+From ba45794bd038de2073c82336a7434af60bd6ed13 Mon Sep 17 00:00:00 2001
+From: Michael Taylor <mtaylor@michaeltaylor.dev>
+Date: Thu, 5 May 2022 15:49:00 -0400
+Subject: [PATCH] feat: assert that chia network matches cw config file
+
+---
+ src/controllers/governance.controller.js   |  8 ----
+ src/controllers/organization.controller.js | 16 --------
+ src/controllers/project.controller.js      |  9 ----
+ src/controllers/staging.controller.js      |  4 --
+ src/controllers/units.controller.js        | 10 -----
+ src/datalayer/fullNode.js                  | 48 ++++++++++++++++++++++
+ src/datalayer/index.js                     |  2 +
+ src/routes/index.js                        | 17 ++++++++
+ src/utils/data-assertions.js               | 14 ++++++-
+ src/utils/datalayer-utils.js               |  1 -
+ 10 files changed, 80 insertions(+), 49 deletions(-)
+ create mode 100644 src/datalayer/fullNode.js
+
+diff --git a/src/controllers/governance.controller.js b/src/controllers/governance.controller.js
+index 904a285..4fd0264 100644
+--- a/src/controllers/governance.controller.js
++++ b/src/controllers/governance.controller.js
+@@ -5,8 +5,6 @@ import { Governance } from '../models';
+ import {
+   assertIsActiveGovernanceBody,
+   assertIfReadOnlyMode,
+-  assertDataLayerAvailable,
+-  assertWalletIsAvailable,
+   assertWalletIsSynced,
+   assertCanBeGovernanceBody,
+ } from '../utils/data-assertions';
+@@ -53,8 +51,6 @@ export const findPickList = async (req, res) => {
+ export const createGoveranceBody = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+     await assertCanBeGovernanceBody();
+ 
+@@ -76,8 +72,6 @@ export const createGoveranceBody = async (req, res) => {
+ export const setDefaultOrgList = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+     await assertIsActiveGovernanceBody();
+ 
+@@ -103,8 +97,6 @@ export const setDefaultOrgList = async (req, res) => {
+ export const setPickList = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+     await assertIsActiveGovernanceBody();
+ 
+diff --git a/src/controllers/organization.controller.js b/src/controllers/organization.controller.js
+index b686a12..3ed8288 100644
+--- a/src/controllers/organization.controller.js
++++ b/src/controllers/organization.controller.js
+@@ -5,8 +5,6 @@ import { Organization } from '../models/organizations';
+ import {
+   assertHomeOrgExists,
+   assertWalletIsSynced,
+-  assertWalletIsAvailable,
+-  assertDataLayerAvailable,
+   assertIfReadOnlyMode,
+   assertCanDeleteOrg,
+ } from '../utils/data-assertions';
+@@ -20,8 +18,6 @@ export const findAll = async (req, res) => {
+ export const createV2 = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+ 
+     const myOrganization = await Organization.getHomeOrg();
+@@ -57,8 +53,6 @@ export const createV2 = async (req, res) => {
+ export const create = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+ 
+     const myOrganization = await Organization.getHomeOrg();
+@@ -86,8 +80,6 @@ export const create = async (req, res) => {
+ export const resetHomeOrg = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+ 
+     await Promise.all([
+@@ -113,8 +105,6 @@ export const resetHomeOrg = async (req, res) => {
+ export const importOrg = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+ 
+     const { orgUid, ip, port } = req.body;
+@@ -137,8 +127,6 @@ export const importOrg = async (req, res) => {
+ export const subscribeToOrganization = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+     await assertHomeOrgExists();
+ 
+@@ -159,8 +147,6 @@ export const deleteImportedOrg = async (req, res) => {
+   let transaction;
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+     await assertHomeOrgExists();
+     await assertCanDeleteOrg(req.body.orgUid);
+@@ -198,8 +184,6 @@ export const unsubscribeToOrganization = async (req, res) => {
+   let transaction;
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+     await assertHomeOrgExists();
+ 
+diff --git a/src/controllers/project.controller.js b/src/controllers/project.controller.js
+index c878d02..36d9924 100644
+--- a/src/controllers/project.controller.js
++++ b/src/controllers/project.controller.js
+@@ -21,7 +21,6 @@ import {
+   assertHomeOrgExists,
+   assertNoPendingCommits,
+   assertRecordExistance,
+-  assertDataLayerAvailable,
+   assertIfReadOnlyMode,
+ } from '../utils/data-assertions';
+ 
+@@ -38,7 +37,6 @@ import { formatModelAssociationName } from '../utils/model-utils.js';
+ export const create = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertHomeOrgExists();
+     await assertNoPendingCommits();
+ 
+@@ -105,7 +103,6 @@ export const create = async (req, res) => {
+ 
+ export const findAll = async (req, res) => {
+   try {
+-    await assertDataLayerAvailable();
+     let { page, limit, search, orgUid, columns, xls } = req.query;
+     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
+ 
+@@ -190,8 +187,6 @@ export const findAll = async (req, res) => {
+ 
+ export const findOne = async (req, res) => {
+   try {
+-    await assertDataLayerAvailable();
+-
+     const query = {
+       where: { warehouseProjectId: req.query.warehouseProjectId },
+       include: Project.getAssociatedModels().map(
+@@ -211,7 +206,6 @@ export const findOne = async (req, res) => {
+ export const updateFromXLS = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertHomeOrgExists();
+     await assertNoPendingCommits();
+ 
+@@ -242,7 +236,6 @@ export const updateFromXLS = async (req, res) => {
+ export const update = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertHomeOrgExists();
+     await assertNoPendingCommits();
+ 
+@@ -327,7 +320,6 @@ export const update = async (req, res) => {
+ export const destroy = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertHomeOrgExists();
+     await assertNoPendingCommits();
+ 
+@@ -359,7 +351,6 @@ export const destroy = async (req, res) => {
+ export const batchUpload = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertHomeOrgExists();
+     await assertNoPendingCommits();
+ 
+diff --git a/src/controllers/staging.controller.js b/src/controllers/staging.controller.js
+index 5e9f907..f8c4f3d 100644
+--- a/src/controllers/staging.controller.js
++++ b/src/controllers/staging.controller.js
+@@ -12,8 +12,6 @@ import {
+   assertHomeOrgExists,
+   assertNoPendingCommits,
+   assertWalletIsSynced,
+-  assertWalletIsAvailable,
+-  assertDataLayerAvailable,
+   assertIfReadOnlyMode,
+   assertStagingTableNotEmpty,
+ } from '../utils/data-assertions';
+@@ -78,8 +76,6 @@ export const commit = async (req, res) => {
+     await assertIfReadOnlyMode();
+     await assertStagingTableNotEmpty();
+     await assertHomeOrgExists();
+-    await assertDataLayerAvailable();
+-    await assertWalletIsAvailable();
+     await assertWalletIsSynced();
+     await assertNoPendingCommits();
+ 
+diff --git a/src/controllers/units.controller.js b/src/controllers/units.controller.js
+index f30adbd..2dcb906 100644
+--- a/src/controllers/units.controller.js
++++ b/src/controllers/units.controller.js
+@@ -21,7 +21,6 @@ import {
+   assertHomeOrgExists,
+   assertNoPendingCommits,
+   assertRecordExistance,
+-  assertDataLayerAvailable,
+   assertIfReadOnlyMode,
+ } from '../utils/data-assertions';
+ 
+@@ -39,7 +38,6 @@ import { formatModelAssociationName } from '../utils/model-utils.js';
+ export const create = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertNoPendingCommits();
+     await assertHomeOrgExists();
+ 
+@@ -112,8 +110,6 @@ export const create = async (req, res) => {
+ 
+ export const findAll = async (req, res) => {
+   try {
+-    await assertDataLayerAvailable();
+-
+     let { page, limit, columns, orgUid, search, xls } = req.query;
+     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
+ 
+@@ -201,7 +197,6 @@ export const findAll = async (req, res) => {
+ 
+ export const findOne = async (req, res) => {
+   try {
+-    await assertDataLayerAvailable();
+     res.json(
+       await Unit.findByPk(req.query.warehouseUnitId, {
+         include: Unit.getAssociatedModels().map((association) => {
+@@ -227,7 +222,6 @@ export const findOne = async (req, res) => {
+ export const updateFromXLS = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertHomeOrgExists();
+     await assertNoPendingCommits();
+ 
+@@ -255,7 +249,6 @@ export const updateFromXLS = async (req, res) => {
+ export const update = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertHomeOrgExists();
+     await assertNoPendingCommits();
+ 
+@@ -341,7 +334,6 @@ export const update = async (req, res) => {
+ export const destroy = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertHomeOrgExists();
+     await assertNoPendingCommits();
+ 
+@@ -372,7 +364,6 @@ export const destroy = async (req, res) => {
+ export const split = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertHomeOrgExists();
+     await assertNoPendingCommits();
+ 
+@@ -454,7 +445,6 @@ export const split = async (req, res) => {
+ export const batchUpload = async (req, res) => {
+   try {
+     await assertIfReadOnlyMode();
+-    await assertDataLayerAvailable();
+     await assertHomeOrgExists();
+     await assertNoPendingCommits();
+ 
+diff --git a/src/datalayer/fullNode.js b/src/datalayer/fullNode.js
+new file mode 100644
+index 0000000..bf9663b
+--- /dev/null
++++ b/src/datalayer/fullNode.js
+@@ -0,0 +1,48 @@
++import fs from 'fs';
++import path from 'path';
++import request from 'request-promise';
++import os from 'os';
++import { getConfig } from '../utils/config-loader';
++
++process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
++
++const rpcUrl = getConfig().APP.WALLET_URL;
++
++const getBaseOptions = () => {
++  const homeDir = os.homedir();
++  const certFile = path.resolve(
++    `${homeDir}/.chia/mainnet/config/ssl/full_node/private_full_node.crt`,
++  );
++  const keyFile = path.resolve(
++    `${homeDir}/.chia/mainnet/config/ssl/full_node/private_full_node.key`,
++  );
++
++  const baseOptions = {
++    method: 'POST',
++    cert: fs.readFileSync(certFile),
++    key: fs.readFileSync(keyFile),
++  };
++
++  return baseOptions;
++};
++
++const getActiveNetwork = async () => {
++  const options = {
++    url: `${rpcUrl}/get_network_info`,
++    body: JSON.stringify({}),
++  };
++
++  const response = await request(Object.assign({}, getBaseOptions(), options));
++
++  const data = JSON.parse(response);
++
++  if (data.success) {
++    return data;
++  }
++
++  return false;
++};
++
++export default {
++  getActiveNetwork,
++};
+diff --git a/src/datalayer/index.js b/src/datalayer/index.js
+index dcb66d4..1780969 100644
+--- a/src/datalayer/index.js
++++ b/src/datalayer/index.js
+@@ -1,9 +1,11 @@
+ import writeService from './writeService';
+ import syncService from './syncService';
+ import wallet from './wallet';
++import fullNode from './fullNode';
+ 
+ export default {
+   ...writeService,
+   ...syncService,
+   ...wallet,
++  ...fullNode,
+ };
+diff --git a/src/routes/index.js b/src/routes/index.js
+index e1152b9..13c3ec9 100644
+--- a/src/routes/index.js
++++ b/src/routes/index.js
+@@ -12,6 +12,11 @@ import { V1Router } from './v1';
+ import { sequelize } from '../database';
+ import { getConfig } from '../utils/config-loader';
+ import { logger } from '../config/logger.cjs';
++import {
++  assertChiaNetworkMatchInConfiguration,
++  assertDataLayerAvailable,
++  assertWalletIsAvailable,
++} from '../utils/data-assertions';
+ 
+ const { API_KEY, READ_ONLY } = getConfig().APP;
+ const app = express();
+@@ -21,6 +26,18 @@ app.use(express.json());
+ app.use(bodyParser.urlencoded({ extended: false }));
+ app.use(fileUpload());
+ 
++// Common assertions on every endpoint
++app.use(async function (req, res, next) {
++  try {
++    await assertChiaNetworkMatchInConfiguration();
++    await assertDataLayerAvailable();
++    await assertWalletIsAvailable();
++    next();
++  } catch (err) {
++    res.status(404).json({ message: err.message });
++  }
++});
++
+ // Add optional API key if set in .env file
+ app.use(function (req, res, next) {
+   if (API_KEY && API_KEY !== '') {
+diff --git a/src/utils/data-assertions.js b/src/utils/data-assertions.js
+index 07c9f62..39d219b 100644
+--- a/src/utils/data-assertions.js
++++ b/src/utils/data-assertions.js
+@@ -8,7 +8,19 @@ import datalayer from '../datalayer';
+ import { formatModelAssociationName } from './model-utils.js';
+ import { getConfig } from '../utils/config-loader';
+ 
+-const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR } = getConfig().APP;
++const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR, CHIA_NETWORK } =
++  getConfig().APP;
++
++export const assertChiaNetworkMatchInConfiguration = async () => {
++  const networkInfo = await datalayer.getActiveNetwork();
++  const network = _.get(networkInfo, 'network_name', '');
++
++  if (!network.includes(CHIA_NETWORK)) {
++    throw new Error(
++      `Your node is on ${network} but your climate warehouse is set to ${CHIA_NETWORK}, please change your config so they match`,
++    );
++  }
++};
+ 
+ export const assertCanBeGovernanceBody = async () => {
+   if (IS_GOVERNANCE_BODY !== 'true') {
+diff --git a/src/utils/datalayer-utils.js b/src/utils/datalayer-utils.js
+index 4cea506..6ff77ad 100644
+--- a/src/utils/datalayer-utils.js
++++ b/src/utils/datalayer-utils.js
+@@ -7,7 +7,6 @@ export const decodeHex = (str) => {
+ };
+ 
+ export const decodeDataLayerResponse = (data) => {
+-  console.log('$$$$$$$$$$$$$$$$$', data);
+   return data.keys_values.map((item) => ({
+     key: decodeHex(item.key),
+     value: decodeHex(item.value),
+-- 
+2.34.1.windows.1
+

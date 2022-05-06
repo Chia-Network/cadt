@@ -12,13 +12,15 @@ const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR, CHIA_NETWORK } =
   getConfig().APP;
 
 export const assertChiaNetworkMatchInConfiguration = async () => {
-  const networkInfo = await datalayer.getActiveNetwork();
-  const network = _.get(networkInfo, 'network_name', '');
+  if (!USE_SIMULATOR) {
+    const networkInfo = await datalayer.getActiveNetwork();
+    const network = _.get(networkInfo, 'network_name', '');
 
-  if (!network.includes(CHIA_NETWORK)) {
-    throw new Error(
-      `Your node is on ${network} but your climate warehouse is set to ${CHIA_NETWORK}, please change your config so they match`,
-    );
+    if (!network.includes(CHIA_NETWORK)) {
+      throw new Error(
+        `Your node is on ${network} but your climate warehouse is set to ${CHIA_NETWORK}, please change your config so they match`,
+      );
+    }
   }
 };
 
