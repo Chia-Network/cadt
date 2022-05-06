@@ -35,6 +35,9 @@ describe('Project Resource CRUD', function () {
         sinon.stub(datalayer, 'dataLayerAvailable').resolves(false);
         const response = await supertest(app).get('/v1/projects');
         expect(response.statusCode).to.equal(400);
+
+        console.log(response.body);
+
         expect(response.body.error).to.equal(
           'Can not establish connection to Chia Datalayer',
         );
