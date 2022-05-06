@@ -364,8 +364,6 @@ class Project extends Model {
       isUpdateComment,
     );
 
-    console.log('#############', commentChangeList);
-
     return {
       projects: [
         ..._.get(insertChangeList, 'project', []),

@@ -113,6 +113,7 @@ describe('Units Resource CRUD', function () {
         const responsePost = await supertest(app)
           .post('/v1/units')
           .send(newUnit);
+
         expect(responsePost.statusCode).to.equal(400);
         expect(responsePost.body.error).to.equal(
           'Can not establish connection to Chia Datalayer',
