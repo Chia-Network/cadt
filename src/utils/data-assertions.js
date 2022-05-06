@@ -3,12 +3,25 @@
 import _ from 'lodash';
 
 import { Organization, Unit, Project, Staging, Meta } from '../models';
-import { transformSerialNumberBlock } from '../utils/helpers';
 import datalayer from '../datalayer';
 import { formatModelAssociationName } from './model-utils.js';
 import { getConfig } from '../utils/config-loader';
 
-const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR } = getConfig().APP;
+const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR, CHIA_NETWORK } =
+  getConfig().APP;
+
+export const assertChiaNetworkMatchInConfiguration = async () => {
+  if (!USE_SIMULATOR) {
+    const networkInfo = await datalayer.getActiveNetwork();
+    const network = _.get(networkInfo, 'network_name', '');
+
+    if (!network.includes(CHIA_NETWORK)) {
+      throw new Error(
+        `Your node is on ${network} but your climate warehouse is set to ${CHIA_NETWORK}, please change your config so they match`,
+      );
+    }
+  }
+};
 
 export const assertCanBeGovernanceBody = async () => {
   if (IS_GOVERNANCE_BODY !== 'true') {
@@ -209,32 +222,4 @@ export const assertProjectRecordExists = async (
   }
 
   return record.dataValues;
-};
-
-export const assertSumOfSplitUnitsIsValid = (
-  serialNumberBlock,
-  serialNumberPattern,
-  splitRecords,
-) => {
-  const sumOfSplitUnits = splitRecords.reduce(
-    (previousValue, currentValue) =>
-      previousValue.unitCount + currentValue.unitCount,
-  );
-
-  const [unitBlockStart, unitBlockEnd, unitCount] = transformSerialNumberBlock(
-    serialNumberBlock,
-    serialNumberPattern,
-  );
-
-  if (sumOfSplitUnits !== unitCount) {
-    throw new Error(
-      `The sum of the split units is ${sumOfSplitUnits} and the original record is ${unitCount}. These should be the same.`,
-    );
-  }
-
-  return {
-    unitBlockStart,
-    unitBlockEnd,
-    unitCount,
-  };
 };

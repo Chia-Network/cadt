@@ -12,7 +12,7 @@ export default {
         allowNull: true,
       }),
       queryInterface.addColumn('units', 'unitCount', {
-        type: Sequelize.STRING,
+        type: Sequelize.INTEGER,
         allowNull: true,
       }),
     ]);

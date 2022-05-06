@@ -113,8 +113,9 @@ describe('Unit Resource Integration Tests', function () {
   it('splits an existing unit end-to-end (with simulator)', async function () {
     // create and commit the unit to be deleted
     const createdUnitResult = await supertest(app).post('/v1/units').send({
-      serialNumberBlock: 'AXJJFSLGHSHEJ9000-AXJJFSLGHSHEJ9010',
-      serialNumberPattern: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
+      unitBlockStart: 'AXJJFSLGHSHEJ9000',
+      unitBlockEnd: 'AXJJFSLGHSHEJ9010',
+      unitCount: 10,
       countryJurisdictionOfOwner: 'Austria',
       unitOwner: 'TEST_OWNER',
       unitType: 'Reduction - nature',
@@ -171,10 +172,14 @@ describe('Unit Resource Integration Tests', function () {
       records: [
         {
           unitCount: unitRecord.unitCount - 1,
+          unitBlockStart: 'AXJJFSLGHSHEJ9000',
+          unitBlockEnd: 'AXJJFSLGHSHEJ9009',
           unitOwner: newUnitOwner,
         },
         {
           unitCount: 1,
+          unitBlockStart: 'AXJJFSLGHSHEJ9009',
+          unitBlockEnd: 'AXJJFSLGHSHEJ9010',
         },
       ],
     };
@@ -209,7 +214,7 @@ describe('Unit Resource Integration Tests', function () {
     expect(splitRecord1.unitOwner).to.equal(newUnitOwner);
     expect(splitRecord2.unitOwner).to.equal(unitRecord.unitOwner);
 
-    expect(splitRecord1.unitCount).to.equal(10);
+    expect(splitRecord1.unitCount).to.equal(9);
     expect(splitRecord2.unitCount).to.equal(1);
 
     // Expect the split unitscounts to add up to the original unit count
@@ -290,9 +295,6 @@ describe('Unit Resource Integration Tests', function () {
         'labels', // mapped associated field
         'issuance', // mapped associated field
         'issuanceId',
-        'unitBlockStart', // virtual field
-        'unitBlockEnd', // virtual field
-        'unitCount', // virtual field
         'createdAt', // meta field
         'updatedAt', // meta field
       ]),
@@ -334,9 +336,6 @@ describe('Unit Resource Integration Tests', function () {
         'labels', // mapped associated field
         'issuance', // mapped associated field
         'issuanceId',
-        'unitBlockStart', // virtual field
-        'unitBlockEnd', // virtual field
-        'unitCount', // virtual field
         'createdAt', // meta field
         'updatedAt', // meta field
       ]),

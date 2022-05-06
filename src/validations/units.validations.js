@@ -15,8 +15,6 @@ const unitsBaseSchema = {
     .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
     .required(),
   inCountryJurisdictionOfOwner: Joi.string().optional(),
-  // must be in the form ABC123-XYZ456
-  serialNumberBlock: Joi.string().required(),
   unitBlockStart: Joi.string().required(),
   unitBlockEnd: Joi.string().required(),
   unitCount: Joi.number().integer().required(),
@@ -77,6 +75,8 @@ export const unitsSplitSchema = Joi.object({
     .items(
       Joi.object().keys({
         unitCount: Joi.number().required(),
+        unitBlockStart: Joi.string().required(),
+        unitBlockEnd: Joi.string().required(),
         unitOwner: Joi.string().optional(),
         countryJurisdictionOfOwner: Joi.string()
           .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
