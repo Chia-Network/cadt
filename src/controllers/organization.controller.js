@@ -5,8 +5,6 @@ import { Organization } from '../models/organizations';
 import {
   assertHomeOrgExists,
   assertWalletIsSynced,
-  assertWalletIsAvailable,
-  assertDataLayerAvailable,
   assertIfReadOnlyMode,
   assertCanDeleteOrg,
 } from '../utils/data-assertions';
@@ -20,8 +18,6 @@ export const findAll = async (req, res) => {
 export const createV2 = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     const myOrganization = await Organization.getHomeOrg();
@@ -57,8 +53,6 @@ export const createV2 = async (req, res) => {
 export const create = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     const myOrganization = await Organization.getHomeOrg();
@@ -86,8 +80,6 @@ export const create = async (req, res) => {
 export const resetHomeOrg = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     await Promise.all([
@@ -113,8 +105,6 @@ export const resetHomeOrg = async (req, res) => {
 export const importOrg = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     const { orgUid, ip, port } = req.body;
@@ -137,8 +127,6 @@ export const importOrg = async (req, res) => {
 export const subscribeToOrganization = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
 
@@ -159,8 +147,6 @@ export const deleteImportedOrg = async (req, res) => {
   let transaction;
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
     await assertCanDeleteOrg(req.body.orgUid);
@@ -198,8 +184,6 @@ export const unsubscribeToOrganization = async (req, res) => {
   let transaction;
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
 
