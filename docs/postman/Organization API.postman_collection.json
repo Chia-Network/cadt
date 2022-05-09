@@ -19,13 +19,26 @@
       "response": []
     },
     {
+      "name": "DELETE Reset Home Organizations",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{default}}/organizations",
+          "host": ["{{default}}"],
+          "path": ["organizations"]
+        }
+      },
+      "response": []
+    },
+    {
       "name": "POST Organization",
       "request": {
         "method": "POST",
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"name\": \"New Org\",\r\n    \"icon\": \"https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg\"\r\n}",
+          "raw": "{\r\n    \"name\": \"TEST\",\r\n    \"icon\": \"https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -33,9 +46,9 @@
           }
         },
         "url": {
-          "raw": "{{default}}/organizations/",
+          "raw": "{{default}}/organizations",
           "host": ["{{default}}"],
-          "path": ["organizations", ""]
+          "path": ["organizations"]
         }
       },
       "response": []
@@ -45,6 +58,15 @@
       "request": {
         "method": "POST",
         "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
         "url": {
           "raw": "{{default}}/organizations/create",
           "host": ["{{default}}"],
@@ -58,10 +80,93 @@
       "request": {
         "method": "PUT",
         "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
         "url": {
           "raw": "{{default}}/organizations/",
           "host": ["{{default}}"],
           "path": ["organizations", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT Import Organization",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"orgUid\": \"08caa0ce3fa7ef094a15418cb0338c9147c9098bd6a30e0eaf93033adc64522d\",\r\n    \"ip\": \"173.64.114.138\",\r\n    \"port\": \"8000\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{default}}/organizations/import",
+          "host": ["{{default}}"],
+          "path": ["organizations", "import"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DELETE Imported Organization",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{default}}/organizations/import",
+          "host": ["{{default}}"],
+          "path": ["organizations", "import"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT Subscribe Organization",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"orgUid\": \"08caa0ce3fa7ef094a15418cb0338c9147c9098bd6a30e0eaf93033adc64522d\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{default}}/organizations/subscribe",
+          "host": ["{{default}}"],
+          "path": ["organizations", "subscribe"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT Unsubscribe Organization",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"orgUid\": \"08caa0ce3fa7ef094a15418cb0338c9147c9098bd6a30e0eaf93033adc64522d\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{default}}/organizations/unsubscribe",
+          "host": ["{{default}}"],
+          "path": ["organizations", "unsubscribe"]
         }
       },
       "response": []
