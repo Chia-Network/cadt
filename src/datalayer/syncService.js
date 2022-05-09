@@ -193,6 +193,11 @@ const getSubscribedStoreData = async (
   if (!alreadySubscribed) {
     const response = await subscribeToStoreOnDataLayer(storeId, ip, port);
     if (!response || response.success) {
+      if (!response) {
+        logger.debug(
+          `Response from subscribe RPC came back undefined, is your datalayer running?`,
+        );
+      }
       logger.debug(
         `Retrying subscribe to ${storeId}, subscribe failed`,
         retry + 1,
