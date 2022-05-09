@@ -44,6 +44,7 @@ export const baseSchema = {
     .custom(pickListValidation('validationBody'))
     .optional(),
   validationDate: Joi.date().optional(),
+  description: Joi.string().optional(),
 
   /* Child Tables */
   labels: Joi.array().items(labelSchema).min(1).optional(),

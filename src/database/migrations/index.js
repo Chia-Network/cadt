@@ -20,6 +20,7 @@ import CreateMetaTable from './20220119211024-create-meta-table';
 import CreateGoveranceTable from './20220315134151-create-governance-table';
 import AddCommentColumnToDataModelTables from './20220428144558-add-comment-column-to-all-datamodels';
 import AddSerialNumberFields from './20220504180739-add-serial-number-fields';
+import AddDescriptionFieldToProjects from './20220509125335-add-description-field-to-projects';
 
 export const migrations = [
   {
@@ -113,5 +114,9 @@ export const migrations = [
   {
     migration: AddSerialNumberFields,
     name: '20220504180739-add-serial-number-fields.js',
+  },
+  {
+    migration: AddDescriptionFieldToProjects,
+    name: '20220509125335-add-description-field-to-projects',
   },
 ];
