@@ -1,6 +1,6 @@
 {
   "name": "climate-warehouse",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "private": true,
   "bin": "build/server.js",
   "type": "module",
@@ -31,7 +31,6 @@
     "cli-spinners": "^2.6.1",
     "cors": "^2.8.5",
     "csvtojson": "^2.0.10",
-    "debug": "~2.6.9",
     "dotenv": "^10.0.0",
     "express": "~4.16.1",
     "express-fileupload": "^1.2.1",
@@ -55,7 +54,8 @@
     "toad-scheduler": "^1.6.0",
     "updeep": "^1.2.1",
     "uuidv4": "^6.2.12",
-    "winston": "^3.6.0"
+    "winston": "^3.7.2",
+    "winston-daily-rotate-file": "^4.6.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.16.0",

@@ -8,6 +8,10 @@ export const stagingRetrySchema = Joi.object({
   uuid: Joi.string().required(),
 });
 
+export const commitStagingSchema = Joi.object({
+  comment: Joi.string().optional(),
+});
+
 export const stagingGetQuerySchema = Joi.object()
   .keys({
     page: Joi.number(),

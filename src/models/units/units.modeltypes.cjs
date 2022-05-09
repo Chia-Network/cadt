@@ -42,9 +42,17 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
-  serialNumberPattern: {
+  unitBlockStart: {
     type: Sequelize.STRING,
-    defaultValue: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
+    required: true,
+  },
+  unitBlockEnd: {
+    type: Sequelize.STRING,
+    required: true,
+  },
+  unitCount: {
+    type: Sequelize.INTEGER,
+    required: true,
   },
   vintageYear: {
     type: Sequelize.INTEGER,

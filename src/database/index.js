@@ -1,8 +1,6 @@
 import { Sequelize } from 'sequelize';
 import config from '../config/config.cjs';
-import Debug from 'debug';
-Debug.enable('climate-warehouse:mirror-database');
-const log = Debug('climate-warehouse:mirror-database');
+import { logger } from '../config/logger.cjs';
 import mysql from 'mysql2/promise';
 import { getConfig } from '../utils/config-loader';
 
@@ -19,6 +17,8 @@ const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
 
+logger.info('climate-warehouse:mirror-database');
+
 export const safeMirrorDbHandler = (callback) => {
   try {
     sequelizeMirror
@@ -31,12 +31,13 @@ export const safeMirrorDbHandler = (callback) => {
           getConfig().MIRROR_DB.DB_HOST &&
           getConfig().MIRROR_DB.DB_HOST !== ''
         ) {
-          log('Mirror DB not connected');
+          logger.info('Mirror DB not connected');
         }
       });
   } catch (error) {
-    console.log(
+    logger.error(
       'MirrorDB tried to update before it was initialize, will try again later',
+      error,
     );
   }
 };
@@ -54,11 +55,11 @@ export const seedDb = async (db) => {
 
     for (let i = 0; i < seeders.length; i++) {
       const seeder = seeders[i];
-      console.log('SEEDING: ', seeder.name);
+      logger.info(`SEEDING: ${seeder.name}`, seeder);
       await seeder.seed.up(queryInterface, Sequelize);
     }
   } catch (error) {
-    log(error);
+    logger.error('Error seeding data', error);
   }
 };
 
@@ -85,7 +86,7 @@ export const checkForMigrations = async (db) => {
 
     for (let i = 0; i < notCompletedMigrations.length; i++) {
       const notCompleted = notCompletedMigrations[i];
-      console.log('MIGRATING: ', notCompleted.name);
+      logger.info('MIGRATING: ', notCompleted.name);
       await notCompleted.migration.up(db.queryInterface, Sequelize);
       await db.query('INSERT INTO `SequelizeMeta` VALUES(:name)', {
         type: Sequelize.QueryTypes.INSERT,
@@ -93,7 +94,7 @@ export const checkForMigrations = async (db) => {
       });
     }
   } catch (error) {
-    log(error);
+    logger.error('Error checking for migrations', error);
   }
 };
 

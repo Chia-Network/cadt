@@ -10,18 +10,15 @@ import {
   columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
-  createSerialNumberStr,
 } from '../utils/helpers';
 
 import {
   assertOrgIsHomeOrg,
   assertUnitRecordExists,
-  assertSumOfSplitUnitsIsValid,
   assertCsvFileInRequest,
   assertHomeOrgExists,
   assertNoPendingCommits,
   assertRecordExistance,
-  assertDataLayerAvailable,
   assertIfReadOnlyMode,
 } from '../utils/data-assertions';
 
@@ -39,7 +36,6 @@ import { formatModelAssociationName } from '../utils/model-utils.js';
 export const create = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertNoPendingCommits();
     await assertHomeOrgExists();
 
@@ -51,6 +47,7 @@ export const create = async (req, res) => {
 
     newRecord.warehouseUnitId = uuid;
     newRecord.timeStaged = Math.floor(Date.now() / 1000);
+    newRecord.serialNumberBlock = `${newRecord.unitBlockStart}-${newRecord.unitBlockEnd}`;
 
     // All new units are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
@@ -112,8 +109,6 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    await assertDataLayerAvailable();
-
     let { page, limit, columns, orgUid, search, xls } = req.query;
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
@@ -201,7 +196,6 @@ export const findAll = async (req, res) => {
 
 export const findOne = async (req, res) => {
   try {
-    await assertDataLayerAvailable();
     res.json(
       await Unit.findByPk(req.query.warehouseUnitId, {
         include: Unit.getAssociatedModels().map((association) => {
@@ -227,7 +221,6 @@ export const findOne = async (req, res) => {
 export const updateFromXLS = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 
@@ -255,7 +248,6 @@ export const updateFromXLS = async (req, res) => {
 export const update = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 
@@ -270,6 +262,7 @@ export const update = async (req, res) => {
     // All new units are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
     updatedRecord.orgUid = orgUid;
+    updatedRecord.serialNumberBlock = `${updatedRecord.unitBlockStart}-${updatedRecord.unitBlockEnd}`;
 
     if (updatedRecord.labels) {
       const promises = updatedRecord.labels.map(async (childRecord) => {
@@ -341,7 +334,6 @@ export const update = async (req, res) => {
 export const destroy = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 
@@ -372,7 +364,6 @@ export const destroy = async (req, res) => {
 export const split = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 
@@ -382,13 +373,7 @@ export const split = async (req, res) => {
 
     await assertOrgIsHomeOrg(originalRecord.orgUid);
 
-    const { unitBlockStart } = assertSumOfSplitUnitsIsValid(
-      originalRecord.serialNumberBlock,
-      new RegExp(originalRecord.serialNumberPattern),
-      req.body.records,
-    );
-
-    let lastAvailableUnitBlock = unitBlockStart;
+    let totalSplitCount = 0;
 
     const splitRecords = await Promise.all(
       req.body.records.map(async (record, index) => {
@@ -399,18 +384,11 @@ export const split = async (req, res) => {
         }
 
         newRecord.unitCount = record.unitCount;
+        totalSplitCount += record.unitCount;
 
-        const newUnitBlockStart = lastAvailableUnitBlock;
-        lastAvailableUnitBlock += Number(record.unitCount);
-        const newUnitBlockEnd = lastAvailableUnitBlock;
-        // move to the next available block
-        lastAvailableUnitBlock += 1;
-
-        newRecord.serialNumberBlock = createSerialNumberStr(
-          originalRecord.serialNumberBlock,
-          newUnitBlockStart,
-          newUnitBlockEnd,
-        );
+        newRecord.serialNumberBlock = `${record.unitBlockStart}-${record.unitBlockEnd}`;
+        newRecord.unitBlockStart = record.unitBlockStart;
+        newRecord.unitBlockEnd = record.unitBlockEnd;
 
         if (record.unitOwner) {
           newRecord.unitOwner = record.unitOwner;
@@ -429,6 +407,12 @@ export const split = async (req, res) => {
         return newRecord;
       }),
     );
+
+    if (totalSplitCount !== originalRecord.unitCount) {
+      throw new Error(
+        `Your total split coount is ${totalSplitCount} units and the original record is ${originalRecord.unitCount} units`,
+      );
+    }
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
@@ -454,7 +438,6 @@ export const split = async (req, res) => {
 export const batchUpload = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 

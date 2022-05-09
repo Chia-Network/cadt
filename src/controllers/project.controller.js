@@ -6,6 +6,8 @@ import { uuid as uuidv4 } from 'uuidv4';
 
 import { Staging, Project, Organization, ModelKeys } from '../models';
 
+import { logger } from '../config/logger.cjs';
+
 import {
   columnsToInclude,
   optionallyPaginatedResponse,
@@ -19,7 +21,6 @@ import {
   assertHomeOrgExists,
   assertNoPendingCommits,
   assertRecordExistance,
-  assertDataLayerAvailable,
   assertIfReadOnlyMode,
 } from '../utils/data-assertions';
 
@@ -36,7 +37,6 @@ import { formatModelAssociationName } from '../utils/model-utils.js';
 export const create = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 
@@ -103,7 +103,6 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    await assertDataLayerAvailable();
     let { page, limit, search, orgUid, columns, xls } = req.query;
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
@@ -188,8 +187,6 @@ export const findAll = async (req, res) => {
 
 export const findOne = async (req, res) => {
   try {
-    await assertDataLayerAvailable();
-
     const query = {
       where: { warehouseProjectId: req.query.warehouseProjectId },
       include: Project.getAssociatedModels().map(
@@ -209,7 +206,6 @@ export const findOne = async (req, res) => {
 export const updateFromXLS = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 
@@ -240,7 +236,6 @@ export const updateFromXLS = async (req, res) => {
 export const update = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 
@@ -318,14 +313,13 @@ export const update = async (req, res) => {
       message: 'Error adding update to stage',
       error: err.message,
     });
-    console.log(err);
+    logger.error('Error adding update to stage', err);
   }
 };
 
 export const destroy = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 
@@ -357,7 +351,6 @@ export const destroy = async (req, res) => {
 export const batchUpload = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 

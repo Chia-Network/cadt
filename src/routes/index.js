@@ -11,6 +11,12 @@ import scheduler from '../tasks';
 import { V1Router } from './v1';
 import { sequelize } from '../database';
 import { getConfig } from '../utils/config-loader';
+import { logger } from '../config/logger.cjs';
+import {
+  assertChiaNetworkMatchInConfiguration,
+  assertDataLayerAvailable,
+  assertWalletIsAvailable,
+} from '../utils/data-assertions';
 
 const { API_KEY, READ_ONLY } = getConfig().APP;
 const app = express();
@@ -19,6 +25,21 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(fileUpload());
+
+// Common assertions on every endpoint
+app.use(async function (req, res, next) {
+  try {
+    await assertChiaNetworkMatchInConfiguration();
+    await assertDataLayerAvailable();
+    await assertWalletIsAvailable();
+    next();
+  } catch (err) {
+    res.status(400).json({
+      message: 'Chia Exception',
+      error: err.message,
+    });
+  }
+});
 
 // Add optional API key if set in .env file
 app.use(function (req, res, next) {
@@ -49,7 +70,7 @@ app.use(function (req, res, next) {
 app.use('/v1', V1Router);
 
 sequelize.authenticate().then(async () => {
-  console.log('Connected to database');
+  logger.info('Connected to database');
   await prepareDb();
   setTimeout(() => {
     scheduler.start();

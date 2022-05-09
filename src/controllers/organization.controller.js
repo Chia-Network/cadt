@@ -5,13 +5,11 @@ import { Organization } from '../models/organizations';
 import {
   assertHomeOrgExists,
   assertWalletIsSynced,
-  assertWalletIsAvailable,
-  assertDataLayerAvailable,
   assertIfReadOnlyMode,
   assertCanDeleteOrg,
 } from '../utils/data-assertions';
 
-import { ModelKeys, Audit } from '../models';
+import { ModelKeys, Audit, Staging } from '../models';
 
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
@@ -20,8 +18,6 @@ export const findAll = async (req, res) => {
 export const createV2 = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     const myOrganization = await Organization.getHomeOrg();
@@ -32,21 +28,17 @@ export const createV2 = async (req, res) => {
         orgId: myOrganization.orgUid,
       });
     } else {
-      if (!_.get(req, 'files.svg.data')) {
-        throw new Error('Missing required SVG Icon');
+      if (!_.get(req, 'files.file.data')) {
+        throw new Error('Missing required Icon');
       }
 
       const { name } = req.body;
-      const buffer = req.files.svg.data;
-      const svgIcon = buffer.toString('utf8');
-
-      if (!svgIcon.includes('</svg>')) {
-        throw new Error('Currupted SVG Icon');
-      }
+      const buffer = req.files.file.data;
+      const icon = `data:image/png;base64, ${buffer.toString('base64')}`;
 
       return res.json({
         message: 'New organization created successfully.',
-        orgId: await Organization.createHomeOrganization(name, svgIcon, 'v1'),
+        orgId: await Organization.createHomeOrganization(name, icon, 'v1'),
       });
     }
   } catch (error) {
@@ -61,8 +53,6 @@ export const createV2 = async (req, res) => {
 export const create = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     const myOrganization = await Organization.getHomeOrg();
@@ -90,11 +80,15 @@ export const create = async (req, res) => {
 export const resetHomeOrg = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
-    await Organization.destroy({ where: { isHome: true } });
+    await Promise.all([
+      Organization.destroy({ where: { isHome: true } }),
+      Staging.destroy({
+        where: {},
+        truncate: true,
+      }),
+    ]);
 
     res.json({
       message: 'Your home organization was reset, please create a new one.',
@@ -111,8 +105,6 @@ export const resetHomeOrg = async (req, res) => {
 export const importOrg = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
 
     const { orgUid, ip, port } = req.body;
@@ -135,8 +127,6 @@ export const importOrg = async (req, res) => {
 export const subscribeToOrganization = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
 
@@ -157,8 +147,6 @@ export const deleteImportedOrg = async (req, res) => {
   let transaction;
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
     await assertCanDeleteOrg(req.body.orgUid);
@@ -196,8 +184,6 @@ export const unsubscribeToOrganization = async (req, res) => {
   let transaction;
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
 
@@ -225,6 +211,46 @@ export const unsubscribeToOrganization = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: 'Error unsubscribing to organization',
+      error: error.message,
+    });
+
+    if (transaction) {
+      await transaction.rollback();
+    }
+  }
+};
+
+export const resyncOrganization = async (req, res) => {
+  let transaction;
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    transaction = await sequelize.transaction();
+
+    await Organization.update(
+      { registryHash: '0' },
+      { where: { orgUid: req.body.orgUid } },
+    );
+
+    await Promise.all([
+      ...Object.keys(ModelKeys).map(
+        async (key) =>
+          await ModelKeys[key].destroy({ where: { orgUid: req.body.orgUid } }),
+      ),
+      Audit.destroy({ where: { orgUid: req.body.orgUid } }),
+    ]);
+
+    await transaction.commit();
+
+    return res.json({
+      message:
+        'Resyncing organization completed',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error resyncing organization',
       error: error.message,
     });
 

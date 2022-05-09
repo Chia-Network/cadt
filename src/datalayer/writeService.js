@@ -5,10 +5,9 @@ import wallet from './wallet';
 import * as simulator from './simulator';
 import { encodeHex } from '../utils/datalayer-utils';
 import { getConfig } from '../utils/config-loader';
+import { logger } from '../config/logger.cjs';
 
-import Debug from 'debug';
-Debug.enable('climate-warehouse:datalayer:writeService');
-const log = Debug('climate-warehouse:datalayer:writeService');
+logger.info('climate-warehouse:datalayer:writeService');
 
 const { USE_SIMULATOR } = getConfig().APP;
 
@@ -24,7 +23,7 @@ const createDataLayerStore = async () => {
 };
 
 const syncDataLayer = async (storeId, data, failedCallback) => {
-  log(`Syncing ${storeId}: ${JSON.stringify(data)}`);
+  logger.info(`Syncing ${storeId}`);
   const changeList = Object.keys(data).map((key) => {
     return {
       action: 'insert',
@@ -37,15 +36,17 @@ const syncDataLayer = async (storeId, data, failedCallback) => {
 };
 
 const retry = (storeId, changeList, failedCallback, retryAttempts) => {
-  log('RETRYING...', retryAttempts);
+  logger.info('RETRYING...', retryAttempts);
   if (retryAttempts >= 60) {
-    log('Could not push changelist to datalayer after retrying 10 times');
+    logger.info(
+      'Could not push changelist to datalayer after retrying 10 times',
+    );
     failedCallback();
     return;
   }
 
   setTimeout(async () => {
-    log('Retrying...', storeId);
+    logger.info('Retrying...', storeId);
     await pushChangesWhenStoreIsAvailable(
       storeId,
       changeList,
@@ -70,7 +71,9 @@ const pushChangesWhenStoreIsAvailable = async (
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
 
     if (!hasUnconfirmedTransactions && storeExistAndIsConfirmed) {
-      console.log('pushing to datalayer', { storeId, changeList });
+      logger.info(
+        `pushing to datalayer ${storeId} ${JSON.stringify(changeList)}`,
+      );
       const success = await dataLayer.pushChangeListToDataLayer(
         storeId,
         changeList,
