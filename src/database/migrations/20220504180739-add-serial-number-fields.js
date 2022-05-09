@@ -15,14 +15,19 @@ export default {
         type: Sequelize.INTEGER,
         allowNull: true,
       }),
+      queryInterface.removeColumn('units', 'serialNumberPattern'),
     ]);
   },
 
-  async down(queryInterface) {
+  async down(queryInterface, Sequelize) {
     await Promise.all([
       queryInterface.removeColumn('units', 'unitBlockStart'),
       queryInterface.removeColumn('units', 'unitBlockEnd'),
       queryInterface.removeColumn('units', 'unitCount'),
+      queryInterface.addColumn('units', 'serialNumberPattern', {
+        type: Sequelize.STRING,
+        defaultValue: '[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$',
+      }),
     ]);
   },
 };
