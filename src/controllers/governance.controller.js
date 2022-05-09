@@ -5,8 +5,6 @@ import { Governance } from '../models';
 import {
   assertIsActiveGovernanceBody,
   assertIfReadOnlyMode,
-  assertDataLayerAvailable,
-  assertWalletIsAvailable,
   assertWalletIsSynced,
   assertCanBeGovernanceBody,
 } from '../utils/data-assertions';
@@ -53,8 +51,6 @@ export const findPickList = async (req, res) => {
 export const createGoveranceBody = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertCanBeGovernanceBody();
 
@@ -76,8 +72,6 @@ export const createGoveranceBody = async (req, res) => {
 export const setDefaultOrgList = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertIsActiveGovernanceBody();
 
@@ -103,8 +97,6 @@ export const setDefaultOrgList = async (req, res) => {
 export const setPickList = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertIsActiveGovernanceBody();
 

@@ -12,8 +12,6 @@ import {
   assertHomeOrgExists,
   assertNoPendingCommits,
   assertWalletIsSynced,
-  assertWalletIsAvailable,
-  assertDataLayerAvailable,
   assertIfReadOnlyMode,
   assertStagingTableNotEmpty,
 } from '../utils/data-assertions';
@@ -78,8 +76,6 @@ export const commit = async (req, res) => {
     await assertIfReadOnlyMode();
     await assertStagingTableNotEmpty();
     await assertHomeOrgExists();
-    await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
     await assertWalletIsSynced();
     await assertNoPendingCommits();
 
