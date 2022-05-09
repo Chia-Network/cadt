@@ -18,3 +18,7 @@ export const unsubscribeOrganizationSchema = Joi.object({
 export const subscribeOrganizationSchema = Joi.object({
   orgUid: Joi.string().required(),
 });
+
+export const resyncOrganizationSchema = Joi.object({
+  orgUid: Joi.string().required(),
+});
