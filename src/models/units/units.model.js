@@ -11,7 +11,7 @@ import {
 import { Label, Issuance, Staging, Organization } from '../../models';
 import { UnitMirror } from './units.model.mirror';
 import ModelTypes from './units.modeltypes.cjs';
-import { transformSerialNumberBlock } from '../../utils/helpers';
+
 import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
@@ -23,68 +23,12 @@ import dataLayer from '../../datalayer';
 
 const { Model } = Sequelize;
 
-const virtualFields = {
-  unitBlockStart: {
-    type: Sequelize.VIRTUAL,
-    get() {
-      const serialNumberBlock = this.getDataValue('serialNumberBlock');
-      if (!serialNumberBlock) {
-        return undefined;
-      }
-      const serialNumberPattern = this.getDataValue('serialNumberPattern');
-      const [unitBlockStart] = transformSerialNumberBlock(
-        serialNumberBlock,
-        serialNumberPattern,
-      );
-
-      return unitBlockStart;
-    },
-  },
-  unitBlockEnd: {
-    type: Sequelize.VIRTUAL,
-    get() {
-      const serialNumberBlock = this.getDataValue('serialNumberBlock');
-      if (!serialNumberBlock) {
-        return undefined;
-      }
-
-      const serialNumberPattern = this.getDataValue('serialNumberPattern');
-      const [, unitBlockEnd] = transformSerialNumberBlock(
-        serialNumberBlock,
-        serialNumberPattern,
-      );
-
-      return unitBlockEnd;
-    },
-  },
-  unitCount: {
-    type: Sequelize.VIRTUAL,
-    get() {
-      const serialNumberBlock = this.getDataValue('serialNumberBlock');
-      if (!serialNumberBlock) {
-        return undefined;
-      }
-
-      const serialNumberPattern = this.getDataValue('serialNumberPattern');
-      const [, , unitCount] = transformSerialNumberBlock(
-        serialNumberBlock,
-        serialNumberPattern,
-      );
-
-      return unitCount;
-    },
-  },
-};
-
 class Unit extends Model {
   static stagingTableName = 'Units';
   static changes = new rxjs.Subject();
   static validateImport = unitsUpdateSchema;
-  static virtualFieldList = virtualFields;
 
-  static defaultColumns = Object.keys(
-    Object.assign({}, ModelTypes, virtualFields),
-  );
+  static defaultColumns = Object.keys(Object.assign({}, ModelTypes));
 
   static getAssociatedModels = () => [
     {
@@ -167,16 +111,6 @@ class Unit extends Model {
       sqlite: Unit.findAllSqliteFts,
       mysql: Unit.findAllMySQLFts,
     };
-
-    // Check if we need to include the virtual field dep
-    for (const col of Object.keys(virtualFields)) {
-      if (columns.includes(col)) {
-        if (!columns.includes('serialNumberBlock')) {
-          columns.push('serialNumberBlock');
-        }
-        break;
-      }
-    }
 
     return handlerMap[dialect](
       searchStr,
@@ -424,7 +358,7 @@ class Unit extends Model {
   }
 }
 
-Unit.init(Object.assign({}, ModelTypes, virtualFields), {
+Unit.init(ModelTypes, {
   sequelize,
   modelName: 'unit',
   timestamps: true,
