@@ -207,7 +207,8 @@ class Project extends Model {
         validationApproach,
         projectTag,
         estimatedAnnualAverageEmissionReduction,
-        timeStaged
+        timeStaged,
+        description
     ) AGAINST ':search' 
     `;
 

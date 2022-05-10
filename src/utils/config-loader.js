@@ -17,17 +17,7 @@ export const getConfig = _.memoize(() => {
   try {
     if (!fs.existsSync(configFile)) {
       try {
-        fs.mkdir(
-          `${homeDir}/.chia/climate-warehouse`,
-          { recursive: true },
-          (err) => {
-            if (err) {
-              throw err;
-            }
-
-            fs.writeFileSync(configFile, yaml.dump(defaultConfig), 'utf8');
-          },
-        );
+        fs.writeFileSync(configFile, yaml.dump(defaultConfig), 'utf8');
       } catch (err) {
         // if it still doesnt exist that means we are in an env without write permissions
         // so just load the default env
@@ -37,7 +27,7 @@ export const getConfig = _.memoize(() => {
           logger.info(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
         }
 
-        return yaml.load(yaml.dump(defaultConfig));
+        return defaultConfig;
       }
     }
 
