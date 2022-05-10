@@ -86,7 +86,7 @@ export const checkForMigrations = async (db) => {
 
     for (let i = 0; i < notCompletedMigrations.length; i++) {
       const notCompleted = notCompletedMigrations[i];
-      logger.info('MIGRATING: ', notCompleted.name);
+      logger.info(`MIGRATING: ${notCompleted.name}`);
       await notCompleted.migration.up(db.queryInterface, Sequelize);
       await db.query('INSERT INTO `SequelizeMeta` VALUES(:name)', {
         type: Sequelize.QueryTypes.INSERT,

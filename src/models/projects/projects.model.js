@@ -43,7 +43,6 @@ class Project extends Model {
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
   static validateImport = projectsUpdateSchema;
-  static virtualFieldList = {};
 
   static getAssociatedModels = () => [
     {
@@ -208,7 +207,8 @@ class Project extends Model {
         validationApproach,
         projectTag,
         estimatedAnnualAverageEmissionReduction,
-        timeStaged
+        timeStaged,
+        description
     ) AGAINST ':search' 
     `;
 

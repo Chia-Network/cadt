@@ -24,9 +24,10 @@ export const getConfig = _.memoize(() => {
         if (process.env.USE_SIMULATOR) {
           defaultConfig.APP.USE_SIMULATOR = true;
           defaultConfig.APP.CHIA_NETWORK = 'testnet';
+          logger.info(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
         }
 
-        return yaml.load(yaml.dump(defaultConfig));
+        return defaultConfig;
       }
     }
 
@@ -35,6 +36,7 @@ export const getConfig = _.memoize(() => {
 
       if (typeof process.env.USE_SIMULATOR === 'string') {
         yml.APP.USE_SIMULATOR = true;
+        logger.info(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
       }
 
       return yml;

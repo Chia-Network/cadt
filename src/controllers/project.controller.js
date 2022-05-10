@@ -178,6 +178,7 @@ export const findAll = async (req, res) => {
       );
     }
   } catch (error) {
+    console.trace(error);
     res.status(400).json({
       message: 'Error retrieving projects',
       error: error.message,

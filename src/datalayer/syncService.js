@@ -137,6 +137,8 @@ const dataLayerWasUpdated = async () => {
     return [];
   }
 
+  logger.debug(JSON.stringify(rootResponse));
+
   const updatedStores = rootResponse.root_hashes.filter((rootHash) => {
     const org = organizations.find(
       (org) => org.registryId == rootHash.id.replace('0x', ''),
@@ -183,15 +185,25 @@ const getSubscribedStoreData = async (
   retry = 0,
 ) => {
   if (retry >= 60) {
-    throw new Error('Max retrys exceeded, Can not subscribe to organization');
+    throw new Error(
+      `Max retrys exceeded while trying to subscribe to ${storeId}, Can not subscribe to organization`,
+    );
   }
 
   const timeoutInterval = 30000;
 
   if (!alreadySubscribed) {
     const response = await subscribeToStoreOnDataLayer(storeId, ip, port);
-    if (!response.success) {
-      logger.debug(`Retrying...`, retry + 1);
+    if (!response || response.success) {
+      if (!response) {
+        logger.debug(
+          `Response from subscribe RPC came back undefined, is your datalayer running?`,
+        );
+      }
+      logger.debug(
+        `Retrying subscribe to ${storeId}, subscribe failed`,
+        retry + 1,
+      );
       logger.debug('...');
       await new Promise((resolve) =>
         setTimeout(() => resolve(), timeoutInterval),
@@ -203,7 +215,10 @@ const getSubscribedStoreData = async (
   if (!USE_SIMULATOR) {
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
     if (!storeExistAndIsConfirmed) {
-      logger.debug(`Retrying...`, retry + 1);
+      logger.debug(
+        `Retrying subscribe to ${storeId}, store not yet confirmed.`,
+        retry + 1,
+      );
       logger.debug('...');
       await new Promise((resolve) =>
         setTimeout(() => resolve(), timeoutInterval),
@@ -222,7 +237,10 @@ const getSubscribedStoreData = async (
   logger.debug(encodedData?.keys_values);
 
   if (_.isEmpty(encodedData?.keys_values)) {
-    logger.debug(`Retrying...`, retry + 1);
+    logger.debug(
+      `Retrying subscribe to ${storeId}, No data detected in store.`,
+      retry + 1,
+    );
     logger.debug('...');
     await new Promise((resolve) =>
       setTimeout(() => resolve(), timeoutInterval),

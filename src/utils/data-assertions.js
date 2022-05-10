@@ -3,7 +3,6 @@
 import _ from 'lodash';
 
 import { Organization, Unit, Project, Staging, Meta } from '../models';
-import { transformSerialNumberBlock } from '../utils/helpers';
 import datalayer from '../datalayer';
 import { formatModelAssociationName } from './model-utils.js';
 import { getConfig } from '../utils/config-loader';
@@ -223,32 +222,4 @@ export const assertProjectRecordExists = async (
   }
 
   return record.dataValues;
-};
-
-export const assertSumOfSplitUnitsIsValid = (
-  serialNumberBlock,
-  serialNumberPattern,
-  splitRecords,
-) => {
-  const sumOfSplitUnits = splitRecords.reduce(
-    (previousValue, currentValue) =>
-      previousValue.unitCount + currentValue.unitCount,
-  );
-
-  const [unitBlockStart, unitBlockEnd, unitCount] = transformSerialNumberBlock(
-    serialNumberBlock,
-    serialNumberPattern,
-  );
-
-  if (sumOfSplitUnits !== unitCount) {
-    throw new Error(
-      `The sum of the split units is ${sumOfSplitUnits} and the original record is ${unitCount}. These should be the same.`,
-    );
-  }
-
-  return {
-    unitBlockStart,
-    unitBlockEnd,
-    unitCount,
-  };
 };

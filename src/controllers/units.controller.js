@@ -10,13 +10,11 @@ import {
   columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
-  createSerialNumberStr,
 } from '../utils/helpers';
 
 import {
   assertOrgIsHomeOrg,
   assertUnitRecordExists,
-  assertSumOfSplitUnitsIsValid,
   assertCsvFileInRequest,
   assertHomeOrgExists,
   assertNoPendingCommits,
@@ -49,6 +47,7 @@ export const create = async (req, res) => {
 
     newRecord.warehouseUnitId = uuid;
     newRecord.timeStaged = Math.floor(Date.now() / 1000);
+    newRecord.serialNumberBlock = `${newRecord.unitBlockStart}-${newRecord.unitBlockEnd}`;
 
     // All new units are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
@@ -263,6 +262,7 @@ export const update = async (req, res) => {
     // All new units are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
     updatedRecord.orgUid = orgUid;
+    updatedRecord.serialNumberBlock = `${updatedRecord.unitBlockStart}-${updatedRecord.unitBlockEnd}`;
 
     if (updatedRecord.labels) {
       const promises = updatedRecord.labels.map(async (childRecord) => {
@@ -373,13 +373,7 @@ export const split = async (req, res) => {
 
     await assertOrgIsHomeOrg(originalRecord.orgUid);
 
-    const { unitBlockStart } = assertSumOfSplitUnitsIsValid(
-      originalRecord.serialNumberBlock,
-      new RegExp(originalRecord.serialNumberPattern),
-      req.body.records,
-    );
-
-    let lastAvailableUnitBlock = unitBlockStart;
+    let totalSplitCount = 0;
 
     const splitRecords = await Promise.all(
       req.body.records.map(async (record, index) => {
@@ -390,18 +384,11 @@ export const split = async (req, res) => {
         }
 
         newRecord.unitCount = record.unitCount;
+        totalSplitCount += record.unitCount;
 
-        const newUnitBlockStart = lastAvailableUnitBlock;
-        lastAvailableUnitBlock += Number(record.unitCount);
-        const newUnitBlockEnd = lastAvailableUnitBlock;
-        // move to the next available block
-        lastAvailableUnitBlock += 1;
-
-        newRecord.serialNumberBlock = createSerialNumberStr(
-          originalRecord.serialNumberBlock,
-          newUnitBlockStart,
-          newUnitBlockEnd,
-        );
+        newRecord.serialNumberBlock = `${record.unitBlockStart}-${record.unitBlockEnd}`;
+        newRecord.unitBlockStart = record.unitBlockStart;
+        newRecord.unitBlockEnd = record.unitBlockEnd;
 
         if (record.unitOwner) {
           newRecord.unitOwner = record.unitOwner;
@@ -420,6 +407,12 @@ export const split = async (req, res) => {
         return newRecord;
       }),
     );
+
+    if (totalSplitCount !== originalRecord.unitCount) {
+      throw new Error(
+        `Your total split coount is ${totalSplitCount} units and the original record is ${originalRecord.unitCount} units`,
+      );
+    }
 
     const stagedData = {
       uuid: req.body.warehouseUnitId,
