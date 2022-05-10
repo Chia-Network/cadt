@@ -31,10 +31,11 @@ const getConfig = _.memoize(() => {
       // so just load the default en
       if (typeof process.env.USE_SIMULATOR === 'string') {
         defaultConfig.APP.USE_SIMULATOR = true;
+        logger.info(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
       }
 
       logger.error('Cant write config file, falling back to defaults');
-      return yaml.load(yaml.dump(defaultConfig));
+      return defaultConfig;
     }
   }
 

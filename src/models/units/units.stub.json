@@ -7,7 +7,6 @@
     "unitOwner": "f1c54511-865e-4611-976c-7c3c1f704662",
     "countryJurisdictionOfOwner": "Netherlands",
     "serialNumberBlock": "AXJJFSLGHSHEJ1000-AXJJFSLGHSHEJ1010",
-    "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
     "unitType": "heard reduction",
     "marketplace": "Demo Marketplace",
     "unitTags": "Demo, Wind Energy",

@@ -21,6 +21,11 @@ describe('Project Resource CRUD', function () {
 
   before(async function () {
     await pullPickListValues();
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 5000);
+    });
     await prepareDb();
     await seedDb(sequelize);
   });
