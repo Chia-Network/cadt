@@ -137,6 +137,8 @@ const dataLayerWasUpdated = async () => {
     return [];
   }
 
+  logger.debug(JSON.stringify(rootResponse));
+
   const updatedStores = rootResponse.root_hashes.filter((rootHash) => {
     const org = organizations.find(
       (org) => org.registryId == rootHash.id.replace('0x', ''),
