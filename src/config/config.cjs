@@ -18,19 +18,28 @@ const configPath = `${homeDir}/.chia/climate-warehouse/config.yaml`;
 const getConfig = _.memoize(() => {
   logger.info(`Reading config file at ${configPath}`);
 
-  const configFile = path.resolve(
-    configPath,
-  );
+  const configFile = path.resolve(configPath);
 
   // First write it to chia home
   if (!fs.existsSync(configFile)) {
     try {
-      fs.writeFileSync(configFile, yaml.dump(defaultConfig), 'utf8');
+      fs.mkdir(
+        `${homeDir}/.chia/climate-warehouse`,
+        { recursive: true },
+        (err) => {
+          if (err) {
+            throw err;
+          }
+
+          fs.writeFileSync(configFile, yaml.dump(defaultConfig), 'utf8');
+        },
+      );
     } catch (err) {
       // if it still doesnt exist that means we are in an env without write permissions
       // so just load the default en
       if (typeof process.env.USE_SIMULATOR === 'string') {
         defaultConfig.APP.USE_SIMULATOR = true;
+        logger.info(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
       }
 
       logger.error('Cant write config file, falling back to defaults');

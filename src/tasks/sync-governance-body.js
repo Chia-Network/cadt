@@ -13,7 +13,7 @@ const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
 import dotenv from 'dotenv';
 dotenv.config();
 
-logger.info('climate-warehouse:task:governance');
+logger.info('climate-warehouse:task:sync-governance');
 
 const task = new Task('sync-governance-meta', async () => {
   try {
