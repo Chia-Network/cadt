@@ -13,4 +13,8 @@ AuditRouter.get('/', validator.query(auditGetSchema), (req, res) => {
   return AuditController.findAll(req, res);
 });
 
+AuditRouter.get('/findConflicts', (req, res) => {
+  return AuditController.findConflicts(req, res);
+});
+
 export { AuditRouter };

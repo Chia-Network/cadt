@@ -25,3 +25,14 @@ export const findAll = async (req, res) => {
     });
   }
 };
+
+export const findConflicts = async (req, res) => {
+  try {
+    return res.json(await Audit.findConflicts());
+  } catch (error) {
+    res.status(400).json({
+      message: 'Can not retreive audit data',
+      error: error.message,
+    });
+  }
+};

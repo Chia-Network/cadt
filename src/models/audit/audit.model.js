@@ -6,6 +6,8 @@ import { sequelize, safeMirrorDbHandler } from '../../database';
 import { AuditMirror } from './audit.model.mirror';
 import ModelTypes from './audit.modeltypes.cjs';
 
+import findDuplicateIssuancesSql from './sql/find-duplicate-issuances.sql.js';
+
 class Audit extends Model {
   static async create(values, options) {
     safeMirrorDbHandler(() => AuditMirror.create(values, options));
@@ -20,6 +22,11 @@ class Audit extends Model {
   static async upsert(values, options) {
     safeMirrorDbHandler(() => AuditMirror.upsert(values, options));
     return super.upsert(values, options);
+  }
+
+  static async findConflicts() {
+    const [results] = await sequelize.query(findDuplicateIssuancesSql);
+    return results;
   }
 }
 
