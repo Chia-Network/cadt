@@ -66,7 +66,7 @@ class Governance extends Model {
         updates.map(async (update) => Governance.upsert(update)),
       );
     } catch (error) {
-      logger.error('Error getting subscribed store data', error);
+      logger.error('Error Syncing Governance Data', error);
     }
   }
 
