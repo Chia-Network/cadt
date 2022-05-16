@@ -2,15 +2,16 @@
 
 export default {
   async up(queryInterface, Sequelize) {
-    await Promise.all([
-      queryInterface.addColumn('projects', 'description', {
-        type: Sequelize.STRING,
-        allowNull: true,
-      }),
+    await queryInterface.addColumn('projects', 'description', {
+      type: Sequelize.STRING,
+      allowNull: true,
+    });
 
-      queryInterface.sequelize.query(`drop table projects_fts;`),
+    if (queryInterface.sequelize.getDialect() === 'sqlite') {
+      await Promise.all([
+        queryInterface.sequelize.query(`drop table projects_fts;`),
 
-      queryInterface.sequelize.query(`
+        queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE projects_fts USING fts5(
         warehouseProjectId,
         orgUid,
@@ -37,16 +38,17 @@ export default {
         description
       );
       `),
-    ]);
+      ]);
+    }
   },
 
   async down(queryInterface) {
-    await Promise.all([
-      queryInterface.removeColumn('projects', 'description'),
+    await queryInterface.removeColumn('projects', 'description');
+    if (queryInterface.sequelize.getDialect() === 'sqlite') {
+      await Promise.all([
+        queryInterface.sequelize.query(`drop table projects_fts;`),
 
-      queryInterface.sequelize.query(`drop table projects_fts;`),
-
-      queryInterface.sequelize.query(`
+        queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE projects_fts USING fts5(
         warehouseProjectId,
         orgUid,
@@ -72,6 +74,7 @@ export default {
         timeStaged
       );
       `),
-    ]);
+      ]);
+    }
   },
 };

@@ -2,7 +2,8 @@
 
 export default {
   async up(queryInterface) {
-    queryInterface.sequelize.query(`INSERT INTO projects_fts SELECT
+    if (queryInterface.sequelize.getDialect() === 'sqlite') {
+      await queryInterface.sequelize.query(`INSERT INTO projects_fts SELECT
         warehouseProjectId,
         orgUid,
         currentRegistry,
@@ -27,6 +28,7 @@ export default {
         timeStaged,
         description
       FROM projects`);
+    }
   },
 
   down() {
