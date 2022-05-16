@@ -106,6 +106,12 @@ export const findAll = async (req, res) => {
     let { page, limit, search, orgUid, columns, xls } = req.query;
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
+    if (orgUid === 'all') {
+      // 'ALL' orgUid is just a UI concept but they keep forgetting this and send it
+      // So delete this value if its sent so nothing breaks
+      orgUid = undefined;
+    }
+
     const includes = Project.getAssociatedModels();
 
     if (columns) {
@@ -178,6 +184,7 @@ export const findAll = async (req, res) => {
       );
     }
   } catch (error) {
+    console.trace(error);
     res.status(400).json({
       message: 'Error retrieving projects',
       error: error.message,

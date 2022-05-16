@@ -2,7 +2,7 @@
 
 export default {
   async up(queryInterface, Sequelize) {
-    return Promise.all(
+    await Promise.all(
       ['audit'].map((table) => {
         queryInterface.addColumn(table, 'comment', {
           type: Sequelize.STRING,
@@ -13,7 +13,7 @@ export default {
   },
 
   async down(queryInterface) {
-    return Promise.all(
+    await Promise.all(
       ['audit'].map((table) => {
         queryInterface.removeColumn(table, 'comment');
       }),

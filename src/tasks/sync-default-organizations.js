@@ -11,7 +11,7 @@ const { USE_SIMULATOR } = getConfig().APP;
 import dotenv from 'dotenv';
 dotenv.config();
 
-logger.info('climate-warehouse:task:default-organizations');
+logger.info('climate-warehouse:task:sync-default-organizations');
 
 const task = new Task('sync-default-organizations', async () => {
   try {
