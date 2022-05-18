@@ -44,6 +44,7 @@ class Governance extends Model {
         GOVERNANCE_BODY_PORT,
       );
 
+      logger.info('!!!');
       logger.info(JSON.stringify(governanceData));
 
       const updates = [];
