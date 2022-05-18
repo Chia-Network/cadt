@@ -11,6 +11,7 @@ import scheduler from '../tasks';
 import { V1Router } from './v1';
 import { sequelize } from '../database';
 import { getConfig } from '../utils/config-loader';
+import { fileLoader } from '../utils/file-loader';
 import { logger } from '../config/logger.cjs';
 import {
   assertChiaNetworkMatchInConfiguration,
@@ -63,6 +64,14 @@ app.use(function (req, res, next) {
   } else {
     res.setHeader('cw-read-only', false);
   }
+
+  next();
+});
+
+app.use(function (req, res, next) {
+  const packageJson = fileLoader('package.json');
+  logger.debug(`Setting header x-api-verion to package.json version: ${packageJson.version}`);
+  res.setHeader('x-api-version', packageJson.version);
 
   next();
 });
