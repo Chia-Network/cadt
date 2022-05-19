@@ -194,7 +194,7 @@ const getSubscribedStoreData = async (
 
   if (!alreadySubscribed) {
     const response = await subscribeToStoreOnDataLayer(storeId, ip, port);
-    if (!response || response.success) {
+    if (!response || !response.success) {
       if (!response) {
         logger.debug(
           `Response from subscribe RPC came back undefined, is your datalayer running?`,
@@ -224,6 +224,10 @@ const getSubscribedStoreData = async (
         setTimeout(() => resolve(), timeoutInterval),
       );
       return getSubscribedStoreData(storeId, ip, port, true, retry + 1);
+    } else {
+      logger.debug(
+        `Store Exists and is confirmed, proceededing to get data ${storeId}`,
+      );
     }
   }
 
@@ -234,7 +238,7 @@ const getSubscribedStoreData = async (
     encodedData = await dataLayer.getStoreData(storeId);
   }
 
-  logger.debug(encodedData?.keys_values);
+  logger.debug(`Downloaded from datalayer:  ${encodedData?.keys_values}`);
 
   if (_.isEmpty(encodedData?.keys_values)) {
     logger.debug(

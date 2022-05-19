@@ -44,6 +44,9 @@ class Governance extends Model {
         GOVERNANCE_BODY_PORT,
       );
 
+      logger.info('!!!');
+      logger.info(JSON.stringify(governanceData));
+
       const updates = [];
 
       if (governanceData.orgList) {
@@ -61,6 +64,8 @@ class Governance extends Model {
           confirmed: true,
         });
       }
+
+      logger.info(JSON.stringify(updates));
 
       await Promise.all(
         updates.map(async (update) => Governance.upsert(update)),

@@ -22,10 +22,13 @@ const task = new Task('sync-governance-meta', async () => {
 
     logger.info('Syncing governance data');
     if (GOVERANCE_BODY_ID && GOVERNANCE_BODY_IP && GOVERNANCE_BODY_PORT) {
+      logger.info(
+        `Governance Config Found ${GOVERANCE_BODY_ID} ${GOVERNANCE_BODY_IP} ${GOVERNANCE_BODY_PORT}`,
+      );
       Governance.sync();
     }
   } catch (error) {
-    logger.error('Retrying in 24 hours', error);
+    logger.error('Cant download Goverance data, Retrying in 24 hours', error);
   }
 });
 
