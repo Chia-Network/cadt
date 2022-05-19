@@ -9,6 +9,8 @@ import {
   assertCanDeleteOrg,
 } from '../utils/data-assertions';
 
+import { getDataModelVersion } from '../utils/helpers';
+
 import { ModelKeys, Audit, Staging } from '../models';
 
 export const findAll = async (req, res) => {
@@ -35,10 +37,15 @@ export const createV2 = async (req, res) => {
       const { name } = req.body;
       const buffer = req.files.file.data;
       const icon = `data:image/png;base64, ${buffer.toString('base64')}`;
+      const dataModelVersion = getDataModelVersion();
 
       return res.json({
         message: 'New organization created successfully.',
-        orgId: await Organization.createHomeOrganization(name, icon, 'v1'),
+        orgId: await Organization.createHomeOrganization(
+          name,
+          icon,
+          dataModelVersion,
+        ),
       });
     }
   } catch (error) {
@@ -64,9 +71,15 @@ export const create = async (req, res) => {
       });
     } else {
       const { name, icon } = req.body;
+      const dataModelVersion = getDataModelVersion();
+
       return res.json({
         message: 'New organization created successfully.',
-        orgId: await Organization.createHomeOrganization(name, icon, 'v1'),
+        orgId: await Organization.createHomeOrganization(
+          name,
+          icon,
+          dataModelVersion,
+        ),
       });
     }
   } catch (error) {
@@ -245,8 +258,7 @@ export const resyncOrganization = async (req, res) => {
     await transaction.commit();
 
     return res.json({
-      message:
-        'Resyncing organization completed',
+      message: 'Resyncing organization completed',
     });
   } catch (error) {
     res.status(400).json({

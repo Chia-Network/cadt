@@ -1,17 +1,48 @@
+const _ = require('lodash');
 const winston = require('winston');
-const { format, transports, createLogger } = winston
-
+const { format, transports, createLogger } = winston;
+const yaml = require('js-yaml');
 const DailyRotateFile = require('winston-daily-rotate-file');
+const path = require('path');
 
 const fs = require('fs');
 const os = require('os');
 const homeDir = os.homedir();
-const logDir = `${homeDir}/.chia/climate-warehouse/logs`;
+
+const fileLoader = _.memoize((filepath) => {
+  console.log(`Reading file at ${filepath}`);
+
+  const file = path.resolve(filepath);
+
+  try {
+    return yaml.load(fs.readFileSync(file, 'utf8'));
+  } catch (e) {
+    console.log(`File not found at ${file}`, e);
+  }
+});
+
+const getDataModelVersion = () => {
+  const packageJson = fileLoader('package.json');
+  const version = packageJson.version;
+  const majorVersion = version.split('.')[0];
+  return `v${majorVersion}`;
+};
+
+
+
+const logDir = `${homeDir}/.chia/climate-warehouse/${getDataModelVersion()}/logs`;
 
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
-const logFormat = format.printf(info => `${info.timestamp} [${info.level}]: ${info.message} ${Object.keys(info.metadata || {}).length > 0 ? JSON.stringify(info.metadata) : ''}`)
+const logFormat = format.printf(
+  (info) =>
+    `${info.timestamp} [${info.level}]: ${info.message} ${
+      Object.keys(info.metadata || {}).length > 0
+        ? JSON.stringify(info.metadata)
+        : ''
+    }`,
+);
 
 const logger = createLogger({
   level: 'info',
@@ -26,16 +57,12 @@ const logger = createLogger({
     new transports.File({
       filename: `${logDir}/error.log`,
       level: 'error',
-      format: format.combine(
-        format.json(),
-      ),
+      format: format.combine(format.json()),
     }),
     // Write all logs with importance level of `info` or less to `combined.log`
     new transports.File({
       filename: `${logDir}/combined.log`,
-      format: format.combine(
-        format.json(),
-      ),
+      format: format.combine(format.json()),
     }),
     // Rotate logs to `application-%DATE%.log`
     new DailyRotateFile({
@@ -44,9 +71,7 @@ const logger = createLogger({
       zippedArchive: true,
       maxSize: '20m',
       utc: true,
-      format: format.combine(
-        format.json(),
-      ),
+      format: format.combine(format.json()),
     }),
   ],
   exceptionHandlers: [
@@ -73,20 +98,22 @@ const logger = createLogger({
       utc: true,
     }),
   ],
-  exitOnError: false
+  exitOnError: false,
 });
 
 //
 // If not in production then log to the `console`
 //
 if (process.env.NODE_ENV !== 'production') {
-  logger.add(new transports.Console({
-    format: format.combine(
-      format.colorize(),
-      format.prettyPrint(),
-      logFormat,
-    )
-  }));
+  logger.add(
+    new transports.Console({
+      format: format.combine(
+        format.colorize(),
+        format.prettyPrint(),
+        logFormat,
+      ),
+    }),
+  );
 }
 
 module.exports = {
