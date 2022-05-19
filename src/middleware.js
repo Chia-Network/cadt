@@ -8,13 +8,13 @@ import cors from 'cors';
 import fileUpload from 'express-fileupload';
 import { V1Router } from './routes/v1';
 import { getConfig } from './utils/config-loader';
-import { fileLoader } from './utils/file-loader';
 import { logger } from './config/logger.cjs';
 import {
   assertChiaNetworkMatchInConfiguration,
   assertDataLayerAvailable,
   assertWalletIsAvailable,
 } from './utils/data-assertions';
+import packageJson from '../package.json';
 
 const { API_KEY, READ_ONLY } = getConfig().APP;
 
@@ -26,9 +26,11 @@ const headerKeys = Object.freeze({
 
 const app = express();
 
-app.use(cors({
-  exposedHeaders: Object.values(headerKeys).join(','),
-}));
+app.use(
+  cors({
+    exposedHeaders: Object.values(headerKeys).join(','),
+  }),
+);
 
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -74,13 +76,14 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
-  const packageJson = fileLoader('package.json');
-  logger.debug(`Setting header x-api-verion to package.json version: ${packageJson.version}`);
+  logger.debug(
+    `Setting header x-api-verion to package.json version: ${packageJson.version}`,
+  );
   const version = packageJson.version;
   res.setHeader(headerKeys.API_VERSION_HEADER_KEY, version);
 
   const majorVersion = version.split('.')[0];
-  res.setHeader(headerKeys.DATA_MODEL_VERION_HEADER_KEY, `v${majorVersion}`)
+  res.setHeader(headerKeys.DATA_MODEL_VERION_HEADER_KEY, `v${majorVersion}`);
 
   next();
 });

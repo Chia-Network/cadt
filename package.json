@@ -1,6 +1,6 @@
 {
   "name": "climate-warehouse",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "bin": "build/server.js",
   "type": "module",
@@ -17,12 +17,16 @@
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
     "prepare": "husky install",
-    "build": "babel src --keep-file-extension --out-dir build --copy-files",
+    "build": "babel src --keep-file-extension --out-dir build --copy-files && cp package.json ./build",
     "build-migrations": "babel migrations --keep-file-extension --out-dir dist/migrations --copy-files",
     "prepare-binary": "rm -rf dist && mkdir dist",
     "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-win-x64 --out-path dist",
     "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-macos-x64 --out-path dist",
     "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-linux-x64 --out-path dist"
+  },
+  "pkg": {
+    "scripts": "package.json",
+    "assets": "package.json"
   },
   "dependencies": {
     "body-parser": "^1.19.0",
