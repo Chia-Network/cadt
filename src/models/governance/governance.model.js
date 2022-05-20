@@ -8,28 +8,83 @@ import datalayer from '../../datalayer';
 import { keyValueToChangeList } from '../../utils/datalayer-utils';
 import { getConfig } from '../../utils/config-loader';
 import { logger } from '../../config/logger.cjs';
+import { getDataModelVersion } from '../../utils/helpers';
 
 const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
   getConfig().GOVERNANCE;
+
+const { USE_SIMULATOR } = getConfig().APP;
 
 import ModelTypes from './governance.modeltypes.cjs';
 
 class Governance extends Model {
   static async createGoveranceBody() {
-    const goveranceBodyId = await datalayer.createDataLayerStore();
-
     if (GOVERANCE_BODY_ID && GOVERANCE_BODY_ID !== '') {
       throw new Error(
         'You are already listening to another governance body. Please clear GOVERANCE_BODY_ID from your env and try again',
       );
     }
 
-    await Meta.upsert({
-      metaKey: 'goveranceBodyId',
-      metaValue: goveranceBodyId,
-    });
+    const dataModelVersion = getDataModelVersion();
+    const goveranceBodyId = await datalayer.createDataLayerStore();
+    const governanceVersionId = await datalayer.createDataLayerVersion;
 
-    return goveranceBodyId;
+    const revertOrganizationIfFailed = async () => {
+      logger.info('Reverting Failed Governance Body Creation');
+      await Meta.destroy({ where: { metaKey: 'goveranceBodyId' } });
+    };
+
+    // sync the governance store
+    await datalayer.syncDataLayer(
+      goveranceBodyId,
+      {
+        [dataModelVersion]: governanceVersionId,
+      },
+      revertOrganizationIfFailed,
+    );
+
+    const onConfirm = () => {
+      logger.info('Organization confirmed, you are ready to go');
+      Meta.upsert({
+        metaKey: 'goveranceBodyId',
+        metaValue: governanceVersionId,
+      });
+    };
+
+    if (!USE_SIMULATOR) {
+      logger.info('Waiting for New Governance Body to be confirmed');
+      datalayer.getStoreData(
+        governanceVersionId,
+        onConfirm,
+        revertOrganizationIfFailed,
+      );
+    } else {
+      onConfirm();
+    }
+
+    return governanceVersionId;
+  }
+
+  static async upsertGovernanceDownload(governanceData) {
+    const updates = [];
+
+    if (governanceData.orgList) {
+      updates.push({
+        metaKey: 'orgList',
+        metaValue: governanceData.orgList,
+        confirmed: true,
+      });
+    }
+
+    if (governanceData.pickList) {
+      updates.push({
+        metaKey: 'pickList',
+        metaValue: governanceData.pickList,
+        confirmed: true,
+      });
+    }
+
+    await Promise.all(updates.map(async (update) => Governance.upsert(update)));
   }
 
   static async sync() {
@@ -44,32 +99,30 @@ class Governance extends Model {
         GOVERNANCE_BODY_PORT,
       );
 
-      logger.info('!!!');
-      logger.info(JSON.stringify(governanceData));
-
-      const updates = [];
-
-      if (governanceData.orgList) {
-        updates.push({
-          metaKey: 'orgList',
-          metaValue: governanceData.orgList,
-          confirmed: true,
-        });
-      }
-
-      if (governanceData.pickList) {
-        updates.push({
-          metaKey: 'pickList',
-          metaValue: governanceData.pickList,
-          confirmed: true,
-        });
-      }
-
-      logger.info(JSON.stringify(updates));
-
-      await Promise.all(
-        updates.map(async (update) => Governance.upsert(update)),
+      // Check if there is v1, v2, v3 ..... and if not, then we assume this is a legacy goverance table that isnt versioned
+      const shouldSyncLegacy = !Object.keys(governanceData).some((key) =>
+        /^v?[0-9]+$/.test(key),
       );
+
+      if (shouldSyncLegacy) {
+        await Governance.upsertGovernanceDownload(governanceData);
+      }
+
+      // Check if the governance data for this version exists
+      const dataModelVersion = getDataModelVersion();
+      if (governanceData[dataModelVersion]) {
+        const versionedGovernanceData = await datalayer.getSubscribedStoreData(
+          governanceData[dataModelVersion],
+          GOVERNANCE_BODY_IP,
+          GOVERNANCE_BODY_PORT,
+        );
+
+        await Governance.upsertGovernanceDownload(versionedGovernanceData);
+      } else {
+        throw new Error(
+          `Governance data is not available from this source for ${dataModelVersion} data model.`,
+        );
+      }
     } catch (error) {
       logger.error('Error Syncing Governance Data', error);
     }
