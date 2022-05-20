@@ -6,28 +6,16 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const logger = require('./logger.cjs').logger;
+const packageJson = require('../../package.json');
 
 const homeDir = os.homedir();
 const defaultConfig = require('../utils/defaultConfig.json');
 
 const getDataModelVersion = () => {
-  const packageJson = fileLoader('package.json');
   const version = packageJson.version;
   const majorVersion = version.split('.')[0];
   return `v${majorVersion}`;
 };
-
-const fileLoader = _.memoize((filepath) => {
-  logger.debug(`Reading file at ${filepath}`);
-
-  const file = path.resolve(filepath);
-
-  try {
-    return yaml.load(fs.readFileSync(file, 'utf8'));
-  } catch (e) {
-    logger.error(`File not found at ${file}`, e);
-  }
-});
 
 const persistanceFolder = `${homeDir}/.chia/climate-warehouse/${getDataModelVersion()}`;
 

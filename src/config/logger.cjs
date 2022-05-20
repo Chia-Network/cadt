@@ -1,34 +1,17 @@
-const _ = require('lodash');
 const winston = require('winston');
 const { format, transports, createLogger } = winston;
-const yaml = require('js-yaml');
 const DailyRotateFile = require('winston-daily-rotate-file');
-const path = require('path');
 
 const fs = require('fs');
 const os = require('os');
 const homeDir = os.homedir();
-
-const fileLoader = _.memoize((filepath) => {
-  console.log(`Reading file at ${filepath}`);
-
-  const file = path.resolve(filepath);
-
-  try {
-    return yaml.load(fs.readFileSync(file, 'utf8'));
-  } catch (e) {
-    console.log(`File not found at ${file}`, e);
-  }
-});
+const packageJson = require('../../package.json');
 
 const getDataModelVersion = () => {
-  const packageJson = fileLoader('package.json');
   const version = packageJson.version;
   const majorVersion = version.split('.')[0];
   return `v${majorVersion}`;
 };
-
-
 
 const logDir = `${homeDir}/.chia/climate-warehouse/${getDataModelVersion()}/logs`;
 

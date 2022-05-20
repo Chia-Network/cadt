@@ -4,7 +4,7 @@ import _ from 'lodash';
 
 import { isPluralized } from './string-utils.js';
 import { formatModelAssociationName } from './model-utils.js';
-import { fileLoader } from './file-loader';
+import packageJson from '../../package.json';
 
 export const paginationParams = (page, limit) => {
   if (page === undefined || limit === undefined) {
@@ -78,7 +78,6 @@ export const columnsToInclude = (userColumns, foreignKeys) => {
 };
 
 export const getDataModelVersion = () => {
-  const packageJson = fileLoader('package.json');
   const version = packageJson.version;
   const majorVersion = version.split('.')[0];
   return `v${majorVersion}`;
