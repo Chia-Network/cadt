@@ -36,7 +36,7 @@ const syncDataLayer = async (storeId, data, failedCallback) => {
 };
 
 const retry = (storeId, changeList, failedCallback, retryAttempts) => {
-  logger.info('RETRYING...', retryAttempts);
+  logger.info(`Retrying pushing to store ${storeId}: ${retryAttempts}`);
   if (retryAttempts >= 60) {
     logger.info(
       'Could not push changelist to datalayer after retrying 10 times',
@@ -46,7 +46,6 @@ const retry = (storeId, changeList, failedCallback, retryAttempts) => {
   }
 
   setTimeout(async () => {
-    logger.info('Retrying...', storeId);
     await pushChangesWhenStoreIsAvailable(
       storeId,
       changeList,
