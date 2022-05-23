@@ -6,15 +6,22 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const logger = require('./logger.cjs').logger;
+const packageJson = require('../../package.json');
 
 const homeDir = os.homedir();
 const defaultConfig = require('../utils/defaultConfig.json');
 
-const persistanceFolder = `${homeDir}/.chia/climate-warehouse`;
+const getDataModelVersion = () => {
+  const version = packageJson.version;
+  const majorVersion = version.split('.')[0];
+  return `v${majorVersion}`;
+};
+
+const persistanceFolder = `${homeDir}/.chia/climate-warehouse/${getDataModelVersion()}`;
 
 // Adding this duplicate function here because im having trouble
 // importing it in from utils folder
-const configPath = `${homeDir}/.chia/climate-warehouse/config.yaml`;
+const configPath = `${persistanceFolder}/config.yaml`;
 const getConfig = _.memoize(() => {
   logger.info(`Reading config file at ${configPath}`);
 
@@ -25,6 +32,10 @@ const getConfig = _.memoize(() => {
   // First write it to chia home
   if (!fs.existsSync(configFile)) {
     try {
+      if (!fs.existsSync(persistanceFolder)) {
+        fs.mkdirSync(persistanceFolder, { recursive: true });
+      }
+
       fs.writeFileSync(configFile, yaml.dump(defaultConfig), 'utf8');
     } catch (err) {
       // if it still doesnt exist that means we are in an env without write permissions
