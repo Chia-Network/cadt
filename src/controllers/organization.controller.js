@@ -35,8 +35,15 @@ export const createV2 = async (req, res) => {
       }
 
       const { name } = req.body;
-      const buffer = req.files.file.data;
-      const icon = `data:image/png;base64, ${buffer.toString('base64')}`;
+      let icon;
+
+      if (_.get(req, 'files.file.data')) {
+        const buffer = req.files.file.data;
+        icon = `data:image/png;base64, ${buffer.toString('base64')}`;
+      } else {
+        icon = '';
+      }
+
       const dataModelVersion = getDataModelVersion();
 
       return res.json({
