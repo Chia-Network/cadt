@@ -35,8 +35,15 @@ export const createV2 = async (req, res) => {
       }
 
       const { name } = req.body;
-      const buffer = req.files.file.data;
-      const icon = `data:image/png;base64, ${buffer.toString('base64')}`;
+      let icon;
+
+      if (_.get(req, 'files.file.data')) {
+        const buffer = req.files.file.data;
+        icon = `data:image/png;base64, ${buffer.toString('base64')}`;
+      } else {
+        icon = '';
+      }
+
       const dataModelVersion = getDataModelVersion();
 
       return res.json({
@@ -114,7 +121,6 @@ export const resetHomeOrg = async (req, res) => {
   }
 };
 
-// eslint-disable-next-line
 export const importOrg = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
@@ -128,6 +134,27 @@ export const importOrg = async (req, res) => {
     });
 
     return Organization.importOrganization(orgUid, ip, port);
+  } catch (error) {
+    console.trace(error);
+    res.status(400).json({
+      message: 'Error importing organization',
+      error: error.message,
+    });
+  }
+};
+
+export const importHomeOrg = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+
+    const { orgUid } = req.body;
+
+    await Organization.importHomeOrg(orgUid);
+
+    res.json({
+      message: 'Importing home organization.',
+    });
   } catch (error) {
     console.trace(error);
     res.status(400).json({

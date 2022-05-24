@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import supertest from 'supertest';
 import { expect } from 'chai';
 import sinon from 'sinon';
@@ -47,6 +48,7 @@ describe('Units Resource CRUD', function () {
 
         expect(result.body.length).to.not.equal(0);
       }).timeout(TEST_WAIT_TIME * 10);
+
       it('gets all the units filtered by orgUid', async function () {
         const result = await supertest(app)
           .get('/v1/units')
@@ -55,6 +57,31 @@ describe('Units Resource CRUD', function () {
         expect(result.body.length).to.not.equal(1);
         // ?orgUid=XXXX
       }).timeout(TEST_WAIT_TIME * 10);
+
+      it('orders by serial number', async function () {
+        const newUnit1 = _.cloneDeep(newUnit);
+        newUnit1.unitBlockStart = 'AAAAA1';
+        newUnit1.unitBlockEnd = 'AAAAA2';
+        await testFixtures.createNewUnit(newUnit1);
+
+        const newUnit2 = _.cloneDeep(newUnit);
+        newUnit2.unitBlockStart = 'AAAAA11';
+        newUnit2.unitBlockEnd = 'AAAAA21';
+        await testFixtures.createNewUnit(newUnit2);
+        await testFixtures.commitStagingRecords();
+        await testFixtures.waitForDataLayerSync();
+
+        const result = await supertest(app)
+          .get('/v1/units')
+          .query({ order: 'SERIALNUMBER' });
+
+        expect(result.body[0].serialNumberBlock).to.equal('AAAAA1-AAAAA2');
+        expect(result.body[1].serialNumberBlock).to.equal('AAAAA11-AAAAA21');
+        expect(result.body[2].serialNumberBlock).to.equal(
+          'AXJJFSLGHSHEJ1000-AXJJFSLGHSHEJ1010',
+        );
+      }).timeout(TEST_WAIT_TIME * 10);
+
       it('gets all the units for a search term', async function () {
         // ?search=XXXX
         const result = await supertest(app)
