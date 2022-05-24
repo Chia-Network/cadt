@@ -114,7 +114,6 @@ export const resetHomeOrg = async (req, res) => {
   }
 };
 
-// eslint-disable-next-line
 export const importOrg = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
@@ -128,6 +127,27 @@ export const importOrg = async (req, res) => {
     });
 
     return Organization.importOrganization(orgUid, ip, port);
+  } catch (error) {
+    console.trace(error);
+    res.status(400).json({
+      message: 'Error importing organization',
+      error: error.message,
+    });
+  }
+};
+
+export const importHomeOrg = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+
+    const { orgUid } = req.body;
+
+    await Organization.importHomeOrg(orgUid);
+
+    res.json({
+      message: 'Importing home organization.',
+    });
   } catch (error) {
     console.trace(error);
     res.status(400).json({

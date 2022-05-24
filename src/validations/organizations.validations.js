@@ -11,6 +11,10 @@ export const importOrganizationSchema = Joi.object({
   port: Joi.string().required(),
 });
 
+export const importHomeOrganizationSchema = Joi.object({
+  orgUid: Joi.string().required(),
+});
+
 export const unsubscribeOrganizationSchema = Joi.object({
   orgUid: Joi.string().required(),
 });
