@@ -1,0 +1,113 @@
+From cb3a7040639677ca366b92024fd8726c55a6f518 Mon Sep 17 00:00:00 2001
+From: Michael Taylor <mtaylor@michaeltaylor.dev>
+Date: Mon, 23 May 2022 20:46:22 -0400
+Subject: [PATCH] feat: sort by serial number
+
+---
+ src/controllers/units.controller.js  | 13 ++++++++++--
+ src/validations/units.validations.js |  1 +
+ tests/resources/units.spec.js        | 30 ++++++++++++++++++++++++++++
+ 3 files changed, 42 insertions(+), 2 deletions(-)
+
+diff --git a/src/controllers/units.controller.js b/src/controllers/units.controller.js
+index b5b3af6..a207bd4 100644
+--- a/src/controllers/units.controller.js
++++ b/src/controllers/units.controller.js
+@@ -109,7 +109,7 @@ export const create = async (req, res) => {
+ 
+ export const findAll = async (req, res) => {
+   try {
+-    let { page, limit, columns, orgUid, search, xls } = req.query;
++    let { page, limit, columns, orgUid, search, xls, order } = req.query;
+     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
+ 
+     const includes = Unit.getAssociatedModels();
+@@ -160,11 +160,20 @@ export const findAll = async (req, res) => {
+       };
+     }
+ 
++    // default to DESC
++    let resultOrder = [['timeStaged', 'DESC']];
++
++    if (order && order === 'SERIALNUMBER') {
++      resultOrder = [['serialNumberBlock', 'ASC']];
++    } else if (order && order === 'ASC') {
++      resultOrder = [['timeStaged', 'ASC']];
++    }
++
+     if (!results) {
+       results = await Unit.findAndCountAll({
+         where,
+         distinct: true,
+-        order: [['timeStaged', 'DESC']],
++        order: resultOrder,
+         ...columnsToInclude(columns, includes),
+         ...paginationParams(page, limit),
+       });
+diff --git a/src/validations/units.validations.js b/src/validations/units.validations.js
+index c88739f..5a49a98 100644
+--- a/src/validations/units.validations.js
++++ b/src/validations/units.validations.js
+@@ -56,6 +56,7 @@ export const unitsGetQuerySchema = Joi.object()
+     warehouseUnitId: Joi.string(),
+     columns: Joi.array().items(Joi.string()).single(),
+     orgUid: Joi.string(),
++    order: Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
+     xls: Joi.boolean(),
+   })
+   .with('page', 'limit');
+diff --git a/tests/resources/units.spec.js b/tests/resources/units.spec.js
+index 64d2cb0..e52935f 100644
+--- a/tests/resources/units.spec.js
++++ b/tests/resources/units.spec.js
+@@ -1,3 +1,4 @@
++import _ from 'lodash';
+ import supertest from 'supertest';
+ import { expect } from 'chai';
+ import sinon from 'sinon';
+@@ -47,6 +48,7 @@ describe('Units Resource CRUD', function () {
+ 
+         expect(result.body.length).to.not.equal(0);
+       }).timeout(TEST_WAIT_TIME * 10);
++
+       it('gets all the units filtered by orgUid', async function () {
+         const result = await supertest(app)
+           .get('/v1/units')
+@@ -55,6 +57,34 @@ describe('Units Resource CRUD', function () {
+         expect(result.body.length).to.not.equal(1);
+         // ?orgUid=XXXX
+       }).timeout(TEST_WAIT_TIME * 10);
++
++      it('orders by serial number', async function () {
++        const newUnit1 = _.cloneDeep(newUnit);
++        newUnit1.unitBlockStart = 'A1';
++        newUnit1.unitBlockEnd = 'A2';
++        await testFixtures.createNewUnit(newUnit1);
++
++        const newUnit2 = _.cloneDeep(newUnit);
++        newUnit2.unitBlockStart = 'B1';
++        newUnit2.unitBlockEnd = 'B2';
++        await testFixtures.createNewUnit(newUnit2);
++        await testFixtures.commitStagingRecords();
++        await testFixtures.waitForDataLayerSync();
++
++        const result = await supertest(app)
++          .get('/v1/units')
++          .query({ order: 'SERIALNUMBER' });
++
++        expect(result.body.length).to.equal(3);
++        console.log(result.body);
++        expect(result.body[0].serialNumberBlock).to.equal('A1-A2');
++        expect(result.body[1].serialNumberBlock).to.equal(
++          'AXJJFSLGHSHEJ1000-AXJJFSLGHSHEJ1010',
++        );
++        expect(result.body[2].serialNumberBlock).to.equal('B1-B2');
++        // ?orgUid=XXXX
++      }).timeout(TEST_WAIT_TIME * 10);
++
+       it('gets all the units for a search term', async function () {
+         // ?search=XXXX
+         const result = await supertest(app)
+-- 
+2.34.1.windows.1
+
