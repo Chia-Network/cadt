@@ -314,6 +314,16 @@ const getStoreIfUpdated = async (
   }
 };
 
+export const getLocalStoreData = async (storeId) => {
+  const encodedData = await dataLayer.getStoreData(storeId);
+
+  if (!encodedData) {
+    return false;
+  }
+
+  return decodeDataLayerResponse(encodedData);
+};
+
 export default {
   startDataLayerUpdatePolling,
   syncDataLayerStoreToClimateWarehouse,
@@ -323,6 +333,7 @@ export default {
   getRootHistory,
   getRootDiff,
   getStoreData,
+  getLocalStoreData,
   getStoreIfUpdated,
   POLLING_INTERVAL,
   getCurrentStoreData,
