@@ -60,13 +60,13 @@ describe('Units Resource CRUD', function () {
 
       it('orders by serial number', async function () {
         const newUnit1 = _.cloneDeep(newUnit);
-        newUnit1.unitBlockStart = 'A1';
-        newUnit1.unitBlockEnd = 'A2';
+        newUnit1.unitBlockStart = 'AAAAA1';
+        newUnit1.unitBlockEnd = 'AAAAA2';
         await testFixtures.createNewUnit(newUnit1);
 
         const newUnit2 = _.cloneDeep(newUnit);
-        newUnit2.unitBlockStart = 'B1';
-        newUnit2.unitBlockEnd = 'B2';
+        newUnit2.unitBlockStart = 'AAAAA11';
+        newUnit2.unitBlockEnd = 'AAAAA21';
         await testFixtures.createNewUnit(newUnit2);
         await testFixtures.commitStagingRecords();
         await testFixtures.waitForDataLayerSync();
@@ -75,11 +75,11 @@ describe('Units Resource CRUD', function () {
           .get('/v1/units')
           .query({ order: 'SERIALNUMBER' });
 
-        expect(result.body[0].serialNumberBlock).to.equal('A1-A2');
-        expect(result.body[1].serialNumberBlock).to.equal(
+        expect(result.body[0].serialNumberBlock).to.equal('AAAAA1-AAAAA2');
+        expect(result.body[1].serialNumberBlock).to.equal('AAAAA11-AAAAA21');
+        expect(result.body[2].serialNumberBlock).to.equal(
           'AXJJFSLGHSHEJ1000-AXJJFSLGHSHEJ1010',
         );
-        expect(result.body[2].serialNumberBlock).to.equal('B1-B2');
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the units for a search term', async function () {
