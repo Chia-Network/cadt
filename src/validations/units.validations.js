@@ -56,6 +56,7 @@ export const unitsGetQuerySchema = Joi.object()
     warehouseUnitId: Joi.string(),
     columns: Joi.array().items(Joi.string()).single(),
     orgUid: Joi.string(),
+    order: Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
     xls: Joi.boolean(),
   })
   .with('page', 'limit');
