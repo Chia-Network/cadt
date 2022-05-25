@@ -30,10 +30,6 @@ export const createV2 = async (req, res) => {
         orgId: myOrganization.orgUid,
       });
     } else {
-      if (!_.get(req, 'files.file.data')) {
-        throw new Error('Missing required Icon');
-      }
-
       const { name } = req.body;
       let icon;
 
