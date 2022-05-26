@@ -20,6 +20,7 @@ import { keyValueToChangeList } from '../../utils/datalayer-utils';
 import { unitsUpdateSchema } from '../../validations/index.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import dataLayer from '../../datalayer';
+import { ProjectLocation } from '../locations';
 
 const { Model } = Sequelize;
 
@@ -38,6 +39,10 @@ class Unit extends Model {
     {
       model: Issuance,
       pluralize: false,
+    },
+    {
+      model: ProjectLocation,
+      pluralize: true,
     },
   ];
 
@@ -67,6 +72,8 @@ class Unit extends Model {
         as: 'labels',
       });
     });
+
+    Unit.hasMany(ProjectLocation, { foreignKey: 'warehouseUnitId' });
   }
 
   static async create(values, options) {

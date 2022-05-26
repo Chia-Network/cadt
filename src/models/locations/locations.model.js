@@ -8,6 +8,7 @@ import { Project } from '../projects';
 
 import ModelTypes from './locations.modeltypes.cjs';
 import { ProjectLocationMirror } from './locations.model.mirror';
+import { Unit } from '../units';
 
 class ProjectLocation extends Model {
   static associate() {
@@ -15,6 +16,12 @@ class ProjectLocation extends Model {
       onDelete: 'CASCADE',
       targetKey: 'warehouseProjectId',
       foreignKey: 'warehouseProjectId',
+    });
+
+    ProjectLocation.belongsTo(Unit, {
+      onDelete: 'CASCADE',
+      targetKey: 'warehouseUnitId',
+      foreignKey: 'warehouseUnitId',
     });
 
     safeMirrorDbHandler(() => {
