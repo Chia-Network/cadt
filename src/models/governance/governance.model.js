@@ -9,11 +9,12 @@ import { keyValueToChangeList } from '../../utils/datalayer-utils';
 import { getConfig } from '../../utils/config-loader';
 import { logger } from '../../config/logger.cjs';
 import { getDataModelVersion } from '../../utils/helpers';
+import PickListStub from './governance.stub.json';
 
 const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
   getConfig().GOVERNANCE;
 
-const { USE_SIMULATOR } = getConfig().APP;
+const { USE_SIMULATOR, CHIA_NETWORK } = getConfig().APP;
 
 import ModelTypes from './governance.modeltypes.cjs';
 
@@ -82,6 +83,12 @@ class Governance extends Model {
         metaValue: governanceData.pickList,
         confirmed: true,
       });
+    } else if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
+      updates.push({
+        metaKey: 'pickList',
+        metaValue: PickListStub,
+        confirmed: true,
+      });
     }
 
     await Promise.all(updates.map(async (update) => Governance.upsert(update)));
@@ -118,6 +125,12 @@ class Governance extends Model {
         );
 
         await Governance.upsertGovernanceDownload(versionedGovernanceData);
+      } else if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
+        Governance.upsert({
+          metaKey: 'pickList',
+          metaValue: PickListStub,
+          confirmed: true,
+        });
       } else {
         throw new Error(
           `Governance data is not available from this source for ${dataModelVersion} data model.`,
