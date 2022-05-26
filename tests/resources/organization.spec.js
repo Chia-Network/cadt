@@ -66,9 +66,11 @@ describe('Orgainzation Resource CRUD', function () {
       // add a project to the staging table
       await testFixtures.createNewProject();
 
-      const response = await supertest(app).put(`/v1/organizations/resync`).send({
-        orgUid: '1',
-      });
+      const response = await supertest(app)
+        .put(`/v1/organizations/resync`)
+        .send({
+          orgUid: '1',
+        });
 
       expect(response.body.message).to.equal(
         'Resyncing organization completed',

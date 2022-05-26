@@ -109,7 +109,7 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    let { page, limit, columns, orgUid, search, xls } = req.query;
+    let { page, limit, columns, orgUid, search, xls, order } = req.query;
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
     const includes = Unit.getAssociatedModels();
@@ -160,11 +160,20 @@ export const findAll = async (req, res) => {
       };
     }
 
+    // default to DESC
+    let resultOrder = [['timeStaged', 'DESC']];
+
+    if (order && order === 'SERIALNUMBER') {
+      resultOrder = [['serialNumberBlock', 'ASC']];
+    } else if (order && order === 'ASC') {
+      resultOrder = [['timeStaged', 'ASC']];
+    }
+
     if (!results) {
       results = await Unit.findAndCountAll({
         where,
         distinct: true,
-        order: [['timeStaged', 'DESC']],
+        order: resultOrder,
         ...columnsToInclude(columns, includes),
         ...paginationParams(page, limit),
       });

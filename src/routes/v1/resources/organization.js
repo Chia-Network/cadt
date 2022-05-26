@@ -10,6 +10,7 @@ import {
   resyncOrganizationSchema,
   subscribeOrganizationSchema,
   unsubscribeOrganizationSchema,
+  importHomeOrganizationSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -35,9 +36,13 @@ OrganizationRouter.post('/create', (req, res) => {
   return OrganizationController.createV2(req, res);
 });
 
-OrganizationRouter.put('/', (req, res) => {
-  return OrganizationController.importOrg(req, res);
-});
+OrganizationRouter.put(
+  '/',
+  validator.body(importHomeOrganizationSchema),
+  (req, res) => {
+    return OrganizationController.importHomeOrg(req, res);
+  },
+);
 
 OrganizationRouter.put(
   '/import',

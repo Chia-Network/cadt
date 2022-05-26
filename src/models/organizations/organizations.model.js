@@ -13,6 +13,8 @@ import {
   serverAvailable,
 } from '../../utils/data-loaders';
 
+import { getDataModelVersion } from '../../utils/helpers';
+
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR } = getConfig().APP;
 
@@ -129,9 +131,55 @@ class Organization extends Model {
   }
 
   // eslint-disable-next-line
-  static appendNewRegistry = (dataVersion) => {
-    throw new Error('Not implemented yet');
-  };
+  static async appendNewRegistry(registryId, dataVersion) {
+    const registryVersionId = await datalayer.createDataLayerStore();
+    await datalayer.syncDataLayer(registryId, {
+      [dataVersion]: registryVersionId,
+    });
+
+    return registryVersionId;
+  }
+
+  static async importHomeOrg(orgUid) {
+    const orgData = await datalayer.getLocalStoreData(orgUid);
+
+    if (!orgData) {
+      throw new Error('Your node does not have write access to this orgUid');
+    }
+
+    const orgDataObj = orgData.reduce((obj, curr) => {
+      console.log(curr);
+      obj[curr.key] = curr.value;
+      return obj;
+    }, {});
+
+    const registryData = await datalayer.getLocalStoreData(
+      orgDataObj.registryId,
+    );
+
+    const registryDataObj = registryData.reduce((obj, curr) => {
+      obj[curr.key] = curr.value;
+      return obj;
+    }, {});
+
+    const dataModelVersion = getDataModelVersion();
+
+    if (!registryDataObj[dataModelVersion]) {
+      registryDataObj[dataModelVersion] = await Organization.appendNewRegistry(
+        orgDataObj.registryId,
+        dataModelVersion,
+      );
+    }
+
+    await Organization.upsert({
+      orgUid,
+      name: orgDataObj.name,
+      icon: orgDataObj.icon,
+      registryId: registryDataObj[dataModelVersion],
+      subscribed: true,
+      isHome: true,
+    });
+  }
 
   // eslint-disable-next-line
   static importOrganization = async (orgUid, ip, port) => {
@@ -155,11 +203,15 @@ class Organization extends Model {
         port,
       );
 
-      if (!registryData.v1) {
-        throw new Error('Organization has no registry, can not import');
+      const dataModelVersion = getDataModelVersion();
+
+      if (!registryData[dataModelVersion]) {
+        throw new Error(
+          `Organization has no registry for the ${dataModelVersion} datamodel, can not import`,
+        );
       }
 
-      logger.info('IMPORTING REGISTRY V1: ', registryData.v1);
+      logger.info(`IMPORTING REGISTRY ${dataModelVersion}: `, registryData.v1);
 
       await datalayer.subscribeToStoreOnDataLayer(registryData.v1, ip, port);
 
@@ -167,7 +219,7 @@ class Organization extends Model {
         orgUid,
         name: orgData.name,
         icon: orgData.icon,
-        registryId: registryData.v1,
+        registryId: registryData[dataModelVersion],
         subscribed: true,
         isHome: false,
       });
@@ -176,7 +228,7 @@ class Organization extends Model {
         orgUid,
         name: orgData.name,
         icon: orgData.icon,
-        registryId: registryData.v1,
+        registryId: registryData[dataModelVersion],
         subscribed: true,
         isHome: false,
       });

@@ -9,6 +9,8 @@ import {
   assertCanDeleteOrg,
 } from '../utils/data-assertions';
 
+import { getDataModelVersion } from '../utils/helpers';
+
 import { ModelKeys, Audit, Staging } from '../models';
 
 export const findAll = async (req, res) => {
@@ -28,17 +30,25 @@ export const createV2 = async (req, res) => {
         orgId: myOrganization.orgUid,
       });
     } else {
-      if (!_.get(req, 'files.file.data')) {
-        throw new Error('Missing required Icon');
+      const { name } = req.body;
+      let icon;
+
+      if (_.get(req, 'files.file.data')) {
+        const buffer = req.files.file.data;
+        icon = `data:image/png;base64, ${buffer.toString('base64')}`;
+      } else {
+        icon = '';
       }
 
-      const { name } = req.body;
-      const buffer = req.files.file.data;
-      const icon = `data:image/png;base64, ${buffer.toString('base64')}`;
+      const dataModelVersion = getDataModelVersion();
 
       return res.json({
         message: 'New organization created successfully.',
-        orgId: await Organization.createHomeOrganization(name, icon, 'v1'),
+        orgId: await Organization.createHomeOrganization(
+          name,
+          icon,
+          dataModelVersion,
+        ),
       });
     }
   } catch (error) {
@@ -64,9 +74,15 @@ export const create = async (req, res) => {
       });
     } else {
       const { name, icon } = req.body;
+      const dataModelVersion = getDataModelVersion();
+
       return res.json({
         message: 'New organization created successfully.',
-        orgId: await Organization.createHomeOrganization(name, icon, 'v1'),
+        orgId: await Organization.createHomeOrganization(
+          name,
+          icon,
+          dataModelVersion,
+        ),
       });
     }
   } catch (error) {
@@ -101,7 +117,6 @@ export const resetHomeOrg = async (req, res) => {
   }
 };
 
-// eslint-disable-next-line
 export const importOrg = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
@@ -115,6 +130,27 @@ export const importOrg = async (req, res) => {
     });
 
     return Organization.importOrganization(orgUid, ip, port);
+  } catch (error) {
+    console.trace(error);
+    res.status(400).json({
+      message: 'Error importing organization',
+      error: error.message,
+    });
+  }
+};
+
+export const importHomeOrg = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+
+    const { orgUid } = req.body;
+
+    await Organization.importHomeOrg(orgUid);
+
+    res.json({
+      message: 'Importing home organization.',
+    });
   } catch (error) {
     console.trace(error);
     res.status(400).json({
@@ -245,8 +281,7 @@ export const resyncOrganization = async (req, res) => {
     await transaction.commit();
 
     return res.json({
-      message:
-        'Resyncing organization completed',
+      message: 'Resyncing organization completed',
     });
   } catch (error) {
     res.status(400).json({

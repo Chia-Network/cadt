@@ -4,6 +4,7 @@ import _ from 'lodash';
 
 import { isPluralized } from './string-utils.js';
 import { formatModelAssociationName } from './model-utils.js';
+import packageJson from '../../package.json';
 
 export const paginationParams = (page, limit) => {
   if (page === undefined || limit === undefined) {
@@ -76,32 +77,8 @@ export const columnsToInclude = (userColumns, foreignKeys) => {
   };
 };
 
-export const defaultSerialNumberPattern = /[.*\D]+([0-9]+)+[-][.*\D]+([0-9]+)$/;
-
-export const transformSerialNumberBlock = (
-  serialNumberBlock,
-  // serial number format: ABC1000-ABC1010
-  serialNumberPattern,
-) => {
-  const unitBlocks = serialNumberBlock.match(serialNumberPattern);
-
-  if (!unitBlocks) {
-    return [null, null, null];
-  }
-
-  const blockStart = Number(unitBlocks[1]) - 1; // Unit blocks are inclusive bound
-  const blockEnd = Number(unitBlocks[2]);
-  return [blockStart, blockEnd, blockEnd - blockStart];
-};
-
-export const createSerialNumberStr = (
-  originalSerialNumberBlock,
-  blockStart,
-  blockEnd,
-  serialNumberPattern = defaultSerialNumberPattern,
-) => {
-  const unitBlocks = originalSerialNumberBlock.match(serialNumberPattern);
-  return unitBlocks[0]
-    .replace(unitBlocks[1], blockStart)
-    .replace(unitBlocks[2], blockEnd);
+export const getDataModelVersion = () => {
+  const version = packageJson.version;
+  const majorVersion = version.split('.')[0];
+  return `v${majorVersion}`;
 };

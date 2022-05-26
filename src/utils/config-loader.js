@@ -6,17 +6,22 @@ import path from 'path';
 
 import { logger } from '../config/logger.cjs';
 
+import { getDataModelVersion } from './helpers';
 import defaultConfig from './defaultConfig.json';
 
 export const getConfig = _.memoize(() => {
   const homeDir = os.homedir();
-  const configFile = path.resolve(
-    `${homeDir}/.chia/climate-warehouse/config.yaml`,
-  );
+  const dataModelVersion = getDataModelVersion();
+  const persistanceFolder = `${homeDir}/.chia/climate-warehouse/${dataModelVersion}`;
+  const configFile = path.resolve(`${persistanceFolder}/config.yaml`);
 
   try {
     if (!fs.existsSync(configFile)) {
       try {
+        if (!fs.existsSync(persistanceFolder)) {
+          fs.mkdirSync(persistanceFolder, { recursive: true });
+        }
+
         fs.writeFileSync(configFile, yaml.dump(defaultConfig), 'utf8');
       } catch (err) {
         // if it still doesnt exist that means we are in an env without write permissions
