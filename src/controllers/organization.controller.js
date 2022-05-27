@@ -42,13 +42,11 @@ export const createV2 = async (req, res) => {
 
       const dataModelVersion = getDataModelVersion();
 
+      Organization.createHomeOrganization(name, icon, dataModelVersion);
+
       return res.json({
-        message: 'New organization created successfully.',
-        orgId: await Organization.createHomeOrganization(
-          name,
-          icon,
-          dataModelVersion,
-        ),
+        message:
+          'New organization created successfully. Please wait for it to be confirmed.',
       });
     }
   } catch (error) {

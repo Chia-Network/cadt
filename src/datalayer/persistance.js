@@ -5,6 +5,7 @@ import path from 'path';
 import request from 'request-promise';
 import os from 'os';
 import { getConfig } from '../utils/config-loader';
+import { decodeHex } from '../utils/datalayer-utils';
 
 import { logger } from '../config/logger.cjs';
 
@@ -46,8 +47,6 @@ export const createDataLayerStore = async () => {
     return data.id;
   }
 
-  logger.info(data);
-
   throw new Error(data.error);
 };
 
@@ -67,20 +66,19 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
 
     const data = JSON.parse(response);
 
-    logger.info(options);
-    logger.info(data);
-
     if (data.success) {
-      logger.info('Success!');
+      logger.info(
+        `Success!, Changes were submitted to the datalayer for storeId: ${storeId}`,
+      );
       return true;
     }
 
     if (data.error.includes('Key already present')) {
-      logger.info('Success, I guess...');
+      logger.info(
+        `The datalayer key was already present, its possible your data was pushed to the datalayer but never broadcasted to the blockchain. This can create a mismatched state in your node.`,
+      );
       return true;
     }
-
-    logger.info(data);
 
     return false;
   } catch (error) {
@@ -164,12 +162,24 @@ export const getStoreData = async (storeId, rootHash) => {
 
     if (data.success) {
       if (!_.isEmpty(data.keys_values)) {
-        logger.info(`Downloaded Data: ${JSON.stringify(data)}`);
+        logger.info(
+          `Downloaded Data: ${JSON.stringify(
+            data.keys_values.map((record) => {
+              return {
+                ...record,
+                key: decodeHex(record.key),
+                value: /{([^*]*)}/.test(decodeHex(record.value))
+                  ? JSON.parse(decodeHex(record.value))
+                  : decodeHex(record.value),
+              };
+            }),
+            null,
+            2,
+          )}`,
+        );
       }
       return data;
     }
-
-    logger.info(data);
   }
 
   return false;
@@ -193,7 +203,6 @@ export const dataLayerAvailable = async () => {
       return true;
     }
 
-    logger.info(data);
     return false;
   } catch (error) {
     return false;
