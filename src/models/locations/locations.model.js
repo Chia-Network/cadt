@@ -5,6 +5,7 @@ const { Model } = Sequelize;
 
 import { sequelize, safeMirrorDbHandler } from '../../database';
 import { Project } from '../projects';
+import { Unit } from '../units';
 
 import ModelTypes from './locations.modeltypes.cjs';
 import { ProjectLocationMirror } from './locations.model.mirror';
@@ -17,7 +18,13 @@ class ProjectLocation extends Model {
       foreignKey: 'warehouseProjectId',
     });
 
+    ProjectLocation.hasOne(Unit, {
+      targetKey: 'projectLocationId',
+      foreignKey: 'projectLocationId',
+    });
+
     safeMirrorDbHandler(() => {
+      ProjectLocationMirror.hasOne(Unit);
       ProjectLocationMirror.belongsTo(Project, {
         onDelete: 'CASCADE',
         targetKey: 'warehouseProjectId',
