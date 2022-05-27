@@ -84,9 +84,12 @@ class Governance extends Model {
         confirmed: true,
       });
     } else if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
+      // this block is just a fallback if the app gets through the upstream checks,
+      // might be unnecessary
+      logger.info('SIMULATOR/TESTNET MODE: Using sample picklist');
       updates.push({
         metaKey: 'pickList',
-        metaValue: PickListStub,
+        metaValue: JSON.stringify(PickListStub),
         confirmed: true,
       });
     }
@@ -98,6 +101,18 @@ class Governance extends Model {
     try {
       if (!GOVERANCE_BODY_ID || !GOVERNANCE_BODY_IP || !GOVERNANCE_BODY_PORT) {
         throw new Error('Missing information in env to sync Governance data');
+      }
+
+      // If on simulator or testnet, use the stubbed picklist data and return
+      if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
+        logger.info('SIMULATOR/TESTNET MODE: Using sample picklist');
+        Governance.upsert({
+          metaKey: 'pickList',
+          metaValue: JSON.stringify(PickListStub),
+          confirmed: true,
+        });
+
+        return;
       }
 
       const governanceData = await datalayer.getSubscribedStoreData(
@@ -125,12 +140,6 @@ class Governance extends Model {
         );
 
         await Governance.upsertGovernanceDownload(versionedGovernanceData);
-      } else if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
-        Governance.upsert({
-          metaKey: 'pickList',
-          metaValue: PickListStub,
-          confirmed: true,
-        });
       } else {
         throw new Error(
           `Governance data is not available from this source for ${dataModelVersion} data model.`,
