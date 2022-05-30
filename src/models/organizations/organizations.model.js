@@ -67,6 +67,15 @@ class Organization extends Model {
         return myOrganization.orgUid;
       }
 
+      await Organization.create({
+        orgUid: 'PENDING',
+        registryId: null,
+        isHome: true,
+        subscribed: false,
+        name: '',
+        icon: '',
+      });
+
       const newOrganizationId = USE_SIMULATOR
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
         : await datalayer.createDataLayerStore();
@@ -76,7 +85,10 @@ class Organization extends Model {
 
       const revertOrganizationIfFailed = async () => {
         logger.info('Reverting Failed Organization');
-        await Organization.destroy({ where: { orgUid: newOrganizationId } });
+        await Promise.all([
+          Organization.destroy({ where: { orgUid: newOrganizationId } }),
+          Organization.destroy({ where: { orgUid: 'PENDING' } }),
+        ]);
       };
 
       // sync the organization store
@@ -99,14 +111,17 @@ class Organization extends Model {
         revertOrganizationIfFailed,
       );
 
-      await Organization.create({
-        orgUid: newOrganizationId,
-        registryId: registryVersionId,
-        isHome: true,
-        subscribed: USE_SIMULATOR,
-        name,
-        icon,
-      });
+      await Promise.all([
+        Organization.create({
+          orgUid: newOrganizationId,
+          registryId: registryVersionId,
+          isHome: true,
+          subscribed: USE_SIMULATOR,
+          name,
+          icon,
+        }),
+        Organization.destroy({ where: { orgUid: 'PENDING' } }),
+      ]);
 
       const onConfirm = () => {
         logger.info('Organization confirmed, you are ready to go');
