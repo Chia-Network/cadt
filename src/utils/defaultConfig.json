@@ -16,7 +16,6 @@
     "IS_GOVERNANCE_BODY": false
   },
   "TESTNET": {
-    "TESTNET_PICKLIST_URL": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/picklists.json",
     "TESTNET_DEFAULT_ORGANIZATIONS": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/cw-organizations-testnet.json"
   },
   "GOVERNANCE": {

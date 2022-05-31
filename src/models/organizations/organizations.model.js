@@ -59,75 +59,97 @@ class Organization extends Model {
   }
 
   static async createHomeOrganization(name, icon, dataVersion = 'v1') {
-    const myOrganization = await Organization.getHomeOrg();
+    try {
+      logger.info('Creating New Organization, This could take a while.');
+      const myOrganization = await Organization.getHomeOrg();
 
-    if (myOrganization) {
-      return myOrganization.orgUid;
-    }
+      if (myOrganization) {
+        return myOrganization.orgUid;
+      }
 
-    const newOrganizationId = USE_SIMULATOR
-      ? 'f1c54511-865e-4611-976c-7c3c1f704662'
-      : await datalayer.createDataLayerStore();
+      await Organization.create({
+        orgUid: 'PENDING',
+        registryId: null,
+        isHome: true,
+        subscribed: false,
+        name: '',
+        icon: '',
+      });
 
-    const newRegistryId = await datalayer.createDataLayerStore();
-    const registryVersionId = await datalayer.createDataLayerStore();
+      const newOrganizationId = USE_SIMULATOR
+        ? 'f1c54511-865e-4611-976c-7c3c1f704662'
+        : await datalayer.createDataLayerStore();
 
-    const revertOrganizationIfFailed = async () => {
-      logger.info('Reverting Failed Organization');
-      await Organization.destroy({ where: { orgUid: newOrganizationId } });
-    };
+      const newRegistryId = await datalayer.createDataLayerStore();
+      const registryVersionId = await datalayer.createDataLayerStore();
 
-    // sync the organization store
-    await datalayer.syncDataLayer(
-      newOrganizationId,
-      {
-        registryId: newRegistryId,
-        name,
-        icon,
-      },
-      revertOrganizationIfFailed,
-    );
+      const revertOrganizationIfFailed = async () => {
+        logger.info('Reverting Failed Organization');
+        await Promise.all([
+          Organization.destroy({ where: { orgUid: newOrganizationId } }),
+          Organization.destroy({ where: { orgUid: 'PENDING' } }),
+        ]);
+      };
 
-    //sync the registry store
-    await datalayer.syncDataLayer(
-      newRegistryId,
-      {
-        [dataVersion]: registryVersionId,
-      },
-      revertOrganizationIfFailed,
-    );
-
-    await Organization.create({
-      orgUid: newOrganizationId,
-      registryId: registryVersionId,
-      isHome: true,
-      subscribed: USE_SIMULATOR,
-      name,
-      icon,
-    });
-
-    const onConfirm = () => {
-      logger.info('Organization confirmed, you are ready to go');
-      Organization.update(
+      // sync the organization store
+      await datalayer.syncDataLayer(
+        newOrganizationId,
         {
-          subscribed: true,
+          registryId: newRegistryId,
+          name,
+          icon,
         },
-        { where: { orgUid: newOrganizationId } },
-      );
-    };
-
-    if (!USE_SIMULATOR) {
-      logger.info('Waiting for New Organization to be confirmed');
-      datalayer.getStoreData(
-        newRegistryId,
-        onConfirm,
         revertOrganizationIfFailed,
       );
-    } else {
-      onConfirm();
-    }
 
-    return newOrganizationId;
+      //sync the registry store
+      await datalayer.syncDataLayer(
+        newRegistryId,
+        {
+          [dataVersion]: registryVersionId,
+        },
+        revertOrganizationIfFailed,
+      );
+
+      await Promise.all([
+        Organization.create({
+          orgUid: newOrganizationId,
+          registryId: registryVersionId,
+          isHome: true,
+          subscribed: USE_SIMULATOR,
+          name,
+          icon,
+        }),
+        Organization.destroy({ where: { orgUid: 'PENDING' } }),
+      ]);
+
+      const onConfirm = () => {
+        logger.info('Organization confirmed, you are ready to go');
+        Organization.update(
+          {
+            subscribed: true,
+          },
+          { where: { orgUid: newOrganizationId } },
+        );
+      };
+
+      if (!USE_SIMULATOR) {
+        logger.info('Waiting for New Organization to be confirmed');
+        datalayer.getStoreData(
+          newRegistryId,
+          onConfirm,
+          revertOrganizationIfFailed,
+        );
+      } else {
+        onConfirm();
+      }
+
+      return newOrganizationId;
+    } catch (error) {
+      logger.error(error.message);
+      logger.info('Reverting Failed Organization');
+      await Organization.destroy({ where: { isHome: true } });
+    }
   }
 
   // eslint-disable-next-line
@@ -187,15 +209,13 @@ class Organization extends Model {
       logger.info('Subscribing to', orgUid, ip, port);
       const orgData = await datalayer.getSubscribedStoreData(orgUid, ip, port);
 
-      logger.info(orgData);
-
       if (!orgData.registryId) {
         throw new Error(
           'Currupted organization, no registryId on the datalayer, can not import',
         );
       }
 
-      logger.info('IMPORTING REGISTRY: ', orgData.registryId);
+      logger.info(`IMPORTING REGISTRY: ${orgData.registryId}`);
 
       const registryData = await datalayer.getSubscribedStoreData(
         orgData.registryId,
@@ -302,7 +322,7 @@ class Organization extends Model {
         }),
       );
     } catch (error) {
-      logger.info(error);
+      logger.info(error.message);
     }
   };
 

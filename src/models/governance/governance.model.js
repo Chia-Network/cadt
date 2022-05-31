@@ -9,11 +9,12 @@ import { keyValueToChangeList } from '../../utils/datalayer-utils';
 import { getConfig } from '../../utils/config-loader';
 import { logger } from '../../config/logger.cjs';
 import { getDataModelVersion } from '../../utils/helpers';
+import PickListStub from './governance.stub.json';
 
 const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
   getConfig().GOVERNANCE;
 
-const { USE_SIMULATOR } = getConfig().APP;
+const { USE_SIMULATOR, CHIA_NETWORK } = getConfig().APP;
 
 import ModelTypes from './governance.modeltypes.cjs';
 
@@ -82,6 +83,15 @@ class Governance extends Model {
         metaValue: governanceData.pickList,
         confirmed: true,
       });
+    } else if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
+      // this block is just a fallback if the app gets through the upstream checks,
+      // might be unnecessary
+      logger.info('SIMULATOR/TESTNET MODE: Using sample picklist');
+      updates.push({
+        metaKey: 'pickList',
+        metaValue: JSON.stringify(PickListStub),
+        confirmed: true,
+      });
     }
 
     await Promise.all(updates.map(async (update) => Governance.upsert(update)));
@@ -91,6 +101,18 @@ class Governance extends Model {
     try {
       if (!GOVERANCE_BODY_ID || !GOVERNANCE_BODY_IP || !GOVERNANCE_BODY_PORT) {
         throw new Error('Missing information in env to sync Governance data');
+      }
+
+      // If on simulator or testnet, use the stubbed picklist data and return
+      if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
+        logger.info('SIMULATOR/TESTNET MODE: Using sample picklist');
+        Governance.upsert({
+          metaKey: 'pickList',
+          metaValue: JSON.stringify(PickListStub),
+          confirmed: true,
+        });
+
+        return;
       }
 
       const governanceData = await datalayer.getSubscribedStoreData(
