@@ -111,12 +111,16 @@ const pushChangesWhenStoreIsAvailable = async (
           2,
         )}`,
       );
+
       const success = await dataLayer.pushChangeListToDataLayer(
         storeId,
         changeList,
       );
 
       if (!success) {
+        logger.info(
+          `RPC failed when pushing to store ${storeId}, attempting retry.`,
+        );
         retry(storeId, changeList, failedCallback, retryAttempts);
       }
     } else {
