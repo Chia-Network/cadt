@@ -2,6 +2,7 @@ import { ToadScheduler } from 'toad-scheduler';
 
 import syncDataLayer from './sync-datalayer';
 import syncDefaultOrganizations from './sync-default-organizations';
+import syncPickLists from './sync-picklists';
 import syncAudit from './sync-audit-table';
 import syncOrganizationMeta from './sync-organization-meta';
 import syncGovernanceBody from './sync-governance-body';
@@ -21,6 +22,7 @@ const start = () => {
     syncGovernanceBody,
     syncDataLayer,
     syncDefaultOrganizations,
+    syncPickLists,
     syncAudit,
     syncOrganizationMeta,
   ];
