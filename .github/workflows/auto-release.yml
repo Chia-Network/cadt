@@ -33,7 +33,8 @@ jobs:
             echo "Tag exists, nothing to do"
           else
             echo "Tag does not exist. Creating and pushing tag"
-            npx standard-version --first-release
+            rm -f CHANGELOG.md
+            npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0
             git add CHANGELOG.md
             git config --global user.name 'ChiaAutomation'
             git config --global user.email 'automation@chia.net'
