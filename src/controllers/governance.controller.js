@@ -54,15 +54,15 @@ export const createGoveranceBody = async (req, res) => {
     await assertWalletIsSynced();
     await assertCanBeGovernanceBody();
 
-    await Governance.createGoveranceBody();
+    Governance.createGoveranceBody();
 
     return res.json({
       message:
-        'Setting up new Governance Body on this node, this can tae a few mins',
+        'Setting up new Governance Body on this node, this can take a few mins',
     });
   } catch (error) {
     res.status(400).json({
-      message: 'Cant update default orgs',
+      message: 'Cant create Governance Body',
       error: error.message,
     });
   }

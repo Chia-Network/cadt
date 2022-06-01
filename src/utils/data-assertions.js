@@ -24,7 +24,7 @@ export const assertChiaNetworkMatchInConfiguration = async () => {
 };
 
 export const assertCanBeGovernanceBody = async () => {
-  if (IS_GOVERNANCE_BODY !== 'true') {
+  if (!IS_GOVERNANCE_BODY) {
     throw new Error(
       'You are not an governance body and can not use this functionality',
     );
