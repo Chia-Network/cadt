@@ -80,6 +80,11 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
       return true;
     }
 
+    logger.error(
+      `There was an error pushing your changes to the datalayer, ${JSON.stringify(
+        data,
+      )}`,
+    );
     return false;
   } catch (error) {
     logger.info('There was an error pushing your changes to the datalayer');

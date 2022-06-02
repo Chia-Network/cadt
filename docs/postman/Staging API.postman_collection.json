@@ -148,8 +148,8 @@
           }
         },
         "url": {
-          "raw": "{{api_url_v1}}/staging",
-          "host": ["{{api_url_v1}}"],
+          "raw": "{{default}}/staging",
+          "host": ["{{default}}"],
           "path": ["staging"]
         }
       },
