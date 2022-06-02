@@ -1,3 +1,12 @@
+## [1.0.9](https://github.com/Chia-Network/climate-warehouse/compare/1.0.8...1.0.9) (2022-06-02)
+
+
+### Bug Fixes
+
+* remove typo in governance method and add gov id to meta table ([ae7a342](https://github.com/Chia-Network/climate-warehouse/commit/ae7a3424d77167c0777db7c41438538facc767ce))
+
+
+
 ## [1.0.8](https://github.com/Chia-Network/climate-warehouse/compare/1.0.7...1.0.8) (2022-06-02)
 
 
