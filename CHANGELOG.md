@@ -1,3 +1,12 @@
+## [1.0.8](https://github.com/Chia-Network/climate-warehouse/compare/1.0.7...1.0.8) (2022-06-02)
+
+
+### Bug Fixes
+
+* decodehex issue with null string ([0d5a180](https://github.com/Chia-Network/climate-warehouse/commit/0d5a180d5628f8d4ddae4a567190f11910583682))
+
+
+
 ## [1.0.7](https://github.com/Chia-Network/climate-warehouse/compare/1.0.6...1.0.7) (2022-06-01)
 
 
