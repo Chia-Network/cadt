@@ -330,7 +330,7 @@ class Organization extends Model {
     try {
       const defaultOrgs = await getDefaultOrganizationList();
       if (!Array.isArray(defaultOrgs)) {
-        logger.info(
+        throw new Error(
           'ERROR: Default Organization List Not found, This instance may be missing data from default orgs',
         );
       }

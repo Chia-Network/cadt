@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Governance } from '../models';
 import {
@@ -6,6 +7,7 @@ import {
 } from '../utils/data-assertions';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
+import { Organization } from '../models';
 
 const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
   getConfig().GOVERNANCE;
@@ -25,7 +27,12 @@ const task = new Task('sync-governance-meta', async () => {
       logger.info(
         `Governance Config Found ${GOVERANCE_BODY_ID} ${GOVERNANCE_BODY_IP} ${GOVERNANCE_BODY_PORT}`,
       );
-      Governance.sync();
+
+      const myOrganization = await Organization.getHomeOrg();
+
+      if (_.get(myOrganization, 'orgUid', '') !== GOVERANCE_BODY_ID) {
+        Governance.sync();
+      }
     }
   } catch (error) {
     logger.error('Cant download Goverance data, Retrying in 24 hours', error);
