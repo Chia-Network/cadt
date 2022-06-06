@@ -28,7 +28,7 @@ class Governance extends Model {
 
     const dataModelVersion = getDataModelVersion();
     const goveranceBodyId = await datalayer.createDataLayerStore();
-    const governanceVersionId = await datalayer.createDataLayerVersion;
+    const governanceVersionId = await datalayer.createDataLayerStore();
 
     const revertOrganizationIfFailed = async () => {
       logger.info('Reverting Failed Governance Body Creation');
@@ -44,18 +44,22 @@ class Governance extends Model {
       revertOrganizationIfFailed,
     );
 
-    const onConfirm = () => {
+    const onConfirm = async () => {
       logger.info('Organization confirmed, you are ready to go');
-      Meta.upsert({
+      await Meta.upsert({
         metaKey: 'goveranceBodyId',
         metaValue: governanceVersionId,
+      });
+      await Meta.upsert({
+        metaKey: 'mainGoveranceBodyId',
+        metaValue: goveranceBodyId,
       });
     };
 
     if (!USE_SIMULATOR) {
       logger.info('Waiting for New Governance Body to be confirmed');
       datalayer.getStoreData(
-        governanceVersionId,
+        goveranceBodyId,
         onConfirm,
         revertOrganizationIfFailed,
       );
