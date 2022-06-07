@@ -14,9 +14,11 @@ import { pickListValidation } from '../utils/validation-utils';
 export const baseSchema = {
   // warehouseProjectId - derived upon creation
   // orgUid - derived upon creation
-  projectId: Joi.string().required(),
+  projectId: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
   currentRegistry: Joi.string().optional(),
-  originProjectId: Joi.string().required(),
+  originProjectId: Joi.alternatives()
+    .try(Joi.string(), Joi.number())
+    .required(),
   registryOfOrigin: Joi.string().required(),
   program: Joi.string().optional(),
   projectName: Joi.string().required(),
