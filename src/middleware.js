@@ -16,12 +16,13 @@ import {
 } from './utils/data-assertions';
 import packageJson from '../package.json';
 
-const { API_KEY, READ_ONLY } = getConfig().APP;
+const { API_KEY, READ_ONLY, IS_GOVERNANCE_BODY } = getConfig().APP;
 
 const headerKeys = Object.freeze({
   API_VERSION_HEADER_KEY: 'x-api-version',
   CR_READY_ONLY_HEADER_KEY: 'cw-read-only',
   DATA_MODEL_VERION_HEADER_KEY: 'x-datamodel-version',
+  GOVERNANCE_BODY_HEADER_KEY: 'x-governance-body',
 });
 
 const app = express();
@@ -72,6 +73,11 @@ app.use(function (req, res, next) {
     res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, false);
   }
 
+  next();
+});
+
+app.use(function (req, res, next) {
+  res.setHeader(headerKeys.GOVERNANCE_BODY_HEADER_KEY, IS_GOVERNANCE_BODY);
   next();
 });
 
