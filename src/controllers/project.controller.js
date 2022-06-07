@@ -221,6 +221,7 @@ export const updateFromXLS = async (req, res) => {
 
     const xlsxParsed = xlsx.parse(files.xlsx.data);
     const stagedDataItems = tableDataFromXlsx(xlsxParsed, Project);
+
     await updateTableWithData(
       collapseTablesData(stagedDataItems, Project),
       Project,

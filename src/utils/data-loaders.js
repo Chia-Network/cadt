@@ -14,7 +14,7 @@ let downloadedPickList = {};
 export const getPicklistValues = () => downloadedPickList;
 
 export const pullPickListValues = async () => {
-  if (USE_SIMULATOR) {
+  if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
     downloadedPickList = PickListStub;
   } else {
     const goveranceData = await Governance.findOne({
