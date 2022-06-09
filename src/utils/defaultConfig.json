@@ -19,7 +19,7 @@
     "TESTNET_DEFAULT_ORGANIZATIONS": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/cw-organizations-testnet.json"
   },
   "GOVERNANCE": {
-    "GOVERANCE_BODY_ID": "8790c347e96eda4266fa5805a16b4baeecf8018433995782555a7b6883fdd868",
+    "GOVERANCE_BODY_ID": "70b015ba441293ccaee59470eaa5ef3eadf74dae99eb19b788c7df53bca03270",
     "GOVERNANCE_BODY_IP": "35.82.228.204",
     "GOVERNANCE_BODY_PORT": 8000
   }

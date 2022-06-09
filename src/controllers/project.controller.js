@@ -132,7 +132,6 @@ export const findAll = async (req, res) => {
       columns = ['warehouseProjectId'];
     }
 
-    let results;
     let pagination = paginationParams(page, limit);
 
     if (xls) {
@@ -140,7 +139,7 @@ export const findAll = async (req, res) => {
     }
 
     if (search) {
-      const ftsResults = await Project.fts(search, orgUid, pagination, columns);
+      const ftsResults = await Project.fts(search, orgUid, {}, columns);
       const mappedResults = ftsResults.rows.map((ftsResult) =>
         _.get(ftsResult, 'dataValues.warehouseProjectId'),
       );
@@ -154,19 +153,17 @@ export const findAll = async (req, res) => {
       };
     }
 
-    if (!results) {
-      const query = {
-        ...columnsToInclude(columns, includes),
-        ...pagination,
-      };
+    const query = {
+      ...columnsToInclude(columns, includes),
+      ...pagination,
+    };
 
-      results = await Project.findAndCountAll({
-        distinct: true,
-        where,
-        order: [['timeStaged', 'DESC']],
-        ...query,
-      });
-    }
+    const results = await Project.findAndCountAll({
+      distinct: true,
+      where,
+      order: [['timeStaged', 'DESC']],
+      ...query,
+    });
 
     const response = optionallyPaginatedResponse(results, page, limit);
 
@@ -224,6 +221,7 @@ export const updateFromXLS = async (req, res) => {
 
     const xlsxParsed = xlsx.parse(files.xlsx.data);
     const stagedDataItems = tableDataFromXlsx(xlsxParsed, Project);
+
     await updateTableWithData(
       collapseTablesData(stagedDataItems, Project),
       Project,

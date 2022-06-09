@@ -132,12 +132,7 @@ export const findAll = async (req, res) => {
       columns = ['warehouseUnitId'];
     }
 
-    let results;
-    let pagination = paginationParams(page, limit);
-
-    if (xls) {
-      pagination = { page: undefined, limit: undefined };
-    }
+    let pagination = { page: undefined, limit: undefined };
 
     if (search) {
       const ftsResults = await Unit.fts(
@@ -169,15 +164,14 @@ export const findAll = async (req, res) => {
       resultOrder = [['timeStaged', 'ASC']];
     }
 
-    if (!results) {
-      results = await Unit.findAndCountAll({
+    const results = await Unit.findAndCountAll({
         where,
         distinct: true,
         order: resultOrder,
         ...columnsToInclude(columns, includes),
         ...paginationParams(page, limit),
       });
-    }
+
 
     const response = optionallyPaginatedResponse(results, page, limit);
 

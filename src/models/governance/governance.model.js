@@ -52,7 +52,7 @@ class Governance extends Model {
       });
       await Meta.upsert({
         metaKey: 'mainGoveranceBodyId',
-        metaValue: governanceVersionId,
+        metaValue: goveranceBodyId,
       });
     };
 
