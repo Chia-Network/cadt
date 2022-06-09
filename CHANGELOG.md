@@ -1,3 +1,20 @@
+## [1.0.10](https://github.com/Chia-Network/climate-warehouse/compare/1.0.9...1.0.10) (2022-06-09)
+
+
+### Bug Fixes
+
+* add logging to show when subscribed servers are unavailable ([93e592b](https://github.com/Chia-Network/climate-warehouse/commit/93e592b210c0788b032b64e9ce020520560190a4))
+* dont subscribe to your own organization ([3ef3dca](https://github.com/Chia-Network/climate-warehouse/commit/3ef3dca092640f80c30074464cc3581abe8c965f))
+* fix pagination issues on projects and units search ([1019284](https://github.com/Chia-Network/climate-warehouse/commit/1019284d292c66386d4ce4cfa9789f8ff770dc48))
+* xls import was emptying the datasheet before import ([cb0a75f](https://github.com/Chia-Network/climate-warehouse/commit/cb0a75fc792b8b9472f754534f1c4aa06c75a7a9))
+
+
+### Features
+
+* add is-governance-body header key ([6e9f771](https://github.com/Chia-Network/climate-warehouse/commit/6e9f771b88d9a6f9a0151b7448691fe788791e2d))
+
+
+
 ## [1.0.9](https://github.com/Chia-Network/climate-warehouse/compare/1.0.8...1.0.9) (2022-06-02)
 
 
