@@ -13,6 +13,10 @@ import {
 const validator = joiExpress.createValidator({ passError: true });
 const GovernanceRouter = express.Router();
 
+GovernanceRouter.get('/exists', (req, res) => {
+  return GovernanceController.isCreated(req, res);
+});
+
 GovernanceRouter.get('/', (req, res) => {
   return GovernanceController.findAll(req, res);
 });
