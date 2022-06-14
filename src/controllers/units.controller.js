@@ -3,6 +3,7 @@
 import _ from 'lodash';
 import { uuid as uuidv4 } from 'uuidv4';
 import { Sequelize } from 'sequelize';
+import xlsx from 'node-xlsx';
 
 import { Staging, Unit, Label, Issuance, Organization } from '../models';
 
@@ -29,8 +30,9 @@ import {
   sendXls,
   tableDataFromXlsx,
   updateTableWithData,
+  transformMetaUid,
 } from '../utils/xls';
-import xlsx from 'node-xlsx';
+
 import { formatModelAssociationName } from '../utils/model-utils.js';
 
 export const create = async (req, res) => {
@@ -165,13 +167,12 @@ export const findAll = async (req, res) => {
     }
 
     const results = await Unit.findAndCountAll({
-        where,
-        distinct: true,
-        order: resultOrder,
-        ...columnsToInclude(columns, includes),
-        ...paginationParams(page, limit),
-      });
-
+      where,
+      distinct: true,
+      order: resultOrder,
+      ...columnsToInclude(columns, includes),
+      ...paginationParams(page, limit),
+    });
 
     const response = optionallyPaginatedResponse(results, page, limit);
 
@@ -233,9 +234,11 @@ export const updateFromXLS = async (req, res) => {
       throw new Error('File Not Received');
     }
 
-    const xlsxParsed = xlsx.parse(files.xlsx.data);
+    const xlsxParsed = transformMetaUid(xlsx.parse(files.xlsx.data));
     const stagedDataItems = tableDataFromXlsx(xlsxParsed, Unit);
-    await updateTableWithData(collapseTablesData(stagedDataItems, Unit), Unit);
+    const collapsedData = collapseTablesData(stagedDataItems, Unit);
+
+    await updateTableWithData(collapsedData, Unit);
 
     res.json({
       message: 'Updates from xlsx added to staging',
