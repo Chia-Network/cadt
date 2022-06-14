@@ -1,6 +1,6 @@
 import _ from 'lodash';
 
-import { Governance } from '../models';
+import { Governance, Meta } from '../models';
 
 import {
   assertIsActiveGovernanceBody,
@@ -13,6 +13,29 @@ export const findAll = async (req, res) => {
   try {
     const results = await Governance.findAll();
     return res.json(results);
+  } catch (error) {
+    res.status(400).json({
+      message: 'Can not retreive Governance Data',
+      error: error.message,
+    });
+  }
+};
+
+export const isCreated = async (req, res) => {
+  try {
+    const results = await Meta.findOne({
+      where: { metaKey: 'goveranceBodyId' },
+    });
+
+    if (results) {
+      return res.json({
+        created: true,
+      });
+    } else {
+      return res.json({
+        created: false,
+      });
+    }
   } catch (error) {
     res.status(400).json({
       message: 'Can not retreive Governance Data',

@@ -344,6 +344,10 @@ class Organization extends Model {
           if (!exists) {
             if (serverAvailable(org.ip, org.port)) {
               Organization.importOrganization(org.orgUid, org.ip, org.port);
+            } else {
+              logger.warn(
+                `${org.orgUid} can not be detected at ${org.ip}:${org.port}, skipping import...`,
+              );
             }
           }
         }),
