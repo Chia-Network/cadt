@@ -1,3 +1,13 @@
+## [1.0.11](https://github.com/Chia-Network/climate-warehouse/compare/1.0.10...1.0.11) (2022-06-16)
+
+
+### Features
+
+* endpoint to check if governance was created ([5306ac7](https://github.com/Chia-Network/climate-warehouse/commit/5306ac7e282535d0c4f5dc65bbb8517279521e93))
+* single step xls upload ([a055e76](https://github.com/Chia-Network/climate-warehouse/commit/a055e7648b6c1c84a69b921d4d73ea77a125f1ea))
+
+
+
 ## [1.0.10](https://github.com/Chia-Network/climate-warehouse/compare/1.0.9...1.0.10) (2022-06-09)
 
 
