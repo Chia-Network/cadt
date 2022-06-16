@@ -31,6 +31,7 @@ import {
   sendXls,
   updateTableWithData,
   collapseTablesData,
+  transformMetaUid,
 } from '../utils/xls';
 import { formatModelAssociationName } from '../utils/model-utils.js';
 
@@ -219,13 +220,11 @@ export const updateFromXLS = async (req, res) => {
       throw new Error('File Not Received');
     }
 
-    const xlsxParsed = xlsx.parse(files.xlsx.data);
+    const xlsxParsed = transformMetaUid(xlsx.parse(files.xlsx.data));
     const stagedDataItems = tableDataFromXlsx(xlsxParsed, Project);
+    const collapsedData = collapseTablesData(stagedDataItems, Project);
 
-    await updateTableWithData(
-      collapseTablesData(stagedDataItems, Project),
-      Project,
-    );
+    await updateTableWithData(collapsedData, Project);
 
     res.json({
       message: 'Updates from xlsx added to staging',
