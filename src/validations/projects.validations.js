@@ -20,7 +20,7 @@ export const baseSchema = {
     .try(Joi.string(), Joi.number())
     .required(),
   registryOfOrigin: Joi.string().required(),
-  program: Joi.string().optional(),
+  program: Joi.string().valid(null, '').optional(),
   projectName: Joi.string().required(),
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
@@ -28,7 +28,7 @@ export const baseSchema = {
   projectType: Joi.string()
     .custom(pickListValidation('projectType'))
     .required(),
-  projectTags: Joi.string().optional(),
+  projectTags: Joi.string().valid(null, '').optional(),
   coveredByNDC: Joi.string()
     .custom(pickListValidation('coveredByNDC'))
     .required(),

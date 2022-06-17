@@ -356,6 +356,22 @@ class Organization extends Model {
       logger.info(error);
     }
   };
+
+  static editOrgMeta = async ({ name, icon }) => {
+    const myOrganization = await Organization.getHomeOrg();
+
+    const payload = {};
+
+    if (name) {
+      payload.name = name;
+    }
+
+    if (icon) {
+      payload.icon = icon;
+    }
+
+    await datalayer.upsertDataLayer(myOrganization.orgUid, payload);
+  };
 }
 
 Organization.init(ModelTypes, {
