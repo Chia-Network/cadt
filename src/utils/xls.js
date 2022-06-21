@@ -536,31 +536,44 @@ export const collapseTablesData = (tableData, model) => {
       }
 
       const dataKey = formatModelAssociationName(association);
-      data[dataKey] = tableData[association.model.name]?.data?.find((row) => {
-        let found = false;
+      const foundRecord = tableData[association.model.name]?.data?.find(
+        (row) => {
+          let found = false;
 
-        if (association.model.name === 'issuance' && !association.pluralize) {
-          if (row[model.name + 'Id'] === data[association.model.name + 'Id']) {
-            found = true;
-            delete row[model.name + 'Id'];
+          if (association.model.name === 'issuance' && !association.pluralize) {
+            if (
+              row[model.name + 'Id'] === data[association.model.name + 'Id']
+            ) {
+              found = true;
+              delete row[model.name + 'Id'];
+            }
+          } else {
+            let comparedToData = null;
+            const primaryKey =
+              tableData[model.name]?.model?.primaryKeyAttributes[0];
+
+            if (tableRowData != null && primaryKey != null) {
+              comparedToData = tableRowData[primaryKey];
+            }
+
+            if (row[model.name + 'Id'] === comparedToData) {
+              found = true;
+              delete row[model.name + 'Id'];
+            }
+
+            if (
+              row['warehouseProjectId'] === comparedToData ||
+              row['warehouseUnitId'] === comparedToData
+            ) {
+              found = true;
+              delete row[model.name + 'Id'];
+            }
           }
-        } else {
-          let comparedToData = null;
-          const primaryKey =
-            tableData[model.name]?.model?.primaryKeyAttributes[0];
 
-          if (tableRowData != null && primaryKey != null) {
-            comparedToData = tableRowData[primaryKey];
-          }
-
-          if (row[model.name + 'Id'] === comparedToData) {
-            found = true;
-            delete row[model.name + 'Id'];
-          }
-        }
-
-        return found;
-      });
+          return found;
+        },
+      );
+      data[dataKey] = foundRecord;
     });
   });
 
@@ -951,3 +964,20 @@ function getExcludedColumns(items) {
 
   return excludedColumns;
 }
+
+// Converts the metaUids to actual Uids
+export const transformMetaUid = (xlsxParsed) => {
+  let xlsxParseSerialized = JSON.stringify(xlsxParsed, 2, 2);
+  const metaUids = _.uniq(
+    [...xlsxParseSerialized.matchAll(/(NEW-[0-9])/g)].map((item) => item[0]),
+  );
+  metaUids.forEach((metaId) => {
+    const uuid = uuidv4();
+    xlsxParseSerialized = xlsxParseSerialized.replace(
+      new RegExp(metaId, 'g'),
+      uuid,
+    );
+  });
+
+  return JSON.parse(xlsxParseSerialized);
+};
