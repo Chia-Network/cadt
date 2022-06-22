@@ -12,6 +12,11 @@ export const commitStagingSchema = Joi.object({
   comment: Joi.string().optional(),
 });
 
+export const stagingEditSchema = Joi.object({
+  uuid: Joi.string().required(),
+  data: Joi.object().required(),
+});
+
 export const stagingGetQuerySchema = Joi.object()
   .keys({
     page: Joi.number(),
