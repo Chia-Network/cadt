@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import supertest from 'supertest';
 import chai from 'chai';
 const { expect } = chai;
@@ -10,9 +12,7 @@ import { ProjectMirror, Project } from '../../src/models';
 export const createNewProject = async (payload = newProject) => {
   const result = await supertest(app).post('/v1/projects').send(payload);
 
-  expect(result.body).to.deep.equal({
-    message: 'Project staged successfully',
-  });
+  expect(_.get(result, 'body.message')).to.equal('Project staged successfully');
   expect(result.statusCode).to.equal(200);
 
   return payload;

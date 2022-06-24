@@ -132,6 +132,28 @@ export const clean = async (req, res) => {
   }
 };
 
+export const editRecord = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertHomeOrgExists();
+    await assertStagingRecordExists(req.body.uuid);
+
+    await Staging.update(
+      { data: JSON.stringify([req.body.data]) },
+      { where: { uuid: req.body.uuid } },
+    );
+
+    res.status(400).json({
+      message: 'Staging Record sucessfully updated.',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Staging Record can not be edited.',
+      error: error.message,
+    });
+  }
+};
+
 export const retryRecrod = async (req, res) => {
   try {
     await assertIfReadOnlyMode();

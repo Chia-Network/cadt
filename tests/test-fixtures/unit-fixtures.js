@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import supertest from 'supertest';
 import chai from 'chai';
 const { expect } = chai;
@@ -10,9 +12,7 @@ import { UnitMirror, Unit } from '../../src/models';
 export const createNewUnit = async (payload = newUnit) => {
   const result = await supertest(app).post('/v1/units').send(payload);
 
-  expect(result.body).to.deep.equal({
-    message: 'Unit staged successfully',
-  });
+  expect(_.get(result, 'body.message')).to.equal('Unit staged successfully');
   expect(result.statusCode).to.equal(200);
 
   return payload;

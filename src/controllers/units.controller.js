@@ -100,6 +100,7 @@ export const create = async (req, res) => {
 
     res.json({
       message: 'Unit staged successfully',
+      uuid,
     });
   } catch (error) {
     res.status(400).json({
