@@ -157,7 +157,7 @@ class Project extends Model {
     return upsertResult;
   }
 
-  static async fts(searchStr, orgUid, pagination) {
+  static async fts(searchStr, orgUid, pagination, columns = []) {
     const dialect = sequelize.getDialect();
 
     const handlerMap = {
@@ -169,14 +169,27 @@ class Project extends Model {
       searchStr,
       orgUid,
       pagination,
+      columns
+        .filter((col) => !['createdAt', 'updatedAt'].includes(col))
+        .filter(
+          (col) =>
+            !Project.getAssociatedModels()
+              .map(formatModelAssociationName)
+              .includes(col),
+        ),
     );
   }
 
-  static async findAllMySQLFts(searchStr, orgUid, pagination) {
+  static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
     const { offset, limit } = pagination;
 
+    let fields = '*';
+    if (columns.length) {
+      fields = columns.join(', ');
+    }
+
     let sql = `
-    SELECT * FROM projects WHERE MATCH (
+    SELECT ${fields} FROM projects WHERE MATCH (
         warehouseProjectId,
         currentRegistry,
         registryOfOrigin,
@@ -229,8 +242,13 @@ class Project extends Model {
     };
   }
 
-  static async findAllSqliteFts(searchStr, orgUid, pagination) {
+  static async findAllSqliteFts(searchStr, orgUid, pagination, columns = []) {
     const { offset, limit } = pagination;
+
+    let fields = '*';
+    if (columns.length) {
+      fields = columns.join(', ');
+    }
 
     searchStr = sanitizeSqliteFtsQuery(searchStr);
 
@@ -246,7 +264,7 @@ class Project extends Model {
       searchStr = searchStr.replace('+', ''); // If query starts with +, replace it
     }
 
-    let sql = `SELECT * FROM projects_fts WHERE projects_fts MATCH :search`;
+    let sql = `SELECT ${fields} FROM projects_fts WHERE projects_fts MATCH :search`;
 
     if (orgUid) {
       sql = `${sql} AND orgUid = :orgUid`;
