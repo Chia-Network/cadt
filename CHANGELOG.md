@@ -1,3 +1,13 @@
+## [1.0.12](https://github.com/Chia-Network/climate-warehouse/compare/1.0.11...1.0.12) (2022-06-24)
+
+
+### Features
+
+* add edit staging table ([445fd5b](https://github.com/Chia-Network/climate-warehouse/commit/445fd5b3d607cbccd19b1f28788493adb773dd34))
+* add uuid to create projects and units ([e960079](https://github.com/Chia-Network/climate-warehouse/commit/e96007938a63eb19e1e4fb8fb80b2c0cfa652016))
+
+
+
 ## [1.0.11](https://github.com/Chia-Network/climate-warehouse/compare/1.0.10...1.0.11) (2022-06-16)
 
 
