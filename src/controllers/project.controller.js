@@ -9,6 +9,7 @@ import { Staging, Project, Organization, ModelKeys } from '../models';
 import { logger } from '../config/logger.cjs';
 
 import {
+  columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
 } from '../utils/helpers';
@@ -32,6 +33,7 @@ import {
   collapseTablesData,
   transformMetaUid,
 } from '../utils/xls';
+import { formatModelAssociationName } from '../utils/model-utils.js';
 
 export const create = async (req, res) => {
   try {
@@ -102,13 +104,33 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    let { page, limit, search, orgUid, xls } = req.query;
+    let { page, limit, search, orgUid, columns, xls } = req.query;
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
     if (orgUid === 'all') {
       // 'ALL' orgUid is just a UI concept but they keep forgetting this and send it
       // So delete this value if its sent so nothing breaks
       orgUid = undefined;
+    }
+
+    const includes = Project.getAssociatedModels();
+
+    if (columns) {
+      // Remove any unsupported columns
+      columns = columns.filter((col) =>
+        Project.defaultColumns
+          .concat(includes.map(formatModelAssociationName))
+          .includes(col),
+      );
+    } else {
+      columns = Project.defaultColumns.concat(
+        includes.map(formatModelAssociationName),
+      );
+    }
+
+    // If only FK fields have been specified, select just ID
+    if (!columns.length) {
+      columns = ['warehouseProjectId'];
     }
 
     let pagination = paginationParams(page, limit);
@@ -118,7 +140,7 @@ export const findAll = async (req, res) => {
     }
 
     if (search) {
-      const ftsResults = await Project.fts(search, orgUid, {});
+      const ftsResults = await Project.fts(search, orgUid, {}, columns);
       const mappedResults = ftsResults.rows.map((ftsResult) =>
         _.get(ftsResult, 'dataValues.warehouseProjectId'),
       );
@@ -133,6 +155,7 @@ export const findAll = async (req, res) => {
     }
 
     const query = {
+      ...columnsToInclude(columns, includes),
       ...pagination,
     };
 
