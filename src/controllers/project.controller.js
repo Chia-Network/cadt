@@ -317,7 +317,7 @@ export const update = async (req, res) => {
     });
   } catch (err) {
     res.status(400).json({
-      message: 'Error adding update to stage',
+      message: err.message,
     });
     logger.error('Error adding update to stage', err);
   }
