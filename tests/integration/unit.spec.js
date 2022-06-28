@@ -135,9 +135,9 @@ describe('Unit Resource Integration Tests', function () {
       projectLocationId: 'TEST_LOCATION_ID',
     });
 
-    expect(createdUnitResult.body).to.deep.equal({
-      message: 'Unit staged successfully',
-    });
+    expect(_.get(createdUnitResult, 'body.message')).to.equal(
+      'Unit staged successfully',
+    );
 
     expect(createdUnitResult.statusCode).to.equal(200);
 

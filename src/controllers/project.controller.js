@@ -93,7 +93,10 @@ export const create = async (req, res) => {
       data: JSON.stringify([newRecord]),
     });
 
-    res.json({ message: 'Project staged successfully' });
+    res.json({
+      message: 'Project staged successfully',
+      uuid,
+    });
   } catch (err) {
     res.status(400).json({
       message: 'Error creating new project',
@@ -314,8 +317,7 @@ export const update = async (req, res) => {
     });
   } catch (err) {
     res.status(400).json({
-      message: 'Error adding update to stage',
-      error: err.message,
+      message: err.message,
     });
     logger.error('Error adding update to stage', err);
   }
