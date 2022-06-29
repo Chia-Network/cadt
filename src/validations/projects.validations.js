@@ -32,10 +32,7 @@ export const baseSchema = {
   coveredByNDC: Joi.string()
     .custom(pickListValidation('coveredByNDC'))
     .required(),
-  ndcInformation: Joi.string().when('coveredByNDC', {
-    is: Joi.exist().valid('Inside NDC'),
-    then: Joi.required(),
-  }),
+  ndcInformation: Joi.string().optional(),
   projectStatus: Joi.string()
     .custom(pickListValidation('projectStatusValues', 'projectStatus'))
     .required(),
