@@ -82,7 +82,9 @@ export const commit = async (req, res) => {
     await Staging.pushToDataLayer(
       _.get(req, 'query.table', null),
       _.get(req, 'body.comment', ''),
+      _.get(req, 'body.ids', []),
     );
+
     res.json({ message: 'Staging Table committed to full node' });
   } catch (error) {
     console.trace(error);

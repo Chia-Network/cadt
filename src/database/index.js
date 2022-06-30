@@ -1,5 +1,5 @@
 import { Sequelize } from 'sequelize';
-import config from '../config/config.cjs';
+import config from '../config/config.js';
 import { logger } from '../config/logger.cjs';
 import mysql from 'mysql2/promise';
 import { getConfig } from '../utils/config-loader';
