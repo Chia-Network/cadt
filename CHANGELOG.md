@@ -1,3 +1,19 @@
+## [1.0.13](https://github.com/Chia-Network/climate-warehouse/compare/1.0.12...1.0.13) (2022-06-30)
+
+
+### Bug Fixes
+
+* convert config.cjs to config.js ([0764755](https://github.com/Chia-Network/climate-warehouse/commit/076475593338a8eb19603e0428082a46bb778f4b))
+* no cache for any API endpoint ([c5ed5f7](https://github.com/Chia-Network/climate-warehouse/commit/c5ed5f74cdbcfea78a4284f8f53ac7458534ccca))
+* remove custom validation ofr ndc information ([1073a57](https://github.com/Chia-Network/climate-warehouse/commit/1073a571d0ce10b50dc2156a1725a538137b2b9c))
+
+
+### Features
+
+* optionally commit specific list of staging ids ([8fd73c4](https://github.com/Chia-Network/climate-warehouse/commit/8fd73c48af90943594acfc4d41611f50e0858ace))
+
+
+
 ## [1.0.12](https://github.com/Chia-Network/climate-warehouse/compare/1.0.11...1.0.12) (2022-06-24)
 
 
