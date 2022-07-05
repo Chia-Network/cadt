@@ -20,7 +20,7 @@ if (!fs.existsSync(logDir)) {
 }
 const logFormat = format.printf(
   (info) =>
-    `${info.timestamp} [${info.level}]: ${info.message} ${
+    `${info.timestamp} [${packageJson.version}] [${info.level}]: ${info.message} ${
       Object.keys(info.metadata || {}).length > 0
         ? JSON.stringify(info.metadata)
         : ''
