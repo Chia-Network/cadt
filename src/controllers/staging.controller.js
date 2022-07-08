@@ -82,7 +82,9 @@ export const commit = async (req, res) => {
     await Staging.pushToDataLayer(
       _.get(req, 'query.table', null),
       _.get(req, 'body.comment', ''),
+      _.get(req, 'body.ids', []),
     );
+
     res.json({ message: 'Staging Table committed to full node' });
   } catch (error) {
     console.trace(error);
@@ -128,6 +130,28 @@ export const clean = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: error.message,
+    });
+  }
+};
+
+export const editRecord = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertHomeOrgExists();
+    await assertStagingRecordExists(req.body.uuid);
+
+    await Staging.update(
+      { data: JSON.stringify([req.body.data]) },
+      { where: { uuid: req.body.uuid } },
+    );
+
+    res.status(400).json({
+      message: 'Staging Record sucessfully updated.',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Staging Record can not be edited.',
+      error: error.message,
     });
   }
 };

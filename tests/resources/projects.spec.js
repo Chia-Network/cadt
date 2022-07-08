@@ -238,7 +238,9 @@ describe('Project Resource CRUD', function () {
             warehouseProjectId: warehouseProjectId.toString(),
           });
 
-        expect(response.body.error).to.deep.equal(
+        console.log(response.body);
+
+        expect(response.body.message).to.deep.equal(
           'No Home organization found, please create an organization to write data',
         );
 

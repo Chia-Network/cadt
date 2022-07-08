@@ -52,6 +52,11 @@ app.use(async function (req, res, next) {
   }
 });
 
+app.use(function (req, res, next) {
+  res.set('Cache-control', 'no-store');
+  next();
+});
+
 // Add optional API key if set in .env file
 app.use(function (req, res, next) {
   if (API_KEY && API_KEY !== '') {

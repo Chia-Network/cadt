@@ -18,6 +18,10 @@ StagingRouter.get('/', validator.query(stagingGetQuerySchema), (req, res) => {
   return StagingController.findAll(req, res);
 });
 
+StagingRouter.put('/', (req, res) => {
+  return StagingController.editRecord(req, res);
+});
+
 StagingRouter.delete(
   '/',
   validator.body(stagingDeleteSchema),

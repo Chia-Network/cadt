@@ -205,15 +205,42 @@ class Staging extends Model {
     return [insertRecords, updateRecords, deleteChangeList];
   };
 
-  static async pushToDataLayer(tableToPush, comment) {
+  static async pushToDataLayer(tableToPush, comment, ids = []) {
     let stagedRecords;
+
     if (tableToPush) {
       stagedRecords = await Staging.findAll({
-        where: { table: tableToPush },
+        where: {
+          commited: false,
+          table: tableToPush,
+          ...(ids.length
+            ? {
+                uuid: {
+                  [Sequelize.Op.in]: ids,
+                },
+              }
+            : {}),
+        },
         raw: true,
       });
     } else {
-      stagedRecords = await Staging.findAll({ raw: true });
+      stagedRecords = await Staging.findAll({
+        where: {
+          commited: false,
+          ...(ids.length
+            ? {
+                uuid: {
+                  [Sequelize.Op.in]: ids,
+                },
+              }
+            : {}),
+        },
+        raw: true,
+      });
+    }
+
+    if (!stagedRecords.length) {
+      throw new Error('No records to send to datalayer');
     }
 
     const unitsChangeList = await Unit.generateChangeListFromStagedData(
