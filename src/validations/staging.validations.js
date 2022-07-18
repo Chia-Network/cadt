@@ -9,6 +9,7 @@ export const stagingRetrySchema = Joi.object({
 });
 
 export const commitStagingSchema = Joi.object({
+  author: Joi.string().optional(),
   comment: Joi.string().optional(),
   ids: Joi.array().items(Joi.string()).optional(),
 });
