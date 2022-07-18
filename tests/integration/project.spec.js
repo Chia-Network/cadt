@@ -23,7 +23,7 @@ describe('Project Resource Integration Tests', function () {
     homeOrgUid = await testFixtures.getHomeOrgId();
   });
 
-  it.only('deletes a project end-to-end (with simulator)', async function () {
+  it('deletes a project end-to-end (with simulator)', async function () {
     /*
       Basic Idea for this test is that we are going to create a project and verify that
       the new project propagates through the data layer and into our db. Then we are going
