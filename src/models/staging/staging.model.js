@@ -205,7 +205,7 @@ class Staging extends Model {
     return [insertRecords, updateRecords, deleteChangeList];
   };
 
-  static async pushToDataLayer(tableToPush, comment, ids = []) {
+  static async pushToDataLayer(tableToPush, comment, author, ids = []) {
     let stagedRecords;
 
     if (tableToPush) {
@@ -246,11 +246,13 @@ class Staging extends Model {
     const unitsChangeList = await Unit.generateChangeListFromStagedData(
       stagedRecords,
       comment,
+      author,
     );
 
     const projectsChangeList = await Project.generateChangeListFromStagedData(
       stagedRecords,
       comment,
+      author,
     );
 
     const unifiedChangeList = {

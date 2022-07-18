@@ -82,6 +82,7 @@ export const commit = async (req, res) => {
     await Staging.pushToDataLayer(
       _.get(req, 'query.table', null),
       _.get(req, 'body.comment', ''),
+      _.get(req, 'body.author', ''),
       _.get(req, 'body.ids', []),
     );
 

@@ -294,7 +294,7 @@ class Project extends Model {
     };
   }
 
-  static async generateChangeListFromStagedData(stagedData, comment) {
+  static async generateChangeListFromStagedData(stagedData, comment, author) {
     const [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Projects');
 
@@ -364,6 +364,16 @@ class Project extends Model {
       isUpdateComment,
     );
 
+    const currentAuthor = currentDataLayer.filter(
+      (kv) => kv.key === 'author',
+    );
+    const isUpdateAuthor = currentAuthor.length > 0;
+    const authorChangeList = keyValueToChangeList(
+      'author',
+      `{"author": "${author}"}`,
+      isUpdateAuthor,
+    );
+
     return {
       projects: [
         ..._.get(insertChangeList, 'project', []),
@@ -406,6 +416,7 @@ class Project extends Model {
         ..._.get(deletedAssociationsChangeList, 'projectRatings', []),
       ],
       comment: commentChangeList,
+      author: authorChangeList,
     };
   }
 }

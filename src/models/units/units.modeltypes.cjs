@@ -29,7 +29,6 @@ module.exports = {
   // Please insert reference to labels table.
   unitOwner: {
     type: Sequelize.STRING,
-    required: true,
   },
   countryJurisdictionOfOwner: {
     type: Sequelize.STRING,
