@@ -36,6 +36,10 @@ OrganizationRouter.post('/create', (req, res) => {
   return OrganizationController.createV2(req, res);
 });
 
+OrganizationRouter.put('/edit', (req, res) => {
+  return OrganizationController.editHomeOrg(req, res);
+});
+
 OrganizationRouter.put(
   '/',
   validator.body(importHomeOrganizationSchema),
