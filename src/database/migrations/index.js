@@ -22,6 +22,7 @@ import AddCommentColumnToDataModelTables from './20220428144558-add-comment-colu
 import AddSerialNumberFields from './20220504180739-add-serial-number-fields';
 import AddDescriptionFieldToProjects from './20220509125335-add-description-field-to-projects';
 import RepopulateVirtualTables from './20220515223227-re-populate-virtual-tables';
+import AddAuthorColumnToAuditTable from './20220708210357-adding-author-column-to-audit-table';
 
 export const migrations = [
   {
@@ -124,4 +125,8 @@ export const migrations = [
     migration: RepopulateVirtualTables,
     name: '20220515223227-re-populate-virtual-tables',
   },
+  {
+    migration: AddAuthorColumnToAuditTable,
+    name: '20220708210357-adding-author-column-to-audit-table',
+  }
 ];

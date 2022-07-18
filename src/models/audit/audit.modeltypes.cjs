@@ -41,6 +41,9 @@ module.exports = {
     required: true,
     allowNull: false,
   },
+  author: {
+    type: Sequelize.STRING,
+  },
   comment: {
     type: Sequelize.STRING,
   },
