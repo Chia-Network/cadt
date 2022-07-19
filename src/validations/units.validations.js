@@ -86,6 +86,5 @@ export const unitsSplitSchema = Joi.object({
       }),
     )
     .min(2)
-    .max(2)
     .required(),
 });

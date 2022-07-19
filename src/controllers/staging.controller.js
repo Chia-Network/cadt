@@ -82,6 +82,7 @@ export const commit = async (req, res) => {
     await Staging.pushToDataLayer(
       _.get(req, 'query.table', null),
       _.get(req, 'body.comment', ''),
+      _.get(req, 'body.author', ''),
       _.get(req, 'body.ids', []),
     );
 
@@ -141,11 +142,11 @@ export const editRecord = async (req, res) => {
     await assertStagingRecordExists(req.body.uuid);
 
     await Staging.update(
-      { data: JSON.stringify([req.body.data]) },
+      { data: JSON.stringify(_.flatten([req.body.data])) },
       { where: { uuid: req.body.uuid } },
     );
 
-    res.status(400).json({
+    res.status(200).json({
       message: 'Staging Record sucessfully updated.',
     });
   } catch (error) {

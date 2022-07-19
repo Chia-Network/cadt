@@ -6,6 +6,7 @@ import * as simulator from './simulator';
 import { encodeHex, decodeHex } from '../utils/datalayer-utils';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
+import { Organization } from '../models';
 
 logger.info('climate-warehouse:datalayer:writeService');
 
@@ -61,6 +62,37 @@ const syncDataLayer = async (storeId, data, failedCallback) => {
   await pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback);
 };
 
+const upsertDataLayer = async (storeId, data) => {
+  logger.info(`Syncing ${storeId}`);
+  const homeOrg = await Organization.getHomeOrg();
+  let changeList = Object.keys(data).map((key) => {
+    const change = [];
+
+    if (homeOrg[key]) {
+      change.push({
+        action: 'delete',
+        key: encodeHex(key),
+      });
+    }
+
+    change.push({
+      action: 'insert',
+      key: encodeHex(key),
+      value: encodeHex(data[key]),
+    });
+    return change;
+  });
+
+  const finalChangeList = _.uniqBy(
+    _.sortBy(_.flatten(_.values(changeList)), 'action'),
+    (v) => [v.action, v.key].join(),
+  );
+
+  console.log('!!!!!', finalChangeList);
+
+  await pushChangesWhenStoreIsAvailable(storeId, finalChangeList);
+};
+
 const retry = (storeId, changeList, failedCallback, retryAttempts) => {
   logger.info(`Retrying pushing to store ${storeId}: ${retryAttempts}`);
   if (retryAttempts >= 60) {
@@ -102,9 +134,11 @@ const pushChangesWhenStoreIsAvailable = async (
             return {
               action: change.action,
               key: decodeHex(change.key),
-              value: /{([^*]*)}/.test(decodeHex(change.value))
-                ? JSON.parse(decodeHex(change.value))
-                : decodeHex(change.value),
+              ...(change.value && {
+                value: /{([^*]*)}/.test(decodeHex(change.value))
+                  ? JSON.parse(decodeHex(change.value))
+                  : decodeHex(change.value),
+              }),
             };
           }),
           null,
@@ -146,4 +180,5 @@ export default {
   pushDataLayerChangeList,
   syncDataLayer,
   createDataLayerStore,
+  upsertDataLayer,
 };
