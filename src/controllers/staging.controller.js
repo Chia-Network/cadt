@@ -146,7 +146,7 @@ export const editRecord = async (req, res) => {
       { where: { uuid: req.body.uuid } },
     );
 
-    res.status(400).json({
+    res.status(200).json({
       message: 'Staging Record sucessfully updated.',
     });
   } catch (error) {
