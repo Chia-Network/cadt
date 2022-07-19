@@ -142,7 +142,7 @@ export const editRecord = async (req, res) => {
     await assertStagingRecordExists(req.body.uuid);
 
     await Staging.update(
-      { data: JSON.stringify([req.body.data]) },
+      { data: JSON.stringify(_.flatten([req.body.data])) },
       { where: { uuid: req.body.uuid } },
     );
 
