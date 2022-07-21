@@ -203,6 +203,7 @@ class Project extends Model {
         projectStatus,
         unitMetric,
         methodology,
+        methodology2,
         methodologyVersion,
         validationApproach,
         projectTag,
