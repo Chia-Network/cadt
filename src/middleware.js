@@ -15,6 +15,7 @@ import {
   assertWalletIsAvailable,
 } from './utils/data-assertions';
 import packageJson from '../package.json';
+import datalayer from './datalayer';
 
 const { API_KEY, READ_ONLY, IS_GOVERNANCE_BODY } = getConfig().APP;
 
@@ -23,6 +24,7 @@ const headerKeys = Object.freeze({
   CR_READY_ONLY_HEADER_KEY: 'cw-read-only',
   DATA_MODEL_VERION_HEADER_KEY: 'x-datamodel-version',
   GOVERNANCE_BODY_HEADER_KEY: 'x-governance-body',
+  WALLET_SYNCED: 'x-wallet-synced',
 });
 
 const app = express();
@@ -96,6 +98,11 @@ app.use(function (req, res, next) {
   const majorVersion = version.split('.')[0];
   res.setHeader(headerKeys.DATA_MODEL_VERION_HEADER_KEY, `v${majorVersion}`);
 
+  next();
+});
+
+app.use(async function (req, res, next) {
+  res.setHeader(headerKeys.WALLET_SYNCED, await datalayer.walletIsSynced());
   next();
 });
 
