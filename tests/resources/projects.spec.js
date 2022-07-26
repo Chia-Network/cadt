@@ -14,7 +14,7 @@ import { uuid as uuidv4 } from 'uuidv4';
 import { prepareDb, seedDb, sequelize } from '../../src/database';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
-describe.only('Project Resource CRUD', function () {
+describe('Project Resource CRUD', function () {
   afterEach(function () {
     sinon.restore();
   });
