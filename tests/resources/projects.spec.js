@@ -14,7 +14,7 @@ import { uuid as uuidv4 } from 'uuidv4';
 import { prepareDb, seedDb, sequelize } from '../../src/database';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
-describe('Project Resource CRUD', function () {
+describe.only('Project Resource CRUD', function () {
   afterEach(function () {
     sinon.restore();
   });
@@ -28,6 +28,11 @@ describe('Project Resource CRUD', function () {
     });
     await prepareDb();
     await seedDb(sequelize);
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 5000);
+    });
   });
 
   beforeEach(async function () {
@@ -40,8 +45,6 @@ describe('Project Resource CRUD', function () {
         sinon.stub(datalayer, 'dataLayerAvailable').resolves(false);
         const response = await supertest(app).get('/v1/projects');
         expect(response.statusCode).to.equal(400);
-
-        console.log(response.body);
 
         expect(response.body.error).to.equal(
           'Can not establish connection to Chia Datalayer',
@@ -237,8 +240,6 @@ describe('Project Resource CRUD', function () {
             ...newProject,
             warehouseProjectId: warehouseProjectId.toString(),
           });
-
-        console.log(response.body);
 
         expect(response.body.message).to.deep.equal(
           'No Home organization found, please create an organization to write data',
