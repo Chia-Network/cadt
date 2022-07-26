@@ -88,8 +88,6 @@ const upsertDataLayer = async (storeId, data) => {
     (v) => [v.action, v.key].join(),
   );
 
-  console.log('!!!!!', finalChangeList);
-
   await pushChangesWhenStoreIsAvailable(storeId, finalChangeList);
 };
 
