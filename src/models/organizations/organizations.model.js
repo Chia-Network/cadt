@@ -47,6 +47,8 @@ class Organization extends Model {
       if (organizations[i].dataValues.isHome) {
         organizations[i].dataValues.xchAddress =
           await datalayer.getPublicAddress();
+        organizations[i].dataValues.balance =
+          await datalayer.getWalletBalance();
         break;
       }
     }

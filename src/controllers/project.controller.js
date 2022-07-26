@@ -143,7 +143,14 @@ export const findAll = async (req, res) => {
     }
 
     if (search) {
-      const ftsResults = await Project.fts(search, orgUid, {}, columns);
+      // we cant add methodology2 to the fts table because you cant alter virtual tables without deleting the whole thig
+      // so we need a migration that deletes the entire fts table and then repopulates it. This will be a new story
+      const ftsResults = await Project.fts(
+        search,
+        orgUid,
+        {},
+        columns.filter((col) => col !== 'methodology2'),
+      );
       const mappedResults = ftsResults.rows.map((ftsResult) =>
         _.get(ftsResult, 'dataValues.warehouseProjectId'),
       );

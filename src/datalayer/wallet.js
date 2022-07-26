@@ -64,6 +64,35 @@ const walletIsAvailable = async () => {
   }
 };
 
+const getWalletBalance = async () => {
+  try {
+    if (getConfig().APP.USE_SIMULATOR) {
+      return Promise.resolve('999.00');
+    }
+
+    const options = {
+      url: `${rpcUrl}/get_wallet_balance`,
+      body: JSON.stringify({
+        wallet_id: 1,
+      }),
+    };
+
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    if (response) {
+      const data = JSON.parse(response);
+      const balance = data?.wallet_balance?.spendable_balance;
+      return balance / 1000000000000;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 const hasUnconfirmedTransactions = async () => {
   const options = {
     url: `${rpcUrl}/get_transactions`,
@@ -107,4 +136,5 @@ export default {
   walletIsSynced,
   walletIsAvailable,
   getPublicAddress,
+  getWalletBalance,
 };
