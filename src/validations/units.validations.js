@@ -62,8 +62,39 @@ export const unitsGetQuerySchema = Joi.object()
   .with('page', 'limit');
 
 export const unitsUpdateSchema = Joi.object({
-  warehouseUnitId: Joi.string().required(),
-  ...unitsBaseSchema,
+  warehouseUnitId: Joi.string().optional(),
+  projectLocationId: Joi.string().optional(),
+  unitOwner: Joi.string(),
+  countryJurisdictionOfOwner: Joi.string()
+    .custom(pickListValidation('countries', 'countryJurisdictionOfOwner')),
+  inCountryJurisdictionOfOwner: Joi.string().optional(),
+  unitBlockStart: Joi.string().optional(),
+  unitBlockEnd: Joi.string().optional(),
+  unitCount: Joi.number().integer().optional(),
+  // match 4 digit year
+  vintageYear: Joi.number().integer().min(1900).max(3000).optional(),
+  unitType: Joi.string().custom(pickListValidation('unitType')).optional(),
+  marketplace: Joi.string().optional(),
+  marketplaceLink: Joi.string().optional(),
+  marketplaceIdentifier: Joi.string().optional(),
+  unitTags: Joi.string().allow('').optional(),
+  unitStatus: Joi.string().custom(pickListValidation('unitStatus')).optional(),
+  unitStatusReason: Joi.string().when('unitStatus', {
+    is: Joi.exist().valid('cancelled', 'retired'),
+    then: Joi.required(),
+  }),
+  unitRegistryLink: Joi.string().optional(),
+  correspondingAdjustmentDeclaration: Joi.string()
+    .custom(pickListValidation('correspondingAdjustmentDeclaration'))
+    .optional(),
+  correspondingAdjustmentStatus: Joi.string()
+    .custom(pickListValidation('correspondingAdjustmentStatus'))
+    .optional(),
+  issuance: issuanceSchema.optional(),
+  labels: Joi.array().items(labelSchema).optional(),
+  updatedAt: Joi.date().optional(),
+  createdAt: Joi.date().optional(),
+  timeStaged: Joi.date().timestamp().allow(null).optional(),
 });
 
 export const unitsDeleteSchema = Joi.object({

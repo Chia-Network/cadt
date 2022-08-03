@@ -78,7 +78,45 @@ export const projectsPostSchema = Joi.object({
 
 export const projectsUpdateSchema = Joi.object({
   warehouseProjectId: Joi.string().required(),
-  ...baseSchema,
+  projectId: Joi.alternatives().try(Joi.string(), Joi.number()),
+  currentRegistry: Joi.string().optional(),
+  originProjectId: Joi.alternatives()
+    .try(Joi.string(), Joi.number()),
+  registryOfOrigin: Joi.string(),
+  program: Joi.string().optional(),
+  projectName: Joi.string(),
+  projectLink: Joi.string(),
+  projectDeveloper: Joi.string(),
+  sector: Joi.string(),
+  projectType: Joi.string()
+    .custom(pickListValidation('projectType')),
+  projectTags: Joi.string().optional(),
+  coveredByNDC: Joi.string()
+    .custom(pickListValidation('coveredByNDC')),
+  ndcInformation: Joi.string().optional(),
+  projectStatus: Joi.string()
+    .custom(pickListValidation('projectStatusValues', 'projectStatus')),
+  projectStatusDate: Joi.date(),
+  unitMetric: Joi.string().custom(pickListValidation('unitMetric')),
+  methodology: Joi.string(),
+  methodology2: Joi.string().optional(),
+  validationBody: Joi.string()
+    .custom(pickListValidation('validationBody'))
+    .optional(),
+  validationDate: Joi.date().optional(),
+  description: Joi.string().optional(),
+
+  /* Child Tables */
+  labels: Joi.array().items(labelSchema).min(1).optional(),
+  issuances: Joi.array().items(issuanceSchema).min(1).optional(),
+  coBenefits: Joi.array().items(cobenefitSchema).min(1).optional(),
+  relatedProjects: Joi.array().items(relatedProjectSchema).min(1).optional(),
+  projectLocations: Joi.array().items(locationSchema).min(1).optional(),
+  projectRatings: Joi.array().items(ratingSchema).min(1).optional(),
+  estimations: Joi.array().items(estimationSchema).min(1).optional(),
+  updatedAt: Joi.date().optional(),
+  createdAt: Joi.date().optional(),
+  timeStaged: Joi.date().timestamp().allow(null).optional(),
 });
 
 export const projectsDeleteSchema = Joi.object({
