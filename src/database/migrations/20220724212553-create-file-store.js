@@ -5,7 +5,7 @@ import { uuid as uuidv4 } from 'uuidv4';
 export default {
   async up(queryInterface, Sequelize) {
     await Promise.all([
-      queryInterface.addColumn('organization', 'fileStoreId', {
+      queryInterface.addColumn('organizations', 'fileStoreId', {
         type: Sequelize.STRING,
         allowNull: true,
       }),
@@ -33,7 +33,7 @@ export default {
 
   async down(queryInterface) {
     await Promise.all([
-      queryInterface.removeColumn('organization', 'fileStoreId'),
+      queryInterface.removeColumn('organizations', 'fileStoreId'),
       queryInterface.removeColumn('projectLocations', 'fileId'),
       queryInterface.dropTable('fileStore'),
     ]);

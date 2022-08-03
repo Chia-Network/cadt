@@ -6,8 +6,9 @@
 */
 
 import Sequelize from 'sequelize';
-const { Model, Organization } = Sequelize;
+const { Model } = Sequelize;
 import { sequelize } from '../../database';
+import { Organization } from '../organizations';
 
 import datalayer from '../../datalayer';
 
@@ -19,22 +20,38 @@ class FileStore extends Model {
     let fileStoreId = myOrganization.fileStoreId;
 
     if (!fileStoreId) {
-      fileStoreId = await datalayer.createDataLayerStore();
+      fileStoreId = datalayer.createDataLayerStore();
       datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+      Organization.update(
+        { fileStoreId },
+        { where: { orgUid: myOrganization.orgUid } },
+      );
       throw new Error('New File store being created, please try again later.');
     }
 
-    await datalayer.syncDataLayer(fileStoreId, {
-      [SHA256]: {
+    const existingFile = await FileStore.findOne({
+      where: { SHA256 },
+      attributes: ['SHA256'],
+    });
+
+    console.log(SHA256);
+
+    if (existingFile) {
+      throw new Error('File Already exists in the filestore');
+    }
+
+    datalayer.syncDataLayer(fileStoreId, {
+      [SHA256]: JSON.stringify({
         name: fileName,
         file: base64File,
-      },
+      }),
     });
 
     FileStore.upsert({
       SHA256,
       fileName,
       data: base64File,
+      orgUid: myOrganization.orgUid,
     });
   }
 
