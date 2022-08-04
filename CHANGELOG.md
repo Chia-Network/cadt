@@ -1,3 +1,35 @@
+# [1.1.0](https://github.com/Chia-Network/climate-warehouse/compare/1.0.13...1.1.0) (2022-08-04)
+
+
+### Bug Fixes
+
+* adds logs to better catch upload excel issues ([4329ad5](https://github.com/Chia-Network/climate-warehouse/commit/4329ad5e3120989a51e09fab8d83d0bfc401a857))
+* allow edit split units ([e9d1434](https://github.com/Chia-Network/climate-warehouse/commit/e9d14343b741ecb0e6a4e5c40a1535199a7413af))
+* datalayer delete endpoint ([e34bf50](https://github.com/Chia-Network/climate-warehouse/commit/e34bf50111e7f525843072af4a6e85ac44019ff4))
+* deleteFile endpoint ([ea1e918](https://github.com/Chia-Network/climate-warehouse/commit/ea1e918d7827a01cede33c979114a22b35a3887f))
+* fix author column in audit table ([2f9a441](https://github.com/Chia-Network/climate-warehouse/commit/2f9a441d51598f6664a099974755ca038739358d))
+* return proper status code when editing staging record ([d187404](https://github.com/Chia-Network/climate-warehouse/commit/d1874043c08c7e51a5b6b6cd0cb3694cc110fe7d))
+* synced header ([6da3d3c](https://github.com/Chia-Network/climate-warehouse/commit/6da3d3c21847ab2d2350753c9adac04126059e09))
+* validation ([77e10c2](https://github.com/Chia-Network/climate-warehouse/commit/77e10c27447353541b7531fdfe5f34e1ee4b76eb))
+* validation ([6127067](https://github.com/Chia-Network/climate-warehouse/commit/612706791948b4fbf3f55a9fd15ec06851e9f780))
+
+
+### Features
+
+* add author data to audit transaction ([6540926](https://github.com/Chia-Network/climate-warehouse/commit/65409262744ae1a797c447a61c0d7261d02a5d6c))
+* add delete file endpoint ([3e3b7ec](https://github.com/Chia-Network/climate-warehouse/commit/3e3b7ec4138f59e6e5d1a1c4fcc91c8b4a4e31b3))
+* add filestore ([5b8120e](https://github.com/Chia-Network/climate-warehouse/commit/5b8120edb261b795949ae3f52a35bff03a38616e))
+* add filestore endpoints ([d7147d2](https://github.com/Chia-Network/climate-warehouse/commit/d7147d2ffc18af67ec9d36a9fa0cdc3e3f3c147c))
+* add optional methodology2 field to project ([ec94c8e](https://github.com/Chia-Network/climate-warehouse/commit/ec94c8e93d74ca4ea1de51420882ef3a38befad8))
+* add package version to logger format ([64d193b](https://github.com/Chia-Network/climate-warehouse/commit/64d193bfd608f437712f12c162bf9324e0c07a8d))
+* adds wallet balance to org response ([37db166](https://github.com/Chia-Network/climate-warehouse/commit/37db166c76ab33bc4d6c05bddb697546837fd59d))
+* edit organization info ([4927e88](https://github.com/Chia-Network/climate-warehouse/commit/4927e88ebdc553bd1f86a90730d278a35649e257))
+* makes unit owner optional ([47a4b1a](https://github.com/Chia-Network/climate-warehouse/commit/47a4b1a1c0d6d6e073b970fec728f3863765d0d0))
+* remove max number of split records ([f45f971](https://github.com/Chia-Network/climate-warehouse/commit/f45f971c452af87cccea6dc74bdb4cd30acee24d))
+* wallet is synced header ([e501287](https://github.com/Chia-Network/climate-warehouse/commit/e5012871c6cf7968b258afeb2836aa2cd39503fa))
+
+
+
 ## [1.0.13](https://github.com/Chia-Network/climate-warehouse/compare/1.0.12...1.0.13) (2022-06-30)
 
 
