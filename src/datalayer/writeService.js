@@ -3,7 +3,7 @@ import _ from 'lodash';
 import * as dataLayer from './persistance';
 import wallet from './wallet';
 import * as simulator from './simulator';
-import { encodeHex, decodeHex } from '../utils/datalayer-utils';
+import { encodeHex } from '../utils/datalayer-utils';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 import { Organization } from '../models';
@@ -126,23 +126,7 @@ const pushChangesWhenStoreIsAvailable = async (
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
 
     if (!hasUnconfirmedTransactions && storeExistAndIsConfirmed) {
-      logger.info(
-        `pushing to datalayer ${storeId} ${JSON.stringify(
-          changeList.map((change) => {
-            return {
-              action: change.action,
-              key: decodeHex(change.key),
-              ...(change.value && {
-                value: /{([^*]*)}/.test(decodeHex(change.value))
-                  ? JSON.parse(decodeHex(change.value))
-                  : decodeHex(change.value),
-              }),
-            };
-          }),
-          null,
-          2,
-        )}`,
-      );
+      logger.info(`pushing to datalayer ${storeId}`);
 
       const success = await dataLayer.pushChangeListToDataLayer(
         storeId,

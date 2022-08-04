@@ -6,3 +6,4 @@ export * from './issuances';
 export * from './labels';
 export * from './audit';
 export * from './governance';
+export * from './filestore';
