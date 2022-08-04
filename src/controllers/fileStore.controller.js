@@ -15,6 +15,18 @@ export const getFileList = async (req, res) => {
   }
 };
 
+export const deleteFile = async (req, res) => {
+  try {
+    await FileStore.deleteFileStorItem(req.params.fileId);
+    res.status(204).end();
+  } catch (error) {
+    res.status(400).json({
+      message: 'Can not delete file from filestore',
+      error: error.message,
+    });
+  }
+};
+
 export const getFile = async (req, res) => {
   try {
     const { fileId } = req.body;

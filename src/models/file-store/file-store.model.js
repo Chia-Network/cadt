@@ -11,6 +11,7 @@ import { sequelize } from '../../database';
 import { Organization } from '../organizations';
 
 import datalayer from '../../datalayer';
+import { encodeHex } from '../../utils/datalayer-utils';
 
 import ModelTypes from './file-store.modeltypes.cjs';
 
@@ -91,6 +92,26 @@ class FileStore extends Model {
       attributes: ['SHA256', 'fileName'],
       raw: true,
     });
+  }
+
+  static async deleteFileStorItem(SHA256) {
+    const myOrganization = await Organization.getHomeOrg();
+    let fileStoreId = myOrganization.fileStoreId;
+
+    if (!fileStoreId) {
+      fileStoreId = await datalayer.createDataLayerStore();
+      datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+      throw new Error('New File store being created, please try again later.');
+    }
+
+    const changeList = {
+      action: 'delete',
+      key: encodeHex(SHA256),
+    };
+
+    datalayer.pushChangesWhenStoreIsAvailable(fileStoreId, changeList);
+
+    FileStore.destroy({ where: { SHA256, orgUid: myOrganization.org } });
   }
 
   static async getFileStoreItem(SHA256) {

@@ -13,6 +13,14 @@ FileStoreRouter.post('/get_file', validator.body(getFileSchema), (req, res) => {
   return FileStoreController.getFile(req, res);
 });
 
+FileStoreRouter.delete(
+  '/delete_file',
+  validator.body(getFileSchema),
+  (req, res) => {
+    return FileStoreController.deleteFile(req, res);
+  },
+);
+
 FileStoreRouter.get('/get_file_list', (req, res) => {
   return FileStoreController.getFileList(req, res);
 });
