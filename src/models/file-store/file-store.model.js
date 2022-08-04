@@ -21,12 +21,14 @@ class FileStore extends Model {
     let fileStoreId = myOrganization.fileStoreId;
 
     if (!fileStoreId) {
-      fileStoreId = datalayer.createDataLayerStore();
-      datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
-      Organization.update(
-        { fileStoreId },
-        { where: { orgUid: myOrganization.orgUid } },
-      );
+      datalayer.createDataLayerStore().then((fileStoreId) => {
+        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+        Organization.update(
+          { fileStoreId },
+          { where: { orgUid: myOrganization.orgUid } },
+        );
+      });
+
       throw new Error('New File store being created, please try again later.');
     }
 
@@ -59,8 +61,13 @@ class FileStore extends Model {
     let fileStoreId = myOrganization.fileStoreId;
 
     if (!fileStoreId) {
-      fileStoreId = await datalayer.createDataLayerStore();
-      datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+      datalayer.createDataLayerStore().then((fileStoreId) => {
+        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+        Organization.update(
+          { fileStoreId },
+          { where: { orgUid: myOrganization.orgUid } },
+        );
+      });
       throw new Error('New File store being created, please try again later.');
     }
 
@@ -92,13 +99,18 @@ class FileStore extends Model {
     });
   }
 
-  static async deleteFileStorItem(SHA256) {
+  static async deleteFileStoreItem(SHA256) {
     const myOrganization = await Organization.getHomeOrg();
     let fileStoreId = myOrganization.fileStoreId;
 
     if (!fileStoreId) {
-      fileStoreId = await datalayer.createDataLayerStore();
-      datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+      datalayer.createDataLayerStore().then((fileStoreId) => {
+        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+        Organization.update(
+          { fileStoreId },
+          { where: { orgUid: myOrganization.orgUid } },
+        );
+      });
       throw new Error('New File store being created, please try again later.');
     }
 
@@ -107,9 +119,9 @@ class FileStore extends Model {
       key: encodeHex(SHA256),
     };
 
-    datalayer.pushChangesWhenStoreIsAvailable(fileStoreId, changeList);
+    datalayer.pushDataLayerChangeList(fileStoreId, changeList);
 
-    FileStore.destroy({ where: { SHA256, orgUid: myOrganization.org } });
+    FileStore.destroy({ where: { SHA256, orgUid: myOrganization.orgUid } });
   }
 
   static async getFileStoreItem(SHA256) {

@@ -10,7 +10,6 @@ module.exports = {
   },
   fileName: {
     type: Sequelize.STRING,
-    unique: true,
   },
   data: Sequelize.STRING,
   orgUid: Sequelize.STRING,

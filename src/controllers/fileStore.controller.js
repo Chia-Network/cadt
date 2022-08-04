@@ -17,8 +17,10 @@ export const getFileList = async (req, res) => {
 
 export const deleteFile = async (req, res) => {
   try {
-    await FileStore.deleteFileStorItem(req.body.fileId);
-    res.status(204).end();
+    await FileStore.deleteFileStoreItem(req.body.fileId);
+    res.status(200).json({
+      message: 'File deleted from filestore',
+    });
   } catch (error) {
     res.status(400).json({
       message: 'Can not delete file from filestore',
@@ -64,6 +66,7 @@ export const addFileToFileStore = async (req, res) => {
       return res.json({
         message:
           'File is being added to the file store, please wait for it to confirm.',
+        fileId: SHA256,
       });
     } else {
       throw new Error('Missing file data, can not upload file.');

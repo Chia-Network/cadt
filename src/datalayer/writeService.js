@@ -111,7 +111,7 @@ const retry = (storeId, changeList, failedCallback, retryAttempts) => {
   }, 30000);
 };
 
-const pushChangesWhenStoreIsAvailable = async (
+export const pushChangesWhenStoreIsAvailable = async (
   storeId,
   changeList,
   failedCallback = _.noop,
