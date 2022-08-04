@@ -17,6 +17,37 @@ export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
 };
 
+export const editHomeOrg = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    const { name } = req.body;
+
+    let icon;
+
+    if (_.get(req, 'files.file.data')) {
+      const buffer = req.files.file.data;
+      icon = `data:image/png;base64, ${buffer.toString('base64')}`;
+    } else {
+      icon = '';
+    }
+
+    Organization.editOrgMeta({ name, icon });
+
+    return res.json({
+      message: 'Home org currently being updated, will be completed soon.',
+    });
+  } catch (error) {
+    console.trace(error);
+    res.status(400).json({
+      message: 'Error initiating your organization',
+      error: error.message,
+    });
+  }
+};
+
 export const createV2 = async (req, res) => {
   try {
     await assertIfReadOnlyMode();

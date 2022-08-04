@@ -110,14 +110,22 @@ const syncOrganizationAudit = async (organization) => {
     // 0x636f6d6d656e74 is hex for 'comment'
     const comment = kvDiff.filter(
       (diff) =>
-        diff.key === '636f6d6d656e74' || diff.key === '0x636f6d6d656e74',
+        (diff.key === '636f6d6d656e74' || diff.key === '0x636f6d6d656e74') &&
+        diff.type === 'INSERT',
+    );
+
+    // 0x617574686F72 is hex for 'author'
+    const author = kvDiff.filter(
+      (diff) =>
+        (diff.key === '617574686f72' || diff.key === '0x617574686F72') &&
+        diff.type === 'INSERT',
     );
 
     await Promise.all(
       kvDiff.map(async (diff) => {
         const key = decodeHex(diff.key);
         const modelKey = key.split('|')[0];
-        if (key !== 'comment') {
+        if (!['comment', 'author'].includes(key)) {
           Audit.create({
             orgUid: organization.orgUid,
             registryId: organization.registryId,
@@ -129,6 +137,11 @@ const syncOrganizationAudit = async (organization) => {
             comment: _.get(
               JSON.parse(decodeHex(_.get(comment, '[0].value', '7b7d'))),
               'comment',
+              '',
+            ),
+            author: _.get(
+              JSON.parse(decodeHex(_.get(author, '[0].value', '7b7d'))),
+              'author',
               '',
             ),
           });

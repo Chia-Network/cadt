@@ -3,9 +3,10 @@ import _ from 'lodash';
 import * as dataLayer from './persistance';
 import wallet from './wallet';
 import * as simulator from './simulator';
-import { encodeHex, decodeHex } from '../utils/datalayer-utils';
+import { encodeHex } from '../utils/datalayer-utils';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
+import { Organization } from '../models';
 
 logger.info('climate-warehouse:datalayer:writeService');
 
@@ -61,6 +62,35 @@ const syncDataLayer = async (storeId, data, failedCallback) => {
   await pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback);
 };
 
+const upsertDataLayer = async (storeId, data) => {
+  logger.info(`Syncing ${storeId}`);
+  const homeOrg = await Organization.getHomeOrg();
+  let changeList = Object.keys(data).map((key) => {
+    const change = [];
+
+    if (homeOrg[key]) {
+      change.push({
+        action: 'delete',
+        key: encodeHex(key),
+      });
+    }
+
+    change.push({
+      action: 'insert',
+      key: encodeHex(key),
+      value: encodeHex(data[key]),
+    });
+    return change;
+  });
+
+  const finalChangeList = _.uniqBy(
+    _.sortBy(_.flatten(_.values(changeList)), 'action'),
+    (v) => [v.action, v.key].join(),
+  );
+
+  await pushChangesWhenStoreIsAvailable(storeId, finalChangeList);
+};
+
 const retry = (storeId, changeList, failedCallback, retryAttempts) => {
   logger.info(`Retrying pushing to store ${storeId}: ${retryAttempts}`);
   if (retryAttempts >= 60) {
@@ -81,7 +111,7 @@ const retry = (storeId, changeList, failedCallback, retryAttempts) => {
   }, 30000);
 };
 
-const pushChangesWhenStoreIsAvailable = async (
+export const pushChangesWhenStoreIsAvailable = async (
   storeId,
   changeList,
   failedCallback = _.noop,
@@ -96,21 +126,7 @@ const pushChangesWhenStoreIsAvailable = async (
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
 
     if (!hasUnconfirmedTransactions && storeExistAndIsConfirmed) {
-      logger.info(
-        `pushing to datalayer ${storeId} ${JSON.stringify(
-          changeList.map((change) => {
-            return {
-              action: change.action,
-              key: decodeHex(change.key),
-              value: /{([^*]*)}/.test(decodeHex(change.value))
-                ? JSON.parse(decodeHex(change.value))
-                : decodeHex(change.value),
-            };
-          }),
-          null,
-          2,
-        )}`,
-      );
+      logger.info(`pushing to datalayer ${storeId}`);
 
       const success = await dataLayer.pushChangeListToDataLayer(
         storeId,
@@ -146,4 +162,5 @@ export default {
   pushDataLayerChangeList,
   syncDataLayer,
   createDataLayerStore,
+  upsertDataLayer,
 };

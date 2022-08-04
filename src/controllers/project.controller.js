@@ -143,7 +143,14 @@ export const findAll = async (req, res) => {
     }
 
     if (search) {
-      const ftsResults = await Project.fts(search, orgUid, {}, columns);
+      // we cant add methodology2 to the fts table because you cant alter virtual tables without deleting the whole thig
+      // so we need a migration that deletes the entire fts table and then repopulates it. This will be a new story
+      const ftsResults = await Project.fts(
+        search,
+        orgUid,
+        {},
+        columns.filter((col) => col !== 'methodology2'),
+      );
       const mappedResults = ftsResults.rows.map((ftsResult) =>
         _.get(ftsResult, 'dataValues.warehouseProjectId'),
       );
@@ -233,6 +240,7 @@ export const updateFromXLS = async (req, res) => {
       message: 'Updates from xlsx added to staging',
     });
   } catch (error) {
+    logger.error(error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
@@ -368,6 +376,7 @@ export const batchUpload = async (req, res) => {
         'CSV processing complete, your records have been added to the staging table.',
     });
   } catch (error) {
+    logger.error('Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,

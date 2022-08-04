@@ -173,9 +173,6 @@ export const getStoreData = async (storeId, rootHash) => {
               return {
                 ...record,
                 key: decodeHex(record.key),
-                value: /{([^*]*)}/.test(decodeHex(record.value))
-                  ? JSON.parse(decodeHex(record.value))
-                  : decodeHex(record.value),
               };
             }),
             null,
