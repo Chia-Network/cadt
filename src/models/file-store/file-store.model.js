@@ -35,8 +35,6 @@ class FileStore extends Model {
       attributes: ['SHA256'],
     });
 
-    console.log(SHA256);
-
     if (existingFile) {
       throw new Error('File Already exists in the filestore');
     }

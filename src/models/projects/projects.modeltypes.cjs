@@ -80,6 +80,9 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
+  methodology2: {
+    type: Sequelize.STRING,
+  },
   validationBody: Sequelize.STRING,
   validationDate: Sequelize.DATE,
   timeStaged: {

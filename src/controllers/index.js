@@ -6,4 +6,4 @@ export * as IssuanceController from './issuance.controller';
 export * as LabelController from './label.controller';
 export * as AuditController from './audit.controller';
 export * as GovernanceController from './governance.controller';
-export * as FileStoreController from './filestore.controller';
+export * as FileStoreController from './fileStore.controller';

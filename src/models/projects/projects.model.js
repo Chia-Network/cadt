@@ -364,9 +364,7 @@ class Project extends Model {
       isUpdateComment,
     );
 
-    const currentAuthor = currentDataLayer.filter(
-      (kv) => kv.key === 'author',
-    );
+    const currentAuthor = currentDataLayer.filter((kv) => kv.key === 'author');
     const isUpdateAuthor = currentAuthor.length > 0;
     const authorChangeList = keyValueToChangeList(
       'author',
