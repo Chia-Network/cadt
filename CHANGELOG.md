@@ -1,3 +1,12 @@
+## [1.1.1](https://github.com/Chia-Network/climate-warehouse/compare/1.1.0...1.1.1) (2022-08-05)
+
+
+### Bug Fixes
+
+* metamock double declaration ([9540b24](https://github.com/Chia-Network/climate-warehouse/commit/9540b24cc87f076c8f75759914fd73771dbbb212))
+
+
+
 # [1.1.0](https://github.com/Chia-Network/climate-warehouse/compare/1.0.13...1.1.0) (2022-08-04)
 
 
