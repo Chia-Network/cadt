@@ -1,3 +1,12 @@
+## [1.1.2](https://github.com/Chia-Network/climate-warehouse/compare/1.1.1...1.1.2) (2022-08-08)
+
+
+### Bug Fixes
+
+* allow string fields to also accept numbers ([743ce57](https://github.com/Chia-Network/climate-warehouse/commit/743ce57fd283698099b65dfe7b2ab00e6e1f5368))
+
+
+
 ## [1.1.1](https://github.com/Chia-Network/climate-warehouse/compare/1.1.0...1.1.1) (2022-08-05)
 
 
