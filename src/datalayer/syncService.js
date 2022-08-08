@@ -104,7 +104,7 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
       await Staging.cleanUpCommitedAndInvalidRecords();
     }
   } catch (error) {
-    console.trace('ERROR DURING SYNC TRANSACTION', error, storeData);
+    console.trace('ERROR DURING SYNC TRANSACTION', error);
   }
 };
 
@@ -136,8 +136,6 @@ const dataLayerWasUpdated = async () => {
   if (!rootResponse.success) {
     return [];
   }
-
-  logger.debug(JSON.stringify(rootResponse));
 
   const updatedStores = rootResponse.root_hashes.filter((rootHash) => {
     const org = organizations.find(
@@ -237,8 +235,6 @@ const getSubscribedStoreData = async (
   } else {
     encodedData = await dataLayer.getStoreData(storeId);
   }
-
-  logger.debug(`Downloaded from datalayer:  ${encodedData?.keys_values}`);
 
   if (_.isEmpty(encodedData?.keys_values)) {
     logger.debug(

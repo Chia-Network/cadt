@@ -25,7 +25,14 @@ import ModelTypes from './organizations.modeltypes.cjs';
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
     const myOrganization = await Organization.findOne({
-      attributes: ['orgUid', 'name', 'icon', 'subscribed', 'registryId'],
+      attributes: [
+        'orgUid',
+        'name',
+        'icon',
+        'subscribed',
+        'registryId',
+        'fileStoreId',
+      ],
       where: { isHome: true },
       raw: true,
     });
@@ -84,6 +91,7 @@ class Organization extends Model {
 
       const newRegistryId = await datalayer.createDataLayerStore();
       const registryVersionId = await datalayer.createDataLayerStore();
+      const fileStoreId = await datalayer.createDataLayerStore();
 
       const revertOrganizationIfFailed = async () => {
         logger.info('Reverting Failed Organization');
@@ -98,6 +106,7 @@ class Organization extends Model {
         newOrganizationId,
         {
           registryId: newRegistryId,
+          fileStoreId,
           name,
           icon,
         },
@@ -119,6 +128,7 @@ class Organization extends Model {
           registryId: registryVersionId,
           isHome: true,
           subscribed: USE_SIMULATOR,
+          fileStoreId,
           name,
           icon,
         }),
