@@ -171,7 +171,6 @@ export const getStoreData = async (storeId, rootHash) => {
           `Downloaded Data: ${JSON.stringify(
             data.keys_values.map((record) => {
               return {
-                ...record,
                 key: decodeHex(record.key),
               };
             }),
