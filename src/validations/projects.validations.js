@@ -19,16 +19,12 @@ export const baseSchema = {
   originProjectId: Joi.alternatives()
     .try(Joi.string(), Joi.number())
     .required(),
-  registryOfOrigin: Joi.alternatives()
-    .try(Joi.string(), Joi.number())
-    .required(),
+  registryOfOrigin: Joi.string().required(),
   program: Joi.string().optional(),
-  projectName: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
-  projectLink: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
-  projectDeveloper: Joi.alternatives()
-    .try(Joi.string(), Joi.number())
-    .required(),
-  sector: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
+  projectName: Joi.string().required(),
+  projectLink: Joi.string().required(),
+  projectDeveloper: Joi.string().required(),
+  sector: Joi.string().required(),
   projectType: Joi.string()
     .custom(pickListValidation('projectType'))
     .required(),
@@ -42,7 +38,7 @@ export const baseSchema = {
     .required(),
   projectStatusDate: Joi.date().required(),
   unitMetric: Joi.string().custom(pickListValidation('unitMetric')).required(),
-  methodology: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
+  methodology: Joi.string().required(),
   methodology2: Joi.string().optional(),
   validationBody: Joi.string()
     .custom(pickListValidation('validationBody'))

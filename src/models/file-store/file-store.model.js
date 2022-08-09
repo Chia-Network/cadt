@@ -94,7 +94,7 @@ class FileStore extends Model {
     });
 
     return FileStore.findAll({
-      attributes: ['SHA256', 'fileName'],
+      attributes: ['SHA256', 'fileName', 'orgUid'],
       raw: true,
     });
   }
