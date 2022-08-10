@@ -3,6 +3,7 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../../database';
+import { Meta } from '../meta';
 
 import datalayer from '../../datalayer';
 
@@ -39,6 +40,7 @@ class Organization extends Model {
 
     if (myOrganization && includeAddress) {
       myOrganization.xchAddress = await datalayer.getPublicAddress();
+      myOrganization.fileStoreSubscribed = true;
       return myOrganization;
     }
 
@@ -47,7 +49,14 @@ class Organization extends Model {
 
   static async getOrgsMap() {
     const organizations = await Organization.findAll({
-      attributes: ['orgUid', 'name', 'icon', 'isHome', 'subscribed'],
+      attributes: [
+        'orgUid',
+        'name',
+        'icon',
+        'isHome',
+        'subscribed',
+        'fileStoreSubscribed',
+      ],
     });
 
     for (let i = 0; i < organizations.length; i++) {
@@ -226,6 +235,14 @@ class Organization extends Model {
           'Currupted organization, no registryId on the datalayer, can not import',
         );
       }
+
+      await Meta.upsert({
+        metaKey: orgData.orgUid,
+        metaValue: JSON.stringify({
+          ip,
+          port,
+        }),
+      });
 
       logger.info(`IMPORTING REGISTRY: ${orgData.registryId}`);
 

@@ -8,7 +8,7 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../../database';
-import { Organization } from '../organizations';
+import { Organization, Meta } from '../';
 
 import datalayer from '../../datalayer';
 import { encodeHex } from '../../utils/datalayer-utils';
@@ -16,6 +16,48 @@ import { encodeHex } from '../../utils/datalayer-utils';
 import ModelTypes from './file-store.modeltypes.cjs';
 
 class FileStore extends Model {
+  static async subscribeToFileStore(orgUid) {
+    const organization = await Organization.findByPk(orgUid, { raw: true });
+    if (!organization) {
+      throw new Error(`Org ${orgUid} does not exist`);
+    }
+
+    if (!organization.fileStoreId) {
+      throw new Error(
+        `Org ${orgUid} does not have a file store to subscribe to`,
+      );
+    }
+
+    const orgMeta = await Meta.findOne(
+      { where: { metaKey: organization.orgUid } },
+      { raw: true },
+    );
+
+    if (!orgMeta) {
+      throw new Error(
+        `Org ${orgUid} can not find the ip and port to subscribe to its filestore, re-importing the org can fix this.`,
+      );
+    }
+
+    const { ip, port } = JSON.parse(orgMeta.metaValue);
+
+    datalayer.subscribeToStoreOnDataLayer(organization.fileStoreId, ip, port);
+    Organization.update({ fileStoreSubscribed: true });
+  }
+
+  static async unsubscribeFromFileStore(orgUid) {
+    const organization = await Organization.findByPk(orgUid, { raw: true });
+    if (!organization) {
+      throw new Error(
+        `Org ${orgUid} does not have a file store to unsubscribe from.`,
+      );
+    }
+
+    FileStore.destroy({ where: { orgUid: organization.orgUid } });
+    datalayer.unsubscribeFromDataLayerStore(organization.fileStoreId);
+    Organization.update({ fileStoreSubscribed: false });
+  }
+
   static async addFileToFileStore(SHA256, fileName, base64File) {
     const myOrganization = await Organization.getHomeOrg();
     let fileStoreId = myOrganization.fileStoreId;
