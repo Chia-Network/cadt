@@ -7,7 +7,7 @@ const validator = joiExpress.createValidator({ passError: true });
 const FileStoreRouter = express.Router();
 
 import { FileStoreController } from '../../../controllers';
-import { getFileSchema } from '../../../validations';
+import { getFileSchema, subscribedSchema } from '../../../validations';
 
 FileStoreRouter.post('/get_file', validator.body(getFileSchema), (req, res) => {
   return FileStoreController.getFile(req, res);
@@ -28,5 +28,21 @@ FileStoreRouter.get('/get_file_list', (req, res) => {
 FileStoreRouter.post('/add_file', (req, res) => {
   return FileStoreController.addFileToFileStore(req, res);
 });
+
+FileStoreRouter.post(
+  '/subscribe',
+  validator.body(subscribedSchema),
+  (req, res) => {
+    return FileStoreController.subscribeToFileStore(req, res);
+  },
+);
+
+FileStoreRouter.post(
+  '/unsubscribe',
+  validator.body(subscribedSchema),
+  (req, res) => {
+    return FileStoreController.unsubscribeFromFileStore(req, res);
+  },
+);
 
 export { FileStoreRouter };
