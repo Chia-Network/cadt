@@ -167,6 +167,12 @@ const dataLayerWasUpdated = async () => {
   return updateStoreInfo;
 };
 
+const unsubscribeFromDataLayerStore = async (storeId, ip, port) => {
+  if (!USE_SIMULATOR) {
+    return dataLayer.unsubscribeFromDataLayerStore(storeId, ip, port);
+  }
+};
+
 const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
   if (USE_SIMULATOR) {
     return simulator.subscribeToStoreOnDataLayer(storeId, ip, port);
@@ -333,4 +339,5 @@ export default {
   getStoreIfUpdated,
   POLLING_INTERVAL,
   getCurrentStoreData,
+  unsubscribeFromDataLayerStore,
 };

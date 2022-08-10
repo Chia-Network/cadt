@@ -171,7 +171,6 @@ export const getStoreData = async (storeId, rootHash) => {
           `Downloaded Data: ${JSON.stringify(
             data.keys_values.map((record) => {
               return {
-                ...record,
                 key: decodeHex(record.key),
               };
             }),
@@ -207,6 +206,35 @@ export const dataLayerAvailable = async () => {
 
     return false;
   } catch (error) {
+    return false;
+  }
+};
+
+export const unsubscribeFromDataLayerStore = async (storeId) => {
+  const options = {
+    url: `${rpcUrl}/unsubscribe`,
+    body: JSON.stringify({
+      id: storeId,
+    }),
+  };
+
+  logger.info(`RPC Call: ${rpcUrl}/unsubscribe ${storeId}`);
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (Object.keys(data).includes('success') && data.success) {
+      logger.info(`Successfully UnSubscribed: ${storeId}`);
+      return data;
+    }
+
+    return false;
+  } catch (error) {
+    logger.info(`Error UnSubscribing: ${error}`);
     return false;
   }
 };
