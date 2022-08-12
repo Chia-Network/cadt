@@ -24,14 +24,14 @@ export const unsubscribeFromFileStore = (req, res) => {
   try {
     const { orgUid } = req.body;
 
-    FileStore.unsubscribeFileStore(orgUid);
+    FileStore.unsubscribeFromFileStore(orgUid);
 
     res.status(200).json({
       message: `Can not unsubscribe the fileStore from ${orgUid}`,
     });
   } catch (error) {
     res.status(400).json({
-      message: 'Can not retreive file list from filestore',
+      message: 'Can not retrieve file list from filestore',
       error: error.message,
     });
   }
@@ -43,7 +43,7 @@ export const getFileList = async (req, res) => {
     res.json(files);
   } catch (error) {
     res.status(400).json({
-      message: 'Can not retreive file list from filestore',
+      message: 'Can not retrieve file list from filestore',
       error: error.message,
     });
   }
