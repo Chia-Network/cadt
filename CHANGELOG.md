@@ -1,3 +1,19 @@
+## [1.1.4](https://github.com/Chia-Network/climate-warehouse/compare/1.1.3...1.1.4) (2022-08-15)
+
+
+### Bug Fixes
+
+* filestore unsubscribe ([56ed2be](https://github.com/Chia-Network/climate-warehouse/commit/56ed2be3dc43f65477a52189520b0ab85f7759f4))
+* units fts ([227bc72](https://github.com/Chia-Network/climate-warehouse/commit/227bc7259da72b0b028453c1cca2305bfb7bfc9f))
+
+
+### Features
+
+* subscribe and unsubscribe from other filestores ([8b7c1fd](https://github.com/Chia-Network/climate-warehouse/commit/8b7c1fd86cc72b553451c082192eaafabf741945))
+* update validation for governance API response schema ([5ddd18b](https://github.com/Chia-Network/climate-warehouse/commit/5ddd18b0fee9a751232943bb2c024b66ae5aa529))
+
+
+
 ## [1.1.3](https://github.com/Chia-Network/climate-warehouse/compare/1.1.2...1.1.3) (2022-08-09)
 
 
