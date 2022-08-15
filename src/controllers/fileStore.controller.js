@@ -3,13 +3,47 @@ import _ from 'lodash';
 import crypto from 'crypto';
 import { FileStore } from '../models';
 
+export const subscribeToFileStore = (req, res) => {
+  try {
+    const { orgUid } = req.body;
+
+    FileStore.subscribeToFileStore(orgUid);
+
+    res.status(200).json({
+      message: `${orgUid} subscribed to file store.`,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: `Can not subscribe to file store.`,
+      error: error.message,
+    });
+  }
+};
+
+export const unsubscribeFromFileStore = (req, res) => {
+  try {
+    const { orgUid } = req.body;
+
+    FileStore.unsubscribeFromFileStore(orgUid);
+
+    res.status(200).json({
+      message: `Can not unsubscribe the fileStore from ${orgUid}`,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Can not retrieve file list from filestore',
+      error: error.message,
+    });
+  }
+};
+
 export const getFileList = async (req, res) => {
   try {
     const files = await FileStore.getFileStoreList();
     res.json(files);
   } catch (error) {
     res.status(400).json({
-      message: 'Can not retreive file list from filestore',
+      message: 'Can not retrieve file list from filestore',
       error: error.message,
     });
   }
