@@ -239,17 +239,16 @@ export const unsubscribeFromDataLayerStore = async (storeId) => {
   }
 };
 
-export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
+export const subscribeToStoreOnDataLayer = async (storeId) => {
   const options = {
     url: `${rpcUrl}/subscribe`,
     body: JSON.stringify({
       id: storeId,
-      ip,
-      port,
+      urls: [],
     }),
   };
 
-  logger.info(`RPC Call: ${rpcUrl}/subscribe ${storeId} ${ip} ${port}`);
+  logger.info(`RPC Call: ${rpcUrl}/subscribe ${storeId}`);
 
   try {
     const response = await request(
@@ -259,7 +258,7 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
     const data = JSON.parse(response);
 
     if (Object.keys(data).includes('success') && data.success) {
-      logger.info(`Successfully Subscribed: ${storeId}  ${ip} ${port}`);
+      logger.info(`Successfully Subscribed: ${storeId}`);
       return data;
     }
 
@@ -319,5 +318,34 @@ export const getRootDiff = async (storeId, root1, root2) => {
     return [];
   } catch (error) {
     return [];
+  }
+};
+
+export const addMirror = async (storeId, url) => {
+  const options = {
+    url: `${rpcUrl}/add_mirror`,
+    body: JSON.stringify({
+      id: storeId,
+      urls: url,
+      amount: 1,
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      logger.info(`Adding mirror ${storeId} at ${url}`);
+      return true;
+    }
+
+    logger.error(`FAILED ADDING MIRROR FOR ${storeId}`);
+    return false;
+  } catch (error) {
+    return false;
   }
 };

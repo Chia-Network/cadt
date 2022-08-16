@@ -3,16 +3,12 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../../database';
-import { Meta } from '../meta';
 
 import datalayer from '../../datalayer';
 
 import { logger } from '../../config/logger.cjs';
 
-import {
-  getDefaultOrganizationList,
-  serverAvailable,
-} from '../../utils/data-loaders';
+import { getDefaultOrganizationList } from '../../utils/data-loaders';
 
 import { getDataModelVersion } from '../../utils/helpers';
 
@@ -225,10 +221,10 @@ class Organization extends Model {
   }
 
   // eslint-disable-next-line
-  static importOrganization = async (orgUid, ip, port) => {
+  static importOrganization = async (orgUid) => {
     try {
-      logger.info('Subscribing to', orgUid, ip, port);
-      const orgData = await datalayer.getSubscribedStoreData(orgUid, ip, port);
+      logger.info('Subscribing to', orgUid);
+      const orgData = await datalayer.getSubscribedStoreData(orgUid);
 
       if (!orgData.registryId) {
         throw new Error(
@@ -236,20 +232,10 @@ class Organization extends Model {
         );
       }
 
-      await Meta.upsert({
-        metaKey: orgData.orgUid,
-        metaValue: JSON.stringify({
-          ip,
-          port,
-        }),
-      });
-
       logger.info(`IMPORTING REGISTRY: ${orgData.registryId}`);
 
       const registryData = await datalayer.getSubscribedStoreData(
         orgData.registryId,
-        ip,
-        port,
       );
 
       const dataModelVersion = getDataModelVersion();
@@ -262,7 +248,7 @@ class Organization extends Model {
 
       logger.info(`IMPORTING REGISTRY ${dataModelVersion}: `, registryData.v1);
 
-      await datalayer.subscribeToStoreOnDataLayer(registryData.v1, ip, port);
+      await datalayer.subscribeToStoreOnDataLayer(registryData.v1);
 
       logger.info({
         orgUid,
@@ -371,13 +357,7 @@ class Organization extends Model {
           });
 
           if (!exists) {
-            if (serverAvailable(org.ip, org.port)) {
-              Organization.importOrganization(org.orgUid, org.ip, org.port);
-            } else {
-              logger.warn(
-                `${org.orgUid} can not be detected at ${org.ip}:${org.port}, skipping import...`,
-              );
-            }
+            Organization.importOrganization(org.orgUid);
           }
         }),
       );

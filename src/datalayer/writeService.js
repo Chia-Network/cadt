@@ -2,11 +2,13 @@ import _ from 'lodash';
 
 import * as dataLayer from './persistance';
 import wallet from './wallet';
+import fullNode from './fullNode';
 import * as simulator from './simulator';
 import { encodeHex } from '../utils/datalayer-utils';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 import { Organization } from '../models';
+import { publicIpv4 } from 'public-ip';
 
 logger.info('climate-warehouse:datalayer:writeService');
 
@@ -23,6 +25,11 @@ const createDataLayerStore = async () => {
       `Created storeId: ${storeId}, waiting for this to be confirmed on the blockchain.`,
     );
     await waitForStoreToBeConfirmed(storeId);
+    const chiaConfig = fullNode.getChiaConfig();
+    await dataLayer.addMirror(
+      storeId,
+      `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
+    );
   }
 
   return storeId;
