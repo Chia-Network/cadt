@@ -6,6 +6,8 @@ import request from 'request-promise';
 import os from 'os';
 import { getConfig } from '../utils/config-loader';
 import { decodeHex } from '../utils/datalayer-utils';
+import fullNode from './fullNode';
+import { publicIpv4 } from 'public-ip';
 
 import { logger } from '../config/logger.cjs';
 
@@ -259,6 +261,13 @@ export const subscribeToStoreOnDataLayer = async (storeId) => {
 
     if (Object.keys(data).includes('success') && data.success) {
       logger.info(`Successfully Subscribed: ${storeId}`);
+
+      const chiaConfig = fullNode.getChiaConfig();
+      await addMirror(
+        storeId,
+        `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
+      );
+
       return data;
     }
 
@@ -321,7 +330,7 @@ export const getRootDiff = async (storeId, root1, root2) => {
   }
 };
 
-export const addMirror = async (storeId, url) => {
+const _addMirror = async (storeId, url) => {
   const options = {
     url: `${rpcUrl}/add_mirror`,
     body: JSON.stringify({
@@ -349,3 +358,5 @@ export const addMirror = async (storeId, url) => {
     return false;
   }
 };
+
+export const addMirror = _addMirror;

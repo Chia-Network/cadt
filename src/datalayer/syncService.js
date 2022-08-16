@@ -196,6 +196,7 @@ const getSubscribedStoreData = async (
 
   if (!alreadySubscribed) {
     const response = await subscribeToStoreOnDataLayer(storeId);
+
     if (!response || !response.success) {
       if (!response) {
         logger.debug(

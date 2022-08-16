@@ -25,6 +25,7 @@ const createDataLayerStore = async () => {
       `Created storeId: ${storeId}, waiting for this to be confirmed on the blockchain.`,
     );
     await waitForStoreToBeConfirmed(storeId);
+
     const chiaConfig = fullNode.getChiaConfig();
     await dataLayer.addMirror(
       storeId,
