@@ -72,6 +72,8 @@
     "babel-plugin-module-resolver": "^4.1.0",
     "chai": "^4.3.4",
     "chai-http": "^4.3.0",
+    "eslint": "^8.22.0",
+    "eslint-plugin-es": "^4.1.0",
     "eslint-plugin-mocha": "^9.0.0",
     "eslint-plugin-react": "^7.26.1",
     "git-authors-cli": "^1.0.36",
