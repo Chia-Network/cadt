@@ -8,7 +8,7 @@ import { encodeHex } from '../utils/datalayer-utils';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 import { Organization } from '../models';
-import { publicIpv4 } from 'public-ip';
+import { publicIpv4 } from '../utils/ip-tools';
 
 logger.info('climate-warehouse:datalayer:writeService');
 

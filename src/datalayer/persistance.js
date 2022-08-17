@@ -7,7 +7,7 @@ import os from 'os';
 import { getConfig } from '../utils/config-loader';
 import { decodeHex } from '../utils/datalayer-utils';
 import fullNode from './fullNode';
-import { publicIpv4 } from 'public-ip';
+import { publicIpv4 } from '../utils/ip-tools';
 
 import { logger } from '../config/logger.cjs';
 
