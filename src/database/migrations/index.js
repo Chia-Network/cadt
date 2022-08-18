@@ -27,6 +27,7 @@ import CreateFileStore from './20220724212553-create-file-store';
 import AddOptionalMethodology2FieldToProject from './20220721212845-add-optional-methodology2-field-to-project';
 import AddFiltStoreSubscribedColumnToProject from './20220809182156-AddFileStoreSubscribedColumn';
 import PopulateUnitsFTS from './20220808192709-populate-units-fts';
+import ResetDBForNewSingletons from './20220816155101-reset-db-for-new-singletons';
 
 export const migrations = [
   {
@@ -148,5 +149,9 @@ export const migrations = [
   {
     migration: PopulateUnitsFTS,
     name: '20220808192709-populate-units-fts',
+  },
+  {
+    migration: ResetDBForNewSingletons,
+    name: '20220816155101-reset-db-for-new-singletons',
   },
 ];
