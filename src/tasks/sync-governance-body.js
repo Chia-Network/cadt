@@ -9,8 +9,7 @@ import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 import { Organization } from '../models';
 
-const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
-  getConfig().GOVERNANCE;
+const { GOVERANCE_BODY_ID } = getConfig().GOVERNANCE;
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -23,10 +22,8 @@ const task = new Task('sync-governance-meta', async () => {
     await assertWalletIsSynced();
 
     logger.info('Syncing governance data');
-    if (GOVERANCE_BODY_ID && GOVERNANCE_BODY_IP && GOVERNANCE_BODY_PORT) {
-      logger.info(
-        `Governance Config Found ${GOVERANCE_BODY_ID} ${GOVERNANCE_BODY_IP} ${GOVERNANCE_BODY_PORT}`,
-      );
+    if (GOVERANCE_BODY_ID) {
+      logger.info(`Governance Config Found ${GOVERANCE_BODY_ID}`);
 
       const myOrganization = await Organization.getHomeOrg();
 

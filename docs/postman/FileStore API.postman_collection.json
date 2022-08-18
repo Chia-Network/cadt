@@ -1,0 +1,102 @@
+{
+  "info": {
+    "_postman_id": "f1a86e8f-072c-40b7-8155-2cc798be1501",
+    "name": "Filestore API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "add_file",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "/C:/Users/14434/OneDrive/Pictures/4ff07cb8-ac56-4a70-8684-10e828ca5cff.png"
+            },
+            {
+              "key": "fileName",
+              "value": "example.png",
+              "type": "default"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{default}}/v1/filestore/add_file",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "31310",
+          "path": ["v1", "filestore", "add_file"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "delete_file",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"fileId\": \"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{default}}/v1/filestore/delete_file",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "31310",
+          "path": ["v1", "filestore", "delete_file"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get_file_list",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{default}}/v1/filestore/get_file_list",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "31310",
+          "path": ["v1", "filestore", "get_file_list"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get_file",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"fileId\": \"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{default}}/v1/filestore/get_file",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "31310",
+          "path": ["v1", "filestore", "get_file"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

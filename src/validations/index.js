@@ -12,3 +12,4 @@ export * from './units.validations';
 export * from './audit.validations';
 export * from './estimations.validations';
 export * from './governance.validations';
+export * from './filestore.validations';

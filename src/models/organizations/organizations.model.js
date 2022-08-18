@@ -8,10 +8,7 @@ import datalayer from '../../datalayer';
 
 import { logger } from '../../config/logger.cjs';
 
-import {
-  getDefaultOrganizationList,
-  serverAvailable,
-} from '../../utils/data-loaders';
+import { getDefaultOrganizationList } from '../../utils/data-loaders';
 
 import { getDataModelVersion } from '../../utils/helpers';
 
@@ -25,13 +22,21 @@ import ModelTypes from './organizations.modeltypes.cjs';
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
     const myOrganization = await Organization.findOne({
-      attributes: ['orgUid', 'name', 'icon', 'subscribed', 'registryId'],
+      attributes: [
+        'orgUid',
+        'name',
+        'icon',
+        'subscribed',
+        'registryId',
+        'fileStoreId',
+      ],
       where: { isHome: true },
       raw: true,
     });
 
     if (myOrganization && includeAddress) {
       myOrganization.xchAddress = await datalayer.getPublicAddress();
+      myOrganization.fileStoreSubscribed = true;
       return myOrganization;
     }
 
@@ -40,7 +45,14 @@ class Organization extends Model {
 
   static async getOrgsMap() {
     const organizations = await Organization.findAll({
-      attributes: ['orgUid', 'name', 'icon', 'isHome', 'subscribed'],
+      attributes: [
+        'orgUid',
+        'name',
+        'icon',
+        'isHome',
+        'subscribed',
+        'fileStoreSubscribed',
+      ],
     });
 
     for (let i = 0; i < organizations.length; i++) {
@@ -84,6 +96,7 @@ class Organization extends Model {
 
       const newRegistryId = await datalayer.createDataLayerStore();
       const registryVersionId = await datalayer.createDataLayerStore();
+      const fileStoreId = await datalayer.createDataLayerStore();
 
       const revertOrganizationIfFailed = async () => {
         logger.info('Reverting Failed Organization');
@@ -98,6 +111,7 @@ class Organization extends Model {
         newOrganizationId,
         {
           registryId: newRegistryId,
+          fileStoreId,
           name,
           icon,
         },
@@ -119,6 +133,7 @@ class Organization extends Model {
           registryId: registryVersionId,
           isHome: true,
           subscribed: USE_SIMULATOR,
+          fileStoreId,
           name,
           icon,
         }),
@@ -206,10 +221,10 @@ class Organization extends Model {
   }
 
   // eslint-disable-next-line
-  static importOrganization = async (orgUid, ip, port) => {
+  static importOrganization = async (orgUid) => {
     try {
-      logger.info('Subscribing to', orgUid, ip, port);
-      const orgData = await datalayer.getSubscribedStoreData(orgUid, ip, port);
+      logger.info('Subscribing to', orgUid);
+      const orgData = await datalayer.getSubscribedStoreData(orgUid);
 
       if (!orgData.registryId) {
         throw new Error(
@@ -221,8 +236,6 @@ class Organization extends Model {
 
       const registryData = await datalayer.getSubscribedStoreData(
         orgData.registryId,
-        ip,
-        port,
       );
 
       const dataModelVersion = getDataModelVersion();
@@ -235,7 +248,7 @@ class Organization extends Model {
 
       logger.info(`IMPORTING REGISTRY ${dataModelVersion}: `, registryData.v1);
 
-      await datalayer.subscribeToStoreOnDataLayer(registryData.v1, ip, port);
+      await datalayer.subscribeToStoreOnDataLayer(registryData.v1);
 
       logger.info({
         orgUid,
@@ -344,13 +357,7 @@ class Organization extends Model {
           });
 
           if (!exists) {
-            if (serverAvailable(org.ip, org.port)) {
-              Organization.importOrganization(org.orgUid, org.ip, org.port);
-            } else {
-              logger.warn(
-                `${org.orgUid} can not be detected at ${org.ip}:${org.port}, skipping import...`,
-              );
-            }
+            Organization.importOrganization(org.orgUid);
           }
         }),
       );

@@ -104,7 +104,7 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
       await Staging.cleanUpCommitedAndInvalidRecords();
     }
   } catch (error) {
-    console.trace('ERROR DURING SYNC TRANSACTION', error, storeData);
+    console.trace('ERROR DURING SYNC TRANSACTION', error);
   }
 };
 
@@ -137,8 +137,6 @@ const dataLayerWasUpdated = async () => {
     return [];
   }
 
-  logger.debug(JSON.stringify(rootResponse));
-
   const updatedStores = rootResponse.root_hashes.filter((rootHash) => {
     const org = organizations.find(
       (org) => org.registryId == rootHash.id.replace('0x', ''),
@@ -169,18 +167,22 @@ const dataLayerWasUpdated = async () => {
   return updateStoreInfo;
 };
 
-const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
+const unsubscribeFromDataLayerStore = async (storeId) => {
+  if (!USE_SIMULATOR) {
+    return dataLayer.unsubscribeFromDataLayerStore(storeId);
+  }
+};
+
+const subscribeToStoreOnDataLayer = async (storeId) => {
   if (USE_SIMULATOR) {
-    return simulator.subscribeToStoreOnDataLayer(storeId, ip, port);
+    return simulator.subscribeToStoreOnDataLayer(storeId);
   } else {
-    return dataLayer.subscribeToStoreOnDataLayer(storeId, ip, port);
+    return dataLayer.subscribeToStoreOnDataLayer(storeId);
   }
 };
 
 const getSubscribedStoreData = async (
   storeId,
-  ip,
-  port,
   alreadySubscribed = false,
   retry = 0,
 ) => {
@@ -193,7 +195,8 @@ const getSubscribedStoreData = async (
   const timeoutInterval = 30000;
 
   if (!alreadySubscribed) {
-    const response = await subscribeToStoreOnDataLayer(storeId, ip, port);
+    const response = await subscribeToStoreOnDataLayer(storeId);
+
     if (!response || !response.success) {
       if (!response) {
         logger.debug(
@@ -208,7 +211,7 @@ const getSubscribedStoreData = async (
       await new Promise((resolve) =>
         setTimeout(() => resolve(), timeoutInterval),
       );
-      return getSubscribedStoreData(storeId, ip, port, false, retry + 1);
+      return getSubscribedStoreData(storeId, false, retry + 1);
     }
   }
 
@@ -223,7 +226,7 @@ const getSubscribedStoreData = async (
       await new Promise((resolve) =>
         setTimeout(() => resolve(), timeoutInterval),
       );
-      return getSubscribedStoreData(storeId, ip, port, true, retry + 1);
+      return getSubscribedStoreData(storeId, true, retry + 1);
     } else {
       logger.debug(
         `Store Exists and is confirmed, proceededing to get data ${storeId}`,
@@ -238,8 +241,6 @@ const getSubscribedStoreData = async (
     encodedData = await dataLayer.getStoreData(storeId);
   }
 
-  logger.debug(`Downloaded from datalayer:  ${encodedData?.keys_values}`);
-
   if (_.isEmpty(encodedData?.keys_values)) {
     logger.debug(
       `Retrying subscribe to ${storeId}, No data detected in store.`,
@@ -249,7 +250,7 @@ const getSubscribedStoreData = async (
     await new Promise((resolve) =>
       setTimeout(() => resolve(), timeoutInterval),
     );
-    return getSubscribedStoreData(storeId, ip, port, true, retry + 1);
+    return getSubscribedStoreData(storeId, true, retry + 1);
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);
@@ -337,4 +338,5 @@ export default {
   getStoreIfUpdated,
   POLLING_INTERVAL,
   getCurrentStoreData,
+  unsubscribeFromDataLayerStore,
 };

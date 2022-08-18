@@ -15,6 +15,11 @@ module.exports = {
   icon: Sequelize.STRING,
   registryId: Sequelize.STRING,
   registryHash: Sequelize.STRING,
+  fileStoreId: Sequelize.STRING,
+  fileStoreSubscribed: {
+    type: Sequelize.BOOLEAN,
+    defaultValue: false,
+  },
   subscribed: {
     type: Sequelize.BOOLEAN,
     defaultValue: false,

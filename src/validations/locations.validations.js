@@ -13,6 +13,7 @@ export const locationSchema = Joi.object({
     .try(Joi.string(), Joi.number())
     .required(),
   timeStaged: Joi.date().timestamp().allow(null).optional(),
+  fileId: Joi.string().allow(null, '').optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
 });

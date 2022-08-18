@@ -6,6 +6,8 @@ import request from 'request-promise';
 import os from 'os';
 import { getConfig } from '../utils/config-loader';
 import { decodeHex } from '../utils/datalayer-utils';
+import fullNode from './fullNode';
+import { publicIpv4 } from '../utils/ip-tools';
 
 import { logger } from '../config/logger.cjs';
 
@@ -171,11 +173,7 @@ export const getStoreData = async (storeId, rootHash) => {
           `Downloaded Data: ${JSON.stringify(
             data.keys_values.map((record) => {
               return {
-                ...record,
                 key: decodeHex(record.key),
-                value: /{([^*]*)}/.test(decodeHex(record.value))
-                  ? JSON.parse(decodeHex(record.value))
-                  : decodeHex(record.value),
               };
             }),
             null,
@@ -214,17 +212,15 @@ export const dataLayerAvailable = async () => {
   }
 };
 
-export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
+export const unsubscribeFromDataLayerStore = async (storeId) => {
   const options = {
-    url: `${rpcUrl}/subscribe`,
+    url: `${rpcUrl}/unsubscribe`,
     body: JSON.stringify({
       id: storeId,
-      ip,
-      port,
     }),
   };
 
-  logger.info(`RPC Call: ${rpcUrl}/subscribe ${storeId} ${ip} ${port}`);
+  logger.info(`RPC Call: ${rpcUrl}/unsubscribe ${storeId}`);
 
   try {
     const response = await request(
@@ -234,7 +230,44 @@ export const subscribeToStoreOnDataLayer = async (storeId, ip, port) => {
     const data = JSON.parse(response);
 
     if (Object.keys(data).includes('success') && data.success) {
-      logger.info(`Successfully Subscribed: ${storeId}  ${ip} ${port}`);
+      logger.info(`Successfully UnSubscribed: ${storeId}`);
+      return data;
+    }
+
+    return false;
+  } catch (error) {
+    logger.info(`Error UnSubscribing: ${error}`);
+    return false;
+  }
+};
+
+export const subscribeToStoreOnDataLayer = async (storeId) => {
+  const options = {
+    url: `${rpcUrl}/subscribe`,
+    body: JSON.stringify({
+      id: storeId,
+      urls: [],
+    }),
+  };
+
+  logger.info(`RPC Call: ${rpcUrl}/subscribe ${storeId}`);
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (Object.keys(data).includes('success') && data.success) {
+      logger.info(`Successfully Subscribed: ${storeId}`);
+
+      const chiaConfig = fullNode.getChiaConfig();
+      await addMirror(
+        storeId,
+        `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
+      );
+
       return data;
     }
 
@@ -296,3 +329,34 @@ export const getRootDiff = async (storeId, root1, root2) => {
     return [];
   }
 };
+
+const _addMirror = async (storeId, url) => {
+  const options = {
+    url: `${rpcUrl}/add_mirror`,
+    body: JSON.stringify({
+      id: storeId,
+      urls: url,
+      amount: 1,
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      logger.info(`Adding mirror ${storeId} at ${url}`);
+      return true;
+    }
+
+    logger.error(`FAILED ADDING MIRROR FOR ${storeId}`);
+    return false;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const addMirror = _addMirror;

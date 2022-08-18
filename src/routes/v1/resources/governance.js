@@ -49,6 +49,10 @@ GovernanceRouter.post(
   },
 );
 
+GovernanceRouter.post('/meta/glossary', (req, res) => {
+  return GovernanceController.setGlossary(req, res);
+});
+
 GovernanceRouter.post(
   '/subscribe',
   validator.body(governanceSubscribeSchema),

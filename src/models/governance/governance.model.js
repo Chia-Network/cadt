@@ -11,8 +11,7 @@ import { logger } from '../../config/logger.cjs';
 import { getDataModelVersion } from '../../utils/helpers';
 import PickListStub from './governance.stub.json';
 
-const { GOVERANCE_BODY_ID, GOVERNANCE_BODY_IP, GOVERNANCE_BODY_PORT } =
-  getConfig().GOVERNANCE;
+const { GOVERANCE_BODY_ID } = getConfig().GOVERNANCE;
 
 const { USE_SIMULATOR, CHIA_NETWORK } = getConfig().APP;
 
@@ -103,7 +102,7 @@ class Governance extends Model {
 
   static async sync() {
     try {
-      if (!GOVERANCE_BODY_ID || !GOVERNANCE_BODY_IP || !GOVERNANCE_BODY_PORT) {
+      if (!GOVERANCE_BODY_ID) {
         throw new Error('Missing information in env to sync Governance data');
       }
 
@@ -121,8 +120,6 @@ class Governance extends Model {
 
       const governanceData = await datalayer.getSubscribedStoreData(
         GOVERANCE_BODY_ID,
-        GOVERNANCE_BODY_IP,
-        GOVERNANCE_BODY_PORT,
       );
 
       // Check if there is v1, v2, v3 ..... and if not, then we assume this is a legacy goverance table that isnt versioned
@@ -139,8 +136,6 @@ class Governance extends Model {
       if (governanceData[dataModelVersion]) {
         const versionedGovernanceData = await datalayer.getSubscribedStoreData(
           governanceData[dataModelVersion],
-          GOVERNANCE_BODY_IP,
-          GOVERNANCE_BODY_PORT,
         );
 
         await Governance.upsertGovernanceDownload(versionedGovernanceData);

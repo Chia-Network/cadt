@@ -23,7 +23,11 @@ import AddSerialNumberFields from './20220504180739-add-serial-number-fields';
 import AddDescriptionFieldToProjects from './20220509125335-add-description-field-to-projects';
 import RepopulateVirtualTables from './20220515223227-re-populate-virtual-tables';
 import AddAuthorColumnToAuditTable from './20220708210357-adding-author-column-to-audit-table';
+import CreateFileStore from './20220724212553-create-file-store';
 import AddOptionalMethodology2FieldToProject from './20220721212845-add-optional-methodology2-field-to-project';
+import AddFiltStoreSubscribedColumnToProject from './20220809182156-AddFileStoreSubscribedColumn';
+import PopulateUnitsFTS from './20220808192709-populate-units-fts';
+import ResetDBForNewSingletons from './20220816155101-reset-db-for-new-singletons';
 import RebuildProjectFTSTable from './20220802175431-rebuild-project-fts';
 
 export const migrations = [
@@ -132,8 +136,24 @@ export const migrations = [
     name: '20220708210357-adding-author-column-to-audit-table',
   },
   {
+    migration: CreateFileStore,
+    name: '20220724212553-create-file-store',
+  },
+  {
     migration: AddOptionalMethodology2FieldToProject,
     name: '20220721212845-add-optional-methodology2-field-to-project',
+  },
+  {
+    migration: AddFiltStoreSubscribedColumnToProject,
+    name: '20220724161782-add-file-store-subscribed-column-to-project',
+  },
+  {
+    migration: PopulateUnitsFTS,
+    name: '20220808192709-populate-units-fts',
+  },
+  {
+    migration: ResetDBForNewSingletons,
+    name: '20220816155101-reset-db-for-new-singletons',
   },
   {
     migration: RebuildProjectFTSTable,

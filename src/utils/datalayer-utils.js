@@ -3,7 +3,7 @@ export const encodeHex = (str) => {
 };
 
 export const decodeHex = (str = '') => {
-  return Buffer.from(str.replace('0x', ''), 'hex').toString();
+  return Buffer.from(str.replace('0x', ''), 'hex').toString('utf8');
 };
 
 export const decodeDataLayerResponse = (data) => {

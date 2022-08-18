@@ -139,3 +139,26 @@ export const setPickList = async (req, res) => {
     });
   }
 };
+
+export const setGlossary = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+    await assertIsActiveGovernanceBody();
+
+    const glossary = JSON.stringify(req.body);
+
+    await Governance.updateGoveranceBodyData([
+      { key: 'glossary', value: glossary },
+    ]);
+
+    return res.json({
+      message: 'Committed glossary to the datalayer',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Cant update glossary',
+      error: error.message,
+    });
+  }
+};

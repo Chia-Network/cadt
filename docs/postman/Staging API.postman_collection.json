@@ -6,53 +6,102 @@
   },
   "item": [
     {
-      "name": "GET Staging",
+      "name": "find_all_staging_records",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{default}}/staging",
-          "host": ["{{default}}"],
-          "path": ["staging"]
+          "raw": "{{default}}/v1/staging",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "31310",
+          "path": ["v1", "staging"]
         }
       },
       "response": []
     },
     {
-      "name": "GET Staging with Paging",
+      "name": "commit_staging_records",
       "request": {
-        "method": "GET",
+        "method": "POST",
         "header": [],
         "url": {
-          "raw": "{{default}}/staging?page=1&limit=5&type=projects",
-          "host": ["{{default}}"],
-          "path": ["staging"],
-          "query": [
-            {
-              "key": "page",
-              "value": "1"
-            },
-            {
-              "key": "limit",
-              "value": "5"
-            },
-            {
-              "key": "type",
-              "value": "projects"
+          "raw": "{{default}}/v1/staging/commit",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "31310",
+          "path": ["v1", "staging", "commit"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "delete_staging_record",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"uuid\": \"852cb5fe-ba18-45a5-9a3c-558c329b441e\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
+          }
+        },
+        "url": {
+          "raw": "{{default}}/v1/staging",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "31310",
+          "path": ["v1", "staging"]
         }
       },
       "response": []
     },
     {
-      "name": "POST Staging Commit",
+      "name": "delete_all_staging_records",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{default}}/v1/staging/clean",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "31310",
+          "path": ["v1", "staging", "clean"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "edit_staging_record",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"uuid\": \"908e41dd-5795-4588-9d2c-566da9576d54\",\r\n    \"data\": [\r\n        {\r\n            \"countryJurisdictionOfOwner\": \"Algeria\",\r\n            \"unitCount\": 100,\r\n            \"unitBlockEnd\": \"ABC200\",\r\n            \"unitBlockStart\": \"ABC100\",\r\n            \"vintageYear\": 2022,\r\n            \"unitRegistryLink\": \"http://example.example\",\r\n            \"unitType\": \"Reduction - nature\",\r\n            \"unitStatus\": \"Held\",\r\n            \"correspondingAdjustmentDeclaration\": \"Committed\",\r\n            \"correspondingAdjustmentStatus\": \"Not Started\",\r\n            \"warehouseUnitId\": \"908e41dd-5795-4588-9d2c-566da9576d54\",\r\n            \"timeStaged\": 1659634761,\r\n            \"serialNumberBlock\": \"ABC100-ABC200\",\r\n            \"orgUid\": \"78bf0d3a36c4a27791ef5729b960e374a3bd51fd7097b537822030c6df51e8fe\",\r\n            \"issuanceId\": \"4ca8bc17-6822-4641-aa85-a7dcff4bdb40\"\r\n        }\r\n    ]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "retry_failed_staging_record",
       "request": {
         "method": "POST",
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "",
+          "raw": "{\r\n    \"uuid\": \"852cb5fe-ba18-45a5-9a3c-558c329b441e\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -60,122 +109,14 @@
           }
         },
         "url": {
-          "raw": "{{default}}/staging/commit",
-          "host": ["{{default}}"],
-          "path": ["staging", "commit"]
+          "raw": "{{default}}/v1/staging/retry",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "31310",
+          "path": ["v1", "staging", "retry"]
         }
       },
       "response": []
-    },
-    {
-      "name": "POST Staging Retry",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"uuid\": \"uuid-of-staging-record\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{default}}/staging/retry",
-          "host": ["{{default}}"],
-          "path": ["staging", "retry"]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "DELETE Staging Clean",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"uuid\": \"5c960ac1-a180-45a4-9850-be177e26d2fb\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{default}}/staging/clean",
-          "host": ["{{default}}"],
-          "path": ["staging", "clean"]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "DELETE Staging Project",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"uuid\": \"uuid-of-staged-project\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{default}}/staging",
-          "host": ["{{default}}"],
-          "path": ["staging"]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "DELETE Staging Unit",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"uuid\": \"uuid-of-staged-unit\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{default}}/staging",
-          "host": ["{{default}}"],
-          "path": ["staging"]
-        }
-      },
-      "response": []
-    }
-  ],
-  "auth": {
-    "type": "basic",
-    "basic": [
-      {
-        "key": "username",
-        "value": "<Basic Auth Username>",
-        "type": "string"
-      },
-      {
-        "key": "password",
-        "value": "<Basic Auth Password>",
-        "type": "string"
-      }
-    ]
-  },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "localhost:3000",
-      "type": "string"
     }
   ]
 }
