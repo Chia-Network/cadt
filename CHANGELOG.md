@@ -1,3 +1,20 @@
+# [1.2.0](https://github.com/Chia-Network/climate-warehouse/compare/1.1.4...1.2.0) (2022-08-18)
+
+
+### Bug Fixes
+
+* rework ip address resolver ([70cae33](https://github.com/Chia-Network/climate-warehouse/commit/70cae33325f74ab661be2fda14334ff3c217d32a))
+
+
+### Features
+
+* add fileId field to location validation ([3648c1c](https://github.com/Chia-Network/climate-warehouse/commit/3648c1cf7b2a7b9073a8ed71b45446d140506567))
+* add glossary to governance ([e0287cf](https://github.com/Chia-Network/climate-warehouse/commit/e0287cf11f68d592805b676ac04d05ba12ad854f))
+* automatically add mirror when subscribing to store ([9eb29f3](https://github.com/Chia-Network/climate-warehouse/commit/9eb29f33d44b361599ea1e2425fe8d796377502e))
+* upgrade to new file based subscriptions ([3c430d2](https://github.com/Chia-Network/climate-warehouse/commit/3c430d2e4c5183002acf6665f354af88e20db260))
+
+
+
 ## [1.1.4](https://github.com/Chia-Network/climate-warehouse/compare/1.1.3...1.1.4) (2022-08-15)
 
 
