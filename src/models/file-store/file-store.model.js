@@ -8,7 +8,7 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize } from '../../database';
-import { Organization, Meta } from '../';
+import { Organization } from '../';
 
 import datalayer from '../../datalayer';
 import { encodeHex } from '../../utils/datalayer-utils';
@@ -28,20 +28,7 @@ class FileStore extends Model {
       );
     }
 
-    const orgMeta = await Meta.findOne(
-      { where: { metaKey: organization.orgUid } },
-      { raw: true },
-    );
-
-    if (!orgMeta) {
-      throw new Error(
-        `Org ${orgUid} can not find the ip and port to subscribe to its filestore, re-importing the org can fix this.`,
-      );
-    }
-
-    const { ip, port } = JSON.parse(orgMeta.metaValue);
-
-    datalayer.subscribeToStoreOnDataLayer(organization.fileStoreId, ip, port);
+    datalayer.subscribeToStoreOnDataLayer(organization.fileStoreId);
     Organization.update({ fileStoreSubscribed: true });
   }
 
