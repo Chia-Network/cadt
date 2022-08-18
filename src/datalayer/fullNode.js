@@ -1,8 +1,10 @@
+import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
 import os from 'os';
 import { getConfig } from '../utils/config-loader';
+import yaml from 'js-yaml';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
@@ -43,6 +45,14 @@ const getActiveNetwork = async () => {
   return false;
 };
 
+export const getChiaConfig = _.memoize(() => {
+  const homeDir = os.homedir();
+  const persistanceFolder = `${homeDir}/.chia/mainnet/config`;
+  const configFile = path.resolve(`${persistanceFolder}/config.yaml`);
+  return yaml.load(fs.readFileSync(configFile, 'utf8'));
+});
+
 export default {
   getActiveNetwork,
+  getChiaConfig,
 };

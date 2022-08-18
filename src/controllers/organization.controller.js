@@ -151,14 +151,14 @@ export const importOrg = async (req, res) => {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
 
-    const { orgUid, ip, port } = req.body;
+    const { orgUid } = req.body;
 
     res.json({
       message:
         'Importing and subscribing organization this can take a few mins.',
     });
 
-    return Organization.importOrganization(orgUid, ip, port);
+    return Organization.importOrganization(orgUid);
   } catch (error) {
     console.trace(error);
     res.status(400).json({
