@@ -215,8 +215,12 @@ const getSubscribedStoreData = async (
     }
   }
 
+  logger.debug(`Subscription Successful for ${storeId}.`);
+
   if (!USE_SIMULATOR) {
+    logger.debug(`Getting confirmation for ${storeId}.`);
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
+    logger.debug(`Store exists and is found ${storeId}.`);
     if (!storeExistAndIsConfirmed) {
       logger.debug(
         `Retrying subscribe to ${storeId}, store not yet confirmed.`,
