@@ -263,7 +263,7 @@ export const subscribeToStoreOnDataLayer = async (storeId) => {
       logger.info(`Successfully Subscribed: ${storeId}`);
 
       const chiaConfig = fullNode.getChiaConfig();
-      await addMirror(
+      addMirror(
         storeId,
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
       );
