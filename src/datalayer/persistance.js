@@ -335,7 +335,7 @@ const _addMirror = async (storeId, url) => {
     url: `${rpcUrl}/add_mirror`,
     body: JSON.stringify({
       id: storeId,
-      urls: url,
+      urls: [url],
       amount: 1,
     }),
   };
