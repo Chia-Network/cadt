@@ -1,3 +1,12 @@
+## [1.2.1](https://github.com/Chia-Network/climate-warehouse/compare/1.2.0...1.2.1) (2022-08-19)
+
+
+### Bug Fixes
+
+* add mirror json param ([52995a9](https://github.com/Chia-Network/climate-warehouse/commit/52995a98e3591447d8901c2900596eeee3638ba8))
+
+
+
 # [1.2.0](https://github.com/Chia-Network/climate-warehouse/compare/1.1.4...1.2.0) (2022-08-18)
 
 
