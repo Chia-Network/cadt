@@ -331,16 +331,27 @@ export const getRootDiff = async (storeId, root1, root2) => {
 };
 
 const _addMirror = async (storeId, url) => {
-  const options = {
-    url: `${rpcUrl}/add_mirror`,
-    body: JSON.stringify({
-      id: storeId,
-      urls: [url],
-      amount: 1,
-    }),
-  };
+  const mirrors = await getMirrors(storeId);
+
+  // Dont add the mirror if it already exists.
+  const mirror = mirrors.find(
+    (mirror) => mirror.launcher_id === storeId && mirror.urls.includes(url),
+  );
+
+  if (mirror) {
+    return true;
+  }
 
   try {
+    const options = {
+      url: `${rpcUrl}/add_mirror`,
+      body: JSON.stringify({
+        id: storeId,
+        urls: [url],
+        amount: 1,
+      }),
+    };
+
     const response = await request(
       Object.assign({}, getBaseOptions(), options),
     );
@@ -353,6 +364,32 @@ const _addMirror = async (storeId, url) => {
     }
 
     logger.error(`FAILED ADDING MIRROR FOR ${storeId}`);
+    return false;
+  } catch (error) {
+    return false;
+  }
+};
+
+const getMirrors = async (storeId) => {
+  const options = {
+    url: `${rpcUrl}/get_mirrors `,
+    body: JSON.stringify({
+      id: storeId,
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data.mirrors;
+    }
+
+    logger.error(`FAILED GETTING MIRRORS FOR ${storeId}`);
     return false;
   } catch (error) {
     return false;
