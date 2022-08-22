@@ -338,7 +338,7 @@ const _addMirror = async (storeId, url) => {
     (mirror) => mirror.launcher_id === storeId && mirror.urls.includes(url),
   );
 
-  if (mirror?.length === 0) {
+  if (mirror) {
     return true;
   }
 
