@@ -370,6 +370,47 @@ const _addMirror = async (storeId, url) => {
   }
 };
 
+export const removeMirror = async (storeId, coinId) => {
+  const mirrors = await getMirrors(storeId);
+
+  // Dont add the mirror if it already exists.
+  const mirrorExists = mirrors.find(
+    (mirror) => mirror.coin_id === coinId && mirror.launcher_id === storeId,
+  );
+
+  if (mirrorExists) {
+    logger.error(
+      `Mirror doesnt exist for: storeId: ${storeId}, coinId: ${coinId}`,
+    );
+    return false;
+  }
+
+  try {
+    const options = {
+      url: `${rpcUrl}/delete_mirror`,
+      body: JSON.stringify({
+        id: coinId,
+      }),
+    };
+
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      logger.info(`Removed mirror for ${storeId}`);
+      return true;
+    }
+
+    logger.error(`Failed removing mirror for ${storeId}`);
+    return false;
+  } catch (error) {
+    return false;
+  }
+};
+
 const getMirrors = async (storeId) => {
   const options = {
     url: `${rpcUrl}/get_mirrors `,
