@@ -1,3 +1,18 @@
+## [1.2.3](https://github.com/Chia-Network/climate-warehouse/compare/1.2.2...1.2.3) (2022-08-22)
+
+
+### Bug Fixes
+
+* null referance exception in mirror length ([a188e7b](https://github.com/Chia-Network/climate-warehouse/commit/a188e7b66d51f64cd79f13527bd295ae92e29223))
+* null referance exception in mirror length ([3220ec0](https://github.com/Chia-Network/climate-warehouse/commit/3220ec075642782527ca87aaa266fd0437cd0a24))
+
+
+### Features
+
+* check for mirror before adding it ([3b2bf19](https://github.com/Chia-Network/climate-warehouse/commit/3b2bf19f05d62d33047b08cee8b7ec99bfcec221))
+
+
+
 ## [1.2.2](https://github.com/Chia-Network/climate-warehouse/compare/1.2.1...1.2.2) (2022-08-19)
 
 
