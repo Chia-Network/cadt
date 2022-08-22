@@ -36,6 +36,10 @@ const createDataLayerStore = async () => {
   return storeId;
 };
 
+const addMirror = async (storeId, url) => {
+  return dataLayer.addMirror(storeId, url);
+};
+
 const waitForStoreToBeConfirmed = async (storeId, retry = 0) => {
   if (retry > 120) {
     throw new Error(
@@ -170,10 +174,11 @@ const removeMirror = (storeId, coinId) => {
 };
 
 export default {
+  addMirror,
+  createDataLayerStore,
   dataLayerAvailable,
   pushDataLayerChangeList,
   syncDataLayer,
-  createDataLayerStore,
   upsertDataLayer,
   removeMirror,
 };
