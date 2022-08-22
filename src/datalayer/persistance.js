@@ -334,11 +334,11 @@ const _addMirror = async (storeId, url) => {
   const mirrors = await getMirrors(storeId);
 
   // Dont add the mirror if it already exists.
-  if (
-    mirrors.find(
-      (mirror) => mirror.launcher_id === storeId && mirror.urls.includes(url),
-    ).length === 0
-  ) {
+  const mirror = mirrors.find(
+    (mirror) => mirror.launcher_id === storeId && mirror.urls.includes(url),
+  );
+
+  if (mirror?.length === 0) {
     return true;
   }
 
