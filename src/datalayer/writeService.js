@@ -165,10 +165,15 @@ const dataLayerAvailable = async () => {
   }
 };
 
+const removeMirror = (storeId, coinId) => {
+  return dataLayer.removeMirror(storeId, coinId);
+};
+
 export default {
   dataLayerAvailable,
   pushDataLayerChangeList,
   syncDataLayer,
   createDataLayerStore,
   upsertDataLayer,
+  removeMirror,
 };
