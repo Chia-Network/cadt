@@ -223,3 +223,11 @@ export const assertProjectRecordExists = async (
 
   return record.dataValues;
 };
+
+export const assertStagingTableIsEmpty = async (customMessage) => {
+  const count = await Staging.count({ raw: true });
+
+  if (count > 0) {
+    throw new Error(customMessage || `Staging table is not empty.`);
+  }
+};
