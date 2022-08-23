@@ -323,3 +323,21 @@ export const resyncOrganization = async (req, res) => {
     }
   }
 };
+
+export const removeMirror = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    await Organization.removeMirror(req.body.storeId, req.body.coinId);
+    return res.json({
+      message: `Mirror removed for ${req.body.storeId}.`,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error removing mirror for organization',
+      error: error.message,
+    });
+  }
+};

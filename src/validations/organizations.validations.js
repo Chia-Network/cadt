@@ -26,3 +26,8 @@ export const subscribeOrganizationSchema = Joi.object({
 export const resyncOrganizationSchema = Joi.object({
   orgUid: Joi.string().required(),
 });
+
+export const removeMirrorSchema = Joi.object({
+  orgUid: Joi.string().required(),
+  storeId: Joi.string().required(),
+});

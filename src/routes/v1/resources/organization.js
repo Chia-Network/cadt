@@ -11,6 +11,7 @@ import {
   subscribeOrganizationSchema,
   unsubscribeOrganizationSchema,
   importHomeOrganizationSchema,
+  removeMirrorSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -19,6 +20,14 @@ const OrganizationRouter = express.Router();
 OrganizationRouter.get('/', (req, res) => {
   return OrganizationController.findAll(req, res);
 });
+
+OrganizationRouter.get(
+  '/organizations',
+  validator.body(removeMirrorSchema),
+  (req, res) => {
+    return OrganizationController.removeMirror(req, res);
+  },
+);
 
 OrganizationRouter.delete('/', (req, res) => {
   return OrganizationController.resetHomeOrg(req, res);

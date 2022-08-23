@@ -263,7 +263,7 @@ export const subscribeToStoreOnDataLayer = async (storeId) => {
       logger.info(`Successfully Subscribed: ${storeId}`);
 
       const chiaConfig = fullNode.getChiaConfig();
-      await addMirror(
+      addMirror(
         storeId,
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
       );
@@ -331,16 +331,27 @@ export const getRootDiff = async (storeId, root1, root2) => {
 };
 
 const _addMirror = async (storeId, url) => {
-  const options = {
-    url: `${rpcUrl}/add_mirror`,
-    body: JSON.stringify({
-      id: storeId,
-      urls: url,
-      amount: 1,
-    }),
-  };
+  const mirrors = await getMirrors(storeId);
+
+  // Dont add the mirror if it already exists.
+  const mirror = mirrors.find(
+    (mirror) => mirror.launcher_id === storeId && mirror.urls.includes(url),
+  );
+
+  if (mirror) {
+    return true;
+  }
 
   try {
+    const options = {
+      url: `${rpcUrl}/add_mirror`,
+      body: JSON.stringify({
+        id: storeId,
+        urls: [url],
+        amount: 1,
+      }),
+    };
+
     const response = await request(
       Object.assign({}, getBaseOptions(), options),
     );
@@ -353,6 +364,73 @@ const _addMirror = async (storeId, url) => {
     }
 
     logger.error(`FAILED ADDING MIRROR FOR ${storeId}`);
+    return false;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const removeMirror = async (storeId, coinId) => {
+  const mirrors = await getMirrors(storeId);
+
+  // Dont add the mirror if it already exists.
+  const mirrorExists = mirrors.find(
+    (mirror) => mirror.coin_id === coinId && mirror.launcher_id === storeId,
+  );
+
+  if (mirrorExists) {
+    logger.error(
+      `Mirror doesnt exist for: storeId: ${storeId}, coinId: ${coinId}`,
+    );
+    return false;
+  }
+
+  try {
+    const options = {
+      url: `${rpcUrl}/delete_mirror`,
+      body: JSON.stringify({
+        id: coinId,
+      }),
+    };
+
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      logger.info(`Removed mirror for ${storeId}`);
+      return true;
+    }
+
+    logger.error(`Failed removing mirror for ${storeId}`);
+    return false;
+  } catch (error) {
+    return false;
+  }
+};
+
+const getMirrors = async (storeId) => {
+  const options = {
+    url: `${rpcUrl}/get_mirrors `,
+    body: JSON.stringify({
+      id: storeId,
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data.mirrors;
+    }
+
+    logger.error(`FAILED GETTING MIRRORS FOR ${storeId}`);
     return false;
   } catch (error) {
     return false;

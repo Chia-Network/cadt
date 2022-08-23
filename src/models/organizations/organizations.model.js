@@ -381,6 +381,10 @@ class Organization extends Model {
 
     await datalayer.upsertDataLayer(myOrganization.orgUid, payload);
   };
+
+  static removeMirror = async (storeId, coinId) => {
+    datalayer.removeMirror(storeId, coinId);
+  };
 }
 
 Organization.init(ModelTypes, {
