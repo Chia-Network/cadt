@@ -12,6 +12,7 @@ import {
   unsubscribeOrganizationSchema,
   importHomeOrganizationSchema,
   removeMirrorSchema,
+  addMirrorSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -90,6 +91,14 @@ OrganizationRouter.put(
   validator.body(resyncOrganizationSchema),
   (req, res) => {
     return OrganizationController.resyncOrganization(req, res);
+  },
+);
+
+OrganizationRouter.post(
+  '/mirror',
+  validator.body(addMirrorSchema),
+  (req, res) => {
+    return OrganizationController.addMirror(req, res);
   },
 );
 

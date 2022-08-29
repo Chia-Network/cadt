@@ -324,6 +324,25 @@ export const resyncOrganization = async (req, res) => {
   }
 };
 
+export const addMirror = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    await Organization.addMirror(req.body.storeId, req.body.url);
+    return res.json({
+      message: `Mirror added for ${req.body.storeId}.`,
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error adding mirror',
+      error: error.message,
+    });
+  }
+}
+
 export const removeMirror = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
@@ -337,7 +356,6 @@ export const removeMirror = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: 'Error removing mirror for organization',
-      error: error.message,
     });
   }
 };

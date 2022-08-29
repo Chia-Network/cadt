@@ -31,3 +31,8 @@ export const removeMirrorSchema = Joi.object({
   orgUid: Joi.string().required(),
   storeId: Joi.string().required(),
 });
+
+export const addMirrorSchema = Joi.object({
+  storeId: Joi.string().required(),
+  url: Joi.string().required(),
+});

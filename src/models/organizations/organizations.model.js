@@ -179,6 +179,10 @@ class Organization extends Model {
     return registryVersionId;
   }
 
+  static async addMirror(storeId, coinId) {
+    await datalayer.addMirror(storeId, coinId);
+  }
+
   static async importHomeOrg(orgUid) {
     const orgData = await datalayer.getLocalStoreData(orgUid);
 
