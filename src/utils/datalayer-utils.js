@@ -31,3 +31,21 @@ export const keyValueToChangeList = (key, value, includeDelete) => {
 
   return changeList;
 };
+
+export const generateOffer = (maker, taker) => {
+  return {
+    maker: [
+      {
+        store_id: maker.storeId,
+        inclusions: maker.inclusions,
+      },
+    ],
+    taker: [
+      {
+        store_id: taker.storeId,
+        inclusions: taker.inclusions,
+      },
+    ],
+    fee: 0,
+  };
+};

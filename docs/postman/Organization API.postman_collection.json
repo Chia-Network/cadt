@@ -1,300 +1,346 @@
 {
-  "info": {
-    "_postman_id": "bc12dd5d-c38a-4b11-8687-920217e8c3eb",
-    "name": "Organization API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "find_all_orgs",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{default}}/v1/organizations",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "31310",
-          "path": [
-            "v1",
-            "organizations"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "create_home_organization",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "formdata",
-          "formdata": [
-            {
-              "key": "file",
-              "type": "file",
-              "src": "/C:/Users/14434/OneDrive/Pictures/5e441a62871de.png"
-            },
-            {
-              "key": "name",
-              "value": "My Organization",
-              "type": "default"
-            }
-          ]
-        },
-        "url": {
-          "raw": "{{default}}/v1/organizations/create",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "31310",
-          "path": [
-            "v1",
-            "organizations",
-            "create"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "reset_home_organization",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "url": {
-          "raw": "{{default}}/v1/organizations",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "31310",
-          "path": [
-            "v1",
-            "organizations"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "import_external_organization",
-      "request": {
-        "method": "PUT",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{default}}/v1/organizations/import",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "31310",
-          "path": [
-            "v1",
-            "organizations",
-            "import"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "import_home_org",
-      "request": {
-        "method": "PUT",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{default}}/v1/organizations",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "31310",
-          "path": [
-            "v1",
-            "organizations"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "subscribe_to_organization",
-      "request": {
-        "method": "PUT",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\",\r\n    \"ip\": \"127.0.0.1\",\r\n    \"port\": 8000\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{default}}/v1/organizations/subscribe",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "31310",
-          "path": [
-            "v1",
-            "organizations",
-            "subscribe"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "delete_imported_org",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{default}}/v1/organizations/import",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "31310",
-          "path": [
-            "v1",
-            "organizations",
-            "import"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "unsubscribe_to_organization",
-      "request": {
-        "method": "PUT",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{default}}/v1/organizations/unsubscribe",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "31310",
-          "path": [
-            "v1",
-            "organizations",
-            "unsubscribe"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "resync_organization",
-      "request": {
-        "method": "PUT",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{default}}/v1/organizations/resync",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "31310",
-          "path": [
-            "v1",
-            "organizations",
-            "resync"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "edit_home_org",
-      "request": {
-        "method": "PUT",
-        "header": [],
-        "body": {
-          "mode": "formdata",
-          "formdata": [
-            {
-              "key": "file",
-              "type": "file",
-              "src": "/C:/Users/14434/OneDrive/Pictures/5e441a62871de.png"
-            },
-            {
-              "key": "name",
-              "value": "My New Name",
-              "type": "default"
-            }
-          ]
-        },
-        "url": {
-          "raw": "{{default}}/v1/organizations/edit",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "31310",
-          "path": [
-            "v1",
-            "organizations",
-            "edit"
-          ]
-        }
-      },
-      "response": []
-    }
-  ]
+	"info": {
+		"_postman_id": "912e6bd6-ccb6-4112-99ba-063339c7daaa",
+		"name": "Organization API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "find_all_orgs",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "create_home_organization",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/C:/Users/14434/OneDrive/Pictures/5e441a62871de.png"
+						},
+						{
+							"key": "name",
+							"value": "My Organization",
+							"type": "default"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations/create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations",
+						"create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "reset_home_organization",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "import_external_organization",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations/import",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations",
+						"import"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "import_home_org",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "subscribe_to_organization",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\",\r\n    \"ip\": \"127.0.0.1\",\r\n    \"port\": 8000\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations/subscribe",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations",
+						"subscribe"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "delete_imported_org",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations/import",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations",
+						"import"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "unsubscribe_to_organization",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations/unsubscribe",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations",
+						"unsubscribe"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "resync_organization",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"orgUid\": \"29b3492dcd0ef29aa58c3f69a6a354027a0aa06742b859de4be2ffdf84128c2b\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations/resync",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations",
+						"resync"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "edit_home_org",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/C:/Users/14434/OneDrive/Pictures/5e441a62871de.png"
+						},
+						{
+							"key": "name",
+							"value": "My New Name",
+							"type": "default"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations/edit",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations",
+						"edit"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "add_mirror",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "storeId",
+							"value": "1",
+							"type": "text"
+						},
+						{
+							"key": "url",
+							"value": "https://mirror.com",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations/mirror?storeId=1&url=https://mirror.com",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations",
+						"mirror"
+					],
+					"query": [
+						{
+							"key": "storeId",
+							"value": "1"
+						},
+						{
+							"key": "url",
+							"value": "https://mirror.com"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
 }

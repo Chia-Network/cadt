@@ -431,9 +431,33 @@ const getMirrors = async (storeId) => {
     }
 
     logger.error(`FAILED GETTING MIRRORS FOR ${storeId}`);
-    return false;
+    return [];
   } catch (error) {
-    return false;
+    return [];
+  }
+};
+
+export const makeOffer = async (offer) => {
+  const options = {
+    url: `${rpcUrl}/make_offer `,
+    body: JSON.stringify(offer),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
   }
 };
 
