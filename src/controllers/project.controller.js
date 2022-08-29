@@ -279,11 +279,8 @@ const update = async (req, res, isTransfer = false) => {
 
     const newRecord = _.cloneDeep(req.body);
 
-    // Why do we need this? the orgUid should already be in the record
-    //const { orgUid } = await Organization.getHomeOrg();
-    //newRecord.orgUid = orgUid;
-
-    const { orgUid } = newRecord;
+    const { orgUid } = await Organization.getHomeOrg();
+    newRecord.orgUid = orgUid;
 
     const childRecordsKeys = [
       'projectLocations',
@@ -336,14 +333,14 @@ const update = async (req, res, isTransfer = false) => {
       action: 'UPDATE',
       table: Project.stagingTableName,
       data: JSON.stringify(stagedRecord),
-      // If this is a transfer staging, push it directly into commited status
-      // Since we are downloading a offer file and shouldnt be allowed to operate
-      // until that file is either accepted or cancelled
-      commited: isTransfer,
     };
 
     if (isTransfer) {
+      // If this is a transfer staging, push it directly into commited status
+      // Since we are downloading a offer file and shouldnt be allowed to operate
+      // until that file is either accepted or cancelled
       stagedData.isTransfer = true;
+      stagedData.commited = true;
     }
 
     await Staging.upsert(stagedData);
