@@ -431,9 +431,9 @@ const getMirrors = async (storeId) => {
     }
 
     logger.error(`FAILED GETTING MIRRORS FOR ${storeId}`);
-    return false;
+    return [];
   } catch (error) {
-    return false;
+    return [];
   }
 };
 
