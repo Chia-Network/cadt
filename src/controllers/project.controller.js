@@ -22,6 +22,7 @@ import {
   assertNoPendingCommits,
   assertRecordExistance,
   assertIfReadOnlyMode,
+  assertStagingTableIsEmpty,
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
@@ -248,7 +249,19 @@ export const updateFromXLS = async (req, res) => {
   }
 };
 
-export const update = async (req, res) => {
+export const transfer = async (req, res) => {
+  try {
+    await assertStagingTableIsEmpty();
+    return update(req, res, true);
+  } catch (err) {
+    res.status(400).json({
+      message: err.message,
+    });
+    logger.error('Error adding update to stage', err);
+  }
+};
+
+const update = async (req, res, isTransfer = false) => {
   try {
     await assertIfReadOnlyMode();
     await assertHomeOrgExists();
@@ -258,12 +271,19 @@ export const update = async (req, res) => {
       req.body.warehouseProjectId,
     );
 
-    await assertOrgIsHomeOrg(originalRecord.orgUid);
+    // transfers can operate on project records that belong to someone else
+    // none transfers operations must belong to your orgUid
+    if (!isTransfer) {
+      await assertOrgIsHomeOrg(originalRecord.orgUid);
+    }
 
     const newRecord = _.cloneDeep(req.body);
 
-    const { orgUid } = await Organization.getHomeOrg();
-    newRecord.orgUid = orgUid;
+    // Why do we need this? the orgUid should already be in the record
+    //const { orgUid } = await Organization.getHomeOrg();
+    //newRecord.orgUid = orgUid;
+
+    const { orgUid } = newRecord;
 
     const childRecordsKeys = [
       'projectLocations',
@@ -316,7 +336,15 @@ export const update = async (req, res) => {
       action: 'UPDATE',
       table: Project.stagingTableName,
       data: JSON.stringify(stagedRecord),
+      // If this is a transfer staging, push it directly into commited status
+      // Since we are downloading a offer file and shouldnt be allowed to operate
+      // until that file is either accepted or cancelled
+      commited: isTransfer,
     };
+
+    if (isTransfer) {
+      stagedData.isTransfer = true;
+    }
 
     await Staging.upsert(stagedData);
 
@@ -330,6 +358,8 @@ export const update = async (req, res) => {
     logger.error('Error adding update to stage', err);
   }
 };
+
+export { update };
 
 export const destroy = async (req, res) => {
   try {

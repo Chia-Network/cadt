@@ -32,6 +32,12 @@ ProjectRouter.put(
   ProjectController.update,
 );
 
+ProjectRouter.put(
+  '/transfer',
+  validator.body(projectsUpdateSchema),
+  ProjectController.transfer,
+);
+
 ProjectRouter.put('/xlsx', ProjectController.updateFromXLS);
 
 ProjectRouter.delete(
