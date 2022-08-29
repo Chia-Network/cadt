@@ -437,4 +437,28 @@ const getMirrors = async (storeId) => {
   }
 };
 
+export const makeOffer = async (offer) => {
+  const options = {
+    url: `${rpcUrl}/make_offer `,
+    body: JSON.stringify(offer),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
 export const addMirror = _addMirror;
