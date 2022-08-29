@@ -28,7 +28,6 @@ import AddOptionalMethodology2FieldToProject from './20220721212845-add-optional
 import AddFiltStoreSubscribedColumnToProject from './20220809182156-AddFileStoreSubscribedColumn';
 import PopulateUnitsFTS from './20220808192709-populate-units-fts';
 import ResetDBForNewSingletons from './20220816155101-reset-db-for-new-singletons';
-import AddIsTransferColumn from './20220825124702-add-isTransfer-column';
 
 export const migrations = [
   {
@@ -154,9 +153,5 @@ export const migrations = [
   {
     migration: ResetDBForNewSingletons,
     name: '20220816155101-reset-db-for-new-singletons',
-  },
-  {
-    migration: AddIsTransferColumn,
-    name: '20220825124702-add-isTransfer-column',
   },
 ];

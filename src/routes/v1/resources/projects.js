@@ -26,14 +26,10 @@ ProjectRouter.post(
   ProjectController.create,
 );
 
-ProjectRouter.put('/', validator.body(projectsUpdateSchema), (req, res) =>
-  ProjectController.update(req, res, false),
-);
-
 ProjectRouter.put(
-  '/transfer',
+  '/',
   validator.body(projectsUpdateSchema),
-  (req, res) => ProjectController.transfer(req, res),
+  ProjectController.update,
 );
 
 ProjectRouter.put('/xlsx', ProjectController.updateFromXLS);

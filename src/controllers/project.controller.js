@@ -22,7 +22,6 @@ import {
   assertNoPendingCommits,
   assertRecordExistance,
   assertIfReadOnlyMode,
-  assertStagingTableIsEmpty,
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
@@ -249,19 +248,7 @@ export const updateFromXLS = async (req, res) => {
   }
 };
 
-export const transfer = async (req, res) => {
-  try {
-    await assertStagingTableIsEmpty();
-    return update(req, res, true);
-  } catch (err) {
-    res.status(400).json({
-      message: err.message,
-    });
-    logger.error('Error adding update to stage', err);
-  }
-};
-
-const update = async (req, res, isTransfer = false) => {
+export const update = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertHomeOrgExists();
@@ -271,11 +258,7 @@ const update = async (req, res, isTransfer = false) => {
       req.body.warehouseProjectId,
     );
 
-    // transfers can operate on project records that belong to someone else
-    // none transfers operations must belong to your orgUid
-    if (!isTransfer) {
-      await assertOrgIsHomeOrg(originalRecord.orgUid);
-    }
+    await assertOrgIsHomeOrg(originalRecord.orgUid);
 
     const newRecord = _.cloneDeep(req.body);
 
@@ -335,14 +318,6 @@ const update = async (req, res, isTransfer = false) => {
       data: JSON.stringify(stagedRecord),
     };
 
-    if (isTransfer) {
-      // If this is a transfer staging, push it directly into commited status
-      // Since we are downloading a offer file and shouldnt be allowed to operate
-      // until that file is either accepted or cancelled
-      stagedData.isTransfer = true;
-      stagedData.commited = true;
-    }
-
     await Staging.upsert(stagedData);
 
     res.json({
@@ -355,8 +330,6 @@ const update = async (req, res, isTransfer = false) => {
     logger.error('Error adding update to stage', err);
   }
 };
-
-export { update };
 
 export const destroy = async (req, res) => {
   try {
