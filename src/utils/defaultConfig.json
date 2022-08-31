@@ -13,10 +13,8 @@
     "READ_ONLY": false,
     "API_KEY": null,
     "CHIA_NETWORK": "mainnet",
-    "IS_GOVERNANCE_BODY": false
-  },
-  "TESTNET": {
-    "TESTNET_DEFAULT_ORGANIZATIONS": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/cw-organizations-testnet.json"
+    "IS_GOVERNANCE_BODY": false,
+    "MIRROR_FEE": 1000000000
   },
   "GOVERNANCE": {
     "GOVERANCE_BODY_ID": "a8eadac331c82f896d6851a032fd8777605a5c60fc523b0edf7eb75adaf3ba81"
