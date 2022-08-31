@@ -341,6 +341,44 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "add_metadata",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "hello",
+							"value": "world",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:31310/v1/organizations/metadata",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "31310",
+					"path": [
+						"v1",
+						"organizations",
+						"metadata"
+					],
+					"query": [
+						{
+							"key": "test",
+							"value": "hello world",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }

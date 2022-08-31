@@ -1,11 +1,13 @@
 'use strict';
 
 import Sequelize from 'sequelize';
+import _ from 'lodash';
+
 const { Model } = Sequelize;
+
 import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
-
 import { logger } from '../../config/logger.cjs';
 
 import { getDefaultOrganizationList } from '../../utils/data-loaders';
@@ -302,16 +304,23 @@ class Organization extends Model {
       await Promise.all(
         allSubscribedOrganizations.map((organization) => {
           const onResult = (data) => {
-            const updateData = data.reduce((update, current) => {
-              // TODO: this needs to pull the v1 record
-              if (current.key !== 'registryId') {
+            const updateData = data
+              .filter(({ dataEntry }) => current.key !== 'registryId' || !dataEntry.key.includes('meta_'))
+              .reduce((update, current) => {
                 update[current.key] = current.value;
-              }
-              return update;
-            }, {});
+                return update;
+              }, {});
+
+            // will return metadata fields. i.e.: { meta_key1: 'value1', meta_key2: 'value2' }
+            const metadata = data
+              .filter(({ dataEntry }) => dataEntry.key.includes('meta_'))
+              .reduce((update, current) => {
+                update[current.key] = current.value;
+                return update;
+              }, {});
 
             Organization.update(
-              { ...updateData },
+              { ...updateData, metadata },
               {
                 where: { orgUid: organization.orgUid },
               },
@@ -384,6 +393,15 @@ class Organization extends Model {
     }
 
     await datalayer.upsertDataLayer(myOrganization.orgUid, payload);
+  };
+
+  static addMetadata = async (payload) => {
+    const myOrganization = await Organization.getHomeOrg();
+
+    // Prefix keys with "meta_"
+    const metadata = _.mapKeys(payload, (_value, key) => `meta_${key}`);
+
+    await datalayer.upsertDataLayer(myOrganization.orgUid, metadata);
   };
 
   static removeMirror = async (storeId, coinId) => {
