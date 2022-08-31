@@ -7,8 +7,6 @@ export const newOrganizationSchema = Joi.object({
 
 export const importOrganizationSchema = Joi.object({
   orgUid: Joi.string().required(),
-  ip: Joi.string().required(),
-  port: Joi.string().required(),
 });
 
 export const importHomeOrganizationSchema = Joi.object({
