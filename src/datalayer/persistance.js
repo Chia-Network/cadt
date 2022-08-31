@@ -9,6 +9,10 @@ import { decodeHex } from '../utils/datalayer-utils';
 import fullNode from './fullNode';
 import { publicIpv4 } from '../utils/ip-tools';
 
+// Generally I dont think this should be put here,
+// but because of time, will add it and thinkof a way to refactor
+import { Organization } from '../models';
+
 import { logger } from '../config/logger.cjs';
 
 logger.info('climate-warehouse:datalayer:persistance');
@@ -242,15 +246,24 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
 };
 
 const subscribeToStoreOnDataLayer = async (storeId) => {
+  if (!storeId) {
+    return false;
+  }
+
+  const subscriptions = await getSubscriptions(storeId);
+
+  if (subscriptions.includes(storeId)) {
+    return true;
+  }
+
   const options = {
     url: `${CONFIG.DATALAYER_URL}/subscribe`,
     body: JSON.stringify({
       id: storeId,
-      urls: [],
     }),
   };
 
-  logger.info(`RPC Call: ${CONFIG.DATALAYER_URL}/subscribe ${storeId}`);
+  logger.info(`Subscribing to: ${storeId}`);
 
   try {
     const response = await request(
@@ -261,6 +274,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
     if (Object.keys(data).includes('success') && data.success) {
       logger.info(`Successfully Subscribed: ${storeId}`);
+      console.trace(storeId);
 
       const chiaConfig = fullNode.getChiaConfig();
       await addMirror(
@@ -268,7 +282,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
       );
 
-      return data;
+      return true;
     }
 
     return false;
@@ -330,7 +344,14 @@ const getRootDiff = async (storeId, root1, root2) => {
   }
 };
 
-const addMirror = async (storeId, url) => {
+const addMirror = async (storeId, url, forceAddMirror = false) => {
+  const homeOrg = await Organization.getHomeOrg();
+
+  if (!homeOrg && !forceAddMirror) {
+    logger.info(`No home org detected so skipping mirror for ${storeId}`);
+    return false;
+  }
+
   const mirrors = await getMirrors(storeId);
 
   // Dont add the mirror if it already exists.
@@ -339,6 +360,7 @@ const addMirror = async (storeId, url) => {
   );
 
   if (mirror) {
+    logger.info(`Mirror already available for ${storeId}`);
     return true;
   }
 
@@ -411,6 +433,32 @@ const removeMirror = async (storeId, coinId) => {
   }
 };
 
+const getSubscriptions = async (storeId) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/subscriptions `,
+    body: JSON.stringify({
+      id: storeId,
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data.store_ids;
+    }
+
+    logger.error(`FAILED GETTING STORE IDS FOR ${storeId}`);
+    return [];
+  } catch (error) {
+    return [];
+  }
+};
+
 const getMirrors = async (storeId) => {
   const options = {
     url: `${CONFIG.DATALAYER_URL}/get_mirrors `,
@@ -476,4 +524,5 @@ export {
   getRoots,
   pushChangeListToDataLayer,
   createDataLayerStore,
+  getSubscriptions,
 };

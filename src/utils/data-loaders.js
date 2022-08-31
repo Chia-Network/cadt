@@ -8,7 +8,6 @@ import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 
 const { USE_SIMULATOR, CHIA_NETWORK } = getConfig().APP;
-const { TESTNET_DEFAULT_ORGANIZATIONS } = getConfig().TESTNET;
 
 let downloadedPickList = {};
 export const getPicklistValues = () => downloadedPickList;
@@ -32,12 +31,7 @@ export const pullPickListValues = async () => {
 
 export const getDefaultOrganizationList = async () => {
   if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
-    const options = {
-      method: 'GET',
-      url: TESTNET_DEFAULT_ORGANIZATIONS,
-    };
-
-    return JSON.parse(await request(Object.assign({}, options)));
+    return [];
   } else {
     const goveranceData = await Governance.findOne({
       where: { metaKey: 'orgList' },
