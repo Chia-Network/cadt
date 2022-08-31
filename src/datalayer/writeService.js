@@ -27,9 +27,11 @@ const createDataLayerStore = async () => {
     await waitForStoreToBeConfirmed(storeId);
 
     const chiaConfig = fullNode.getChiaConfig();
+
     await dataLayer.addMirror(
       storeId,
       `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
+      true,
     );
   }
 
