@@ -227,7 +227,10 @@ class Organization extends Model {
   // eslint-disable-next-line
   static importOrganization = async (orgUid) => {
     try {
+      console.log('Importing organization ' + orgUid);
       const orgData = await datalayer.getSubscribedStoreData(orgUid);
+
+      console.log('!!!!!!!!!!!!', orgData);
 
       if (!orgData.registryId) {
         throw new Error(

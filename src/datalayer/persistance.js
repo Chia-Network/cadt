@@ -247,13 +247,15 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
 
 const subscribeToStoreOnDataLayer = async (storeId) => {
   if (!storeId) {
+    logger.info(`No storeId found to subscribe to: ${storeId}`);
     return false;
   }
 
-  const subscriptions = await getSubscriptions(storeId);
+  const subscriptions = await getSubscriptions();
 
   if (subscriptions.includes(storeId)) {
-    return true;
+    logger.info(`Already subscribed to: ${storeId}`);
+    return { success: true };
   }
 
   const options = {
@@ -282,7 +284,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
       );
 
-      return true;
+      return data;
     }
 
     return false;
@@ -433,12 +435,14 @@ const removeMirror = async (storeId, coinId) => {
   }
 };
 
-const getSubscriptions = async (storeId) => {
+const getSubscriptions = async () => {
+  if (CONFIG.USE_SIMULATOR) {
+    return [];
+  }
+
   const options = {
     url: `${CONFIG.DATALAYER_URL}/subscriptions `,
-    body: JSON.stringify({
-      id: storeId,
-    }),
+    body: JSON.stringify({}),
   };
 
   try {
@@ -449,10 +453,11 @@ const getSubscriptions = async (storeId) => {
     const data = JSON.parse(response);
 
     if (data.success) {
+      console.log('Your Subscriptions:', data.store_ids);
       return data.store_ids;
     }
 
-    logger.error(`FAILED GETTING STORE IDS FOR ${storeId}`);
+    logger.error(`FAILED GETTING SUBSCRIPTIONS ON DATALAYER`);
     return [];
   } catch (error) {
     return [];
