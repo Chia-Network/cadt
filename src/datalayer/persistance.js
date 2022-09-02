@@ -372,7 +372,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       body: JSON.stringify({
         id: storeId,
         urls: [url],
-        amount: _.get(CONFIG, 'MIRROR_FEE', 1000000000 /* 1 billion mojos */),
+        amount: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
       }),
     };
 
@@ -514,6 +514,34 @@ const makeOffer = async (offer) => {
   }
 };
 
+const cancelOffer = async (tradeId) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/cancel_offer `,
+    body: JSON.stringify({
+      trade_id: tradeId,
+      secure: true,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
 export {
   addMirror,
   makeOffer,
@@ -530,4 +558,5 @@ export {
   pushChangeListToDataLayer,
   createDataLayerStore,
   getSubscriptions,
+  cancelOffer,
 };
