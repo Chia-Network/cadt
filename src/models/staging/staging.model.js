@@ -56,7 +56,7 @@ class Staging extends Model {
     const maker = { inclusions: [] };
     const taker = { inclusions: [] };
 
-    // The record still has the orgUid of the takerProjectRecord,
+    // The record still has the orgUid of the makerProjectRecord,
     // we will update this to the correct orgUId later
     maker.storeId = takerProjectRecord.orgUid;
     taker.storeId = myOrganization.orgUid;
