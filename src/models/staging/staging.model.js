@@ -42,8 +42,7 @@ class Staging extends Model {
 
   static generateOfferFile = async () => {
     const stagingRecord = await Staging.findOne({
-      // where: { isTransfer: true },
-      where: { commited: false },
+      where: { isTransfer: true },
       raw: true,
     });
 
