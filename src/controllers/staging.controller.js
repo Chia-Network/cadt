@@ -71,25 +71,6 @@ export const findAll = async (req, res) => {
   }
 };
 
-export const generateOfferFile = async (req, res) => {
-  try {
-    await assertIfReadOnlyMode();
-    await assertStagingTableNotEmpty();
-    await assertHomeOrgExists();
-    await assertWalletIsSynced();
-    await assertNoPendingCommits();
-
-    const offerFile = await Staging.generateOfferFile();
-    res.json(offerFile);
-  } catch (error) {
-    console.trace(error);
-    res.status(400).json({
-      message: 'Error generating offer file.',
-      error: error.message,
-    });
-  }
-};
-
 export const commit = async (req, res) => {
   try {
     await assertIfReadOnlyMode();

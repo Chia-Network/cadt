@@ -5,7 +5,7 @@ import Sequelize from 'sequelize';
 const Op = Sequelize.Op;
 
 const { Model } = Sequelize;
-import { Project, Unit, Organization, Issuance } from '../../models';
+import { Project, Unit, Organization, Issuance, Meta } from '../../models';
 import { encodeHex, generateOffer } from '../../utils/datalayer-utils';
 
 import * as rxjs from 'rxjs';
@@ -204,8 +204,15 @@ class Staging extends Model {
         })),
     );
 
-    const offer = generateOffer(maker, taker);
-    return makeOffer(offer);
+    const offerInfo = generateOffer(maker, taker);
+    const offer = makeOffer(offerInfo);
+
+    await Meta.upsert({
+      metaKey: 'activeOfferTradeId',
+      metaValue: offer.trade_id,
+    });
+
+    return offer;
   };
 
   // If the record was commited but the diff.original is null

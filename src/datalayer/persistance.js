@@ -514,6 +514,32 @@ const makeOffer = async (offer) => {
   }
 };
 
+const cancelOffer = async (tradeId) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/cancel_offer `,
+    body: JSON.stringify({
+      trade_id: tradeId,
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
 export {
   addMirror,
   makeOffer,
@@ -530,4 +556,5 @@ export {
   pushChangeListToDataLayer,
   createDataLayerStore,
   getSubscriptions,
+  cancelOffer,
 };
