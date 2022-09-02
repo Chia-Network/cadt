@@ -280,7 +280,9 @@ const update = async (req, res, isTransfer = false) => {
     const newRecord = _.cloneDeep(req.body);
 
     const { orgUid } = await Organization.getHomeOrg();
-    newRecord.orgUid = orgUid;
+    if (isTransfer) {
+      newRecord.orgUid = originalRecord.orgUid;
+    }
 
     const childRecordsKeys = [
       'projectLocations',
