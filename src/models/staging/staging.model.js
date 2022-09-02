@@ -176,14 +176,16 @@ class Staging extends Model {
         })),
     );
 
-    maker.inclusions.push(
-      ...makerUnitInclusions.unit
-        .filter((inclusion) => inclusion.action !== 'delete')
-        .map((inclusion) => ({
-          key: inclusion.key,
-          value: inclusion.value,
-        })),
-    );
+    if (makerUnitInclusions?.unit) {
+      maker.inclusions.push(
+        ...makerUnitInclusions.unit
+          .filter((inclusion) => inclusion.action !== 'delete')
+          .map((inclusion) => ({
+            key: inclusion.key,
+            value: inclusion.value,
+          })),
+      );
+    }
 
     taker.inclusions.push(
       ...takerProjectInclusions.project
@@ -194,14 +196,16 @@ class Staging extends Model {
         })),
     );
 
-    taker.inclusions.push(
-      ...takerUnitInclusions.unit
-        .filter((inclusion) => inclusion.action !== 'delete')
-        .map((inclusion) => ({
-          key: inclusion.key,
-          value: inclusion.value,
-        })),
-    );
+    if (takerUnitInclusions?.unit) {
+      taker.inclusions.push(
+        ...takerUnitInclusions.unit
+          .filter((inclusion) => inclusion.action !== 'delete')
+          .map((inclusion) => ({
+            key: inclusion.key,
+            value: inclusion.value,
+          })),
+      );
+    }
 
     const offerInfo = generateOffer(maker, taker);
     const offer = makeOffer(offerInfo);
