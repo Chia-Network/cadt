@@ -8,7 +8,7 @@ import {
   assertStagingTableNotEmpty,
 } from '../utils/data-assertions';
 
-import datalayer from '../datalayer/persistance';
+import * as datalayer from '../datalayer/persistance';
 
 export const generateOfferFile = async (req, res) => {
   try {
