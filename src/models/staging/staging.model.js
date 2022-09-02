@@ -46,7 +46,7 @@ class Staging extends Model {
       raw: true,
     });
 
-    const takerProjectRecord = _.head(JSON.parse(stagingRecord.data));
+    const makerProjectRecord = _.head(JSON.parse(stagingRecord.data));
 
     const myOrganization = await Organization.findOne({
       where: { isHome: true },
@@ -58,11 +58,11 @@ class Staging extends Model {
 
     // The record still has the orgUid of the makerProjectRecord,
     // we will update this to the correct orgUId later
-    maker.storeId = takerProjectRecord.orgUid;
-    taker.storeId = myOrganization.orgUid;
+    taker.storeId = makerProjectRecord.orgUid;
+    maker.storeId = myOrganization.orgUid;
 
-    const makerProjectRecord = await Project.findOne({
-      where: { warehouseProjectId: takerProjectRecord.warehouseProjectId },
+    const takerProjectRecord = await Project.findOne({
+      where: { warehouseProjectId: makerProjectRecord.warehouseProjectId },
       include: Project.getAssociatedModels().map((association) => {
         return {
           model: association.model,
@@ -71,26 +71,26 @@ class Staging extends Model {
       }),
     });
 
-    makerProjectRecord.projectStatus = 'Transitioned';
+    takerProjectRecord.projectStatus = 'Transitioned';
 
-    const issuanceIds = makerProjectRecord.issuances.reduce((ids, issuance) => {
+    const issuanceIds = takerProjectRecord.issuances.reduce((ids, issuance) => {
       if (!ids.includes(issuance.id)) {
         ids.push(issuance.id);
       }
       return ids;
     }, []);
 
-    let unitMakerRecords = await Unit.findAll({
+    let unitTakerRecords = await Unit.findAll({
       where: {
         issuanceId: { [Op.in]: issuanceIds },
       },
       raw: true,
     });
 
-    // Takers get an unlatered copy of all the project units from the maker
-    const unitTakerRecords = _.cloneDeep(unitMakerRecords);
+    // Makers get an unlatered copy of all the project units from the taker
+    const unitMakerRecords = _.cloneDeep(unitTakerRecords);
 
-    unitMakerRecords = unitMakerRecords.map((record) => {
+    unitTakerRecords = unitTakerRecords.map((record) => {
       record.unitStatus = 'Exported';
       return record;
     });
@@ -113,21 +113,15 @@ class Staging extends Model {
       issuances: 'id',
     };
 
-    const makerProjectXslsSheets = createXlsFromSequelizeResults({
-      rows: [makerProjectRecord],
-      model: Project,
-      toStructuredCsv: true,
-    });
-
     const takerProjectXslsSheets = createXlsFromSequelizeResults({
       rows: [takerProjectRecord],
       model: Project,
       toStructuredCsv: true,
     });
 
-    const makerUnitXslsSheets = createXlsFromSequelizeResults({
-      rows: unitMakerRecords,
-      model: Unit,
+    const makerProjectXslsSheets = createXlsFromSequelizeResults({
+      rows: [makerProjectRecord],
+      model: Project,
       toStructuredCsv: true,
     });
 
@@ -137,11 +131,11 @@ class Staging extends Model {
       toStructuredCsv: true,
     });
 
-    const takerProjectInclusions = await transformFullXslsToChangeList(
-      takerProjectXslsSheets,
-      'insert',
-      primaryProjectKeyMap,
-    );
+    const makerUnitXslsSheets = createXlsFromSequelizeResults({
+      rows: unitMakerRecords,
+      model: Unit,
+      toStructuredCsv: true,
+    });
 
     const makerProjectInclusions = await transformFullXslsToChangeList(
       makerProjectXslsSheets,
@@ -149,14 +143,20 @@ class Staging extends Model {
       primaryProjectKeyMap,
     );
 
-    const makerUnitInclusions = await transformFullXslsToChangeList(
-      makerUnitXslsSheets,
+    const takerProjectInclusions = await transformFullXslsToChangeList(
+      takerProjectXslsSheets,
       'insert',
-      primaryUnitKeyMap,
+      primaryProjectKeyMap,
     );
 
     const takerUnitInclusions = await transformFullXslsToChangeList(
       takerUnitXslsSheets,
+      'insert',
+      primaryUnitKeyMap,
+    );
+
+    const makerUnitInclusions = await transformFullXslsToChangeList(
+      makerUnitXslsSheets,
       'insert',
       primaryUnitKeyMap,
     );
@@ -166,26 +166,6 @@ class Staging extends Model {
         .filter((inclusion) => inclusion.action !== 'delete')
         .map((inclusion) => ({ key: inclusion.key, value: inclusion.value }));
     });*/
-
-    maker.inclusions.push(
-      ...makerProjectInclusions.project
-        .filter((inclusion) => inclusion.action !== 'delete')
-        .map((inclusion) => ({
-          key: inclusion.key,
-          value: inclusion.value,
-        })),
-    );
-
-    if (makerUnitInclusions?.unit) {
-      maker.inclusions.push(
-        ...makerUnitInclusions.unit
-          .filter((inclusion) => inclusion.action !== 'delete')
-          .map((inclusion) => ({
-            key: inclusion.key,
-            value: inclusion.value,
-          })),
-      );
-    }
 
     taker.inclusions.push(
       ...takerProjectInclusions.project
@@ -199,6 +179,26 @@ class Staging extends Model {
     if (takerUnitInclusions?.unit) {
       taker.inclusions.push(
         ...takerUnitInclusions.unit
+          .filter((inclusion) => inclusion.action !== 'delete')
+          .map((inclusion) => ({
+            key: inclusion.key,
+            value: inclusion.value,
+          })),
+      );
+    }
+
+    maker.inclusions.push(
+      ...makerProjectInclusions.project
+        .filter((inclusion) => inclusion.action !== 'delete')
+        .map((inclusion) => ({
+          key: inclusion.key,
+          value: inclusion.value,
+        })),
+    );
+
+    if (makerUnitInclusions?.unit) {
+      maker.inclusions.push(
+        ...makerUnitInclusions.unit
           .filter((inclusion) => inclusion.action !== 'delete')
           .map((inclusion) => ({
             key: inclusion.key,
