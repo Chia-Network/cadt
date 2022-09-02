@@ -282,6 +282,8 @@ const update = async (req, res, isTransfer = false) => {
     const { orgUid } = await Organization.getHomeOrg();
     if (isTransfer) {
       newRecord.orgUid = originalRecord.orgUid;
+    } else {
+      newRecord.orgUid = orgUid;
     }
 
     const childRecordsKeys = [
