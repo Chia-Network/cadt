@@ -6,7 +6,12 @@ import {
   assertWalletIsSynced,
   assertIfReadOnlyMode,
   assertStagingTableNotEmpty,
+  assertStagingTableIsEmpty,
+  assertNoActiveOfferFile,
+  assertActiveOfferFile,
 } from '../utils/data-assertions';
+
+// import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
 
 import * as datalayer from '../datalayer/persistance';
 
@@ -48,6 +53,81 @@ export const cancelActiveOffer = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: 'Can not cancel active offer',
+      error: error.message,
+    });
+  }
+};
+
+export const importOfferFile = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertStagingTableIsEmpty();
+    await assertHomeOrgExists();
+    await assertWalletIsSynced();
+    await assertNoPendingCommits();
+    await assertNoActiveOfferFile();
+
+    const offerFile = req.body;
+
+    await datalayer.verifyOffer(offerFile);
+
+    await Meta.upsert({
+      metaKey: 'activeOffer',
+      metaValue: JSON.stringify(offerFile),
+    });
+
+    //  const makerChanges = deserializeMaker(offerFile.maker);
+    //  const takerChanges = deserializeTaker(offerFile.taker);
+
+    res.json({
+      message: 'Offer has been imported for review.',
+    });
+  } catch (error) {
+    console.trace(error);
+    res.status(400).json({
+      message: 'Can not import offer file.',
+      error: error.message,
+    });
+  }
+};
+
+export const commitImportedOfferFile = async (req, res) => {
+  try {
+    await assertActiveOfferFile();
+
+    const offerFile = Meta.findOne({ where: { metaKey: 'activeOffer' } });
+    const response = await datalayer.takeOffer(offerFile);
+
+    res.json({
+      message: 'Offer Accepted.',
+      tradeId: response.trade_id,
+    });
+
+    await Meta.destroy({
+      where: {
+        meteKey: 'activeOffer',
+      },
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Can not commit offer.',
+      error: error.message,
+    });
+  }
+};
+
+export const cancelImportedOfferFile = async (req, res) => {
+  try {
+    await assertActiveOfferFile();
+
+    await Meta.destroy({
+      where: {
+        meteKey: 'activeOffer',
+      },
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Can not cancel offer.',
       error: error.message,
     });
   }

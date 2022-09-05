@@ -514,6 +514,54 @@ const makeOffer = async (offer) => {
   }
 };
 
+const takeOffer = async (offer) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/take_offer `,
+    body: JSON.stringify(offer),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+const verifyOffer = async (offer) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/verify_offer `,
+    body: JSON.stringify(offer),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return true;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
 const cancelOffer = async (tradeId) => {
   const options = {
     url: `${CONFIG.DATALAYER_URL}/cancel_offer `,
@@ -559,4 +607,6 @@ export {
   createDataLayerStore,
   getSubscriptions,
   cancelOffer,
+  verifyOffer,
+  takeOffer,
 };

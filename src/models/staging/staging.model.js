@@ -213,6 +213,7 @@ class Staging extends Model {
 
       const offerInfo = generateOffer(maker, taker);
       const offerResponse = await makeOffer(offerInfo);
+
       if (!offerResponse.success) {
         throw new Error(offerResponse.error);
       }
