@@ -39,7 +39,7 @@ export const cancelActiveOffer = async (req, res) => {
       throw new Error(`There is no active offer to cancel`);
     }
 
-    await datalayer.cancelActiveOffer(activeOffer.metaValue);
+    await datalayer.cancelOffer(activeOffer.metaValue);
     await Meta.destroy({ where: { metaKey: 'activeOfferTradeId' } });
 
     res.json({
