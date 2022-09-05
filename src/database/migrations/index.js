@@ -29,6 +29,7 @@ import AddFiltStoreSubscribedColumnToProject from './20220809182156-AddFileStore
 import PopulateUnitsFTS from './20220808192709-populate-units-fts';
 import ResetDBForNewSingletons from './20220816155101-reset-db-for-new-singletons';
 import AddIsTransferColumn from './20220825124702-add-isTransfer-column';
+import AddOrgMetadata from './20220831023546-add-org-metadata';
 
 export const migrations = [
   {
@@ -158,5 +159,9 @@ export const migrations = [
   {
     migration: AddIsTransferColumn,
     name: '20220825124702-add-isTransfer-column',
+  },
+  {
+    migration: AddOrgMetadata,
+    name: '20220831023546-add-org-metadata',
   },
 ];

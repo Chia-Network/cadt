@@ -102,4 +102,11 @@ OrganizationRouter.post(
   },
 );
 
+OrganizationRouter.post(
+  '/metadata',
+  (req, res) => {
+    return OrganizationController.addMetadata(req, res);
+  },
+);
+
 export { OrganizationRouter };

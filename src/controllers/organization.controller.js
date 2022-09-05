@@ -324,6 +324,27 @@ export const resyncOrganization = async (req, res) => {
   }
 };
 
+export const addMetadata = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    Organization.addMetadata(req.body);
+
+    return res.json({
+      message: 'Home org currently being updated, will be completed soon.',
+    });
+  } catch (error) {
+    console.trace(error);
+    res.status(400).json({
+      message: 'Error adding metadata to your organization',
+      error: error.message,
+    });
+  }
+};
+
+
 export const addMirror = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
