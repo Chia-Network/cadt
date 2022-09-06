@@ -49,3 +49,25 @@ export const generateOffer = (maker, taker) => {
     fee: 0,
   };
 };
+
+export const deserializeTaker = (taker) => {
+  const changes = taker[0].inclusions.map((inclusion) => {
+    const tableKey = decodeHex(inclusion.key);
+    const table = tableKey.split('|')[0];
+    const value = JSON.parse(decodeHex(inclusion.value));
+    return { table, value };
+  });
+
+  return changes;
+};
+
+export const deserializeMaker = (maker) => {
+  const changes = maker[0].proofs.map((inclusion) => {
+    const tableKey = decodeHex(inclusion.key);
+    const table = tableKey.split('|')[0];
+    const value = JSON.parse(decodeHex(inclusion.value));
+    return { table, value };
+  });
+
+  return changes;
+};
