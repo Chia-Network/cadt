@@ -11,7 +11,7 @@ import {
   assertActiveOfferFile,
 } from '../utils/data-assertions';
 
-// import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
+import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
 
 import * as datalayer from '../datalayer/persistance';
 
@@ -123,6 +123,29 @@ export const cancelImportedOfferFile = async (req, res) => {
     await Meta.destroy({
       where: {
         meteKey: 'activeOffer',
+      },
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Can not cancel offer.',
+      error: error.message,
+    });
+  }
+};
+
+export const getCurrentOfferInfo = async (req, res) => {
+  try {
+    await assertActiveOfferFile();
+
+    const offerFile = Meta.findOne({ where: { metaKey: 'activeOffer' } });
+
+    const makerChanges = deserializeMaker(offerFile.maker);
+    const takerChanges = deserializeTaker(offerFile.taker);
+
+    res.status(200).json({
+      changes: {
+        maker: makerChanges,
+        taker: takerChanges,
       },
     });
   } catch (error) {
