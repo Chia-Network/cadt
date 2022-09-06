@@ -25,4 +25,8 @@ OfferRouter.delete('/accept/cancel', (req, res) => {
   return OfferController.cancelImportedOfferFile(req, res);
 });
 
+OfferRouter.get('/accept', (req, res) => {
+  return OfferController.getCurrentOfferInfo(req, res);
+});
+
 export { OfferRouter };
