@@ -231,3 +231,23 @@ export const assertStagingTableIsEmpty = async (customMessage) => {
     throw new Error(customMessage || `Staging table is not empty.`);
   }
 };
+
+export const assertActiveOfferFile = async () => {
+  const activeOfferFile = await Meta.findOne({
+    where: { metaKey: 'activeOffer' },
+  });
+
+  if (!activeOfferFile) {
+    throw new Error(`There is no active offer pending`);
+  }
+};
+
+export const assertNoActiveOfferFile = async () => {
+  const activeOfferFile = await Meta.findOne({
+    where: { metaKey: 'activeOffer' },
+  });
+
+  if (activeOfferFile) {
+    throw new Error(`There is an active offer pending`);
+  }
+};

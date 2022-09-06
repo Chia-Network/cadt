@@ -7,3 +7,4 @@ export * from './labels';
 export * from './audit';
 export * from './governance';
 export * from './filestore';
+export * from './offer';

@@ -5,7 +5,7 @@ import Sequelize from 'sequelize';
 const Op = Sequelize.Op;
 
 const { Model } = Sequelize;
-import { Project, Unit, Organization, Issuance } from '../../models';
+import { Project, Unit, Organization, Issuance, Meta } from '../../models';
 import { encodeHex, generateOffer } from '../../utils/datalayer-utils';
 
 import * as rxjs from 'rxjs';
@@ -41,171 +41,192 @@ class Staging extends Model {
   }
 
   static generateOfferFile = async () => {
-    const stagingRecord = await Staging.findOne({
-      // where: { isTransfer: true },
-      where: { commited: false },
-      raw: true,
-    });
+    try {
+      const stagingRecord = await Staging.findOne({
+        where: { isTransfer: true },
+        raw: true,
+      });
 
-    const takerProjectRecord = _.head(JSON.parse(stagingRecord.data));
+      const makerProjectRecord = _.head(JSON.parse(stagingRecord.data));
 
-    const myOrganization = await Organization.findOne({
-      where: { isHome: true },
-      raw: true,
-    });
+      const myOrganization = await Organization.findOne({
+        where: { isHome: true },
+        raw: true,
+      });
 
-    const maker = { inclusions: [] };
-    const taker = { inclusions: [] };
+      const maker = { inclusions: [] };
+      const taker = { inclusions: [] };
 
-    // The record still has the orgUid of the takerProjectRecord,
-    // we will update this to the correct orgUId later
-    maker.storeId = takerProjectRecord.orgUid;
-    taker.storeId = myOrganization.orgUid;
+      // The record still has the orgUid of the makerProjectRecord,
+      // we will update this to the correct orgUId later
+      taker.storeId = makerProjectRecord.orgUid;
+      maker.storeId = myOrganization.orgUid;
 
-    const makerProjectRecord = await Project.findOne({
-      where: { warehouseProjectId: takerProjectRecord.warehouseProjectId },
-      include: Project.getAssociatedModels().map((association) => {
-        return {
-          model: association.model,
-          as: formatModelAssociationName(association),
-        };
-      }),
-    });
+      const takerProjectRecord = await Project.findOne({
+        where: { warehouseProjectId: makerProjectRecord.warehouseProjectId },
+        include: Project.getAssociatedModels().map((association) => {
+          return {
+            model: association.model,
+            as: formatModelAssociationName(association),
+          };
+        }),
+      });
 
-    makerProjectRecord.projectStatus = 'Transitioned';
+      takerProjectRecord.projectStatus = 'Transitioned';
 
-    const issuanceIds = makerProjectRecord.issuances.reduce((ids, issuance) => {
-      if (!ids.includes(issuance.id)) {
-        ids.push(issuance.id);
-      }
-      return ids;
-    }, []);
+      const issuanceIds = takerProjectRecord.issuances.reduce(
+        (ids, issuance) => {
+          if (!ids.includes(issuance.id)) {
+            ids.push(issuance.id);
+          }
+          return ids;
+        },
+        [],
+      );
 
-    let unitMakerRecords = await Unit.findAll({
-      where: {
-        issuanceId: { [Op.in]: issuanceIds },
-      },
-      raw: true,
-    });
+      let unitTakerRecords = await Unit.findAll({
+        where: {
+          issuanceId: { [Op.in]: issuanceIds },
+        },
+        raw: true,
+      });
 
-    // Takers get an unlatered copy of all the project units from the maker
-    const unitTakerRecords = _.cloneDeep(unitMakerRecords);
+      // Makers get an unlatered copy of all the project units from the taker
+      const unitMakerRecords = _.cloneDeep(unitTakerRecords);
 
-    unitMakerRecords = unitMakerRecords.map((record) => {
-      record.unitStatus = 'Exported';
-      return record;
-    });
+      unitTakerRecords = unitTakerRecords.map((record) => {
+        record.unitStatus = 'Exported';
+        return record;
+      });
 
-    const primaryProjectKeyMap = {
-      project: 'warehouseProjectId',
-      projectLocations: 'id',
-      labels: 'id',
-      issuances: 'id',
-      coBenefits: 'id',
-      relatedProjects: 'id',
-      estimations: 'id',
-      projectRatings: 'id',
-    };
+      const primaryProjectKeyMap = {
+        project: 'warehouseProjectId',
+        projectLocations: 'id',
+        labels: 'id',
+        issuances: 'id',
+        coBenefits: 'id',
+        relatedProjects: 'id',
+        estimations: 'id',
+        projectRatings: 'id',
+      };
 
-    const primaryUnitKeyMap = {
-      unit: 'warehouseUnitId',
-      labels: 'id',
-      label_units: 'id',
-      issuances: 'id',
-    };
+      const primaryUnitKeyMap = {
+        unit: 'warehouseUnitId',
+        labels: 'id',
+        label_units: 'id',
+        issuances: 'id',
+      };
 
-    const makerProjectXslsSheets = createXlsFromSequelizeResults({
-      rows: [makerProjectRecord],
-      model: Project,
-      toStructuredCsv: true,
-    });
+      const takerProjectXslsSheets = createXlsFromSequelizeResults({
+        rows: [takerProjectRecord],
+        model: Project,
+        toStructuredCsv: true,
+      });
 
-    const takerProjectXslsSheets = createXlsFromSequelizeResults({
-      rows: [takerProjectRecord],
-      model: Project,
-      toStructuredCsv: true,
-    });
+      const makerProjectXslsSheets = createXlsFromSequelizeResults({
+        rows: [makerProjectRecord],
+        model: Project,
+        toStructuredCsv: true,
+      });
 
-    const makerUnitXslsSheets = createXlsFromSequelizeResults({
-      rows: unitMakerRecords,
-      model: Unit,
-      toStructuredCsv: true,
-    });
+      const takerUnitXslsSheets = createXlsFromSequelizeResults({
+        rows: unitTakerRecords,
+        model: Unit,
+        toStructuredCsv: true,
+      });
 
-    const takerUnitXslsSheets = createXlsFromSequelizeResults({
-      rows: unitTakerRecords,
-      model: Unit,
-      toStructuredCsv: true,
-    });
+      const makerUnitXslsSheets = createXlsFromSequelizeResults({
+        rows: unitMakerRecords,
+        model: Unit,
+        toStructuredCsv: true,
+      });
 
-    const takerProjectInclusions = await transformFullXslsToChangeList(
-      takerProjectXslsSheets,
-      'insert',
-      primaryProjectKeyMap,
-    );
+      const makerProjectInclusions = await transformFullXslsToChangeList(
+        makerProjectXslsSheets,
+        'insert',
+        primaryProjectKeyMap,
+      );
 
-    const makerProjectInclusions = await transformFullXslsToChangeList(
-      makerProjectXslsSheets,
-      'insert',
-      primaryProjectKeyMap,
-    );
+      const takerProjectInclusions = await transformFullXslsToChangeList(
+        takerProjectXslsSheets,
+        'insert',
+        primaryProjectKeyMap,
+      );
 
-    const makerUnitInclusions = await transformFullXslsToChangeList(
-      makerUnitXslsSheets,
-      'insert',
-      primaryUnitKeyMap,
-    );
+      const takerUnitInclusions = await transformFullXslsToChangeList(
+        takerUnitXslsSheets,
+        'insert',
+        primaryUnitKeyMap,
+      );
 
-    const takerUnitInclusions = await transformFullXslsToChangeList(
-      takerUnitXslsSheets,
-      'insert',
-      primaryUnitKeyMap,
-    );
+      const makerUnitInclusions = await transformFullXslsToChangeList(
+        makerUnitXslsSheets,
+        'insert',
+        primaryUnitKeyMap,
+      );
 
-    /* Object.keys(maker.inclusions).forEach((table) => {
+      /* Object.keys(maker.inclusions).forEach((table) => {
       maker.inclusions[table] = maker.inclusions[table]
         .filter((inclusion) => inclusion.action !== 'delete')
         .map((inclusion) => ({ key: inclusion.key, value: inclusion.value }));
     });*/
 
-    maker.inclusions.push(
-      ...makerProjectInclusions.project
-        .filter((inclusion) => inclusion.action !== 'delete')
-        .map((inclusion) => ({
-          key: inclusion.key,
-          value: inclusion.value,
-        })),
-    );
+      taker.inclusions.push(
+        ...takerProjectInclusions.project
+          .filter((inclusion) => inclusion.action !== 'delete')
+          .map((inclusion) => ({
+            key: inclusion.key,
+            value: inclusion.value,
+          })),
+      );
 
-    maker.inclusions.push(
-      ...makerUnitInclusions.unit
-        .filter((inclusion) => inclusion.action !== 'delete')
-        .map((inclusion) => ({
-          key: inclusion.key,
-          value: inclusion.value,
-        })),
-    );
+      if (takerUnitInclusions?.unit) {
+        taker.inclusions.push(
+          ...takerUnitInclusions.unit
+            .filter((inclusion) => inclusion.action !== 'delete')
+            .map((inclusion) => ({
+              key: inclusion.key,
+              value: inclusion.value,
+            })),
+        );
+      }
 
-    taker.inclusions.push(
-      ...takerProjectInclusions.project
-        .filter((inclusion) => inclusion.action !== 'delete')
-        .map((inclusion) => ({
-          key: inclusion.key,
-          value: inclusion.value,
-        })),
-    );
+      maker.inclusions.push(
+        ...makerProjectInclusions.project
+          .filter((inclusion) => inclusion.action !== 'delete')
+          .map((inclusion) => ({
+            key: inclusion.key,
+            value: inclusion.value,
+          })),
+      );
 
-    taker.inclusions.push(
-      ...takerUnitInclusions.unit
-        .filter((inclusion) => inclusion.action !== 'delete')
-        .map((inclusion) => ({
-          key: inclusion.key,
-          value: inclusion.value,
-        })),
-    );
+      if (makerUnitInclusions?.unit) {
+        maker.inclusions.push(
+          ...makerUnitInclusions.unit
+            .filter((inclusion) => inclusion.action !== 'delete')
+            .map((inclusion) => ({
+              key: inclusion.key,
+              value: inclusion.value,
+            })),
+        );
+      }
 
-    const offer = generateOffer(maker, taker);
-    return makeOffer(offer);
+      const offerInfo = generateOffer(maker, taker);
+      const offerResponse = await makeOffer(offerInfo);
+
+      if (!offerResponse.success) {
+        throw new Error(offerResponse.error);
+      }
+
+      await Meta.upsert({
+        metaKey: 'activeOfferTradeId',
+        metaValue: offerResponse.offer.trade_id,
+      });
+
+      return offerResponse.offer;
+    } catch (error) {
+      throw new Error(error.message);
+    }
   };
 
   // If the record was commited but the diff.original is null

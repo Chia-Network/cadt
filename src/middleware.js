@@ -90,7 +90,7 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
-  logger.debug(
+  logger.info(
     `Setting header x-api-verion to package.json version: ${packageJson.version}`,
   );
   const version = packageJson.version;

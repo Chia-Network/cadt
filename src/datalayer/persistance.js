@@ -247,13 +247,15 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
 
 const subscribeToStoreOnDataLayer = async (storeId) => {
   if (!storeId) {
+    logger.info(`No storeId found to subscribe to: ${storeId}`);
     return false;
   }
 
-  const subscriptions = await getSubscriptions(storeId);
+  const subscriptions = await getSubscriptions();
 
   if (subscriptions.includes(storeId)) {
-    return true;
+    logger.info(`Already subscribed to: ${storeId}`);
+    return { success: true };
   }
 
   const options = {
@@ -282,7 +284,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
       );
 
-      return true;
+      return data;
     }
 
     return false;
@@ -370,7 +372,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       body: JSON.stringify({
         id: storeId,
         urls: [url],
-        amount: _.get(CONFIG, 'MIRROR_FEE', 1000000000 /* 1 billion mojos */),
+        amount: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
       }),
     };
 
@@ -433,12 +435,14 @@ const removeMirror = async (storeId, coinId) => {
   }
 };
 
-const getSubscriptions = async (storeId) => {
+const getSubscriptions = async () => {
+  if (CONFIG.USE_SIMULATOR) {
+    return [];
+  }
+
   const options = {
     url: `${CONFIG.DATALAYER_URL}/subscriptions `,
-    body: JSON.stringify({
-      id: storeId,
-    }),
+    body: JSON.stringify({}),
   };
 
   try {
@@ -449,10 +453,11 @@ const getSubscriptions = async (storeId) => {
     const data = JSON.parse(response);
 
     if (data.success) {
+      console.log('Your Subscriptions:', data.store_ids);
       return data.store_ids;
     }
 
-    logger.error(`FAILED GETTING STORE IDS FOR ${storeId}`);
+    logger.error(`FAILED GETTING SUBSCRIPTIONS ON DATALAYER`);
     return [];
   } catch (error) {
     return [];
@@ -509,6 +514,82 @@ const makeOffer = async (offer) => {
   }
 };
 
+const takeOffer = async (offer) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/take_offer `,
+    body: JSON.stringify(offer),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+const verifyOffer = async (offer) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/verify_offer `,
+    body: JSON.stringify(offer),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return true;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+const cancelOffer = async (tradeId) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/cancel_offer `,
+    body: JSON.stringify({
+      trade_id: tradeId,
+      secure: true,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
 export {
   addMirror,
   makeOffer,
@@ -525,4 +606,7 @@ export {
   pushChangeListToDataLayer,
   createDataLayerStore,
   getSubscriptions,
+  cancelOffer,
+  verifyOffer,
+  takeOffer,
 };
