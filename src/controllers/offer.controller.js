@@ -46,7 +46,7 @@ export const cancelActiveOffer = async (req, res) => {
       Staging.destroy({ where: { isTransfer: true } }),
     ]);
 
-    res.status(400).json({
+    res.status(200).json({
       message: 'Active offer has been canceled.',
     });
   } catch (error) {
