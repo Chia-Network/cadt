@@ -71,7 +71,7 @@ export const importOfferFile = async (req, res) => {
 
     const offerFile = req.body;
 
-    await datalayer.verifyOffer(offerFile);
+    // await datalayer.verifyOffer(offerFile);
 
     await Meta.upsert({
       metaKey: 'activeOffer',
@@ -139,7 +139,11 @@ export const getCurrentOfferInfo = async (req, res) => {
   try {
     await assertActiveOfferFile();
 
-    const offerFile = Meta.findOne({ where: { metaKey: 'activeOffer' } });
+    const offerFileJson = await Meta.findOne({
+      where: { metaKey: 'activeOffer' },
+      raw: true,
+    });
+    const offerFile = JSON.parse(offerFileJson.metaValue);
 
     const makerChanges = deserializeMaker(offerFile.maker);
     const takerChanges = deserializeTaker(offerFile.taker);
@@ -151,6 +155,7 @@ export const getCurrentOfferInfo = async (req, res) => {
       },
     });
   } catch (error) {
+    console.trace(error);
     res.status(400).json({
       message: 'Can not cancel offer.',
       error: error.message,
