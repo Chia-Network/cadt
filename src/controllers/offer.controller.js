@@ -69,17 +69,15 @@ export const importOfferFile = async (req, res) => {
     await assertNoPendingCommits();
     await assertNoActiveOfferFile();
 
-    const offerFile = req.body;
+    const offerFileBuffer = req.files.file.data;
+    const offerFile = offerFileBuffer.toString('utf-8');
 
-    // await datalayer.verifyOffer(offerFile);
+    await datalayer.verifyOffer(offerFile);
 
     await Meta.upsert({
       metaKey: 'activeOffer',
       metaValue: JSON.stringify(offerFile),
     });
-
-    //  const makerChanges = deserializeMaker(offerFile.maker);
-    //  const takerChanges = deserializeTaker(offerFile.taker);
 
     res.json({
       message: 'Offer has been imported for review.',
