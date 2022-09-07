@@ -40,14 +40,13 @@ export const cancelActiveOffer = async (req, res) => {
       where: { metaKey: 'activeOfferTradeId' },
     });
 
-    if (!activeOffer) {
-      throw new Error(`There is no active offer to cancel`);
-    }
-
     await datalayer.cancelOffer(activeOffer.metaValue);
-    await Meta.destroy({ where: { metaKey: 'activeOfferTradeId' } });
+    await Promise.all([
+      Meta.destroy({ where: { metaKey: 'activeOfferTradeId' } }),
+      Staging.destroy({ where: { isTransfer: true } }),
+    ]);
 
-    res.json({
+    res.status(400).json({
       message: 'Active offer has been canceled.',
     });
   } catch (error) {
