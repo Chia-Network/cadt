@@ -40,7 +40,10 @@ export const cancelActiveOffer = async (req, res) => {
       where: { metaKey: 'activeOfferTradeId' },
     });
 
-    await datalayer.cancelOffer(activeOffer.metaValue);
+    if (activeOffer) {
+      await datalayer.cancelOffer(activeOffer.metaValue);
+    }
+
     await Promise.all([
       Meta.destroy({ where: { metaKey: 'activeOfferTradeId' } }),
       Staging.destroy({ where: { isTransfer: true } }),
