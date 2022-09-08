@@ -122,7 +122,7 @@ export const cancelImportedOfferFile = async (req, res) => {
 
     await Meta.destroy({
       where: {
-        meteKey: 'activeOffer',
+        metaKey: 'activeOffer',
       },
     });
   } catch (error) {
