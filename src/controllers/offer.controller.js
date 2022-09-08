@@ -105,7 +105,7 @@ export const commitImportedOfferFile = async (req, res) => {
 
     await Meta.destroy({
       where: {
-        meteKey: 'activeOffer',
+        metaKey: 'activeOffer',
       },
     });
   } catch (error) {
@@ -141,10 +141,11 @@ export const getCurrentOfferInfo = async (req, res) => {
       where: { metaKey: 'activeOffer' },
       raw: true,
     });
+
     const offerFile = JSON.parse(offerFileJson.metaValue);
 
-    const makerChanges = deserializeMaker(offerFile.maker);
-    const takerChanges = deserializeTaker(offerFile.taker);
+    const makerChanges = deserializeMaker(offerFile.offer.maker);
+    const takerChanges = deserializeTaker(offerFile.offer.taker);
 
     res.status(200).json({
       changes: {
@@ -155,7 +156,7 @@ export const getCurrentOfferInfo = async (req, res) => {
   } catch (error) {
     console.trace(error);
     res.status(400).json({
-      message: 'Can not cancel offer.',
+      message: 'Can not get offer.',
       error: error.message,
     });
   }

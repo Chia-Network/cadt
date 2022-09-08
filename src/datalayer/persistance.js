@@ -531,6 +531,7 @@ const takeOffer = async (offer) => {
       return data;
     }
 
+    console.log(data);
     throw new Error(data.error);
   } catch (error) {
     console.log(error);
