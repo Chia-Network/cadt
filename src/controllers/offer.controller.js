@@ -76,7 +76,7 @@ export const importOfferFile = async (req, res) => {
 
     await Meta.upsert({
       metaKey: 'activeOffer',
-      metaValue: JSON.stringify(offerFile),
+      metaValue: offerFile,
     });
 
     res.json({
