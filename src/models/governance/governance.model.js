@@ -11,7 +11,7 @@ import { logger } from '../../config/logger.cjs';
 import { getDataModelVersion } from '../../utils/helpers';
 import PickListStub from './governance.stub.json';
 
-const { GOVERANCE_BODY_ID } = getConfig().GOVERNANCE;
+const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
 
 const { USE_SIMULATOR, CHIA_NETWORK } = getConfig().APP;
 
@@ -19,24 +19,24 @@ import ModelTypes from './governance.modeltypes.cjs';
 
 class Governance extends Model {
   static async createGoveranceBody() {
-    if (GOVERANCE_BODY_ID && GOVERANCE_BODY_ID !== '') {
+    if (GOVERNANCE_BODY_ID && GOVERNANCE_BODY_ID !== '') {
       throw new Error(
-        'You are already listening to another governance body. Please clear GOVERANCE_BODY_ID from your env and try again',
+        'You are already listening to another governance body. Please clear GOVERNANCE_BODY_ID from your env and try again',
       );
     }
 
     const dataModelVersion = getDataModelVersion();
-    const goveranceBodyId = await datalayer.createDataLayerStore();
+    const governanceBodyId = await datalayer.createDataLayerStore();
     const governanceVersionId = await datalayer.createDataLayerStore();
 
     const revertOrganizationIfFailed = async () => {
       logger.info('Reverting Failed Governance Body Creation');
-      await Meta.destroy({ where: { metaKey: 'goveranceBodyId' } });
+      await Meta.destroy({ where: { metaKey: 'governanceBodyId' } });
     };
 
     // sync the governance store
     await datalayer.syncDataLayer(
-      goveranceBodyId,
+      governanceBodyId,
       {
         [dataModelVersion]: governanceVersionId,
       },
@@ -46,19 +46,19 @@ class Governance extends Model {
     const onConfirm = async () => {
       logger.info('Organization confirmed, you are ready to go');
       await Meta.upsert({
-        metaKey: 'goveranceBodyId',
+        metaKey: 'governanceBodyId',
         metaValue: governanceVersionId,
       });
       await Meta.upsert({
         metaKey: 'mainGoveranceBodyId',
-        metaValue: goveranceBodyId,
+        metaValue: governanceBodyId,
       });
     };
 
     if (!USE_SIMULATOR) {
       logger.info('Waiting for New Governance Body to be confirmed');
       datalayer.getStoreData(
-        goveranceBodyId,
+        governanceBodyId,
         onConfirm,
         revertOrganizationIfFailed,
       );
@@ -102,7 +102,7 @@ class Governance extends Model {
 
   static async sync() {
     try {
-      if (!GOVERANCE_BODY_ID) {
+      if (!GOVERNANCE_BODY_ID) {
         throw new Error('Missing information in env to sync Governance data');
       }
 
@@ -119,10 +119,10 @@ class Governance extends Model {
       }
 
       const governanceData = await datalayer.getSubscribedStoreData(
-        GOVERANCE_BODY_ID,
+        GOVERNANCE_BODY_ID,
       );
 
-      // Check if there is v1, v2, v3 ..... and if not, then we assume this is a legacy goverance table that isnt versioned
+      // Check if there is v1, v2, v3 ..... and if not, then we assume this is a legacy governance table that isnt versioned
       const shouldSyncLegacy = !Object.keys(governanceData).some((key) =>
         /^v?[0-9]+$/.test(key),
       );
@@ -150,12 +150,12 @@ class Governance extends Model {
   }
 
   static async updateGoveranceBodyData(keyValueArray) {
-    const goveranceBodyId = await Meta.findOne({
-      where: { metaKey: 'goveranceBodyId' },
+    const governanceBodyId = await Meta.findOne({
+      where: { metaKey: 'governanceBodyId' },
       raw: true,
     });
 
-    if (!goveranceBodyId) {
+    if (!governanceBodyId) {
       throw new Error(
         'There is no Goverance Body that you own that can be edited',
       );
@@ -208,12 +208,12 @@ class Governance extends Model {
     };
 
     await datalayer.pushDataLayerChangeList(
-      goveranceBodyId.metaValue,
+      governanceBodyId.metaValue,
       changeList,
     );
 
     datalayer.getStoreData(
-      goveranceBodyId.metaValue,
+      governanceBodyId.metaValue,
       onConfirm,
       rollbackChangesIfFailed,
     );

@@ -9,11 +9,6 @@ import {
   assertCanBeGovernanceBody,
 } from '../utils/data-assertions';
 
-import { getConfig } from '../utils/config-loader';
-import glossaryStub from '../models/governance/glossary.stub.json';
-
-const { CHIA_NETWORK } = getConfig().APP;
-
 export const findAll = async (req, res) => {
   try {
     const results = await Governance.findAll();
@@ -29,7 +24,7 @@ export const findAll = async (req, res) => {
 export const isCreated = async (req, res) => {
   try {
     const results = await Meta.findOne({
-      where: { metaKey: 'goveranceBodyId' },
+      where: { metaKey: 'governanceBodyId' },
     });
 
     if (results) {
@@ -65,24 +60,6 @@ export const findPickList = async (req, res) => {
   try {
     const results = await Governance.findOne({
       where: { metaKey: 'pickList' },
-    });
-    return res.json(JSON.parse(_.get(results, 'metaValue', {})));
-  } catch (error) {
-    res.status(400).json({
-      message: 'Can not retreive Governance Data',
-      error: error.message,
-    });
-  }
-};
-
-export const findGlossary = async (req, res) => {
-  try {
-    if (CHIA_NETWORK === 'testnet') {
-      return res.json(glossaryStub);
-    }
-
-    const results = await Governance.findOne({
-      where: { metaKey: 'glossary' },
     });
     return res.json(JSON.parse(_.get(results, 'metaValue', {})));
   } catch (error) {
