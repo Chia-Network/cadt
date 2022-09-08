@@ -493,7 +493,10 @@ const getMirrors = async (storeId) => {
 const makeOffer = async (offer) => {
   const options = {
     url: `${CONFIG.DATALAYER_URL}/make_offer`,
-    body: JSON.stringify(offer),
+    body: JSON.stringify({
+      ...offer,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+    }),
   };
 
   try {
