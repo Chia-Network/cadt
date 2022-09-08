@@ -11,7 +11,7 @@ import {
   assertActiveOfferFile,
 } from '../utils/data-assertions';
 
-// import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
+import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
 
 import * as datalayer from '../datalayer/persistance';
 
@@ -40,14 +40,16 @@ export const cancelActiveOffer = async (req, res) => {
       where: { metaKey: 'activeOfferTradeId' },
     });
 
-    if (!activeOffer) {
-      throw new Error(`There is no active offer to cancel`);
+    if (activeOffer) {
+      await datalayer.cancelOffer(activeOffer.metaValue);
     }
 
-    await datalayer.cancelOffer(activeOffer.metaValue);
-    await Meta.destroy({ where: { metaKey: 'activeOfferTradeId' } });
+    await Promise.all([
+      Meta.destroy({ where: { metaKey: 'activeOfferTradeId' } }),
+      Staging.destroy({ where: { isTransfer: true } }),
+    ]);
 
-    res.json({
+    res.status(200).json({
       message: 'Active offer has been canceled.',
     });
   } catch (error) {
@@ -67,17 +69,15 @@ export const importOfferFile = async (req, res) => {
     await assertNoPendingCommits();
     await assertNoActiveOfferFile();
 
-    const offerFile = req.body;
+    const offerFileBuffer = req.files.file.data;
+    const offerFile = offerFileBuffer.toString('utf-8');
 
     await datalayer.verifyOffer(offerFile);
 
     await Meta.upsert({
       metaKey: 'activeOffer',
-      metaValue: JSON.stringify(offerFile),
+      metaValue: offerFile,
     });
-
-    //  const makerChanges = deserializeMaker(offerFile.maker);
-    //  const takerChanges = deserializeTaker(offerFile.taker);
 
     res.json({
       message: 'Offer has been imported for review.',
@@ -105,7 +105,7 @@ export const commitImportedOfferFile = async (req, res) => {
 
     await Meta.destroy({
       where: {
-        meteKey: 'activeOffer',
+        metaKey: 'activeOffer',
       },
     });
   } catch (error) {
@@ -122,12 +122,41 @@ export const cancelImportedOfferFile = async (req, res) => {
 
     await Meta.destroy({
       where: {
-        meteKey: 'activeOffer',
+        metaKey: 'activeOffer',
       },
     });
   } catch (error) {
     res.status(400).json({
       message: 'Can not cancel offer.',
+      error: error.message,
+    });
+  }
+};
+
+export const getCurrentOfferInfo = async (req, res) => {
+  try {
+    await assertActiveOfferFile();
+
+    const offerFileJson = await Meta.findOne({
+      where: { metaKey: 'activeOffer' },
+      raw: true,
+    });
+
+    const offerFile = JSON.parse(offerFileJson.metaValue);
+
+    const makerChanges = deserializeMaker(offerFile.offer.maker);
+    const takerChanges = deserializeTaker(offerFile.offer.taker);
+
+    res.status(200).json({
+      changes: {
+        maker: makerChanges,
+        taker: takerChanges,
+      },
+    });
+  } catch (error) {
+    console.trace(error);
+    res.status(400).json({
+      message: 'Can not get offer.',
       error: error.message,
     });
   }

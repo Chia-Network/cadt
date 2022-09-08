@@ -441,7 +441,7 @@ const getSubscriptions = async () => {
   }
 
   const options = {
-    url: `${CONFIG.DATALAYER_URL}/subscriptions `,
+    url: `${CONFIG.DATALAYER_URL}/subscriptions`,
     body: JSON.stringify({}),
   };
 
@@ -466,7 +466,7 @@ const getSubscriptions = async () => {
 
 const getMirrors = async (storeId) => {
   const options = {
-    url: `${CONFIG.DATALAYER_URL}/get_mirrors `,
+    url: `${CONFIG.DATALAYER_URL}/get_mirrors`,
     body: JSON.stringify({
       id: storeId,
     }),
@@ -492,8 +492,11 @@ const getMirrors = async (storeId) => {
 
 const makeOffer = async (offer) => {
   const options = {
-    url: `${CONFIG.DATALAYER_URL}/make_offer `,
-    body: JSON.stringify(offer),
+    url: `${CONFIG.DATALAYER_URL}/make_offer`,
+    body: JSON.stringify({
+      ...offer,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+    }),
   };
 
   try {
@@ -516,7 +519,7 @@ const makeOffer = async (offer) => {
 
 const takeOffer = async (offer) => {
   const options = {
-    url: `${CONFIG.DATALAYER_URL}/take_offer `,
+    url: `${CONFIG.DATALAYER_URL}/take_offer`,
     body: JSON.stringify(offer),
   };
 
@@ -531,6 +534,7 @@ const takeOffer = async (offer) => {
       return data;
     }
 
+    console.log(data);
     throw new Error(data.error);
   } catch (error) {
     console.log(error);
@@ -539,9 +543,10 @@ const takeOffer = async (offer) => {
 };
 
 const verifyOffer = async (offer) => {
+  console.log(offer);
   const options = {
-    url: `${CONFIG.DATALAYER_URL}/verify_offer `,
-    body: JSON.stringify(offer),
+    url: `${CONFIG.DATALAYER_URL}/verify_offer`,
+    body: offer,
   };
 
   try {
@@ -550,6 +555,8 @@ const verifyOffer = async (offer) => {
     );
 
     const data = JSON.parse(response);
+
+    console.log(data);
 
     if (data.success) {
       return true;
@@ -564,7 +571,7 @@ const verifyOffer = async (offer) => {
 
 const cancelOffer = async (tradeId) => {
   const options = {
-    url: `${CONFIG.DATALAYER_URL}/cancel_offer `,
+    url: `${CONFIG.DATALAYER_URL}/cancel_offer`,
     body: JSON.stringify({
       trade_id: tradeId,
       secure: true,
