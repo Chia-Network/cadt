@@ -308,7 +308,7 @@ class Organization extends Model {
           const onResult = (data) => {
             const updateData = data
               .filter(
-                ({ dataEntry }) =>
+                (dataEntry) =>
                   dataEntry.key !== 'registryId' ||
                   !dataEntry.key.includes('meta_'),
               )
@@ -319,7 +319,7 @@ class Organization extends Model {
 
             // will return metadata fields. i.e.: { meta_key1: 'value1', meta_key2: 'value2' }
             const metadata = data
-              .filter(({ dataEntry }) => dataEntry.key.includes('meta_'))
+              .filter((dataEntry) => dataEntry.key.includes('meta_'))
               .reduce((update, current) => {
                 update[current.key] = current.value;
                 return update;
