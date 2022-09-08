@@ -33,7 +33,7 @@ export const assertCanBeGovernanceBody = async () => {
 
 export const assertIsActiveGovernanceBody = async () => {
   const governanceBodyIsSetUp = Meta.findAll({
-    where: { metaKey: 'goveranceBodyId' },
+    where: { metaKey: 'governanceBodyId' },
   });
 
   if (!governanceBodyIsSetUp) {

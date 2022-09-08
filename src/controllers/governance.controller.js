@@ -24,7 +24,7 @@ export const findAll = async (req, res) => {
 export const isCreated = async (req, res) => {
   try {
     const results = await Meta.findOne({
-      where: { metaKey: 'goveranceBodyId' },
+      where: { metaKey: 'governanceBodyId' },
     });
 
     if (results) {
