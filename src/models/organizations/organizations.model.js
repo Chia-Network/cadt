@@ -307,7 +307,11 @@ class Organization extends Model {
         allSubscribedOrganizations.map((organization) => {
           const onResult = (data) => {
             const updateData = data
-              .filter(({ dataEntry }) => current.key !== 'registryId' || !dataEntry.key.includes('meta_'))
+              .filter(
+                ({ dataEntry }) =>
+                  dataEntry.key !== 'registryId' ||
+                  !dataEntry.key.includes('meta_'),
+              )
               .reduce((update, current) => {
                 update[current.key] = current.value;
                 return update;
