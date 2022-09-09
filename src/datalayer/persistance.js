@@ -281,7 +281,6 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
       const chiaConfig = fullNode.getChiaConfig();
 
-      await waitForAllTransactionsToConfirm();
       await addMirror(
         storeId,
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
@@ -350,6 +349,7 @@ const getRootDiff = async (storeId, root1, root2) => {
 };
 
 const addMirror = async (storeId, url, forceAddMirror = false) => {
+  await waitForAllTransactionsToConfirm();
   const homeOrg = await Organization.getHomeOrg();
 
   if (!homeOrg && !forceAddMirror) {
