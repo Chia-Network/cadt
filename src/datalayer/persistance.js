@@ -281,7 +281,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
       const chiaConfig = fullNode.getChiaConfig();
 
-      addMirror(
+      await addMirror(
         storeId,
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
       );
