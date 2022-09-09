@@ -93,6 +93,15 @@ const getWalletBalance = async () => {
   }
 };
 
+const waitForAllTransactionsToConfirm = async () => {
+  if (await hasUnconfirmedTransactions()) {
+    await new Promise((resolve) => setTimeout(resolve(), 15000));
+    return waitForAllTransactionsToConfirm();
+  }
+
+  return true;
+};
+
 const hasUnconfirmedTransactions = async () => {
   const options = {
     url: `${rpcUrl}/get_transactions`,
@@ -137,4 +146,5 @@ export default {
   walletIsAvailable,
   getPublicAddress,
   getWalletBalance,
+  waitForAllTransactionsToConfirm,
 };

@@ -8,6 +8,7 @@ import { getConfig } from '../utils/config-loader';
 import { decodeHex } from '../utils/datalayer-utils';
 import fullNode from './fullNode';
 import { publicIpv4 } from '../utils/ip-tools';
+import { waitForAllTransactionsToConfirm } from './wallet';
 
 // Generally I dont think this should be put here,
 // but because of time, will add it and thinkof a way to refactor
@@ -279,6 +280,8 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
       console.trace(storeId);
 
       const chiaConfig = fullNode.getChiaConfig();
+
+      await waitForAllTransactionsToConfirm();
       await addMirror(
         storeId,
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
