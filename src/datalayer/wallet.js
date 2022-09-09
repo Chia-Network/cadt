@@ -95,11 +95,19 @@ const getWalletBalance = async () => {
 
 const waitForAllTransactionsToConfirm = async () => {
   if (await hasUnconfirmedTransactions()) {
-    await new Promise((resolve) => setTimeout(resolve(), 15000));
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 15000);
+    });
     return waitForAllTransactionsToConfirm();
   }
 
-  await new Promise((resolve) => setTimeout(resolve(), 15000));
+  await new Promise((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, 15000);
+  });
   return true;
 };
 
