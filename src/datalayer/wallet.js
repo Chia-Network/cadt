@@ -99,6 +99,7 @@ const waitForAllTransactionsToConfirm = async () => {
     return waitForAllTransactionsToConfirm();
   }
 
+  await new Promise((resolve) => setTimeout(resolve(), 15000));
   return true;
 };
 
