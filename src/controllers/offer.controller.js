@@ -36,6 +36,12 @@ export const generateOfferFile = async (req, res) => {
 
 export const cancelActiveOffer = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
+    await assertStagingTableNotEmpty();
+    await assertHomeOrgExists();
+    await assertWalletIsSynced();
+    await assertNoPendingCommits();
+
     const activeOffer = await Meta.findOne({
       where: { metaKey: 'activeOfferTradeId' },
     });
@@ -94,6 +100,11 @@ export const importOfferFile = async (req, res) => {
 export const commitImportedOfferFile = async (req, res) => {
   try {
     await assertActiveOfferFile();
+    await assertIfReadOnlyMode();
+    await assertStagingTableIsEmpty();
+    await assertHomeOrgExists();
+    await assertWalletIsSynced();
+    await assertNoPendingCommits();
 
     const offerFile = Meta.findOne({ where: { metaKey: 'activeOffer' } });
     const response = await datalayer.takeOffer(offerFile);
