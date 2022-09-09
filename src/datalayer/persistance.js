@@ -372,7 +372,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       body: JSON.stringify({
         id: storeId,
         urls: [url],
-        amount: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+        amount: _.get(CONFIG, 'DEFAULT_FEE', 300000000 /* 1 billion mojos */),
       }),
     };
 
