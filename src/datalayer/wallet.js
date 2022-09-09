@@ -105,7 +105,10 @@ const waitForAllTransactionsToConfirm = async () => {
 const hasUnconfirmedTransactions = async () => {
   const options = {
     url: `${rpcUrl}/get_transactions`,
-    body: JSON.stringify({}),
+    body: JSON.stringify({
+      wallet_id: '1',
+      sort_key: 'RELEVANCE',
+    }),
   };
 
   const response = await request(Object.assign({}, getBaseOptions(), options));
