@@ -15,6 +15,8 @@ logger.info('climate-warehouse:datalayer:writeService');
 const { USE_SIMULATOR } = getConfig().APP;
 
 const createDataLayerStore = async () => {
+  await wallet.waitForAllTransactionsToConfirm();
+
   let storeId;
   if (USE_SIMULATOR) {
     storeId = await simulator.createDataLayerStore();
@@ -25,6 +27,7 @@ const createDataLayerStore = async () => {
       `Created storeId: ${storeId}, waiting for this to be confirmed on the blockchain.`,
     );
     await waitForStoreToBeConfirmed(storeId);
+    await wallet.waitForAllTransactionsToConfirm();
 
     const chiaConfig = fullNode.getChiaConfig();
 
