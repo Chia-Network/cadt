@@ -121,6 +121,8 @@ const hasUnconfirmedTransactions = async () => {
     return data.transactions.some((transaction) => !transaction.confirmed);
   }
 
+  console.log(data);
+
   return false;
 };
 
