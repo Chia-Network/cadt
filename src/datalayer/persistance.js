@@ -8,7 +8,7 @@ import { getConfig } from '../utils/config-loader';
 import { decodeHex } from '../utils/datalayer-utils';
 import fullNode from './fullNode';
 import { publicIpv4 } from '../utils/ip-tools';
-import { waitForAllTransactionsToConfirm } from './wallet';
+import wallet from './wallet';
 
 // Generally I dont think this should be put here,
 // but because of time, will add it and thinkof a way to refactor
@@ -349,7 +349,7 @@ const getRootDiff = async (storeId, root1, root2) => {
 };
 
 const addMirror = async (storeId, url, forceAddMirror = false) => {
-  await waitForAllTransactionsToConfirm();
+  await wallet.waitForAllTransactionsToConfirm();
   const homeOrg = await Organization.getHomeOrg();
 
   if (!homeOrg && !forceAddMirror) {
