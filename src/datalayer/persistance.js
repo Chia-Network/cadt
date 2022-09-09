@@ -372,7 +372,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       body: JSON.stringify({
         id: storeId,
         urls: [url],
-        amount: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+        amount: _.get(CONFIG, 'DEFAULT_FEE', 300000000 /* 1 billion mojos */),
       }),
     };
 
@@ -495,7 +495,7 @@ const makeOffer = async (offer) => {
     url: `${CONFIG.DATALAYER_URL}/make_offer`,
     body: JSON.stringify({
       ...offer,
-      fee: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000 /* 1 billion mojos */),
     }),
   };
 
@@ -575,7 +575,7 @@ const cancelOffer = async (tradeId) => {
     body: JSON.stringify({
       trade_id: tradeId,
       secure: true,
-      fee: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000 /* 1 billion mojos */),
     }),
   };
 
