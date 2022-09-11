@@ -108,6 +108,11 @@ class Organization extends Model {
         ]);
       };
 
+      if (!USE_SIMULATOR) {
+        await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+        await datalayer.waitForAllTransactionsToConfirm();
+      }
+
       // sync the organization store
       await datalayer.syncDataLayer(
         newOrganizationId,
@@ -120,6 +125,11 @@ class Organization extends Model {
         revertOrganizationIfFailed,
       );
 
+      if (!USE_SIMULATOR) {
+        await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+        await datalayer.waitForAllTransactionsToConfirm();
+      }
+
       //sync the registry store
       await datalayer.syncDataLayer(
         newRegistryId,
@@ -128,6 +138,9 @@ class Organization extends Model {
         },
         revertOrganizationIfFailed,
       );
+
+      await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+      await datalayer.waitForAllTransactionsToConfirm();
 
       await Promise.all([
         Organization.create({
@@ -165,6 +178,7 @@ class Organization extends Model {
 
       return newOrganizationId;
     } catch (error) {
+      console.trace(error);
       logger.error(error.message);
       logger.info('Reverting Failed Organization');
       await Organization.destroy({ where: { isHome: true } });

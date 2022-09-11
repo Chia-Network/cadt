@@ -7,6 +7,7 @@ import { getConfig } from '../utils/config-loader';
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const rpcUrl = getConfig().APP.WALLET_URL;
+const USE_SIMULATOR = getConfig().APP.USE_SIMULATOR;
 
 const getBaseOptions = () => {
   const homeDir = os.homedir();
@@ -94,20 +95,17 @@ const getWalletBalance = async () => {
 };
 
 const waitForAllTransactionsToConfirm = async () => {
-  if (await hasUnconfirmedTransactions()) {
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, 15000);
-    });
+  if (USE_SIMULATOR) {
+    return true;
+  }
+
+  const unconfirmedTransactions = await hasUnconfirmedTransactions();
+  await new Promise((resolve) => setTimeout(() => resolve(), 15000));
+
+  if (unconfirmedTransactions) {
     return waitForAllTransactionsToConfirm();
   }
 
-  await new Promise((resolve) => {
-    setTimeout(() => {
-      resolve();
-    }, 15000);
-  });
   return true;
 };
 
@@ -130,10 +128,9 @@ const hasUnconfirmedTransactions = async () => {
         data.transactions.filter((transaction) => !transaction.confirmed).length
       }`,
     );
+
     return data.transactions.some((transaction) => !transaction.confirmed);
   }
-
-  console.log(data);
 
   return false;
 };
