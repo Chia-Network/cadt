@@ -35,6 +35,7 @@ const getBaseOptions = () => {
     method: 'POST',
     cert: fs.readFileSync(certFile),
     key: fs.readFileSync(keyFile),
+    timeout: 60000,
   };
 
   return baseOptions;
@@ -59,6 +60,8 @@ const createDataLayerStore = async () => {
 
 const pushChangeListToDataLayer = async (storeId, changelist) => {
   try {
+    await wallet.waitForAllTransactionsToConfirm();
+
     const options = {
       url: `${CONFIG.DATALAYER_URL}/batch_update`,
       body: JSON.stringify({
@@ -72,6 +75,8 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
     );
 
     const data = JSON.parse(response);
+
+    console.log(data);
 
     if (data.success) {
       logger.info(
@@ -94,6 +99,7 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
     );
     return false;
   } catch (error) {
+    logger.error(error.message);
     logger.info('There was an error pushing your changes to the datalayer');
   }
 };
@@ -190,6 +196,7 @@ const getStoreData = async (storeId, rootHash) => {
     }
   }
 
+  logger.info(`Unable to find store data for ${storeId}}`);
   return false;
 };
 

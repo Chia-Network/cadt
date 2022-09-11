@@ -293,6 +293,7 @@ const getRootDiff = (storeId, root1, root2) => {
 };
 
 const getStoreData = async (storeId, callback, onFail, retry = 0) => {
+  logger.info(`Getting store data, retry: ${retry}`);
   if (retry <= 10) {
     const encodedData = await dataLayer.getStoreData(storeId);
     if (_.isEmpty(encodedData?.keys_values)) {
@@ -344,6 +345,14 @@ export const getLocalStoreData = async (storeId) => {
   return decodeDataLayerResponse(encodedData);
 };
 
+export const waitForAllTransactionsToConfirm = async () => {
+  if (USE_SIMULATOR) {
+    return true;
+  }
+
+  return dataLayer.waitForAllTransactionsToConfirm();
+};
+
 export default {
   startDataLayerUpdatePolling,
   syncDataLayerStoreToClimateWarehouse,
@@ -358,4 +367,5 @@ export default {
   POLLING_INTERVAL,
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
+  waitForAllTransactionsToConfirm,
 };
