@@ -319,11 +319,7 @@ class Organization extends Model {
         allSubscribedOrganizations.map((organization) => {
           const onResult = (data) => {
             const updateData = data
-              .filter(
-                (dataEntry) =>
-                  dataEntry.key !== 'registryId' ||
-                  !dataEntry.key.includes('meta_'),
-              )
+              .filter((pair) => !pair.key.includes('meta_'))
               .reduce((update, current) => {
                 update[current.key] = current.value;
                 return update;
@@ -331,14 +327,14 @@ class Organization extends Model {
 
             // will return metadata fields. i.e.: { meta_key1: 'value1', meta_key2: 'value2' }
             const metadata = data
-              .filter((dataEntry) => dataEntry.key.includes('meta_'))
+              .filter((pair) => pair.key.includes('meta_'))
               .reduce((update, current) => {
                 update[current.key] = current.value;
                 return update;
               }, {});
 
             Organization.update(
-              { ...updateData, metadata },
+              { ..._.omit(updateData, ['registryId']), metadata },
               {
                 where: { orgUid: organization.orgUid },
               },

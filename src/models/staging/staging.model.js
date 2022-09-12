@@ -54,13 +54,18 @@ class Staging extends Model {
         raw: true,
       });
 
+      // The record still has the orgUid of the makerProjectRecord,
+      // we will update this to the correct orgUId later
+      const takerOrganization = await Organization.findOne({
+        where: { orgUid: makerProjectRecord.orgUid },
+        raw: true,
+      });
+
       const maker = { inclusions: [] };
       const taker = { inclusions: [] };
 
-      // The record still has the orgUid of the makerProjectRecord,
-      // we will update this to the correct orgUId later
-      taker.storeId = makerProjectRecord.orgUid;
-      maker.storeId = myOrganization.orgUid;
+      taker.storeId = takerOrganization.registryId;
+      maker.storeId = myOrganization.registryId;
 
       const takerProjectRecord = await Project.findOne({
         where: { warehouseProjectId: makerProjectRecord.warehouseProjectId },
@@ -223,9 +228,7 @@ class Staging extends Model {
         metaValue: offerResponse.offer.trade_id,
       });
 
-      console.log(offerResponse);
-
-      return _.omit(offerResponse, ['status']);
+      return _.omit(offerResponse, ['success']);
     } catch (error) {
       throw new Error(error.message);
     }
