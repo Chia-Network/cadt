@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 import { Meta, Staging } from '../models';
 
 import {
@@ -14,6 +16,9 @@ import {
 import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
 
 import * as datalayer from '../datalayer/persistance';
+import { getConfig } from '../utils/config-loader';
+
+const CONFIG = getConfig().APP;
 
 export const generateOfferFile = async (req, res) => {
   try {
@@ -77,12 +82,16 @@ export const importOfferFile = async (req, res) => {
 
     const offerFileBuffer = req.files.file.data;
     const offerFile = offerFileBuffer.toString('utf-8');
+    const offerParsed = JSON.parse(offerFile);
+    offerParsed.fee = _.get(CONFIG, 'DEFAULT_FEE', 300000000);
+    delete offerParsed.success;
+    const offerJSON = JSON.stringify(offerParsed);
 
-    await datalayer.verifyOffer(offerFile);
+    await datalayer.verifyOffer(offerJSON);
 
     await Meta.upsert({
       metaKey: 'activeOffer',
-      metaValue: offerFile,
+      metaValue: offerJSON,
     });
 
     res.json({
@@ -106,8 +115,12 @@ export const commitImportedOfferFile = async (req, res) => {
     await assertWalletIsSynced();
     await assertNoPendingCommits();
 
-    const offerFile = Meta.findOne({ where: { metaKey: 'activeOffer' } });
-    const response = await datalayer.takeOffer(offerFile);
+    const offerFile = await Meta.findOne({
+      where: { metaKey: 'activeOffer' },
+      raw: true,
+    });
+
+    const response = await datalayer.takeOffer(JSON.parse(offerFile.metaValue));
 
     res.json({
       message: 'Offer Accepted.',
