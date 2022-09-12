@@ -146,7 +146,7 @@ export const cancelImportedOfferFile = async (req, res) => {
 
 export const getCurrentOfferInfo = async (req, res) => {
   try {
-    // await assertActiveOfferFile();
+    await assertActiveOfferFile();
 
     const offerFileJson = await Meta.findOne({
       where: { metaKey: 'activeOffer' },
