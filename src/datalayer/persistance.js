@@ -44,7 +44,9 @@ const getBaseOptions = () => {
 const createDataLayerStore = async () => {
   const options = {
     url: `${CONFIG.DATALAYER_URL}/create_data_store`,
-    body: JSON.stringify({}),
+    body: JSON.stringify({
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+    }),
   };
 
   const response = await request(Object.assign({}, getBaseOptions(), options));
@@ -67,6 +69,7 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
       body: JSON.stringify({
         changelist,
         id: storeId,
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
       }),
     };
 
@@ -229,6 +232,7 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
     url: `${CONFIG.DATALAYER_URL}/unsubscribe`,
     body: JSON.stringify({
       id: storeId,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     }),
   };
 
@@ -270,6 +274,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
     url: `${CONFIG.DATALAYER_URL}/subscribe`,
     body: JSON.stringify({
       id: storeId,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     }),
   };
 
@@ -383,6 +388,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
         id: storeId,
         urls: [url],
         amount: _.get(CONFIG, 'DEFAULT_COIN_AMOUNT', 300000000),
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
       }),
     };
 
@@ -424,6 +430,7 @@ const removeMirror = async (storeId, coinId) => {
       url: `${CONFIG.DATALAYER_URL}/delete_mirror`,
       body: JSON.stringify({
         id: coinId,
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
       }),
     };
 
