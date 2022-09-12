@@ -223,7 +223,9 @@ class Staging extends Model {
         metaValue: offerResponse.offer.trade_id,
       });
 
-      return _.pick(offerResponse.offer, ['offer', 'fee']);
+      console.log(offerResponse);
+
+      return _.omit(offerResponse, ['status']);
     } catch (error) {
       throw new Error(error.message);
     }
