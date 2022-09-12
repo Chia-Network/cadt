@@ -76,6 +76,7 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
           try {
             value = JSON.parse(decodeHex(kv.value));
           } catch (err) {
+            console.trace(err);
             logger.error(`Cant parse json value: ${decodeHex(kv.value)}`);
           }
 
