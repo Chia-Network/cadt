@@ -76,6 +76,7 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
           try {
             value = JSON.parse(decodeHex(kv.value));
           } catch (err) {
+            console.trace(err);
             logger.error(`Cant parse json value: ${decodeHex(kv.value)}`);
           }
 
@@ -206,7 +207,6 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
 
   const subscriptions = await dataLayer.getSubscriptions(storeId);
   const alreadySubscribed = subscriptions.includes(storeId);
-  console.log('%%%%%%%%%%%%', alreadySubscribed);
 
   if (!alreadySubscribed) {
     logger.info(`No Subscription Found for ${storeId}, Subscribing...`);
@@ -293,10 +293,11 @@ const getRootDiff = (storeId, root1, root2) => {
 };
 
 const getStoreData = async (storeId, callback, onFail, retry = 0) => {
+  logger.info(`Getting store data, retry: ${retry}`);
   if (retry <= 10) {
     const encodedData = await dataLayer.getStoreData(storeId);
     if (_.isEmpty(encodedData?.keys_values)) {
-      await new Promise((resolve) => setTimeout(() => resolve(), 60000));
+      await new Promise((resolve) => setTimeout(() => resolve(), 120000));
       return getStoreData(storeId, callback, onFail, retry + 1);
     } else {
       callback(decodeDataLayerResponse(encodedData));
@@ -344,6 +345,14 @@ export const getLocalStoreData = async (storeId) => {
   return decodeDataLayerResponse(encodedData);
 };
 
+export const waitForAllTransactionsToConfirm = async () => {
+  if (USE_SIMULATOR) {
+    return true;
+  }
+
+  return dataLayer.waitForAllTransactionsToConfirm();
+};
+
 export default {
   startDataLayerUpdatePolling,
   syncDataLayerStoreToClimateWarehouse,
@@ -358,4 +367,5 @@ export default {
   POLLING_INTERVAL,
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
+  waitForAllTransactionsToConfirm,
 };

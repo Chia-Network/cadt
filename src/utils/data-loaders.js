@@ -16,13 +16,13 @@ export const pullPickListValues = async () => {
   if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
     downloadedPickList = PickListStub;
   } else {
-    const goveranceData = await Governance.findOne({
+    const governanceData = await Governance.findOne({
       where: { metaKey: 'pickList' },
       raw: true,
     });
 
-    if (_.get(goveranceData, 'metaValue')) {
-      downloadedPickList = JSON.parse(goveranceData.metaValue);
+    if (_.get(governanceData, 'metaValue')) {
+      downloadedPickList = JSON.parse(governanceData.metaValue);
     }
   }
 
@@ -33,12 +33,12 @@ export const getDefaultOrganizationList = async () => {
   if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
     return [];
   } else {
-    const goveranceData = await Governance.findOne({
+    const governanceData = await Governance.findOne({
       where: { metaKey: 'orgList' },
       raw: true,
     });
 
-    return JSON.parse(_.get(goveranceData, 'metaValue', '[]'));
+    return JSON.parse(_.get(governanceData, 'metaValue', '[]'));
   }
 };
 

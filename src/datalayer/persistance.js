@@ -8,6 +8,7 @@ import { getConfig } from '../utils/config-loader';
 import { decodeHex } from '../utils/datalayer-utils';
 import fullNode from './fullNode';
 import { publicIpv4 } from '../utils/ip-tools';
+import wallet from './wallet';
 
 // Generally I dont think this should be put here,
 // but because of time, will add it and thinkof a way to refactor
@@ -34,6 +35,7 @@ const getBaseOptions = () => {
     method: 'POST',
     cert: fs.readFileSync(certFile),
     key: fs.readFileSync(keyFile),
+    timeout: 60000,
   };
 
   return baseOptions;
@@ -42,7 +44,9 @@ const getBaseOptions = () => {
 const createDataLayerStore = async () => {
   const options = {
     url: `${CONFIG.DATALAYER_URL}/create_data_store`,
-    body: JSON.stringify({}),
+    body: JSON.stringify({
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+    }),
   };
 
   const response = await request(Object.assign({}, getBaseOptions(), options));
@@ -58,11 +62,14 @@ const createDataLayerStore = async () => {
 
 const pushChangeListToDataLayer = async (storeId, changelist) => {
   try {
+    await wallet.waitForAllTransactionsToConfirm();
+
     const options = {
       url: `${CONFIG.DATALAYER_URL}/batch_update`,
       body: JSON.stringify({
         changelist,
         id: storeId,
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
       }),
     };
 
@@ -71,6 +78,8 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
     );
 
     const data = JSON.parse(response);
+
+    console.log(data);
 
     if (data.success) {
       logger.info(
@@ -93,6 +102,7 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
     );
     return false;
   } catch (error) {
+    logger.error(error.message);
     logger.info('There was an error pushing your changes to the datalayer');
   }
 };
@@ -189,6 +199,7 @@ const getStoreData = async (storeId, rootHash) => {
     }
   }
 
+  logger.info(`Unable to find store data for ${storeId}}`);
   return false;
 };
 
@@ -221,6 +232,7 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
     url: `${CONFIG.DATALAYER_URL}/unsubscribe`,
     body: JSON.stringify({
       id: storeId,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     }),
   };
 
@@ -251,6 +263,13 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
     return false;
   }
 
+  const homeOrg = await Organization.getHomeOrg();
+
+  if ([homeOrg.orgUid, homeOrg.registryId].includes(storeId)) {
+    logger.info(`Cant subscribe to self: ${storeId}`);
+    return { success: true };
+  }
+
   const subscriptions = await getSubscriptions();
 
   if (subscriptions.includes(storeId)) {
@@ -262,6 +281,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
     url: `${CONFIG.DATALAYER_URL}/subscribe`,
     body: JSON.stringify({
       id: storeId,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     }),
   };
 
@@ -279,6 +299,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
       console.trace(storeId);
 
       const chiaConfig = fullNode.getChiaConfig();
+
       await addMirror(
         storeId,
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
@@ -347,6 +368,7 @@ const getRootDiff = async (storeId, root1, root2) => {
 };
 
 const addMirror = async (storeId, url, forceAddMirror = false) => {
+  await wallet.waitForAllTransactionsToConfirm();
   const homeOrg = await Organization.getHomeOrg();
 
   if (!homeOrg && !forceAddMirror) {
@@ -372,7 +394,8 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       body: JSON.stringify({
         id: storeId,
         urls: [url],
-        amount: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+        amount: _.get(CONFIG, 'DEFAULT_COIN_AMOUNT', 300000000),
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
       }),
     };
 
@@ -414,6 +437,7 @@ const removeMirror = async (storeId, coinId) => {
       url: `${CONFIG.DATALAYER_URL}/delete_mirror`,
       body: JSON.stringify({
         id: coinId,
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
       }),
     };
 
@@ -453,7 +477,7 @@ const getSubscriptions = async () => {
     const data = JSON.parse(response);
 
     if (data.success) {
-      console.log('Your Subscriptions:', data.store_ids);
+      // console.log('Your Subscriptions:', data.store_ids);
       return data.store_ids;
     }
 
@@ -495,7 +519,7 @@ const makeOffer = async (offer) => {
     url: `${CONFIG.DATALAYER_URL}/make_offer`,
     body: JSON.stringify({
       ...offer,
-      fee: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     }),
   };
 
@@ -575,7 +599,7 @@ const cancelOffer = async (tradeId) => {
     body: JSON.stringify({
       trade_id: tradeId,
       secure: true,
-      fee: _.get(CONFIG, 'DEFAULT_FEE', 1000000000 /* 1 billion mojos */),
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     }),
   };
 

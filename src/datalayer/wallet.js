@@ -7,6 +7,7 @@ import { getConfig } from '../utils/config-loader';
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const rpcUrl = getConfig().APP.WALLET_URL;
+const USE_SIMULATOR = getConfig().APP.USE_SIMULATOR;
 
 const getBaseOptions = () => {
   const homeDir = os.homedir();
@@ -93,10 +94,28 @@ const getWalletBalance = async () => {
   }
 };
 
+const waitForAllTransactionsToConfirm = async () => {
+  if (USE_SIMULATOR) {
+    return true;
+  }
+
+  const unconfirmedTransactions = await hasUnconfirmedTransactions();
+  await new Promise((resolve) => setTimeout(() => resolve(), 15000));
+
+  if (unconfirmedTransactions) {
+    return waitForAllTransactionsToConfirm();
+  }
+
+  return true;
+};
+
 const hasUnconfirmedTransactions = async () => {
   const options = {
     url: `${rpcUrl}/get_transactions`,
-    body: JSON.stringify({}),
+    body: JSON.stringify({
+      wallet_id: '1',
+      sort_key: 'RELEVANCE',
+    }),
   };
 
   const response = await request(Object.assign({}, getBaseOptions(), options));
@@ -104,6 +123,12 @@ const hasUnconfirmedTransactions = async () => {
   const data = JSON.parse(response);
 
   if (data.success) {
+    console.log(
+      `Pending confirmations: ${
+        data.transactions.filter((transaction) => !transaction.confirmed).length
+      }`,
+    );
+
     return data.transactions.some((transaction) => !transaction.confirmed);
   }
 
@@ -137,4 +162,5 @@ export default {
   walletIsAvailable,
   getPublicAddress,
   getWalletBalance,
+  waitForAllTransactionsToConfirm,
 };

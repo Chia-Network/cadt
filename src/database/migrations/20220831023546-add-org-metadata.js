@@ -5,7 +5,7 @@ export default {
     await Promise.all(
       ['organizations'].map((table) => {
         queryInterface.addColumn(table, 'metadata', {
-          type: Sequelize.String,
+          type: Sequelize.STRING,
           allowNull: true,
           defaultValue: false,
         });
@@ -15,7 +15,7 @@ export default {
 
   async down(queryInterface) {
     await Promise.all(
-      [].map((table) => {
+      ['organizations'].map((table) => {
         queryInterface.removeColumn(table, 'metadata');
       }),
     );

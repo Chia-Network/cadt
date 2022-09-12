@@ -108,6 +108,11 @@ class Organization extends Model {
         ]);
       };
 
+      if (!USE_SIMULATOR) {
+        await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+        await datalayer.waitForAllTransactionsToConfirm();
+      }
+
       // sync the organization store
       await datalayer.syncDataLayer(
         newOrganizationId,
@@ -120,6 +125,11 @@ class Organization extends Model {
         revertOrganizationIfFailed,
       );
 
+      if (!USE_SIMULATOR) {
+        await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+        await datalayer.waitForAllTransactionsToConfirm();
+      }
+
       //sync the registry store
       await datalayer.syncDataLayer(
         newRegistryId,
@@ -128,6 +138,9 @@ class Organization extends Model {
         },
         revertOrganizationIfFailed,
       );
+
+      await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+      await datalayer.waitForAllTransactionsToConfirm();
 
       await Promise.all([
         Organization.create({
@@ -165,6 +178,7 @@ class Organization extends Model {
 
       return newOrganizationId;
     } catch (error) {
+      console.trace(error);
       logger.error(error.message);
       logger.info('Reverting Failed Organization');
       await Organization.destroy({ where: { isHome: true } });
@@ -231,8 +245,6 @@ class Organization extends Model {
     try {
       console.log('Importing organization ' + orgUid);
       const orgData = await datalayer.getSubscribedStoreData(orgUid);
-
-      console.log('!!!!!!!!!!!!', orgData);
 
       if (!orgData.registryId) {
         throw new Error(
@@ -307,11 +319,7 @@ class Organization extends Model {
         allSubscribedOrganizations.map((organization) => {
           const onResult = (data) => {
             const updateData = data
-              .filter(
-                (dataEntry) =>
-                  dataEntry.key !== 'registryId' ||
-                  !dataEntry.key.includes('meta_'),
-              )
+              .filter((pair) => !pair.key.includes('meta_'))
               .reduce((update, current) => {
                 update[current.key] = current.value;
                 return update;
@@ -319,14 +327,14 @@ class Organization extends Model {
 
             // will return metadata fields. i.e.: { meta_key1: 'value1', meta_key2: 'value2' }
             const metadata = data
-              .filter((dataEntry) => dataEntry.key.includes('meta_'))
+              .filter((pair) => pair.key.includes('meta_'))
               .reduce((update, current) => {
                 update[current.key] = current.value;
                 return update;
               }, {});
 
             Organization.update(
-              { ...updateData, metadata },
+              { ..._.omit(updateData, ['registryId']), metadata },
               {
                 where: { orgUid: organization.orgUid },
               },
