@@ -246,8 +246,6 @@ class Organization extends Model {
       console.log('Importing organization ' + orgUid);
       const orgData = await datalayer.getSubscribedStoreData(orgUid);
 
-      console.log('!!!!!!!!!!!!', orgData);
-
       if (!orgData.registryId) {
         throw new Error(
           'Currupted organization, no registryId on the datalayer, can not import',

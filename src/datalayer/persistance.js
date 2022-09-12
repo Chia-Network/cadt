@@ -259,6 +259,13 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
     return false;
   }
 
+  const homeOrg = await Organization.getHomeOrg();
+
+  if ([homeOrg.orgUid, homeOrg.registryId].includes(storeId)) {
+    logger.info(`Cant subscribe to self: ${storeId}`);
+    return { success: true };
+  }
+
   const subscriptions = await getSubscriptions();
 
   if (subscriptions.includes(storeId)) {
@@ -463,7 +470,7 @@ const getSubscriptions = async () => {
     const data = JSON.parse(response);
 
     if (data.success) {
-      console.log('Your Subscriptions:', data.store_ids);
+      // console.log('Your Subscriptions:', data.store_ids);
       return data.store_ids;
     }
 

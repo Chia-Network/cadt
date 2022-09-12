@@ -206,7 +206,6 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
 
   const subscriptions = await dataLayer.getSubscriptions(storeId);
   const alreadySubscribed = subscriptions.includes(storeId);
-  console.log('%%%%%%%%%%%%', alreadySubscribed);
 
   if (!alreadySubscribed) {
     logger.info(`No Subscription Found for ${storeId}, Subscribing...`);
@@ -297,7 +296,7 @@ const getStoreData = async (storeId, callback, onFail, retry = 0) => {
   if (retry <= 10) {
     const encodedData = await dataLayer.getStoreData(storeId);
     if (_.isEmpty(encodedData?.keys_values)) {
-      await new Promise((resolve) => setTimeout(() => resolve(), 60000));
+      await new Promise((resolve) => setTimeout(() => resolve(), 120000));
       return getStoreData(storeId, callback, onFail, retry + 1);
     } else {
       callback(decodeDataLayerResponse(encodedData));
