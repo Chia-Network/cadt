@@ -82,6 +82,7 @@ class Staging extends Model {
 
       const newMakerWarehouseProjectId = uuidv4();
       makerProjectRecord.warehouseProjectId = newMakerWarehouseProjectId;
+      makerProjectRecord.orgUid = myOrganization.orgUid;
 
       // Out of time so just hard coding this
       const projectChildRecords = [
@@ -99,6 +100,7 @@ class Staging extends Model {
         if (makerProjectRecord[childRecordSet]) {
           makerProjectRecord[childRecordSet].forEach((childRecord) => {
             childRecord.warehouseProjectId = newMakerWarehouseProjectId;
+            childRecord.orgUid = myOrganization.orgUid;
           });
         }
       });
@@ -126,6 +128,7 @@ class Staging extends Model {
       unitTakerRecords = unitTakerRecords.map((record) => {
         record.unitStatus = 'Exported';
         record.warehouseUnitId = uuidv4();
+        record.orgUid = myOrganization.orgUid;
         return record;
       });
 
