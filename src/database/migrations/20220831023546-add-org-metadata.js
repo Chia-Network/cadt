@@ -7,7 +7,7 @@ export default {
         queryInterface.addColumn(table, 'metadata', {
           type: Sequelize.STRING,
           allowNull: true,
-          defaultValue: {},
+          defaultValue: '{}',
         });
       }),
     );
