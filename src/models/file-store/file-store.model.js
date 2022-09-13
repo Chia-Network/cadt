@@ -143,10 +143,10 @@ class FileStore extends Model {
       throw new Error('New File store being created, please try again later.');
     }
 
-    const changeList = {
+    const changeList = [{
       action: 'delete',
       key: encodeHex(SHA256),
-    };
+    }];
 
     datalayer.pushDataLayerChangeList(fileStoreId, changeList);
 
