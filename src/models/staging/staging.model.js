@@ -1,6 +1,7 @@
 'use strict';
 
 import _ from 'lodash';
+import { uuid as uuidv4 } from 'uuidv4';
 import Sequelize from 'sequelize';
 const Op = Sequelize.Op;
 
@@ -79,6 +80,27 @@ class Staging extends Model {
 
       takerProjectRecord.projectStatus = 'Transitioned';
 
+      const newMakerWarehouseProjectId = uuidv4();
+      makerProjectRecord.warehouseProjectId = newMakerWarehouseProjectId;
+
+      // Out of time so just hard coding this
+      const projectChildRecords = [
+        'issuances',
+        'projectLocations',
+        'estimations',
+        'labels',
+        'projectRatings',
+        'coBenefits',
+        'relatedProjects',
+      ];
+
+      // Each child record for the maker needs the new projectId
+      projectChildRecords.forEach((childRecordSet) => {
+        projectChildRecords[childRecordSet].forEach((childRecord) => {
+          childRecord.warehouseProjectId = newMakerWarehouseProjectId;
+        });
+      });
+
       const issuanceIds = takerProjectRecord.issuances.reduce(
         (ids, issuance) => {
           if (!ids.includes(issuance.id)) {
@@ -101,6 +123,7 @@ class Staging extends Model {
 
       unitTakerRecords = unitTakerRecords.map((record) => {
         record.unitStatus = 'Exported';
+        record.warehouseUnitId = uuidv4();
         return record;
       });
 
@@ -176,43 +199,38 @@ class Staging extends Model {
         .map((inclusion) => ({ key: inclusion.key, value: inclusion.value }));
     });*/
 
-      taker.inclusions.push(
-        ...takerProjectInclusions.project
+      const formatForOfferTransfer = (record) => {
+        return record
           .filter((inclusion) => inclusion.action !== 'delete')
           .map((inclusion) => ({
             key: inclusion.key,
             value: inclusion.value,
-          })),
+          }));
+      };
+
+      taker.inclusions.push(
+        ...formatForOfferTransfer(takerProjectInclusions.project),
       );
 
       if (takerUnitInclusions?.unit) {
         taker.inclusions.push(
-          ...takerUnitInclusions.unit
-            .filter((inclusion) => inclusion.action !== 'delete')
-            .map((inclusion) => ({
-              key: inclusion.key,
-              value: inclusion.value,
-            })),
+          ...formatForOfferTransfer(takerUnitInclusions.unit),
         );
       }
 
       maker.inclusions.push(
-        ...makerProjectInclusions.project
-          .filter((inclusion) => inclusion.action !== 'delete')
-          .map((inclusion) => ({
-            key: inclusion.key,
-            value: inclusion.value,
-          })),
+        ...formatForOfferTransfer(makerProjectInclusions.project),
+        ...formatForOfferTransfer(makerProjectInclusions.issuances),
+        ...formatForOfferTransfer(makerProjectInclusions.projectLocations),
+        ...formatForOfferTransfer(makerProjectInclusions.labels),
+        ...formatForOfferTransfer(makerProjectInclusions.projectRatings),
+        ...formatForOfferTransfer(makerProjectInclusions.coBenefits),
+        ...formatForOfferTransfer(makerProjectInclusions.relatedProjects),
       );
 
       if (makerUnitInclusions?.unit) {
         maker.inclusions.push(
-          ...makerUnitInclusions.unit
-            .filter((inclusion) => inclusion.action !== 'delete')
-            .map((inclusion) => ({
-              key: inclusion.key,
-              value: inclusion.value,
-            })),
+          ...formatForOfferTransfer(makerUnitInclusions.unit),
         );
       }
 
