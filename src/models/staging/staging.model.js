@@ -96,9 +96,11 @@ class Staging extends Model {
 
       // Each child record for the maker needs the new projectId
       projectChildRecords.forEach((childRecordSet) => {
-        projectChildRecords[childRecordSet].forEach((childRecord) => {
-          childRecord.warehouseProjectId = newMakerWarehouseProjectId;
-        });
+        if (projectChildRecords[childRecordSet]) {
+          projectChildRecords[childRecordSet].forEach((childRecord) => {
+            childRecord.warehouseProjectId = newMakerWarehouseProjectId;
+          });
+        }
       });
 
       const issuanceIds = takerProjectRecord.issuances.reduce(
@@ -248,6 +250,7 @@ class Staging extends Model {
 
       return _.omit(offerResponse, ['success']);
     } catch (error) {
+      console.trace(error);
       throw new Error(error.message);
     }
   };
