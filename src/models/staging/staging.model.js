@@ -96,8 +96,8 @@ class Staging extends Model {
 
       // Each child record for the maker needs the new projectId
       projectChildRecords.forEach((childRecordSet) => {
-        if (projectChildRecords[childRecordSet]) {
-          projectChildRecords[childRecordSet].forEach((childRecord) => {
+        if (makerProjectRecord[childRecordSet]) {
+          makerProjectRecord[childRecordSet].forEach((childRecord) => {
             childRecord.warehouseProjectId = newMakerWarehouseProjectId;
           });
         }

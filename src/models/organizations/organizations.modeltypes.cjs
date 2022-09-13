@@ -29,10 +29,10 @@ module.exports = {
     defaultValue: false,
   },
   metadata: {
-          type: Sequelize.STRING,
-          allowNull: true,
-          defaultValue: {},
-        },
+    type: Sequelize.STRING,
+    allowNull: true,
+    defaultValue: {},
+  },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };
