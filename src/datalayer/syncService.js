@@ -174,6 +174,7 @@ const dataLayerWasUpdated = async () => {
     const updatedHomeInfo = updateStoreInfo.find(
       (info) => info.storeId === homeOrg.registryId,
     );
+
     if (updatedHomeInfo.rootHash !== homeOrg.registryHash) {
       await Staging.destroy({ where: { isTransfer: true } });
     }
