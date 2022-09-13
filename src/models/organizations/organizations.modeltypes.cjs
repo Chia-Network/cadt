@@ -28,6 +28,11 @@ module.exports = {
     type: Sequelize.BOOLEAN,
     defaultValue: false,
   },
+  metadata: {
+          type: Sequelize.STRING,
+          allowNull: true,
+          defaultValue: {},
+        },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };

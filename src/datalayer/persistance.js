@@ -296,7 +296,6 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
     if (Object.keys(data).includes('success') && data.success) {
       logger.info(`Successfully Subscribed: ${storeId}`);
-      console.trace(storeId);
 
       const chiaConfig = fullNode.getChiaConfig();
 

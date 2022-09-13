@@ -344,7 +344,6 @@ export const addMetadata = async (req, res) => {
   }
 };
 
-
 export const addMirror = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
@@ -355,14 +354,31 @@ export const addMirror = async (req, res) => {
     return res.json({
       message: `Mirror added for ${req.body.storeId}.`,
     });
-
   } catch (error) {
     res.status(400).json({
       message: 'Error adding mirror',
       error: error.message,
     });
   }
-}
+};
+
+export const getMetaData = async (req, res) => {
+  try {
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    const organization = await Organization.findOne({
+      where: { orgUid: req.query.orgUid },
+    });
+
+    return res.json(JSON.parse(organization.metadata));
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error removing mirror for organization',
+      error: error.message,
+    });
+  }
+};
 
 export const removeMirror = async (req, res) => {
   try {

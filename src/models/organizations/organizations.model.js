@@ -334,7 +334,10 @@ class Organization extends Model {
               }, {});
 
             Organization.update(
-              { ..._.omit(updateData, ['registryId']), metadata },
+              {
+                ..._.omit(updateData, ['registryId']),
+                metadata: JSON.stringify(metadata),
+              },
               {
                 where: { orgUid: organization.orgUid },
               },
