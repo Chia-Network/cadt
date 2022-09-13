@@ -144,6 +144,14 @@ const dataLayerWasUpdated = async () => {
     );
 
     if (org) {
+      // When a transfer is made, the climate warehouse is locked from making updates
+      // while waiting for the transfer to either be completed or rejected.
+      // This means that we know the transfer completed when the root hash changed
+      // and we can remove it from the pending staging table.
+      if (org.isHome == 1 && org.registryHash != rootHash.hash) {
+        Staging.destroy({ where: { isTransfer: true } });
+      }
+
       // store has been updated if its confirmed and the hash has changed
       return rootHash.confirmed && org.registryHash != rootHash.hash;
     }
@@ -164,21 +172,6 @@ const dataLayerWasUpdated = async () => {
       };
     }),
   );
-
-  // When a transfer is made, the climate warehouse is locked from making updates
-  // while waiting for the transfer to either be completed or rejected.
-  // This means that we know the transfer completed when the root hash changed
-  // and we can remove it from the pending staging table.
-  const homeOrg = organizations.find((org) => org.isHome === 1);
-  if (homeOrg) {
-    const updatedHomeInfo = updateStoreInfo.find(
-      (info) => info.storeId === homeOrg.registryId,
-    );
-
-    if (updatedHomeInfo.rootHash !== homeOrg.registryHash) {
-      await Staging.destroy({ where: { isTransfer: true } });
-    }
-  }
 
   return updateStoreInfo;
 };
