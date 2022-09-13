@@ -31,7 +31,7 @@ module.exports = {
   metadata: {
     type: Sequelize.STRING,
     allowNull: true,
-    defaultValue: {},
+    defaultValue: '{}',
   },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
