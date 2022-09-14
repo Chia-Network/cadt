@@ -118,6 +118,7 @@ class Staging extends Model {
       let unitTakerRecords = await Unit.findAll({
         where: {
           issuanceId: { [Op.in]: issuanceIds },
+          orgUid: takerProjectRecord.orgUid,
         },
         raw: true,
       });
@@ -197,12 +198,6 @@ class Staging extends Model {
         'insert',
         primaryUnitKeyMap,
       );
-
-      /* Object.keys(maker.inclusions).forEach((table) => {
-      maker.inclusions[table] = maker.inclusions[table]
-        .filter((inclusion) => inclusion.action !== 'delete')
-        .map((inclusion) => ({ key: inclusion.key, value: inclusion.value }));
-    });*/
 
       const formatForOfferTransfer = (record) => {
         return record
