@@ -168,13 +168,58 @@ export const getCurrentOfferInfo = async (req, res) => {
 
     const offerFile = JSON.parse(offerFileJson.metaValue);
 
+    // Out of time so just hard coding this
+    const projectChildRecords = [
+      'issuances',
+      'projectLocations',
+      'estimations',
+      'labels',
+      'projectRatings',
+      'coBenefits',
+      'relatedProjects',
+    ];
+
     const makerChanges = deserializeMaker(offerFile.offer.maker);
     const takerChanges = deserializeTaker(offerFile.offer.taker);
 
+    console.log(makerChanges);
+
+    let maker = makerChanges.filter((record) => record.table === 'project');
+
+    makerChanges.forEach((record) => {
+      if (projectChildRecords.includes(record.table)) {
+        if (!maker[0].value[record.table]) {
+          maker[0].value[record.table] = [];
+        }
+
+        maker[0].value[record.table].push(record.value);
+      }
+    });
+
+    maker = maker.concat(
+      makerChanges.filter((record) => record.table === 'unit'),
+    );
+
+    let taker = takerChanges.filter((record) => record.table === 'project');
+
+    takerChanges.forEach((record) => {
+      if (projectChildRecords.includes(record.table)) {
+        if (!taker[0].value[record.table]) {
+          taker[0].value[record.table] = [];
+        }
+
+        taker[0].value[record.table].push(record.value);
+      }
+    });
+
+    taker = taker.concat(
+      takerChanges.filter((record) => record.table === 'unit'),
+    );
+
     res.status(200).json({
       changes: {
-        maker: makerChanges,
-        taker: takerChanges,
+        maker,
+        taker,
       },
     });
   } catch (error) {
