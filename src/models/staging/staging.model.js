@@ -82,6 +82,7 @@ class Staging extends Model {
 
       const newMakerWarehouseProjectId = uuidv4();
       makerProjectRecord.warehouseProjectId = newMakerWarehouseProjectId;
+      makerProjectRecord.orgUid = myOrganization.orgUid;
 
       // Out of time so just hard coding this
       const projectChildRecords = [
@@ -96,9 +97,12 @@ class Staging extends Model {
 
       // Each child record for the maker needs the new projectId
       projectChildRecords.forEach((childRecordSet) => {
-        projectChildRecords[childRecordSet].forEach((childRecord) => {
-          childRecord.warehouseProjectId = newMakerWarehouseProjectId;
-        });
+        if (makerProjectRecord[childRecordSet]) {
+          makerProjectRecord[childRecordSet].forEach((childRecord) => {
+            childRecord.warehouseProjectId = newMakerWarehouseProjectId;
+            childRecord.orgUid = myOrganization.orgUid;
+          });
+        }
       });
 
       const issuanceIds = takerProjectRecord.issuances.reduce(
@@ -114,6 +118,7 @@ class Staging extends Model {
       let unitTakerRecords = await Unit.findAll({
         where: {
           issuanceId: { [Op.in]: issuanceIds },
+          orgUid: takerProjectRecord.orgUid,
         },
         raw: true,
       });
@@ -124,6 +129,7 @@ class Staging extends Model {
       unitTakerRecords = unitTakerRecords.map((record) => {
         record.unitStatus = 'Exported';
         record.warehouseUnitId = uuidv4();
+        record.orgUid = myOrganization.orgUid;
         return record;
       });
 
@@ -193,12 +199,6 @@ class Staging extends Model {
         primaryUnitKeyMap,
       );
 
-      /* Object.keys(maker.inclusions).forEach((table) => {
-      maker.inclusions[table] = maker.inclusions[table]
-        .filter((inclusion) => inclusion.action !== 'delete')
-        .map((inclusion) => ({ key: inclusion.key, value: inclusion.value }));
-    });*/
-
       const formatForOfferTransfer = (record) => {
         return record
           .filter((inclusion) => inclusion.action !== 'delete')
@@ -248,6 +248,7 @@ class Staging extends Model {
 
       return _.omit(offerResponse, ['success']);
     } catch (error) {
+      console.trace(error);
       throw new Error(error.message);
     }
   };

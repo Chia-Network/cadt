@@ -265,7 +265,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
   const homeOrg = await Organization.getHomeOrg();
 
-  if ([homeOrg.orgUid, homeOrg.registryId].includes(storeId)) {
+  if (homeOrg && [(homeOrg.orgUid, homeOrg.registryId)].includes(storeId)) {
     logger.info(`Cant subscribe to self: ${storeId}`);
     return { success: true };
   }
@@ -296,7 +296,6 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
     if (Object.keys(data).includes('success') && data.success) {
       logger.info(`Successfully Subscribed: ${storeId}`);
-      console.trace(storeId);
 
       const chiaConfig = fullNode.getChiaConfig();
 

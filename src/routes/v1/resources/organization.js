@@ -13,6 +13,7 @@ import {
   importHomeOrganizationSchema,
   removeMirrorSchema,
   addMirrorSchema,
+  getMetaDataSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -102,11 +103,16 @@ OrganizationRouter.post(
   },
 );
 
-OrganizationRouter.post(
+OrganizationRouter.get(
   '/metadata',
+  validator.query(getMetaDataSchema),
   (req, res) => {
-    return OrganizationController.addMetadata(req, res);
+    return OrganizationController.getMetaData(req, res);
   },
 );
+
+OrganizationRouter.post('/metadata', (req, res) => {
+  return OrganizationController.addMetadata(req, res);
+});
 
 export { OrganizationRouter };

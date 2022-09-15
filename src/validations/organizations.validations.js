@@ -34,3 +34,7 @@ export const addMirrorSchema = Joi.object({
   storeId: Joi.string().required(),
   url: Joi.string().required(),
 });
+
+export const getMetaDataSchema = Joi.object({
+  orgUid: Joi.string().required(),
+});
