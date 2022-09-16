@@ -13,13 +13,13 @@ const { USE_SIMULATOR } = getConfig().APP;
 const POLLING_INTERVAL = 5000;
 const frames = ['-', '\\', '|', '/'];
 
-logger.debug('Start Datalayer Update Polling');
+logger.info('Start Datalayer Update Polling');
 const startDataLayerUpdatePolling = async () => {
   const updateStoreInfo = await dataLayerWasUpdated();
   if (updateStoreInfo.length) {
     await Promise.all(
       updateStoreInfo.map(async (store) => {
-        logger.debug(
+        logger.info(
           `Updates found syncing storeId: ${store.storeId} ${
             frames[Math.floor(Math.random() * 3)]
           }`,
@@ -76,6 +76,7 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
           try {
             value = JSON.parse(decodeHex(kv.value));
           } catch (err) {
+            console.trace(err);
             logger.error(`Cant parse json value: ${decodeHex(kv.value)}`);
           }
 
@@ -143,6 +144,14 @@ const dataLayerWasUpdated = async () => {
     );
 
     if (org) {
+      // When a transfer is made, the climate warehouse is locked from making updates
+      // while waiting for the transfer to either be completed or rejected.
+      // This means that we know the transfer completed when the root hash changed
+      // and we can remove it from the pending staging table.
+      if (org.isHome == 1 && org.registryHash != rootHash.hash) {
+        Staging.destroy({ where: { isTransfer: true } });
+      }
+
       // store has been updated if its confirmed and the hash has changed
       return rootHash.confirmed && org.registryHash != rootHash.hash;
     }
@@ -181,11 +190,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 };
 
-const getSubscribedStoreData = async (
-  storeId,
-  alreadySubscribed = false,
-  retry = 0,
-) => {
+const getSubscribedStoreData = async (storeId, retry = 0) => {
   if (retry >= 60) {
     throw new Error(
       `Max retrys exceeded while trying to subscribe to ${storeId}, Can not subscribe to organization`,
@@ -194,43 +199,47 @@ const getSubscribedStoreData = async (
 
   const timeoutInterval = 30000;
 
+  const subscriptions = await dataLayer.getSubscriptions(storeId);
+  const alreadySubscribed = subscriptions.includes(storeId);
+
   if (!alreadySubscribed) {
+    logger.info(`No Subscription Found for ${storeId}, Subscribing...`);
     const response = await subscribeToStoreOnDataLayer(storeId);
 
     if (!response || !response.success) {
       if (!response) {
-        logger.debug(
+        logger.info(
           `Response from subscribe RPC came back undefined, is your datalayer running?`,
         );
       }
-      logger.debug(
+      logger.info(
         `Retrying subscribe to ${storeId}, subscribe failed`,
         retry + 1,
       );
-      logger.debug('...');
+      logger.info('...');
       await new Promise((resolve) =>
         setTimeout(() => resolve(), timeoutInterval),
       );
-      return getSubscribedStoreData(storeId, false, retry + 1);
+      return getSubscribedStoreData(storeId, retry + 1);
     }
   }
 
-  logger.debug(`Subscription Successful for ${storeId}.`);
+  logger.info(`Subscription Found for ${storeId}.`);
 
   if (!USE_SIMULATOR) {
-    logger.debug(`Getting confirmation for ${storeId}.`);
+    logger.info(`Getting confirmation for ${storeId}.`);
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
-    logger.debug(`Store exists and is found ${storeId}.`);
+    logger.info(`Store exists and is found ${storeId}.`);
     if (!storeExistAndIsConfirmed) {
-      logger.debug(
+      logger.info(
         `Retrying subscribe to ${storeId}, store not yet confirmed.`,
         retry + 1,
       );
-      logger.debug('...');
+      logger.info('...');
       await new Promise((resolve) =>
         setTimeout(() => resolve(), timeoutInterval),
       );
-      return getSubscribedStoreData(storeId, true, retry + 1);
+      return getSubscribedStoreData(storeId, retry + 1);
     } else {
       logger.debug(
         `Store Exists and is confirmed, proceededing to get data ${storeId}`,
@@ -246,15 +255,15 @@ const getSubscribedStoreData = async (
   }
 
   if (_.isEmpty(encodedData?.keys_values)) {
-    logger.debug(
+    logger.info(
       `Retrying subscribe to ${storeId}, No data detected in store.`,
       retry + 1,
     );
-    logger.debug('...');
+    logger.info('...');
     await new Promise((resolve) =>
       setTimeout(() => resolve(), timeoutInterval),
     );
-    return getSubscribedStoreData(storeId, true, retry + 1);
+    return getSubscribedStoreData(storeId, retry + 1);
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);
@@ -278,10 +287,11 @@ const getRootDiff = (storeId, root1, root2) => {
 };
 
 const getStoreData = async (storeId, callback, onFail, retry = 0) => {
+  logger.info(`Getting store data, retry: ${retry}`);
   if (retry <= 10) {
     const encodedData = await dataLayer.getStoreData(storeId);
     if (_.isEmpty(encodedData?.keys_values)) {
-      await new Promise((resolve) => setTimeout(() => resolve(), 60000));
+      await new Promise((resolve) => setTimeout(() => resolve(), 120000));
       return getStoreData(storeId, callback, onFail, retry + 1);
     } else {
       callback(decodeDataLayerResponse(encodedData));
@@ -329,6 +339,14 @@ export const getLocalStoreData = async (storeId) => {
   return decodeDataLayerResponse(encodedData);
 };
 
+export const waitForAllTransactionsToConfirm = async () => {
+  if (USE_SIMULATOR) {
+    return true;
+  }
+
+  return dataLayer.waitForAllTransactionsToConfirm();
+};
+
 export default {
   startDataLayerUpdatePolling,
   syncDataLayerStoreToClimateWarehouse,
@@ -343,4 +361,5 @@ export default {
   POLLING_INTERVAL,
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
+  waitForAllTransactionsToConfirm,
 };

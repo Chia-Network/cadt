@@ -53,7 +53,8 @@ export const deleteFile = async (req, res) => {
   try {
     await FileStore.deleteFileStoreItem(req.body.fileId);
     res.status(200).json({
-      message: 'File deleted from filestore',
+      message:
+        'File will be deleted from the filestore, but it will take a few mins to confirm.',
     });
   } catch (error) {
     res.status(400).json({

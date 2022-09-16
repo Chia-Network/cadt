@@ -11,6 +11,9 @@ import {
   subscribeOrganizationSchema,
   unsubscribeOrganizationSchema,
   importHomeOrganizationSchema,
+  removeMirrorSchema,
+  addMirrorSchema,
+  getMetaDataSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -19,6 +22,14 @@ const OrganizationRouter = express.Router();
 OrganizationRouter.get('/', (req, res) => {
   return OrganizationController.findAll(req, res);
 });
+
+OrganizationRouter.get(
+  '/organizations',
+  validator.body(removeMirrorSchema),
+  (req, res) => {
+    return OrganizationController.removeMirror(req, res);
+  },
+);
 
 OrganizationRouter.delete('/', (req, res) => {
   return OrganizationController.resetHomeOrg(req, res);
@@ -83,5 +94,25 @@ OrganizationRouter.put(
     return OrganizationController.resyncOrganization(req, res);
   },
 );
+
+OrganizationRouter.post(
+  '/mirror',
+  validator.body(addMirrorSchema),
+  (req, res) => {
+    return OrganizationController.addMirror(req, res);
+  },
+);
+
+OrganizationRouter.get(
+  '/metadata',
+  validator.query(getMetaDataSchema),
+  (req, res) => {
+    return OrganizationController.getMetaData(req, res);
+  },
+);
+
+OrganizationRouter.post('/metadata', (req, res) => {
+  return OrganizationController.addMetadata(req, res);
+});
 
 export { OrganizationRouter };

@@ -31,3 +31,43 @@ export const keyValueToChangeList = (key, value, includeDelete) => {
 
   return changeList;
 };
+
+export const generateOffer = (maker, taker) => {
+  return {
+    maker: [
+      {
+        store_id: maker.storeId,
+        inclusions: maker.inclusions,
+      },
+    ],
+    taker: [
+      {
+        store_id: taker.storeId,
+        inclusions: taker.inclusions,
+      },
+    ],
+    fee: 0,
+  };
+};
+
+export const deserializeTaker = (taker) => {
+  const changes = taker[0].inclusions.map((inclusion) => {
+    const tableKey = decodeHex(inclusion.key);
+    const table = tableKey.split('|')[0];
+    const value = JSON.parse(decodeHex(inclusion.value));
+    return { table, value };
+  });
+
+  return changes;
+};
+
+export const deserializeMaker = (maker) => {
+  const changes = maker[0].proofs.map((inclusion) => {
+    const tableKey = decodeHex(inclusion.key);
+    const table = tableKey.split('|')[0];
+    const value = JSON.parse(decodeHex(inclusion.value));
+    return { table, value };
+  });
+
+  return changes;
+};

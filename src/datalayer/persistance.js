@@ -8,6 +8,11 @@ import { getConfig } from '../utils/config-loader';
 import { decodeHex } from '../utils/datalayer-utils';
 import fullNode from './fullNode';
 import { publicIpv4 } from '../utils/ip-tools';
+import wallet from './wallet';
+
+// Generally I dont think this should be put here,
+// but because of time, will add it and thinkof a way to refactor
+import { Organization } from '../models';
 
 import { logger } from '../config/logger.cjs';
 
@@ -15,7 +20,7 @@ logger.info('climate-warehouse:datalayer:persistance');
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
-const rpcUrl = getConfig().APP.DATALAYER_URL;
+const CONFIG = getConfig().APP;
 
 const getBaseOptions = () => {
   const homeDir = os.homedir();
@@ -30,15 +35,18 @@ const getBaseOptions = () => {
     method: 'POST',
     cert: fs.readFileSync(certFile),
     key: fs.readFileSync(keyFile),
+    timeout: 60000,
   };
 
   return baseOptions;
 };
 
-export const createDataLayerStore = async () => {
+const createDataLayerStore = async () => {
   const options = {
-    url: `${rpcUrl}/create_data_store`,
-    body: JSON.stringify({}),
+    url: `${CONFIG.DATALAYER_URL}/create_data_store`,
+    body: JSON.stringify({
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+    }),
   };
 
   const response = await request(Object.assign({}, getBaseOptions(), options));
@@ -52,13 +60,16 @@ export const createDataLayerStore = async () => {
   throw new Error(data.error);
 };
 
-export const pushChangeListToDataLayer = async (storeId, changelist) => {
+const pushChangeListToDataLayer = async (storeId, changelist) => {
   try {
+    await wallet.waitForAllTransactionsToConfirm();
+
     const options = {
-      url: `${rpcUrl}/batch_update`,
+      url: `${CONFIG.DATALAYER_URL}/batch_update`,
       body: JSON.stringify({
         changelist,
         id: storeId,
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
       }),
     };
 
@@ -67,6 +78,8 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
     );
 
     const data = JSON.parse(response);
+
+    console.log(data);
 
     if (data.success) {
       logger.info(
@@ -89,13 +102,14 @@ export const pushChangeListToDataLayer = async (storeId, changelist) => {
     );
     return false;
   } catch (error) {
+    logger.error(error.message);
     logger.info('There was an error pushing your changes to the datalayer');
   }
 };
 
-export const getRoots = async (storeIds) => {
+const getRoots = async (storeIds) => {
   const options = {
-    url: `${rpcUrl}/get_roots`,
+    url: `${CONFIG.DATALAYER_URL}/get_roots`,
     body: JSON.stringify({
       ids: storeIds,
     }),
@@ -118,9 +132,9 @@ export const getRoots = async (storeIds) => {
   }
 };
 
-export const getRoot = async (storeId, ignoreEmptyStore = false) => {
+const getRoot = async (storeId, ignoreEmptyStore = false) => {
   const options = {
-    url: `${rpcUrl}/get_root`,
+    url: `${CONFIG.DATALAYER_URL}/get_root`,
     body: JSON.stringify({
       id: storeId,
     }),
@@ -146,7 +160,7 @@ export const getRoot = async (storeId, ignoreEmptyStore = false) => {
   }
 };
 
-export const getStoreData = async (storeId, rootHash) => {
+const getStoreData = async (storeId, rootHash) => {
   if (storeId) {
     const payload = {
       id: storeId,
@@ -157,7 +171,7 @@ export const getStoreData = async (storeId, rootHash) => {
     }
 
     const options = {
-      url: `${rpcUrl}/get_keys_values`,
+      url: `${CONFIG.DATALAYER_URL}/get_keys_values`,
       body: JSON.stringify(payload),
     };
 
@@ -185,12 +199,13 @@ export const getStoreData = async (storeId, rootHash) => {
     }
   }
 
+  logger.info(`Unable to find store data for ${storeId}}`);
   return false;
 };
 
-export const dataLayerAvailable = async () => {
+const dataLayerAvailable = async () => {
   const options = {
-    url: `${rpcUrl}/get_routes`,
+    url: `${CONFIG.DATALAYER_URL}/get_routes`,
     body: JSON.stringify({}),
   };
 
@@ -212,15 +227,16 @@ export const dataLayerAvailable = async () => {
   }
 };
 
-export const unsubscribeFromDataLayerStore = async (storeId) => {
+const unsubscribeFromDataLayerStore = async (storeId) => {
   const options = {
-    url: `${rpcUrl}/unsubscribe`,
+    url: `${CONFIG.DATALAYER_URL}/unsubscribe`,
     body: JSON.stringify({
       id: storeId,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     }),
   };
 
-  logger.info(`RPC Call: ${rpcUrl}/unsubscribe ${storeId}`);
+  logger.info(`RPC Call: ${CONFIG.DATALAYER_URL}/unsubscribe ${storeId}`);
 
   try {
     const response = await request(
@@ -241,16 +257,35 @@ export const unsubscribeFromDataLayerStore = async (storeId) => {
   }
 };
 
-export const subscribeToStoreOnDataLayer = async (storeId) => {
+const subscribeToStoreOnDataLayer = async (storeId) => {
+  if (!storeId) {
+    logger.info(`No storeId found to subscribe to: ${storeId}`);
+    return false;
+  }
+
+  const homeOrg = await Organization.getHomeOrg();
+
+  if (homeOrg && [(homeOrg.orgUid, homeOrg.registryId)].includes(storeId)) {
+    logger.info(`Cant subscribe to self: ${storeId}`);
+    return { success: true };
+  }
+
+  const subscriptions = await getSubscriptions();
+
+  if (subscriptions.includes(storeId)) {
+    logger.info(`Already subscribed to: ${storeId}`);
+    return { success: true };
+  }
+
   const options = {
-    url: `${rpcUrl}/subscribe`,
+    url: `${CONFIG.DATALAYER_URL}/subscribe`,
     body: JSON.stringify({
       id: storeId,
-      urls: [],
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     }),
   };
 
-  logger.info(`RPC Call: ${rpcUrl}/subscribe ${storeId}`);
+  logger.info(`Subscribing to: ${storeId}`);
 
   try {
     const response = await request(
@@ -263,7 +298,8 @@ export const subscribeToStoreOnDataLayer = async (storeId) => {
       logger.info(`Successfully Subscribed: ${storeId}`);
 
       const chiaConfig = fullNode.getChiaConfig();
-      addMirror(
+
+      await addMirror(
         storeId,
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
       );
@@ -278,9 +314,9 @@ export const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 };
 
-export const getRootHistory = async (storeId) => {
+const getRootHistory = async (storeId) => {
   const options = {
-    url: `${rpcUrl}/get_root_history`,
+    url: `${CONFIG.DATALAYER_URL}/get_root_history`,
     body: JSON.stringify({
       id: storeId,
     }),
@@ -303,9 +339,9 @@ export const getRootHistory = async (storeId) => {
   }
 };
 
-export const getRootDiff = async (storeId, root1, root2) => {
+const getRootDiff = async (storeId, root1, root2) => {
   const options = {
-    url: `${rpcUrl}/get_kv_diff`,
+    url: `${CONFIG.DATALAYER_URL}/get_kv_diff`,
     body: JSON.stringify({
       id: storeId,
       hash_1: root1,
@@ -330,7 +366,15 @@ export const getRootDiff = async (storeId, root1, root2) => {
   }
 };
 
-const _addMirror = async (storeId, url) => {
+const addMirror = async (storeId, url, forceAddMirror = false) => {
+  await wallet.waitForAllTransactionsToConfirm();
+  const homeOrg = await Organization.getHomeOrg();
+
+  if (!homeOrg && !forceAddMirror) {
+    logger.info(`No home org detected so skipping mirror for ${storeId}`);
+    return false;
+  }
+
   const mirrors = await getMirrors(storeId);
 
   // Dont add the mirror if it already exists.
@@ -339,16 +383,18 @@ const _addMirror = async (storeId, url) => {
   );
 
   if (mirror) {
+    logger.info(`Mirror already available for ${storeId}`);
     return true;
   }
 
   try {
     const options = {
-      url: `${rpcUrl}/add_mirror`,
+      url: `${CONFIG.DATALAYER_URL}/add_mirror`,
       body: JSON.stringify({
         id: storeId,
         urls: [url],
-        amount: 1,
+        amount: _.get(CONFIG, 'DEFAULT_COIN_AMOUNT', 300000000),
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
       }),
     };
 
@@ -370,9 +416,80 @@ const _addMirror = async (storeId, url) => {
   }
 };
 
+const removeMirror = async (storeId, coinId) => {
+  const mirrors = await getMirrors(storeId);
+
+  // Dont add the mirror if it already exists.
+  const mirrorExists = mirrors.find(
+    (mirror) => mirror.coin_id === coinId && mirror.launcher_id === storeId,
+  );
+
+  if (mirrorExists) {
+    logger.error(
+      `Mirror doesnt exist for: storeId: ${storeId}, coinId: ${coinId}`,
+    );
+    return false;
+  }
+
+  try {
+    const options = {
+      url: `${CONFIG.DATALAYER_URL}/delete_mirror`,
+      body: JSON.stringify({
+        id: coinId,
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+      }),
+    };
+
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      logger.info(`Removed mirror for ${storeId}`);
+      return true;
+    }
+
+    logger.error(`Failed removing mirror for ${storeId}`);
+    return false;
+  } catch (error) {
+    return false;
+  }
+};
+
+const getSubscriptions = async () => {
+  if (CONFIG.USE_SIMULATOR) {
+    return [];
+  }
+
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/subscriptions`,
+    body: JSON.stringify({}),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      // console.log('Your Subscriptions:', data.store_ids);
+      return data.store_ids;
+    }
+
+    logger.error(`FAILED GETTING SUBSCRIPTIONS ON DATALAYER`);
+    return [];
+  } catch (error) {
+    return [];
+  }
+};
+
 const getMirrors = async (storeId) => {
   const options = {
-    url: `${rpcUrl}/get_mirrors `,
+    url: `${CONFIG.DATALAYER_URL}/get_mirrors`,
     body: JSON.stringify({
       id: storeId,
     }),
@@ -390,10 +507,136 @@ const getMirrors = async (storeId) => {
     }
 
     logger.error(`FAILED GETTING MIRRORS FOR ${storeId}`);
-    return false;
+    return [];
   } catch (error) {
-    return false;
+    return [];
   }
 };
 
-export const addMirror = _addMirror;
+const makeOffer = async (offer) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/make_offer`,
+    body: JSON.stringify({
+      ...offer,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+const takeOffer = async (offer) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/take_offer`,
+    body: JSON.stringify(offer),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    console.log(data);
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+const verifyOffer = async (offer) => {
+  console.log(offer);
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/verify_offer`,
+    body: offer,
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    console.log(data);
+
+    if (data.success) {
+      return true;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+const cancelOffer = async (tradeId) => {
+  const options = {
+    url: `${CONFIG.DATALAYER_URL}/cancel_offer`,
+    body: JSON.stringify({
+      trade_id: tradeId,
+      secure: true,
+      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+    }),
+  };
+
+  try {
+    const response = await request(
+      Object.assign({}, getBaseOptions(), options),
+    );
+
+    const data = JSON.parse(response);
+
+    if (data.success) {
+      return data;
+    }
+
+    throw new Error(data.error);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export {
+  addMirror,
+  makeOffer,
+  getMirrors,
+  removeMirror,
+  getRootDiff,
+  getRootHistory,
+  subscribeToStoreOnDataLayer,
+  unsubscribeFromDataLayerStore,
+  dataLayerAvailable,
+  getStoreData,
+  getRoot,
+  getRoots,
+  pushChangeListToDataLayer,
+  createDataLayerStore,
+  getSubscriptions,
+  cancelOffer,
+  verifyOffer,
+  takeOffer,
+};

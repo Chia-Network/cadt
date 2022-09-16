@@ -29,6 +29,10 @@ GovernanceRouter.get('/meta/pickList', (req, res) => {
   return GovernanceController.findPickList(req, res);
 });
 
+GovernanceRouter.get('/meta/glossary', (req, res) => {
+  return GovernanceController.findGlossary(req, res);
+});
+
 GovernanceRouter.post('/', (req, res) => {
   return GovernanceController.createGoveranceBody(req, res);
 });
@@ -49,12 +53,9 @@ GovernanceRouter.post(
   },
 );
 
-GovernanceRouter.post(
-  '/meta/glossary',
-  (req, res) => {
-    return GovernanceController.setGlossary(req, res);
-  },
-);
+GovernanceRouter.post('/meta/glossary', (req, res) => {
+  return GovernanceController.setGlossary(req, res);
+});
 
 GovernanceRouter.post(
   '/subscribe',

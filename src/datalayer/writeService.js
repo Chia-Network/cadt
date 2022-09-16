@@ -15,6 +15,8 @@ logger.info('climate-warehouse:datalayer:writeService');
 const { USE_SIMULATOR } = getConfig().APP;
 
 const createDataLayerStore = async () => {
+  await wallet.waitForAllTransactionsToConfirm();
+
   let storeId;
   if (USE_SIMULATOR) {
     storeId = await simulator.createDataLayerStore();
@@ -25,15 +27,22 @@ const createDataLayerStore = async () => {
       `Created storeId: ${storeId}, waiting for this to be confirmed on the blockchain.`,
     );
     await waitForStoreToBeConfirmed(storeId);
+    await wallet.waitForAllTransactionsToConfirm();
 
     const chiaConfig = fullNode.getChiaConfig();
+
     await dataLayer.addMirror(
       storeId,
       `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
+      true,
     );
   }
 
   return storeId;
+};
+
+const addMirror = async (storeId, url) => {
+  return dataLayer.addMirror(storeId, url);
 };
 
 const waitForStoreToBeConfirmed = async (storeId, retry = 0) => {
@@ -165,10 +174,16 @@ const dataLayerAvailable = async () => {
   }
 };
 
+const removeMirror = (storeId, coinId) => {
+  return dataLayer.removeMirror(storeId, coinId);
+};
+
 export default {
+  addMirror,
+  createDataLayerStore,
   dataLayerAvailable,
   pushDataLayerChangeList,
   syncDataLayer,
-  createDataLayerStore,
   upsertDataLayer,
+  removeMirror,
 };

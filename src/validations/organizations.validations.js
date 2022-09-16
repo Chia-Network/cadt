@@ -7,8 +7,6 @@ export const newOrganizationSchema = Joi.object({
 
 export const importOrganizationSchema = Joi.object({
   orgUid: Joi.string().required(),
-  ip: Joi.string().required(),
-  port: Joi.string().required(),
 });
 
 export const importHomeOrganizationSchema = Joi.object({
@@ -24,5 +22,19 @@ export const subscribeOrganizationSchema = Joi.object({
 });
 
 export const resyncOrganizationSchema = Joi.object({
+  orgUid: Joi.string().required(),
+});
+
+export const removeMirrorSchema = Joi.object({
+  orgUid: Joi.string().required(),
+  storeId: Joi.string().required(),
+});
+
+export const addMirrorSchema = Joi.object({
+  storeId: Joi.string().required(),
+  url: Joi.string().required(),
+});
+
+export const getMetaDataSchema = Joi.object({
   orgUid: Joi.string().required(),
 });

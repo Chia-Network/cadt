@@ -323,3 +323,76 @@ export const resyncOrganization = async (req, res) => {
     }
   }
 };
+
+export const addMetadata = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    Organization.addMetadata(req.body);
+
+    return res.json({
+      message: 'Home org currently being updated, will be completed soon.',
+    });
+  } catch (error) {
+    console.trace(error);
+    res.status(400).json({
+      message: 'Error adding metadata to your organization',
+      error: error.message,
+    });
+  }
+};
+
+export const addMirror = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    await Organization.addMirror(req.body.storeId, req.body.url);
+    return res.json({
+      message: `Mirror added for ${req.body.storeId}.`,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error adding mirror',
+      error: error.message,
+    });
+  }
+};
+
+export const getMetaData = async (req, res) => {
+  try {
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    const organization = await Organization.findOne({
+      where: { orgUid: req.query.orgUid },
+    });
+
+    return res.json(JSON.parse(organization.metadata));
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error removing mirror for organization',
+      error: error.message,
+    });
+  }
+};
+
+export const removeMirror = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+    await assertHomeOrgExists();
+
+    await Organization.removeMirror(req.body.storeId, req.body.coinId);
+    return res.json({
+      message: `Mirror removed for ${req.body.storeId}.`,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error removing mirror for organization',
+    });
+  }
+};

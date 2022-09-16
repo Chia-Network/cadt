@@ -1,11 +1,13 @@
 'use strict';
 
 import Sequelize from 'sequelize';
+import _ from 'lodash';
+
 const { Model } = Sequelize;
+
 import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
-
 import { logger } from '../../config/logger.cjs';
 
 import { getDefaultOrganizationList } from '../../utils/data-loaders';
@@ -106,6 +108,11 @@ class Organization extends Model {
         ]);
       };
 
+      if (!USE_SIMULATOR) {
+        await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+        await datalayer.waitForAllTransactionsToConfirm();
+      }
+
       // sync the organization store
       await datalayer.syncDataLayer(
         newOrganizationId,
@@ -118,6 +125,11 @@ class Organization extends Model {
         revertOrganizationIfFailed,
       );
 
+      if (!USE_SIMULATOR) {
+        await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+        await datalayer.waitForAllTransactionsToConfirm();
+      }
+
       //sync the registry store
       await datalayer.syncDataLayer(
         newRegistryId,
@@ -126,6 +138,9 @@ class Organization extends Model {
         },
         revertOrganizationIfFailed,
       );
+
+      await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+      await datalayer.waitForAllTransactionsToConfirm();
 
       await Promise.all([
         Organization.create({
@@ -163,6 +178,7 @@ class Organization extends Model {
 
       return newOrganizationId;
     } catch (error) {
+      console.trace(error);
       logger.error(error.message);
       logger.info('Reverting Failed Organization');
       await Organization.destroy({ where: { isHome: true } });
@@ -177,6 +193,10 @@ class Organization extends Model {
     });
 
     return registryVersionId;
+  }
+
+  static async addMirror(storeId, coinId) {
+    await datalayer.addMirror(storeId, coinId);
   }
 
   static async importHomeOrg(orgUid) {
@@ -223,7 +243,7 @@ class Organization extends Model {
   // eslint-disable-next-line
   static importOrganization = async (orgUid) => {
     try {
-      logger.info('Subscribing to', orgUid);
+      console.log('Importing organization ' + orgUid);
       const orgData = await datalayer.getSubscribedStoreData(orgUid);
 
       if (!orgData.registryId) {
@@ -298,16 +318,26 @@ class Organization extends Model {
       await Promise.all(
         allSubscribedOrganizations.map((organization) => {
           const onResult = (data) => {
-            const updateData = data.reduce((update, current) => {
-              // TODO: this needs to pull the v1 record
-              if (current.key !== 'registryId') {
+            const updateData = data
+              .filter((pair) => !pair.key.includes('meta_'))
+              .reduce((update, current) => {
                 update[current.key] = current.value;
-              }
-              return update;
-            }, {});
+                return update;
+              }, {});
+
+            // will return metadata fields. i.e.: { meta_key1: 'value1', meta_key2: 'value2' }
+            const metadata = data
+              .filter((pair) => pair.key.includes('meta_'))
+              .reduce((update, current) => {
+                update[current.key] = current.value;
+                return update;
+              }, {});
 
             Organization.update(
-              { ...updateData },
+              {
+                ..._.omit(updateData, ['registryId']),
+                metadata: JSON.stringify(metadata),
+              },
               {
                 where: { orgUid: organization.orgUid },
               },
@@ -380,6 +410,19 @@ class Organization extends Model {
     }
 
     await datalayer.upsertDataLayer(myOrganization.orgUid, payload);
+  };
+
+  static addMetadata = async (payload) => {
+    const myOrganization = await Organization.getHomeOrg();
+
+    // Prefix keys with "meta_"
+    const metadata = _.mapKeys(payload, (_value, key) => `meta_${key}`);
+
+    await datalayer.upsertDataLayer(myOrganization.orgUid, metadata);
+  };
+
+  static removeMirror = async (storeId, coinId) => {
+    datalayer.removeMirror(storeId, coinId);
   };
 }
 

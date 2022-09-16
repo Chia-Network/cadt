@@ -33,7 +33,7 @@ export const assertCanBeGovernanceBody = async () => {
 
 export const assertIsActiveGovernanceBody = async () => {
   const governanceBodyIsSetUp = Meta.findAll({
-    where: { metaKey: 'goveranceBodyId' },
+    where: { metaKey: 'governanceBodyId' },
   });
 
   if (!governanceBodyIsSetUp) {
@@ -222,4 +222,32 @@ export const assertProjectRecordExists = async (
   }
 
   return record.dataValues;
+};
+
+export const assertStagingTableIsEmpty = async (customMessage) => {
+  const count = await Staging.count({ raw: true });
+
+  if (count > 0) {
+    throw new Error(customMessage || `Staging table is not empty.`);
+  }
+};
+
+export const assertActiveOfferFile = async () => {
+  const activeOfferFile = await Meta.findOne({
+    where: { metaKey: 'activeOffer' },
+  });
+
+  if (!activeOfferFile) {
+    throw new Error(`There is no active offer pending`);
+  }
+};
+
+export const assertNoActiveOfferFile = async () => {
+  const activeOfferFile = await Meta.findOne({
+    where: { metaKey: 'activeOffer' },
+  });
+
+  if (activeOfferFile) {
+    throw new Error(`There is an active offer pending`);
+  }
 };
