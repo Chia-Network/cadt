@@ -58,6 +58,7 @@ export const unitsGetQuerySchema = Joi.object()
     orgUid: Joi.string(),
     order: Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
     xls: Joi.boolean(),
+    marketplaceIdentifier: Joi.array().items(Joi.string()).single(),
   })
   .with('page', 'limit');
 

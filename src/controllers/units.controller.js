@@ -113,7 +113,17 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    let { page, limit, columns, orgUid, search, xls, order } = req.query;
+    let {
+      page,
+      limit,
+      columns,
+      orgUid,
+      search,
+      xls,
+      order,
+      marketplaceIdentifier,
+    } = req.query;
+
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
     const includes = Unit.getAssociatedModels();
@@ -156,6 +166,16 @@ export const findAll = async (req, res) => {
 
       where.warehouseUnitId = {
         [Sequelize.Op.in]: mappedResults,
+      };
+    }
+
+    if (marketplaceIdentifier) {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.in]: marketplaceIdentifier,
       };
     }
 
