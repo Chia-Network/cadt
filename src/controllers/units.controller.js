@@ -121,7 +121,8 @@ export const findAll = async (req, res) => {
       search,
       xls,
       order,
-      marketplaceIdentifier,
+      marketplaceIdentifiers,
+      hasMarketplaceIdentifier,
     } = req.query;
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
@@ -169,13 +170,24 @@ export const findAll = async (req, res) => {
       };
     }
 
-    if (marketplaceIdentifier) {
+    if (marketplaceIdentifiers) {
       if (!where) {
         where = {};
       }
 
       where.marketplaceIdentifier = {
-        [Sequelize.Op.in]: marketplaceIdentifier,
+        [Sequelize.Op.in]: _.flatten([marketplaceIdentifiers]),
+      };
+    }
+
+    if (hasMarketplaceIdentifier) {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.not]: null,
+        [Sequelize.Op.not]: '',
       };
     }
 
