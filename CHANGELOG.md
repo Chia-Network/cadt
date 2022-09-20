@@ -1,3 +1,13 @@
+## [1.2.6](https://github.com/Chia-Network/climate-warehouse/compare/1.2.4...1.2.6) (2022-09-20)
+
+
+### Features
+
+* get projects by project ids ([8eb8904](https://github.com/Chia-Network/climate-warehouse/commit/8eb890405c9b88ad0eccfb4e2d9abe8557c648fe))
+* query units by marketplace identifier ([e333a16](https://github.com/Chia-Network/climate-warehouse/commit/e333a16838a0f81614b2d5e2b1df46faf0351bff))
+
+
+
 ## [1.2.4](https://github.com/Chia-Network/climate-warehouse/compare/1.2.3...1.2.4) (2022-09-16)
 
 
