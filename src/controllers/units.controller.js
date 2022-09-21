@@ -186,7 +186,15 @@ export const findAll = async (req, res) => {
       }
 
       where.marketplaceIdentifier = {
-        [Sequelize.Op.not]: [null, ''],
+        [Sequelize.Op.not]: null,
+      };
+    } else {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.eq]: null,
       };
     }
 
