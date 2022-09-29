@@ -52,7 +52,7 @@
     "rxjs": "^7.5.1",
     "sequelize": "^6.17.0",
     "sequelize-mock": "^0.10.2",
-    "socket.io": "^4.4.0",
+    "socket.io": "^4.5.2",
     "socket.io-client": "^4.4.0",
     "sqlite3": "4.1.1",
     "toad-scheduler": "^1.6.0",
