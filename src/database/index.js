@@ -85,13 +85,17 @@ export const checkForMigrations = async (db) => {
     });
 
     for (let i = 0; i < notCompletedMigrations.length; i++) {
-      const notCompleted = notCompletedMigrations[i];
-      logger.info(`MIGRATING: ${notCompleted.name}`);
-      await notCompleted.migration.up(db.queryInterface, Sequelize);
-      await db.query('INSERT INTO `SequelizeMeta` VALUES(:name)', {
-        type: Sequelize.QueryTypes.INSERT,
-        replacements: { name: notCompleted.name },
-      });
+      try {
+        const notCompleted = notCompletedMigrations[i];
+        logger.info(`MIGRATING: ${notCompleted.name}`);
+        await notCompleted.migration.up(db.queryInterface, Sequelize);
+        await db.query('INSERT INTO `SequelizeMeta` VALUES(:name)', {
+          type: Sequelize.QueryTypes.INSERT,
+          replacements: { name: notCompleted.name },
+        });
+      } catch (e) {
+        logger.error('Migration not completed', e);
+      }
     }
   } catch (error) {
     logger.error('Error checking for migrations', error);
