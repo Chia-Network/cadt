@@ -80,6 +80,14 @@ class Governance extends Model {
       });
     }
 
+    if (governanceData.glossary) {
+      updates.push({
+        metaKey: 'glossary',
+        metaValue: governanceData.glossary,
+        confirmed: true,
+      });
+    }
+
     if (governanceData.pickList) {
       updates.push({
         metaKey: 'pickList',

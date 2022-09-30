@@ -23,7 +23,7 @@ const unitsBaseSchema = {
   unitType: Joi.string().custom(pickListValidation('unitType')).required(),
   marketplace: Joi.string().optional(),
   marketplaceLink: Joi.string().optional(),
-  marketplaceIdentifier: Joi.string().optional(),
+  marketplaceIdentifier: Joi.string().disallow('').allow(null).optional(),
   unitTags: Joi.string().allow('').optional(),
   unitStatus: Joi.string().custom(pickListValidation('unitStatus')).required(),
   unitStatusReason: Joi.string().when('unitStatus', {
@@ -58,6 +58,8 @@ export const unitsGetQuerySchema = Joi.object()
     orgUid: Joi.string(),
     order: Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
     xls: Joi.boolean(),
+    marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
+    hasMarketplaceIdentifier: Joi.boolean(),
   })
   .with('page', 'limit');
 

@@ -108,7 +108,7 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    let { page, limit, search, orgUid, columns, xls } = req.query;
+    let { page, limit, search, orgUid, columns, xls, projectIds } = req.query;
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
     if (orgUid === 'all') {
@@ -162,6 +162,16 @@ export const findAll = async (req, res) => {
 
       where.warehouseProjectId = {
         [Sequelize.Op.in]: mappedResults,
+      };
+    }
+
+    if (projectIds) {
+      if (!where) {
+        where = {};
+      }
+
+      where.warehouseProjectId = {
+        [Sequelize.Op.in]: _.flatten([projectIds]),
       };
     }
 
