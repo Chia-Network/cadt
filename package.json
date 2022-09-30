@@ -1,6 +1,6 @@
 {
   "name": "climate-warehouse",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "private": true,
   "bin": "build/server.js",
   "type": "module",

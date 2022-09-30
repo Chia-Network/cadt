@@ -180,13 +180,27 @@ export const findAll = async (req, res) => {
       };
     }
 
-    if (hasMarketplaceIdentifier) {
+    if (
+      typeof hasMarketplaceIdentifier === 'boolean' &&
+      hasMarketplaceIdentifier === true
+    ) {
       if (!where) {
         where = {};
       }
 
       where.marketplaceIdentifier = {
-        [Sequelize.Op.not]: [null, ''],
+        [Sequelize.Op.not]: null,
+      };
+    } else if (
+      typeof hasMarketplaceIdentifier === 'boolean' &&
+      hasMarketplaceIdentifier === false
+    ) {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.eq]: null,
       };
     }
 
