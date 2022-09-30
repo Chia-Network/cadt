@@ -1,3 +1,18 @@
+## [1.2.7](https://github.com/Chia-Network/climate-warehouse/compare/1.2.6...1.2.7) (2022-09-30)
+
+
+### Bug Fixes
+
+* fix faulty conditional ([46fed10](https://github.com/Chia-Network/climate-warehouse/commit/46fed102930924b985f7600760b10816795d54e9))
+* sync governance data ([f1be9a7](https://github.com/Chia-Network/climate-warehouse/commit/f1be9a7e188f79f852acb19f2aec398b5d318817))
+
+
+### Features
+
+* query for records without marketplaceidentifier ([c6a441e](https://github.com/Chia-Network/climate-warehouse/commit/c6a441eea2280b32f9297c8d96f2dd1a8f7472e0))
+
+
+
 ## [1.2.6](https://github.com/Chia-Network/climate-warehouse/compare/1.2.4...1.2.6) (2022-09-20)
 
 
