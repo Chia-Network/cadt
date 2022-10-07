@@ -218,15 +218,53 @@ class Staging extends Model {
         );
       }
 
-      maker.inclusions.push(
-        ...formatForOfferTransfer(makerProjectInclusions.project),
-        ...formatForOfferTransfer(makerProjectInclusions.issuances),
-        ...formatForOfferTransfer(makerProjectInclusions.projectLocations),
-        ...formatForOfferTransfer(makerProjectInclusions.labels),
-        ...formatForOfferTransfer(makerProjectInclusions.projectRatings),
-        ...formatForOfferTransfer(makerProjectInclusions.coBenefits),
-        ...formatForOfferTransfer(makerProjectInclusions.relatedProjects),
-      );
+      if (makerProjectInclusions?.project) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.project),
+        );
+      }
+
+      if (makerProjectInclusions?.issuances) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.issuances),
+        );
+      }
+
+      if (makerProjectInclusions?.projectLocations) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.projectLocations),
+        );
+      }
+
+      if (makerProjectInclusions?.labels) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.labels),
+        );
+      }
+
+      if (makerProjectInclusions?.labels) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.labels),
+        );
+      }
+
+      if (makerProjectInclusions?.projectRatings) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.projectRatings),
+        );
+      }
+
+      if (makerProjectInclusions?.coBenefits) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.coBenefits),
+        );
+      }
+
+      if (makerProjectInclusions?.relatedProjects) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.relatedProjects),
+        );
+      }
 
       if (makerUnitInclusions?.unit) {
         maker.inclusions.push(
