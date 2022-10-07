@@ -1,3 +1,12 @@
+## [1.2.8](https://github.com/Chia-Network/climate-warehouse/compare/1.2.7...1.2.8) (2022-10-07)
+
+
+### Bug Fixes
+
+* add null check when generating offer ([cd47f66](https://github.com/Chia-Network/climate-warehouse/commit/cd47f6640dcd435beb81e4e3878d7c73fcd6762f))
+
+
+
 ## [1.2.7](https://github.com/Chia-Network/climate-warehouse/compare/1.2.6...1.2.7) (2022-09-30)
 
 
