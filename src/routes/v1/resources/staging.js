@@ -45,4 +45,8 @@ StagingRouter.post(
 // Empty entire stagin table
 StagingRouter.delete('/clean', StagingController.clean);
 
+StagingRouter.get('/hasPendingTransactions', (req, res) => {
+  return StagingController.hasPendingTransactions(req, res);
+});
+
 export { StagingRouter };
