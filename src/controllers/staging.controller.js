@@ -16,6 +16,21 @@ import {
   assertStagingTableNotEmpty,
 } from '../utils/data-assertions';
 
+export const hasPendingTransactions = async (req, res) => {
+  try {
+    await assertNoPendingCommits();
+    res.json({
+      confirmed: true,
+      message: 'There are no pending transactions',
+    });
+  } catch (error) {
+    res.json({
+      confirmed: false,
+      message: 'There are currently pending transactions',
+    });
+  }
+};
+
 export const findAll = async (req, res) => {
   try {
     let { page, limit, type, table } = req.query;

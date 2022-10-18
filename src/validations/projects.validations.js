@@ -25,9 +25,7 @@ export const baseSchema = {
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
   sector: Joi.string().required(),
-  projectType: Joi.string()
-    .custom(pickListValidation('projectType'))
-    .required(),
+  projectType: Joi.string().required(),
   projectTags: Joi.string().optional(),
   coveredByNDC: Joi.string()
     .custom(pickListValidation('coveredByNDC'))
@@ -40,9 +38,7 @@ export const baseSchema = {
   unitMetric: Joi.string().custom(pickListValidation('unitMetric')).required(),
   methodology: Joi.string().required(),
   methodology2: Joi.string().optional(),
-  validationBody: Joi.string()
-    .custom(pickListValidation('validationBody'))
-    .optional(),
+  validationBody: Joi.string().optional(),
   validationDate: Joi.date().optional(),
   description: Joi.string().optional(),
 

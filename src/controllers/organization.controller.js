@@ -7,6 +7,7 @@ import {
   assertWalletIsSynced,
   assertIfReadOnlyMode,
   assertCanDeleteOrg,
+  assertNoPendingCommits,
 } from '../utils/data-assertions';
 
 import { getDataModelVersion } from '../utils/helpers';
@@ -52,6 +53,7 @@ export const createV2 = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
+    await assertNoPendingCommits();
 
     const myOrganization = await Organization.getHomeOrg();
 
