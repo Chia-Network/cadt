@@ -1,3 +1,18 @@
+## [1.2.9](https://github.com/Chia-Network/climate-warehouse/compare/1.2.8...1.2.9) (2022-10-18)
+
+
+### Bug Fixes
+
+* accept manual input from project/validation type ([3f402c2](https://github.com/Chia-Network/climate-warehouse/commit/3f402c26aa21c0fe2148236ad715defc0e74b5c9))
+* assert no pending commits when creatig org ([be23820](https://github.com/Chia-Network/climate-warehouse/commit/be23820954cb79ecd2fd4d4d784b9657b99acc99))
+
+
+### Features
+
+* api to check if there are pending transactions ([4787ef3](https://github.com/Chia-Network/climate-warehouse/commit/4787ef3de75197f95fa3e4c7cff7df6cec00b6ce))
+
+
+
 ## [1.2.8](https://github.com/Chia-Network/climate-warehouse/compare/1.2.7...1.2.8) (2022-10-07)
 
 
