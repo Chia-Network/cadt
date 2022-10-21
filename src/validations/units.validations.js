@@ -9,7 +9,7 @@ const unitsBaseSchema = {
   // warehouseUnitId - derived upon unit creation
   // issuanceId - derived upon unit creation
   // orgUid - derived upon unit creation
-  projectLocationId: Joi.string().optional(),
+  projectLocationId: Joi.string().allow(null).optional(),
   unitOwner: Joi.string(),
   countryJurisdictionOfOwner: Joi.string()
     .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
@@ -41,7 +41,7 @@ const unitsBaseSchema = {
   labels: Joi.array().items(labelSchema).allow(null).optional(),
   updatedAt: Joi.date().allow(null).optional(),
   createdAt: Joi.date().allow(null).optional(),
-  timeStaged: Joi.date().timestamp().allow(null).optional(),
+  timeStaged: Joi.date().allow(null).timestamp().allow(null).optional(),
 };
 
 export const unitsPostSchema = Joi.object({
@@ -80,7 +80,7 @@ export const unitsSplitSchema = Joi.object({
         unitCount: Joi.number().required(),
         unitBlockStart: Joi.string().required(),
         unitBlockEnd: Joi.string().required(),
-        unitOwner: Joi.string().optional(),
+        unitOwner: Joi.string().allow(null).optional(),
         countryJurisdictionOfOwner: Joi.string()
           .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
           .optional(),
