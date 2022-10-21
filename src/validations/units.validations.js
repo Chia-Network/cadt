@@ -14,17 +14,17 @@ const unitsBaseSchema = {
   countryJurisdictionOfOwner: Joi.string()
     .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
     .required(),
-  inCountryJurisdictionOfOwner: Joi.string().optional(),
+  inCountryJurisdictionOfOwner: Joi.string().allow(null).optional(),
   unitBlockStart: Joi.string().required(),
   unitBlockEnd: Joi.string().required(),
   unitCount: Joi.number().integer().required(),
   // match 4 digit year
   vintageYear: Joi.number().integer().min(1900).max(3000).required(),
   unitType: Joi.string().custom(pickListValidation('unitType')).required(),
-  marketplace: Joi.string().optional(),
-  marketplaceLink: Joi.string().optional(),
+  marketplace: Joi.string().allow(null).optional(),
+  marketplaceLink: Joi.string().allow(null).optional(),
   marketplaceIdentifier: Joi.string().disallow('').allow(null).optional(),
-  unitTags: Joi.string().allow('').optional(),
+  unitTags: Joi.string().allow('').allow(null).optional(),
   unitStatus: Joi.string().custom(pickListValidation('unitStatus')).required(),
   unitStatusReason: Joi.string().when('unitStatus', {
     is: Joi.exist().valid('cancelled', 'retired'),
@@ -37,10 +37,10 @@ const unitsBaseSchema = {
   correspondingAdjustmentStatus: Joi.string()
     .custom(pickListValidation('correspondingAdjustmentStatus'))
     .required(),
-  issuance: issuanceSchema.optional(),
-  labels: Joi.array().items(labelSchema).optional(),
-  updatedAt: Joi.date().optional(),
-  createdAt: Joi.date().optional(),
+  issuance: issuanceSchema.allow(null).optional(),
+  labels: Joi.array().items(labelSchema).allow(null).optional(),
+  updatedAt: Joi.date().allow(null).optional(),
+  createdAt: Joi.date().allow(null).optional(),
   timeStaged: Joi.date().timestamp().allow(null).optional(),
 };
 

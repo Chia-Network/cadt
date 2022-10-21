@@ -15,41 +15,53 @@ export const baseSchema = {
   // warehouseProjectId - derived upon creation
   // orgUid - derived upon creation
   projectId: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
-  currentRegistry: Joi.string().optional(),
+  currentRegistry: Joi.string().allow(null).optional(),
   originProjectId: Joi.alternatives()
     .try(Joi.string(), Joi.number())
     .required(),
   registryOfOrigin: Joi.string().required(),
-  program: Joi.string().optional(),
+  program: Joi.string().allow(null).optional(),
   projectName: Joi.string().required(),
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
   sector: Joi.string().required(),
   projectType: Joi.string().required(),
-  projectTags: Joi.string().optional(),
+  projectTags: Joi.string().allow(null).optional(),
   coveredByNDC: Joi.string()
     .custom(pickListValidation('coveredByNDC'))
     .required(),
-  ndcInformation: Joi.string().optional(),
+  ndcInformation: Joi.string().allow(null).optional(),
   projectStatus: Joi.string()
     .custom(pickListValidation('projectStatusValues', 'projectStatus'))
     .required(),
   projectStatusDate: Joi.date().required(),
   unitMetric: Joi.string().custom(pickListValidation('unitMetric')).required(),
   methodology: Joi.string().required(),
-  methodology2: Joi.string().optional(),
-  validationBody: Joi.string().optional(),
-  validationDate: Joi.date().optional(),
-  description: Joi.string().optional(),
+  methodology2: Joi.string().allow(null).optional(),
+  validationBody: Joi.string().allow(null).optional(),
+  validationDate: Joi.date().allow(null).optional(),
+  description: Joi.string().allow(null).optional(),
 
   /* Child Tables */
-  labels: Joi.array().items(labelSchema).min(1).optional(),
-  issuances: Joi.array().items(issuanceSchema).min(1).optional(),
-  coBenefits: Joi.array().items(cobenefitSchema).min(1).optional(),
-  relatedProjects: Joi.array().items(relatedProjectSchema).min(1).optional(),
-  projectLocations: Joi.array().items(locationSchema).min(1).optional(),
-  projectRatings: Joi.array().items(ratingSchema).min(1).optional(),
-  estimations: Joi.array().items(estimationSchema).min(1).optional(),
+  labels: Joi.array().items(labelSchema).min(1).allow(null).optional(),
+  issuances: Joi.array().items(issuanceSchema).min(1).allow(null).optional(),
+  coBenefits: Joi.array().items(cobenefitSchema).min(1).allow(null).optional(),
+  relatedProjects: Joi.array()
+    .items(relatedProjectSchema)
+    .min(1)
+    .allow(null)
+    .optional(),
+  projectLocations: Joi.array()
+    .items(locationSchema)
+    .min(1)
+    .allow(null)
+    .optional(),
+  projectRatings: Joi.array().items(ratingSchema).min(1).allow(null).optional(),
+  estimations: Joi.array()
+    .items(estimationSchema)
+    .min(1)
+    .allow(null)
+    .optional(),
   updatedAt: Joi.date().optional(),
   createdAt: Joi.date().optional(),
   timeStaged: Joi.date().timestamp().allow(null).optional(),
