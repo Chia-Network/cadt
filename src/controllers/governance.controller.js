@@ -11,6 +11,7 @@ import {
 
 import { getConfig } from '../utils/config-loader';
 import glossary from '../models/governance/glossary.stub.json';
+import pickList from '../models/governance/governance.stub.json';
 
 const CONFIG = getConfig().APP;
 
@@ -81,9 +82,14 @@ export const findGlossary = async (req, res) => {
 
 export const findPickList = async (req, res) => {
   try {
+    if (CONFIG.CHIA_NETWORK === 'testnet') {
+      return res.json(pickList);
+    }
+
     const results = await Governance.findOne({
       where: { metaKey: 'pickList' },
     });
+
     return res.json(JSON.parse(_.get(results, 'metaValue', {})));
   } catch (error) {
     res.status(400).json({
