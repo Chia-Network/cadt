@@ -1,4 +1,5 @@
 export const encodeHex = (str) => {
+  console.log('!!!!', str);
   return Buffer.from(str).toString('hex');
 };
 

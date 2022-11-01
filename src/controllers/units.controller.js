@@ -178,9 +178,7 @@ export const findAll = async (req, res) => {
       where.marketplaceIdentifier = {
         [Sequelize.Op.in]: _.flatten([marketplaceIdentifiers]),
       };
-    }
-
-    if (
+    } else if (
       typeof hasMarketplaceIdentifier === 'boolean' &&
       hasMarketplaceIdentifier === true
     ) {
