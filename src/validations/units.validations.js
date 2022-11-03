@@ -85,6 +85,8 @@ export const unitsSplitSchema = Joi.object({
           .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
           .optional(),
         inCountryJurisdictionOfOwner: Joi.string().optional(),
+        marketplace: Joi.string().disallow('').allow(null).optional(),
+        marketplaceIdentifier: Joi.string().disallow('').allow(null).optional(),
       }),
     )
     .min(2)
