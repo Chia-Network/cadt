@@ -442,6 +442,14 @@ export const split = async (req, res) => {
         newRecord.unitBlockStart = record.unitBlockStart;
         newRecord.unitBlockEnd = record.unitBlockEnd;
 
+        if (record.marketplaceIdentifier) {
+          newRecord.marketplaceIdentifier = record.marketplaceIdentifier;
+        }
+
+        if (record.marketplace) {
+          newRecord.marketplace = record.marketplace;
+        }
+
         if (record.unitOwner) {
           newRecord.unitOwner = record.unitOwner;
         }
