@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - ci-troubleshooting-11042022
     tags:
       - '**'
   pull_request:
