@@ -1,3 +1,12 @@
+## [1.2.12](https://github.com/Chia-Network/climate-warehouse/compare/1.2.11...1.2.12) (2022-11-04)
+
+
+### Features
+
+* add optional marketplace identifiers to split ([70b3eee](https://github.com/Chia-Network/climate-warehouse/commit/70b3eeefef5cb4b3fed260ae8ed6eaaff6334216))
+
+
+
 ## [1.2.11](https://github.com/Chia-Network/climate-warehouse/compare/1.2.10...1.2.11) (2022-11-01)
 
 
