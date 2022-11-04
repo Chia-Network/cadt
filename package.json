@@ -57,7 +57,7 @@
     "sqlite3": "5.1.2",
     "toad-scheduler": "^1.6.0",
     "updeep": "^1.2.1",
-    "uuidv4": "^6.2.12",
+    "uuidv4": "^6",
     "winston": "^3.7.2",
     "winston-daily-rotate-file": "^4.6.1"
   },
