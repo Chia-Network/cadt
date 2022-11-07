@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - ci-troubleshooting-11042022
     tags:
       - '**'
   pull_request:
@@ -73,8 +72,7 @@ jobs:
       - name: Make executable
         run: chmod +x dist/climate-warehouse
 
-      - name: Copy sqlite3 (Ubuntu)
-#        run: find . -type f -name node_sqlite3.node
+      - name: Copy sqlite3
         run: cp ${{ matrix.sqlite-path }}node_sqlite3.node ./dist/
 
       # Windows Code Signing
