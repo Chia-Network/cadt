@@ -4,7 +4,7 @@ import * as testFixtures from '../test-fixtures';
 import sinon from 'sinon';
 import datalayer from '../../src/datalayer';
 const { expect } = chai;
-import newProject from '../test-data/new-project.json';
+import newProject from '../test-data/new-project.json' assert { type: 'json' };
 import supertest from 'supertest';
 import app from '../../src/server';
 import { Organization } from '../../src/models/organizations/index.js';

@@ -1,4 +1,4 @@
-import stub from './file-store.stub.json';
+import stub from './file-store.stub.json' assert { type: 'json' };
 
 export const FileStoreMock = {
   findAll: () => stub,

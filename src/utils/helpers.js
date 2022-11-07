@@ -4,7 +4,7 @@ import _ from 'lodash';
 
 import { isPluralized } from './string-utils.js';
 import { formatModelAssociationName } from './model-utils.js';
-import packageJson from '../../package.json';
+import packageJson from '../../package.json' assert { type: 'json' };
 
 export const paginationParams = (page, limit) => {
   if (page === undefined || limit === undefined) {
