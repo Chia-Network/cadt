@@ -1,6 +1,6 @@
 'use strict';
 
-import OrganizationStub from '../../models/organizations/organizations.stub.json' assert { type: 'json' };
+import OrganizationStub from '../../models/organizations/organizations.stub.json';
 
 export default {
   up: async (queryInterface) => {
