@@ -1,4 +1,4 @@
-import stub from './organizations.stub.json' assert { type: 'json' };
+import stub from './organizations.stub.json';
 
 export const OrganizationMock = {
   findAll: () => stub,

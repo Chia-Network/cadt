@@ -1,4 +1,4 @@
-import stub from './ratings.stub.json' assert { type: 'json' };
+import stub from './ratings.stub.json';
 
 export const RatingMock = {
   findAll: () => stub,

@@ -1,4 +1,4 @@
-import stub from './labelUnits.stub.json' assert { type: 'json' };
+import stub from './labelUnits.stub.json';
 
 export const LabelUnitsMock = {
   findAll: () => stub,

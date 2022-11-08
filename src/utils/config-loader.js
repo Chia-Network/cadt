@@ -7,7 +7,7 @@ import path from 'path';
 import { logger } from '../config/logger.cjs';
 
 import { getDataModelVersion } from './helpers';
-import defaultConfig from './defaultConfig.json' assert { type: 'json' };
+import defaultConfig from './defaultConfig.json';
 
 export const getConfig = _.memoize(() => {
   const homeDir = os.homedir();

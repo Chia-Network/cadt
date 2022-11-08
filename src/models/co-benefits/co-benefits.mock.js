@@ -1,4 +1,4 @@
-import stub from './co-benefits.stub.json' assert { type: 'json' };
+import stub from './co-benefits.stub.json';
 
 export const CoBenefitsMock = {
   findAll: () => stub,

@@ -1,4 +1,4 @@
-import stub from './simulator.stub.json' assert { type: 'json' };
+import stub from './simulator.stub.json';
 
 export const SimulatorMock = {
   findAll: () => stub,

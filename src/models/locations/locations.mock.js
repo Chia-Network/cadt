@@ -1,4 +1,4 @@
-import stub from './locations.stub.json' assert { type: 'json' };
+import stub from './locations.stub.json';
 
 export const LocationMock = {
   findAll: () => stub,

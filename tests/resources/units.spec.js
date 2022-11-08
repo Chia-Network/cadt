@@ -8,7 +8,7 @@ import app from '../../src/server';
 import * as testFixtures from '../test-fixtures';
 import datalayer from '../../src/datalayer';
 import { prepareDb } from '../../src/database';
-import newUnit from '../test-data/new-unit.json' assert { type: 'json' };
+import newUnit from '../test-data/new-unit.json';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 

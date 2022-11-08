@@ -1,4 +1,4 @@
-import stub from './projects.stub.json' assert { type: 'json' };
+import stub from './projects.stub.json';
 
 export const ProjectMock = {
   findAll: ({ limit, offset }) => stub.slice(offset * limit, (offset + 1) * limit),

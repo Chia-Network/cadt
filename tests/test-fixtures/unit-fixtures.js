@@ -5,8 +5,8 @@ import chai from 'chai';
 const { expect } = chai;
 
 import app from '../../src/server';
-import newUnit from '../test-data/new-unit.json' assert { type: 'json' };
-import updateUnitJson from '../test-data/update-unit.json' assert { type: 'json' };
+import newUnit from '../test-data/new-unit.json';
+import updateUnitJson from '../test-data/update-unit.json';
 import { UnitMirror, Unit } from '../../src/models';
 
 export const createNewUnit = async (payload = newUnit) => {
