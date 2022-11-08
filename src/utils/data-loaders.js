@@ -3,7 +3,7 @@ import _ from 'lodash';
 import request from 'request-promise';
 
 import { Governance } from '../models';
-import PickListStub from '../models/governance/governance.stub.json' assert { type: 'json' };
+import PickListStub from '../models/governance/governance.stub.json';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 
