@@ -1,4 +1,4 @@
-FROM node:16
+FROM node:16.13
 
 WORKDIR /usr/src/app
 RUN npm install -g json
