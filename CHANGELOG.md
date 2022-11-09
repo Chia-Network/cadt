@@ -1,3 +1,12 @@
+## [1.2.13](https://github.com/Chia-Network/climate-warehouse/compare/1.2.12...1.2.13) (2022-11-09)
+
+
+### Reverts
+
+* Revert " assert { type: 'json' } all over" ([64b0dfd](https://github.com/Chia-Network/climate-warehouse/commit/64b0dfd1a55588c5c604aa82bedaacad9cc6a11a))
+
+
+
 ## [1.2.12](https://github.com/Chia-Network/climate-warehouse/compare/1.2.11...1.2.12) (2022-11-04)
 
 
