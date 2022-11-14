@@ -104,7 +104,13 @@ class Unit extends Model {
     return super.destroy(values, options);
   }
 
-  static async fts(searchStr, orgUid, pagination, columns = []) {
+  static async fts(
+    searchStr,
+    orgUid,
+    pagination,
+    columns = [],
+    includeProjectInfo = false,
+  ) {
     const dialect = sequelize.getDialect();
 
     const handlerMap = {
@@ -126,6 +132,7 @@ class Unit extends Model {
             'unitCount',
           ].includes(col),
       ),
+      includeProjectInfo,
     );
   }
 
@@ -192,7 +199,13 @@ class Unit extends Model {
     };
   }
 
-  static async findAllSqliteFts(searchStr, orgUid, pagination, columns = []) {
+  static async findAllSqliteFts(
+    searchStr,
+    orgUid,
+    pagination,
+    columns = [],
+    includeProjectInfo = false,
+  ) {
     const { offset, limit } = pagination;
 
     let fields = '*';
@@ -214,13 +227,36 @@ class Unit extends Model {
       searchStr = searchStr.replace('+', ''); // If query starts with +, replace it
     }
 
-    let sql = `SELECT ${fields} FROM units_fts WHERE units_fts MATCH :search`;
+    let sql = `
+    SELECT ${fields} 
+    FROM units_fts
+    WHERE units_fts MATCH :search`;
+
+    if (includeProjectInfo) {
+      sql = `SELECT units_fts.*
+          FROM units_fts
+          WHERE units_fts MATCH :search1
+      UNION
+      SELECT units_fts.*
+          FROM units_fts
+          INNER JOIN issuances on units_fts.issuanceId = issuances.id
+          INNER JOIN projects_fts on issuances.warehouseProjectId = projects_fts.warehouseProjectId
+          WHERE projects_fts MATCH :search2
+      `;
+    }
 
     if (orgUid) {
       sql = `${sql} AND orgUid = :orgUid`;
     }
 
-    const replacements = { search: searchStr, orgUid };
+    let replacements = { search: searchStr, orgUid };
+    if (includeProjectInfo) {
+      replacements = {
+        search1: searchStr,
+        search2: searchStr,
+        orgUid,
+      };
+    }
 
     const count = (
       await sequelize.query(sql, {
@@ -332,9 +368,7 @@ class Unit extends Model {
       isUpdateComment,
     );
 
-    const currentAuthor = currentDataLayer.filter(
-      (kv) => kv.key === 'author',
-    );
+    const currentAuthor = currentDataLayer.filter((kv) => kv.key === 'author');
     const isUpdateAuthor = currentAuthor.length > 0;
     const authorChangeList = keyValueToChangeList(
       'author',

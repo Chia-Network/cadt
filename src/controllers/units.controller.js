@@ -123,6 +123,7 @@ export const findAll = async (req, res) => {
       order,
       marketplaceIdentifiers,
       hasMarketplaceIdentifier,
+      includeProjectInfoInSearch = false,
     } = req.query;
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
@@ -155,6 +156,7 @@ export const findAll = async (req, res) => {
         orgUid,
         pagination,
         Unit.defaultColumns,
+        includeProjectInfoInSearch,
       );
 
       const mappedResults = ftsResults.rows.map((ftsResult) =>
