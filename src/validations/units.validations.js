@@ -60,6 +60,7 @@ export const unitsGetQuerySchema = Joi.object()
     xls: Joi.boolean(),
     marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
     hasMarketplaceIdentifier: Joi.boolean(),
+    includeProjectInfoInSearch: Joi.boolean(),
   })
   .with('page', 'limit');
 
