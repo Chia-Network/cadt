@@ -47,7 +47,7 @@
     "mysql2-promise": "^0.1.4",
     "node-xlsx": "^0.21.0",
     "random-hash": "^4.0.1",
-    "regenerator-runtime": "^0.13.9",
+    "regenerator-runtime": "^0.13.10",
     "request-promise": "^4.2.6",
     "rxjs": "^7.5.1",
     "sequelize": "^6.17.0",
