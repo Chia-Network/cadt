@@ -7,8 +7,6 @@ export const governanceSubscribeSchema = Joi.object().keys({
 export const setOrgListSchema = Joi.array().items(
   Joi.object({
     orgUid: Joi.string().required(),
-    ip: Joi.string().required(),
-    port: Joi.number().integer().required(),
   }),
 );
 
