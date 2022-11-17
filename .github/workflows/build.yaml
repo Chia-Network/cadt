@@ -24,12 +24,15 @@ jobs:
           - runs-on: ubuntu-latest
             artifact-name: linux-x64
             build-command: npm run create-linux-x64-dist
+            sqlite-path: ./node_modules/sqlite3/lib/binding/napi-v6-linux-glibc-x64/
           - runs-on: macos-latest
             artifact-name: macos-x64
             build-command: npm run create-mac-x64-dist
+            sqlite-path: ./node_modules/sqlite3/lib/binding/napi-v6-darwin-unknown-x64/
           - runs-on: windows-2019
             artifact-name: windows-x64
             build-command: npm run create-win-x64-dist
+            sqlite-path: .\node_modules\sqlite3\lib\binding\napi-v6-win32-unknown-x64\
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -38,9 +41,9 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup Node 16.x
-        uses: actions/setup-node@v2.4.1
+        uses: actions/setup-node@v3
         with:
-          node-version: '16.0.0'
+          node-version: '16.13'
 
       - name: Ignore Husky
         run: npm set-script prepare ""
@@ -69,13 +72,8 @@ jobs:
       - name: Make executable
         run: chmod +x dist/climate-warehouse
 
-      - name: Copy sqlite3 (non windows)
-        run: cp ./node_modules/sqlite3/build/Release/node_sqlite3.node ./dist/
-        if: matrix.runs-on != 'windows-2019'
-
-      - name: Copy sqlite3 (windows)
-        run: cp .\node_modules\sqlite3\build\Release\node_sqlite3.node .\dist\
-        if: matrix.runs-on == 'windows-2019'
+      - name: Copy sqlite3
+        run: cp ${{ matrix.sqlite-path }}node_sqlite3.node ./dist/
 
       # Windows Code Signing
       - name: Decode code signing cert into an encrypted file
