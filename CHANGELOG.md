@@ -1,3 +1,17 @@
+## [1.2.14](https://github.com/Chia-Network/climate-warehouse/compare/1.2.13...1.2.14) (2022-11-17)
+
+
+### Bug Fixes
+
+* remove old validation for updating orglist ([96e2867](https://github.com/Chia-Network/climate-warehouse/commit/96e28677020be048ef2755aab5af638e43287501))
+
+
+### Features
+
+* add unified search option ([fc172f5](https://github.com/Chia-Network/climate-warehouse/commit/fc172f5b7d206b7f8f593a892ea94ad299b0f0cc))
+
+
+
 ## [1.2.13](https://github.com/Chia-Network/climate-warehouse/compare/1.2.12...1.2.13) (2022-11-09)
 
 
