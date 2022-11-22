@@ -246,7 +246,7 @@ class Unit extends Model {
     }
 
     if (orgUid) {
-      sql = `${sql} AND orgUid = :orgUid`;
+      sql = `${sql} AND units_fts.orgUid = :orgUid`;
     }
 
     let replacements = { search: searchStr, orgUid };
