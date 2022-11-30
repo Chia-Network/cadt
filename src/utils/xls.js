@@ -515,114 +515,125 @@ export const collapseTablesData = (tableData, model) => {
 
   let associations = model.getAssociatedModels();
 
-  collapsed[model.name]?.data?.forEach((data, index) => {
-    const tableRowData =
-      tableData[model.name]?.data != null
-        ? tableData[model.name]?.data[index]
-        : null;
+  collapsed[model.name]?.data
+    ?.filter((data) => !_.isEmpty(data))
+    .forEach((data, index) => {
+      const tableRowData =
+        tableData[model.name]?.data != null
+          ? tableData[model.name]?.data[index]
+          : null;
 
-    if (
-      tableRowData != null &&
-      tableRowData[model.primaryKeyAttributes[0]] == null
-    ) {
-      tableRowData[model.primaryKeyAttributes[0]] = uuidv4();
-    }
-
-    associations.forEach((association) => {
       if (
-        !Object.prototype.hasOwnProperty.call(tableData, association.model.name)
+        tableRowData != null &&
+        tableRowData[model.primaryKeyAttributes[0]] == null
       ) {
-        return;
+        tableRowData[model.primaryKeyAttributes[0]] = uuidv4();
       }
 
-      const dataKey = formatModelAssociationName(association);
-      const foundRecord = tableData[association.model.name]?.data?.find(
-        (row) => {
-          let found = false;
-
-          if (association.model.name === 'issuance' && !association.pluralize) {
-            if (
-              row[model.name + 'Id'] === data[association.model.name + 'Id']
-            ) {
-              found = true;
-              delete row[model.name + 'Id'];
-            }
-          } else {
-            let comparedToData = null;
-            const primaryKey =
-              tableData[model.name]?.model?.primaryKeyAttributes[0];
-
-            if (tableRowData != null && primaryKey != null) {
-              comparedToData = tableRowData[primaryKey];
-            }
-
-            if (row[model.name + 'Id'] === comparedToData) {
-              found = true;
-              delete row[model.name + 'Id'];
-            }
-
-            if (
-              row['warehouseProjectId'] === comparedToData ||
-              row['warehouseUnitId'] === comparedToData
-            ) {
-              found = true;
-              delete row[model.name + 'Id'];
-            }
-          }
-
-          return found;
-        },
-      );
-      data[dataKey] = foundRecord;
-    });
-  });
-
-  collapsed[model.name]?.data?.forEach((data, index) => {
-    associations.forEach((association) => {
-      if (association.model.name !== 'label') {
-        return;
-      }
-
-      const tableUnitData = tableData['label_unit']?.data?.find((row) => {
-        if (tableData[model.name]?.data == null) {
-          return false;
-        }
-
+      associations.forEach((association) => {
         if (
-          tableData[model.name].data[index]?.labels != null &&
-          !Array.isArray(tableData[model.name].data[index].labels)
+          !Object.prototype.hasOwnProperty.call(
+            tableData,
+            association.model.name,
+          )
         ) {
-          tableData[model.name].data[index].labels = [
-            tableData[model.name].data[index].labels,
-          ];
+          return;
         }
 
-        return tableData[model.name].data[index]?.labels
-          ?.map((label) => label.id)
-          .includes(row['labelunitId']);
+        const dataKey = formatModelAssociationName(association);
+        const foundRecord = tableData[association.model.name]?.data?.find(
+          (row) => {
+            let found = false;
+
+            if (
+              association.model.name === 'issuance' &&
+              !association.pluralize
+            ) {
+              if (
+                row[model.name + 'Id'] === data[association.model.name + 'Id']
+              ) {
+                found = true;
+                delete row[model.name + 'Id'];
+              }
+            } else {
+              let comparedToData = null;
+              const primaryKey =
+                tableData[model.name]?.model?.primaryKeyAttributes[0];
+
+              if (tableRowData != null && primaryKey != null) {
+                comparedToData = tableRowData[primaryKey];
+              }
+
+              if (row[model.name + 'Id'] === comparedToData) {
+                found = true;
+                delete row[model.name + 'Id'];
+              }
+
+              if (
+                row['warehouseProjectId'] === comparedToData ||
+                row['warehouseUnitId'] === comparedToData
+              ) {
+                found = true;
+                delete row[model.name + 'Id'];
+              }
+            }
+
+            return found;
+          },
+        );
+
+        data[dataKey] = foundRecord;
       });
+    });
 
-      const dataKey = formatModelAssociationName(association);
-
-      if (data[dataKey] != null) {
-        if (data[dataKey].length > 0) {
-          data[dataKey][0]['label_unit'] = tableUnitData;
+  collapsed[model.name]?.data
+    ?.filter((data) => !_.isEmpty(data))
+    .forEach((data, index) => {
+      associations.forEach((association) => {
+        if (association.model.name !== 'label') {
+          return;
         }
 
-        if (data.labels != null && !Array.isArray(data.labels)) {
-          data.labels = [data.labels];
-        }
-
-        data.labels = data.labels?.map((label) => {
-          if (label.label_unit?.labelunitId != null) {
-            delete label.label_unit.labelunitId;
+        const tableUnitData = tableData['label_unit']?.data?.find((row) => {
+          if (tableData[model.name]?.data == null) {
+            return false;
           }
 
-          return label;
+          if (
+            tableData[model.name].data[index]?.labels != null &&
+            !Array.isArray(tableData[model.name].data[index].labels)
+          ) {
+            tableData[model.name].data[index].labels = [
+              tableData[model.name].data[index].labels,
+            ];
+          }
+
+          return tableData[model.name].data[index]?.labels
+            ?.map((label) => label.id)
+            .includes(row['labelunitId']);
         });
-      }
+
+        const dataKey = formatModelAssociationName(association);
+
+        if (data[dataKey] != null) {
+          if (data[dataKey].length > 0) {
+            data[dataKey][0]['label_unit'] = tableUnitData;
+          }
+
+          if (data.labels != null && !Array.isArray(data.labels)) {
+            data.labels = [data.labels];
+          }
+
+          data.labels = data.labels?.map((label) => {
+            if (label.label_unit?.labelunitId != null) {
+              delete label.label_unit.labelunitId;
+            }
+
+            return label;
+          });
+        }
+      });
     });
-  });
 
   return collapsed;
 };
@@ -697,65 +708,70 @@ export const updateTableWithData = async (tableData, model) => {
         }
 
         await Promise.all(
-          data.data.map(async (row) => {
-            const existingRecord = await data.model.findByPk(
-              row[data.model.primaryKeyAttributes[0]],
-            );
+          data.data
+            .filter((row) => !_.isEmpty(row))
+            .map(async (row) => {
+              const existingRecord = await data.model.findByPk(
+                row[data.model.primaryKeyAttributes[0]],
+              );
 
-            const exists = Boolean(existingRecord);
+              const exists = Boolean(existingRecord);
 
-            // Stripping out issuanceId if its included. Need to take another look at this
-            if (data.model.name === 'unit') {
-              delete row['issuanceId'];
-            }
-            updateModelChildIds(
-              modelAssociations,
-              row,
-              removeModelKeyInChildren,
-              model,
-              false,
-            );
+              // Stripping out issuanceId if its included. Need to take another look at this
+              if (data.model.name === 'unit') {
+                delete row['issuanceId'];
+              }
 
-            const validation = data.model.validateImport?.validate(row);
+              updateModelChildIds(
+                modelAssociations,
+                row,
+                removeModelKeyInChildren,
+                model,
+                false,
+              );
 
-            updateModelChildIds(
-              modelAssociations,
-              row,
-              removeModelKeyInChildren,
-              model,
-              true,
-            );
+              const validation = data.model.validateImport?.validate(row);
 
-            if (exists) {
-              // Assert the original record is a record your allowed to modify
-              await assertOrgIsHomeOrg(existingRecord.orgUid);
-            } else {
-              // Assign the newly created record to this home org
-              row.orgUid = orgUid;
-            }
+              updateModelChildIds(
+                modelAssociations,
+                row,
+                removeModelKeyInChildren,
+                model,
+                true,
+              );
 
-            // merge the new record into the old record
-            let stagedRecord = Array.isArray(row) ? row : [row];
+              if (exists) {
+                // Assert the original record is a record your allowed to modify
+                await assertOrgIsHomeOrg(existingRecord.orgUid);
+              } else {
+                // Assign the newly created record to this home org
+                row.orgUid = orgUid;
+              }
 
-            stagedRecord = stagedRecord.map((record) => {
-              return Object.keys(record).reduce((syncedRecord, key) => {
-                syncedRecord[key] = record[key];
-                return syncedRecord;
-              }, existingRecord?.dataValues ?? {});
-            });
+              // merge the new record into the old record
+              let stagedRecord = Array.isArray(row) ? row : [row];
 
-            if (!validation.error) {
-              await Staging.upsert({
-                uuid: row[model.primaryKeyAttributes[0]],
-                action: exists ? 'UPDATE' : 'INSERT',
-                table: model.stagingTableName,
-                data: JSON.stringify(stagedRecord),
+              stagedRecord = stagedRecord.map((record) => {
+                return Object.keys(record).reduce((syncedRecord, key) => {
+                  syncedRecord[key] = record[key];
+                  return syncedRecord;
+                }, existingRecord?.dataValues ?? {});
               });
-            } else {
-              validation.error.message += ' on ' + model.name;
-              throw validation.error;
-            }
-          }),
+
+              if (!validation.error) {
+                await Staging.upsert({
+                  uuid: row[model.primaryKeyAttributes[0]],
+                  action: exists ? 'UPDATE' : 'INSERT',
+                  table: model.stagingTableName,
+                  data: JSON.stringify(stagedRecord),
+                });
+              } else {
+                validation.error.message +=
+                  ' on ' + model.name + `for ${JSON.stringify(row)}`;
+                console.log(validation.error.message);
+                throw validation.error;
+              }
+            }),
         );
       }),
     );

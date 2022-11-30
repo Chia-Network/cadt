@@ -20,17 +20,17 @@ export const baseSchema = {
     .try(Joi.string(), Joi.number())
     .required(),
   registryOfOrigin: Joi.string().required(),
-  program: Joi.string().optional(),
+  program: Joi.string().allow(null).optional(),
   projectName: Joi.string().required(),
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
   sector: Joi.string().required(),
   projectType: Joi.string().required(),
-  projectTags: Joi.string().optional(),
+  projectTags: Joi.string().allow(null).optional(),
   coveredByNDC: Joi.string()
     .custom(pickListValidation('coveredByNDC'))
     .required(),
-  ndcInformation: Joi.string().optional(),
+  ndcInformation: Joi.string().allow(null).optional(),
   projectStatus: Joi.string()
     .custom(pickListValidation('projectStatusValues', 'projectStatus'))
     .required(),
@@ -38,9 +38,9 @@ export const baseSchema = {
   unitMetric: Joi.string().custom(pickListValidation('unitMetric')).required(),
   methodology: Joi.string().required(),
   methodology2: Joi.string().optional(),
-  validationBody: Joi.string().optional(),
-  validationDate: Joi.date().optional(),
-  description: Joi.string().optional(),
+  validationBody: Joi.string().allow(null).optional(),
+  validationDate: Joi.date().allow(null).optional(),
+  description: Joi.string().allow(null).optional(),
 
   /* Child Tables */
   labels: Joi.array().items(labelSchema).min(1).optional(),
