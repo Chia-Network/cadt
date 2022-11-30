@@ -8,11 +8,12 @@ import { logger } from '../config/logger.cjs';
 
 import { getDataModelVersion } from './helpers';
 import defaultConfig from './defaultConfig.json';
+import {getChiaRoot} from "./chia-root.js"
 
 export const getConfig = _.memoize(() => {
-  const homeDir = os.homedir();
+  const chiaRoot = getChiaRoot();
   const dataModelVersion = getDataModelVersion();
-  const persistanceFolder = `${homeDir}/.chia/climate-warehouse/${dataModelVersion}`;
+  const persistanceFolder = `${chiaRoot}/climate-warehouse/${dataModelVersion}`;
   const configFile = path.resolve(`${persistanceFolder}/config.yaml`);
 
   try {

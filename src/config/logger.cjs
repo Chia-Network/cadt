@@ -3,8 +3,8 @@ const { format, transports, createLogger } = winston;
 const DailyRotateFile = require('winston-daily-rotate-file');
 
 const fs = require('fs');
-const os = require('os');
-const homeDir = os.homedir();
+const {getChiaRoot} = require("../utils/chia-root.js")
+const chiaRoot = getChiaRoot();
 const packageJson = require('../../package.json');
 
 const getDataModelVersion = () => {
@@ -13,7 +13,7 @@ const getDataModelVersion = () => {
   return `v${majorVersion}`;
 };
 
-const logDir = `${homeDir}/.chia/climate-warehouse/${getDataModelVersion()}/logs`;
+const logDir = `${chiaRoot}/climate-warehouse/${getDataModelVersion()}/logs`;
 
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
