@@ -1,3 +1,13 @@
+## [1.2.15](https://github.com/Chia-Network/climate-warehouse/compare/1.2.14...1.2.15) (2022-11-30)
+
+
+### Bug Fixes
+
+* ambiguous orgUid sqlite issue ([f13f426](https://github.com/Chia-Network/climate-warehouse/commit/f13f4266ca1ddf2a7398308639d01f593181099a))
+* xls upload issues ([ffe731b](https://github.com/Chia-Network/climate-warehouse/commit/ffe731b185fa7a72b0513750917f6e28690950e2))
+
+
+
 ## [1.2.14](https://github.com/Chia-Network/climate-warehouse/compare/1.2.13...1.2.14) (2022-11-17)
 
 
