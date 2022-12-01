@@ -151,6 +151,58 @@ jobs:
           name: ${{ matrix.artifact-name }}
           path: ${{ github.workspace }}/dist
 
+  build-linux-arm64:
+    name: Build Binaries
+    runs-on: ubuntu-latest
+    container:
+      image: chianetwork/ubuntu-20.04-builder
+      options: --platform=linux/arm64
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node 16.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.13'
+
+      - name: Ignore Husky
+        run: npm set-script prepare ""
+
+      - name: npm install
+        run: |
+          node --version
+          npm install
+
+      - name: npm cache clear --force
+        run: npm cache clear --force
+
+      - name: npm cache rm
+        run: npm cache rm --force
+
+      - name: npm cache verify
+        run: npm cache verify
+
+      - name: install global packages
+        run: npm i -g @babel/cli @babel/preset-env pkg
+
+      - name: create distributions
+        run: npm run create-linux-arm64-dist
+
+      - name: Make executable
+        run: chmod +x dist/climate-warehouse
+
+      - name: Copy sqlite3
+        run: cp ./node_modules/sqlite3/lib/binding/napi-v6-linux-glibc-arm64/node_sqlite3.node ./dist/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-arm64
+          path: ${{ github.workspace }}/dist
+
   debs:
     runs-on: ubuntu-latest
     needs:
