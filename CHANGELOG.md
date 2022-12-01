@@ -1,3 +1,7 @@
+## [1.2.16](https://github.com/Chia-Network/climate-warehouse/compare/1.2.15...1.2.16) (2022-12-01)
+
+
+
 ## [1.2.15](https://github.com/Chia-Network/climate-warehouse/compare/1.2.14...1.2.15) (2022-11-30)
 
 
