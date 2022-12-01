@@ -302,3 +302,8 @@ jobs:
             linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             linux-x64-deb/*.deb
             linux-arm64-deb/*.deb
+
+      - name: Trigger apt repo update
+        run: |
+          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/climate-warehouse/${{ github.sha }}/start
+          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/climate-warehouse/${{ github.sha }}/success/deploy
