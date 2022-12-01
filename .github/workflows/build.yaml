@@ -38,7 +38,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Node 16.x
         uses: actions/setup-node@v3
@@ -140,37 +140,77 @@ jobs:
 
       - name: Upload Mac Installer
         if: matrix.runs-on == 'macos-latest'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: mac-installer
           path: ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ github.workspace }}/dist
+
+  debs:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-x64
+          path: linux-x64
+
+      - name: Get tag name
+        id: tag-name
+        run: |
+          echo "TAGNAME=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_OUTPUT
+
+      - name: Build .deb
+        env:
+          CLIMATE_WAREHOUSE_VERSION: ${{ steps.tag-name.outputs.TAGNAME }}
+          PLATFORM: amd64
+        run: |
+          pip install j2cli
+          CLI_DEB_BASE="climate-warehouse_${{ steps.tag-name.outputs.TAGNAME }}-1_${PLATFORM}"
+          mkdir -p "deb/$CLI_DEB_BASE/opt/climate-warehouse"
+          mkdir -p "deb/$CLI_DEB_BASE/usr/bin"
+          mkdir -p "deb/$CLI_DEB_BASE/DEBIAN"
+          j2 -o "deb/$CLI_DEB_BASE/DEBIAN/control" build-scripts/deb/control.j2
+          cp -r linux-x64/* "deb/$CLI_DEB_BASE/opt/climate-warehouse/"
+          ln -s ../../opt/climate-warehouse/climate-warehouse "deb/$CLI_DEB_BASE/usr/bin/climate-warehouse"
+          dpkg-deb --build --root-owner-group "deb/$CLI_DEB_BASE"
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-x64-deb
+          path: ${{ github.workspace }}/deb/*.deb
 
   release:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     needs:
-      - build
+      - debs
     steps:
       - name: Download Windows artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: windows-x64
           path: windows-x64
 
       - name: Download MacOS artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: mac-installer
           path: mac-installer
 
       - name: Download Linux artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: linux-x64
           path: linux-x64
