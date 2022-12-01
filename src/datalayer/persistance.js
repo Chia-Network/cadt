@@ -15,6 +15,7 @@ import wallet from './wallet';
 import { Organization } from '../models';
 
 import { logger } from '../config/logger.cjs';
+import {getChiaRoot} from "../utils/chia-root.js"
 
 logger.info('climate-warehouse:datalayer:persistance');
 
@@ -23,12 +24,12 @@ process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 const CONFIG = getConfig().APP;
 
 const getBaseOptions = () => {
-  const homeDir = os.homedir();
+  const chiaRoot = getChiaRoot()
   const certFile = path.resolve(
-    `${homeDir}/.chia/mainnet/config/ssl/data_layer/private_data_layer.crt`,
+    `${chiaRoot}/config/ssl/data_layer/private_data_layer.crt`,
   );
   const keyFile = path.resolve(
-    `${homeDir}/.chia/mainnet/config/ssl/data_layer/private_data_layer.key`,
+    `${chiaRoot}/config/ssl/data_layer/private_data_layer.key`,
   );
 
   const baseOptions = {

@@ -5,18 +5,19 @@ import request from 'request-promise';
 import os from 'os';
 import { getConfig } from '../utils/config-loader';
 import yaml from 'js-yaml';
+import {getChiaRoot} from "../utils/chia-root.js"
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const rpcUrl = getConfig().APP.WALLET_URL;
 
 const getBaseOptions = () => {
-  const homeDir = os.homedir();
+  const chiaRoot = getChiaRoot();
   const certFile = path.resolve(
-    `${homeDir}/.chia/mainnet/config/ssl/full_node/private_full_node.crt`,
+    `${chiaRoot}/config/ssl/full_node/private_full_node.crt`,
   );
   const keyFile = path.resolve(
-    `${homeDir}/.chia/mainnet/config/ssl/full_node/private_full_node.key`,
+    `${chiaRoot}/config/ssl/full_node/private_full_node.key`,
   );
 
   const baseOptions = {
@@ -46,8 +47,8 @@ const getActiveNetwork = async () => {
 };
 
 export const getChiaConfig = _.memoize(() => {
-  const homeDir = os.homedir();
-  const persistanceFolder = `${homeDir}/.chia/mainnet/config`;
+  const chiaRoot = getChiaRoot();
+  const persistanceFolder = `${chiaRoot}/config`;
   const configFile = path.resolve(`${persistanceFolder}/config.yaml`);
   return yaml.load(fs.readFileSync(configFile, 'utf8'));
 });

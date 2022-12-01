@@ -4,8 +4,23 @@ const DailyRotateFile = require('winston-daily-rotate-file');
 
 const fs = require('fs');
 const os = require('os');
-const homeDir = os.homedir();
+const path = require('path');
 const packageJson = require('../../package.json');
+
+const getChiaRoot = () => {
+  let chiaRoot;
+
+  if(process.env.CHIA_ROOT) {
+    chiaRoot = path.resolve(process.env.CHIA_ROOT);
+  } else {
+    const homeDir = os.homedir();
+    chiaRoot = path.resolve(`${homeDir}/.chia/mainnet`);
+  }
+
+  return chiaRoot;
+};
+
+const chiaRoot = getChiaRoot();
 
 const getDataModelVersion = () => {
   const version = packageJson.version;
@@ -13,7 +28,7 @@ const getDataModelVersion = () => {
   return `v${majorVersion}`;
 };
 
-const logDir = `${homeDir}/.chia/climate-warehouse/${getDataModelVersion()}/logs`;
+const logDir = `${chiaRoot}/climate-warehouse/${getDataModelVersion()}/logs`;
 
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
