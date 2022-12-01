@@ -195,7 +195,9 @@ jobs:
         run: chmod +x dist/climate-warehouse
 
       - name: Copy sqlite3
-        run: cp ./node_modules/sqlite3/lib/binding/napi-v6-linux-glibc-arm64/node_sqlite3.node ./dist/
+        run: |
+          ls ./node_modules/sqlite3/lib/binding/
+          cp ./node_modules/sqlite3/lib/binding/napi-v6-linux-glibc-arm64/node_sqlite3.node ./dist/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
