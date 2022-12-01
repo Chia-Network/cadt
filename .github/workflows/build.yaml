@@ -187,17 +187,18 @@ jobs:
           path: ${{ github.workspace }}/dist
 
   debs:
-    name: Build ${{ matrix.name }} deb
+    name: Build ${{ matrix.include.name }} deb
     runs-on: ubuntu-latest
     needs:
       - build
       - build-linux-arm64
     strategy:
       matrix:
-        - name: linux-x64
-          platform: amd64
-        - name: linux-arm64
-          platform: arm64
+        include:
+          - name: linux-x64
+            platform: amd64
+          - name: linux-arm64
+            platform: arm64
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -205,8 +206,8 @@ jobs:
       - name: Download Linux artifacts
         uses: actions/download-artifact@v3
         with:
-          name: ${{ matrix.name }}
-          path: ${{ matrix.name }}
+          name: ${{ matrix.include.name }}
+          path: ${{ matrix.include.name }}
 
       - name: Get tag name
         id: tag-name
@@ -216,7 +217,7 @@ jobs:
       - name: Build .deb
         env:
           CLIMATE_WAREHOUSE_VERSION: ${{ steps.tag-name.outputs.TAGNAME }}
-          PLATFORM: ${{ matrix.platform }}
+          PLATFORM: ${{ matrix.include.platform }}
         run: |
           pip install j2cli
           CLI_DEB_BASE="climate-warehouse_${{ steps.tag-name.outputs.TAGNAME }}-1_${PLATFORM}"
@@ -224,7 +225,7 @@ jobs:
           mkdir -p "deb/$CLI_DEB_BASE/usr/bin"
           mkdir -p "deb/$CLI_DEB_BASE/DEBIAN"
           j2 -o "deb/$CLI_DEB_BASE/DEBIAN/control" build-scripts/deb/control.j2
-          cp -r ${{ matrix.name }}/* "deb/$CLI_DEB_BASE/opt/climate-warehouse/"
+          cp -r ${{ matrix.include.name }}/* "deb/$CLI_DEB_BASE/opt/climate-warehouse/"
           chmod +x deb/$CLI_DEB_BASE/opt/climate-warehouse/climate-warehouse
           ln -s ../../opt/climate-warehouse/climate-warehouse "deb/$CLI_DEB_BASE/usr/bin/climate-warehouse"
           dpkg-deb --build --root-owner-group "deb/$CLI_DEB_BASE"
@@ -232,7 +233,7 @@ jobs:
       - name: Upload deb
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.name }}-deb
+          name: ${{ matrix.include.name }}-deb
           path: ${{ github.workspace }}/deb/*.deb
 
   release:
