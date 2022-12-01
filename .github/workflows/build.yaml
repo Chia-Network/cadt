@@ -165,17 +165,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Ignore Husky
-        run: docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app node:16.13 npm set-script prepare ""
-
-      - name: npm install
-        run: docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app node:16.13 npm install
-
-      - name: install global packages
-        run: docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app node:16.13 npm i -g @babel/cli @babel/preset-env pkg
-
-      - name: create distributions
-        run: docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app node:16.13 npm run create-linux-arm64-dist
+      - name: Build arm 64 dist
+        run: |
+          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app node:16.13 npm set-script prepare "" && \
+            npm install && \
+            npm i -g @babel/cli @babel/preset-env pkg && \
+            npm run create-linux-arm64-dist
 
       - name: Make executable
         run: chmod +x dist/climate-warehouse
@@ -192,10 +187,17 @@ jobs:
           path: ${{ github.workspace }}/dist
 
   debs:
+    name: Build ${{ matrix.name }} deb
     runs-on: ubuntu-latest
     needs:
       - build
       - build-linux-arm64
+    strategy:
+      matrix:
+        - name: linux-x64
+          platform: amd64
+        - name: linux-arm64
+          platform: arm64
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -203,8 +205,8 @@ jobs:
       - name: Download Linux artifacts
         uses: actions/download-artifact@v3
         with:
-          name: linux-x64
-          path: linux-x64
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}
 
       - name: Get tag name
         id: tag-name
@@ -214,7 +216,7 @@ jobs:
       - name: Build .deb
         env:
           CLIMATE_WAREHOUSE_VERSION: ${{ steps.tag-name.outputs.TAGNAME }}
-          PLATFORM: amd64
+          PLATFORM: ${{ matrix.platform }}
         run: |
           pip install j2cli
           CLI_DEB_BASE="climate-warehouse_${{ steps.tag-name.outputs.TAGNAME }}-1_${PLATFORM}"
@@ -222,7 +224,7 @@ jobs:
           mkdir -p "deb/$CLI_DEB_BASE/usr/bin"
           mkdir -p "deb/$CLI_DEB_BASE/DEBIAN"
           j2 -o "deb/$CLI_DEB_BASE/DEBIAN/control" build-scripts/deb/control.j2
-          cp -r linux-x64/* "deb/$CLI_DEB_BASE/opt/climate-warehouse/"
+          cp -r ${{ matrix.name }}/* "deb/$CLI_DEB_BASE/opt/climate-warehouse/"
           chmod +x deb/$CLI_DEB_BASE/opt/climate-warehouse/climate-warehouse
           ln -s ../../opt/climate-warehouse/climate-warehouse "deb/$CLI_DEB_BASE/usr/bin/climate-warehouse"
           dpkg-deb --build --root-owner-group "deb/$CLI_DEB_BASE"
@@ -230,7 +232,7 @@ jobs:
       - name: Upload deb
         uses: actions/upload-artifact@v3
         with:
-          name: linux-x64-deb
+          name: ${{ matrix.name }}-deb
           path: ${{ github.workspace }}/deb/*.deb
 
   release:
@@ -257,11 +259,17 @@ jobs:
           name: linux-x64
           path: linux-x64
 
-      - name: Download Linux deb
+      - name: Download Linux x64 deb
         uses: actions/download-artifact@v3
         with:
           name: linux-x64-deb
           path: linux-x64-deb
+
+      - name: Download Linux arm64 deb
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-arm64-deb
+          path: linux-arm64-deb
 
       - name: Get tag name
         id: tag-name
@@ -282,3 +290,4 @@ jobs:
             macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             linux-x64-deb/*.deb
+            linux-arm64-deb/*.deb
