@@ -165,6 +165,18 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Determine npm cache key
+        id: npm-cache
+        run: |
+          CACHE_KEY=node-linux-arm64-$(shasum package.json | awk '{ print $1 }')-$(shasum package-lock.json | awk '{ print $1 }')
+          echo "CACHE_KEY=$CACHE_KEY" >> $GITHUB_OUTPUT
+
+      - name: Setup NPM Cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ steps.npm-cache.outputs.CACHE_KEY }}
+
       - name: Build arm 64 dist
         run: |
           docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app node:16.13 /bin/bash -c "npm set-script prepare \"\" && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
