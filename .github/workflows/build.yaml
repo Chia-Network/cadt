@@ -179,7 +179,8 @@ jobs:
 
       - name: Build arm 64 dist
         run: |
-          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app node:16.13 /bin/bash -c "npm set-script prepare \"\" && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
+          mkdir pkgcache
+          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:16.13 /bin/bash -c "npm set-script prepare \"\" && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
 
       - name: Make executable
         run: chmod +x dist/climate-warehouse
