@@ -182,6 +182,7 @@ jobs:
           mkdir -p "deb/$CLI_DEB_BASE/DEBIAN"
           j2 -o "deb/$CLI_DEB_BASE/DEBIAN/control" build-scripts/deb/control.j2
           cp -r linux-x64/* "deb/$CLI_DEB_BASE/opt/climate-warehouse/"
+          chmod +x deb/$CLI_DEB_BASE/opt/climate-warehouse/climate-warehouse
           ln -s ../../opt/climate-warehouse/climate-warehouse "deb/$CLI_DEB_BASE/usr/bin/climate-warehouse"
           dpkg-deb --build --root-owner-group "deb/$CLI_DEB_BASE"
 
