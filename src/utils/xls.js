@@ -487,6 +487,10 @@ export const tableDataFromXlsx = (xlsx, model) => {
       dataModel = LabelUnit;
     }
 
+    if (!dataModel) {
+      return stagingData;
+    }
+
     const columnNames = data.shift();
     data.forEach((dataRow) => {
       if (stagingData[dataModel.name] == null) {
