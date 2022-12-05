@@ -251,7 +251,7 @@ export const updateFromXLS = async (req, res) => {
       message: 'Updates from xlsx added to staging',
     });
   } catch (error) {
-    logger.error(error);
+    console.trace(error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
