@@ -1,3 +1,12 @@
+## [1.2.18](https://github.com/Chia-Network/climate-warehouse/compare/1.2.16...1.2.18) (2022-12-05)
+
+
+### Features
+
+* update standard gov body org id ([e3fc443](https://github.com/Chia-Network/climate-warehouse/commit/e3fc4431dbc0c2ae44dd1524e0d897f5e9a317c7))
+
+
+
 ## [1.2.16](https://github.com/Chia-Network/climate-warehouse/compare/1.2.15...1.2.16) (2022-12-01)
 
 
