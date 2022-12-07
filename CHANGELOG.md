@@ -1,3 +1,12 @@
+## [1.2.19](https://github.com/Chia-Network/climate-warehouse/compare/1.2.18...1.2.19) (2022-12-07)
+
+
+### Features
+
+* add datalayer url config ([aceb436](https://github.com/Chia-Network/climate-warehouse/commit/aceb436cb41d88e5b98323454b3e18149fcc4117))
+
+
+
 ## [1.2.18](https://github.com/Chia-Network/climate-warehouse/compare/1.2.16...1.2.18) (2022-12-05)
 
 
