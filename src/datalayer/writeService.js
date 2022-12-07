@@ -12,7 +12,7 @@ import { publicIpv4 } from '../utils/ip-tools';
 
 logger.info('climate-warehouse:datalayer:writeService');
 
-const { USE_SIMULATOR } = getConfig().APP;
+const { USE_SIMULATOR, DATALAYER_FILE_SERVER_URL } = getConfig().APP;
 
 const createDataLayerStore = async () => {
   await wallet.waitForAllTransactionsToConfirm();
@@ -33,7 +33,8 @@ const createDataLayerStore = async () => {
 
     await dataLayer.addMirror(
       storeId,
-      `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
+      DATALAYER_FILE_SERVER_URL ||
+        `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
       true,
     );
   }

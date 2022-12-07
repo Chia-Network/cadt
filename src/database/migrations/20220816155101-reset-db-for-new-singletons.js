@@ -2,58 +2,59 @@
 
 export default {
   async up(queryInterface) {
-    await queryInterface.sequelize.query(
-      `DROP TRIGGER IF EXISTS project_delete_fts`,
-    );
-    await queryInterface.sequelize.query(
-      `DROP TRIGGER IF EXISTS project_insert_fts`,
-    );
-    await queryInterface.sequelize.query(
-      `DROP TRIGGER IF EXISTS project_update_fts`,
-    );
-    await queryInterface.sequelize.query(
-      `DROP TRIGGER IF EXISTS unit_delete_fts`,
-    );
-    await queryInterface.sequelize.query(
-      `DROP TRIGGER IF EXISTS unit_insert_fts`,
-    );
-    await queryInterface.sequelize.query(
-      `DROP TRIGGER IF EXISTS unit_update_fts`,
-    );
-    await Promise.all(
-      [
-        'audit',
-        'coBenefits',
-        'estimations',
-        'fileStore',
-        'governance',
-        'issuances',
-        'label_unit',
-        'labels',
-        'meta',
-        'organizations',
-        'projectLocations',
-        'projectRatings',
-        'projects',
-        'relatedProjects',
-        'simulator',
-        'staging',
-        'units',
-      ].map((table) => {
-        queryInterface.bulkDelete(
-          table,
-          {},
-          {
-            truncate: true,
-            cascade: true,
-            restartIdentity: true,
-          },
-        );
-      }),
-    );
+    if (queryInterface.sequelize.getDialect() === 'sqlite') {
+      await queryInterface.sequelize.query(
+        `DROP TRIGGER IF EXISTS project_delete_fts`,
+      );
+      await queryInterface.sequelize.query(
+        `DROP TRIGGER IF EXISTS project_insert_fts`,
+      );
+      await queryInterface.sequelize.query(
+        `DROP TRIGGER IF EXISTS project_update_fts`,
+      );
+      await queryInterface.sequelize.query(
+        `DROP TRIGGER IF EXISTS unit_delete_fts`,
+      );
+      await queryInterface.sequelize.query(
+        `DROP TRIGGER IF EXISTS unit_insert_fts`,
+      );
+      await queryInterface.sequelize.query(
+        `DROP TRIGGER IF EXISTS unit_update_fts`,
+      );
+      await Promise.all(
+        [
+          'audit',
+          'coBenefits',
+          'estimations',
+          'fileStore',
+          'governance',
+          'issuances',
+          'label_unit',
+          'labels',
+          'meta',
+          'organizations',
+          'projectLocations',
+          'projectRatings',
+          'projects',
+          'relatedProjects',
+          'simulator',
+          'staging',
+          'units',
+        ].map((table) => {
+          queryInterface.bulkDelete(
+            table,
+            {},
+            {
+              truncate: true,
+              cascade: true,
+              restartIdentity: true,
+            },
+          );
+        }),
+      );
 
-    await queryInterface.dropTable('units_fts');
-    await queryInterface.sequelize.query(`
+      await queryInterface.dropTable('units_fts');
+      await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE units_fts USING fts5(
         warehouseUnitId,
         issuanceId,
@@ -80,8 +81,8 @@ export default {
         timeStaged
       );
       `);
-    await queryInterface.sequelize.query(
-      `INSERT INTO units_fts SELECT
+      await queryInterface.sequelize.query(
+        `INSERT INTO units_fts SELECT
         warehouseUnitId,
         issuanceId,
         projectLocationId,
@@ -106,9 +107,9 @@ export default {
         unitCount,
         timeStaged
       FROM units`,
-    );
+      );
 
-    await queryInterface.sequelize.query(`
+      await queryInterface.sequelize.query(`
       CREATE TRIGGER unit_insert_fts AFTER INSERT ON units BEGIN
         INSERT INTO units_fts(
           warehouseUnitId,
@@ -159,13 +160,13 @@ export default {
         );
       END;`);
 
-    await queryInterface.sequelize.query(`
+      await queryInterface.sequelize.query(`
       CREATE TRIGGER unit_delete_fts AFTER DELETE ON units BEGIN
         DELETE FROM units_fts WHERE warehouseUnitId = old.warehouseUnitId;
       END;
       `);
 
-    await queryInterface.sequelize.query(`
+      await queryInterface.sequelize.query(`
       CREATE TRIGGER unit_update_fts AFTER UPDATE ON units BEGIN
         DELETE FROM units_fts WHERE warehouseUnitId = old.warehouseUnitId;
         INSERT INTO units_fts(
@@ -218,8 +219,8 @@ export default {
       END;
       `);
 
-    await queryInterface.dropTable('projects_fts');
-    await queryInterface.sequelize.query(`
+      await queryInterface.dropTable('projects_fts');
+      await queryInterface.sequelize.query(`
       CREATE VIRTUAL TABLE projects_fts USING fts5(
         warehouseProjectId,
         orgUid,
@@ -248,7 +249,7 @@ export default {
       );
       `);
 
-    await queryInterface.sequelize.query(`
+      await queryInterface.sequelize.query(`
       CREATE TRIGGER project_insert_fts AFTER INSERT ON projects BEGIN
         INSERT INTO projects_fts(
           warehouseProjectId,
@@ -303,13 +304,13 @@ export default {
         );
       END;`);
 
-    await queryInterface.sequelize.query(`
+      await queryInterface.sequelize.query(`
       CREATE TRIGGER project_delete_fts AFTER DELETE ON projects BEGIN
         DELETE FROM projects_fts WHERE warehouseProjectId = old.warehouseProjectId;
       END;
       `);
 
-    await queryInterface.sequelize.query(`
+      await queryInterface.sequelize.query(`
       CREATE TRIGGER project_update_fts AFTER UPDATE ON projects BEGIN
         DELETE FROM projects_fts WHERE warehouseProjectId = old.warehouseProjectId;
         INSERT INTO projects_fts(
@@ -365,6 +366,7 @@ export default {
         );
       END;
       `);
+    }
   },
 
   async down() {
