@@ -420,8 +420,6 @@ export const collapseTablesData = (tableData, model) => {
           return;
         }
 
-        // console.log('!!!!', data);
-
         const tableUnitData = tableData['label_unit']?.data?.find((row) => {
           if (tableData[model.name]?.data == null) {
             return false;
