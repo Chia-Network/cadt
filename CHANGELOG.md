@@ -1,3 +1,12 @@
+## [1.2.20](https://github.com/Chia-Network/climate-warehouse/compare/1.2.19...1.2.20) (2022-12-10)
+
+
+### Bug Fixes
+
+* xls upload child table ids and orguids ([88c8575](https://github.com/Chia-Network/climate-warehouse/commit/88c8575cefd58404c6450c8b546a67380892c3e5))
+
+
+
 ## [1.2.19](https://github.com/Chia-Network/climate-warehouse/compare/1.2.18...1.2.19) (2022-12-07)
 
 
