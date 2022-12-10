@@ -287,184 +287,6 @@ function buildObjectXlsData({
   return aggregatedData;
 }
 
-export const createXlsFromSequelizeResults_old = ({
-  rows,
-  model,
-  toStructuredCsv = false,
-  excludeOrgUid = false,
-  isUserFriendlyFormat = true,
-}) => {
-  rows = JSON.parse(JSON.stringify(rows)); // Sadly this is the best way to simplify sequelize's return shape
-
-  let columnsInResults = [];
-  const associationColumnsMap = new Map();
-
-  if (rows.length > 0) {
-    columnsInResults = Object.keys(rows[0]);
-
-    rows.forEach((row, index) => {
-      if (index === 0) {
-        return;
-      }
-
-      Object.keys(row).forEach((key) => {
-        if (!columnsInResults.includes(key)) columnsInResults.push(key);
-      });
-    });
-  }
-
-  const associations = model.getAssociatedModels();
-  const associationNames = associations.map(
-    (association) => `${association.model.name}s`,
-  );
-
-  const columnsInMainSheet = columnsInResults.filter(
-    (column) =>
-      !associationNames.includes(column) &&
-      (!excludeOrgUid || column !== 'orgUid'),
-  );
-
-  const associatedModelColumns = columnsInResults.filter((column) =>
-    associations
-      .map((association) => `${association.model.name}s`)
-      .includes(column),
-  );
-
-  // Create a map with the union of all keys of each association item on any row (the columns may differ, e.g. one item added, one updated)
-  if (rows.length > 0) {
-    associatedModelColumns.forEach((column) => {
-      rows.forEach((row) => {
-        if (row[column] == null || typeof row[column] !== 'object') {
-          return;
-        }
-
-        if (Array.isArray(row[column])) {
-          row[column].forEach((item) => {
-            if (item != null && typeof item === 'object') {
-              getObjectColumns(item, column, associationColumnsMap);
-            }
-          });
-        } else {
-          getObjectColumns(row[column], column, associationColumnsMap);
-        }
-      });
-    });
-  }
-
-  const initialReduceValue = {};
-  initialReduceValue[model.name] = {
-    name: model.name + 's',
-    data: [
-      columnsInMainSheet.map((colName) =>
-        colName === 'issuance' ? 'issuanceId' : colName,
-      ), // todo make this generic
-    ],
-  };
-
-  const xlsData = rows.reduce((sheets, row) => {
-    let mainXlsRow = [];
-
-    // Populate main sheet values
-    columnsInMainSheet.forEach((columnName) => {
-      const rowValue =
-        isUserFriendlyFormat && row[columnName] == null
-          ? 'null'
-          : row[columnName];
-
-      if (rowValue != null && Object.keys(rowValue).includes('id')) {
-        if (!Object.keys(sheets).includes(columnName + 's')) {
-          sheets[columnName + 's'] = {
-            name: columnName + 's',
-            data: [
-              Object.keys(rowValue).concat([
-                model.name.split('_').join('') + 'Id',
-              ]),
-            ],
-          };
-        }
-        sheets[columnName + 's'].data.push(
-          Object.values(rowValue)
-            .map((val1) => val1)
-            .concat([rowValue.id]),
-        );
-      }
-
-      mainXlsRow.push(rowValue);
-    });
-
-    if (mainXlsRow.length) {
-      sheets[model.name].data.push(mainXlsRow);
-    }
-
-    // Populate associated data sheets
-    associatedModelColumns.forEach((column) => {
-      if (!Array.isArray(row[column])) {
-        return;
-      }
-
-      row[column].forEach((value) => {
-        const xlsRow = [];
-
-        if (!Object.keys(sheets).includes(column)) {
-          sheets[column] = {
-            name: column,
-            data: [Object.keys(value).concat([model.name + 'Id'])],
-          };
-        }
-
-        (associationColumnsMap.get(column) ?? Object.keys(value)).forEach(
-          (column) => {
-            const rowValue =
-              isUserFriendlyFormat && value[column] == null
-                ? 'null'
-                : value[column];
-
-            if (rowValue != null && typeof rowValue === 'object') {
-              if (!Object.keys(sheets).includes(column + 's')) {
-                const columns =
-                  associationColumnsMap.get(column) ?? Object.keys(rowValue);
-
-                sheets[column + 's'] = {
-                  name: column + 's',
-                  data: [columns.concat([column.split('_').join('') + 'Id'])],
-                };
-              }
-
-              if (rowValue != null) {
-                const columns =
-                  associationColumnsMap.get(column) ?? Object.keys(rowValue);
-                sheets[column + 's'].data.push(
-                  columns
-                    .map((currentCol) => rowValue[currentCol])
-                    .concat([value.id]),
-                );
-              }
-            }
-
-            xlsRow.push(rowValue);
-          },
-        );
-
-        if (xlsRow.length > 0) {
-          if ((model.primaryKeyAttributes?.length ?? 0) > 0) {
-            xlsRow.push(row[model.primaryKeyAttributes[0]]);
-          }
-
-          sheets[column].data.push(xlsRow);
-        }
-      });
-    });
-
-    return sheets;
-  }, initialReduceValue);
-
-  if (!toStructuredCsv) {
-    return xlsx.build(Object.values(xlsData));
-  } else {
-    return xlsData;
-  }
-};
-
 export const tableDataFromXlsx = (xlsx, model) => {
   // Todo recursion
   const modelAssociations = [...associations(model), model];
@@ -650,13 +472,15 @@ export const collapseTablesData = (tableData, model) => {
  * @param model - The model used
  * @param setKey - Whether to set the model key to children or to delete them (false = delete)
  */
-function updateModelChildIds(
+async function updateModelChildIds(
   modelAssociations,
   item,
   removeModelKeyInChildren,
   model,
   setKey,
 ) {
+  const homeOrg = await Organization.getHomeOrg();
+
   modelAssociations.forEach((association) => {
     if (!association.pluralize) return;
 
@@ -664,6 +488,13 @@ function updateModelChildIds(
     if (item[key] != null) {
       if (!Array.isArray(item[key])) {
         item[key] = [item[key]];
+      }
+
+      if (setKey) {
+        item[key].forEach((childData) => {
+          childData.id = uuidv4();
+          childData.orgUid = homeOrg.orgUid;
+        });
       }
 
       if (removeModelKeyInChildren.includes(key)) {
@@ -726,7 +557,7 @@ export const updateTableWithData = async (tableData, model) => {
                 delete row['issuanceId'];
               }
 
-              updateModelChildIds(
+              await updateModelChildIds(
                 modelAssociations,
                 row,
                 removeModelKeyInChildren,
@@ -736,7 +567,7 @@ export const updateTableWithData = async (tableData, model) => {
 
               const validation = data.model.validateImport?.validate(row);
 
-              updateModelChildIds(
+              await updateModelChildIds(
                 modelAssociations,
                 row,
                 removeModelKeyInChildren,
