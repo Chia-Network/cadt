@@ -61,6 +61,7 @@ export const unitsGetQuerySchema = Joi.object()
     marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
     hasMarketplaceIdentifier: Joi.boolean(),
     includeProjectInfoInSearch: Joi.boolean(),
+    filter: Joi.string().regex(/(\w+):(.+):(in|eq|not)/),
   })
   .with('page', 'limit');
 

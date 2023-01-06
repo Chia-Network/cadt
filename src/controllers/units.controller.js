@@ -124,9 +124,25 @@ export const findAll = async (req, res) => {
       marketplaceIdentifiers,
       hasMarketplaceIdentifier,
       includeProjectInfoInSearch = false,
+      filter,
     } = req.query;
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
+
+    if (filter) {
+      if (!where) {
+        where = {};
+      }
+
+      const matches = filter.match(/(\w+):(.+):(in|eq|not)/);
+      // check if the value param is an array so we can parse it
+      const valueMatches = matches[2].match(/\[.+\]/);
+      where[matches[1]] = {
+        [Sequelize.Op[matches[3]]]: valueMatches
+          ? JSON.parse(matches[2])
+          : matches[2],
+      };
+    }
 
     const includes = Unit.getAssociatedModels();
 
