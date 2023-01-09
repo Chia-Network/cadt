@@ -1,3 +1,13 @@
+## [1.2.21](https://github.com/Chia-Network/climate-warehouse/compare/1.2.20...1.2.21) (2023-01-09)
+
+
+### Features
+
+* add generic filter for paginated results ([58cb535](https://github.com/Chia-Network/climate-warehouse/commit/58cb535f6a89b4818c578e7179161bfae521e15b))
+* add project generic filter and generic sort ([f1332db](https://github.com/Chia-Network/climate-warehouse/commit/f1332db41fbc9ee5ce96b3c1c11a1a3ab0e5c20e))
+
+
+
 ## [1.2.20](https://github.com/Chia-Network/climate-warehouse/compare/1.2.19...1.2.20) (2022-12-10)
 
 
