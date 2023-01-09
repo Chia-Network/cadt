@@ -1,3 +1,58 @@
+## [1.2.20](https://github.com/Chia-Network/climate-warehouse/compare/1.2.19...1.2.20) (2022-12-10)
+
+
+### Bug Fixes
+
+* xls upload child table ids and orguids ([88c8575](https://github.com/Chia-Network/climate-warehouse/commit/88c8575cefd58404c6450c8b546a67380892c3e5))
+
+
+
+## [1.2.19](https://github.com/Chia-Network/climate-warehouse/compare/1.2.18...1.2.19) (2022-12-07)
+
+
+### Features
+
+* add datalayer url config ([aceb436](https://github.com/Chia-Network/climate-warehouse/commit/aceb436cb41d88e5b98323454b3e18149fcc4117))
+
+
+
+## [1.2.18](https://github.com/Chia-Network/climate-warehouse/compare/1.2.16...1.2.18) (2022-12-05)
+
+
+### Features
+
+* update standard gov body org id ([e3fc443](https://github.com/Chia-Network/climate-warehouse/commit/e3fc4431dbc0c2ae44dd1524e0d897f5e9a317c7))
+
+
+
+## [1.2.16](https://github.com/Chia-Network/climate-warehouse/compare/1.2.15...1.2.16) (2022-12-01)
+
+
+
+## [1.2.15](https://github.com/Chia-Network/climate-warehouse/compare/1.2.14...1.2.15) (2022-11-30)
+
+
+### Bug Fixes
+
+* ambiguous orgUid sqlite issue ([f13f426](https://github.com/Chia-Network/climate-warehouse/commit/f13f4266ca1ddf2a7398308639d01f593181099a))
+* xls upload issues ([ffe731b](https://github.com/Chia-Network/climate-warehouse/commit/ffe731b185fa7a72b0513750917f6e28690950e2))
+
+
+
+## [1.2.14](https://github.com/Chia-Network/climate-warehouse/compare/1.2.13...1.2.14) (2022-11-17)
+
+
+### Bug Fixes
+
+* remove old validation for updating orglist ([96e2867](https://github.com/Chia-Network/climate-warehouse/commit/96e28677020be048ef2755aab5af638e43287501))
+
+
+### Features
+
+* add unified search option ([fc172f5](https://github.com/Chia-Network/climate-warehouse/commit/fc172f5b7d206b7f8f593a892ea94ad299b0f0cc))
+
+
+
 ## [1.2.13](https://github.com/Chia-Network/climate-warehouse/compare/1.2.12...1.2.13) (2022-11-09)
 
 

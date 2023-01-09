@@ -285,7 +285,7 @@ jobs:
       - name: Get tag name
         id: tag-name
         run: |
-          echo ::set-output name=TAGNAME::$(echo $GITHUB_REF | cut -d / -f 3)
+          echo "TAGNAME=$(echo $GITHUB_REF | cut -d / -f 3)" >>$GITHUB_OUTPUT
 
       - name: Create zips
         run: |
