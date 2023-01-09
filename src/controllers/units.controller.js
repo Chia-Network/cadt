@@ -33,6 +33,12 @@ import {
   transformMetaUid,
 } from '../utils/xls';
 
+import {
+  genericFilterRegex,
+  genericSortColumnRegex,
+  isArrayRegex,
+} from '../utils/string-utils';
+
 import { formatModelAssociationName } from '../utils/model-utils.js';
 import { logger } from '../config/logger.cjs';
 
@@ -124,9 +130,25 @@ export const findAll = async (req, res) => {
       marketplaceIdentifiers,
       hasMarketplaceIdentifier,
       includeProjectInfoInSearch = false,
+      filter,
     } = req.query;
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
+
+    if (filter) {
+      if (!where) {
+        where = {};
+      }
+
+      const matches = filter.match(genericFilterRegex);
+      // check if the value param is an array so we can parse it
+      const valueMatches = matches[2].match(isArrayRegex);
+      where[matches[1]] = {
+        [Sequelize.Op[matches[3]]]: valueMatches
+          ? JSON.parse(matches[2])
+          : matches[2],
+      };
+    }
 
     const includes = Unit.getAssociatedModels();
 
@@ -207,10 +229,16 @@ export const findAll = async (req, res) => {
     // default to DESC
     let resultOrder = [['timeStaged', 'DESC']];
 
-    if (order && order === 'SERIALNUMBER') {
-      resultOrder = [['serialNumberBlock', 'ASC']];
-    } else if (order && order === 'ASC') {
-      resultOrder = [['timeStaged', 'ASC']];
+    if (order?.match(genericSortColumnRegex)) {
+      const matches = order.match(genericSortColumnRegex);
+      resultOrder = [[matches[1], matches[2]]];
+    } else {
+      // backwards compatibility for old order usage
+      if (order && order === 'SERIALNUMBER') {
+        resultOrder = [['serialNumberBlock', 'ASC']];
+      } else if (order && order === 'ASC') {
+        resultOrder = [['timeStaged', 'ASC']];
+      }
     }
 
     const results = await Unit.findAndCountAll({
