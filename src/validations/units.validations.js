@@ -4,6 +4,10 @@ import { issuanceSchema } from './issuances.validation';
 import { labelSchema } from './labels.validations';
 
 import { pickListValidation } from '../utils/validation-utils';
+import {
+  genericFilterRegex,
+  genericSortColumnRegex,
+} from '../utils/string-utils';
 
 const unitsBaseSchema = {
   // warehouseUnitId - derived upon unit creation
@@ -56,12 +60,17 @@ export const unitsGetQuerySchema = Joi.object()
     warehouseUnitId: Joi.string(),
     columns: Joi.array().items(Joi.string()).single(),
     orgUid: Joi.string(),
-    order: Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
+    order: Joi.alternatives().try(
+      // backwards compatibility for old order usage
+      Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
+      // new order usage
+      Joi.string().regex(genericSortColumnRegex),
+    ),
     xls: Joi.boolean(),
     marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
     hasMarketplaceIdentifier: Joi.boolean(),
     includeProjectInfoInSearch: Joi.boolean(),
-    filter: Joi.string().regex(/(\w+):(.+):(in|eq|not)/),
+    filter: Joi.string().regex(genericFilterRegex),
   })
   .with('page', 'limit');
 

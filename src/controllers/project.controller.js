@@ -9,6 +9,12 @@ import { Staging, Project, Organization, ModelKeys } from '../models';
 import { logger } from '../config/logger.cjs';
 
 import {
+  genericFilterRegex,
+  genericSortColumnRegex,
+  isArrayRegex,
+} from '../utils/string-utils';
+
+import {
   columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
@@ -26,6 +32,7 @@ import {
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
+
 import {
   tableDataFromXlsx,
   createXlsFromSequelizeResults,
@@ -108,8 +115,34 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    let { page, limit, search, orgUid, columns, xls, projectIds } = req.query;
+    let {
+      page,
+      limit,
+      search,
+      orgUid,
+      columns,
+      xls,
+      projectIds,
+      filter,
+      order,
+    } = req.query;
+
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
+
+    if (filter) {
+      if (!where) {
+        where = {};
+      }
+
+      const matches = filter.match(genericFilterRegex);
+      // check if the value param is an array so we can parse it
+      const valueMatches = matches[2].match(isArrayRegex);
+      where[matches[1]] = {
+        [Sequelize.Op[matches[3]]]: valueMatches
+          ? JSON.parse(matches[2])
+          : matches[2],
+      };
+    }
 
     if (orgUid === 'all') {
       // 'ALL' orgUid is just a UI concept but they keep forgetting this and send it
@@ -180,10 +213,18 @@ export const findAll = async (req, res) => {
       ...pagination,
     };
 
+    // default to DESC
+    let resultOrder = [['timeStaged', 'DESC']];
+
+    if (order?.match(genericSortColumnRegex)) {
+      const matches = order.match(genericSortColumnRegex);
+      resultOrder = [[matches[1], matches[2]]];
+    }
+
     const results = await Project.findAndCountAll({
       distinct: true,
       where,
-      order: [['timeStaged', 'DESC']],
+      order: resultOrder,
       ...query,
     });
 
