@@ -9,6 +9,11 @@ import {
   estimationSchema,
 } from '../validations';
 
+import {
+  genericFilterRegex,
+  genericSortColumnRegex,
+} from '../utils/string-utils';
+
 import { pickListValidation } from '../utils/validation-utils';
 
 export const baseSchema = {
@@ -65,6 +70,8 @@ export const projectsGetQuerySchema = Joi.object()
     warehouseProjectId: Joi.string(),
     xls: Joi.boolean(),
     projectIds: Joi.array().items(Joi.string()).single(),
+    order: Joi.string().regex(genericSortColumnRegex),
+    filter: Joi.string().regex(genericFilterRegex),
   })
   .with('page', 'limit')
   .with('limit', 'page');
