@@ -484,6 +484,10 @@ export const split = async (req, res) => {
           newRecord.unitOwner = record.unitOwner;
         }
 
+        if (record.unitStatus) {
+          newRecord.unitStatus = record.unitStatus;
+        }
+
         if (record.countryJurisdictionOfOwner) {
           newRecord.countryJurisdictionOfOwner =
             record.countryJurisdictionOfOwner;
