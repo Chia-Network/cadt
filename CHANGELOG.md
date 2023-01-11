@@ -1,3 +1,13 @@
+## [1.2.22](https://github.com/Chia-Network/climate-warehouse/compare/1.2.21...1.2.22) (2023-01-11)
+
+
+### Features
+
+* add like operator to general filter ([75b2746](https://github.com/Chia-Network/climate-warehouse/commit/75b2746b917acc87f28012003df4bc3380275dcd))
+* add unit split to unit status ([5c9fd0c](https://github.com/Chia-Network/climate-warehouse/commit/5c9fd0cea54944fdfdcbbc1880d5f61f78ea087b))
+
+
+
 ## [1.2.21](https://github.com/Chia-Network/climate-warehouse/compare/1.2.20...1.2.21) (2023-01-09)
 
 
