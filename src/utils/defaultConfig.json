@@ -13,6 +13,7 @@
     "READ_ONLY": false,
     "API_KEY": null,
     "CHIA_NETWORK": "mainnet",
+    "USE_DEVELOPMENT_MODE": false,
     "IS_GOVERNANCE_BODY": false,
     "DEFAULT_FEE": 300000000,
     "DEFAULT_COIN_AMOUNT": 300000000,
