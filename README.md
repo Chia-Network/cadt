@@ -129,7 +129,6 @@ Each time you commit the message will be checked against these standards in a pr
 ​
 
 ### Sequelize Generator
-
 ​
 #### Creating Model and Migration Script
 
@@ -173,7 +172,6 @@ More info: https://www.sqlite.org/fts5.html
 
 #### Connecting to the WebSocket
 
-​
 
 1. Open a WebSocket connection to http://localhost:31310/v1/ws
    1. Once subscribed, emit either emit ...['subscribe', 'units'] or ['subscribe', 'projects']. You can emit both on the same connection
