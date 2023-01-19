@@ -19,12 +19,12 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout current branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: branch-repo
 
       - name: Checkout main
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: main
           path: main-repo
