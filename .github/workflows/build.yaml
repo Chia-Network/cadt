@@ -78,7 +78,7 @@ jobs:
       # Windows Code Signing
       - name: Decode code signing cert into an encrypted file
         if: matrix.runs-on == 'windows-2019'
-        uses: kitek/decode-base64-into-file-action@1.0
+        uses: kitek/decode-base64-into-file-action@1
         with:
           encoded-value: ${{ secrets.WIN_CODE_SIGN_CERT }}
           destination-file: .\win_code_sign_cert.pfx
@@ -294,7 +294,7 @@ jobs:
           zip -r linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip linux-x64
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v0.1
         with:
           files: |
             windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
