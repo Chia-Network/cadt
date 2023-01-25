@@ -1,3 +1,12 @@
+## [1.2.24](https://github.com/Chia-Network/climate-warehouse/compare/1.2.23...1.2.24) (2023-01-25)
+
+
+### Features
+
+* add development mode ([dbb5b5f](https://github.com/Chia-Network/climate-warehouse/commit/dbb5b5f12d148afd7bc13a3660e4a9377b1ee15c))
+
+
+
 ## [1.2.23](https://github.com/Chia-Network/climate-warehouse/compare/1.2.22...1.2.23) (2023-01-18)
 
 
