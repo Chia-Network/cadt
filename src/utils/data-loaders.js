@@ -7,13 +7,13 @@ import PickListStub from '../models/governance/governance.stub.json';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 
-const { USE_SIMULATOR, CHIA_NETWORK } = getConfig().APP;
+const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
 
 let downloadedPickList = {};
 export const getPicklistValues = () => downloadedPickList;
 
 export const pullPickListValues = async () => {
-  if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
+  if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
     downloadedPickList = PickListStub;
   } else {
     const governanceData = await Governance.findOne({
@@ -30,7 +30,7 @@ export const pullPickListValues = async () => {
 };
 
 export const getDefaultOrganizationList = async () => {
-  if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
+  if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
     return [];
   } else {
     const governanceData = await Governance.findOne({
