@@ -13,7 +13,7 @@ import PickListStub from './governance.stub.json';
 
 const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
 
-const { USE_SIMULATOR, CHIA_NETWORK } = getConfig().APP;
+const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
 
 import ModelTypes from './governance.modeltypes.cjs';
 
@@ -94,10 +94,10 @@ class Governance extends Model {
         metaValue: governanceData.pickList,
         confirmed: true,
       });
-    } else if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
+    } else if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
       // this block is just a fallback if the app gets through the upstream checks,
       // might be unnecessary
-      logger.info('SIMULATOR/TESTNET MODE: Using sample picklist');
+      logger.info('SIMULATOR/DEVELOPMENT MODE: Using sample picklist');
       updates.push({
         metaKey: 'pickList',
         metaValue: JSON.stringify(PickListStub),
@@ -115,7 +115,7 @@ class Governance extends Model {
       }
 
       // If on simulator or testnet, use the stubbed picklist data and return
-      if (USE_SIMULATOR || CHIA_NETWORK === 'testnet') {
+      if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
         logger.info('SIMULATOR/TESTNET MODE: Using sample picklist');
         Governance.upsert({
           metaKey: 'pickList',
