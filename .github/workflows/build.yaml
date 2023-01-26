@@ -294,7 +294,7 @@ jobs:
           zip -r linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip linux-x64
 
       - name: Release
-        uses: softprops/action-gh-release@v0.1
+        uses: softprops/action-gh-release@v0.1.15
         with:
           files: |
             windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
