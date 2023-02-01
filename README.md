@@ -83,8 +83,36 @@ chmod ug+x .git/hooks/*
 npm run start
 ```
 
+### Configuration
+
+In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), Climate Warehouse will add a directory called `climate-warehouse/v1`.  The main Climate Warehouse configuration file is called `config.yaml` and can be found in this directory.  The options in this file are as follows (the full list of available options can be seen in the [config template](src/utils/defaultConfig.json)):
+
+* **MIRROR_DB**: This section is for configuring the MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the data Climate Warehouse uses. 
+  *  **DB_USERNAME**:  MySQL username
+  *  **DB_PASSWORD**: MySQL password
+  *  **DB_NAME**: MySQL database name
+  *  **DB_HOST**: Hostname of the MySQL database
+* **APP**:  This section is for configuring the Climate Warehouse application.
+  * **CW_PORT**: Climate Warehouse port where the API will be available. 31310 by default.
+  * **DATALAYER_URL**: URL and port to connect to the [Chia DataLayer RPC](https://docs.chia.net/datalayer-rpc).  If Chia is installed locally with default settings, https://localhost:8562 will work. 
+  * **WALLET_URL**: URL and port to conned to the [Chia Wallet RPC](https://docs.chia.net/wallet-rpc).  If Chia is installed on the same machine as Climate Warehouse with default settings, https://localhost:9256 will work.
+  * **USE_SIMULATOR**: Developer setting to populate Climate Warehouse from a governance file and enables some extra APIs.  Should always be "false" under normal usage. 
+  * **READ_ONLY**: When hosting an Observer node, set to "true" to prevent any data being written using the Climate Warehouse APIs.  This makes the application safe to run with public endpoints as it is just displaying publicly available data.  When running a governance node, or a participant node, set to "false" to allow data to be written to the Climate Warehouse APIs.  When "false", additional authentication or access restrictions must be applied to prevent unauthorized alteration of the data.  
+  * **API_KEY**: This key is used by the [Climate Warehouse UI](https://github.com/Chia-Network/climate-warehouse-ui) to authenticate with the Climate Warehouse API endpoints.  This allows the API to power the UI only without allowing requests without the API in the header to access the API.  This can be left blank to allow open access to the API, or if access is restricted by other means.  The API_KEY can be set to any value, but we recommend at least a 32 character random string. 
+  * **CHIA_NETWORK**:  Climate Warehouse can run on Chia mainnet or any testnet.  Set to "mainnet" for production instances, or "testnet" if using the main Chia testnet. 
+  * **USE_DEVELOPMENT_MODE**:  Should be false in most use cases.  If a developer writing code for the app, this can be changed to "true" which will bypass the need for a governance node.
+  * **IS_GOVERNANCE_BODY**: "True" or "false" toggle to enable/disable mode for this instance being a governing body.
+  * **DEFAULT_FEE**: [Fee](https://docs.chia.net/mempool/) for each transaction on the Chia blockchain in mojos.  The default is 300000000 mojos (0.0003 XCH) and can be set higher or lower depending on how [busy](https://dashboard.chia.net/d/46EAA05E/mempool-transactions-and-fees?orgId=1) the Chia network is.  If a fee is set very low, it may cause a delay in transaction processing.  
+  * **DEFAULT_COIN_AMOUNT**: Units are mojo.  Each DataLayer transaction needs a coin amount and the default is 300000000 mojo.  
+  * **DATALAYER_FILE_SERVER_URL**: Chia DataLayer HTTP URL and port.  If serving DataLayer files from S3, this would be the public URL of the S3 bucket.  Must be publicly available.  
+* GOVERNANCE: Section on settings for the Governance body to connect to.
+  * **GOVERNANCE_BODY_ID**: This determines the governance body your climate warehouse network will be connected to.  While there could be multiple governance body IDs, the default of 23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e is the right ID for most people. 
+​
+## Developer Guide
+​
 ### Build Binaries
 
+After running the ["Installation from Source"](https://github.com/Chia-Network/climate-warehouse#installation-from-source) steps above, do the following: 
 
 ```
 // transcompile project to es5
@@ -95,9 +123,7 @@ npm run create-win-x64-dist
 npm run create-mac-x64-dist
 npm run create-linux-x64-dist
 ```
-​
-## Developer Guide
-​
+
 ### Commiting
 
 ​This repo uses a commit convention. A typical commit message might read:
