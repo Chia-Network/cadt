@@ -79,7 +79,7 @@ export const createV2 = async (req, res) => {
 
       return res.json({
         message:
-          'New organization created successfully. Please wait for it to be confirmed.',
+          'New organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.',
       });
     }
   } catch (error) {
