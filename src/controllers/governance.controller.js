@@ -64,7 +64,7 @@ export const findOrgList = async (req, res) => {
 
 export const findGlossary = async (req, res) => {
   try {
-    if (CONFIG.CHIA_NETWORK === 'testnet') {
+    if (CONFIG.USE_DEVELOPMENT_MODE) {
       return res.json(glossary);
     }
 
@@ -82,7 +82,7 @@ export const findGlossary = async (req, res) => {
 
 export const findPickList = async (req, res) => {
   try {
-    if (CONFIG.CHIA_NETWORK === 'testnet') {
+    if (CONFIG.USE_DEVELOPMENT_MODE) {
       return res.json(pickList);
     }
 
