@@ -85,7 +85,7 @@ npm run start
 
 ### Configuration
 
-In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), Climate Warehouse will add a directory called `climate-warehouse/v1`.  The main Climate Warehouse configuration file is called `config.yaml` and can be found in this directory.  The options in this file are as follows (the full list of available options can be seen in the [config template](src/utils/defaultConfig.json)):
+In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), Climate Warehouse will add a directory called `climate-warehouse/v1` when the application is first run (in fact, this directory could be deleted at any time and Climate Warehouse will recreate it next time it is started).  The main Climate Warehouse configuration file is called `config.yaml` and can be found in this directory.  The options in this file are as follows (the full list of available options can be seen in the [config template](src/utils/defaultConfig.json)):
 
 * **MIRROR_DB**: This section is for configuring the MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the data Climate Warehouse uses. 
   *  **DB_USERNAME**:  MySQL username
