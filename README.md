@@ -46,22 +46,42 @@ sudo apt-get update
 sudo apt-get install climate-warehouse
 ```
 
+5.  Setup [systemd init file](#systemd-init-script) and ensure the Climate Warehouse application is running.  Alternatively, run the Climate Warehouse binary from the command line with `/opt/climate-warehouse/climate-warehouse`
+
+6.  [Configure Climate Warehouse](#configuration).  Restart Climate Warehouse (`systemctl restart climate-warehouse` if using systemd) after any change to the config.yaml file 
+
+
 
 #### Systemd Init Script
 
 
-If running Climate Warehouse full-time on a machine, Systemd is a convenient way to manage the state of the application and ensure it starts at boot.  A [template for creating a Systemd file for Climate Warehouse can be found in the open source Chia Ansible roles](https://github.com/Chia-Network/ansible-roles/blob/main/cadt/templates/cadt.service.j2).  Copy this template to `/etc/systemd/system/cadt.service` (or `climate-warehouse.service` if you prefer) and follow the comments in the file to configure it for your use-case.  Once configured, do `sudo systemctl daemon-reload` for systemd to see the new file (do the `daemon-reload` command every time a change is made to the `.service` file).  Doing `sudo systemctl start cadt` will start Climate Warehouse and `sudo systemctl enable cadt` will set it to start at boot.  To view the logs, do `sudo journalctl -u cadt` (add the `-f` flag to monitor the log real-time).
+If running Climate Warehouse full-time on a machine, Systemd is a convenient way to manage the state of the application and ensure it starts at boot.  A [template for creating a Systemd file for Climate Warehouse can be found in the open source Chia Ansible roles](https://github.com/Chia-Network/ansible-roles/blob/main/cadt/templates/cadt.service.j2).  Follow these steps to modify the template and start Climate Warehouse with systemd:
+
+1.  Download systemd template `curl https://raw.githubusercontent.com/Chia-Network/ansible-roles/main/cadt/templates/cadt.service.j2 -o /etc/systemd/system/climate-warehouse.service`
+
+2.  Edit `/etc/systemd/system/climate-warehouse.service` and do the following (these instructions are in the template comments as well):
+
+    * If not using systemd to control your Chia installation, remove lines 12-15 (all the `Requires` and `After` lines) 
+    * Set your `CHIA_ROOT` for the `Environment`, replacing `{{ chia_root }} with the path to your `CHIA_ROOT` directory (see comments in template)
+    * Change the `ExecStart` value to match the path to your climate-warehouse executable (`/opt/climate-warehouse/climate-warehouse` if installed from `apt`)
+    * Change the `User` and `Group` to be the Linux user that is running the Chia services
+
+3.  `sudo systemctl daemon-reload` to update systemd with the latest changes. Do this every time you make a change to the `climate-warehouse.service` file
+
+4.  `sudo systemctl start climate-warehouse` to start the Climate Warehouse application
+
+5.  `sudo journalctl -u climate-warehouse` to view the logs
+
+6.  `sudo systemctl status climate-warehouse` to ensure Climate Warehouse is running successfully (Look for `Active: active (running)`)
+
+7.  `sudo systemctl enable climate-warehouse` to set Climate Warehouse to run at boot
 
 
 ### Installation from Source
 
 
-#### Prerequisites
-
-​
 You'll need:
 ​
-
 - Git
 - [nvm](https://github.com/nvm-sh/nvm) - This app uses `nvm` to align node versions across development, CI and production. If you're working on Windows you should consider [nvm-windows](https://github.com/coreybutler/nvm-windows)
 
@@ -107,6 +127,10 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), Climate Wareh
   * **DATALAYER_FILE_SERVER_URL**: Chia DataLayer HTTP URL and port.  If serving DataLayer files from S3, this would be the public URL of the S3 bucket.  Must be publicly available.  
 * GOVERNANCE: Section on settings for the Governance body to connect to.
   * **GOVERNANCE_BODY_ID**: This determines the governance body your climate warehouse network will be connected to.  While there could be multiple governance body IDs, the default of 23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e is the right ID for most people. 
+
+
+Note that the Climate Warehouse application will need to be restarted after any changes to the config.yaml file. 
+
 ​
 ## Developer Guide
 ​
