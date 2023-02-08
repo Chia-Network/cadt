@@ -1,23 +1,22 @@
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
-import os from 'os';
 import { getConfig } from '../utils/config-loader';
-import {getChiaRoot} from "../utils/chia-root.js"
+import { getChiaRoot } from '../utils/chia-root.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
-const rpcUrl = getConfig().APP.WALLET_URL;
+const CONFIG = getConfig().APP;
 const USE_SIMULATOR = getConfig().APP.USE_SIMULATOR;
 
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
-  const certFile = path.resolve(
-    `${chiaRoot}/config/ssl/wallet/private_wallet.crt`,
-  );
-  const keyFile = path.resolve(
-    `${chiaRoot}/config/ssl/wallet/private_wallet.key`,
-  );
+  const certFile =
+    CONFIG.WALLET_CERTIFICATE_PATH ||
+    path.resolve(`${chiaRoot}/config/ssl/wallet/private_wallet.crt`);
+  const keyFile =
+    CONFIG.WALLET_CERTIFICATE_PATH ||
+    path.resolve(`${chiaRoot}/config/ssl/wallet/private_wallet.key`);
 
   const baseOptions = {
     method: 'POST',
@@ -30,7 +29,7 @@ const getBaseOptions = () => {
 
 const walletIsSynced = async () => {
   const options = {
-    url: `${rpcUrl}/get_sync_status`,
+    url: `${CONFIG.WALLET_URL}/get_sync_status`,
     body: JSON.stringify({}),
   };
 
@@ -48,7 +47,7 @@ const walletIsSynced = async () => {
 const walletIsAvailable = async () => {
   try {
     const options = {
-      url: `${rpcUrl}/get_sync_status`,
+      url: `${CONFIG.WALLET_URL}/get_sync_status`,
       body: JSON.stringify({}),
     };
 
@@ -73,7 +72,7 @@ const getWalletBalance = async () => {
     }
 
     const options = {
-      url: `${rpcUrl}/get_wallet_balance`,
+      url: `${CONFIG.WALLET_URL}/get_wallet_balance`,
       body: JSON.stringify({
         wallet_id: 1,
       }),
@@ -112,7 +111,7 @@ const waitForAllTransactionsToConfirm = async () => {
 
 const hasUnconfirmedTransactions = async () => {
   const options = {
-    url: `${rpcUrl}/get_transactions`,
+    url: `${CONFIG.WALLET_URL}/get_transactions`,
     body: JSON.stringify({
       wallet_id: '1',
       sort_key: 'RELEVANCE',
@@ -142,7 +141,7 @@ const getPublicAddress = async () => {
   }
 
   const options = {
-    url: `${rpcUrl}/get_next_address`,
+    url: `${CONFIG.WALLET_URL}/get_next_address`,
     body: JSON.stringify({ wallet_id: 1, new_address: false }),
   };
 

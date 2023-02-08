@@ -3,7 +3,6 @@ import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
-import os from 'os';
 import { getConfig } from '../utils/config-loader';
 import { decodeHex } from '../utils/datalayer-utils';
 import fullNode from './fullNode';
@@ -15,7 +14,7 @@ import wallet from './wallet';
 import { Organization } from '../models';
 
 import { logger } from '../config/logger.cjs';
-import {getChiaRoot} from "../utils/chia-root.js"
+import { getChiaRoot } from '../utils/chia-root.js';
 
 logger.info('climate-warehouse:datalayer:persistance');
 
@@ -24,13 +23,14 @@ process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 const CONFIG = getConfig().APP;
 
 const getBaseOptions = () => {
-  const chiaRoot = getChiaRoot()
-  const certFile = path.resolve(
-    `${chiaRoot}/config/ssl/data_layer/private_data_layer.crt`,
-  );
-  const keyFile = path.resolve(
-    `${chiaRoot}/config/ssl/data_layer/private_data_layer.key`,
-  );
+  const chiaRoot = getChiaRoot();
+
+  const certFile =
+    CONFIG.DATALAYER_CERTIFICATE_PATH ||
+    path.resolve(`${chiaRoot}/config/ssl/data_layer/private_data_layer.crt`);
+  const keyFile =
+    CONFIG.DATALAYER_KEY_PATH ||
+    path.resolve(`${chiaRoot}/config/ssl/data_layer/private_data_layer.key`);
 
   const baseOptions = {
     method: 'POST',

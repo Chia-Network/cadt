@@ -2,23 +2,24 @@ import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
-import os from 'os';
 import { getConfig } from '../utils/config-loader';
 import yaml from 'js-yaml';
-import {getChiaRoot} from "../utils/chia-root.js"
+import { getChiaRoot } from '../utils/chia-root.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const rpcUrl = getConfig().APP.WALLET_URL;
+const CONFIG = getConfig().APP;
 
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
-  const certFile = path.resolve(
-    `${chiaRoot}/config/ssl/full_node/private_full_node.crt`,
-  );
-  const keyFile = path.resolve(
-    `${chiaRoot}/config/ssl/full_node/private_full_node.key`,
-  );
+  const certFile =
+    CONFIG.NODE_CERTIFICATE_PATH ||
+    path.resolve(`${chiaRoot}/config/ssl/full_node/private_full_node.crt`);
+
+  const keyFile =
+    CONFIG.NODE_KEY_PATH ||
+    path.resolve(`${chiaRoot}/config/ssl/full_node/private_full_node.key`);
 
   const baseOptions = {
     method: 'POST',
