@@ -12,17 +12,12 @@ const USE_SIMULATOR = getConfig().APP.USE_SIMULATOR;
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
 
-  console.log('######', path.resolve(CONFIG.WALLET_CERTIFICATE_PATH));
-  console.log(
-    '######',
-    path.resolve(`${chiaRoot}/config/ssl/wallet/private_wallet.crt`),
-  );
-
   const certFile =
-    path.resolve(CONFIG.WALLET_CERTIFICATE_PATH) ||
+    CONFIG.WALLET_CERTIFICATE_PATH ||
     path.resolve(`${chiaRoot}/config/ssl/wallet/private_wallet.crt`);
+
   const keyFile =
-    path.resolve(CONFIG.WALLET_CERTIFICATE_PATH) ||
+    CONFIG.WALLET_KEY_PATH ||
     path.resolve(`${chiaRoot}/config/ssl/wallet/private_wallet.key`);
 
   const baseOptions = {
