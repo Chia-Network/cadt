@@ -25,12 +25,21 @@ const CONFIG = getConfig().APP;
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
 
-  const certFile =
-    path.resolve(CONFIG.DATALAYER_CERTIFICATE_PATH) ||
-    path.resolve(`${chiaRoot}/config/ssl/data_layer/private_data_layer.crt`);
-  const keyFile =
-    path.resolve(CONFIG.DATALAYER_KEY_PATH) ||
-    path.resolve(`${chiaRoot}/config/ssl/data_layer/private_data_layer.key`);
+  let certFile = path.resolve(
+    `${chiaRoot}/config/ssl/data_layer/private_data_layer.crt`,
+  );
+
+  if (CONFIG.DATALAYER_CERTIFICATE_PATH) {
+    certFile = path.resolve(CONFIG.DATALAYER_CERTIFICATE_PATH);
+  }
+
+  let keyFile = path.resolve(
+    `${chiaRoot}/config/ssl/data_layer/private_data_layer.key`,
+  );
+
+  if (CONFIG.DATALAYER_KEY_PATH) {
+    keyFile = path.resolve(CONFIG.DATALAYER_KEY_PATH);
+  }
 
   const baseOptions = {
     method: 'POST',

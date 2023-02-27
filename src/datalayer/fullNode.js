@@ -13,13 +13,22 @@ const CONFIG = getConfig().APP;
 
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
-  const certFile =
-    CONFIG.NODE_CERTIFICATE_PATH ||
-    path.resolve(`${chiaRoot}/config/ssl/full_node/private_full_node.crt`);
 
-  const keyFile =
-    CONFIG.NODE_KEY_PATH ||
-    path.resolve(`${chiaRoot}/config/ssl/full_node/private_full_node.key`);
+  let certFile = path.resolve(
+    `${chiaRoot}/config/ssl/full_node/private_full_node.crt`,
+  );
+
+  if (CONFIG.NODE_CERTIFICATE_PATH) {
+    certFile = path.resolve(CONFIG.NODE_CERTIFICATE_PATH);
+  }
+
+  let keyFile = path.resolve(
+    `${chiaRoot}/config/ssl/full_node/private_full_node.key`,
+  );
+
+  if (CONFIG.NODE_KEY_PATH) {
+    keyFile = path.resolve(CONFIG.NODE_KEY_PATH);
+  }
 
   const baseOptions = {
     method: 'POST',
