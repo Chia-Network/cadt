@@ -26,10 +26,10 @@ const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
 
   const certFile =
-    CONFIG.DATALAYER_CERTIFICATE_PATH ||
+    path.resolve(CONFIG.DATALAYER_CERTIFICATE_PATH) ||
     path.resolve(`${chiaRoot}/config/ssl/data_layer/private_data_layer.crt`);
   const keyFile =
-    CONFIG.DATALAYER_KEY_PATH ||
+    path.resolve(CONFIG.DATALAYER_KEY_PATH) ||
     path.resolve(`${chiaRoot}/config/ssl/data_layer/private_data_layer.key`);
 
   const baseOptions = {
