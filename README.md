@@ -50,7 +50,13 @@ sudo apt-get install climate-warehouse
 #### Systemd Init Script
 
 
-If running Climate Warehouse full-time on a machine, Systemd is a convenient way to manage the state of the application and ensure it starts at boot.  A [template for creating a Systemd file for Climate Warehouse can be found in the open source Chia Ansible roles](https://github.com/Chia-Network/ansible-roles/blob/main/cadt/templates/cadt.service.j2).  Copy this template to `/etc/systemd/system/cadt.service` (or `climate-warehouse.service` if you prefer) and follow the comments in the file to configure it for your use-case.  Once configured, do `sudo systemctl daemon-reload` for systemd to see the new file (do the `daemon-reload` command every time a change is made to the `.service` file).  Doing `sudo systemctl start cadt` will start Climate Warehouse and `sudo systemctl enable cadt` will set it to start at boot.  To view the logs, do `sudo journalctl -u cadt` (add the `-f` flag to monitor the log real-time).
+If running Climate Warehouse full-time on a machine, Systemd is a convenient way to manage the state of the application and ensure it starts at boot.  If installing with `apt` or with the `.deb` file, a [script](build-scripts/generate-init.sh) to automatically generate the `cadt.service` file for systemd is included.  To generate the file, run the following and follow the instructions on-screen:
+
+```
+/opt/climate-warehouse/generate-init.sh
+```
+
+This script uses the [template](https://github.com/Chia-Network/ansible-roles/blob/main/cadt/templates/cadt.service.j2) from our Ansible automation for creating a Systemd file for Climate Warehouse.  If you'd like to configure your systemd init file manually, copy this template to `/etc/systemd/system/cadt.service` (or `climate-warehouse.service` if you prefer) and follow the comments in the file to configure it for your use-case.  Once configured, do `sudo systemctl daemon-reload` for systemd to see the new file (do the `daemon-reload` command every time a change is made to the `.service` file).  Doing `sudo systemctl start cadt` will start Climate Warehouse and `sudo systemctl enable cadt` will set it to start at boot.  To view the logs, do `sudo journalctl -u cadt` (add the `-f` flag to monitor the log real-time).
 
 
 ### Installation from Source
