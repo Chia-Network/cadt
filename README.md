@@ -27,7 +27,7 @@ sudo apt-get update
 sudo apt-get install ca-certificates curl gnupg
 ```
 
-2.  Add Chia's official GPG Key:
+2.  Add Chia's official GPG Key (if you have installed Chia with `apt`, you'll have this key already):
 
 ```
 curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | sudo gpg --dearmor -o /usr/share/keyrings/chia.gpg
