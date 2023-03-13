@@ -27,7 +27,7 @@ sudo apt-get update
 sudo apt-get install ca-certificates curl gnupg
 ```
 
-2.  Add Chia's official GPG Key (if you have installed Chia with `apt`, you'll have this key already):
+2.  Add Chia's official GPG Key (if you have installed Chia with `apt`, you'll have this key already and will get a message about overwriting the existing key, which is safe to do):
 
 ```
 curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | sudo gpg --dearmor -o /usr/share/keyrings/chia.gpg
@@ -47,8 +47,10 @@ sudo apt-get install climate-warehouse
 ```
 
 
-#### Systemd Init Script
+#### Using Systemd to Manage Climate-Warehouse
 
+
+##### Automated Setup
 
 If running Climate Warehouse full-time on a machine, Systemd is a convenient way to manage the state of the application and ensure it starts at boot.  If installing with `apt` or with the `.deb` file, a [script](build-scripts/generate-init.sh) to automatically generate the `cadt.service` file for systemd is included.  To generate the file, run the following and follow the instructions on-screen:
 
@@ -56,8 +58,24 @@ If running Climate Warehouse full-time on a machine, Systemd is a convenient way
 /opt/climate-warehouse/generate-init.sh
 ```
 
-This script uses the [template](https://github.com/Chia-Network/ansible-roles/blob/main/cadt/templates/cadt.service.j2) from our Ansible automation for creating a Systemd file for Climate Warehouse.  If you'd like to configure your systemd init file manually, copy this template to `/etc/systemd/system/cadt.service` (or `climate-warehouse.service` if you prefer) and follow the comments in the file to configure it for your use-case.  Once configured, do `sudo systemctl daemon-reload` for systemd to see the new file (do the `daemon-reload` command every time a change is made to the `.service` file).  Doing `sudo systemctl start cadt` will start Climate Warehouse and `sudo systemctl enable cadt` will set it to start at boot.  To view the logs, do `sudo journalctl -u cadt` (add the `-f` flag to monitor the log real-time).
+Once you've followed the instructions output at the end of the script, systemd setup is complete. 
 
+
+##### Manual Setup
+
+If you'd like to configure your systemd init file manually instead of using the `generate-init.sh` script, the instructions are as follows:
+
+1. Download systemd template `sudo curl https://raw.githubusercontent.com/Chia-Network/ansible-roles/main/cadt/templates/cadt.service.j2 -o /etc/systemd/system/climate-warehouse.service`
+2. Edit `/etc/systemd/system/climate-warehouse.service` and do the following (these instructions are in the template comments as well):
+    * If not using systemd to control your Chia installation, remove lines 12-15 (all the `Requires` and `After` lines) 
+    * Set your `CHIA_ROOT` for the `Environment`, replacing `{{ chia_root }} with the path to your `CHIA_ROOT` directory (see comments in template)
+    * Change the `ExecStart` value to match the path to your climate-warehouse executable (`/opt/climate-warehouse/climate-warehouse` if installed from `apt`)
+    * Change the `User` and `Group` to be the Linux user that is running the Chia services
+3.  `sudo systemctl daemon-reload` to update systemd with the latest changes. Do this every time you make a change to the `climate-warehouse.service` file
+4.  `sudo systemctl start climate-warehouse` to start the Climate Warehouse application
+5.  `sudo journalctl -u climate-warehouse` to view the logs
+6.  `sudo systemctl status climate-warehouse` to ensure Climate Warehouse is running successfully (Look for `Active: active (running)`)
+7.  `sudo systemctl enable climate-warehouse` to set Climate Warehouse to run at boot
 
 ### Installation from Source
 
@@ -114,6 +132,8 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), Climate Wareh
 * GOVERNANCE: Section on settings for the Governance body to connect to.
   * **GOVERNANCE_BODY_ID**: This determines the governance body your climate warehouse network will be connected to.  While there could be multiple governance body IDs, the default of 23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e is the right ID for most people. 
 ​
+Note that the Climate Warehouse application will need to be restarted after any changes to the config.yaml file. 
+
 ## Developer Guide
 ​
 ### Build Binaries
