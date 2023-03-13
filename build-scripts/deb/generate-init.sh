@@ -26,7 +26,7 @@ else
     look_for_chia_here=${CHIA_ROOT}
 fi
 # Check if the Chia directory exists
-if [ -d ${look_for_chia_here} ]
+if [ -d "${look_for_chia_here}" ]
 then
     echo "Found Chia directory $look_for_chia_here"
 else
@@ -49,10 +49,10 @@ for service in "${chiaServices[@]}"
 do
     serviceFilename="/etc/systemd/system/chia-${service}.service"
     echo "checking for ${serviceFilename}..."
-    if [ -f ${serviceFilename} ]
+    if [ -f "${serviceFilename}" ]
     then
         echo "Found ${serviceFilename}"
-        foundServices+=(${serviceFilename})
+        foundServices+=("${serviceFilename}")
     else
         echo "${serviceFilename} not found"
     fi
@@ -60,7 +60,7 @@ done
 
 # Download CADT systemd template
 echo "Downloading cadt.service template file..."
-cadtServiceFile="`wget -qO- https://raw.githubusercontent.com/Chia-Network/ansible-roles/main/cadt/templates/cadt.service.j2`"
+cadtServiceFile=$(wget -qO- https://raw.githubusercontent.com/Chia-Network/ansible-roles/main/cadt/templates/cadt.service.j2)
 
 # Update the "Requires" and "After" section based on which Chia
 # systemd files are available
@@ -93,8 +93,8 @@ then
 else
     echo ""
     echo "Can't find climate-warehouse executable! Please enter the full path to climate-warehouse:"
-    read climateWarehouseExec
-    if [ -f ${climateWarehouseExec} ]
+    read -r climateWarehouseExec
+    if [ -f "${climateWarehouseExec}" ]
     then
         echo "climate-warehouse validated at ${climateWarehouseExec}"
     else
@@ -115,7 +115,7 @@ cadtServiceFile=${cadtServiceFile/'Group={{ group }}'/Group=${this_group}}
 # Output the cadt.service file to /etc/systemd/system/cadt.service (needs sudo)
 echo ""
 echo "Writing file to ${HOME}/cadt.service"
-printf "$cadtServiceFile" > ${HOME}/cadt.service
+printf "$cadtServiceFile" > "${HOME}"/cadt.service
 echo ""
 echo "************************************"
 echo "* Your cadt.service file is ready! *"
