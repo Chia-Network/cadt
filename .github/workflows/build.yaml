@@ -2,8 +2,6 @@ name: Build Binaries
 
 on:
   push:
-    branches:
-      - main
     tags:
       - '**'
   pull_request:
@@ -236,7 +234,9 @@ jobs:
           mkdir -p "deb/$CLI_DEB_BASE/DEBIAN"
           j2 -o "deb/$CLI_DEB_BASE/DEBIAN/control" build-scripts/deb/control.j2
           cp -r ${{ matrix.name }}/* "deb/$CLI_DEB_BASE/opt/climate-warehouse/"
+          cp build-scripts/deb/generate-init.sh deb/$CLI_DEB_BASE/opt/climate-warehouse/generate-init.sh
           chmod +x deb/$CLI_DEB_BASE/opt/climate-warehouse/climate-warehouse
+          chmod +x deb/$CLI_DEB_BASE/opt/climate-warehouse/generate-init.sh
           ln -s ../../opt/climate-warehouse/climate-warehouse "deb/$CLI_DEB_BASE/usr/bin/climate-warehouse"
           dpkg-deb --build --root-owner-group "deb/$CLI_DEB_BASE"
 
