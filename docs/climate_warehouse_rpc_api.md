@@ -1,4 +1,4 @@
-# Climate Warehouse RPC API
+# Climate Warehouse RPC API Guide
 
 This page lists commands and examples from the Climate Warehouse RPC API.
 
