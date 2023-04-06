@@ -8,6 +8,10 @@ The Climate Warehouse application is designed to run 24/7, much like any other A
 
 The simplest way to run the Climate Warehouse application is to use the same machine the Chia Wallet, Datalayer, and Datalayer HTTP services.  Climate Warehouse communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the Climate Warehouse application is run as the same user on the same machine as the Chia services.  To run Climate Warehouse on a separate machine from Chia, a public certificate from the Chia node most be used to authenticate (not yet documented).
 
+### How to use the API
+
+Please see the [Climate Warehouse RPC API Guide](docs/climate_warehouse_rpc_api.md).
+
 ## Installation
 
 [Releases are tagged in Github](https://github.com/Chia-Network/climate-warehouse/tags) and binaries are built for Windows, MacOS, and Linux.  ARM binaries are available for Debian versions of Linux only. 
