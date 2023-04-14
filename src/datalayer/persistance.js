@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
 import { getConfig } from '../utils/config-loader';
-import { decodeHex } from '../utils/datalayer-utils';
 import fullNode from './fullNode';
 import { publicIpv4 } from '../utils/ip-tools';
 import wallet from './wallet';
@@ -183,23 +182,15 @@ const getStoreData = async (storeId, rootHash) => {
 
     if (data.success) {
       if (!_.isEmpty(data.keys_values)) {
-        logger.info(
-          `Downloaded Data: ${JSON.stringify(
-            data.keys_values.map((record) => {
-              return {
-                key: decodeHex(record.key),
-              };
-            }),
-            null,
-            2,
-          )}`,
-        );
+        logger.info(`Downloaded Data, root hash: ${rootHash || 'latest'}`);
       }
       return data;
     }
   }
 
-  logger.info(`Unable to find store data for ${storeId}}`);
+  logger.info(
+    `Unable to find store data for ${storeId} at root ${rootHash || 'latest'}`,
+  );
   return false;
 };
 

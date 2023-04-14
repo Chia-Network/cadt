@@ -17,7 +17,7 @@ logger.info('climate-warehouse:task:audit');
 dotenv.config();
 import { getConfig } from '../utils/config-loader';
 
-const { USE_SIMULATOR } = getConfig().APP;
+const CONFIG = getConfig().APP;
 
 const task = new Task('sync-audit', async () => {
   try {
@@ -25,7 +25,7 @@ const task = new Task('sync-audit', async () => {
     await assertWalletIsSynced();
 
     logger.info('Syncing Audit Information');
-    if (!USE_SIMULATOR) {
+    if (!CONFIG.USE_SIMULATOR) {
       const organizations = await Organization.findAll({
         where: { subscribed: true },
         raw: true,
@@ -37,12 +37,18 @@ const task = new Task('sync-audit', async () => {
       );
     }
   } catch (error) {
-    logger.error(`Retrying in 30 seconds`, error);
+    logger.error(
+      `Retrying in ${CONFIG?.TASKS?.AUDIT_SYNC_TASK_INTERVAL || 30} seconds`,
+      error,
+    );
   }
 });
 
 const job = new SimpleIntervalJob(
-  { seconds: 30, runImmediately: true },
+  {
+    seconds: CONFIG?.TASKS?.AUDIT_SYNC_TASK_INTERVAL || 30,
+    runImmediately: true,
+  },
   task,
   'sync-audit',
 );

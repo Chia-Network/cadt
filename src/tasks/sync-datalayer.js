@@ -10,6 +10,8 @@ import { logger } from '../config/logger.cjs';
 
 const Spinner = cliSpinner.Spinner;
 dotenv.config();
+import { getConfig } from '../utils/config-loader';
+const CONFIG = getConfig().APP;
 
 logger.info('climate-warehouse:task:sync-datalayer');
 
@@ -26,13 +28,18 @@ const task = new Task('sync-datalayer', async () => {
     spinner.start();
     datalayer.startDataLayerUpdatePolling();
   } catch (error) {
-    logger.error('Retrying in 60 seconds', error);
+    logger.error(
+      `Retrying in ${
+        CONFIG?.TASKS?.DATAMODEL_SYNC_TASK_INTERVAL || 60
+      } seconds`,
+      error,
+    );
   }
 });
 
 let seconds = 5;
 if (process.env.NODE_ENV !== 'test') {
-  seconds = 60;
+  seconds = CONFIG?.TASKS?.DATAMODEL_SYNC_TASK_INTERVAL || 60;
 }
 
 const job = new SimpleIntervalJob(
