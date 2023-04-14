@@ -45,6 +45,7 @@ export const safeMirrorDbHandler = (callback) => {
 export const sanitizeSqliteFtsQuery = (query) => {
   query = query.replace(/[-](?=.*[-])/g, '+'); // Replace all but the final dash
   query = query.replace('-', ''); //Replace the final dash with nothing
+  query = query.replace(/([.?*+^$[\]\\(){}|-])/g, '"$1"');
   query += '*'; // Query should end with asterisk for partial matching
   return query;
 };
