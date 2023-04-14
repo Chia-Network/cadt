@@ -31,6 +31,10 @@ OrganizationRouter.get(
   },
 );
 
+OrganizationRouter.get('/sync', (req, res) => {
+  return OrganizationController.sync(req, res);
+});
+
 OrganizationRouter.delete('/', (req, res) => {
   return OrganizationController.resetHomeOrg(req, res);
 });

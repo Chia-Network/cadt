@@ -21,6 +21,10 @@ GovernanceRouter.get('/', (req, res) => {
   return GovernanceController.findAll(req, res);
 });
 
+GovernanceRouter.get('/sync', (req, res) => {
+  return GovernanceController.sync(req, res);
+});
+
 GovernanceRouter.get('/meta/orgList', (req, res) => {
   return GovernanceController.findOrgList(req, res);
 });
