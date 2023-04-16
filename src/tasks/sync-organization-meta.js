@@ -7,7 +7,7 @@ import {
 } from '../utils/data-assertions';
 import { logger } from '../config/logger.cjs';
 
-const { USE_SIMULATOR } = getConfig().APP;
+const CONFIG = getConfig().APP;
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -19,16 +19,25 @@ const task = new Task('sync-organization-meta', async () => {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
     logger.info('Syncing subscribed organizations');
-    if (!USE_SIMULATOR) {
+    if (!CONFIG.USE_SIMULATOR) {
       Organization.syncOrganizationMeta();
     }
   } catch (error) {
-    logger.error('Retrying in 24 hours', error);
+    logger.error(
+      `Retrying in ${
+        CONFIG?.APP?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 86400
+      } seconds`,
+      error,
+    );
   }
 });
 
 const job = new SimpleIntervalJob(
-  { days: 1, runImmediately: true },
+  {
+    // DEFAULT 1
+    seconds: CONFIG?.APP?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 86400,
+    runImmediately: true,
+  },
   task,
   'sync-organization-meta',
 );

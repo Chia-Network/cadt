@@ -9,7 +9,7 @@ import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 import { Organization } from '../models';
 
-const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
+const CONFIG = getConfig();
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -22,22 +22,36 @@ const task = new Task('sync-governance-meta', async () => {
     await assertWalletIsSynced();
 
     logger.info('Syncing governance data');
-    if (GOVERNANCE_BODY_ID) {
-      logger.info(`Governance Config Found ${GOVERNANCE_BODY_ID}`);
+    if (CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID) {
+      logger.info(
+        `Governance Config Found ${CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID}`,
+      );
 
       const myOrganization = await Organization.getHomeOrg();
 
-      if (_.get(myOrganization, 'orgUid', '') !== GOVERNANCE_BODY_ID) {
+      if (
+        _.get(myOrganization, 'orgUid', '') !==
+        CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID
+      ) {
         Governance.sync();
       }
     }
   } catch (error) {
-    logger.error('Cant download Goverance data, Retrying in 24 hours', error);
+    logger.error(
+      `Cant download Goverance data, Retrying in ${
+        CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 86400
+      } seconds`,
+      error,
+    );
   }
 });
 
 const job = new SimpleIntervalJob(
-  { days: 1, runImmediately: true },
+  {
+    // DEFAULT 1 day
+    seconds: CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 86400,
+    runImmediately: true,
+  },
   task,
   'sync-governance-meta',
 );

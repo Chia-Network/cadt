@@ -191,3 +191,17 @@ export const setGlossary = async (req, res) => {
     });
   }
 };
+
+export const sync = async (req, res) => {
+  try {
+    Governance.sync();
+    return res.json({
+      message: 'Syncing Governance Body',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Cant Sync Governance Body',
+      error: error.message,
+    });
+  }
+};

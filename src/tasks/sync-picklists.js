@@ -5,10 +5,11 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
+import { getConfig } from '../utils/config-loader';
+
+const CONFIG = getConfig().APP;
 
 logger.info('climate-warehouse:task:sync-picklists');
-
-const retryInSeconds = 30;
 
 const task = new Task('sync-picklist', async () => {
   try {
@@ -16,12 +17,18 @@ const task = new Task('sync-picklist', async () => {
     await assertWalletIsSynced();
     pullPickListValues();
   } catch (error) {
-    logger.error(`Retrying in ${retryInSeconds} seconds`, error);
+    logger.error(
+      `Retrying in ${CONFIG?.TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 30} seconds`,
+      error,
+    );
   }
 });
 
 const job = new SimpleIntervalJob(
-  { seconds: retryInSeconds, runImmediately: true },
+  {
+    seconds: CONFIG?.TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 30,
+    runImmediately: true,
+  },
   task,
   'sync-picklist',
 );

@@ -398,3 +398,17 @@ export const removeMirror = async (req, res) => {
     });
   }
 };
+
+export const sync = async (req, res) => {
+  try {
+    Organization.syncOrganizationMeta();
+    return res.json({
+      message: 'Syncing All Organizations Metadata',
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Cant All Organizations Metadata',
+      error: error.message,
+    });
+  }
+};

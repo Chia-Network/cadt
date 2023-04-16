@@ -8,6 +8,10 @@ The Climate Warehouse application is designed to run 24/7, much like any other A
 
 The simplest way to run the Climate Warehouse application is to use the same machine the Chia Wallet, Datalayer, and Datalayer HTTP services.  Climate Warehouse communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the Climate Warehouse application is run as the same user on the same machine as the Chia services.  To run Climate Warehouse on a separate machine from Chia, a public certificate from the Chia node most be used to authenticate (not yet documented).
 
+### How to use the API
+
+Please see the [Climate Warehouse RPC API Guide](docs/climate_warehouse_rpc_api.md).
+
 ## Installation
 
 [Releases are tagged in Github](https://github.com/Chia-Network/climate-warehouse/tags) and binaries are built for Windows, MacOS, and Linux.  ARM binaries are available for Debian versions of Linux only. 
@@ -122,7 +126,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), Climate Wareh
   * **WALLET_URL**: URL and port to conned to the [Chia Wallet RPC](https://docs.chia.net/wallet-rpc).  If Chia is installed on the same machine as Climate Warehouse with default settings, https://localhost:9256 will work.
   * **USE_SIMULATOR**: Developer setting to populate Climate Warehouse from a governance file and enables some extra APIs.  Should always be "false" under normal usage. 
   * **READ_ONLY**: When hosting an Observer node, set to "true" to prevent any data being written using the Climate Warehouse APIs.  This makes the application safe to run with public endpoints as it is just displaying publicly available data.  When running a governance node, or a participant node, set to "false" to allow data to be written to the Climate Warehouse APIs.  When "false", additional authentication or access restrictions must be applied to prevent unauthorized alteration of the data.  
-  * **API_KEY**: This key is used by the [Climate Warehouse UI](https://github.com/Chia-Network/climate-warehouse-ui) to authenticate with the Climate Warehouse API endpoints.  This allows the API to power the UI only without allowing requests without the API in the header to access the API.  This can be left blank to allow open access to the API, or if access is restricted by other means.  The API_KEY can be set to any value, but we recommend at least a 32 character random string. 
+  * **API_KEY**: This key is used by the [Climate Warehouse UI](https://github.com/Chia-Network/climate-warehouse-ui) to authenticate with the Climate Warehouse API endpoints.  This allows the API to power the UI only without allowing requests missing the API in the header to access the API.  This can be left blank to allow open access to the API, or if access is restricted by other means.  The API_KEY can be set to any value, but we recommend at least a 32 character random string.  The API_KEY can be passed in a request using the `x-api-key` header.  See the [RPC documentation](docs/climate_warehouse_rpc_api.md) for examples. 
   * **CHIA_NETWORK**:  Climate Warehouse can run on Chia mainnet or any testnet.  Set to "mainnet" for production instances, or "testnet" if using the main Chia testnet. 
   * **USE_DEVELOPMENT_MODE**:  Should be false in most use cases.  If a developer writing code for the app, this can be changed to "true" which will bypass the need for a governance node.
   * **IS_GOVERNANCE_BODY**: "True" or "false" toggle to enable/disable mode for this instance being a governing body.
@@ -133,6 +137,10 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), Climate Wareh
   * **GOVERNANCE_BODY_ID**: This determines the governance body your climate warehouse network will be connected to.  While there could be multiple governance body IDs, the default of 23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e is the right ID for most people. 
 ​
 Note that the Climate Warehouse application will need to be restarted after any changes to the config.yaml file. 
+
+### Ports, Networking, and Security
+
+The port for the Climate Warehouse API can be set with the parameter `CW_PORT` in the `config.yaml` file discussed above.  The default port is 31310.  The Climate Warehouse API will listen on all network interfaces on this port so care must be taken to block this port at the firewall or networking level to avoid this API being public.  In many cases, the API will need to be public for either the [Climate Warehouse UI](https://github.com/Chia-Network/climate-warehouse-ui) or to integrate with existing tools and scripts.  To add authentication to the API, use the `API_KEY` parameter.  Alternatively, the API can be served behind an authentication proxy to restrict access and the `API_KEY` can be left blank.  If running an observer node with `READ_ONLY` set to `true`, the Climate Warehouse API will only share data from the public blockchain, and running without authentication is usually safe.  If `READ_ONLY` is set to `false`, authentication must be used to prevent unauthorized writes to the blockchain. 
 
 ## Developer Guide
 ​

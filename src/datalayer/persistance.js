@@ -3,9 +3,7 @@ import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
-import os from 'os';
 import { getConfig } from '../utils/config-loader';
-import { decodeHex } from '../utils/datalayer-utils';
 import fullNode from './fullNode';
 import { publicIpv4 } from '../utils/ip-tools';
 import wallet from './wallet';
@@ -15,7 +13,7 @@ import wallet from './wallet';
 import { Organization } from '../models';
 
 import { logger } from '../config/logger.cjs';
-import {getChiaRoot} from "../utils/chia-root.js"
+import { getChiaRoot } from '../utils/chia-root.js';
 
 logger.info('climate-warehouse:datalayer:persistance');
 
@@ -24,7 +22,7 @@ process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 const CONFIG = getConfig().APP;
 
 const getBaseOptions = () => {
-  const chiaRoot = getChiaRoot()
+  const chiaRoot = getChiaRoot();
   const certFile = path.resolve(
     `${chiaRoot}/config/ssl/data_layer/private_data_layer.crt`,
   );
@@ -36,7 +34,7 @@ const getBaseOptions = () => {
     method: 'POST',
     cert: fs.readFileSync(certFile),
     key: fs.readFileSync(keyFile),
-    timeout: 60000,
+    timeout: 300000,
   };
 
   return baseOptions;
@@ -184,23 +182,15 @@ const getStoreData = async (storeId, rootHash) => {
 
     if (data.success) {
       if (!_.isEmpty(data.keys_values)) {
-        logger.info(
-          `Downloaded Data: ${JSON.stringify(
-            data.keys_values.map((record) => {
-              return {
-                key: decodeHex(record.key),
-              };
-            }),
-            null,
-            2,
-          )}`,
-        );
+        logger.info(`Downloaded Data, root hash: ${rootHash || 'latest'}`);
       }
       return data;
     }
   }
 
-  logger.info(`Unable to find store data for ${storeId}}`);
+  logger.info(
+    `Unable to find store data for ${storeId} at root ${rootHash || 'latest'}`,
+  );
   return false;
 };
 

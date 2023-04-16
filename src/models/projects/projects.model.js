@@ -242,13 +242,10 @@ class Project extends Model {
     };
   }
 
-  static async findAllSqliteFts(searchStr, orgUid, pagination, columns = []) {
+  static async findAllSqliteFts(searchStr, orgUid, pagination) {
     const { offset, limit } = pagination;
 
     let fields = '*';
-    if (columns.length) {
-      fields = columns.join(', ');
-    }
 
     searchStr = sanitizeSqliteFtsQuery(searchStr);
 
