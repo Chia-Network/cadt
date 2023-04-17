@@ -6,6 +6,17 @@ import { isPluralized } from './string-utils.js';
 import { formatModelAssociationName } from './model-utils.js';
 import packageJson from '../../package.json';
 
+export const convertToMySQLDatetime = (date) => {
+  const originalDate = new Date(date);
+  originalDate.setMilliseconds(0);
+  const formattedDate = originalDate
+    .toISOString()
+    .replace('T', ' ')
+    .replace('Z', '')
+    .split('.')[0];
+  return formattedDate;
+};
+
 export const paginationParams = (page, limit) => {
   if (page === undefined || limit === undefined) {
     return {
