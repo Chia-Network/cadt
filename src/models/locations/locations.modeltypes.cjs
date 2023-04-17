@@ -38,7 +38,7 @@ module.exports = {
   },
   fileId: {
     type: Sequelize.STRING,
-  }, 
+  },
   updatedAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,

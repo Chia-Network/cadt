@@ -71,7 +71,7 @@ module.exports = {
     type: Sequelize.STRING,
   },
   unitTags: {
-    type: Sequelize.STRING,
+    type: Sequelize.TEXT,
   },
   unitStatus: {
     type: Sequelize.STRING,
