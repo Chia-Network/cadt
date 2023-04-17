@@ -23,16 +23,16 @@ export const safeMirrorDbHandler = (callback) => {
   try {
     sequelizeMirror
       .authenticate()
-      .then(() => {
-        callback();
+      .then(async () => {
+        try {
+          console.log('Sending Cmd to Mirror');
+          await callback();
+        } catch (e) {
+          logger.error(`mirror_error:${e.message}`);
+        }
       })
       .catch(() => {
-        if (
-          getConfig().MIRROR_DB.DB_HOST &&
-          getConfig().MIRROR_DB.DB_HOST !== ''
-        ) {
-          logger.info('Mirror DB not connected');
-        }
+        logger.info('Mirror DB not connected');
       });
   } catch (error) {
     logger.error(

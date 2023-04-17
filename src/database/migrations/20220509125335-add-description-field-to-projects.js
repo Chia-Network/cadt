@@ -3,7 +3,7 @@
 export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.addColumn('projects', 'description', {
-      type: Sequelize.STRING,
+      type: Sequelize.TEXT,
       allowNull: true,
     });
 

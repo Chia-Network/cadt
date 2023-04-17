@@ -35,7 +35,7 @@ module.exports = {
     type: Sequelize.STRING,
   },
   projectName: {
-    type: Sequelize.STRING,
+    type: Sequelize.TEXT,
     required: true,
   },
   projectLink: {
@@ -55,7 +55,7 @@ module.exports = {
     required: true,
   },
   projectTags: {
-    type: Sequelize.STRING,
+    type: Sequelize.TEXT,
   },
   coveredByNDC: {
     type: Sequelize.STRING,
@@ -77,7 +77,7 @@ module.exports = {
     required: true,
   },
   methodology: {
-    type: Sequelize.STRING,
+    type: Sequelize.TEXT,
     required: true,
   },
   methodology2: {

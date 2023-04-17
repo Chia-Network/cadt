@@ -5,7 +5,6 @@ const { Model } = Sequelize;
 import { sequelize, safeMirrorDbHandler } from '../../database';
 import { AuditMirror } from './audit.model.mirror';
 import ModelTypes from './audit.modeltypes.cjs';
-
 import findDuplicateIssuancesSql from './sql/find-duplicate-issuances.sql.js';
 
 class Audit extends Model {
