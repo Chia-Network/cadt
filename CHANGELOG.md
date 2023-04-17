@@ -1,3 +1,19 @@
+## [1.2.27](https://github.com/Chia-Network/climate-warehouse/compare/1.2.26...1.2.27) (2023-04-16)
+
+
+### Bug Fixes
+
+* excape special chars in context to fts5 extension ([b02c88f](https://github.com/Chia-Network/climate-warehouse/commit/b02c88f1d6656e3ef8979227a51166556ae01441))
+
+
+### Features
+
+* add configurable task intervals ([287ed22](https://github.com/Chia-Network/climate-warehouse/commit/287ed22a27a7a6ed2863357d5daa44cf4bf15360))
+* manually syc gov data and org metadata ([306b0fd](https://github.com/Chia-Network/climate-warehouse/commit/306b0fdd567e8df43f3d763cdccda6961a7a94ce))
+* update datalayer request middleware to 5 min timeout ([ba0bcf9](https://github.com/Chia-Network/climate-warehouse/commit/ba0bcf9fb8046c4ed05745b97f21402c20114af3))
+
+
+
 ## [1.2.26](https://github.com/Chia-Network/climate-warehouse/compare/1.2.25...1.2.26) (2023-03-14)
 
 
