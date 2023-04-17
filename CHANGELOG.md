@@ -1,3 +1,12 @@
+## [1.2.28](https://github.com/Chia-Network/climate-warehouse/compare/1.2.27...1.2.28) (2023-04-17)
+
+
+### Bug Fixes
+
+* several mysql compatibility fixes ([8418710](https://github.com/Chia-Network/climate-warehouse/commit/84187102915aa40a7515bafa7ff84dc9d6f1c972))
+
+
+
 ## [1.2.27](https://github.com/Chia-Network/climate-warehouse/compare/1.2.26...1.2.27) (2023-04-16)
 
 
