@@ -11,7 +11,7 @@
     "WALLET_URL": "https://localhost:9256",
     "USE_SIMULATOR": false,
     "READ_ONLY": false,
-    "API_KEY": null,
+    "CADT_API_KEY": null,
     "CHIA_NETWORK": "mainnet",
     "USE_DEVELOPMENT_MODE": false,
     "IS_GOVERNANCE_BODY": false,
