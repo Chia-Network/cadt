@@ -1,3 +1,12 @@
+## [1.2.29](https://github.com/Chia-Network/climate-warehouse/compare/1.2.28...1.2.29) (2023-04-27)
+
+
+### Bug Fixes
+
+* Dockerfile to reduce vulnerabilities ([8e7f114](https://github.com/Chia-Network/climate-warehouse/commit/8e7f11427f688904978ab6a64aff68ccbd9e7c05))
+
+
+
 ## [1.2.28](https://github.com/Chia-Network/climate-warehouse/compare/1.2.27...1.2.28) (2023-04-17)
 
 
