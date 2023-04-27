@@ -367,7 +367,6 @@ export const addMirror = async (req, res) => {
 export const getMetaData = async (req, res) => {
   try {
     await assertWalletIsSynced();
-    await assertHomeOrgExists();
 
     const organization = await Organization.findOne({
       where: { orgUid: req.query.orgUid },
@@ -376,7 +375,7 @@ export const getMetaData = async (req, res) => {
     return res.json(JSON.parse(organization.metadata));
   } catch (error) {
     res.status(400).json({
-      message: 'Error removing mirror for organization',
+      message: 'Error getting metadata for organization',
       error: error.message,
     });
   }
