@@ -25,7 +25,6 @@ export const safeMirrorDbHandler = (callback) => {
       .authenticate()
       .then(async () => {
         try {
-          console.log('Sending Cmd to Mirror');
           await callback();
         } catch (e) {
           logger.error(`mirror_error:${e.message}`);
