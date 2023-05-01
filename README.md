@@ -135,6 +135,12 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), Climate Wareh
   * **DATALAYER_FILE_SERVER_URL**: Chia DataLayer HTTP URL and port.  If serving DataLayer files from S3, this would be the public URL of the S3 bucket.  Must be publicly available.  
 * GOVERNANCE: Section on settings for the Governance body to connect to.
   * **GOVERNANCE_BODY_ID**: This determines the governance body your climate warehouse network will be connected to.  While there could be multiple governance body IDs, the default of 23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e is the right ID for most people. 
+* TASKS: Section for configuring sync intervals
+  * **AUDIT_SYNC_TASK_INTERVAL**:  Default 30
+  * **DATAMODEL_SYNC_TASK_INTERVAL**:  Default 60
+  * **GOVERNANCE_SYNC_TASK_INTERVAL**:  Default 86400
+  * **ORGANIZATION_META_SYNC_TASK_INTERVAL**:  Default 86400
+  * **PICKLIST_SYNC_TASK_INTERVAL**:  Default 30
 ​
 Note that the Climate Warehouse application will need to be restarted after any changes to the config.yaml file. 
 
