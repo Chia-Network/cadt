@@ -98,8 +98,8 @@ To install from source:
 ```
 git clone git@github.com:Chia-Network/climate-warehouse.git
 cd climate-warehouse
-nvm install 16.0.0
-nvm use 16.0.0
+nvm install 18
+nvm use 18
 npm install -g @babel/cli husky prettier lint-staged cross-env
 npm set-script prepare "husky install"
 npm run prepare
@@ -110,6 +110,8 @@ chmod ug+x .git/hooks/*
 ​
 npm run start
 ```
+
+Note that this project has implemented assertions and will not build on Node.js earlier than version 16.14.
 
 ### Configuration
 
