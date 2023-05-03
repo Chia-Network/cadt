@@ -67,7 +67,7 @@ jobs:
       - name: create distributions
         run: ${{ matrix.build-command }}
 
-      - name: Make and rename executable
+      - name: Make binary executable
         run: |
           chmod +x dist/cadt
 
@@ -88,7 +88,7 @@ jobs:
         with:
           certificate_path: .\win_code_sign_cert.pfx
           certificate_password: ${{ secrets.WIN_CODE_SIGN_PASSWORD }}
-          file: ${{ github.workspace }}/dist/climate-warehouse.exe
+          file: ${{ github.workspace }}/dist/cadt.exe
 
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
