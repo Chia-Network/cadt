@@ -17,7 +17,7 @@ import {
 import packageJson from '../package.json';
 import datalayer from './datalayer';
 
-const { API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =
+const { CADT_API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =
   getConfig().APP;
 
 const headerKeys = Object.freeze({
@@ -62,9 +62,9 @@ app.use(function (req, res, next) {
 
 // Add optional API key if set in .env file
 app.use(function (req, res, next) {
-  if (API_KEY && API_KEY !== '') {
+  if (CADT_API_KEY && CADT_API_KEY !== '') {
     const apikey = req.header('x-api-key');
-    if (API_KEY === apikey) {
+    if (CADT_API_KEY === apikey) {
       next();
     } else {
       res.status(403).json({ message: 'API key not found' });
