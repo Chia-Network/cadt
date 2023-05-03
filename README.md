@@ -1,6 +1,8 @@
-# Climate Warehouse
+# Climate Action Data Trust
 
-​This project provides the Climate Warehouse API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain).  For a user interface, see the [Climate Warehouse UI project](https://github.com/Chia-Network/climate-warehouse-ui) which will connect to the Climate Warehouse API.
+​This project provides the Climate Action Data Trust (CADT) API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain).  For a user interface, see the [Climate Warehouse UI project](https://github.com/Chia-Network/climate-warehouse-ui) which will connect to the CADT API.
+
+This project was formerly known as the Climate Warehouse and you may see this term used interchangeably with CADT. 
 
 ## User Guide
 

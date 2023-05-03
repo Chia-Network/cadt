@@ -44,7 +44,7 @@ jobs:
           node-version: '18'
 
       - name: Ignore Husky
-        run: npm set-script prepare ""
+        run: npm pkg set scripts.prepare=""
         if: matrix.runs-on != 'windows-2019'
 
       - name: npm install
