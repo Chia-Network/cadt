@@ -181,6 +181,7 @@ jobs:
 
       - name: Make executable
         run: |
+          ls -lah dist/
           chmod +x dist/cadt
 
       - name: Copy sqlite3
