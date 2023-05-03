@@ -52,38 +52,18 @@ sudo apt-get update
 sudo apt-get install cadt
 ```
 
-5.  
-
-
-#### Using Systemd to Manage CADT
-
-
-##### Automated Setup
-
-If running CADT full-time on a machine, Systemd is a convenient way to manage the state of the application and ensure it starts at boot.  If installing with `apt` or with the `.deb` file, a [script](build-scripts/generate-init.sh) to automatically generate the `cadt.service` file for systemd is included.  To generate the file, run the following and follow the instructions on-screen:
+5.  Start CADT with systemd
 
 ```
-/opt/climate-warehouse/generate-init.sh
+sudo systemctl start cadt@<USERNAME>
 ```
+For `<USERNAME>`, enter the user that Chia runs as (the user with the `.chia` directory in their home directory).  For example, if the `ubuntu` is where Chia runs, start CADT with `systemctl start cadt@ubuntu`.
 
-Once you've followed the instructions output at the end of the script, systemd setup is complete. 
+6.  Set CADT to run at boot
 
-
-##### Manual Setup
-
-If you'd like to configure your systemd init file manually instead of using the `generate-init.sh` script, the instructions are as follows:
-
-1. Download systemd template `sudo curl https://raw.githubusercontent.com/Chia-Network/ansible-roles/main/cadt/templates/cadt.service.j2 -o /etc/systemd/system/climate-warehouse.service`
-2. Edit `/etc/systemd/system/climate-warehouse.service` and do the following (these instructions are in the template comments as well):
-    * If not using systemd to control your Chia installation, remove lines 12-15 (all the `Requires` and `After` lines) 
-    * Set your `CHIA_ROOT` for the `Environment`, replacing `{{ chia_root }} with the path to your `CHIA_ROOT` directory (see comments in template)
-    * Change the `ExecStart` value to match the path to your climate-warehouse executable (`/opt/climate-warehouse/climate-warehouse` if installed from `apt`)
-    * Change the `User` and `Group` to be the Linux user that is running the Chia services
-3.  `sudo systemctl daemon-reload` to update systemd with the latest changes. Do this every time you make a change to the `climate-warehouse.service` file
-4.  `sudo systemctl start climate-warehouse` to start the Climate Warehouse application
-5.  `sudo journalctl -u climate-warehouse` to view the logs
-6.  `sudo systemctl status climate-warehouse` to ensure Climate Warehouse is running successfully (Look for `Active: active (running)`)
-7.  `sudo systemctl enable climate-warehouse` to set Climate Warehouse to run at boot
+```
+sudo systemctl enable cadt@<USERNAME>
+```
 
 ### Installation from Source
 
@@ -114,8 +94,6 @@ chmod ug+x .git/hooks/*
 ​
 npm run start
 ```
-
-Note that this project has implemented assertions and will not build on Node.js earlier than version 16.14.
 
 ### Configuration
 
