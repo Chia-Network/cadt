@@ -179,11 +179,6 @@ jobs:
           mkdir pkgcache
           docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:18.16 /bin/bash -c "npm pkg delete scripts.prepare && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
 
-      - name: Make executable
-        run: |
-          ls -lah dist/
-          chmod +x dist/cadt
-
       - name: Copy sqlite3
         run: |
           ls ./node_modules/sqlite3/lib/binding/
