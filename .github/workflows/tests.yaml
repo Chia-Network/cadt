@@ -16,7 +16,7 @@ jobs:
     name: NPM Tests
     runs-on: ubuntu-latest
     container:
-      image: node:16.13
+      image: node:18
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Ignore Husky
-        run: npm set-script prepare ""
+        run: npm pkg delete scripts.prepare
 
       - name: npm install
         run: npm install
