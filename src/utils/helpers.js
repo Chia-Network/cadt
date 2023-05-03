@@ -4,7 +4,7 @@ import _ from 'lodash';
 
 import { isPluralized } from './string-utils.js';
 import { formatModelAssociationName } from './model-utils.js';
-import packageJson from '../../package.json' assert { type: 'json' };
+import packageJson from '../../package.json';
 
 export const convertToMySQLDatetime = (date) => {
   const originalDate = new Date(date);

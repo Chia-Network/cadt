@@ -14,7 +14,7 @@ import {
   assertDataLayerAvailable,
   assertWalletIsAvailable,
 } from './utils/data-assertions';
-import packageJson from '../package.json' assert { type: 'json' };
+import packageJson from '../package.json';
 import datalayer from './datalayer';
 
 const { API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =

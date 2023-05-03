@@ -69,8 +69,7 @@ jobs:
 
       - name: Make and rename executable
         run: |
-          mv dist/climate-warehouse dist/cadt
-          chmod +x dist/climate-warehouse
+          chmod +x dist/cadt
 
       - name: Copy sqlite3
         run: cp ${{ matrix.sqlite-path }}node_sqlite3.node ./dist/
