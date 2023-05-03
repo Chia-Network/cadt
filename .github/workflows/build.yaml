@@ -177,11 +177,10 @@ jobs:
       - name: Build arm 64 dist
         run: |
           mkdir pkgcache
-          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:18.16 /bin/bash -c "npm set-script prepare \"\" && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
+          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:18.16 /bin/bash -c npm pkg delete scripts.prepare && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
 
       - name: Make executable
         run: |
-          mv dist/climate-warehouse dist/cadt
           chmod +x dist/cadt
 
       - name: Copy sqlite3
