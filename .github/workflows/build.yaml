@@ -220,7 +220,7 @@ jobs:
 
       - name: Build .deb
         env:
-          CLIMATE_WAREHOUSE_VERSION: ${{ steps.tag-name.outputs.TAGNAME }}
+          CADT_VERSION: ${{ steps.tag-name.outputs.TAGNAME }}
           PLATFORM: ${{ matrix.platform }}
         run: |
           pip install j2cli

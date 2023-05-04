@@ -20,8 +20,8 @@ Description=CADT
 # Set Chia directory as an environment variable
 Environment=CHIA_ROOT=/home/%i/.chia/mainnet
 
-# Climate warehouse executable
-ExecStart=/opt/climate-warehouse/climate-warehouse
+# CADT executable
+ExecStart=/opt/cadt/cadt
 
 # Start the software with `systemctl start cadt@username`
 User=%i
