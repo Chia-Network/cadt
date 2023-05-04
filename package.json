@@ -65,6 +65,8 @@
   "devDependencies": {
     "@babel/cli": "^7.16.0",
     "@babel/core": "^7.16.0",
+    "@babel/eslint-parser": "^7.21.8",
+    "@babel/plugin-syntax-import-assertions": "^7.20.0",
     "@babel/preset-env": "^7.16.4",
     "@commitlint/cli": "^14.1.0",
     "@commitlint/config-conventional": "^14.1.0",

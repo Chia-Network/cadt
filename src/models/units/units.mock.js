@@ -1,7 +1,8 @@
-import stub from './units.stub.json';
+import stub from './units.stub.json' assert { type: 'json' };
 
 export const UnitMock = {
-  findAll: ({ limit, offset }) => stub.slice(offset * limit, (offset + 1) * limit),
+  findAll: ({ limit, offset }) =>
+    stub.slice(offset * limit, (offset + 1) * limit),
   findOne: (id) => {
     return stub.find((record) => record.id == id);
   },

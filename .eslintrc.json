@@ -1,4 +1,5 @@
 {
+  "parser": "@babel/eslint-parser",
   "env": {
     "commonjs": true,
     "es6": true,
@@ -6,7 +7,10 @@
   },
   "parserOptions": {
     "ecmaVersion": 13,
-    "sourceType": "module"
+    "sourceType": "module",
+    "babelOptions": {
+      "plugins": ["@babel/plugin-syntax-import-assertions"]
+    }
   },
   "rules": {
     "es/no-dynamic-import": "error"

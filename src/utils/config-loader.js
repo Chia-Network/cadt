@@ -1,14 +1,13 @@
 import _ from 'lodash';
 import yaml from 'js-yaml';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 
 import { logger } from '../config/logger.cjs';
 
 import { getDataModelVersion } from './helpers';
-import defaultConfig from './defaultConfig.json';
-import {getChiaRoot} from "./chia-root.js"
+import defaultConfig from './defaultConfig.json' assert { type: 'json' };
+import { getChiaRoot } from './chia-root.js';
 
 export const getConfig = _.memoize(() => {
   const chiaRoot = getChiaRoot();

@@ -1,4 +1,4 @@
-import stub from './issuances.stub.json';
+import stub from './issuances.stub.json' assert { type: 'json' };
 
 export const IssuanceMock = {
   findAll: () => stub,

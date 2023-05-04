@@ -1,4 +1,4 @@
-import stub from './staging.stub.json';
+import stub from './staging.stub.json' assert { type: 'json' };
 
 export const StagingMock = {
   findAll: () => stub,

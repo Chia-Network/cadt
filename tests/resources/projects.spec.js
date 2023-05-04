@@ -4,7 +4,7 @@ import * as testFixtures from '../test-fixtures';
 import sinon from 'sinon';
 import datalayer from '../../src/datalayer';
 const { expect } = chai;
-import newProject from '../test-data/new-project.json';
+import newProject from '../test-data/new-project.json' assert { type: 'json' };
 import supertest from 'supertest';
 import app from '../../src/server';
 import { Organization } from '../../src/models/organizations/index.js';
@@ -122,6 +122,7 @@ describe('Project Resource CRUD', function () {
 
   describe('POST Projects - Create', function () {
     describe('error states', function () {
+      // eslint-disable-next-line mocha/no-skipped-tests
       it.skip('errors if no home organization exists', async function () {
         await Organization.destroy({
           where: {},
