@@ -82,8 +82,8 @@ To install from source:
 ```
 git clone git@github.com:Chia-Network/climate-warehouse.git
 cd climate-warehouse
-nvm install 18
-nvm use 18
+nvm install 16
+nvm use 16
 npm install -g @babel/cli husky prettier lint-staged cross-env
 npm set-script prepare "husky install"
 npm run prepare
