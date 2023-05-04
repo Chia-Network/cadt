@@ -28,7 +28,7 @@ const getDataModelVersion = () => {
   return `v${majorVersion}`;
 };
 
-const logDir = `${chiaRoot}/climate-warehouse/${getDataModelVersion()}/logs`;
+const logDir = `${chiaRoot}/cadt/${getDataModelVersion()}/logs`;
 
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
