@@ -1,10 +1,10 @@
 import { getConfig } from '../utils/config-loader';
 import { getDataModelVersion } from '../utils/helpers';
-import {getChiaRoot} from "../utils/chia-root.js"
+import { getChiaRoot } from '../utils/chia-root.js';
 
 const chiaRoot = getChiaRoot();
 
-const persistanceFolder = `${chiaRoot}/climate-warehouse/${getDataModelVersion()}`;
+const persistanceFolder = `${chiaRoot}/cadt/${getDataModelVersion()}`;
 
 export default {
   local: {
