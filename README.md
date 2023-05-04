@@ -4,6 +4,8 @@
 
 This project was formerly known as the Climate Warehouse and you may see this term used interchangeably with CADT. 
 
+*Note that breaking changes are introduced in version 1.3.0 and those with older installs are encourage to uninstall and reinstall the CADT software.  Please see the [release notes](https://github.com/Chia-Network/climate-warehouse/releases/tag/1.2.29) for more details.*
+
 ## User Guide
 
 The CADT application is designed to run 24/7, much like any other API.  While it is possible to run it on-demand only when API requests need to be made, this guide assumes a permanently running solution.  
