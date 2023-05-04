@@ -12,7 +12,7 @@ import { getChiaRoot } from './chia-root.js';
 export const getConfig = _.memoize(() => {
   const chiaRoot = getChiaRoot();
   const dataModelVersion = getDataModelVersion();
-  const persistanceFolder = `${chiaRoot}/climate-warehouse/${dataModelVersion}`;
+  const persistanceFolder = `${chiaRoot}/cadt/${dataModelVersion}`;
   const configFile = path.resolve(`${persistanceFolder}/config.yaml`);
 
   try {
