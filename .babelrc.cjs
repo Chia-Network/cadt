@@ -5,6 +5,7 @@ module.exports = {
   include: [/src/, /node_modules/],
   presets: ['@babel/preset-env'],
   plugins: [
+    '@babel/plugin-syntax-import-assertions',
     [
       'module-resolver',
       {
