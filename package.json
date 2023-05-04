@@ -1,11 +1,11 @@
 {
-  "name": "climate-warehouse",
+  "name": "cadt",
   "version": "1.2.29",
   "private": true,
   "bin": "build/server.js",
   "type": "module",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0"
   },
   "scripts": {
     "requirements-check": "node --experimental-json-modules check_node_version.js",
@@ -20,10 +20,10 @@
     "build": "babel src --keep-file-extension --out-dir build --copy-files && cp package.json ./build",
     "build-migrations": "babel migrations --keep-file-extension --out-dir dist/migrations --copy-files",
     "prepare-binary": "rm -rf dist && mkdir dist",
-    "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-win-x64 --out-path dist",
-    "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-macos-x64 --out-path dist",
-    "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-linux-x64 --out-path dist",
-    "create-linux-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-linux-arm64 --out-path dist"
+    "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node18-win-x64 --out-path dist",
+    "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node18-macos-x64 --out-path dist",
+    "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node18-linux-x64 --out-path dist",
+    "create-linux-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node18-linux-arm64 --out-path dist"
   },
   "pkg": {
     "scripts": "package.json",
@@ -102,6 +102,8 @@
     "Michael.Taylor <mtaylor@michaeltaylor3d.com>",
     "Frantz Arty <artyfrantz@gmail.com>",
     "Chris Marslender <chrismarslender@gmail.com>",
-    "Justin England <justin@jeng.land>"
+    "Justin England <justin@jeng.land>",
+    "Zach Brown <zachary.g.brown@gmail.com>",
+    "Brad Jordin"
   ]
 }
