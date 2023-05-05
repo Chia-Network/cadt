@@ -1,11 +1,11 @@
 {
-  "name": "climate-warehouse",
-  "version": "1.2.29",
+  "name": "cadt",
+  "version": "1.3.0",
   "private": true,
   "bin": "build/server.js",
   "type": "module",
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=16.0"
   },
   "scripts": {
     "requirements-check": "node --experimental-json-modules check_node_version.js",
@@ -13,7 +13,7 @@
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha tests/**/*.spec.js --reporter spec --exit --timeout 300000",
     "release": "npx standard-version",
     "postinstall": "npm run requirements-check",
-    "cleandb": "rm -f ~/.chia/climate-warehouse/data.sqlite3",
+    "cleandb": "rm -f ~/.chia/cadt/data.sqlite3",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
     "prepare": "husky install",
@@ -100,6 +100,8 @@
     "Michael.Taylor <mtaylor@michaeltaylor3d.com>",
     "Frantz Arty <artyfrantz@gmail.com>",
     "Chris Marslender <chrismarslender@gmail.com>",
-    "Justin England <justin@jeng.land>"
+    "Justin England <justin@jeng.land>",
+    "Zach Brown <zachary.g.brown@gmail.com>",
+    "Brad Jodoin <jodoinb@gmail.com>"
   ]
 }

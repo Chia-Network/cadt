@@ -1,15 +1,15 @@
-# Climate Warehouse RPC API Guide
+# CADT RPC API Guide
 
 This page lists commands and examples from the Climate Warehouse RPC API.
 
 Please also see the following related documents:
-  * [Climate Warehouse installation/configuration guide](/README.md)
+  * [CADT installation/configuration guide](/README.md)
   * [Chia Data Layer CLI](https://docs.chia.net/datalayer-cli) reference
   * [Chia Data Layer RPC API](https://docs.chia.net/datalayer-rpc) reference
 
-The Climate Warehosue RPC API is exposed by default on port 31310. This document will give examples to access the RPC API using `http://localhost:31310/v1`.  
+The CADT RPC API is exposed by default on port 31310. This document will give examples to access the RPC API using `http://localhost:31310/v1`.  
 
-If using an `API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.  
+If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.  
 
 ## Commands
 
@@ -1013,7 +1013,7 @@ curl --location -g --request POST 'localhost:31310/v1/units' \
 -----
 
 #### Split units in four
-[todo: This command isn't working yet. See [CW issue 387](https://github.com/Chia-Network/climate-warehouse/issues/387) for more info.]
+[todo: This command isn't working yet. See [CW issue 387](https://github.com/Chia-Network/cadt/issues/387) for more info.]
 
 ```json
 // Request
@@ -1306,7 +1306,7 @@ curl --location --request GET 'localhost:31310/v1/staging' --header 'Content-Typ
 -----
 
 #### List all units in `STAGING`, with paging
-[todo: This call doesn't work yet. see [CW issue 389](https://github.com/Chia-Network/climate-warehouse/issues/389) for more info.]
+[todo: This call doesn't work yet. see [CW issue 389](https://github.com/Chia-Network/cadt/issues/389) for more info.]
 
 ```json
 // Request
