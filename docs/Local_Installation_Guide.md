@@ -70,15 +70,15 @@ In order to test and see if you have correctly opened port 8575, simply go to [h
 
 ## Install CADT API server
 
-To get started, go to [https://github.com/Chia-Network/climate-warehouse/](https://github.com/Chia-Network/climate-warehouse/) and find the latest release of the software.
+To get started, go to [https://github.com/Chia-Network/cadt/](https://github.com/Chia-Network/cadt/) and find the latest release of the software.
 
 ![Latest CADT release](images/latest-cadt-release.png "Latest CADT release")
 
 Select the download file that matches your OS. Once the file has been downloaded, it is recommended to unzip the file and place the contents into a directory you create. This will make upgrading the CADT much easier.
 
-Next, you can simply run the climate-warehouse executable that was unzipped and placed into your directory. This will launch the CADT API server. This will look like a command line style window that prints a bunch of information.
+Next, you can simply run the cadt executable that was unzipped and placed into your directory. This will launch the CADT API server. This will look like a command line style window that prints a bunch of information.
 
-Running this application will create a new folder in your CHIA_ROOT directory (usually the .chia folder in your home directory). This folder will store the configuration file for the CADT instance, along with the data for the CADT instance. You can find this folder at `C:\Users<user>\chia\mainnet\climate-warehouse\v1` on Windows or `~/.chia/mainnet/climate-warehouse/v1` on Linux and Mac (where “~” is a shortcut to your home directory). 
+Running this application will create a new folder in your CHIA_ROOT directory (usually the .chia folder in your home directory). This folder will store the configuration file for the CADT instance, along with the data for the CADT instance. You can find this folder at `C:\Users<user>\chia\mainnet\cadt\v1` on Windows or `~/.chia/mainnet/cadt/v1` on Linux and Mac (where “~” is a shortcut to your home directory). 
 
  \
 Install CADT UI (optional)
@@ -106,7 +106,7 @@ Setting up a test instance
 
 _If you intend to set up a “staging” or “test” environment, you will need to set up your Chia application to run on testnet. This will require you to use a CLI tool to configure Chia to run on testnet - more information on this can be found here. [https://docs.chia.net/guides/crash-course/introduction/?_highlight=testnet#getting-started](https://docs.chia.net/guides/crash-course/introduction/?_highlight=testnet#getting-started)_
 
-_If you intend to set up a “staging” or “test” environment, you will need to configure your CADT application to point to testnet. This will require you to open the config.yaml file CADT, which can be found at ~.\chia\mainnet\climate-warehouse\v1\config.yaml._
+_If you intend to set up a “staging” or “test” environment, you will need to configure your CADT application to point to testnet. This will require you to open the config.yaml file CADT, which can be found at ~.\chia\mainnet\cadt\v1\config.yaml._
 
 You will change two parameters:
 

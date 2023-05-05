@@ -119,11 +119,11 @@ Chia is now confirmed to be installed and running properly. You may continue to 
 
 To begin the installation of the CADT API server, it is recommended to follow the full instructions for the CADT at the link below.
 
-[https://github.com/Chia-Network/climate-warehouse#debian-based-linux-distros-ubuntu-mint-etc](https://github.com/Chia-Network/climate-warehouse#debian-based-linux-distros-ubuntu-mint-etc)
+[https://github.com/Chia-Network/cadt#debian-based-linux-distros-ubuntu-mint-etc](https://github.com/Chia-Network/cadt#debian-based-linux-distros-ubuntu-mint-etc)
 
-Once installed, run the climate-warehouse executable by entering
+Once installed, run the CADT executable by entering
 
-`/opt/climate-warehouse/climate-warehouse`  
+`/opt/cadt/cadt`  
 
 The executable will run in the foreground of your terminal window and display a bunch of output. If Chia services are not running properly, you will see messages similar to the below:
 
@@ -137,11 +137,11 @@ The terminal window should print some success messages relating to finding gover
 
 There should be messages saying “governance config found” and data is being downloaded.
 
-When you successfully run climate-warehouse, it will create the config file at /.chia/mainnet/climate-warehouse/v1/config.yaml.  The configuration file options are documented at [https://github.com/Chia-Network/climate-warehouse#configuration](https://github.com/Chia-Network/climate-warehouse#configuration).  
+When you successfully run cadt, it will create the config file at /.chia/mainnet/cadt/v1/config.yaml.  The configuration file options are documented at [https://github.com/Chia-Network/cadt#configuration](https://github.com/Chia-Network/cadt#configuration).  
 
 If you chose to set up a cloud storage object like the AWS S3 bucket, then you should use the public URL for the cloud storage object as the value for configuration variable “DATALAYER_FILE_SERVER_URL”.
 
-The climate-warehouse executable needs to be restarted to pick up any changes to the config.yaml file, which can be done with ctrl+c in the terminal window where climate-warehouse is running and then simply starting the executable again.
+The cadt executable needs to be restarted to pick up any changes to the config.yaml file, which can be done with ctrl+c in the terminal window where cadt is running and then simply starting the executable again.
 
 
 ## Automate services startup with systemd
@@ -194,7 +194,7 @@ to set each Chia service to run at boot
 
 Instructions for CADT services can be found at the link below:
 
-[https://github.com/Chia-Network/climate-warehouse#systemd-init-script](https://github.com/Chia-Network/climate-warehouse#systemd-init-script)
+[https://github.com/Chia-Network/cadt#systemd-init-script](https://github.com/Chia-Network/cadt#systemd-init-script)
 
 Please note that while this is the recommended approach to interacting with the software in a cloud environment, this is not necessary. If you need to reboot or restart your cloud environment, you can simply restart Chia and CADT services manually instead.
 
@@ -217,11 +217,11 @@ The [Chia faucet](https://faucet.chia.net/) can provide a small amount of mojos 
 
 On the instance running the Chia and CADT software, you can do the following command to see your wallet address:
 
-**Chia wallet get_adress**
+**chia wallet get_address**
 
 This will return a public wallet address for you to use in obtaining XCH. You can be sure you have received XCH by doing
 
-**Chia wallet show**
+**chia wallet show**
 
 And you will see your balance of XCH.
 
@@ -239,6 +239,6 @@ We recommend using a separate instance from the one running Chia and CADT API se
 
 Start by installing MySQL on the instance or using a cloud MySL appliance like Amazon RDS. 
 
-You will need to point the CADT API server to mirror the database to the mySQL server DB. You can do this by changing the configuration file for the CADT API server. More information about configuration variables can be found at [https://github.com/Chia-Network/climate-warehouse#configuration](https://github.com/Chia-Network/climate-warehouse#configuration) 
+You will need to point the CADT API server to mirror the database to the mySQL server DB. You can do this by changing the configuration file for the CADT API server. More information about configuration variables can be found at [https://github.com/Chia-Network/cadt#configuration](https://github.com/Chia-Network/cadt#configuration) 
 
 Once the CADT API server has been restarted, confirm the mirror process is working by checking the output of the CADT API server, as well as checking to see if the mirror DB server is receiving data.
