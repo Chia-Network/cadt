@@ -33,7 +33,8 @@ jobs:
             sqlite-path: .\node_modules\sqlite3\lib\binding\napi-v6-win32-unknown-x64\
 
     steps:
-      - uses: Chia-Network/actions/clean-workspace@main
+      - name: Clean workspace
+        uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
         uses: actions/checkout@v3
