@@ -17,7 +17,7 @@ const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
 
-logger.info('climate-warehouse:mirror-database');
+logger.info('CADT:mirror-database');
 
 export const safeMirrorDbHandler = (callback) => {
   try {
