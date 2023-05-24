@@ -2,10 +2,9 @@ import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import request from 'request-promise';
-import os from 'os';
 import { getConfig } from '../utils/config-loader';
 import yaml from 'js-yaml';
-import {getChiaRoot} from "../utils/chia-root.js"
+import { getChiaRoot } from '../utils/chia-root.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
