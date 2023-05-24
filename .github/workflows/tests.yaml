@@ -27,6 +27,9 @@ jobs:
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
 
+      - name: Install Mocha
+        run: npm install --save-dev mocha
+
       - name: npm install
         run: npm install
 
