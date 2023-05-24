@@ -12,7 +12,7 @@ import {
   assertWalletIsSynced,
 } from '../utils/data-assertions';
 
-logger.info('climate-warehouse:task:audit');
+logger.info('CADT:task:audit');
 
 dotenv.config();
 import { getConfig } from '../utils/config-loader';

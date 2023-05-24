@@ -17,7 +17,7 @@ import { getDataModelVersion } from '../../utils/helpers';
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR } = getConfig().APP;
 
-logger.info('climate-warehouse:organizations');
+logger.info('CADT:organizations');
 
 import ModelTypes from './organizations.modeltypes.cjs';
 

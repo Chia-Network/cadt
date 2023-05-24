@@ -6,7 +6,7 @@ import path from 'path';
 import { logger } from '../config/logger.cjs';
 
 import { getDataModelVersion } from './helpers';
-import defaultConfig from './defaultConfig.json';
+import { defaultConfig } from './defaultConfig.js';
 import { getChiaRoot } from './chia-root.js';
 
 export const getConfig = _.memoize(() => {
