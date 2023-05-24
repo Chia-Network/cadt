@@ -20,7 +20,7 @@ jobs:
       matrix:
         include:
           - runs-on: ubuntu-latest
-            artifact-name: linux-x64
+            artifact-name: cadt-linux-x64
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -34,7 +34,7 @@ jobs:
           node-version: '16.13'
 
       - name: Ignore Husky
-        run: npm set-script prepare ""
+        run: npm pkg delete scripts.prepare
         if: matrix.runs-on != 'windows-latest'
 
       - name: npm install
@@ -73,7 +73,7 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: |
-            ghcr.io/chia-network/climate-warehouse
+            ghcr.io/chia-network/cadt
           tags: |
             type=raw,value=latest,enable=${{ endsWith(github.ref, github.event.repository.default_branch) }}
             type=sha,format=long

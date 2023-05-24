@@ -20,20 +20,21 @@ jobs:
       matrix:
         include:
           - runs-on: ubuntu-latest
-            artifact-name: linux-x64
+            artifact-name: cadt-linux-x64
             build-command: npm run create-linux-x64-dist
             sqlite-path: ./node_modules/sqlite3/lib/binding/napi-v6-linux-glibc-x64/
           - runs-on: macos-latest
-            artifact-name: macos-x64
+            artifact-name: cadt-macos-x64
             build-command: npm run create-mac-x64-dist
             sqlite-path: ./node_modules/sqlite3/lib/binding/napi-v6-darwin-unknown-x64/
           - runs-on: windows-2019
-            artifact-name: windows-x64
+            artifact-name: cadt-windows-x64
             build-command: npm run create-win-x64-dist
             sqlite-path: .\node_modules\sqlite3\lib\binding\napi-v6-win32-unknown-x64\
 
     steps:
-      - uses: Chia-Network/actions/clean-workspace@main
+      - name: Clean workspace
+        uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -44,7 +45,7 @@ jobs:
           node-version: '16.13'
 
       - name: Ignore Husky
-        run: npm set-script prepare ""
+        run: npm pkg delete scripts.prepare
         if: matrix.runs-on != 'windows-2019'
 
       - name: npm install
@@ -67,8 +68,9 @@ jobs:
       - name: create distributions
         run: ${{ matrix.build-command }}
 
-      - name: Make executable
-        run: chmod +x dist/climate-warehouse
+      - name: Make binary executable
+        run: |
+          chmod +x dist/cadt
 
       - name: Copy sqlite3
         run: cp ${{ matrix.sqlite-path }}node_sqlite3.node ./dist/
@@ -87,11 +89,10 @@ jobs:
         with:
           certificate_path: .\win_code_sign_cert.pfx
           certificate_password: ${{ secrets.WIN_CODE_SIGN_PASSWORD }}
-          file: ${{ github.workspace }}/dist/climate-warehouse.exe
+          file: ${{ github.workspace }}/dist/cadt.exe
 
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
-        #if: steps.check_secrets.outputs.HAS_SECRET
         if: matrix.runs-on == 'macos-latest'
         uses: Apple-Actions/import-codesign-certs@v1
         with:
@@ -100,7 +101,6 @@ jobs:
           p12-password: ${{ secrets.APPLE_DEV_ID_INSTALLER_PASS }}
 
       - name: Import Apple Application signing certificate
-        #if: steps.check_secrets.outputs.HAS_SECRET
         if: matrix.runs-on == 'macos-latest'
         uses: Apple-Actions/import-codesign-certs@v1
         with:
@@ -116,23 +116,23 @@ jobs:
           cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
 
           echo "Signing the binaries"
-          codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/build-scripts/macos/application/climate-warehouse
+          codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/build-scripts/macos/application/cadt
           codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp ${{ github.workspace }}/build-scripts/macos/application/node_sqlite3.node
 
           # Makes the .pkg in ./build-scripts/macos/target/pkg
           echo "Building the .pkg"
-          bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh ClimateWarehouse
+          bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh CADT
 
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
           echo "Signing the .pkg"
-          productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/ClimateWarehouse-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/ClimateWarehouse-macos-installer-x64.pkg
+          productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg
 
           echo "Notarizing the .pkg"
           npm install -g notarize-cli
           notarize-cli \
-            --file=${{ github.workspace }}/build-scripts/macos/target/pkg-signed/ClimateWarehouse-macos-installer-x64.pkg \
-            --bundle-id net.chia.climate-warehouse \
+            --file=${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg \
+            --bundle-id net.chia.cadt \
             --username "${{ secrets.APPLE_NOTARIZE_USERNAME }}" \
             --password "${{ secrets.APPLE_NOTARIZE_PASSWORD }}"
 
@@ -140,7 +140,7 @@ jobs:
         if: matrix.runs-on == 'macos-latest'
         uses: actions/upload-artifact@v3
         with:
-          name: mac-installer
+          name: cadt-mac-installer
           path: ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
       - name: Upload artifacts
@@ -178,10 +178,7 @@ jobs:
       - name: Build arm 64 dist
         run: |
           mkdir pkgcache
-          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:16.13 /bin/bash -c "npm set-script prepare \"\" && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
-
-      - name: Make executable
-        run: chmod +x dist/climate-warehouse
+          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:16.13 /bin/bash -c "npm pkg delete scripts.prepare && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
 
       - name: Copy sqlite3
         run: |
@@ -191,7 +188,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: linux-arm64
+          name: cadt-linux-arm64
           path: ${{ github.workspace }}/dist
 
   debs:
@@ -203,9 +200,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: linux-x64
+          - name: cadt-linux-x64
             platform: amd64
-          - name: linux-arm64
+          - name: cadt-linux-arm64
             platform: arm64
     steps:
       - name: Checkout Code
@@ -224,20 +221,20 @@ jobs:
 
       - name: Build .deb
         env:
-          CLIMATE_WAREHOUSE_VERSION: ${{ steps.tag-name.outputs.TAGNAME }}
+          CADT_VERSION: ${{ steps.tag-name.outputs.TAGNAME }}
           PLATFORM: ${{ matrix.platform }}
         run: |
           pip install j2cli
-          CLI_DEB_BASE="climate-warehouse_${{ steps.tag-name.outputs.TAGNAME }}-1_${PLATFORM}"
-          mkdir -p "deb/$CLI_DEB_BASE/opt/climate-warehouse"
+          CLI_DEB_BASE="cadt_${{ steps.tag-name.outputs.TAGNAME }}-1_${PLATFORM}"
+          mkdir -p "deb/$CLI_DEB_BASE/opt/cadt"
           mkdir -p "deb/$CLI_DEB_BASE/usr/bin"
+          mkdir -p "deb/$CLI_DEB_BASE/etc/systemd/system"
           mkdir -p "deb/$CLI_DEB_BASE/DEBIAN"
           j2 -o "deb/$CLI_DEB_BASE/DEBIAN/control" build-scripts/deb/control.j2
-          cp -r ${{ matrix.name }}/* "deb/$CLI_DEB_BASE/opt/climate-warehouse/"
-          cp build-scripts/deb/generate-init.sh deb/$CLI_DEB_BASE/opt/climate-warehouse/generate-init.sh
-          chmod +x deb/$CLI_DEB_BASE/opt/climate-warehouse/climate-warehouse
-          chmod +x deb/$CLI_DEB_BASE/opt/climate-warehouse/generate-init.sh
-          ln -s ../../opt/climate-warehouse/climate-warehouse "deb/$CLI_DEB_BASE/usr/bin/climate-warehouse"
+          cp -r ${{ matrix.name }}/* "deb/$CLI_DEB_BASE/opt/cadt/"
+          cp build-scripts/deb/cadt@.service deb/$CLI_DEB_BASE/etc/systemd/system/cadt@.service
+          chmod +x deb/$CLI_DEB_BASE/opt/cadt/cadt
+          ln -s ../../opt/cadt/cadt "deb/$CLI_DEB_BASE/usr/bin/cadt"
           dpkg-deb --build --root-owner-group "deb/$CLI_DEB_BASE"
 
       - name: Upload deb
@@ -255,32 +252,32 @@ jobs:
       - name: Download Windows artifacts
         uses: actions/download-artifact@v3
         with:
-          name: windows-x64
-          path: windows-x64
+          name: cadt-windows-x64
+          path: cadt-windows-x64
 
       - name: Download MacOS artifacts
         uses: actions/download-artifact@v3
         with:
-          name: mac-installer
-          path: mac-installer
+          name: cadt-mac-installer
+          path: cadt-mac-installer
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v3
         with:
-          name: linux-x64
-          path: linux-x64
+          name: cadt-linux-x64
+          path: cadt-linux-x64
 
       - name: Download Linux x64 deb
         uses: actions/download-artifact@v3
         with:
-          name: linux-x64-deb
-          path: linux-x64-deb
+          name: cadt-linux-x64-deb
+          path: cadt-linux-x64-deb
 
       - name: Download Linux arm64 deb
         uses: actions/download-artifact@v3
         with:
-          name: linux-arm64-deb
-          path: linux-arm64-deb
+          name: cadt-linux-arm64-deb
+          path: cadt-linux-arm64-deb
 
       - name: Get tag name
         id: tag-name
@@ -289,21 +286,21 @@ jobs:
 
       - name: Create zips
         run: |
-          zip -r windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip windows-x64
-          zip -r macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip mac-installer
-          zip -r linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip linux-x64
+          zip -r cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-windows-x64
+          zip -r cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-mac-installer
+          zip -r cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-x64
 
       - name: Release
         uses: softprops/action-gh-release@v0.1.15
         with:
           files: |
-            windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
-            macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
-            linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
-            linux-x64-deb/*.deb
-            linux-arm64-deb/*.deb
+            cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            cadt-linux-x64-deb/*.deb
+            cadt-linux-arm64-deb/*.deb
 
       - name: Trigger apt repo update
         run: |
-          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/climate-warehouse/${{ github.sha }}/start
-          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/climate-warehouse/${{ github.sha }}/success/deploy
+          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/start
+          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/success/deploy
