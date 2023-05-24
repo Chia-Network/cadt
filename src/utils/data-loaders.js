@@ -1,7 +1,5 @@
 import _ from 'lodash';
-
-import request from 'request-promise';
-
+import superagent from 'superagent';
 import { Governance } from '../models';
 import PickListStub from '../models/governance/governance.stub.json';
 import { getConfig } from '../utils/config-loader';
@@ -43,13 +41,10 @@ export const getDefaultOrganizationList = async () => {
 };
 
 export const serverAvailable = async (server, port) => {
-  const options = {
-    method: 'GET',
-    url: `http://${server}:${port}`,
-  };
+  const url = `http://${server}:${port}`;
 
   try {
-    await request(Object.assign({}, options));
+    await superagent.get(url);
     return true;
   } catch (err) {
     if (JSON.stringify(err).includes('Python')) {

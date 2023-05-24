@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import request from 'request-promise';
+import superagent from 'superagent';
 
 const defaults = {
   timeout: 5000,
@@ -74,8 +74,8 @@ const queryHttps = (version, options) => {
     const urls = [...type[version].httpsUrls, ...(options.fallbackUrls ?? [])];
 
     for (const url of urls) {
-      const response = await request({ url });
-      const ip = (response || '').trim();
+      const response = await superagent.get(url);
+      const ip = (response.text || '').trim();
       if (!_.isEmpty(ip)) {
         return ip;
       }
