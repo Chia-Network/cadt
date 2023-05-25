@@ -1,5 +1,3 @@
-import _ from 'lodash';
-
 import crypto from 'crypto';
 import { FileStore } from '../models';
 
@@ -86,26 +84,29 @@ export const getFile = async (req, res) => {
 
 export const addFileToFileStore = async (req, res) => {
   try {
-    if (_.get(req, 'files.file.data')) {
-      const { fileName } = req.body;
-      if (!fileName) {
-        throw new Error('Missing file name, can not upload file');
-      }
-      const buffer = req.files.file.data;
-      const base64File = buffer.toString('base64');
-      const SHA256 = crypto
-        .createHash('sha256')
-        .update(base64File)
-        .digest('base64');
-      await FileStore.addFileToFileStore(SHA256, fileName, base64File);
-      return res.json({
-        message:
-          'File is being added to the file store, please wait for it to confirm.',
-        fileId: SHA256,
-      });
-    } else {
+    if (!req.file) {
       throw new Error('Missing file data, can not upload file.');
     }
+
+    const { originalname: fileName, buffer } = req.file;
+
+    if (!fileName) {
+      throw new Error('Missing file name, can not upload file');
+    }
+
+    const base64File = buffer.toString('base64');
+    const SHA256 = crypto
+      .createHash('sha256')
+      .update(base64File)
+      .digest('base64');
+
+    await FileStore.addFileToFileStore(SHA256, fileName, base64File);
+
+    return res.json({
+      message:
+        'File is being added to the file store, please wait for it to confirm.',
+      fileId: SHA256,
+    });
   } catch (error) {
     console.trace(error);
     res.status(400).json({

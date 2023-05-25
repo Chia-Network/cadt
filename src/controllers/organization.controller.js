@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import { sequelize } from '../database';
 import { Organization } from '../models/organizations';
 
@@ -28,8 +27,8 @@ export const editHomeOrg = async (req, res) => {
 
     let icon;
 
-    if (_.get(req, 'files.file.data')) {
-      const buffer = req.files.file.data;
+    if (req.file) {
+      const buffer = req.file.buffer;
       icon = `data:image/png;base64, ${buffer.toString('base64')}`;
     } else {
       icon = '';
@@ -66,8 +65,8 @@ export const createV2 = async (req, res) => {
       const { name } = req.body;
       let icon;
 
-      if (_.get(req, 'files.file.data')) {
-        const buffer = req.files.file.data;
+      if (req.file) {
+        const buffer = req.file.buffer;
         icon = `data:image/png;base64, ${buffer.toString('base64')}`;
       } else {
         icon = '';

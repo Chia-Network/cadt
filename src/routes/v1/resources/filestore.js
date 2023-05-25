@@ -2,9 +2,12 @@
 
 import express from 'express';
 import joiExpress from 'express-joi-validation';
+import multer from 'multer';
 
 const validator = joiExpress.createValidator({ passError: true });
 const FileStoreRouter = express.Router();
+
+const upload = multer();
 
 import { FileStoreController } from '../../../controllers';
 import { getFileSchema, subscribedSchema } from '../../../validations';
@@ -25,7 +28,7 @@ FileStoreRouter.get('/get_file_list', (req, res) => {
   return FileStoreController.getFileList(req, res);
 });
 
-FileStoreRouter.post('/add_file', (req, res) => {
+FileStoreRouter.post('/add_file', upload.single('file'), (req, res) => {
   return FileStoreController.addFileToFileStore(req, res);
 });
 

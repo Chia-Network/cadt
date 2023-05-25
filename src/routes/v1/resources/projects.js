@@ -3,6 +3,7 @@
 import express from 'express';
 import { ProjectController } from '../../../controllers';
 import joiExpress from 'express-joi-validation';
+import multer from 'multer';
 
 import {
   projectsPostSchema,
@@ -13,6 +14,7 @@ import {
 
 const validator = joiExpress.createValidator({ passError: true });
 const ProjectRouter = express.Router();
+const upload = multer();
 
 ProjectRouter.get('/', validator.query(projectsGetQuerySchema), (req, res) => {
   return req.query.warehouseProjectId
@@ -36,7 +38,11 @@ ProjectRouter.put(
   (req, res) => ProjectController.transfer(req, res),
 );
 
-ProjectRouter.put('/xlsx', ProjectController.updateFromXLS);
+ProjectRouter.put(
+  '/xlsx',
+  upload.single('xlsx'),
+  ProjectController.updateFromXLS,
+);
 
 ProjectRouter.delete(
   '/',

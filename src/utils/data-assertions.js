@@ -143,11 +143,11 @@ export const assertOrgUidIsValid = async (orgUid, fieldName) => {
 };
 
 export const assertCsvFileInRequest = (req) => {
-  if (!_.get(req, 'files.csv')) {
-    throw new Error('Can not file the required csv file in request');
+  if (!req.file) {
+    throw new Error('Cannot find the required csv file in request');
   }
 
-  return req.files.csv;
+  return req.file;
 };
 
 export const assertOrgIsHomeOrg = async (orgUid) => {

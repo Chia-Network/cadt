@@ -80,7 +80,11 @@ export const importOfferFile = async (req, res) => {
     await assertNoPendingCommits();
     await assertNoActiveOfferFile();
 
-    const offerFileBuffer = req.files.file.data;
+    if (!req.file) {
+      throw new Error('No file uploaded');
+    }
+
+    const offerFileBuffer = req.file.buffer;
     const offerFile = offerFileBuffer.toString('utf-8');
     const offerParsed = JSON.parse(offerFile);
     offerParsed.fee = _.get(CONFIG, 'DEFAULT_FEE', 300000000);
