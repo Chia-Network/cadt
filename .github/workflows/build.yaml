@@ -43,8 +43,11 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '16.13'
+      
+      - name: Install Husky
+        run: npm install --save-dev husky
 
-      - name: Ignore Husky
+      - name: Ignore Husky where not compatible
         run: npm pkg delete scripts.prepare
         if: matrix.runs-on != 'windows-2019'
 

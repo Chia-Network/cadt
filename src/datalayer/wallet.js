@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import request from 'request-promise';
-import os from 'os';
+import superagent from 'superagent';
 import { getConfig } from '../utils/config-loader';
-import {getChiaRoot} from "../utils/chia-root.js"
+import { getChiaRoot } from '../utils/chia-root.js';
+import { logger } from '../config/logger.cjs';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
@@ -20,50 +20,36 @@ const getBaseOptions = () => {
   );
 
   const baseOptions = {
-    method: 'POST',
-    cert: fs.readFileSync(certFile),
-    key: fs.readFileSync(keyFile),
+    pfx: fs.readFileSync(certFile),
+    passphrase: fs.readFileSync(keyFile),
   };
 
   return baseOptions;
 };
 
 const walletIsSynced = async () => {
-  const options = {
-    url: `${rpcUrl}/get_sync_status`,
-    body: JSON.stringify({}),
-  };
-
-  const response = await request(Object.assign({}, getBaseOptions(), options));
-
-  const data = JSON.parse(response);
-
-  if (data.success) {
-    return data.synced;
-  }
-
-  return false;
-};
-
-const walletIsAvailable = async () => {
   try {
-    const options = {
-      url: `${rpcUrl}/get_sync_status`,
-      body: JSON.stringify({}),
-    };
+    const response = await superagent
+      .post(`${rpcUrl}/get_sync_status`)
+      .send({})
+      .key(getBaseOptions().passphrase)
+      .cert(getBaseOptions().pfx);
 
-    const response = await request(
-      Object.assign({}, getBaseOptions(), options),
-    );
+    const data = JSON.parse(response.text);
 
-    if (response) {
-      return true;
+    if (data.success) {
+      return data.synced;
     }
 
     return false;
-  } catch {
+  } catch (error) {
+    logger.error(error);
     return false;
   }
+};
+
+const walletIsAvailable = async () => {
+  return await walletIsSynced();
 };
 
 const getWalletBalance = async () => {
@@ -72,25 +58,23 @@ const getWalletBalance = async () => {
       return Promise.resolve('999.00');
     }
 
-    const options = {
-      url: `${rpcUrl}/get_wallet_balance`,
-      body: JSON.stringify({
+    const response = await superagent
+      .post(`${rpcUrl}/get_wallet_balance`)
+      .send({
         wallet_id: 1,
-      }),
-    };
+      })
+      .key(getBaseOptions().passphrase)
+      .cert(getBaseOptions().pfx);
 
-    const response = await request(
-      Object.assign({}, getBaseOptions(), options),
-    );
-
-    if (response) {
-      const data = JSON.parse(response);
+    if (response.text) {
+      const data = JSON.parse(response.text);
       const balance = data?.wallet_balance?.spendable_balance;
       return balance / 1000000000000;
     }
 
     return false;
-  } catch {
+  } catch (error) {
+    logger.error(error);
     return false;
   }
 };
@@ -111,17 +95,16 @@ const waitForAllTransactionsToConfirm = async () => {
 };
 
 const hasUnconfirmedTransactions = async () => {
-  const options = {
-    url: `${rpcUrl}/get_transactions`,
-    body: JSON.stringify({
+  const response = await superagent
+    .post(`${rpcUrl}/get_transactions`)
+    .send({
       wallet_id: '1',
       sort_key: 'RELEVANCE',
-    }),
-  };
+    })
+    .key(getBaseOptions().passphrase)
+    .cert(getBaseOptions().pfx);
 
-  const response = await request(Object.assign({}, getBaseOptions(), options));
-
-  const data = JSON.parse(response);
+  const data = JSON.parse(response.text);
 
   if (data.success) {
     console.log(
@@ -141,20 +124,43 @@ const getPublicAddress = async () => {
     return Promise.resolve('xch33300ddsje98f33hkkdf9dfuSIMULATED_ADDRESS');
   }
 
-  const options = {
-    url: `${rpcUrl}/get_next_address`,
-    body: JSON.stringify({ wallet_id: 1, new_address: false }),
-  };
+  const response = await superagent
+    .post(`${rpcUrl}/get_next_address`)
+    .send({ wallet_id: 1, new_address: false })
+    .key(getBaseOptions().passphrase)
+    .cert(getBaseOptions().pfx);
 
-  const response = await request(Object.assign({}, getBaseOptions(), options));
-
-  const data = JSON.parse(response);
+  const data = JSON.parse(response.text);
 
   if (data.success) {
     return data.address;
   }
 
   return false;
+};
+
+const getActiveNetwork = async () => {
+  const url = `${rpcUrl}/get_network_info`;
+  const baseOptions = getBaseOptions();
+
+  try {
+    const response = await superagent
+      .post(url)
+      .key(baseOptions.passphrase)
+      .cert(baseOptions.pfx)
+      .send(JSON.stringify({}));
+
+    const data = response.body;
+
+    if (data.success) {
+      return data;
+    }
+
+    return false;
+  } catch (error) {
+    logger.error(error);
+    return false;
+  }
 };
 
 export default {
@@ -164,4 +170,5 @@ export default {
   getPublicAddress,
   getWalletBalance,
   waitForAllTransactionsToConfirm,
+  getActiveNetwork,
 };

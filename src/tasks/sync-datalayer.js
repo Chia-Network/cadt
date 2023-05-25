@@ -13,7 +13,7 @@ dotenv.config();
 import { getConfig } from '../utils/config-loader';
 const CONFIG = getConfig().APP;
 
-logger.info('climate-warehouse:task:sync-datalayer');
+logger.info('CADT:task:sync-datalayer');
 
 const spinner = new Spinner('Waiting for Updates %s');
 spinner.setSpinnerString('|/-\\');

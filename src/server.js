@@ -12,7 +12,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-logger.info('climate-warehouse:server');
+logger.info('CADT:server');
 
 const port = getConfig().APP.CW_PORT || 3030;
 const server = http.createServer(rootRouter);

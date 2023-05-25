@@ -12,7 +12,7 @@ const CONFIG = getConfig().APP;
 import dotenv from 'dotenv';
 dotenv.config();
 
-logger.info('climate-warehouse:task:sync-organizations');
+logger.info('CADT:task:sync-organizations');
 
 const task = new Task('sync-organization-meta', async () => {
   try {
