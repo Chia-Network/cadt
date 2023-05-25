@@ -1,3 +1,14 @@
+# [1.4.0](https://github.com/Chia-Network/cadt/compare/1.3.2...1.4.0) (2023-05-25)
+
+
+### Bug Fixes
+
+* clean up unused deps, replace request-promise with superagent ([768fbce](https://github.com/Chia-Network/cadt/commit/768fbce9cd9b6baa8654d3ae2a264f7bd9715eed))
+* make sure all posts have a send ([11c719c](https://github.com/Chia-Network/cadt/commit/11c719cafda1d05bbafc78583a5c3e40d3dffa8f))
+* update express deps, remove referances to climate-warehouse ([0a25e5b](https://github.com/Chia-Network/cadt/commit/0a25e5ba7db703deea2a5729ac3b9f475debeb56))
+
+
+
 ## [1.3.2](https://github.com/Chia-Network/cadt/compare/1.3.1...1.3.2) (2023-05-15)
 
 
