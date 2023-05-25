@@ -152,7 +152,7 @@ npm run create-linux-x64-dist
 
 ### Commiting
 
-​This repo uses a commit convention. A typical commit message might read:
+​This repo uses a [commit convention](https://www.conventionalcommits.org/en/v1.0.0/). A typical commit message might read:
 ​
 ```
     fix: correct home screen layout
@@ -166,8 +166,12 @@ The first part of this is the commit "type". The most common types are "feat" fo
 - `docs` for documentation only changes
 - `style` is for code formatting only
 - `refactor` is for changes to code which should not be detectable by users or testers
+- `perf` is for a code change that improves performance
 - `test` is for changes which only touch test files or related tooling
 - `build` is for changes which only touch our develop/release tools
+- `ci` is for changes to the continuous integration files and scripts
+- `chore` is for changes that don't modify code, like a version bump
+- `revert` is for reverting a previous commit
   ​
   After the type and scope there should be a colon.
   ​
