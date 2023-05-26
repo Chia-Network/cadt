@@ -3,6 +3,7 @@
 import express from 'express';
 import { UnitController } from '../../../controllers';
 import joiExpress from 'express-joi-validation';
+import multer from 'multer';
 
 import {
   unitsGetQuerySchema,
@@ -14,6 +15,7 @@ import {
 
 const validator = joiExpress.createValidator({ passError: true });
 const UnitRouter = express.Router();
+const upload = multer();
 
 UnitRouter.get('/', validator.query(unitsGetQuerySchema), (req, res) => {
   return req.query.warehouseUnitId
@@ -38,9 +40,6 @@ UnitRouter.post(
 
 UnitRouter.post('/batch', UnitController.batchUpload);
 
-UnitRouter.put(
-  '/xlsx',
-  UnitController.updateFromXLS,
-);
+UnitRouter.put('/xlsx', upload.single('xlsx'), UnitController.updateFromXLS);
 
 export { UnitRouter };
