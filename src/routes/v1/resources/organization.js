@@ -2,6 +2,7 @@
 
 import express from 'express';
 import joiExpress from 'express-joi-validation';
+import multer from 'multer';
 
 import { OrganizationController } from '../../../controllers';
 import {
@@ -18,6 +19,7 @@ import {
 
 const validator = joiExpress.createValidator({ passError: true });
 const OrganizationRouter = express.Router();
+const upload = multer();
 
 OrganizationRouter.get('/', (req, res) => {
   return OrganizationController.findAll(req, res);
@@ -47,11 +49,11 @@ OrganizationRouter.post(
   },
 );
 
-OrganizationRouter.post('/create', (req, res) => {
+OrganizationRouter.post('/create', upload.single('file'), (req, res) => {
   return OrganizationController.createV2(req, res);
 });
 
-OrganizationRouter.put('/edit', (req, res) => {
+OrganizationRouter.put('/edit', upload.single('file'), (req, res) => {
   return OrganizationController.editHomeOrg(req, res);
 });
 

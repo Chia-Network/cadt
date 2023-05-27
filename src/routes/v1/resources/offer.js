@@ -2,8 +2,10 @@
 
 import express from 'express';
 import { OfferController } from '../../../controllers';
+import multer from 'multer';
 
 const OfferRouter = express.Router();
+const upload = multer();
 
 OfferRouter.get('/', (req, res) => {
   return OfferController.generateOfferFile(req, res);
@@ -13,7 +15,7 @@ OfferRouter.delete('/', (req, res) => {
   return OfferController.cancelActiveOffer(req, res);
 });
 
-OfferRouter.post('/accept/import', (req, res) => {
+OfferRouter.post('/accept/import', upload.single('file'), (req, res) => {
   return OfferController.importOfferFile(req, res);
 });
 

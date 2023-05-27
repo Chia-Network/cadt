@@ -303,13 +303,11 @@ export const updateFromXLS = async (req, res) => {
     await assertHomeOrgExists();
     await assertNoPendingCommits();
 
-    const { files } = req;
-
-    if (!files || !files.xlsx) {
+    if (!req.file) {
       throw new Error('File Not Received');
     }
 
-    const xlsxParsed = transformMetaUid(xlsx.parse(files.xlsx.data));
+    const xlsxParsed = transformMetaUid(xlsx.parse(req.file.buffer));
     const stagedDataItems = tableDataFromXlsx(xlsxParsed, Unit);
     const collapsedData = collapseTablesData(stagedDataItems, Unit);
 
