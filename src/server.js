@@ -15,12 +15,15 @@ dotenv.config();
 logger.info('CADT:server');
 
 const port = getConfig().APP.CW_PORT || 3030;
+const bindAddress = getConfig().APP.BIND_ADDRESS || 'localhost';
 const server = http.createServer(rootRouter);
 
 server.on('error', onError);
 server.on('listening', onListening);
 
-server.listen(port);
+server.listen(port, bindAddress, () => {
+  console.log(`Server listening at http://${bindAddress}:${port}`);
+});
 
 const io = new Server(server);
 io.of('/v1/ws').on('connection', connection);

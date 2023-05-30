@@ -7,6 +7,7 @@ export const defaultConfig = {
   },
   APP: {
     CW_PORT: 31310,
+    BIND_ADDRESS: 'localhost',
     DATALAYER_URL: 'https://localhost:8562',
     WALLET_URL: 'https://localhost:9256',
     USE_SIMULATOR: false,
