@@ -1,3 +1,22 @@
+# [1.6.0](https://github.com/Chia-Network/cadt/compare/1.5.0...1.6.0) (2023-05-30)
+
+
+### Bug Fixes
+
+* multer configuration ([0ef36dd](https://github.com/Chia-Network/cadt/commit/0ef36dd8e13ac1c3a306e10294d0c8d044ec22a0))
+* validation logic to support xls ([595cc9b](https://github.com/Chia-Network/cadt/commit/595cc9b0821ff0a3706d574f7509b1d0140ad56c))
+
+
+
+# [1.5.0](https://github.com/Chia-Network/cadt/compare/1.4.0...1.5.0) (2023-05-27)
+
+
+### Features
+
+* replace express fileupload to multer ([392fece](https://github.com/Chia-Network/cadt/commit/392fececc45edc3cf2682a7cd19a17d599e10453))
+
+
+
 # [1.4.0](https://github.com/Chia-Network/cadt/compare/1.3.2...1.4.0) (2023-05-25)
 
 
