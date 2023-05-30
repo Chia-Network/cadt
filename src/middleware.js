@@ -4,7 +4,6 @@ import _ from 'lodash';
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import multer from 'multer';
 import { V1Router } from './routes/v1';
 import { getConfig } from './utils/config-loader';
 import { logger } from './config/logger.cjs';
@@ -37,8 +36,6 @@ app.use(
 
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-const upload = multer();
-app.use(upload.array());
 
 // Common assertions on every endpoint
 app.use(async function (req, res, next) {
@@ -126,7 +123,7 @@ app.use((err, req, res, next) => {
       });
     }
 
-    return res.status(err.status).json(err);
+    return res.status(err?.status || 400).json(err);
   }
 
   next();
