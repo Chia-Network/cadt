@@ -39,8 +39,20 @@ jobs:
             git add CHANGELOG.md
             git config --global user.name 'ChiaAutomation'
             git config --global user.email 'automation@chia.net'
-            git commit -m "Updating changelog for $version"
+            git commit -m "chore: Updating changelog for $version"
             git tag $version
             git push origin $version
             git push origin main
           fi
+
+      - name: Auto-update dev dependencies
+        run: |
+          echo "Updating the package.json file now..."
+          npx --yes npm-check-updates --dep dev -u
+          echo "Applying updates to the lock file..."
+          npm update -D
+          echo "Committing updates to the main branch"
+          git config --global user.name 'ChiaAutomation'
+          git config --global user.email 'automation@chia.net'
+          git commit -m "chore: Updating npm dev dependencies"
+          git push origin main
