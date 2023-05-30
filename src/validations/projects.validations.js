@@ -20,7 +20,7 @@ export const baseSchema = {
   // warehouseProjectId - derived upon creation
   // orgUid - derived upon creation
   projectId: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
-  currentRegistry: Joi.string().optional(),
+  currentRegistry: Joi.string().allow(null).optional(),
   originProjectId: Joi.alternatives()
     .try(Joi.string(), Joi.number())
     .required(),
@@ -42,7 +42,7 @@ export const baseSchema = {
   projectStatusDate: Joi.date().required(),
   unitMetric: Joi.string().custom(pickListValidation('unitMetric')).required(),
   methodology: Joi.string().required(),
-  methodology2: Joi.string().optional(),
+  methodology2: Joi.string().allow(null).optional(),
   validationBody: Joi.string().allow(null).optional(),
   validationDate: Joi.date().allow(null).optional(),
   description: Joi.string().allow(null).optional(),
@@ -55,8 +55,8 @@ export const baseSchema = {
   projectLocations: Joi.array().items(locationSchema).min(1).optional(),
   projectRatings: Joi.array().items(ratingSchema).min(1).optional(),
   estimations: Joi.array().items(estimationSchema).min(1).optional(),
-  updatedAt: Joi.date().optional(),
-  createdAt: Joi.date().optional(),
+  updatedAt: Joi.date().allow(null).optional(),
+  createdAt: Joi.date().allow(null).optional(),
   timeStaged: Joi.date().timestamp().allow(null).optional(),
 };
 

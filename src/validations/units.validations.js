@@ -13,26 +13,27 @@ const unitsBaseSchema = {
   // warehouseUnitId - derived upon unit creation
   // issuanceId - derived upon unit creation
   // orgUid - derived upon unit creation
-  projectLocationId: Joi.string().optional(),
-  unitOwner: Joi.string(),
+  projectLocationId: Joi.string().allow(null).optional(),
+  unitOwner: Joi.string().allow(null).optional(),
   countryJurisdictionOfOwner: Joi.string()
     .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
     .required(),
-  inCountryJurisdictionOfOwner: Joi.string().optional(),
+  inCountryJurisdictionOfOwner: Joi.string().allow(null).optional(),
   unitBlockStart: Joi.string().required(),
   unitBlockEnd: Joi.string().required(),
   unitCount: Joi.number().integer().required(),
   // match 4 digit year
   vintageYear: Joi.number().integer().min(1900).max(3000).required(),
   unitType: Joi.string().custom(pickListValidation('unitType')).required(),
-  marketplace: Joi.string().optional(),
-  marketplaceLink: Joi.string().optional(),
+  marketplace: Joi.string().allow(null).optional(),
+  marketplaceLink: Joi.string().allow(null).optional(),
   marketplaceIdentifier: Joi.string().disallow('').allow(null).optional(),
-  unitTags: Joi.string().allow('').optional(),
+  unitTags: Joi.string().allow('').allow(null).optional(),
   unitStatus: Joi.string().custom(pickListValidation('unitStatus')).required(),
   unitStatusReason: Joi.string().when('unitStatus', {
     is: Joi.exist().valid('cancelled', 'retired'),
     then: Joi.required(),
+    otherwise: Joi.allow(null).optional(),
   }),
   unitRegistryLink: Joi.string().required(),
   correspondingAdjustmentDeclaration: Joi.string()
@@ -43,8 +44,8 @@ const unitsBaseSchema = {
     .required(),
   issuance: issuanceSchema.optional(),
   labels: Joi.array().items(labelSchema).optional(),
-  updatedAt: Joi.date().optional(),
-  createdAt: Joi.date().optional(),
+  updatedAt: Joi.date().allow(null).optional(),
+  createdAt: Joi.date().allow(null).optional(),
   timeStaged: Joi.date().timestamp().allow(null).optional(),
 };
 
