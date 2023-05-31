@@ -13,27 +13,31 @@ const USE_SIMULATOR = getConfig().APP.USE_SIMULATOR;
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
   const certFile = path.resolve(
-    `${chiaRoot}/config/ssl/wallet/private_wallet.crt`,
+    `${chiaRoot}/config/ssl/data_layer/private_data_layer.crt`,
   );
   const keyFile = path.resolve(
-    `${chiaRoot}/config/ssl/wallet/private_wallet.key`,
+    `${chiaRoot}/config/ssl/data_layer/private_data_layer.key`,
   );
 
   const baseOptions = {
-    pfx: fs.readFileSync(certFile),
-    passphrase: fs.readFileSync(keyFile),
+    method: 'POST',
+    cert: fs.readFileSync(certFile),
+    key: fs.readFileSync(keyFile),
+    timeout: 300000,
   };
-
   return baseOptions;
 };
 
 const walletIsSynced = async () => {
   try {
+    const { cert, key, timeout } = getBaseOptions();
+
     const response = await superagent
       .post(`${rpcUrl}/get_sync_status`)
       .send({})
-      .key(getBaseOptions().passphrase)
-      .cert(getBaseOptions().pfx);
+      .key(key)
+      .cert(cert)
+      .timeout(timeout);
 
     const data = JSON.parse(response.text);
 
@@ -58,13 +62,16 @@ const getWalletBalance = async () => {
       return Promise.resolve('999.00');
     }
 
+    const { cert, key, timeout } = getBaseOptions();
+
     const response = await superagent
       .post(`${rpcUrl}/get_wallet_balance`)
       .send({
         wallet_id: 1,
       })
-      .key(getBaseOptions().passphrase)
-      .cert(getBaseOptions().pfx);
+      .key(key)
+      .cert(cert)
+      .timeout(timeout);
 
     if (response.text) {
       const data = JSON.parse(response.text);
@@ -95,14 +102,17 @@ const waitForAllTransactionsToConfirm = async () => {
 };
 
 const hasUnconfirmedTransactions = async () => {
+  const { cert, key, timeout } = getBaseOptions();
+
   const response = await superagent
     .post(`${rpcUrl}/get_transactions`)
     .send({
       wallet_id: '1',
       sort_key: 'RELEVANCE',
     })
-    .key(getBaseOptions().passphrase)
-    .cert(getBaseOptions().pfx);
+    .key(key)
+    .cert(cert)
+    .timeout(timeout);
 
   const data = JSON.parse(response.text);
 
@@ -124,11 +134,14 @@ const getPublicAddress = async () => {
     return Promise.resolve('xch33300ddsje98f33hkkdf9dfuSIMULATED_ADDRESS');
   }
 
+  const { cert, key, timeout } = getBaseOptions();
+
   const response = await superagent
     .post(`${rpcUrl}/get_next_address`)
     .send({ wallet_id: 1, new_address: false })
-    .key(getBaseOptions().passphrase)
-    .cert(getBaseOptions().pfx);
+    .key(key)
+    .cert(cert)
+    .timeout(timeout);
 
   const data = JSON.parse(response.text);
 
@@ -141,13 +154,14 @@ const getPublicAddress = async () => {
 
 const getActiveNetwork = async () => {
   const url = `${rpcUrl}/get_network_info`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send(JSON.stringify({}));
 
     const data = response.body;

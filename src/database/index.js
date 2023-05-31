@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { Sequelize } from 'sequelize';
 import config from '../config/config.js';
 import { logger } from '../config/logger.cjs';
@@ -19,6 +20,11 @@ export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
 
 logger.info('CADT:mirror-database');
 
+const logDebounce = _.debounce(() => {
+  console.log('Mirror DB not connected');
+  logger.info('Mirror DB not connected');
+}, 120000);
+
 export const safeMirrorDbHandler = (callback) => {
   try {
     sequelizeMirror
@@ -31,7 +37,7 @@ export const safeMirrorDbHandler = (callback) => {
         }
       })
       .catch(() => {
-        logger.info('Mirror DB not connected');
+        logDebounce();
       });
   } catch (error) {
     logger.error(
