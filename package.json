@@ -6,7 +6,7 @@
   "bin": "build/server.js",
   "type": "module",
   "engines": {
-    "node": ">=16.0"
+    "node": ">=16.14"
   },
   "scripts": {
     "requirements-check": "node --experimental-json-modules check_node_version.js",

@@ -97,9 +97,17 @@ chmod ug+x .git/hooks/*
 npm run start
 ```
 
+### Ports, Networking, and Security
+
+By default, the CADT API will listen on localhost only on port 31310. If running a node with `READ_ONLY` set to `false`, it is highly recommended that CADT is run on a private network or with access limited by IP address. To allow remote connections to CADT, set the `BIND_ADDRESS` (see the [Configuration](#configuration) section below) to the IP to listen on, or `0.0.0.0` to listen on all interfaces. The port for the CADT API can be set with the parameter `CW_PORT`.  The default port is 31310. In many cases, users will need to access the API from their workstations for either the [CADT UI](https://github.com/Chia-Network/climate-warehouse-ui) or to integrate with existing tools and scripts.  To add authentication to the API, use the `CADT_API_KEY` parameter.  Alternatively, the API can be served behind an authentication proxy to restrict access and the `CADT_API_KEY` can be left blank.  If running an observer node with `READ_ONLY` set to `true`, the CADT API will only share data from the public blockchain, and running without authentication is usually safe.  If `READ_ONLY` is set to `false`, authentication must be used to prevent unauthorized writes to the blockchain. 
+
+### Adding Encryption to the CADT API
+
+The CADT API uses HTTP and is unencrypted.  To add encryption, use a reverse proxy like [Nginx](https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/) with an SSL certificate.  In this scenario, the CADT application can be set to listen only on localhost and Nginx (on the same server) would proxy incoming requests to port 31310.
+
 ### Configuration
 
-In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add a directory called `climate-warehouse/v1` when the application is first run (in fact, this directory could be deleted at any time and CADT will recreate it next time it is started).  The main CADT configuration file is called `config.yaml` and can be found in this directory.  The options in this file are as follows (the full list of available options can be seen in the [config template](src/utils/defaultConfig.json)):
+In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add a directory called `cadt/v1` when the application is first run (in fact, this directory could be deleted at any time and CADT will recreate it next time it is started).  The main CADT configuration file is called `config.yaml` and can be found in this directory.  The options in this file are as follows (the full list of available options can be seen in the [config template](src/utils/defaultConfig.json)):
 
 * **MIRROR_DB**: This section is for configuring the MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the data CADT uses. 
   *  **DB_USERNAME**:  MySQL username
@@ -108,6 +116,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   *  **DB_HOST**: Hostname of the MySQL database
 * **APP**:  This section is for configuring the CADT application.
   * **CW_PORT**: CADT port where the API will be available. 31310 by default.
+  * **BIND_ADDRESS**: By default, CADT listens on localhost only. To enable remote connections to CADT, change this to `0.0.0.0` to listen on all network interfaces, or to an IP address to listen on a specific network interface. 
   * **DATALAYER_URL**: URL and port to connect to the [Chia DataLayer RPC](https://docs.chia.net/datalayer-rpc).  If Chia is installed locally with default settings, https://localhost:8562 will work. 
   * **WALLET_URL**: URL and port to conned to the [Chia Wallet RPC](https://docs.chia.net/wallet-rpc).  If Chia is installed on the same machine as CADT with default settings, https://localhost:9256 will work.
   * **USE_SIMULATOR**: Developer setting to populate CADT from a governance file and enables some extra APIs.  Should always be "false" under normal usage. 
@@ -119,20 +128,17 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **DEFAULT_FEE**: [Fee](https://docs.chia.net/mempool/) for each transaction on the Chia blockchain in mojos.  The default is 300000000 mojos (0.0003 XCH) and can be set higher or lower depending on how [busy](https://dashboard.chia.net/d/46EAA05E/mempool-transactions-and-fees?orgId=1) the Chia network is.  If a fee is set very low, it may cause a delay in transaction processing.  
   * **DEFAULT_COIN_AMOUNT**: Units are mojo.  Each DataLayer transaction needs a coin amount and the default is 300000000 mojo.  
   * **DATALAYER_FILE_SERVER_URL**: Chia DataLayer HTTP URL and port.  If serving DataLayer files from S3, this would be the public URL of the S3 bucket.  Must be publicly available.  
+  * **TASKS**: Section for configuring sync intervals
+    * **AUDIT_SYNC_TASK_INTERVAL**:  Default 30
+    * **DATAMODEL_SYNC_TASK_INTERVAL**:  Default 60
+    * **GOVERNANCE_SYNC_TASK_INTERVAL**:  Default 86400
+    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**:  Default 86400
+    * **PICKLIST_SYNC_TASK_INTERVAL**:  Default 30
 * **GOVERNANCE**: Section on settings for the Governance body to connect to.
-  * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT network will be connected to.  While there could be multiple governance body IDs, the default of 23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e is the right ID for most people. 
-* **TASKS**: Section for configuring sync intervals
-  * **AUDIT_SYNC_TASK_INTERVAL**:  Default 30
-  * **DATAMODEL_SYNC_TASK_INTERVAL**:  Default 60
-  * **GOVERNANCE_SYNC_TASK_INTERVAL**:  Default 86400
-  * **ORGANIZATION_META_SYNC_TASK_INTERVAL**:  Default 86400
-  * **PICKLIST_SYNC_TASK_INTERVAL**:  Default 30
+  * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT network will be connected to.  While there could be multiple governance body IDs, the default of `23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e` is the right ID for most people. 
+
 ​
 Note that the CADT application will need to be restarted after any changes to the config.yaml file. 
-
-### Ports, Networking, and Security
-
-The port for the CADT API can be set with the parameter `CW_PORT` in the `config.yaml` file discussed above.  The default port is 31310.  The CADT API will listen on all network interfaces on this port so care must be taken to block this port at the firewall or networking level to avoid this API being public.  In many cases, the API will need to be public for either the [CADT UI](https://github.com/Chia-Network/climate-warehouse-ui) or to integrate with existing tools and scripts.  To add authentication to the API, use the `CADT_API_KEY` parameter.  Alternatively, the API can be served behind an authentication proxy to restrict access and the `CADT_API_KEY` can be left blank.  If running an observer node with `READ_ONLY` set to `true`, the CADT API will only share data from the public blockchain, and running without authentication is usually safe.  If `READ_ONLY` is set to `false`, authentication must be used to prevent unauthorized writes to the blockchain. 
 
 ## Developer Guide
 ​
