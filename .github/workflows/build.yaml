@@ -42,8 +42,8 @@ jobs:
       - name: Setup Node 16.x
         uses: actions/setup-node@v3
         with:
-          node-version: '16.13'
-      
+          node-version: '16.14'
+
       - name: Install Husky
         run: npm install --save-dev husky
 
@@ -181,7 +181,7 @@ jobs:
       - name: Build arm 64 dist
         run: |
           mkdir pkgcache
-          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:16.13 /bin/bash -c "npm pkg delete scripts.prepare && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
+          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:16.14 /bin/bash -c "npm pkg delete scripts.prepare && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
 
       - name: Copy sqlite3
         run: |
