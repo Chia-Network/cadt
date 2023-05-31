@@ -26,8 +26,8 @@ const getBaseOptions = () => {
 
   const baseOptions = {
     method: 'POST',
-    pfx: fs.readFileSync(certFile),
-    passphrase: fs.readFileSync(keyFile),
+    cert: fs.readFileSync(certFile),
+    key: fs.readFileSync(keyFile),
     timeout: 300000,
   };
   return baseOptions;
@@ -35,14 +35,14 @@ const getBaseOptions = () => {
 
 const getMirrors = async (storeId) => {
   const url = `${CONFIG.DATALAYER_URL}/get_mirrors`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({ id: storeId });
 
     const data = response.body;
@@ -88,12 +88,12 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     };
 
-    const { pfx, passphrase, timeout } = getBaseOptions();
+    const { cert, key, timeout } = getBaseOptions();
 
     const response = await superagent
       .post(`${CONFIG.DATALAYER_URL}/add_mirror`)
-      .key(passphrase)
-      .pfx(pfx)
+      .key(key)
+      .cert(cert)
       .send(options)
       .timeout(timeout);
 
@@ -107,7 +107,8 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     logger.error(`FAILED ADDING MIRROR FOR ${storeId}`);
     return false;
   } catch (error) {
-    logger.error(error);
+    logger.error('ADD_MIRROR', error);
+    console.trace(error);
     return false;
   }
 };
@@ -127,14 +128,14 @@ const removeMirror = async (storeId, coinId) => {
   }
 
   const url = `${CONFIG.DATALAYER_URL}/delete_mirror`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({
         id: coinId,
         fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
@@ -157,14 +158,14 @@ const removeMirror = async (storeId, coinId) => {
 
 const getRootDiff = async (storeId, root1, root2) => {
   const url = `${CONFIG.DATALAYER_URL}/get_kv_diff`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({
         id: storeId,
         hash_1: root1,
@@ -186,14 +187,14 @@ const getRootDiff = async (storeId, root1, root2) => {
 
 const getRootHistory = async (storeId) => {
   const url = `${CONFIG.DATALAYER_URL}/get_root_history`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({
         id: storeId,
       });
@@ -213,16 +214,16 @@ const getRootHistory = async (storeId) => {
 
 const unsubscribeFromDataLayerStore = async (storeId) => {
   const url = `${CONFIG.DATALAYER_URL}/unsubscribe`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   logger.info(`RPC Call: ${url} ${storeId}`);
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({
         id: storeId,
         fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
@@ -244,14 +245,14 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
 
 const dataLayerAvailable = async () => {
   const url = `${CONFIG.DATALAYER_URL}/get_routes`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({});
 
     const data = response.body;
@@ -279,14 +280,14 @@ const getStoreData = async (storeId, rootHash) => {
     }
 
     const url = `${CONFIG.DATALAYER_URL}/get_keys_values`;
-    const baseOptions = getBaseOptions();
+    const { cert, key, timeout } = getBaseOptions();
 
     try {
       const response = await superagent
         .post(url)
-        .key(baseOptions.passphrase)
-        .cert(baseOptions.pfx)
-        .timeout({ response: baseOptions.timeout })
+        .key(key)
+        .cert(cert)
+        .timeout(timeout)
         .send(payload);
 
       const data = response.body;
@@ -315,14 +316,14 @@ const getStoreData = async (storeId, rootHash) => {
 
 const getRoot = async (storeId, ignoreEmptyStore = false) => {
   const url = `${CONFIG.DATALAYER_URL}/get_root`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({ id: storeId });
 
     const data = response.body;
@@ -345,14 +346,14 @@ const getRoot = async (storeId, ignoreEmptyStore = false) => {
 
 const getRoots = async (storeIds) => {
   const url = `${CONFIG.DATALAYER_URL}/get_roots`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({ ids: storeIds });
 
     const data = response.body;
@@ -373,13 +374,13 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
     await wallet.waitForAllTransactionsToConfirm();
 
     const url = `${CONFIG.DATALAYER_URL}/batch_update`;
-    const baseOptions = getBaseOptions();
+    const { cert, key, timeout } = getBaseOptions();
 
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({
         changelist,
         id: storeId,
@@ -418,14 +419,14 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
 
 const createDataLayerStore = async () => {
   const url = `${CONFIG.DATALAYER_URL}/create_data_store`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({
         fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
       });
@@ -464,16 +465,16 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 
   const url = `${CONFIG.DATALAYER_URL}/subscribe`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   logger.info(`Subscribing to: ${storeId}`);
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({
         id: storeId,
         fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
@@ -507,14 +508,14 @@ const getSubscriptions = async () => {
   }
 
   const url = `${CONFIG.DATALAYER_URL}/subscriptions`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({});
 
     const data = response.body;
@@ -534,14 +535,14 @@ const getSubscriptions = async () => {
 
 const makeOffer = async (offer) => {
   const url = `${CONFIG.DATALAYER_URL}/make_offer`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({
         ...offer,
         fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
@@ -562,14 +563,14 @@ const makeOffer = async (offer) => {
 
 const takeOffer = async (offer) => {
   const url = `${CONFIG.DATALAYER_URL}/take_offer`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send(offer);
 
     const data = response.body;
@@ -589,14 +590,14 @@ const takeOffer = async (offer) => {
 const verifyOffer = async (offer) => {
   console.log(offer);
   const url = `${CONFIG.DATALAYER_URL}/verify_offer`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send(offer);
 
     const data = response.body;
@@ -616,14 +617,14 @@ const verifyOffer = async (offer) => {
 
 const cancelOffer = async (tradeId) => {
   const url = `${CONFIG.DATALAYER_URL}/cancel_offer`;
-  const baseOptions = getBaseOptions();
+  const { cert, key, timeout } = getBaseOptions();
 
   try {
     const response = await superagent
       .post(url)
-      .key(baseOptions.passphrase)
-      .cert(baseOptions.pfx)
-      .timeout({ response: baseOptions.timeout })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
       .send({
         trade_id: tradeId,
         secure: true,
