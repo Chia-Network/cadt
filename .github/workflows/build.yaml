@@ -42,8 +42,8 @@ jobs:
       - name: Setup Node 16.x
         uses: actions/setup-node@v3
         with:
-          node-version: '16.13'
-      
+          node-version: '16.14'
+
       - name: Install Husky
         run: npm install --save-dev husky
 
