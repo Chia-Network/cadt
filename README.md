@@ -69,31 +69,18 @@ sudo systemctl enable cadt@<USERNAME>
 
 ### Installation from Source
 
-
-#### Prerequisites
-
-​
 You'll need:
 ​
-
 - Git
 - [nvm](https://github.com/nvm-sh/nvm) - This app uses `nvm` to align node versions across development, CI and production. If you're working on Windows you should consider [nvm-windows](https://github.com/coreybutler/nvm-windows)
 
 To install from source:
 
 ```
-git clone git@github.com:Chia-Network/climate-warehouse.git
-cd climate-warehouse
-nvm install 16
-nvm use 16
-npm install -g @babel/cli husky prettier lint-staged cross-env
-npm set-script prepare "husky install"
-npm run prepare
-​
-// If you are on linux or mac run
-chmod ug+x .husky/*
-chmod ug+x .git/hooks/*
-​
+git clone git@github.com:Chia-Network/cadt.git
+cd cadt
+nvm install 16.14
+nvm use 16.14
 npm run start
 ```
 
@@ -141,22 +128,12 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
 Note that the CADT application will need to be restarted after any changes to the config.yaml file. 
 
 ## Developer Guide
-​
-### Build Binaries
 
-After running the ["Installation from Source"](https://github.com/Chia-Network/climate-warehouse#installation-from-source) steps above, do the following: 
+A development environment for CADT assumes a synced Chia wallet running locally.  [Node version manager (nvm)](https://github.com/nvm-sh/nvm) is used to quickly switch node environments.  The repo contains a `.nvmrc` file that specifies the node version the CADT is expected to use and developers can do `nvm use` to switch to the version in the `.nvmrc`.  
 
-```
-// transcompile project to es5
-npm run build
-​
-// Output binaries to dist folder
-npm run create-win-x64-dist
-npm run create-mac-x64-dist
-npm run create-linux-x64-dist
-```
+### Contributing
 
-### Commiting
+All branches should be created from the `develop` branch and not from `main`.  All pull requests should be made against the `develop` branch, unless it is a new release.  The `develop` branch will be merged into the `main` branch to create a release.  Automation in the CI will create the [release](https://github.com/Chia-Network/cadt/releases) and attach the installation files to it automatically whenever code is merged to `main`.  Additionally, the changelog will automatically be updated in the `main` branch.  Therefore, the `main` branch should always be a representation of the latest released code.  
 
 ​This repo uses a [commit convention](https://www.conventionalcommits.org/en/v1.0.0/). A typical commit message might read:
 ​
@@ -188,7 +165,32 @@ The first part of this is the commit "type". The most common types are "feat" fo
 
 ​
 Each time you commit the message will be checked against these standards in a pre-commit hook. Additionally all the commits in a PR branch will be linted before it can be merged to master.
+
+To setup the pre-commit hooks on your local, run the following:
 ​
+```
+npm install -g @babel/cli husky prettier lint-staged cross-env
+npm set-script prepare "husky install"
+npm run prepare
+​
+// If you are on linux or mac run
+chmod ug+x .husky/*
+chmod ug+x .git/hooks/*
+```
+
+### Build Binaries
+
+After running the ["Installation from Source"](https://github.com/Chia-Network/cadt#installation-from-source) steps above, do the following: 
+
+```
+// transcompile project to es5
+npm run build
+​
+// Output binaries to dist folder
+npm run create-win-x64-dist
+npm run create-mac-x64-dist
+npm run create-linux-x64-dist
+```
 
 ### Sequelize Generator
 ​
