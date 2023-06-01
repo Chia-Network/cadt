@@ -1,3 +1,17 @@
+## [1.6.1](https://github.com/Chia-Network/cadt/compare/1.6.0...1.6.1) (2023-05-31)
+
+
+### Bug Fixes
+
+* superagent cert handling ([4b9610d](https://github.com/Chia-Network/cadt/commit/4b9610d1b38b09283df13eccc91812ddc1ca3a25))
+
+
+### Features
+
+* set bind address to server ([1cd73f3](https://github.com/Chia-Network/cadt/commit/1cd73f3e3a5f64d07ed050efee369964fb69f901))
+
+
+
 # [1.6.0](https://github.com/Chia-Network/cadt/compare/1.5.0...1.6.0) (2023-05-30)
 
 
