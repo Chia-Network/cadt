@@ -43,7 +43,7 @@
     "lodash": "^4.17.21",
     "log-update": "^4.0.0",
     "multer": "*",
-    "mysql2": "^2.3.3",
+    "mysql2": "^3.3.0",
     "node-xlsx": "^0.23.0",
     "regenerator-runtime": "^0.13.9",
     "rxjs": "^7.8.1",
