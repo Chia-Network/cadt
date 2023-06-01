@@ -159,6 +159,10 @@ The first part of this is the commit "type". The most common types are "feat" fo
   After the type and scope there should be a colon.
   ​
   The "subject" of the commit follows. It should be a short indication of the change. The commit convention prefers that this is written in the present-imperative tense.
+
+### Versioning
+
+This project mostly adheres to semantic versioning.  The version specified in `package.json` will be used by the ci to create the new release in Github so it is important to set that correctly.  The major version (version 1.0, 2.0, etc) should only be changed when the data model changes and the API goes from v1 to v2.  Minor version changes (version 1.2 to 1.3, etc) are for breaking or substantial changes, usually requiring some action on the user's part.    
   ​
 
 ### Commit linting
