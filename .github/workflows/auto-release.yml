@@ -55,15 +55,17 @@ jobs:
 
       - name: Auto-update dev dependencies
         run: |
-          echo "Checking and updating the package.json file now..."
-          if $(npx --yes npm-check-updates --dep dev -u | grep -q "All dependencies match the latest package versions")
+          echo "Checking if dev dependencies need updating..."
+          if $(npx --yes npm-check-updates --dep dev --silent --errorLevel 2)
           then
             echo "No updates found - exiting"
             exit 0
           else
+            echo "Applying updates to package.json..."
+            npx --yes npm-check-updates --dep dev -u
             echo "Applying updates to the lock file..."
             npm update -D
-            echo "Committing updates to the main branch"
+            echo "Committing updates to the develop branch"
             git config --global user.name 'ChiaAutomation'
             git config --global user.email 'automation@chia.net'
             git commit -m "chore: Updating npm dev dependencies"
