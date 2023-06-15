@@ -1,5 +1,5 @@
 import semver from 'semver';
-import config from './package.json' assert { type: 'json' };
+import config from './package.json';
 const { engines } = config;
 
 const version = engines.node;
