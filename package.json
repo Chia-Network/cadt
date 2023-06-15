@@ -1,12 +1,12 @@
 {
   "name": "cadt",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "_comment": "DONT CHANGE MAJOR UNLESS DATAMODEL CHANGES: The major version corresponds to the datamodel version your using, so 2.0.0 means it'll use datamodel v2",
   "private": true,
   "bin": "build/server.js",
   "type": "module",
   "engines": {
-    "node": ">=16.14"
+    "node": ">=16.13"
   },
   "scripts": {
     "requirements-check": "node --experimental-json-modules check_node_version.js",
@@ -68,6 +68,7 @@
     "eslint": "^8.41.0",
     "eslint-plugin-es": "^4.1.0",
     "eslint-plugin-mocha": "^10.1.0",
+    "husky": "^8.0.3",
     "semver": "^7.5.1",
     "sinon": "^15.1.0",
     "socket.io-client": "^4.6.1",
