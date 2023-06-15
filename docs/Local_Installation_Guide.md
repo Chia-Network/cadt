@@ -80,8 +80,8 @@ Next, you can simply run the cadt executable that was unzipped and placed into y
 
 Running this application will create a new folder in your CHIA_ROOT directory (usually the .chia folder in your home directory). This folder will store the configuration file for the CADT instance, along with the data for the CADT instance. You can find this folder at `C:\Users<user>\chia\mainnet\cadt\v1` on Windows or `~/.chia/mainnet/cadt/v1` on Linux and Mac (where “~” is a shortcut to your home directory). 
 
- \
-Install CADT UI (optional)
+
+## Install CADT UI (optional)
 
 To get started installing the optional CADT UI software, go to [https://github.com/Chia-Network/climate-warehouse-ui](https://github.com/Chia-Network/climate-warehouse-ui) and find the latest release of the software. 
 
