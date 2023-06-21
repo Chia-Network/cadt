@@ -68,6 +68,8 @@ jobs:
             echo "Committing updates to the develop branch"
             git config --global user.name 'ChiaAutomation'
             git config --global user.email 'automation@chia.net'
+            git add package-lock.json
+            git add package.json
             git commit -m "chore: Updating npm dev dependencies"
             git push origin develop
           fi
