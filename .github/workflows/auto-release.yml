@@ -25,6 +25,11 @@ jobs:
           token: ${{ secrets.PACKAGE_ADMIN_PAT }}
           fetch-depth: 0
 
+      - uses: Chia-Network/actions/commit-sign/gpg@main
+        with:
+          gpg_private_key: ${{ secrets.CHIA_AUTOMATION_PRIVATE_GPG_KEY }}
+          passphrase: ${{ secrets.CHIA_AUTOMATION_PRIVATE_GPG_PASSPHRASE }}
+
       - name: Check for current version tag. Create if it doesn't exist
         run: |
           version=$(cat $GITHUB_WORKSPACE/package.json | jq -r '.version')
@@ -36,11 +41,10 @@ jobs:
             echo "Tag does not exist. Creating and pushing tag"
             rm -f CHANGELOG.md
             npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0
+            changes=$(npx conventional-changelog-cli -r 1)
             git add CHANGELOG.md
-            git config --global user.name 'ChiaAutomation'
-            git config --global user.email 'automation@chia.net'
             git commit -m "chore: Updating changelog for $version"
-            git tag $version
+            git tag $version -m "$changes"
             git push origin $version
             git push origin main
           fi
@@ -66,8 +70,6 @@ jobs:
             echo "Applying updates to the lock file..."
             npm update -D
             echo "Committing updates to the develop branch"
-            git config --global user.name 'ChiaAutomation'
-            git config --global user.email 'automation@chia.net'
             git add package-lock.json
             git add package.json
             git commit -m "chore: Updating npm dev dependencies"
