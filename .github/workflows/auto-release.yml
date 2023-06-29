@@ -25,7 +25,8 @@ jobs:
           token: ${{ secrets.PACKAGE_ADMIN_PAT }}
           fetch-depth: 0
 
-      - uses: Chia-Network/actions/commit-sign/gpg@main
+      - name: Configure commit signing for ChiaAutomation
+        uses: Chia-Network/actions/commit-sign/gpg@main
         with:
           gpg_private_key: ${{ secrets.CHIA_AUTOMATION_PRIVATE_GPG_KEY }}
           passphrase: ${{ secrets.CHIA_AUTOMATION_PRIVATE_GPG_PASSPHRASE }}
