@@ -14,7 +14,7 @@ const CONFIG = getConfig().APP;
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
   const certificateFolderPath =
-    CONFIG.CERTIFICATE_FOLDER_PATH || `${chiaRoot}/config/ssl/wallet`;
+    CONFIG.CERTIFICATE_FOLDER_PATH || `${chiaRoot}/config/ssl`;
 
   const certFile = path.resolve(
     `${certificateFolderPath}/wallet/private_wallet.crt`,
