@@ -17,11 +17,15 @@ const CONFIG = getConfig().APP;
 
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
+  const certificateFolderPath =
+    CONFIG.CERTIFICATE_FOLDER_PATH || `${chiaRoot}/config/ssl`;
+
   const certFile = path.resolve(
-    `${chiaRoot}/config/ssl/data_layer/private_data_layer.crt`,
+    `${certificateFolderPath}/data_layer/private_data_layer.crt`,
   );
+
   const keyFile = path.resolve(
-    `${chiaRoot}/config/ssl/data_layer/private_data_layer.key`,
+    `${certificateFolderPath}/data_layer/private_data_layer.key`,
   );
 
   const baseOptions = {
