@@ -8,12 +8,12 @@
   "engines": {
     "node": ">=16.13"
   },
-   "lint-staged": {
+  "lint-staged": {
     "*.+(js|ts|tsx)": "npm run lint:prettier-eslint"
   },
   "scripts": {
     "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
-    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha tests/**/*.spec.js --reporter spec --exit --timeout 300000",
+    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha tests/**/*.spec.js --reporter spec --exit --timeout 300000 --verbose",
     "release": "npx standard-version",
     "cleandb": "rm -f ~/.chia/cadt/data.sqlite3",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
