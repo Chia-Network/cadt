@@ -2,9 +2,9 @@
 
 import ProjectStub from '../../models/projects/projects.stub.js';
 import CoBenifetStub from '../../models/co-benefits/co-benefits.stub.js';
-import RelatedProjectStub from '../../models/related-projects/related-projects.stub.js/index.js';
+import RelatedProjectStub from '../../models/related-projects/related-projects.stub.js';
 import LabelStub from '../../models/labels/labels.stub.js';
-import RatingsStub from '../../models/ratings/ratings.stub.js/index.js';
+import RatingsStub from '../../models/ratings/ratings.stub.js';
 import IssuanceStub from '../../models/issuances/issuances.stub.js';
 import LocationsStub from '../../models/locations/locations.stub.js';
 
