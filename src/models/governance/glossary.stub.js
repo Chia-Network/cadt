@@ -1,0 +1,61 @@
+export default {
+  'Project Statuses': [
+    'Listed; The project is listed in a registry and pending validation or registration',
+    'Validated; The project has been validated and is pending registration or other status',
+    'Registered; The project has been registered',
+    'Transitioned; The project has been transitioned from a previous registry (e.g. CDM) to a new registry or mechanism (e.g. Article 6.4)',
+    'Approved; The project has been approved to sell units on through voluntary market mechanism',
+    'Authorized; The project has been authorized to sell units with corresponding adjustment through a compliance market mechanism',
+    'Withdrawn; Request for requestration was withdrawn by the project proponent prior to registration',
+    'Deregistered; Project was deregistered after registration and is no longer active',
+    'Completed; The project has reached the end of its lifetime',
+  ],
+  'Covered By NDC Statuses': [
+    "Inside NDC; The project (or resulting units) is from a sector, sub-sector, or activity listed in the Host Country's NDC as part of the NDC",
+    "Outside NDC; The project (or resulting units) is from a sector, sub-sector, or activity not listed in the Host Country's NDC as part of the NDC, or listed in the NDC as outside of the Host Country's NDC",
+    "Unknown; The relationship of the project (or resulting units) to the Host Country's NDC is not known",
+  ],
+  'Unit Metric': [
+    'tCO2e; A metric indicating tonnes of carbon dioxide equivalent',
+  ],
+  'Rating Types': [
+    'CDP; Project or Unit rating from the Carbon Disclosure Project (CDP)',
+    'CCQI; Project or Unit rating from the Carbon Credit Quality Initiative (CCQI)',
+    'MAAP; Project or Unit rating from the Mitigation Action Assessment Protocol (MAAP)',
+    'Sylvera; Project or Unit rating from Sylvera',
+    'BeZero; Project or Unit rating from BeZero',
+  ],
+  'Unit Types': [
+    'Reduction - nature; Reduction of carbon dioxide equivalent relative to a defined Business-as-Usual scenario through a nature-based project',
+    'Reduction - technical; Reduction of carbon dioxide equivalent relative to a defined Business-as-Usual scenario through a technical project',
+    'Removal - nature; Removal of carbon dioxide equivalent from the atmosphere through a nature-based project',
+    'Removal - technical; Removal of carbon dioxide equivalent from the atmosphere through a technical project',
+    'Avoidance; Avoidance of greenhouse gas emissions relative to a defined Business-as-Usual scenario',
+  ],
+  'Unit Statuses': [
+    'Held; Units are considered active on the current registry and are available to be transacted, cancelled, retired, or have another status applied',
+    'Retired; Units have been retired by the owner and cannot be transferred or sold',
+    'Cancelled; Units have been cancelled by the owner and cannot be transferred or sold',
+    'Expired; Units have expired',
+    'Buffer; Units are in a buffer account',
+    'Exported; Units have been transferred to another registry or account',
+    'Pending Export; Units are pending transfer to another regisry or account',
+  ],
+  'Corresponding Adjustment Declarations': [
+    'Committed; The host country has committed to undertake a corresponding adjustment for these units',
+    'Not Required; No corresponding adjustment is required for this units',
+    'Unknown; The status of the corresponding adjustment is not known for these units',
+  ],
+  'Corresponding Adjustment Statuses': [
+    'Not Started; The process for corresponding adjustment by the host country has not started',
+    'Pending; Corresponding adjustment by the host country is in process',
+    'Completed; Corresponding adjustment by the host country is complete',
+  ],
+  'Label Types': [
+    'Endorsement; The unit or project is supported by an Endorsement',
+    'Letter of Qualification; The unit or project is supported by an Letter of Qualification',
+    'Certification; The unit or project is supported by a Certification',
+    'Letter of Authorization; Units are authorized for sale with corresponding adjustment',
+    'Letter of Approval; Units are approved for sale through a voluntary mechanism',
+  ],
+};

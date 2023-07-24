@@ -1,4 +1,4 @@
-import stub from './governance.stub.json';
+import stub from './governance.stub.js';
 
 export const GovernanceMock = {
   findAll: () => stub,
