@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
-    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha tests/**/*.spec.js --reporter spec --exit --timeout 300000 --verbose",
+    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --require @babel/register tests/**/*.spec.js --reporter spec --exit --timeout 300000",
     "release": "npx standard-version",
     "cleandb": "rm -f ~/.chia/cadt/data.sqlite3",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
@@ -73,6 +73,7 @@
     "eslint-plugin-es": "^4.1.0",
     "eslint-plugin-mocha": "^10.1.0",
     "husky": "^8.0.3",
+    "mocha": "^10.2.0",
     "semver": "^7.5.3",
     "sinon": "^15.2.0",
     "socket.io-client": "^4.7.1",
