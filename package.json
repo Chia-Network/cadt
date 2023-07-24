@@ -6,14 +6,15 @@
   "bin": "build/server.js",
   "type": "module",
   "engines": {
-    "node": ">=18.16"
+    "node": ">=16.13"
+  },
+   "lint-staged": {
+    "*.+(js|ts|tsx)": "npm run lint:prettier-eslint"
   },
   "scripts": {
-    "requirements-check": "node --experimental-json-modules --experimental-import-assertions check_node_version.js",
     "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha tests/**/*.spec.js --reporter spec --exit --timeout 300000",
     "release": "npx standard-version",
-    "postinstall": "npm run requirements-check",
     "cleandb": "rm -f ~/.chia/cadt/data.sqlite3",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
@@ -21,16 +22,17 @@
     "build": "babel src --keep-file-extension --out-dir build --copy-files && cp package.json ./build",
     "build-migrations": "babel migrations --keep-file-extension --out-dir dist/migrations --copy-files",
     "prepare-binary": "rm -rf dist && mkdir dist",
-    "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node18-win-x64 --out-path dist",
-    "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node18-macos-x64 --out-path dist",
-    "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node18-linux-x64 --out-path dist",
-    "create-linux-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node18-linux-arm64 --out-path dist"
+    "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-win-x64 --out-path dist",
+    "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-macos-x64 --out-path dist",
+    "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-linux-x64 --out-path dist",
+    "create-linux-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-linux-arm64 --out-path dist"
   },
   "pkg": {
     "scripts": "package.json",
     "assets": "package.json"
   },
   "dependencies": {
+    "@babel/eslint-parser": "^7.22.9",
     "body-parser": "^1.20.2",
     "cli-spinner": "^0.2.10",
     "cors": "^2.8.5",
@@ -57,12 +59,11 @@
     "winston-daily-rotate-file": "^4.6.1"
   },
   "devDependencies": {
-    "@babel/cli": "^7.22.5",
+    "@babel/cli": "^7.22.9",
     "@babel/core": "^7.22.5",
-    "@babel/eslint-parser": "^7.22.9",
     "@babel/plugin-syntax-import-attributes": "^7.22.5",
-    "@babel/preset-env": "^7.22.5",
-    "@babel/runtime": "^7.22.6",
+    "@babel/preset-env": "^7.22.9",
+    "@babel/register": "^7.22.5",
     "@commitlint/cli": "^17.6.6",
     "@commitlint/config-conventional": "^17.6.6",
     "babel-plugin-module-resolver": "^5.0.0",
