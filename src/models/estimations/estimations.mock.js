@@ -1,4 +1,4 @@
-import stub from './estimations.modeltypes.cjs';
+import stub from './estimations.stub.js';
 
 export const EstimationMock = {
   findAll: () => stub,

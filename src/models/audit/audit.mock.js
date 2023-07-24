@@ -1,4 +1,4 @@
-import stub from './audit.stub.json';
+import stub from './audit.stub.js';
 
 export const AuditMock = {
   findAll: () => stub,

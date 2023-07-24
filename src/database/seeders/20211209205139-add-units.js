@@ -1,7 +1,7 @@
 'use strict';
 
-import UnitStub from '../../models/units/units.stub.json';
-import LabelUnitStub from '../../models/labelUnits/labelUnits.stub.json';
+import UnitStub from '../../models/units/units.stub.js';
+import LabelUnitStub from '../../models/labelUnits/labelUnits.stub.js';
 
 export default {
   // eslint-disable-next-line no-unused-vars
