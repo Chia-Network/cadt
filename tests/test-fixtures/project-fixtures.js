@@ -5,8 +5,8 @@ import chai from 'chai';
 const { expect } = chai;
 
 import app from '../../src/server';
-import newProject from '../test-data/new-project.json';
-import updateProjectJson from '../test-data/update-project.json';
+import newProject from '../test-data/new-project.js';
+import updateProjectJson from '../test-data/update-project.js';
 import { ProjectMirror, Project } from '../../src/models';
 
 export const createNewProject = async (payload = newProject) => {
