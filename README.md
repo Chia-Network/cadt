@@ -79,8 +79,8 @@ To install from source:
 ```
 git clone git@github.com:Chia-Network/cadt.git
 cd cadt
-nvm install 16.14
-nvm use 16.14
+nvm install 18.16
+nvm use 18.16
 npm run start
 ```
 

@@ -8,7 +8,6 @@ module.exports = {
     [
       '@babel/plugin-syntax-import-attributes',
       {
-        // Enable the deprecatedAssertSyntax option
         deprecatedAssertSyntax: true,
       },
     ],
