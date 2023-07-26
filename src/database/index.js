@@ -3,6 +3,7 @@ import { Sequelize } from 'sequelize';
 import config from '../config/config.js';
 import { logger } from '../config/logger.cjs';
 import mysql from 'mysql2/promise';
+import pg from "pg";
 import { getConfig } from '../utils/config-loader';
 
 import { migrations } from './migrations';
@@ -78,7 +79,7 @@ export const checkForMigrations = async (db) => {
     });
 
     const completedMigrations = await db.query(
-      'SELECT * FROM `SequelizeMeta`',
+      'SELECT * FROM "SequelizeMeta"',
       {
         type: Sequelize.QueryTypes.SELECT,
       },
@@ -95,7 +96,7 @@ export const checkForMigrations = async (db) => {
         const notCompleted = notCompletedMigrations[i];
         logger.info(`MIGRATING: ${notCompleted.name}`);
         await notCompleted.migration.up(db.queryInterface, Sequelize);
-        await db.query('INSERT INTO `SequelizeMeta` VALUES(:name)', {
+        await db.query('INSERT INTO "SequelizeMeta" VALUES(:name)', {
           type: Sequelize.QueryTypes.INSERT,
           replacements: { name: notCompleted.name },
         });
@@ -117,16 +118,42 @@ export const prepareDb = async () => {
     getConfig().MIRROR_DB.DB_HOST &&
     getConfig().MIRROR_DB.DB_HOST !== ''
   ) {
-    const connection = await mysql.createConnection({
-      host: getConfig().MIRROR_DB.DB_HOST,
-      port: 3306,
-      user: getConfig().MIRROR_DB.DB_USERNAME,
-      password: getConfig().MIRROR_DB.DB_PASSWORD,
-    });
+    switch (config[mirrorConfig].dialect) {
+      case 'mysql': {
+        const connection = await mysql.createConnection({
+          host: getConfig().MIRROR_DB.DB_HOST,
+          port: 3306,
+          user: getConfig().MIRROR_DB.DB_USERNAME,
+          password: getConfig().MIRROR_DB.DB_PASSWORD
+        });
 
-    await connection.query(
-      `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}\`;`,
-    );
+        await connection.query(
+          `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}\`;`
+        );
+        break;
+      }
+      case 'postgres': {
+        const client = new pg.Client({
+          user: getConfig().MIRROR_DB.DB_USERNAME,
+          host: getConfig().MIRROR_DB.DB_HOST,
+          database: 'postgres',
+          password: getConfig().MIRROR_DB.DB_PASSWORD
+        });
+
+        await client.connect();
+        try {
+          await client.query(
+            `CREATE DATABASE "${getConfig().MIRROR_DB.DB_NAME}";`
+          );
+        } catch (e) {
+          logger.info(`Database ${getConfig().MIRROR_DB.DB_NAME} already exists`);
+        }
+        await client.end();
+        break;
+      }
+      default:
+        throw new Error(`Unsupported dialect: ${config[mirrorConfig].dialect}`);
+    }
 
     const db = new Sequelize(config[mirrorConfig]);
 

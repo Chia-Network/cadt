@@ -4,6 +4,7 @@ export const defaultConfig = {
     DB_PASSWORD: null,
     DB_NAME: null,
     DB_HOST: null,
+    DB_DIALECT: null, // Either 'mysql' or 'postgres'
   },
   APP: {
     CW_PORT: 31310,
