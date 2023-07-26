@@ -45,6 +45,7 @@
     "multer": "*",
     "mysql2": "^2.3.3",
     "node-xlsx": "^0.23.0",
+    "pg": "^8.11.1",
     "regenerator-runtime": "^0.13.9",
     "rxjs": "^7.8.1",
     "sequelize": "^6.32.0",

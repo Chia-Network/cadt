@@ -32,7 +32,7 @@ export default {
     password: getConfig().MIRROR_DB.DB_PASSWORD || '',
     database: getConfig().MIRROR_DB.DB_NAME || '',
     host: getConfig().MIRROR_DB.DB_HOST || '',
-    dialect: 'mysql',
+    dialect: getConfig().MIRROR_DB.DB_DIALECT || 'mysql',
     logging: false,
   },
 };
