@@ -114,7 +114,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **IS_GOVERNANCE_BODY**: "True" or "false" toggle to enable/disable mode for this instance being a governing body.
   * **DEFAULT_FEE**: [Fee](https://docs.chia.net/mempool/) for each transaction on the Chia blockchain in mojos.  The default is 300000000 mojos (0.0003 XCH) and can be set higher or lower depending on how [busy](https://dashboard.chia.net/d/46EAA05E/mempool-transactions-and-fees?orgId=1) the Chia network is.  If a fee is set very low, it may cause a delay in transaction processing.  
   * **DEFAULT_COIN_AMOUNT**: Units are mojo.  Each DataLayer transaction needs a coin amount and the default is 300000000 mojo.  
-  * **DATALAYER_FILE_SERVER_URL**: Chia DataLayer HTTP URL and port.  If serving DataLayer files from S3, this would be the public URL of the S3 bucket.  Must be publicly available.  
+  * **DATALAYER_FILE_SERVER_URL**: Publicly available Chia DataLayer HTTP URL and port, including schema (http:// or https://).  If serving DataLayer files from S3, this would be the public URL of the S3 bucket.  Port can be omitted if using standard ports for http or https requests. 
   * **TASKS**: Section for configuring sync intervals
     * **AUDIT_SYNC_TASK_INTERVAL**:  Default 30
     * **DATAMODEL_SYNC_TASK_INTERVAL**:  Default 60
