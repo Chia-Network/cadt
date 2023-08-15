@@ -1,3 +1,18 @@
+## [1.6.6](https://github.com/Chia-Network/cadt/compare/1.6.5...1.6.6) (2023-08-15)
+
+
+### Bug Fixes
+
+* fix bad cert path ([d561b97](https://github.com/Chia-Network/cadt/commit/d561b971f84c50bb6bdc791dcc8e64a42cdb3d44))
+* project modal description field ([6912f3d](https://github.com/Chia-Network/cadt/commit/6912f3d2e41081e2ec365f5278cc7eebed2e57af))
+
+
+### Features
+
+* configurable cert path ([fbdadb8](https://github.com/Chia-Network/cadt/commit/fbdadb82a177c13f771cea8ccf9dc1f918b69c05))
+
+
+
 ## [1.6.5](https://github.com/Chia-Network/cadt/compare/1.6.4...1.6.5) (2023-06-29)
 
 
