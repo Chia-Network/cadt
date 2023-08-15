@@ -9,14 +9,18 @@ process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const rpcUrl = getConfig().APP.WALLET_URL;
 const USE_SIMULATOR = getConfig().APP.USE_SIMULATOR;
+const CONFIG = getConfig().APP;
 
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
+  const certificateFolderPath =
+    CONFIG.CERTIFICATE_FOLDER_PATH || `${chiaRoot}/config/ssl`;
+
   const certFile = path.resolve(
-    `${chiaRoot}/config/ssl/data_layer/private_data_layer.crt`,
+    `${certificateFolderPath}/wallet/private_wallet.crt`,
   );
   const keyFile = path.resolve(
-    `${chiaRoot}/config/ssl/data_layer/private_data_layer.key`,
+    `${certificateFolderPath}/wallet/private_wallet.key`,
   );
 
   const baseOptions = {
