@@ -25,7 +25,8 @@ jobs:
           token: ${{ secrets.PACKAGE_ADMIN_PAT }}
           fetch-depth: 0
 
-      - uses: Chia-Network/actions/commit-sign/gpg@main
+      - name: Configure commit signing for ChiaAutomation
+        uses: Chia-Network/actions/commit-sign/gpg@main
         with:
           gpg_private_key: ${{ secrets.CHIA_AUTOMATION_PRIVATE_GPG_KEY }}
           passphrase: ${{ secrets.CHIA_AUTOMATION_PRIVATE_GPG_PASSPHRASE }}
@@ -41,10 +42,10 @@ jobs:
             echo "Tag does not exist. Creating and pushing tag"
             rm -f CHANGELOG.md
             npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0
-            changes=$(npx conventional-changelog-cli -r 1)
+            changes=$(npx conventional-changelog-cli -r 1 | tail -n +2)
             git add CHANGELOG.md
             git commit -m "chore: Updating changelog for $version"
-            git tag $version -m "$changes"
+            git tag $version -m "Release $version \n$changes"
             git push origin $version
             git push origin main
           fi

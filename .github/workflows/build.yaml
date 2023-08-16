@@ -20,15 +20,15 @@ jobs:
       matrix:
         include:
           - runs-on: ubuntu-latest
-            artifact-name: cadt-linux-x64
+            artifact-name: core-registry-cadt-linux-x64
             build-command: npm run create-linux-x64-dist
             sqlite-path: ./node_modules/sqlite3/lib/binding/napi-v6-linux-glibc-x64/
           - runs-on: macos-latest
-            artifact-name: cadt-macos-x64
+            artifact-name: core-registry-cadt-macos-x64
             build-command: npm run create-mac-x64-dist
             sqlite-path: ./node_modules/sqlite3/lib/binding/napi-v6-darwin-unknown-x64/
           - runs-on: windows-2019
-            artifact-name: cadt-windows-x64
+            artifact-name: core-registry-cadt-windows-x64
             build-command: npm run create-win-x64-dist
             sqlite-path: .\node_modules\sqlite3\lib\binding\napi-v6-win32-unknown-x64\
 
@@ -73,26 +73,21 @@ jobs:
 
       - name: Make binary executable
         run: |
-          chmod +x dist/cadt
+          chmod +x dist/core-registry-cadt
 
       - name: Copy sqlite3
         run: cp ${{ matrix.sqlite-path }}node_sqlite3.node ./dist/
 
       # Windows Code Signing
-      - name: Decode code signing cert into an encrypted file
-        if: matrix.runs-on == 'windows-2019'
-        uses: kitek/decode-base64-into-file-action@1.0
-        with:
-          encoded-value: ${{ secrets.WIN_CODE_SIGN_CERT }}
-          destination-file: .\win_code_sign_cert.pfx
-
       - name: Sign windows artifacts
         if: matrix.runs-on == 'windows-2019'
-        uses: chia-network/actions/sign/windows@main
+        uses: chia-network/actions/digicert/windows-sign@main
         with:
-          certificate_path: .\win_code_sign_cert.pfx
-          certificate_password: ${{ secrets.WIN_CODE_SIGN_PASSWORD }}
-          file: ${{ github.workspace }}/dist/cadt.exe
+          sm_api_key: ${{ secrets.SM_API_KEY }}
+          sm_client_cert_file_b64: ${{ secrets.SM_CLIENT_CERT_FILE_B64 }}
+          sm_client_cert_password: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          sm_code_signing_cert_sha1_hash: ${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }}
+          file: ${{ github.workspace }}/dist/core-registry-cadt.exe
 
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
@@ -119,23 +114,23 @@ jobs:
           cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
 
           echo "Signing the binaries"
-          codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/build-scripts/macos/application/cadt
+          codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/build-scripts/macos/application/core-registry-cadt
           codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp ${{ github.workspace }}/build-scripts/macos/application/node_sqlite3.node
 
           # Makes the .pkg in ./build-scripts/macos/target/pkg
           echo "Building the .pkg"
-          bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh CADT
+          bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh core-registry-cadt
 
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
           echo "Signing the .pkg"
-          productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg
+          productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/core-registry-cadt-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/core-registry-cadt-macos-installer-x64.pkg
 
           echo "Notarizing the .pkg"
           npm install -g notarize-cli
           notarize-cli \
-            --file=${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg \
-            --bundle-id net.chia.cadt \
+            --file=${{ github.workspace }}/build-scripts/macos/target/pkg-signed/core-registry-cadt-macos-installer-x64.pkg \
+            --bundle-id net.chia.core-registry-cadt \
             --username "${{ secrets.APPLE_NOTARIZE_USERNAME }}" \
             --password "${{ secrets.APPLE_NOTARIZE_PASSWORD }}"
 
@@ -143,7 +138,7 @@ jobs:
         if: matrix.runs-on == 'macos-latest'
         uses: actions/upload-artifact@v3
         with:
-          name: cadt-mac-installer
+          name: core-registry-cadt-mac-installer
           path: ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
       - name: Upload artifacts
@@ -191,7 +186,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: cadt-linux-arm64
+          name: core-registry-cadt-linux-arm64
           path: ${{ github.workspace }}/dist
 
   debs:
@@ -203,9 +198,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: cadt-linux-x64
+          - name: core-registry-cadt-linux-x64
             platform: amd64
-          - name: cadt-linux-arm64
+          - name: core-registry-cadt-linux-arm64
             platform: arm64
     steps:
       - name: Checkout Code
@@ -228,16 +223,16 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
         run: |
           pip install j2cli
-          CLI_DEB_BASE="cadt_${{ steps.tag-name.outputs.TAGNAME }}-1_${PLATFORM}"
-          mkdir -p "deb/$CLI_DEB_BASE/opt/cadt"
+          CLI_DEB_BASE="core-registry-cadt_${{ steps.tag-name.outputs.TAGNAME }}-1_${PLATFORM}"
+          mkdir -p "deb/$CLI_DEB_BASE/opt/core-registry-cadt"
           mkdir -p "deb/$CLI_DEB_BASE/usr/bin"
           mkdir -p "deb/$CLI_DEB_BASE/etc/systemd/system"
           mkdir -p "deb/$CLI_DEB_BASE/DEBIAN"
           j2 -o "deb/$CLI_DEB_BASE/DEBIAN/control" build-scripts/deb/control.j2
-          cp -r ${{ matrix.name }}/* "deb/$CLI_DEB_BASE/opt/cadt/"
-          cp build-scripts/deb/cadt@.service deb/$CLI_DEB_BASE/etc/systemd/system/cadt@.service
-          chmod +x deb/$CLI_DEB_BASE/opt/cadt/cadt
-          ln -s ../../opt/cadt/cadt "deb/$CLI_DEB_BASE/usr/bin/cadt"
+          cp -r ${{ matrix.name }}/* "deb/$CLI_DEB_BASE/opt/core-registry-cadt/"
+          cp build-scripts/deb/core-registry-cadt@.service deb/$CLI_DEB_BASE/etc/systemd/system/core-registry-cadt@.service
+          chmod +x deb/$CLI_DEB_BASE/opt/core-registry-cadt/core-registry-cadt
+          ln -s ../../opt/core-registry-cadt/core-registry-cadt "deb/$CLI_DEB_BASE/usr/bin/core-registry-cadt"
           dpkg-deb --build --root-owner-group "deb/$CLI_DEB_BASE"
 
       - name: Upload deb
@@ -255,32 +250,32 @@ jobs:
       - name: Download Windows artifacts
         uses: actions/download-artifact@v3
         with:
-          name: cadt-windows-x64
-          path: cadt-windows-x64
+          name: core-registry-cadt-windows-x64
+          path: core-registry-cadt-windows-x64
 
       - name: Download MacOS artifacts
         uses: actions/download-artifact@v3
         with:
-          name: cadt-mac-installer
-          path: cadt-mac-installer
+          name: core-registry-cadt-mac-installer
+          path: core-registry-cadt-mac-installer
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v3
         with:
-          name: cadt-linux-x64
-          path: cadt-linux-x64
+          name: core-registry-cadt-linux-x64
+          path: core-registry-cadt-linux-x64
 
       - name: Download Linux x64 deb
         uses: actions/download-artifact@v3
         with:
-          name: cadt-linux-x64-deb
-          path: cadt-linux-x64-deb
+          name: core-registry-cadt-linux-x64-deb
+          path: core-registry-cadt-linux-x64-deb
 
       - name: Download Linux arm64 deb
         uses: actions/download-artifact@v3
         with:
-          name: cadt-linux-arm64-deb
-          path: cadt-linux-arm64-deb
+          name: core-registry-cadt-linux-arm64-deb
+          path: core-registry-cadt-linux-arm64-deb
 
       - name: Get tag name
         id: tag-name
@@ -289,21 +284,21 @@ jobs:
 
       - name: Create zips
         run: |
-          zip -r cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-windows-x64
-          zip -r cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-mac-installer
-          zip -r cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-x64
+          zip -r core-registry-cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-windows-x64
+          zip -r core-registry-cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-mac-installer
+          zip -r core-registry-cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-linux-x64
 
       - name: Release
         uses: softprops/action-gh-release@v0.1.15
         with:
           files: |
-            cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
-            cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
-            cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
-            cadt-linux-x64-deb/*.deb
-            cadt-linux-arm64-deb/*.deb
+            core-registry-cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            core-registry-cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            core-registry-cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            core-registry-cadt-linux-x64-deb/*.deb
+            core-registry-cadt-linux-arm64-deb/*.deb
 
-      - name: Trigger apt repo update
-        run: |
-          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/start
-          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/success/deploy
+      # - name: Trigger apt repo update
+      #   run: |
+      #     curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/start
+      #     curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/success/deploy

@@ -1,6 +1,6 @@
-# Climate Action Data Trust
+# Core Registry CADT
 
-​This project provides the Climate Action Data Trust (CADT) API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain).  For a user interface, see the [CADT UI project](https://github.com/Chia-Network/climate-warehouse-ui) which will connect to the CADT API.
+​This project is based on the [Climate Action Data Trust (CADT)](https://github.com/Chia-Network/cadt) application that provides the Climate Action Data Trust (CADT) API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain).  This project extends the CADT functionality for better integration with the Core Registry suite of climate tokenization tools.  In most ways, it will be compatible with the upstream CADT project.  For a user interface, see the [CADT UI project](https://github.com/Chia-Network/climate-warehouse-ui) which will connect to the Core Registry CADT API.
 
 This project was formerly known as the Climate Warehouse and you may see this term used interchangeably with CADT. 
 
@@ -8,13 +8,13 @@ This project was formerly known as the Climate Warehouse and you may see this te
 
 ## User Guide
 
-The CADT application is designed to run 24/7, much like any other API.  While it is possible to run it on-demand only when API requests need to be made, this guide assumes a permanently running solution.  
+The Core Registry CADT application is designed to run 24/7, much like any other API.  While it is possible to run it on-demand only when API requests need to be made, this guide assumes a permanently running solution.  
 
-The simplest way to run the CADT application is to use the same machine the Chia Wallet, Datalayer, and Datalayer HTTP services.  CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node most be used to authenticate (not yet documented).
+The simplest way to run the Core Registry CADT application is to use the same machine the Chia Wallet, Datalayer, and Datalayer HTTP services.  Core Registry CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the Core Registry CADT application is run as the same user on the same machine as the Chia services.  To run Core Registry CADT on a separate machine from Chia, a public certificate from the Chia node most be used to authenticate (not yet documented).
 
 ### How to use the API
 
-Please see the [CADT RPC API Guide](docs/cadt_rpc_api.md).
+Please see the [Core Registry CADT RPC API Guide](docs/cadt_rpc_api.md).
 
 ## Installation
 
@@ -22,11 +22,11 @@ Please see the [CADT RPC API Guide](docs/cadt_rpc_api.md).
 
 ### Linux
 
-A binary file that can run on all Linux distributions on x86 hardware can be found for each tagged release with the name `cadt-linux-x64-<version>.zip`.  This zip file will extract to the `cadt-linux-64` directory by default, where the `cadt` file can be executed to run the API.  
+A binary file that can run on all Linux distributions on x86 hardware can be found for each tagged release with the name `core-registry-cadt-linux-x64-<version>.zip`.  This zip file will extract to the `core-registry-cadt-linux-64` directory by default, where the `core-registry-cadt` file can be executed to run the API.  
 
 #### Debian-based Linux Distros (Ubuntu, Mint, etc)
 
-The CADT API can be installed with `apt`.  Both ARM and x86 versions can be installed this way. 
+The Core Registry CADT API can be installed with `apt`.  Both ARM and x86 versions can be installed this way. 
 
 1. Start by updating apt and allowing repository download over HTTPS:
 
@@ -114,7 +114,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **IS_GOVERNANCE_BODY**: "True" or "false" toggle to enable/disable mode for this instance being a governing body.
   * **DEFAULT_FEE**: [Fee](https://docs.chia.net/mempool/) for each transaction on the Chia blockchain in mojos.  The default is 300000000 mojos (0.0003 XCH) and can be set higher or lower depending on how [busy](https://dashboard.chia.net/d/46EAA05E/mempool-transactions-and-fees?orgId=1) the Chia network is.  If a fee is set very low, it may cause a delay in transaction processing.  
   * **DEFAULT_COIN_AMOUNT**: Units are mojo.  Each DataLayer transaction needs a coin amount and the default is 300000000 mojo.  
-  * **DATALAYER_FILE_SERVER_URL**: Chia DataLayer HTTP URL and port.  If serving DataLayer files from S3, this would be the public URL of the S3 bucket.  Must be publicly available.  
+  * **DATALAYER_FILE_SERVER_URL**: Publicly available Chia DataLayer HTTP URL and port, including schema (http:// or https://).  If serving DataLayer files from S3, this would be the public URL of the S3 bucket.  Port can be omitted if using standard ports for http or https requests. 
   * **TASKS**: Section for configuring sync intervals
     * **AUDIT_SYNC_TASK_INTERVAL**:  Default 30
     * **DATAMODEL_SYNC_TASK_INTERVAL**:  Default 60
