@@ -1,0 +1,31 @@
+#
+# Core Registry CADT init file for systemd. To start the Core Registry CADT service
+# using systemd, execute `systemctl start core-registry-cadt@<USERNAME>`
+# where <USERNAME> is the Linux user you wish to run
+# CADT as. Normally you'll run Core Registry CADT on the same system
+# as the Chia Wallet and Data Layer and you need to run
+# Core Registry CADT as the same user as Chia.
+#
+# For example, if running Chia as the ubuntu user
+# with your $CHIA_ROOT directory at /home/ubuntu/.chia,
+# then start Core Registry CADT with the command
+#
+# `systemctl start core-registry-cadt@ubuntu`
+#
+
+[Unit]
+Description=Core Registry CADT
+
+[Service]
+# Set Chia directory as an environment variable
+Environment=CHIA_ROOT=/home/%i/.chia/mainnet
+
+# CADT executable
+ExecStart=/opt/core-registry-cadt/core-registry-cadt
+
+# Start the software with `systemctl start core-registry-cadt@username`
+User=%i
+Group=%i
+
+[Install]
+WantedBy=multi-user.target
