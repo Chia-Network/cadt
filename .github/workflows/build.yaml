@@ -298,7 +298,12 @@ jobs:
             core-registry-cadt-linux-x64-deb/*.deb
             core-registry-cadt-linux-arm64-deb/*.deb
 
-      # - name: Trigger apt repo update
-      #   run: |
-      #     curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/start
-      #     curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/success/deploy
+      - name: Get repo name
+        id: repo-name
+        run: |
+          echo "REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d "/" -f 2)" >>$GITHUB_OUTPUT
+
+      - name: Trigger apt repo update
+        run: |
+          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"climate_tokenization_repo":"${{ steps.repo-name.outputs.REPO_NAME }}","application_name":"core-registry-cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}","add_debian_version":"false","arm64":"available"}' ${{ secrets.GLUE_API_URL }}/api/v1/climate-tokenization/${{ github.sha }}/start
+          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"climate_tokenization_repo":"${{ steps.repo-name.outputs.REPO_NAME }}","application_name":"core-registry-cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}","add_debian_version":"false","arm64":"available"}' ${{ secrets.GLUE_API_URL }}/api/v1/climate-tokenization/${{ github.sha }}/success/deploy
