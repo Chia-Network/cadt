@@ -44,27 +44,28 @@ curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | sudo gpg --dearmor -o /usr/
 3. Use the following command to setup the repository.
 
 ```
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/cadt/debian/ stable main" | sudo tee /etc/apt/sources.list.d/cadt.list > /dev/null
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/climate-tokenization/debian/ stable main" | sudo tee /etc/apt/sources.list.d/climate-tokenization.list > /dev/null
+
 ```
 
 4.  Install CADT
 
 ```
 sudo apt-get update
-sudo apt-get install cadt
+sudo apt-get install core-registry-cadt
 ```
 
 5.  Start CADT with systemd
 
 ```
-sudo systemctl start cadt@<USERNAME>
+sudo systemctl start core-registry-cadt@<USERNAME>
 ```
-For `<USERNAME>`, enter the user that Chia runs as (the user with the `.chia` directory in their home directory).  For example, if the `ubuntu` is where Chia runs, start CADT with `systemctl start cadt@ubuntu`.
+For `<USERNAME>`, enter the user that Chia runs as (the user with the `.chia` directory in their home directory).  For example, if the `ubuntu` is where Chia runs, start CADT with `systemctl start core-registry-cadt@ubuntu`.
 
 6.  Set CADT to run at boot
 
 ```
-sudo systemctl enable cadt@<USERNAME>
+sudo systemctl enable core-registry-cadt@<USERNAME>
 ```
 
 ### Installation from Source
@@ -77,10 +78,10 @@ You'll need:
 To install from source:
 
 ```
-git clone git@github.com:Chia-Network/cadt.git
+git clone git@github.com:Chia-Network/core-registry-cadt.git
 cd cadt
-nvm install 16.14
-nvm use 16.14
+nvm install 18
+nvm use 18
 npm run start
 ```
 
