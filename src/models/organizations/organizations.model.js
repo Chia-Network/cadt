@@ -9,13 +9,14 @@ import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
 import { logger } from '../../config/logger.cjs';
+import { FileStore } from '../';
 
 import { getDefaultOrganizationList } from '../../utils/data-loaders';
 
 import { getDataModelVersion } from '../../utils/helpers';
 
 import { getConfig } from '../../utils/config-loader';
-const { USE_SIMULATOR } = getConfig().APP;
+const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
 logger.info('CADT:organizations');
 
@@ -287,6 +288,10 @@ class Organization extends Model {
         subscribed: true,
         isHome: false,
       });
+
+      if (AUTO_SUBSCRIBE_FILESTORE) {
+        await FileStore.subscribeToFileStore(orgUid);
+      }
     } catch (error) {
       logger.info(error.message);
     }
