@@ -1,3 +1,12 @@
+## [1.6.7](https://github.com/Chia-Network/cadt/compare/1.6.6...1.6.7) (2023-08-22)
+
+
+### Bug Fixes
+
+* filestore in readonly mode ([f81a256](https://github.com/Chia-Network/cadt/commit/f81a256f802267ff381377c00c147aaa839732e9))
+
+
+
 ## [1.6.6](https://github.com/Chia-Network/cadt/compare/1.6.5...1.6.6) (2023-08-15)
 
 
