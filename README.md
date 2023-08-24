@@ -1,6 +1,6 @@
-# Climate Action Data Trust 
+# Core Registry CADT
 
-​This project provides the Climate Action Data Trust (CADT) API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain).  For a user interface, see the [CADT UI project](https://github.com/Chia-Network/climate-warehouse-ui) which will connect to the CADT API.
+​This project is based on the [Climate Action Data Trust (CADT)](https://github.com/Chia-Network/cadt) application that provides the Climate Action Data Trust (CADT) API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain).  This project extends the CADT functionality for better integration with the Core Registry suite of climate tokenization tools.  In most ways, it will be compatible with the upstream CADT project.  For a user interface, see the [CADT UI project](https://github.com/Chia-Network/climate-warehouse-ui) which will connect to the Core Registry CADT API.
 
 This project was formerly known as the Climate Warehouse and you may see this term used interchangeably with CADT. 
 
@@ -8,13 +8,13 @@ This project was formerly known as the Climate Warehouse and you may see this te
 
 ## User Guide
 
-The CADT application is designed to run 24/7, much like any other API.  While it is possible to run it on-demand only when API requests need to be made, this guide assumes a permanently running solution.  
+The Core Registry CADT application is designed to run 24/7, much like any other API.  While it is possible to run it on-demand only when API requests need to be made, this guide assumes a permanently running solution.  
 
-The simplest way to run the CADT application is to use the same machine the Chia Wallet, Datalayer, and Datalayer HTTP services.  CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node most be used to authenticate (not yet documented).
+The simplest way to run the Core Registry CADT application is to use the same machine the Chia Wallet, Datalayer, and Datalayer HTTP services.  Core Registry CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the Core Registry CADT application is run as the same user on the same machine as the Chia services.  To run Core Registry CADT on a separate machine from Chia, a public certificate from the Chia node most be used to authenticate (not yet documented).
 
 ### How to use the API
 
-Please see the [CADT RPC API Guide](docs/cadt_rpc_api.md).
+Please see the [Core Registry CADT RPC API Guide](docs/cadt_rpc_api.md).
 
 ## Installation
 
@@ -22,11 +22,11 @@ Please see the [CADT RPC API Guide](docs/cadt_rpc_api.md).
 
 ### Linux
 
-A binary file that can run on all Linux distributions on x86 hardware can be found for each tagged release with the name `cadt-linux-x64-<version>.zip`.  This zip file will extract to the `cadt-linux-64` directory by default, where the `cadt` file can be executed to run the API.  
+A binary file that can run on all Linux distributions on x86 hardware can be found for each tagged release with the name `core-registry-cadt-linux-x64-<version>.zip`.  This zip file will extract to the `core-registry-cadt-linux-64` directory by default, where the `core-registry-cadt` file can be executed to run the API.  
 
 #### Debian-based Linux Distros (Ubuntu, Mint, etc)
 
-The CADT API can be installed with `apt`.  Both ARM and x86 versions can be installed this way. 
+The Core Registry CADT API can be installed with `apt`.  Both ARM and x86 versions can be installed this way. 
 
 1. Start by updating apt and allowing repository download over HTTPS:
 
@@ -44,27 +44,28 @@ curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | sudo gpg --dearmor -o /usr/
 3. Use the following command to setup the repository.
 
 ```
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/cadt/debian/ stable main" | sudo tee /etc/apt/sources.list.d/cadt.list > /dev/null
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/climate-tokenization/debian/ stable main" | sudo tee /etc/apt/sources.list.d/climate-tokenization.list > /dev/null
+
 ```
 
 4.  Install CADT
 
 ```
 sudo apt-get update
-sudo apt-get install cadt
+sudo apt-get install core-registry-cadt
 ```
 
 5.  Start CADT with systemd
 
 ```
-sudo systemctl start cadt@<USERNAME>
+sudo systemctl start core-registry-cadt@<USERNAME>
 ```
-For `<USERNAME>`, enter the user that Chia runs as (the user with the `.chia` directory in their home directory).  For example, if the `ubuntu` is where Chia runs, start CADT with `systemctl start cadt@ubuntu`.
+For `<USERNAME>`, enter the user that Chia runs as (the user with the `.chia` directory in their home directory).  For example, if the `ubuntu` is where Chia runs, start CADT with `systemctl start core-registry-cadt@ubuntu`.
 
 6.  Set CADT to run at boot
 
 ```
-sudo systemctl enable cadt@<USERNAME>
+sudo systemctl enable core-registry-cadt@<USERNAME>
 ```
 
 ### Installation from Source
@@ -77,7 +78,7 @@ You'll need:
 To install from source:
 
 ```
-git clone git@github.com:Chia-Network/cadt.git
+git clone git@github.com:Chia-Network/core-registry-cadt.git
 cd cadt
 nvm install 18.16
 nvm use 18.16

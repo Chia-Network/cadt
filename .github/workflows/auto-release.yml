@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   check-version:
-    name: Check version increment
+    name: Tag and Release
     runs-on: ubuntu-latest
     steps:
       - name: Clean workspace
