@@ -9,7 +9,7 @@ import { keyValueToChangeList } from '../../utils/datalayer-utils';
 import { getConfig } from '../../utils/config-loader';
 import { logger } from '../../config/logger.cjs';
 import { getDataModelVersion } from '../../utils/helpers';
-import PickListStub from './governance.stub.json';
+import PickListStub from './governance.stub.js';
 
 const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
 

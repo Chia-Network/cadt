@@ -1,4 +1,4 @@
-# Climate Action Data Trust
+# Climate Action Data Trust 
 
 ​This project provides the Climate Action Data Trust (CADT) API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain).  For a user interface, see the [CADT UI project](https://github.com/Chia-Network/climate-warehouse-ui) which will connect to the CADT API.
 
@@ -79,8 +79,8 @@ To install from source:
 ```
 git clone git@github.com:Chia-Network/cadt.git
 cd cadt
-nvm install 16.14
-nvm use 16.14
+nvm install 18.16
+nvm use 18.16
 npm run start
 ```
 
