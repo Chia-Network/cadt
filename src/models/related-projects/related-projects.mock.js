@@ -1,4 +1,4 @@
-import stub from './related-projects.stub.json';
+import stub from './related-projects.stub.js';
 
 export const RelatedProjectMock = {
   findAll: () => stub,

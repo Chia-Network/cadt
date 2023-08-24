@@ -6,6 +6,12 @@ module.exports = {
   presets: ['@babel/preset-env'],
   plugins: [
     [
+      '@babel/plugin-syntax-import-attributes',
+      {
+        deprecatedAssertSyntax: true,
+      },
+    ],
+    [
       'module-resolver',
       {
         root: [path.resolve(jsConfig.compilerOptions.baseUrl)],

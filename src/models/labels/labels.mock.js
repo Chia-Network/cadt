@@ -1,4 +1,4 @@
-import stub from './labels.stub.json';
+import stub from './labels.stub.js';
 
 export const LabelsMock = {
   findAll: () => stub,

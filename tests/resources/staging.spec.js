@@ -1,6 +1,6 @@
 import app from '../../src/server';
 import supertest from 'supertest';
-import newProject from '../test-data/new-project.json';
+import newProject from '../test-data/new-project.js';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import { expect } from 'chai';
 import { prepareDb } from '../../src/database';
