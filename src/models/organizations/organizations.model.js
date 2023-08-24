@@ -52,6 +52,7 @@ class Organization extends Model {
         'orgUid',
         'name',
         'icon',
+        'prefix',
         'isHome',
         'subscribed',
         'fileStoreSubscribed',
