@@ -108,7 +108,7 @@ export const create = async (req, res) => {
         orgId: myOrganization.orgUid,
       });
     } else {
-      const { name, icon } = req.body;
+      const { name, icon, prefix } = req.body;
       const dataModelVersion = getDataModelVersion();
 
       return res.json({
@@ -117,6 +117,7 @@ export const create = async (req, res) => {
           name,
           icon,
           dataModelVersion,
+          prefix,
         }),
       });
     }

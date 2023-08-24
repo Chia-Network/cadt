@@ -52,7 +52,7 @@ describe('Orgainzation Resource CRUD', function () {
       );
     }).timeout(TEST_WAIT_TIME * 10);
 
-    it.only('Organization can be retreived from datalayer', async function () {
+    it('Organization can be retreived from datalayer', async function () {
       const response = await supertest(app).get(`/v1/organizations`).send();
 
       console.log('!!!!!!!!!!!!!!!!!!!!!!', response.body);
