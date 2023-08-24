@@ -139,6 +139,7 @@ describe('Project Resource CRUD', function () {
         await supertest(app).post(`/v1/organizations`).send({
           name: 'Test',
           icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+          prefix: 'test',
         });
       });
 
@@ -250,6 +251,7 @@ describe('Project Resource CRUD', function () {
         await supertest(app).post(`/v1/organizations`).send({
           name: 'Test',
           icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+          prefix: 'test',
         });
       }).timeout(TEST_WAIT_TIME * 10);
       it('errors if there is a current set of pending commits', function () {});

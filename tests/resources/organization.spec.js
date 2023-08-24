@@ -44,6 +44,7 @@ describe('Orgainzation Resource CRUD', function () {
       const response = await supertest(app).post(`/v1/organizations`).send({
         name: 'My Org',
         icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+        prefix: 'test',
       });
 
       expect(response.body.message).to.equal(
