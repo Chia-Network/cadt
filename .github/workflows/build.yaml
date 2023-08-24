@@ -79,19 +79,14 @@ jobs:
         run: cp ${{ matrix.sqlite-path }}node_sqlite3.node ./dist/
 
       # Windows Code Signing
-      - name: Decode code signing cert into an encrypted file
-        if: matrix.runs-on == 'windows-2019'
-        uses: kitek/decode-base64-into-file-action@1.0
-        with:
-          encoded-value: ${{ secrets.WIN_CODE_SIGN_CERT }}
-          destination-file: .\win_code_sign_cert.pfx
-
       - name: Sign windows artifacts
         if: matrix.runs-on == 'windows-2019'
-        uses: chia-network/actions/sign/windows@main
+        uses: chia-network/actions/digicert/windows-sign@main
         with:
-          certificate_path: .\win_code_sign_cert.pfx
-          certificate_password: ${{ secrets.WIN_CODE_SIGN_PASSWORD }}
+          sm_api_key: ${{ secrets.SM_API_KEY }}
+          sm_client_cert_file_b64: ${{ secrets.SM_CLIENT_CERT_FILE_B64 }}
+          sm_client_cert_password: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          sm_code_signing_cert_sha1_hash: ${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }}
           file: ${{ github.workspace }}/dist/cadt.exe
 
       # Mac .pkg build + sign
