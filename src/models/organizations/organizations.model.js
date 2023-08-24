@@ -76,7 +76,12 @@ class Organization extends Model {
     }, {});
   }
 
-  static async createHomeOrganization(name, prefix, icon, dataVersion = 'v1') {
+  static async createHomeOrganization({
+    name,
+    prefix,
+    icon,
+    dataVersion = 'v1',
+  }) {
     try {
       logger.info('Creating New Organization, This could take a while.');
       const myOrganization = await Organization.getHomeOrg();

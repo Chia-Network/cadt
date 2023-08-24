@@ -74,7 +74,12 @@ export const createV2 = async (req, res) => {
 
       const dataModelVersion = getDataModelVersion();
 
-      Organization.createHomeOrganization(name, prefix, icon, dataModelVersion);
+      Organization.createHomeOrganization({
+        name,
+        prefix,
+        icon,
+        dataModelVersion,
+      });
 
       return res.json({
         message:
@@ -108,11 +113,11 @@ export const create = async (req, res) => {
 
       return res.json({
         message: 'New organization created successfully.',
-        orgId: await Organization.createHomeOrganization(
+        orgId: await Organization.createHomeOrganization({
           name,
           icon,
           dataModelVersion,
-        ),
+        }),
       });
     }
   } catch (error) {
