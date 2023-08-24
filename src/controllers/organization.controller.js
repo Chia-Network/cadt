@@ -62,7 +62,7 @@ export const createV2 = async (req, res) => {
         orgId: myOrganization.orgUid,
       });
     } else {
-      const { name } = req.body;
+      const { name, prefix } = req.body;
       let icon;
 
       if (req.file) {
@@ -74,7 +74,7 @@ export const createV2 = async (req, res) => {
 
       const dataModelVersion = getDataModelVersion();
 
-      Organization.createHomeOrganization(name, icon, dataModelVersion);
+      Organization.createHomeOrganization(name, prefix, icon, dataModelVersion);
 
       return res.json({
         message:
