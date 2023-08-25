@@ -466,7 +466,12 @@ export const split = async (req, res) => {
         newRecord.unitCount = record.unitCount;
         totalSplitCount += record.unitCount;
 
-        newRecord.serialNumberBlock = `${record.unitBlockStart}-${record.unitBlockEnd}`;
+        if (record.serialNumberBlock) {
+          newRecord.serialNumberBlock = record.serialNumberBlock;
+        } else {
+          newRecord.serialNumberBlock = `${record.unitBlockStart}-${record.unitBlockEnd}`;
+        }
+
         newRecord.unitBlockStart = record.unitBlockStart;
         newRecord.unitBlockEnd = record.unitBlockEnd;
 
