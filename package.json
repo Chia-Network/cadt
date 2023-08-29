@@ -12,11 +12,9 @@
     "*.+(js|ts|tsx)": "npm run lint:prettier-eslint"
   },
   "scripts": {
-    "requirements-check": "node --experimental-json-modules check_node_version.js",
     "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --require @babel/register tests/**/*.spec.js --reporter spec --exit --timeout 300000",
     "release": "npx standard-version",
-    "postinstall": "npm run requirements-check",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
     "prepare": "husky install",
