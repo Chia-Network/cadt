@@ -1,4 +1,4 @@
-import stub from './locations.stub.json';
+import stub from './locations.stub.js';
 
 export const LocationMock = {
   findAll: () => stub,
