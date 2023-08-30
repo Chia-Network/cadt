@@ -253,11 +253,17 @@ jobs:
           name: core-registry-cadt-windows-x64
           path: core-registry-cadt-windows-x64
 
-      - name: Download MacOS artifacts
+      - name: Download MacOS installer artifacts
         uses: actions/download-artifact@v3
         with:
           name: core-registry-cadt-mac-installer
           path: core-registry-cadt-mac-installer
+
+      - name: Download MacOS binary executable artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: core-registry-cadt-macos-x64
+          path: core-registry-cadt-macos-x64
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v3
@@ -287,6 +293,7 @@ jobs:
           zip -r core-registry-cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-windows-x64
           zip -r core-registry-cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-mac-installer
           zip -r core-registry-cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-linux-x64
+          zip -r core-registry-cadt-macos-binary-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-macos-x64
 
       - name: Release
         uses: softprops/action-gh-release@v0.1.15
@@ -295,6 +302,7 @@ jobs:
             core-registry-cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            core-registry-cadt-macos-binary-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-linux-x64-deb/*.deb
             core-registry-cadt-linux-arm64-deb/*.deb
 
