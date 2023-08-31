@@ -80,8 +80,8 @@ To install from source:
 ```
 git clone git@github.com:Chia-Network/core-registry-cadt.git
 cd cadt
-nvm install 18
-nvm use 18
+nvm install 18.16
+nvm use 18.16
 npm run start
 ```
 

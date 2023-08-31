@@ -9,13 +9,14 @@ import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
 import { logger } from '../../config/logger.cjs';
+import { FileStore } from '../';
 
 import { getDefaultOrganizationList } from '../../utils/data-loaders';
 
 import { getDataModelVersion } from '../../utils/helpers';
 
 import { getConfig } from '../../utils/config-loader';
-const { USE_SIMULATOR } = getConfig().APP;
+const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
 logger.info('CADT:organizations');
 
@@ -51,6 +52,7 @@ class Organization extends Model {
         'orgUid',
         'name',
         'icon',
+        'prefix',
         'isHome',
         'subscribed',
         'fileStoreSubscribed',
@@ -74,7 +76,12 @@ class Organization extends Model {
     }, {});
   }
 
-  static async createHomeOrganization(name, icon, dataVersion = 'v1') {
+  static async createHomeOrganization({
+    name,
+    prefix,
+    icon,
+    dataVersion = 'v1',
+  }) {
     try {
       logger.info('Creating New Organization, This could take a while.');
       const myOrganization = await Organization.getHomeOrg();
@@ -121,6 +128,7 @@ class Organization extends Model {
           fileStoreId,
           name,
           icon,
+          prefix,
         },
         revertOrganizationIfFailed,
       );
@@ -151,6 +159,7 @@ class Organization extends Model {
           fileStoreId,
           name,
           icon,
+          prefix,
         }),
         Organization.destroy({ where: { orgUid: 'PENDING' } }),
       ]);
@@ -287,6 +296,10 @@ class Organization extends Model {
         subscribed: true,
         isHome: false,
       });
+
+      if (AUTO_SUBSCRIBE_FILESTORE) {
+        await FileStore.subscribeToFileStore(orgUid);
+      }
     } catch (error) {
       logger.info(error.message);
     }

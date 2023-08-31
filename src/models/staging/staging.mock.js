@@ -1,4 +1,4 @@
-import stub from './staging.stub.json';
+import stub from './staging.stub.js';
 
 export const StagingMock = {
   findAll: () => stub,

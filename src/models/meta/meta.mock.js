@@ -1,4 +1,4 @@
-import stub from './meta.stub.json';
+import stub from './meta.stub.js';
 
 export const MetaMock = {
   findAll: () => stub,

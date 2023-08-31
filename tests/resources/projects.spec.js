@@ -4,7 +4,7 @@ import * as testFixtures from '../test-fixtures';
 import sinon from 'sinon';
 import datalayer from '../../src/datalayer';
 const { expect } = chai;
-import newProject from '../test-data/new-project.json';
+import newProject from '../test-data/new-project.js';
 import supertest from 'supertest';
 import app from '../../src/server';
 import { Organization } from '../../src/models/organizations/index.js';
@@ -139,6 +139,7 @@ describe('Project Resource CRUD', function () {
         await supertest(app).post(`/v1/organizations`).send({
           name: 'Test',
           icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+          prefix: 'test',
         });
       });
 
@@ -250,6 +251,7 @@ describe('Project Resource CRUD', function () {
         await supertest(app).post(`/v1/organizations`).send({
           name: 'Test',
           icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+          prefix: 'test',
         });
       }).timeout(TEST_WAIT_TIME * 10);
       it('errors if there is a current set of pending commits', function () {});

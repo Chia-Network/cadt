@@ -47,9 +47,14 @@ class FileStore extends Model {
 
   static async addFileToFileStore(SHA256, fileName, base64File) {
     const myOrganization = await Organization.getHomeOrg();
+
+    if (myOrganization) {
+      throw new Error('No homeorg detected');
+    }
+
     let fileStoreId = myOrganization.fileStoreId;
 
-    if (!fileStoreId) {
+    if (myOrganization && !fileStoreId) {
       datalayer.createDataLayerStore().then((fileStoreId) => {
         datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
         Organization.update(
@@ -87,9 +92,9 @@ class FileStore extends Model {
 
   static async getFileStoreList() {
     const myOrganization = await Organization.getHomeOrg();
-    let fileStoreId = myOrganization.fileStoreId;
+    let fileStoreId = myOrganization?.fileStoreId;
 
-    if (!fileStoreId) {
+    if (myOrganization && !fileStoreId) {
       datalayer.createDataLayerStore().then((fileStoreId) => {
         datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
         Organization.update(
@@ -100,27 +105,29 @@ class FileStore extends Model {
       throw new Error('New File store being created, please try again later.');
     }
 
-    new Promise((resolve, reject) => {
-      datalayer.getStoreData(
-        myOrganization.fileStoreId,
-        (data) => {
-          resolve(data);
-        },
-        reject,
-      );
-    }).then((fileStore) => {
-      // Just caching this so dont await it, we dont care when it finishes
-      return Promise.all(
-        Object.keys(fileStore).map((key) => {
-          FileStore.upsert({
-            SHA256: fileStore[key].SHA256,
-            fileName: key,
-            data: fileStore[key].data,
-            orgUid: myOrganization.orgUid,
-          });
-        }),
-      );
-    });
+    if (fileStoreId) {
+      new Promise((resolve, reject) => {
+        datalayer.getStoreData(
+          myOrganization.fileStoreId,
+          (data) => {
+            resolve(data);
+          },
+          reject,
+        );
+      }).then((fileStore) => {
+        // Just caching this so dont await it, we dont care when it finishes
+        return Promise.all(
+          Object.keys(fileStore).map((key) => {
+            FileStore.upsert({
+              SHA256: fileStore[key].SHA256,
+              fileName: key,
+              data: fileStore[key].data,
+              orgUid: myOrganization.orgUid,
+            });
+          }),
+        );
+      });
+    }
 
     return FileStore.findAll({
       attributes: ['SHA256', 'fileName', 'orgUid'],

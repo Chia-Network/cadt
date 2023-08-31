@@ -39,10 +39,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Setup Node 16.x
+      - name: Setup Node 18.x
         uses: actions/setup-node@v3
         with:
-          node-version: '16.13'
+          node-version: '18.16'
 
       - name: Install Husky
         run: npm install --save-dev husky
@@ -176,12 +176,12 @@ jobs:
       - name: Build arm 64 dist
         run: |
           mkdir pkgcache
-          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:16.13 /bin/bash -c "npm pkg delete scripts.prepare && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
+          docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:18.16 /bin/bash -c "npm pkg delete scripts.prepare && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
 
       - name: Copy sqlite3
         run: |
           ls ./node_modules/sqlite3/lib/binding/
-          cp ./node_modules/sqlite3/lib/binding/napi-v6-linux-glibc-arm64/node_sqlite3.node ./dist/
+          sudo cp ./node_modules/sqlite3/lib/binding/napi-v6-linux-glibc-arm64/node_sqlite3.node ./dist/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -253,11 +253,17 @@ jobs:
           name: core-registry-cadt-windows-x64
           path: core-registry-cadt-windows-x64
 
-      - name: Download MacOS artifacts
+      - name: Download MacOS installer artifacts
         uses: actions/download-artifact@v3
         with:
           name: core-registry-cadt-mac-installer
           path: core-registry-cadt-mac-installer
+
+      - name: Download MacOS binary executable artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: core-registry-cadt-macos-x64
+          path: core-registry-cadt-macos-x64
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v3
@@ -287,6 +293,7 @@ jobs:
           zip -r core-registry-cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-windows-x64
           zip -r core-registry-cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-mac-installer
           zip -r core-registry-cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-linux-x64
+          zip -r core-registry-cadt-macos-binary-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-macos-x64
 
       - name: Release
         uses: softprops/action-gh-release@v0.1.15
@@ -295,6 +302,7 @@ jobs:
             core-registry-cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            core-registry-cadt-macos-binary-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-linux-x64-deb/*.deb
             core-registry-cadt-linux-arm64-deb/*.deb
 

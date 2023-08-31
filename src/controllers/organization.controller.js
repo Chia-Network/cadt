@@ -62,7 +62,7 @@ export const createV2 = async (req, res) => {
         orgId: myOrganization.orgUid,
       });
     } else {
-      const { name } = req.body;
+      const { name, prefix } = req.body;
       let icon;
 
       if (req.file) {
@@ -74,7 +74,12 @@ export const createV2 = async (req, res) => {
 
       const dataModelVersion = getDataModelVersion();
 
-      Organization.createHomeOrganization(name, icon, dataModelVersion);
+      Organization.createHomeOrganization({
+        name,
+        prefix,
+        icon,
+        dataModelVersion,
+      });
 
       return res.json({
         message:
@@ -103,16 +108,17 @@ export const create = async (req, res) => {
         orgId: myOrganization.orgUid,
       });
     } else {
-      const { name, icon } = req.body;
+      const { name, icon, prefix } = req.body;
       const dataModelVersion = getDataModelVersion();
 
       return res.json({
         message: 'New organization created successfully.',
-        orgId: await Organization.createHomeOrganization(
+        orgId: await Organization.createHomeOrganization({
           name,
           icon,
           dataModelVersion,
-        ),
+          prefix,
+        }),
       });
     }
   } catch (error) {
