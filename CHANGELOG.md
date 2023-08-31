@@ -1,4 +1,29 @@
+## [1.6.9](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.8...1.6.9) (2023-08-31)
 
+
+### Bug Fixes
+
+* filestore in readonly mode ([f81a256](https://github.com/Chia-Network/Core-Registry-CADT/commit/f81a256f802267ff381377c00c147aaa839732e9))
+* tests ([0b67778](https://github.com/Chia-Network/Core-Registry-CADT/commit/0b67778f5d5fa2719e5f8d845c1b103c2451ef63))
+* tests ([c475eef](https://github.com/Chia-Network/Core-Registry-CADT/commit/c475eef333b78d841f25b8f6f3ab0e12f8d7e23c))
+* tests ([49233de](https://github.com/Chia-Network/Core-Registry-CADT/commit/49233deae9124ecd72c44d28d40a7d90b26ef1cf))
+* tests ([1e058e3](https://github.com/Chia-Network/Core-Registry-CADT/commit/1e058e3d8f29551dd099ee1854a3206a2142d966))
+* tests ([b7e5d10](https://github.com/Chia-Network/Core-Registry-CADT/commit/b7e5d1005b9b914682fd73aa15c4a5e8e722d0cf))
+* tests ([51b83a3](https://github.com/Chia-Network/Core-Registry-CADT/commit/51b83a3c9ee433af717e9592b194e38793b52e80))
+* tests ([cf99cda](https://github.com/Chia-Network/Core-Registry-CADT/commit/cf99cda465ccfe2f8851a3d0c306b73e29da0021))
+* tests ([d81dc18](https://github.com/Chia-Network/Core-Registry-CADT/commit/d81dc182c2ff24c29624973f89995750a9dcceec))
+* tests ([0e5163b](https://github.com/Chia-Network/Core-Registry-CADT/commit/0e5163b6f10f1ed4c409c1b40c8969ead1b39b24))
+
+
+### Features
+
+* add babel to testsuit ([26abf6f](https://github.com/Chia-Network/Core-Registry-CADT/commit/26abf6fba7300d03788780e946be9b03812ed875))
+* add org prefix ([79c62aa](https://github.com/Chia-Network/Core-Registry-CADT/commit/79c62aa1d48c8f0d5470d004ce77203b3749e583))
+* allow serialNumberBlock in split ([ddedf34](https://github.com/Chia-Network/Core-Registry-CADT/commit/ddedf34bf47c60b825005a4cb8787265002e54aa))
+
+
+
+## [1.6.8](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.7...1.6.8) (2023-08-17)
 
 
 
