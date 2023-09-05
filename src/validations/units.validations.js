@@ -96,6 +96,7 @@ export const unitsSplitSchema = Joi.object({
         unitStatus: Joi.string()
           .custom(pickListValidation('unitStatus'))
           .optional(),
+        unitStatusReason: Joi.string().optional(),
         serialNumberBlock: Joi.string().optional(),
         countryJurisdictionOfOwner: Joi.string()
           .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))

@@ -135,6 +135,9 @@ export const pushChangesWhenStoreIsAvailable = async (
   failedCallback = _.noop,
   retryAttempts = 0,
 ) => {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 1000);
+  });
   if (USE_SIMULATOR) {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
