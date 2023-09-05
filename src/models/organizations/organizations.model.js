@@ -78,7 +78,7 @@ class Organization extends Model {
 
   static async createHomeOrganization({
     name,
-    prefix,
+    prefix = '0',
     icon,
     dataVersion = 'v1',
   }) {
