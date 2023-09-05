@@ -1,3 +1,12 @@
+## [1.6.10](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.9...1.6.10) (2023-09-05)
+
+
+### Bug Fixes
+
+* org prefix issue ([1c7f193](https://github.com/Chia-Network/Core-Registry-CADT/commit/1c7f193d1abeed7690af74cf72a126fe6dac6eba))
+
+
+
 ## [1.6.9](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.8...1.6.9) (2023-08-31)
 
 
