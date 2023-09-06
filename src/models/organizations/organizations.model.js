@@ -32,6 +32,7 @@ class Organization extends Model {
         'subscribed',
         'registryId',
         'fileStoreId',
+        'registryHash',
       ],
       where: { isHome: true },
       raw: true,
@@ -56,6 +57,8 @@ class Organization extends Model {
         'isHome',
         'subscribed',
         'fileStoreSubscribed',
+        'registryId',
+        'registryHash',
       ],
     });
 
