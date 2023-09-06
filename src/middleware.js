@@ -64,7 +64,7 @@ app.use(function (req, res, next) {
     if (CADT_API_KEY === apikey) {
       next();
     } else {
-      res.status(403).json({ message: 'API key not found' });
+      res.status(403).json({ message: 'CADT API key not found' });
     }
   } else {
     next();
