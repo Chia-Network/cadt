@@ -368,6 +368,7 @@ class Organization extends Model {
             Organization.update(
               {
                 ..._.omit(updateData, ['registryId']),
+                prefix: updateData.prefix || '0',
                 metadata: JSON.stringify(metadata),
               },
               {
