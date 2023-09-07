@@ -365,9 +365,12 @@ class Organization extends Model {
                 return update;
               }, {});
 
+            console.log('!!!!', updateData.prefix, organization.orgUid);
+
             Organization.update(
               {
                 ..._.omit(updateData, ['registryId']),
+                prefix: updateData.prefix || '0',
                 metadata: JSON.stringify(metadata),
               },
               {
