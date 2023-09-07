@@ -23,7 +23,7 @@ export const editHomeOrg = async (req, res) => {
     await assertWalletIsSynced();
     await assertHomeOrgExists();
 
-    const { name } = req.body;
+    const { name, prefix } = req.body;
 
     let icon;
 
@@ -34,7 +34,7 @@ export const editHomeOrg = async (req, res) => {
       icon = '';
     }
 
-    Organization.editOrgMeta({ name, icon });
+    Organization.editOrgMeta({ name, icon, prefix });
 
     return res.json({
       message: 'Home org currently being updated, will be completed soon.',
