@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import superagent from 'superagent';
 import { Governance } from '../models';
-import PickListStub from '../models/governance/governance.stub.json';
+import PickListStub from '../models/governance/governance.stub.js';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 

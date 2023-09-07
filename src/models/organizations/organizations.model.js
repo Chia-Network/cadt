@@ -32,10 +32,25 @@ class Organization extends Model {
         'subscribed',
         'registryId',
         'fileStoreId',
+        'metadata',
       ],
       where: { isHome: true },
       raw: true,
     });
+
+    if (myOrganization && myOrganization.metadata) {
+      const parsedMetadata = JSON.parse(myOrganization.metadata);
+
+      // Add each key from parsedMetadata to myOrganization
+      for (const key in parsedMetadata) {
+        if (Object.prototype.hasOwnProperty.call(parsedMetadata, key)) {
+          myOrganization[key] = parsedMetadata[key];
+        }
+      }
+
+      // Optionally, you can delete the original metadata property
+      delete myOrganization.metadata;
+    }
 
     if (myOrganization && includeAddress) {
       myOrganization.xchAddress = await datalayer.getPublicAddress();

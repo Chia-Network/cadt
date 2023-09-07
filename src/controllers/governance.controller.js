@@ -10,8 +10,8 @@ import {
 } from '../utils/data-assertions';
 
 import { getConfig } from '../utils/config-loader';
-import glossary from '../models/governance/glossary.stub.json';
-import pickList from '../models/governance/governance.stub.json';
+import glossary from '../models/governance/glossary.stub.js';
+import pickList from '../models/governance/governance.stub.js';
 
 const CONFIG = getConfig().APP;
 

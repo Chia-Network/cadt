@@ -12,7 +12,7 @@ import {
   assertDataLayerAvailable,
   assertWalletIsAvailable,
 } from './utils/data-assertions';
-import packageJson from '../package.json';
+import packageJson from '../package.json' assert { type: 'json' };
 import datalayer from './datalayer';
 
 const { CADT_API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =
@@ -64,7 +64,7 @@ app.use(function (req, res, next) {
     if (CADT_API_KEY === apikey) {
       next();
     } else {
-      res.status(403).json({ message: 'API key not found' });
+      res.status(403).json({ message: 'CADT API key not found' });
     }
   } else {
     next();
