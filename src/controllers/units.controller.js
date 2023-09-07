@@ -343,6 +343,38 @@ export const update = async (req, res) => {
     const { orgUid } = await Organization.getHomeOrg();
     updatedRecord.orgUid = orgUid;
 
+    if (
+      updatedRecord.unitCount &&
+      updatedRecord.unitCount !== originalRecord.unitCount
+    ) {
+      throw new Error(
+        `You can not update the unitCount of a unit. The original unitCount is ${originalRecord.unitCount} and the updated unitCount is ${updatedRecord.unitCount}`,
+      );
+    }
+
+    if (
+      updatedRecord.unitBlockStart &&
+      updatedRecord.unitBlockStart !== originalRecord.unitBlockStart
+    ) {
+      throw new Error(
+        `You can not update the unitBlockStart of a unit. The original unitBlockStart is ${originalRecord.unitBlockStart} and the updated unitBlockStart is ${updatedRecord.unitBlockStart}`,
+      );
+    }
+
+    if (
+      updatedRecord.unitBlockEnd &&
+      updatedRecord.unitBlockEnd !== originalRecord.unitBlockEnd
+    ) {
+      throw new Error(
+        `You can not update the unitBlockEnd of a unit. The original unitBlockEnd is ${originalRecord.unitBlockEnd} and the updated unitBlockEnd is ${updatedRecord.unitBlockEnd}`,
+      );
+    }
+
+    updatedRecord.unitCount = originalRecord.unitCount;
+    updatedRecord.unitBlockStart = originalRecord.unitBlockStart;
+    updatedRecord.unitBlockEnd = originalRecord.unitBlockEnd;
+    updatedRecord.serialNumberBlock = originalRecord.serialNumberBlock;
+
     if (updatedRecord.labels) {
       const promises = updatedRecord.labels.map(async (childRecord) => {
         if (childRecord.id) {
