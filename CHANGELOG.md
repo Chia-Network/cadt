@@ -1,3 +1,12 @@
+## [1.6.12](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.11...1.6.12) (2023-09-07)
+
+
+### Bug Fixes
+
+* prefix update from datalayer ([28da8f8](https://github.com/Chia-Network/Core-Registry-CADT/commit/28da8f810b8dc314943844d48e9587ee91abd1f4))
+
+
+
 ## [1.6.11](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.10...1.6.11) (2023-09-07)
 
 
