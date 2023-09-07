@@ -289,7 +289,7 @@ class Unit extends Model {
       },
     });
 
-    let highestUnitBlockEnd = Number.NEGATIVE_INFINITY;
+    let highestUnitBlockEnd = 0;
 
     units.forEach((unit) => {
       const unitBlockEndAsNumber = Math.floor(parseInt(unit.unitBlockEnd, 10));
