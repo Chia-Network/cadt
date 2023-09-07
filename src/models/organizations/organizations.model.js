@@ -34,6 +34,7 @@ class Organization extends Model {
         'fileStoreId',
         'registryHash',
         'metadata',
+        'prefix',
       ],
       where: { isHome: true },
       raw: true,
@@ -427,7 +428,7 @@ class Organization extends Model {
     }
   };
 
-  static editOrgMeta = async ({ name, icon }) => {
+  static editOrgMeta = async ({ name, icon, prefix }) => {
     const myOrganization = await Organization.getHomeOrg();
 
     const payload = {};
@@ -438,6 +439,10 @@ class Organization extends Model {
 
     if (icon) {
       payload.icon = icon;
+    }
+
+    if (prefix) {
+      payload.prefix = prefix;
     }
 
     await datalayer.upsertDataLayer(myOrganization.orgUid, payload);

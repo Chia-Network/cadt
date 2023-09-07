@@ -7,7 +7,7 @@ export default {
         queryInterface.addColumn(table, 'prefix', {
           type: Sequelize.STRING,
           allowNull: true,
-          defaultValue: '{}',
+          defaultValue: '0',
         });
       }),
     );
