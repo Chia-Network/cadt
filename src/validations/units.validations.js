@@ -76,7 +76,9 @@ export const unitsGetQuerySchema = Joi.object()
 export const unitsUpdateSchema = Joi.object({
   warehouseUnitId: Joi.string().required(),
   ...unitsBaseSchema,
-  unitCount: Joi.forbidden(),
+  unitCount: Joi.number().integer().optional(),
+  unitBlockStart: Joi.string().optional(),
+  unitBlockEnd: Joi.string().optional(),
 });
 
 export const unitsDeleteSchema = Joi.object({
