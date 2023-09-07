@@ -1,3 +1,22 @@
+## [1.6.8](https://github.com/Chia-Network/cadt/compare/1.6.7...1.6.8) (2023-09-07)
+
+
+### Bug Fixes
+
+* filestore in readonly mode ([c88202e](https://github.com/Chia-Network/cadt/commit/c88202ecf9aa39f6584f848aa8c17164d04a9e63))
+* fix bad cert path ([ecdaa99](https://github.com/Chia-Network/cadt/commit/ecdaa999e993e552a175273229ed75e05a635b22))
+* metadata can now be overridden ([f21645f](https://github.com/Chia-Network/cadt/commit/f21645f90fcfd08cd1f66aa2bf7f05c961cdb25e))
+* project modal description field ([6855c3e](https://github.com/Chia-Network/cadt/commit/6855c3e5823e1fc9dd9c257df841d4daa26698b3))
+* tests ([d1d70f5](https://github.com/Chia-Network/cadt/commit/d1d70f5f94e3991c286f1bfe20efabf6e0536452))
+
+
+### Features
+
+* add babel to testsuit ([3abcc77](https://github.com/Chia-Network/cadt/commit/3abcc77de0f5975e84f08ecdcecab68823674492))
+* configurable cert path ([f385abc](https://github.com/Chia-Network/cadt/commit/f385abcb43865ebee318d1d865ab2da2410be565))
+
+
+
 ## [1.6.7](https://github.com/Chia-Network/cadt/compare/1.6.6...1.6.7) (2023-08-22)
 
 
