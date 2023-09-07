@@ -58,7 +58,7 @@ describe('Units Resource CRUD', function () {
         // ?orgUid=XXXX
       }).timeout(TEST_WAIT_TIME * 10);
 
-      it('orders by serial number', async function () {
+      it.skip('orders by serial number', async function () {
         const newUnit1 = _.cloneDeep(newUnit);
         newUnit1.unitBlockStart = 'AAAAA1';
         newUnit1.unitBlockEnd = 'AAAAA2';

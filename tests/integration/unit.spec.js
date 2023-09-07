@@ -113,8 +113,6 @@ describe('Unit Resource Integration Tests', function () {
   it('splits an existing unit end-to-end (with simulator)', async function () {
     // create and commit the unit to be deleted
     const createdUnitResult = await supertest(app).post('/v1/units').send({
-      unitBlockStart: 'AXJJFSLGHSHEJ9000',
-      unitBlockEnd: 'AXJJFSLGHSHEJ9010',
       unitCount: 10,
       countryJurisdictionOfOwner: 'Austria',
       unitOwner: 'TEST_OWNER',
@@ -172,14 +170,10 @@ describe('Unit Resource Integration Tests', function () {
       records: [
         {
           unitCount: unitRecord.unitCount - 1,
-          unitBlockStart: 'AXJJFSLGHSHEJ9000',
-          unitBlockEnd: 'AXJJFSLGHSHEJ9009',
           unitOwner: newUnitOwner,
         },
         {
           unitCount: 1,
-          unitBlockStart: 'AXJJFSLGHSHEJ9009',
-          unitBlockEnd: 'AXJJFSLGHSHEJ9010',
         },
       ],
     };
