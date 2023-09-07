@@ -19,8 +19,6 @@ const unitsBaseSchema = {
     .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
     .required(),
   inCountryJurisdictionOfOwner: Joi.string().allow(null).optional(),
-  unitBlockStart: Joi.string().required(),
-  unitBlockEnd: Joi.string().required(),
   unitCount: Joi.number().integer().required(),
   // match 4 digit year
   vintageYear: Joi.number().integer().min(1900).max(3000).required(),
@@ -78,6 +76,7 @@ export const unitsGetQuerySchema = Joi.object()
 export const unitsUpdateSchema = Joi.object({
   warehouseUnitId: Joi.string().required(),
   ...unitsBaseSchema,
+  unitCount: Joi.forbidden(),
 });
 
 export const unitsDeleteSchema = Joi.object({
@@ -90,14 +89,11 @@ export const unitsSplitSchema = Joi.object({
     .items(
       Joi.object().keys({
         unitCount: Joi.number().required(),
-        unitBlockStart: Joi.string().required(),
-        unitBlockEnd: Joi.string().required(),
         unitOwner: Joi.string().optional(),
         unitStatus: Joi.string()
           .custom(pickListValidation('unitStatus'))
           .optional(),
         unitStatusReason: Joi.string().optional(),
-        serialNumberBlock: Joi.string().optional(),
         countryJurisdictionOfOwner: Joi.string()
           .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
           .optional(),

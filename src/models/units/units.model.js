@@ -280,9 +280,50 @@ class Unit extends Model {
     };
   }
 
+  static async autoAllocateUnitSerialNumberBlock(insertedUnits) {
+    const { prefix = '0', orgUid } = await Organization.getHomeOrg();
+
+    const units = await Unit.findAll({
+      where: {
+        orgUid,
+      },
+    });
+
+    let highestUnitBlockEnd = Number.NEGATIVE_INFINITY;
+
+    units.forEach((unit) => {
+      const unitBlockEndAsNumber = Math.floor(parseInt(unit.unitBlockEnd, 10));
+      if (unitBlockEndAsNumber > highestUnitBlockEnd) {
+        highestUnitBlockEnd = unitBlockEndAsNumber;
+      }
+    });
+
+    let startingBlock = highestUnitBlockEnd + 1;
+
+    const transformedUnits = insertedUnits.map((unit) => {
+      const unitBlockStart = Math.floor(startingBlock).toString();
+      const unitBlockEnd = Math.floor(
+        startingBlock + unit.unitCount - 1,
+      ).toString();
+      const serialNumberBlock = `${prefix}-${unitBlockStart}-${unitBlockEnd}`;
+      startingBlock = unitBlockEnd + 1;
+
+      return {
+        ...unit,
+        unitBlockStart,
+        unitBlockEnd,
+        serialNumberBlock,
+      };
+    });
+
+    return transformedUnits;
+  }
+
   static async generateChangeListFromStagedData(stagedData, comment, author) {
-    const [insertRecords, updateRecords, deleteChangeList] =
+    let [insertRecords, updateRecords, deleteChangeList] =
       Staging.seperateStagingDataIntoActionGroups(stagedData, 'Units');
+
+    insertRecords = await Unit.autoAllocateUnitSerialNumberBlock(insertRecords);
 
     const primaryKeyMap = {
       unit: 'warehouseUnitId',
