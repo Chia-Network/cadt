@@ -342,7 +342,6 @@ export const update = async (req, res) => {
     // All new units are assigned to the home orgUid
     const { orgUid } = await Organization.getHomeOrg();
     updatedRecord.orgUid = orgUid;
-    updatedRecord.serialNumberBlock = `${updatedRecord.unitBlockStart}-${updatedRecord.unitBlockEnd}`;
 
     if (updatedRecord.labels) {
       const promises = updatedRecord.labels.map(async (childRecord) => {
@@ -444,7 +443,7 @@ export const destroy = async (req, res) => {
 export const split = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
-    await assertHomeOrgExists();
+    const { prefix = '0' } = await assertHomeOrgExists();
     await assertNoPendingCommits();
 
     const originalRecord = await assertUnitRecordExists(
@@ -463,17 +462,16 @@ export const split = async (req, res) => {
           newRecord.warehouseUnitId = uuidv4();
         }
 
+        newRecord.unitBlockStart = Math.floor(
+          Number(originalRecord.unitBlockStart) + totalSplitCount,
+        ).toString();
+        newRecord.unitBlockEnd = Math.floor(
+          Number(newRecord.unitBlockStart) + record.unitCount - 1,
+        ).toString();
+        newRecord.serialNumberBlock = `${prefix}-${newRecord.unitBlockStart}-${newRecord.unitBlockEnd}`;
+
         newRecord.unitCount = record.unitCount;
         totalSplitCount += record.unitCount;
-
-        if (record.serialNumberBlock) {
-          newRecord.serialNumberBlock = record.serialNumberBlock;
-        } else {
-          newRecord.serialNumberBlock = `${record.unitBlockStart}-${record.unitBlockEnd}`;
-        }
-
-        newRecord.unitBlockStart = record.unitBlockStart;
-        newRecord.unitBlockEnd = record.unitBlockEnd;
 
         if (record.marketplaceIdentifier) {
           newRecord.marketplaceIdentifier = record.marketplaceIdentifier;
@@ -511,7 +509,7 @@ export const split = async (req, res) => {
 
     if (totalSplitCount !== originalRecord.unitCount) {
       throw new Error(
-        `Your total split coount is ${totalSplitCount} units and the original record is ${originalRecord.unitCount} units`,
+        `Your total split count is ${totalSplitCount} units and the original record is ${originalRecord.unitCount} units`,
       );
     }
 

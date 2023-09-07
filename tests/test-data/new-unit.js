@@ -3,8 +3,6 @@ export default {
   countryJurisdictionOfOwner: 'Netherlands',
   projectLocationId: 'lkjw2er1-nj23-1212-532-dsjdx5-k131',
   inCountryJurisdictionOfOwner: 'California',
-  unitBlockStart: 'AXJJFSLGHSHEJ1000',
-  unitBlockEnd: 'AXJJFSLGHSHEJ1010',
   unitCount: 10,
   vintageYear: 2016,
   unitType: 'Removal - nature',
