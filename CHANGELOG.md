@@ -1,3 +1,12 @@
+## [1.6.13](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.12...1.6.13) (2023-09-07)
+
+
+### Bug Fixes
+
+* negative infinity ([a76a7eb](https://github.com/Chia-Network/Core-Registry-CADT/commit/a76a7eb978d96be59e295b5805d4ad8355acb50a))
+
+
+
 ## [1.6.12](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.11...1.6.12) (2023-09-07)
 
 
