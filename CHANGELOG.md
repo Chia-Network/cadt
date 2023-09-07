@@ -1,3 +1,18 @@
+## [1.6.11](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.10...1.6.11) (2023-09-07)
+
+
+### Bug Fixes
+
+* prefix update ([6fe3991](https://github.com/Chia-Network/Core-Registry-CADT/commit/6fe399148d6020b7c398611f7c96ab3325f7ebd2))
+
+
+### Features
+
+* include registry hash in the organization response ([e874ca3](https://github.com/Chia-Network/Core-Registry-CADT/commit/e874ca300e6733aac1e52425f5f596ebdd30c82a))
+* process auto serial number ([74ca12b](https://github.com/Chia-Network/Core-Registry-CADT/commit/74ca12bc609bdabd547bf4f1ba8e966f1db859a9))
+
+
+
 ## [1.6.10](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.9...1.6.10) (2023-09-05)
 
 
