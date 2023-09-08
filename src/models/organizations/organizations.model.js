@@ -475,8 +475,14 @@ class Organization extends Model {
 
     const existingMetadata = JSON.parse(existingOrganization.metadata || '{}');
 
+    // Prefix keys with "meta_" in the payload for the database update
+    const payloadForDatabase = _.mapKeys(
+      payload,
+      (_value, key) => `meta_${key}`,
+    );
+
     // Merge the existing metadata with the new payload
-    const updatedMetadata = { ...existingMetadata, ...payload };
+    const updatedMetadata = { ...existingMetadata, ...payloadForDatabase };
 
     // Convert the updated metadata back to JSON string
     const updatedMetadataJson = JSON.stringify(updatedMetadata);

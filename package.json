@@ -1,6 +1,6 @@
 {
   "name": "core-registry-cadt",
-  "version": "1.6.18",
+  "version": "1.6.19",
   "_comment": "DONT CHANGE MAJOR UNLESS DATAMODEL CHANGES: The major version corresponds to the datamodel version your using, so 2.0.0 means it'll use datamodel v2",
   "private": true,
   "bin": "build/server.js",
