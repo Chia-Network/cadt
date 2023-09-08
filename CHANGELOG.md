@@ -1,3 +1,12 @@
+## [1.6.16](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.15...1.6.16) (2023-09-08)
+
+
+### Features
+
+* set minimum block height to 10000000 ([c463be5](https://github.com/Chia-Network/Core-Registry-CADT/commit/c463be55d0ef243c3eacaae284640943bae027b5))
+
+
+
 ## [1.6.15](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.14...1.6.15) (2023-09-08)
 
 
