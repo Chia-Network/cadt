@@ -289,10 +289,17 @@ class Unit extends Model {
       },
     });
 
-    let highestUnitBlockEnd = 0;
+    const minimumUnitBlockStart = 10000000;
+    let highestUnitBlockEnd = minimumUnitBlockStart;
 
     units.forEach((unit) => {
-      const unitBlockEndAsNumber = Math.floor(parseInt(unit.unitBlockEnd, 10));
+      let unitBlockEndAsNumber = Math.floor(parseInt(unit.unitBlockEnd, 10));
+
+      // For backwards compatibility
+      if (unitBlockEndAsNumber < minimumUnitBlockStart) {
+        unitBlockEndAsNumber = minimumUnitBlockStart;
+      }
+
       if (unitBlockEndAsNumber > highestUnitBlockEnd) {
         highestUnitBlockEnd = unitBlockEndAsNumber;
       }
