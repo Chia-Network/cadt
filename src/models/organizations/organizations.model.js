@@ -450,12 +450,42 @@ class Organization extends Model {
   };
 
   static addMetadata = async (payload) => {
+    // These first 3 steps update the datalayer as normal
     const myOrganization = await Organization.getHomeOrg();
 
-    // Prefix keys with "meta_"
-    const metadata = _.mapKeys(payload, (_value, key) => `meta_${key}`);
+    const metadataForDatalayer = _.mapKeys(
+      updatedMetadata,
+      (_value, key) => `meta_${key}`,
+    );
 
-    await datalayer.upsertDataLayer(myOrganization.orgUid, metadata);
+    await datalayer.upsertDataLayer(
+      myOrganization.orgUid,
+      metadataForDatalayer,
+    );
+
+    // These next steps update the metadata column in the database
+    // Normally we would just update the datalayer and let the sync process
+    // update the database, but we want to update the database immediately
+
+    const existingOrganization = await Organization.findOne({
+      attributes: ['metadata'],
+      where: { orgUid: myOrganization.orgUid },
+      raw: true,
+    });
+
+    const existingMetadata = JSON.parse(existingOrganization.metadata || '{}');
+
+    // Merge the existing metadata with the new payload
+    const updatedMetadata = { ...existingMetadata, ...payload };
+
+    // Convert the updated metadata back to JSON string
+    const updatedMetadataJson = JSON.stringify(updatedMetadata);
+
+    // Update the metadata column in the database
+    await Organization.update(
+      { metadata: updatedMetadataJson },
+      { where: { orgUid: myOrganization.orgUid } },
+    );
   };
 
   static removeMirror = async (storeId, coinId) => {
