@@ -1,3 +1,12 @@
+## [1.6.18](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.17...1.6.18) (2023-09-08)
+
+
+### Bug Fixes
+
+* typo in metadata edit ([afc99d0](https://github.com/Chia-Network/Core-Registry-CADT/commit/afc99d03766b43abb12592b24b838e53de43914e))
+
+
+
 ## [1.6.17](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.16...1.6.17) (2023-09-08)
 
 
