@@ -308,17 +308,15 @@ class Unit extends Model {
     let startingBlock = highestUnitBlockEnd + 1;
 
     const transformedUnits = insertedUnits.map((unit) => {
-      const unitBlockStart = Math.floor(startingBlock).toString();
-      const unitBlockEnd = Math.floor(
-        startingBlock + unit.unitCount - 1,
-      ).toString();
+      const unitBlockStart = Math.floor(startingBlock);
+      const unitBlockEnd = Math.floor(startingBlock + unit.unitCount - 1);
       const serialNumberBlock = `${prefix}-${unitBlockStart}-${unitBlockEnd}`;
       startingBlock = unitBlockEnd + 1;
 
       return {
         ...unit,
-        unitBlockStart,
-        unitBlockEnd,
+        unitBlockStart: unitBlockStart.toString(),
+        unitBlockEnd: unitBlockEnd.toString(),
         serialNumberBlock,
       };
     });

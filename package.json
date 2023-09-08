@@ -1,6 +1,6 @@
 {
   "name": "core-registry-cadt",
-  "version": "1.6.16",
+  "version": "1.6.17",
   "_comment": "DONT CHANGE MAJOR UNLESS DATAMODEL CHANGES: The major version corresponds to the datamodel version your using, so 2.0.0 means it'll use datamodel v2",
   "private": true,
   "bin": "build/server.js",
@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "@babel/cli": "^7.22.15",
-    "@babel/core": "^7.22.15",
+    "@babel/core": "^7.22.17",
     "@babel/plugin-syntax-import-attributes": "^7.22.5",
     "@babel/preset-env": "^7.22.15",
     "@babel/register": "^7.22.15",
