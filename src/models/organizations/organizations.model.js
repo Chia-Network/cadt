@@ -454,7 +454,7 @@ class Organization extends Model {
     const myOrganization = await Organization.getHomeOrg();
 
     const metadataForDatalayer = _.mapKeys(
-      updatedMetadata,
+      payload,
       (_value, key) => `meta_${key}`,
     );
 
