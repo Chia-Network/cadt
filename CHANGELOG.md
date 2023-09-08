@@ -1,3 +1,12 @@
+## [1.6.15](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.14...1.6.15) (2023-09-08)
+
+
+### Features
+
+* update the database immediatly when you update org metadata ([7e24940](https://github.com/Chia-Network/Core-Registry-CADT/commit/7e249403c260f07bffad424c1f5cbad59097ce53))
+
+
+
 ## [1.6.14](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.13...1.6.14) (2023-09-07)
 
 
