@@ -1,3 +1,12 @@
+## [1.6.17](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.16...1.6.17) (2023-09-08)
+
+
+### Bug Fixes
+
+* string casting ([8252566](https://github.com/Chia-Network/Core-Registry-CADT/commit/82525666e81d826b3bd4b004d9d3cc09429983e5))
+
+
+
 ## [1.6.16](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.15...1.6.16) (2023-09-08)
 
 
