@@ -1,3 +1,13 @@
+## [1.6.20](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.18...1.6.20) (2023-09-12)
+
+
+### Bug Fixes
+
+* include orgHash in api response ([17e43ce](https://github.com/Chia-Network/Core-Registry-CADT/commit/17e43cecc25e83e227d621b9c429cc153c6d48fa))
+* metadata db update ([b497e77](https://github.com/Chia-Network/Core-Registry-CADT/commit/b497e773378096f7427f98f413794c50dcd013e9))
+
+
+
 ## [1.6.18](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.17...1.6.18) (2023-09-08)
 
 
