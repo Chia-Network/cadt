@@ -27,6 +27,7 @@ class Organization extends Model {
     const myOrganization = await Organization.findOne({
       attributes: [
         'orgUid',
+        'orgHash',
         'name',
         'icon',
         'subscribed',
@@ -67,6 +68,7 @@ class Organization extends Model {
     const organizations = await Organization.findAll({
       attributes: [
         'orgUid',
+        'orgHash',
         'name',
         'icon',
         'prefix',
