@@ -214,10 +214,7 @@ export const findAll = async (req, res) => {
         where = {};
       }
 
-      const tokenizeProjectIds = await Project.getWarehouseProjectIds(
-        page,
-        limit,
-      );
+      const tokenizeProjectIds = await Project.getWarehouseProjectIds();
 
       where.warehouseProjectId = {
         [Sequelize.Op.in]: _.flatten([tokenizeProjectIds]),

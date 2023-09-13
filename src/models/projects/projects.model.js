@@ -157,17 +157,13 @@ class Project extends Model {
     return upsertResult;
   }
 
-  static async getWarehouseProjectIds(page, limit) {
-    const offset = (page - 1) * limit;
-
+  static async getWarehouseProjectIds() {
     const sqlQuery = `
     SELECT Projects.warehouseProjectId
     FROM Projects
     INNER JOIN Issuances ON Projects.warehouseProjectId = Issuances.warehouseProjectId
     INNER JOIN Units ON Issuances.id = Units.issuanceId
-    WHERE Units.marketplaceIdentifier IS NOT NULL AND Units.marketplaceIdentifier != ''
-    LIMIT ${limit}
-    OFFSET ${offset};
+    WHERE Units.marketplaceIdentifier IS NOT NULL AND Units.marketplaceIdentifier != '';
   `;
 
     try {
