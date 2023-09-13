@@ -1,4 +1,142 @@
+## [1.6.21](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.20...1.6.21) (2023-09-13)
 
+
+### Bug Fixes
+
+* remove pagination from tokenized projects query ([2eb686d](https://github.com/Chia-Network/Core-Registry-CADT/commit/2eb686dbbfc7a094e7a894e461941cade9f81072))
+* remove pagination from tokenized projects query ([83bdea0](https://github.com/Chia-Network/Core-Registry-CADT/commit/83bdea0ab9aeda19f4e5d9967f1124db5fcf93fd))
+
+
+### Features
+
+* add default pagination ([720a4c0](https://github.com/Chia-Network/Core-Registry-CADT/commit/720a4c0bff7e200ae3bd75c2af5eefe442dc1474))
+* tokenized projets query param ([1e096ea](https://github.com/Chia-Network/Core-Registry-CADT/commit/1e096ead0a12ec306d2f207e02ebb436d5f26125))
+
+
+
+## [1.6.20](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.18...1.6.20) (2023-09-12)
+
+
+### Bug Fixes
+
+* include orgHash in api response ([17e43ce](https://github.com/Chia-Network/Core-Registry-CADT/commit/17e43cecc25e83e227d621b9c429cc153c6d48fa))
+* metadata db update ([b497e77](https://github.com/Chia-Network/Core-Registry-CADT/commit/b497e773378096f7427f98f413794c50dcd013e9))
+
+
+
+## [1.6.18](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.17...1.6.18) (2023-09-08)
+
+
+### Bug Fixes
+
+* typo in metadata edit ([afc99d0](https://github.com/Chia-Network/Core-Registry-CADT/commit/afc99d03766b43abb12592b24b838e53de43914e))
+
+
+
+## [1.6.17](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.16...1.6.17) (2023-09-08)
+
+
+### Bug Fixes
+
+* string casting ([8252566](https://github.com/Chia-Network/Core-Registry-CADT/commit/82525666e81d826b3bd4b004d9d3cc09429983e5))
+
+
+
+## [1.6.16](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.15...1.6.16) (2023-09-08)
+
+
+### Features
+
+* set minimum block height to 10000000 ([c463be5](https://github.com/Chia-Network/Core-Registry-CADT/commit/c463be55d0ef243c3eacaae284640943bae027b5))
+
+
+
+## [1.6.15](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.14...1.6.15) (2023-09-08)
+
+
+### Features
+
+* update the database immediatly when you update org metadata ([7e24940](https://github.com/Chia-Network/Core-Registry-CADT/commit/7e249403c260f07bffad424c1f5cbad59097ce53))
+
+
+
+## [1.6.14](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.13...1.6.14) (2023-09-07)
+
+
+### Bug Fixes
+
+* update units ([b8bb080](https://github.com/Chia-Network/Core-Registry-CADT/commit/b8bb080b20800dd56881410002a22025ec012ca6))
+
+
+
+## [1.6.13](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.12...1.6.13) (2023-09-07)
+
+
+### Bug Fixes
+
+* negative infinity ([a76a7eb](https://github.com/Chia-Network/Core-Registry-CADT/commit/a76a7eb978d96be59e295b5805d4ad8355acb50a))
+
+
+
+## [1.6.12](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.11...1.6.12) (2023-09-07)
+
+
+### Bug Fixes
+
+* prefix update from datalayer ([28da8f8](https://github.com/Chia-Network/Core-Registry-CADT/commit/28da8f810b8dc314943844d48e9587ee91abd1f4))
+
+
+
+## [1.6.11](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.10...1.6.11) (2023-09-07)
+
+
+### Bug Fixes
+
+* prefix update ([6fe3991](https://github.com/Chia-Network/Core-Registry-CADT/commit/6fe399148d6020b7c398611f7c96ab3325f7ebd2))
+
+
+### Features
+
+* include registry hash in the organization response ([e874ca3](https://github.com/Chia-Network/Core-Registry-CADT/commit/e874ca300e6733aac1e52425f5f596ebdd30c82a))
+* process auto serial number ([74ca12b](https://github.com/Chia-Network/Core-Registry-CADT/commit/74ca12bc609bdabd547bf4f1ba8e966f1db859a9))
+
+
+
+## [1.6.10](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.9...1.6.10) (2023-09-05)
+
+
+### Bug Fixes
+
+* org prefix issue ([1c7f193](https://github.com/Chia-Network/Core-Registry-CADT/commit/1c7f193d1abeed7690af74cf72a126fe6dac6eba))
+
+
+
+## [1.6.9](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.8...1.6.9) (2023-08-31)
+
+
+### Bug Fixes
+
+* filestore in readonly mode ([f81a256](https://github.com/Chia-Network/Core-Registry-CADT/commit/f81a256f802267ff381377c00c147aaa839732e9))
+* tests ([0b67778](https://github.com/Chia-Network/Core-Registry-CADT/commit/0b67778f5d5fa2719e5f8d845c1b103c2451ef63))
+* tests ([c475eef](https://github.com/Chia-Network/Core-Registry-CADT/commit/c475eef333b78d841f25b8f6f3ab0e12f8d7e23c))
+* tests ([49233de](https://github.com/Chia-Network/Core-Registry-CADT/commit/49233deae9124ecd72c44d28d40a7d90b26ef1cf))
+* tests ([1e058e3](https://github.com/Chia-Network/Core-Registry-CADT/commit/1e058e3d8f29551dd099ee1854a3206a2142d966))
+* tests ([b7e5d10](https://github.com/Chia-Network/Core-Registry-CADT/commit/b7e5d1005b9b914682fd73aa15c4a5e8e722d0cf))
+* tests ([51b83a3](https://github.com/Chia-Network/Core-Registry-CADT/commit/51b83a3c9ee433af717e9592b194e38793b52e80))
+* tests ([cf99cda](https://github.com/Chia-Network/Core-Registry-CADT/commit/cf99cda465ccfe2f8851a3d0c306b73e29da0021))
+* tests ([d81dc18](https://github.com/Chia-Network/Core-Registry-CADT/commit/d81dc182c2ff24c29624973f89995750a9dcceec))
+* tests ([0e5163b](https://github.com/Chia-Network/Core-Registry-CADT/commit/0e5163b6f10f1ed4c409c1b40c8969ead1b39b24))
+
+
+### Features
+
+* add babel to testsuit ([26abf6f](https://github.com/Chia-Network/Core-Registry-CADT/commit/26abf6fba7300d03788780e946be9b03812ed875))
+* add org prefix ([79c62aa](https://github.com/Chia-Network/Core-Registry-CADT/commit/79c62aa1d48c8f0d5470d004ce77203b3749e583))
+* allow serialNumberBlock in split ([ddedf34](https://github.com/Chia-Network/Core-Registry-CADT/commit/ddedf34bf47c60b825005a4cb8787265002e54aa))
+
+
+
+## [1.6.8](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.7...1.6.8) (2023-08-17)
 
 
 
