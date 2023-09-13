@@ -125,6 +125,7 @@ export const findAll = async (req, res) => {
       projectIds,
       filter,
       order,
+      onlyTokenizedProjects,
     } = req.query;
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
@@ -208,6 +209,18 @@ export const findAll = async (req, res) => {
       };
     }
 
+    if (onlyTokenizedProjects) {
+      if (!where) {
+        where = {};
+      }
+
+      const tokenizeProjectIds = await Project.getTokenizedProjectIds();
+
+      where.warehouseProjectId = {
+        [Sequelize.Op.in]: _.flatten([tokenizeProjectIds]),
+      };
+    }
+
     const query = {
       ...columnsToInclude(columns, includes),
       ...pagination,
@@ -221,7 +234,9 @@ export const findAll = async (req, res) => {
       resultOrder = [[matches[1], matches[2]]];
     }
 
-    const results = await Project.findAndCountAll({
+    let results;
+
+    results = await Project.findAndCountAll({
       distinct: true,
       where,
       order: resultOrder,

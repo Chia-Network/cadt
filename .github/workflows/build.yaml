@@ -265,11 +265,17 @@ jobs:
           name: core-registry-cadt-macos-x64
           path: core-registry-cadt-macos-x64
 
-      - name: Download Linux artifacts
+      - name: Download Linux x64 artifacts
         uses: actions/download-artifact@v3
         with:
           name: core-registry-cadt-linux-x64
           path: core-registry-cadt-linux-x64
+
+      - name: Download Linux ARM64 artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: core-registry-cadt-linux-arm64
+          path: core-registry-cadt-linux-arm64
 
       - name: Download Linux x64 deb
         uses: actions/download-artifact@v3
@@ -292,6 +298,7 @@ jobs:
         run: |
           zip -r core-registry-cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-windows-x64
           zip -r core-registry-cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-mac-installer
+          zip -r core-registry-cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-linux-arm64
           zip -r core-registry-cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-linux-x64
           zip -r core-registry-cadt-macos-binary-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-macos-x64
 
@@ -302,6 +309,7 @@ jobs:
             core-registry-cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            core-registry-cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-macos-binary-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-linux-x64-deb/*.deb
             core-registry-cadt-linux-arm64-deb/*.deb
