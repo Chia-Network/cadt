@@ -1,3 +1,19 @@
+## [1.6.21](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.20...1.6.21) (2023-09-13)
+
+
+### Bug Fixes
+
+* remove pagination from tokenized projects query ([2eb686d](https://github.com/Chia-Network/Core-Registry-CADT/commit/2eb686dbbfc7a094e7a894e461941cade9f81072))
+* remove pagination from tokenized projects query ([83bdea0](https://github.com/Chia-Network/Core-Registry-CADT/commit/83bdea0ab9aeda19f4e5d9967f1124db5fcf93fd))
+
+
+### Features
+
+* add default pagination ([720a4c0](https://github.com/Chia-Network/Core-Registry-CADT/commit/720a4c0bff7e200ae3bd75c2af5eefe442dc1474))
+* tokenized projets query param ([1e096ea](https://github.com/Chia-Network/Core-Registry-CADT/commit/1e096ead0a12ec306d2f207e02ebb436d5f26125))
+
+
+
 ## [1.6.20](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.18...1.6.20) (2023-09-12)
 
 
