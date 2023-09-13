@@ -157,7 +157,7 @@ class Project extends Model {
     return upsertResult;
   }
 
-  static async getWarehouseProjectIds() {
+  static async getTokenizedProjectIds() {
     const sqlQuery = `
     SELECT Projects.warehouseProjectId
     FROM Projects
