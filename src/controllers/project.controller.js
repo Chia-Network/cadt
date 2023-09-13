@@ -125,23 +125,8 @@ export const findAll = async (req, res) => {
       projectIds,
       filter,
       order,
+      onlyTokenizedProjects,
     } = req.query;
-
-    if (!page) {
-      let redirectUrl = `${req.baseUrl}?page=1&limit=10`;
-
-      if (Object.keys(req.query).length > 0) {
-        redirectUrl = redirectUrl.concat(
-          '&',
-          Object.keys(req.query)
-            .map((key) => `${key}=${req.query[key]}`)
-            .join('&'),
-        );
-      }
-
-      // Redirect to the modified URL
-      return res.redirect(301, redirectUrl);
-    }
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
@@ -224,6 +209,21 @@ export const findAll = async (req, res) => {
       };
     }
 
+    if (onlyTokenizedProjects) {
+      if (!where) {
+        where = {};
+      }
+
+      const tokenizeProjectIds = await Project.getWarehouseProjectIds(
+        page,
+        limit,
+      );
+
+      where.warehouseProjectId = {
+        [Sequelize.Op.in]: _.flatten([tokenizeProjectIds]),
+      };
+    }
+
     const query = {
       ...columnsToInclude(columns, includes),
       ...pagination,
@@ -237,7 +237,9 @@ export const findAll = async (req, res) => {
       resultOrder = [[matches[1], matches[2]]];
     }
 
-    const results = await Project.findAndCountAll({
+    let results;
+
+    results = await Project.findAndCountAll({
       distinct: true,
       where,
       order: resultOrder,
