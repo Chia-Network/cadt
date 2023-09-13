@@ -151,48 +151,6 @@ jobs:
           name: ${{ matrix.artifact-name }}
           path: ${{ github.workspace }}/dist
 
-  # build-linux-arm64:
-  #   name: Build Linux ARM64 Binaries
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v2
-  #       with:
-  #         platforms: arm64
-
-  #     - uses: Chia-Network/actions/clean-workspace@main
-
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v3
-
-  #     - name: Determine npm cache key
-  #       id: npm-cache
-  #       run: |
-  #         CACHE_KEY=node-linux-arm64-$(shasum package.json | awk '{ print $1 }')-$(shasum package-lock.json | awk '{ print $1 }')
-  #         echo "CACHE_KEY=$CACHE_KEY" >> $GITHUB_OUTPUT
-
-  #     - name: Setup NPM Cache
-  #       uses: actions/cache@v3
-  #       with:
-  #         path: node_modules
-  #         key: ${{ steps.npm-cache.outputs.CACHE_KEY }}
-
-  #     - name: Build arm 64 dist
-  #       run: |
-  #         mkdir pkgcache
-  #         docker run --rm --platform linux/arm64 -v $(pwd):/app -w /app -e PKG_CACHE_PATH=pkgcache node:18.16 /bin/bash -c "npm pkg delete scripts.prepare && npm install && npm i -g @babel/cli @babel/preset-env pkg && npm run create-linux-arm64-dist"
-
-  #     - name: Copy sqlite3
-  #       run: |
-  #         ls ./node_modules/sqlite3/lib/binding/
-  #         sudo cp ./node_modules/sqlite3/lib/binding/napi-v6-linux-glibc-arm64/node_sqlite3.node ./dist/
-
-  #     - name: Upload artifacts
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: core-registry-cadt-linux-arm64
-  #         path: ${{ github.workspace }}/dist
-
   debs:
     name: Build ${{ matrix.name }} deb
     runs-on: ubuntu-latest
