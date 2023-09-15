@@ -48,7 +48,7 @@ class FileStore extends Model {
   static async addFileToFileStore(SHA256, fileName, base64File) {
     const myOrganization = await Organization.getHomeOrg();
 
-    if (myOrganization) {
+    if (!myOrganization) {
       throw new Error('No homeorg detected');
     }
 

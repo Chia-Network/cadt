@@ -53,8 +53,8 @@ export const unitsPostSchema = Joi.object({
 
 export const unitsGetQuerySchema = Joi.object()
   .keys({
-    page: Joi.number(),
-    limit: Joi.number(),
+    page: Joi.number().min(1),
+    limit: Joi.number().max(10).min(1),
     search: Joi.string(),
     warehouseUnitId: Joi.string(),
     columns: Joi.array().items(Joi.string()).single(),
