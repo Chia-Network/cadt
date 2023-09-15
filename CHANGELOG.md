@@ -1,3 +1,17 @@
+## [1.6.11](https://github.com/Chia-Network/cadt/compare/1.6.8...1.6.11) (2023-09-15)
+
+
+### Bug Fixes
+
+* typo in add filestore model function ([79d3384](https://github.com/Chia-Network/cadt/commit/79d33843faaeb20399cb7b2ea4dbdfbf154a1e20))
+
+
+### Features
+
+* default pagination ([7e7b517](https://github.com/Chia-Network/cadt/commit/7e7b51775903ba8f0f9937558376d3d2761c73a2))
+
+
+
 ## [1.6.8](https://github.com/Chia-Network/cadt/compare/1.6.7...1.6.8) (2023-09-07)
 
 
