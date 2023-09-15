@@ -1,3 +1,13 @@
+## [1.6.22](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.21...1.6.22) (2023-09-15)
+
+
+### Bug Fixes
+
+* maximum page limit ([673f3f3](https://github.com/Chia-Network/Core-Registry-CADT/commit/673f3f302f015457f1ad853eb157e14c64a61a2c))
+* typo in add file store ([8f00652](https://github.com/Chia-Network/Core-Registry-CADT/commit/8f00652981b6fd3b2e19a1e0d2d805338185f686))
+
+
+
 ## [1.6.21](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.20...1.6.21) (2023-09-13)
 
 
