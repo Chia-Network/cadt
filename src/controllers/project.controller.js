@@ -32,6 +32,7 @@ import {
 } from '../utils/data-assertions';
 
 import { createProjectRecordsFromCsv } from '../utils/csv-utils';
+import { redirectWithDefaultPagination } from '../utils/api-utils';
 
 import {
   tableDataFromXlsx,
@@ -127,6 +128,10 @@ export const findAll = async (req, res) => {
       order,
       onlyTokenizedProjects,
     } = req.query;
+
+    if (!page) {
+      return redirectWithDefaultPagination(req, res);
+    }
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 

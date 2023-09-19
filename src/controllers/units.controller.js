@@ -13,6 +13,8 @@ import {
   paginationParams,
 } from '../utils/helpers';
 
+import { redirectWithDefaultPagination } from '../utils/api-utils';
+
 import {
   assertOrgIsHomeOrg,
   assertUnitRecordExists,
@@ -132,6 +134,10 @@ export const findAll = async (req, res) => {
       includeProjectInfoInSearch = false,
       filter,
     } = req.query;
+
+    if (!page) {
+      return redirectWithDefaultPagination(req, res);
+    }
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
