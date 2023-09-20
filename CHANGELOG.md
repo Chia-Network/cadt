@@ -1,3 +1,17 @@
+## [1.6.24](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.22...1.6.24) (2023-09-20)
+
+
+### Bug Fixes
+
+* comment out pagination ([2e4df61](https://github.com/Chia-Network/Core-Registry-CADT/commit/2e4df619fb0e52bcd261498825a26d7a57f7e0b9))
+
+
+### Features
+
+* default pagination on units and projects ([b558e17](https://github.com/Chia-Network/Core-Registry-CADT/commit/b558e1780831cde44a430e04fcfd0378b1c4209b))
+
+
+
 ## [1.6.22](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.21...1.6.22) (2023-09-15)
 
 
