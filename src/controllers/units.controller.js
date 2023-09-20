@@ -13,7 +13,7 @@ import {
   paginationParams,
 } from '../utils/helpers';
 
-import { redirectWithDefaultPagination } from '../utils/api-utils';
+//import { redirectWithDefaultPagination } from '../utils/api-utils';
 
 import {
   assertOrgIsHomeOrg,
@@ -135,9 +135,9 @@ export const findAll = async (req, res) => {
       filter,
     } = req.query;
 
-    if (!page) {
-      return redirectWithDefaultPagination(req, res);
-    }
+    // if (!page) {
+    //  return redirectWithDefaultPagination(req, res);
+    //}
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
