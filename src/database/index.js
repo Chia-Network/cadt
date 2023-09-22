@@ -13,10 +13,28 @@ dotenv.config();
 
 // possible values: local, test
 export const sequelize = new Sequelize(config[process.env.NODE_ENV || 'local']);
+// Suppress the specific warning about empty `options.where`
+sequelize.options.logging = (msg) => {
+  if (
+    msg.includes('Model attributes') &&
+    msg.includes('options.where object is empty')
+  ) {
+    return; // Suppress the warning
+  }
+};
 
 const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
+// Suppress the specific warning about empty `options.where`
+sequelizeMirror.options.logging = (msg) => {
+  if (
+    msg.includes('Model attributes') &&
+    msg.includes('options.where object is empty')
+  ) {
+    return; // Suppress the warning
+  }
+};
 
 logger.info('CADT:mirror-database');
 
