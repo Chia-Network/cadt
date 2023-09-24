@@ -35,6 +35,7 @@ export const generateOfferFile = async (req, res) => {
     res.status(400).json({
       message: 'Error generating offer file.',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -67,6 +68,7 @@ export const cancelActiveOffer = async (req, res) => {
     res.status(400).json({
       message: 'Can not cancel active offer',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -106,6 +108,7 @@ export const importOfferFile = async (req, res) => {
     res.status(400).json({
       message: 'Can not import offer file.',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -140,6 +143,7 @@ export const commitImportedOfferFile = async (req, res) => {
     res.status(400).json({
       message: 'Can not commit offer.',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -157,6 +161,7 @@ export const cancelImportedOfferFile = async (req, res) => {
     res.status(400).json({
       message: 'Can not cancel offer.',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -231,6 +236,7 @@ export const getCurrentOfferInfo = async (req, res) => {
     res.status(400).json({
       message: 'Can not get offer.',
       error: error.message,
+      success: false,
     });
   }
 };

@@ -48,6 +48,7 @@ app.use(async function (req, res, next) {
     res.status(400).json({
       message: 'Chia Exception',
       error: err.message,
+      success: false,
     });
   }
 });
@@ -87,8 +88,8 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
-  logger.info(
-    `Setting header x-api-verion to package.json version: ${packageJson.version}`,
+  logger.debug(
+    `Setting header x-api-version to package.json version: ${packageJson.version}`,
   );
   const version = packageJson.version;
   res.setHeader(headerKeys.API_VERSION_HEADER_KEY, version);
@@ -117,6 +118,7 @@ app.use((err, req, res, next) => {
       // format Joi validation errors
       return res.status(400).json({
         message: 'Data Validation error',
+        success: false,
         errors: err.error.details.map((detail) => {
           return _.get(detail, 'context.message', detail.message);
         }),
