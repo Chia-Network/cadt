@@ -48,6 +48,7 @@ app.use(async function (req, res, next) {
     res.status(400).json({
       message: 'Chia Exception',
       error: err.message,
+      success: false,
     });
   }
 });
@@ -120,6 +121,7 @@ app.use((err, req, res, next) => {
         errors: err.error.details.map((detail) => {
           return _.get(detail, 'context.message', detail.message);
         }),
+        success: false,
       });
     }
 

@@ -113,6 +113,7 @@ export const create = async (req, res) => {
     res.status(400).json({
       message: 'Unit Insert Failed to stage.',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -269,6 +270,7 @@ export const findAll = async (req, res) => {
     res.status(400).json({
       message: 'Error retrieving units',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -293,6 +295,7 @@ export const findOne = async (req, res) => {
     res.status(400).json({
       message: 'Cant find Unit.',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -321,6 +324,7 @@ export const updateFromXLS = async (req, res) => {
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -407,6 +411,7 @@ export const update = async (req, res) => {
     res.status(400).json({
       message: 'Error updating new unit',
       error: err.message,
+      success: false,
     });
   }
 };
@@ -437,6 +442,7 @@ export const destroy = async (req, res) => {
     res.status(400).json({
       message: 'Error deleting new unit',
       error: err.message,
+      success: false,
     });
   }
 };
@@ -523,6 +529,7 @@ export const split = async (req, res) => {
     res.status(400).json({
       message: 'Error splitting unit',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -545,6 +552,7 @@ export const batchUpload = async (req, res) => {
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
+      success: false,
     });
   }
 };

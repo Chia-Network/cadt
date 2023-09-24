@@ -44,6 +44,7 @@ export const editHomeOrg = async (req, res) => {
     res.status(400).json({
       message: 'Error initiating your organization',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -86,6 +87,7 @@ export const createV2 = async (req, res) => {
     res.status(400).json({
       message: 'Error initiating your organization',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -119,6 +121,7 @@ export const create = async (req, res) => {
     res.status(400).json({
       message: 'Error initiating your organization',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -143,6 +146,7 @@ export const resetHomeOrg = async (req, res) => {
     res.status(400).json({
       message: 'Error resetting your organization',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -165,6 +169,7 @@ export const importOrg = async (req, res) => {
     res.status(400).json({
       message: 'Error importing organization',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -186,6 +191,7 @@ export const importHomeOrg = async (req, res) => {
     res.status(400).json({
       message: 'Error importing organization',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -205,6 +211,7 @@ export const subscribeToOrganization = async (req, res) => {
     res.status(400).json({
       message: 'Error subscribing to organization',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -239,6 +246,7 @@ export const deleteImportedOrg = async (req, res) => {
     res.status(400).json({
       message: 'Error unsubscribing to organization',
       error: error.message,
+      success: false,
     });
     if (transaction) {
       await transaction.rollback();
@@ -278,6 +286,7 @@ export const unsubscribeToOrganization = async (req, res) => {
     res.status(400).json({
       message: 'Error unsubscribing to organization',
       error: error.message,
+      success: false,
     });
 
     if (transaction) {
@@ -317,6 +326,7 @@ export const resyncOrganization = async (req, res) => {
     res.status(400).json({
       message: 'Error resyncing organization',
       error: error.message,
+      success: false,
     });
 
     if (transaction) {
@@ -341,6 +351,7 @@ export const addMetadata = async (req, res) => {
     res.status(400).json({
       message: 'Error adding metadata to your organization',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -359,6 +370,7 @@ export const addMirror = async (req, res) => {
     res.status(400).json({
       message: 'Error adding mirror',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -376,6 +388,7 @@ export const getMetaData = async (req, res) => {
     res.status(400).json({
       message: 'Error getting metadata for organization',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -393,6 +406,7 @@ export const removeMirror = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: 'Error removing mirror for organization',
+      success: false,
     });
   }
 };
@@ -407,6 +421,7 @@ export const sync = async (req, res) => {
     res.status(400).json({
       message: 'Cant All Organizations Metadata',
       error: error.message,
+      success: false,
     });
   }
 };

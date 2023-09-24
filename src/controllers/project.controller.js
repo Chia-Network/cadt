@@ -109,6 +109,7 @@ export const create = async (req, res) => {
     res.status(400).json({
       message: 'Error creating new project',
       error: err.message,
+      success: false,
     });
   }
 };
@@ -248,6 +249,7 @@ export const findAll = async (req, res) => {
     res.status(400).json({
       message: 'Error retrieving projects',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -266,6 +268,7 @@ export const findOne = async (req, res) => {
     res.status(400).json({
       message: 'Error retrieving projects',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -294,6 +297,7 @@ export const updateFromXLS = async (req, res) => {
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -305,6 +309,7 @@ export const transfer = async (req, res) => {
   } catch (err) {
     res.status(400).json({
       message: err.message,
+      success: false,
     });
     logger.error('Error adding update to stage', err);
   }
@@ -404,6 +409,7 @@ const update = async (req, res, isTransfer = false) => {
   } catch (err) {
     res.status(400).json({
       message: err.message,
+      success: false,
     });
     logger.error('Error adding update to stage', err);
   }
@@ -438,6 +444,7 @@ export const destroy = async (req, res) => {
     res.status(400).json({
       message: 'Error adding project removal to stage',
       error: err.message,
+      success: false,
     });
   }
 };
@@ -460,6 +467,7 @@ export const batchUpload = async (req, res) => {
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
+      success: false,
     });
   }
 };
