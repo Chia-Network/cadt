@@ -110,6 +110,14 @@ app.use(async function (req, res, next) {
   next();
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    message: 'OK',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+
 app.use('/v1', V1Router);
 
 app.use((err, req, res, next) => {
