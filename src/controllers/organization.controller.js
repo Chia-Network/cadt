@@ -38,6 +38,7 @@ export const editHomeOrg = async (req, res) => {
 
     return res.json({
       message: 'Home org currently being updated, will be completed soon.',
+      success: true
     });
   } catch (error) {
     console.trace(error);
@@ -345,6 +346,7 @@ export const addMetadata = async (req, res) => {
 
     return res.json({
       message: 'Home org currently being updated, will be completed soon.',
+      success: true
     });
   } catch (error) {
     console.trace(error);
