@@ -5,20 +5,18 @@ import wallet from './wallet';
 import fullNode from './fullNode';
 import * as simulator from './simulator';
 import { encodeHex } from '../utils/datalayer-utils';
-import { getConfig } from '../utils/config-loader';
-import { logger } from '../config/logger.cjs';
+import { CONFIG } from '../user-config';
+import { logger } from '../logger.js';
 import { Organization } from '../models';
 import { publicIpv4 } from '../utils/ip-tools';
 
 logger.info('CADT:datalayer:writeService');
 
-const { USE_SIMULATOR, DATALAYER_FILE_SERVER_URL } = getConfig().APP;
-
 const createDataLayerStore = async () => {
   await wallet.waitForAllTransactionsToConfirm();
 
   let storeId;
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     storeId = await simulator.createDataLayerStore();
   } else {
     storeId = await dataLayer.createDataLayerStore();
@@ -33,7 +31,7 @@ const createDataLayerStore = async () => {
 
     await dataLayer.addMirror(
       storeId,
-      DATALAYER_FILE_SERVER_URL ||
+      CONFIG().CHIA.DATALAYER_FILE_SERVER_URL ||
         `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
       true,
     );
@@ -138,7 +136,7 @@ export const pushChangesWhenStoreIsAvailable = async (
   await new Promise((resolve) => {
     setTimeout(resolve, 1000);
   });
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
     const hasUnconfirmedTransactions =
@@ -171,7 +169,7 @@ const pushDataLayerChangeList = (storeId, changeList, failedCallback) => {
 };
 
 const dataLayerAvailable = async () => {
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     return simulator.dataLayerAvailable();
   } else {
     return dataLayer.dataLayerAvailable();

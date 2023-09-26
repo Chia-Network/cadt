@@ -1,10 +1,10 @@
-import { getConfig } from '../utils/config-loader';
+import { CONFIG } from '../user-config';
 import { getDataModelVersion } from '../utils/helpers';
-import { getChiaRoot } from '../utils/chia-root.js';
+import { getChiaRoot } from 'chia-root-resolver';
 
 const chiaRoot = getChiaRoot();
 
-const persistanceFolder = `${chiaRoot}/cadt/${getDataModelVersion()}`;
+const persistanceFolder = `${chiaRoot}/carbon/cadt/${getDataModelVersion()}`;
 
 export default {
   local: {
@@ -28,10 +28,10 @@ export default {
     logging: false,
   },
   mirror: {
-    username: getConfig().MIRROR_DB.DB_USERNAME || '',
-    password: getConfig().MIRROR_DB.DB_PASSWORD || '',
-    database: getConfig().MIRROR_DB.DB_NAME || '',
-    host: getConfig().MIRROR_DB.DB_HOST || '',
+    username: CONFIG().CADT.MIRROR_DB.DB_USERNAME || '',
+    password: CONFIG().CADT.MIRROR_DB.DB_PASSWORD || '',
+    database: CONFIG().CADT.MIRROR_DB.DB_NAME || '',
+    host: CONFIG().CADT.MIRROR_DB.DB_HOST || '',
     dialect: 'mysql',
     logging: false,
   },

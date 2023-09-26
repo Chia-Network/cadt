@@ -9,11 +9,9 @@ import {
   assertCanBeGovernanceBody,
 } from '../utils/data-assertions';
 
-import { getConfig } from '../utils/config-loader';
+import { CONFIG } from '../user-config';
 import glossary from '../models/governance/glossary.stub.js';
 import pickList from '../models/governance/governance.stub.js';
-
-const CONFIG = getConfig().APP;
 
 export const findAll = async (req, res) => {
   try {
@@ -67,7 +65,7 @@ export const findOrgList = async (req, res) => {
 
 export const findGlossary = async (req, res) => {
   try {
-    if (CONFIG.USE_DEVELOPMENT_MODE) {
+    if (CONFIG().CADT.USE_DEVELOPMENT_MODE) {
       return res.json(glossary);
     }
 
@@ -86,7 +84,7 @@ export const findGlossary = async (req, res) => {
 
 export const findPickList = async (req, res) => {
   try {
-    if (CONFIG.USE_DEVELOPMENT_MODE) {
+    if (CONFIG().CADT.USE_DEVELOPMENT_MODE) {
       return res.json(pickList);
     }
 

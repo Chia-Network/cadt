@@ -6,20 +6,18 @@ import { sequelize } from '../../database';
 import { Meta } from '../../models';
 import datalayer from '../../datalayer';
 import { keyValueToChangeList } from '../../utils/datalayer-utils';
-import { getConfig } from '../../utils/config-loader';
-import { logger } from '../../config/logger.cjs';
+import { CONFIG } from '../../user-config';
+import { logger } from '../../logger.js';
 import { getDataModelVersion } from '../../utils/helpers';
 import PickListStub from './governance.stub.js';
-
-const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
-
-const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
-
 import ModelTypes from './governance.modeltypes.cjs';
 
 class Governance extends Model {
   static async createGoveranceBody() {
-    if (GOVERNANCE_BODY_ID && GOVERNANCE_BODY_ID !== '') {
+    if (
+      CONFIG().CADT.GOVERNANCE.GOVERNANCE_BODY_ID &&
+      CONFIG().CADT.GOVERNANCE.GOVERNANCE_BODY_ID !== ''
+    ) {
       throw new Error(
         'You are already listening to another governance body. Please clear GOVERNANCE_BODY_ID from your env and try again',
       );
@@ -55,7 +53,7 @@ class Governance extends Model {
       });
     };
 
-    if (!USE_SIMULATOR) {
+    if (!CONFIG().CADT.USE_SIMULATOR) {
       logger.info('Waiting for New Governance Body to be confirmed');
       datalayer.getStoreData(
         governanceBodyId,
@@ -94,7 +92,10 @@ class Governance extends Model {
         metaValue: governanceData.pickList,
         confirmed: true,
       });
-    } else if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
+    } else if (
+      CONFIG().CADT.USE_SIMULATOR ||
+      CONFIG().CADT.USE_DEVELOPMENT_MODE
+    ) {
       // this block is just a fallback if the app gets through the upstream checks,
       // might be unnecessary
       logger.info('SIMULATOR/DEVELOPMENT MODE: Using sample picklist');
@@ -110,12 +111,12 @@ class Governance extends Model {
 
   static async sync() {
     try {
-      if (!GOVERNANCE_BODY_ID) {
+      if (!CONFIG().CADT.GOVERNANCE.GOVERNANCE_BODY_ID) {
         throw new Error('Missing information in env to sync Governance data');
       }
 
       // If on simulator or testnet, use the stubbed picklist data and return
-      if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
+      if (CONFIG().CADT.USE_SIMULATOR || CONFIG().CADT.USE_DEVELOPMENT_MODE) {
         logger.info('SIMULATOR/TESTNET MODE: Using sample picklist');
         Governance.upsert({
           metaKey: 'pickList',
@@ -127,7 +128,7 @@ class Governance extends Model {
       }
 
       const governanceData = await datalayer.getSubscribedStoreData(
-        GOVERNANCE_BODY_ID,
+        CONFIG().CADT.GOVERNANCE.GOVERNANCE_BODY_ID,
       );
 
       // Check if there is v1, v2, v3 ..... and if not, then we assume this is a legacy governance table that isnt versioned

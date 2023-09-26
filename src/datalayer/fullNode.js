@@ -2,7 +2,7 @@ import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
-import { getChiaRoot } from '../utils/chia-root.js';
+import { getChiaRoot } from 'chia-root-resolver';
 
 export const getChiaConfig = _.memoize(() => {
   const chiaRoot = getChiaRoot();

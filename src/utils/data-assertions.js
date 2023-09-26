@@ -1,17 +1,13 @@
 'use strict';
 
-import _ from 'lodash';
-
 import { Organization, Unit, Project, Staging, Meta } from '../models';
 import datalayer from '../datalayer';
 import { formatModelAssociationName } from './model-utils.js';
-import { getConfig } from '../utils/config-loader';
+import { CONFIG } from '../user-config';
 
-const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR, CHIA_NETWORK } =
-  getConfig().APP;
-
+/* deprecated */
 export const assertChiaNetworkMatchInConfiguration = async () => {
-  if (!USE_SIMULATOR) {
+  /*if (!USE_SIMULATOR) {
     const networkInfo = await datalayer.getActiveNetwork();
     const network = _.get(networkInfo, 'network_name', '');
 
@@ -20,11 +16,13 @@ export const assertChiaNetworkMatchInConfiguration = async () => {
         `Your node is on ${network} but your climate warehouse is set to ${CHIA_NETWORK}, please change your config so they match`,
       );
     }
-  }
+  }*/
+
+  return true;
 };
 
 export const assertCanBeGovernanceBody = async () => {
-  if (!IS_GOVERNANCE_BODY) {
+  if (!CONFIG().CADT.IS_GOVERNANCE_BODY) {
     throw new Error(
       'You are not an governance body and can not use this functionality',
     );
@@ -52,13 +50,13 @@ export const assertDataLayerAvailable = async () => {
 };
 
 export const assertIfReadOnlyMode = async () => {
-  if (READ_ONLY) {
+  if (CONFIG().CADT.READ_ONLY) {
     throw new Error('You can not use this API in read-only mode');
   }
 };
 
 export const assertNoPendingCommits = async () => {
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     const pendingCommits = await Staging.findAll({
       where: { commited: true, failedCommit: false },
       raw: true,
@@ -79,7 +77,7 @@ export const assertNoPendingCommits = async () => {
 };
 
 export const assertWalletIsSynced = async () => {
-  if (!USE_SIMULATOR) {
+  if (!CONFIG().CADT.USE_SIMULATOR) {
     if (!(await datalayer.walletIsSynced())) {
       throw new Error(
         'Your wallet is syncing, please wait for it to sync and try again',
@@ -89,7 +87,7 @@ export const assertWalletIsSynced = async () => {
 };
 
 export const assertWalletIsAvailable = async () => {
-  if (!USE_SIMULATOR) {
+  if (!CONFIG().CADT.USE_SIMULATOR) {
     if (!(await datalayer.walletIsAvailable())) {
       throw new Error(
         'Your wallet is not available, please turn it on to continue using climate warehouse',
