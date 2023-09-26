@@ -5,8 +5,8 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { V1Router } from './routes/v1';
-import { getConfig } from './utils/config-loader';
-import { logger } from './config/logger.cjs';
+import { CONFIG } from './user-config';
+import { logger } from './logger.js';
 import {
   assertChiaNetworkMatchInConfiguration,
   assertDataLayerAvailable,
@@ -14,9 +14,6 @@ import {
 } from './utils/data-assertions';
 import packageJson from '../package.json' assert { type: 'json' };
 import datalayer from './datalayer';
-
-const { CADT_API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =
-  getConfig().APP;
 
 const headerKeys = Object.freeze({
   API_VERSION_HEADER_KEY: 'x-api-version',
@@ -60,9 +57,9 @@ app.use(function (req, res, next) {
 
 // Add optional API key if set in .env file
 app.use(function (req, res, next) {
-  if (CADT_API_KEY && CADT_API_KEY !== '') {
+  if (CONFIG().CADT.API_KEY && CONFIG().CADT.API_KEY !== '') {
     const apikey = req.header('x-api-key');
-    if (CADT_API_KEY === apikey) {
+    if (CONFIG().CADT.API_KEY === apikey) {
       next();
     } else {
       res.status(403).json({ message: 'API key not found', success: false });
@@ -73,8 +70,8 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
-  if (READ_ONLY) {
-    res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, READ_ONLY);
+  if (CONFIG().CADT.READ_ONLY) {
+    res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, CONFIG().CADT.READ_ONLY);
   } else {
     res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, false);
   }
@@ -83,7 +80,10 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
-  res.setHeader(headerKeys.GOVERNANCE_BODY_HEADER_KEY, IS_GOVERNANCE_BODY);
+  res.setHeader(
+    headerKeys.GOVERNANCE_BODY_HEADER_KEY,
+    CONFIG().CADT.IS_GOVERNANCE_BODY,
+  );
   next();
 });
 
@@ -101,7 +101,7 @@ app.use(function (req, res, next) {
 });
 
 app.use(async function (req, res, next) {
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     res.setHeader(headerKeys.WALLET_SYNCED, true);
   } else {
     res.setHeader(headerKeys.WALLET_SYNCED, await datalayer.walletIsSynced());

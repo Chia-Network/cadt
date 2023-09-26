@@ -1,15 +1,13 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { pullPickListValues } from '../utils/data-loaders';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../logger.js';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
-import { getConfig } from '../utils/config-loader';
+import { CONFIG } from '../user-config';
 
-const CONFIG = getConfig().APP;
-
-logger.info('CADT:task:sync-picklists');
+logger.task('CADT:task:sync-picklists');
 
 const task = new Task('sync-picklist', async () => {
   try {
@@ -18,7 +16,9 @@ const task = new Task('sync-picklist', async () => {
     pullPickListValues();
   } catch (error) {
     logger.error(
-      `Retrying in ${CONFIG?.TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 30} seconds`,
+      `Retrying in ${
+        CONFIG().TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 30
+      } seconds`,
       error,
     );
   }
@@ -26,7 +26,7 @@ const task = new Task('sync-picklist', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 30,
+    seconds: CONFIG().TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 30,
     runImmediately: true,
   },
   task,

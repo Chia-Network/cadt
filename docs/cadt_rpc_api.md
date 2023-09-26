@@ -9,7 +9,7 @@ Please also see the following related documents:
 
 The CADT RPC API is exposed by default on port 31310. This document will give examples to access the RPC API using `http://localhost:31310/v1`.  
 
-If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.  
+If using a `API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.  
 
 ## Commands
 

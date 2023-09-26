@@ -6,14 +6,13 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../logger.js';
 
 const Spinner = cliSpinner.Spinner;
 dotenv.config();
-import { getConfig } from '../utils/config-loader';
-const CONFIG = getConfig().APP;
+import { CONFIG } from '../user-config';
 
-logger.info('CADT:task:sync-datalayer');
+logger.task('CADT:task:sync-datalayer');
 
 const spinner = new Spinner('Waiting for Updates %s');
 spinner.setSpinnerString('|/-\\');
@@ -30,7 +29,7 @@ const task = new Task('sync-datalayer', async () => {
   } catch (error) {
     logger.error(
       `Retrying in ${
-        CONFIG?.TASKS?.DATAMODEL_SYNC_TASK_INTERVAL || 60
+        CONFIG().CADT.TASKS?.DATAMODEL_SYNC_TASK_INTERVAL || 60
       } seconds`,
       error,
     );
@@ -39,7 +38,7 @@ const task = new Task('sync-datalayer', async () => {
 
 let seconds = 5;
 if (process.env.NODE_ENV !== 'test') {
-  seconds = CONFIG?.TASKS?.DATAMODEL_SYNC_TASK_INTERVAL || 60;
+  seconds = CONFIG().CADT.TASKS?.DATAMODEL_SYNC_TASK_INTERVAL || 60;
 }
 
 const job = new SimpleIntervalJob(
