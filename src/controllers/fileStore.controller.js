@@ -14,6 +14,7 @@ export const subscribeToFileStore = (req, res) => {
     res.status(400).json({
       message: `Can not subscribe to file store.`,
       error: error.message,
+      success: false,
     });
   }
 };
@@ -31,6 +32,7 @@ export const unsubscribeFromFileStore = (req, res) => {
     res.status(400).json({
       message: 'Can not retrieve file list from filestore',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -43,6 +45,7 @@ export const getFileList = async (req, res) => {
     res.status(400).json({
       message: 'Can not retrieve file list from filestore',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -58,6 +61,7 @@ export const deleteFile = async (req, res) => {
     res.status(400).json({
       message: 'Can not delete file from filestore',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -72,12 +76,14 @@ export const getFile = async (req, res) => {
     } else {
       res.status(400).json({
         message: `FileId ${fileId} not found in the filestore.`,
+        success: false,
       });
     }
   } catch (error) {
     res.status(400).json({
       message: 'Can not retreive file list from filestore',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -112,6 +118,7 @@ export const addFileToFileStore = async (req, res) => {
     res.status(400).json({
       message: 'Can not add file to file store',
       error: error.message,
+      success: false,
     });
   }
 };

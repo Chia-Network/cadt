@@ -22,6 +22,7 @@ export const findAll = async (req, res) => {
     res.status(400).json({
       message: 'Can not retreive audit data',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -33,6 +34,7 @@ export const findConflicts = async (req, res) => {
     res.status(400).json({
       message: 'Can not retreive audit data',
       error: error.message,
+      success: false,
     });
   }
 };

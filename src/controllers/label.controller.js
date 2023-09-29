@@ -16,6 +16,7 @@ export const findAll = async (req, res) => {
     res.status(400).json({
       message: 'Can not retreive labels',
       error: error.message,
+      success: false,
     });
   }
 };
