@@ -583,7 +583,6 @@ const takeOffer = async (offer) => {
       return data;
     }
 
-    console.log(data);
     throw new Error(data.error);
   } catch (error) {
     logger.error(error);
@@ -605,8 +604,6 @@ const verifyOffer = async (offer) => {
       .send(offer);
 
     const data = response.body;
-
-    console.log(data);
 
     if (data.success) {
       return true;
