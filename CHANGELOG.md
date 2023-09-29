@@ -1,3 +1,20 @@
+## [1.6.25](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.24...1.6.25) (2023-09-29)
+
+
+### Bug Fixes
+
+* suppress unuseful sequalize warning ([2a6bcba](https://github.com/Chia-Network/Core-Registry-CADT/commit/2a6bcba6e43ef022576b899eaa4763e31833545a))
+
+
+### Features
+
+* add health check ([0fbd690](https://github.com/Chia-Network/Core-Registry-CADT/commit/0fbd690ee3600eacf1ba9ba8c632499a6d1ed01a))
+* add standard success fail message ([aa39b8c](https://github.com/Chia-Network/Core-Registry-CADT/commit/aa39b8c75b30c150a10c15d5176c1e3614970179))
+* add unified config and logger ([645880c](https://github.com/Chia-Network/Core-Registry-CADT/commit/645880c527ca73478591ed8ae7a2e79f41fc2099))
+* use onlyMarketplaceProjects query filter ([249c93c](https://github.com/Chia-Network/Core-Registry-CADT/commit/249c93cd72b9d731da389f802fb0bff110fe9510))
+
+
+
 ## [1.6.24](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.22...1.6.24) (2023-09-20)
 
 
