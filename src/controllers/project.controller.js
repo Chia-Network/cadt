@@ -127,7 +127,7 @@ export const findAll = async (req, res) => {
       projectIds,
       filter,
       order,
-      onlyTokenizedProjects,
+      onlyMarketplaceProjects,
     } = req.query;
 
     //if (!page) {
@@ -215,15 +215,15 @@ export const findAll = async (req, res) => {
       };
     }
 
-    if (onlyTokenizedProjects) {
+    if (onlyMarketplaceProjects) {
       if (!where) {
         where = {};
       }
 
-      const tokenizeProjectIds = await Project.getTokenizedProjectIds();
+      const marketplaceProjectIds = await Project.getTokenizedProjectIds();
 
       where.warehouseProjectId = {
-        [Sequelize.Op.in]: _.flatten([tokenizeProjectIds]),
+        [Sequelize.Op.in]: _.flatten([marketplaceProjectIds]),
       };
     }
 
