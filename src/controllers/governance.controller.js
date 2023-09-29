@@ -9,11 +9,9 @@ import {
   assertCanBeGovernanceBody,
 } from '../utils/data-assertions';
 
-import { getConfig } from '../utils/config-loader';
+import { CONFIG } from '../user-config';
 import glossary from '../models/governance/glossary.stub.js';
 import pickList from '../models/governance/governance.stub.js';
-
-const CONFIG = getConfig().APP;
 
 export const findAll = async (req, res) => {
   try {
@@ -23,6 +21,7 @@ export const findAll = async (req, res) => {
     res.status(400).json({
       message: 'Can not retreive Governance Data',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -46,6 +45,7 @@ export const isCreated = async (req, res) => {
     res.status(400).json({
       message: 'Can not retreive Governance Data',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -58,13 +58,14 @@ export const findOrgList = async (req, res) => {
     res.status(400).json({
       message: 'Can not retreive Governance Data',
       error: error.message,
+      success: false,
     });
   }
 };
 
 export const findGlossary = async (req, res) => {
   try {
-    if (CONFIG.USE_DEVELOPMENT_MODE) {
+    if (CONFIG().CADT.USE_DEVELOPMENT_MODE) {
       return res.json(glossary);
     }
 
@@ -76,13 +77,14 @@ export const findGlossary = async (req, res) => {
     res.status(400).json({
       message: 'Can not retreive Governance Data',
       error: error.message,
+      success: false,
     });
   }
 };
 
 export const findPickList = async (req, res) => {
   try {
-    if (CONFIG.USE_DEVELOPMENT_MODE) {
+    if (CONFIG().CADT.USE_DEVELOPMENT_MODE) {
       return res.json(pickList);
     }
 
@@ -95,6 +97,7 @@ export const findPickList = async (req, res) => {
     res.status(400).json({
       message: 'Can not retreive Governance Data',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -116,6 +119,7 @@ export const createGoveranceBody = async (req, res) => {
     res.status(400).json({
       message: 'Cant create Governance Body',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -141,6 +145,7 @@ export const setDefaultOrgList = async (req, res) => {
     res.status(400).json({
       message: 'Cant update default orgs',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -165,6 +170,7 @@ export const setPickList = async (req, res) => {
     res.status(400).json({
       message: 'Cant update picklist',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -188,6 +194,7 @@ export const setGlossary = async (req, res) => {
     res.status(400).json({
       message: 'Cant update glossary',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -202,6 +209,7 @@ export const sync = async (req, res) => {
     res.status(400).json({
       message: 'Cant Sync Governance Body',
       error: error.message,
+      success: false,
     });
   }
 };

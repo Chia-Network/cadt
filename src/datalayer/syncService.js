@@ -2,13 +2,11 @@ import _ from 'lodash';
 
 import { decodeHex, decodeDataLayerResponse } from '../utils/datalayer-utils';
 import { Organization, Staging, ModelKeys } from '../models';
-import { getConfig } from '../utils/config-loader';
-import { logger } from '../config/logger.cjs';
+import { CONFIG } from '../user-config';
+import { logger } from '../logger.js';
 
 import * as dataLayer from './persistance';
 import * as simulator from './simulator';
-
-const { USE_SIMULATOR } = getConfig().APP;
 
 const POLLING_INTERVAL = 5000;
 const frames = ['-', '\\', '|', '/'];
@@ -36,7 +34,7 @@ const startDataLayerUpdatePolling = async () => {
 const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
   let storeData;
 
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     storeData = await simulator.getStoreData(storeId, rootHash);
   } else {
     storeData = await dataLayer.getStoreData(storeId, rootHash);
@@ -128,7 +126,7 @@ const dataLayerWasUpdated = async () => {
   }
 
   let rootResponse;
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     rootResponse = await simulator.getRoots(subscribedOrgIds);
   } else {
     rootResponse = await dataLayer.getRoots(subscribedOrgIds);
@@ -177,13 +175,13 @@ const dataLayerWasUpdated = async () => {
 };
 
 const unsubscribeFromDataLayerStore = async (storeId) => {
-  if (!USE_SIMULATOR) {
+  if (!CONFIG().CADT.USE_SIMULATOR) {
     return dataLayer.unsubscribeFromDataLayerStore(storeId);
   }
 };
 
 const subscribeToStoreOnDataLayer = async (storeId) => {
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     return simulator.subscribeToStoreOnDataLayer(storeId);
   } else {
     return dataLayer.subscribeToStoreOnDataLayer(storeId);
@@ -226,7 +224,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
 
   logger.info(`Subscription Found for ${storeId}.`);
 
-  if (!USE_SIMULATOR) {
+  if (!CONFIG().CADT.USE_SIMULATOR) {
     logger.info(`Getting confirmation for ${storeId}.`);
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
     logger.info(`Store exists and is found ${storeId}.`);
@@ -248,7 +246,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
   }
 
   let encodedData;
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     encodedData = await simulator.getStoreData(storeId);
   } else {
     encodedData = await dataLayer.getStoreData(storeId);
@@ -275,13 +273,13 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
 };
 
 const getRootHistory = (storeId) => {
-  if (!USE_SIMULATOR) {
+  if (!CONFIG().CADT.USE_SIMULATOR) {
     return dataLayer.getRootHistory(storeId);
   }
 };
 
 const getRootDiff = (storeId, root1, root2) => {
-  if (!USE_SIMULATOR) {
+  if (!CONFIG().CADT.USE_SIMULATOR) {
     return dataLayer.getRootDiff(storeId, root1, root2);
   }
 };
@@ -302,7 +300,7 @@ const getStoreData = async (storeId, callback, onFail, retry = 0) => {
 };
 
 const getCurrentStoreData = async (storeId) => {
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     return [];
   }
 
@@ -340,7 +338,7 @@ export const getLocalStoreData = async (storeId) => {
 };
 
 export const waitForAllTransactionsToConfirm = async () => {
-  if (USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     return true;
   }
 

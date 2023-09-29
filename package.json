@@ -1,6 +1,6 @@
 {
   "name": "core-registry-cadt",
-  "version": "1.6.24",
+  "version": "1.6.25",
   "_comment": "DONT CHANGE MAJOR UNLESS DATAMODEL CHANGES: The major version corresponds to the datamodel version your using, so 2.0.0 means it'll use datamodel v2",
   "private": true,
   "bin": "build/server.js",
@@ -32,7 +32,10 @@
   },
   "dependencies": {
     "@babel/eslint-parser": "^7.22.9",
+    "@chia-carbon/core-registry-config": "^1.0.2",
+    "@chia-carbon/core-registry-logger": "^1.0.11",
     "body-parser": "^1.20.2",
+    "chia-root-resolver": "^1.0.0",
     "cli-spinner": "^0.2.10",
     "cors": "^2.8.5",
     "csvtojson": "^2.0.10",
@@ -59,9 +62,9 @@
   },
   "devDependencies": {
     "@babel/cli": "^7.22.15",
-    "@babel/core": "^7.22.19",
+    "@babel/core": "^7.22.20",
     "@babel/plugin-syntax-import-attributes": "^7.22.5",
-    "@babel/preset-env": "^7.22.15",
+    "@babel/preset-env": "^7.22.20",
     "@babel/register": "^7.22.15",
     "@commitlint/cli": "^17.7.1",
     "@commitlint/config-conventional": "^17.7.0",

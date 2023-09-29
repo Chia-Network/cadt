@@ -2,23 +2,21 @@ import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
-import { getConfig } from '../utils/config-loader';
+import { CONFIG } from '../user-config';
 import fullNode from './fullNode';
 import { publicIpv4 } from '../utils/ip-tools';
 import wallet from './wallet';
 import { Organization } from '../models';
-import { logger } from '../config/logger.cjs';
-import { getChiaRoot } from '../utils/chia-root.js';
+import { logger } from '../logger.js';
+import { getChiaRoot } from 'chia-root-resolver';
 
 logger.info('CADT:datalayer:persistance');
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
-const CONFIG = getConfig().APP;
-
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
   const certificateFolderPath =
-    CONFIG.CERTIFICATE_FOLDER_PATH || `${chiaRoot}/config/ssl`;
+    CONFIG().CHIA.CERTIFICATE_FOLDER_PATH || `${chiaRoot}/config/ssl`;
 
   const certFile = path.resolve(
     `${certificateFolderPath}/data_layer/private_data_layer.crt`,
@@ -38,7 +36,7 @@ const getBaseOptions = () => {
 };
 
 const getMirrors = async (storeId) => {
-  const url = `${CONFIG.DATALAYER_URL}/get_mirrors`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_mirrors`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -88,14 +86,14 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     const options = {
       id: storeId,
       urls: [url],
-      amount: _.get(CONFIG, 'DEFAULT_COIN_AMOUNT', 300000000),
-      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+      amount: CONFIG().CHIA?.DEFAULT_COIN_AMOUNT || 300000000,
+      fee: CONFIG().CHIA?.DEFAULT_FEE || 300000000,
     };
 
     const { cert, key, timeout } = getBaseOptions();
 
     const response = await superagent
-      .post(`${CONFIG.DATALAYER_URL}/add_mirror`)
+      .post(`${CONFIG().CHIA.DATALAYER_HOST}/add_mirror`)
       .key(key)
       .cert(cert)
       .send(options)
@@ -131,7 +129,7 @@ const removeMirror = async (storeId, coinId) => {
     return false;
   }
 
-  const url = `${CONFIG.DATALAYER_URL}/delete_mirror`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/delete_mirror`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -142,7 +140,7 @@ const removeMirror = async (storeId, coinId) => {
       .timeout(timeout)
       .send({
         id: coinId,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: CONFIG().CHIA?.DEFAULT_FEE || 300000000,
       });
 
     const data = response.body;
@@ -161,7 +159,7 @@ const removeMirror = async (storeId, coinId) => {
 };
 
 const getRootDiff = async (storeId, root1, root2) => {
-  const url = `${CONFIG.DATALAYER_URL}/get_kv_diff`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_kv_diff`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -190,7 +188,7 @@ const getRootDiff = async (storeId, root1, root2) => {
 };
 
 const getRootHistory = async (storeId) => {
-  const url = `${CONFIG.DATALAYER_URL}/get_root_history`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_root_history`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -217,7 +215,7 @@ const getRootHistory = async (storeId) => {
 };
 
 const unsubscribeFromDataLayerStore = async (storeId) => {
-  const url = `${CONFIG.DATALAYER_URL}/unsubscribe`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/unsubscribe`;
   const { cert, key, timeout } = getBaseOptions();
 
   logger.info(`RPC Call: ${url} ${storeId}`);
@@ -230,7 +228,7 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
       .timeout(timeout)
       .send({
         id: storeId,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: CONFIG().CHIA?.DEFAULT_FEE || 300000000,
       });
 
     const data = response.body;
@@ -248,7 +246,7 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
 };
 
 const dataLayerAvailable = async () => {
-  const url = `${CONFIG.DATALAYER_URL}/get_routes`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_routes`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -283,7 +281,7 @@ const getStoreData = async (storeId, rootHash) => {
       payload.root_hash = rootHash;
     }
 
-    const url = `${CONFIG.DATALAYER_URL}/get_keys_values`;
+    const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_keys_values`;
     const { cert, key, timeout } = getBaseOptions();
 
     try {
@@ -319,7 +317,7 @@ const getStoreData = async (storeId, rootHash) => {
 };
 
 const getRoot = async (storeId, ignoreEmptyStore = false) => {
-  const url = `${CONFIG.DATALAYER_URL}/get_root`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_root`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -349,7 +347,7 @@ const getRoot = async (storeId, ignoreEmptyStore = false) => {
 };
 
 const getRoots = async (storeIds) => {
-  const url = `${CONFIG.DATALAYER_URL}/get_roots`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_roots`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -377,7 +375,7 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
   try {
     await wallet.waitForAllTransactionsToConfirm();
 
-    const url = `${CONFIG.DATALAYER_URL}/batch_update`;
+    const url = `${CONFIG().CHIA.DATALAYER_HOST}/batch_update`;
     const { cert, key, timeout } = getBaseOptions();
 
     const response = await superagent
@@ -388,7 +386,7 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
       .send({
         changelist,
         id: storeId,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: CONFIG().CHIA?.DEFAULT_FEE || 300000000,
       });
 
     const data = response.body;
@@ -422,7 +420,7 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
 };
 
 const createDataLayerStore = async () => {
-  const url = `${CONFIG.DATALAYER_URL}/create_data_store`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/create_data_store`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -432,7 +430,7 @@ const createDataLayerStore = async () => {
       .cert(cert)
       .timeout(timeout)
       .send({
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: CONFIG().CHIA?.DEFAULT_FEE || 300000000,
       });
 
     const data = response.body;
@@ -468,7 +466,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
     return { success: true };
   }
 
-  const url = `${CONFIG.DATALAYER_URL}/subscribe`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/subscribe`;
   const { cert, key, timeout } = getBaseOptions();
 
   logger.info(`Subscribing to: ${storeId}`);
@@ -481,7 +479,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
       .timeout(timeout)
       .send({
         id: storeId,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: CONFIG().CHIA?.DEFAULT_FEE || 300000000,
       });
 
     const data = response.body;
@@ -507,11 +505,11 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 };
 
 const getSubscriptions = async () => {
-  if (CONFIG.USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     return [];
   }
 
-  const url = `${CONFIG.DATALAYER_URL}/subscriptions`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/subscriptions`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -538,7 +536,7 @@ const getSubscriptions = async () => {
 };
 
 const makeOffer = async (offer) => {
-  const url = `${CONFIG.DATALAYER_URL}/make_offer`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/make_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -549,7 +547,7 @@ const makeOffer = async (offer) => {
       .timeout(timeout)
       .send({
         ...offer,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: CONFIG().CHIA?.DEFAULT_FEE || 300000000,
       });
 
     const data = response.body;
@@ -566,7 +564,7 @@ const makeOffer = async (offer) => {
 };
 
 const takeOffer = async (offer) => {
-  const url = `${CONFIG.DATALAYER_URL}/take_offer`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/take_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -593,7 +591,7 @@ const takeOffer = async (offer) => {
 
 const verifyOffer = async (offer) => {
   console.log(offer);
-  const url = `${CONFIG.DATALAYER_URL}/verify_offer`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/verify_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -620,7 +618,7 @@ const verifyOffer = async (offer) => {
 };
 
 const cancelOffer = async (tradeId) => {
-  const url = `${CONFIG.DATALAYER_URL}/cancel_offer`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/cancel_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -632,7 +630,7 @@ const cancelOffer = async (tradeId) => {
       .send({
         trade_id: tradeId,
         secure: true,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        fee: CONFIG().CHIA?.DEFAULT_FEE || 300000000,
       });
 
     const data = response.body;

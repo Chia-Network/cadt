@@ -5,8 +5,8 @@ import rootRouter from './routes';
 import http from 'http';
 import { Server } from 'socket.io';
 import { connection } from './websocket';
-import { getConfig } from './utils/config-loader';
-import { logger } from './config/logger.cjs';
+import { CONFIG } from './user-config';
+import { logger } from './logger.js';
 
 import dotenv from 'dotenv';
 
@@ -14,8 +14,8 @@ dotenv.config();
 
 logger.info('CADT:server');
 
-const port = getConfig().APP.CW_PORT || 3030;
-const bindAddress = getConfig().APP.BIND_ADDRESS || 'localhost';
+const port = CONFIG().CADT.PORT || 3030;
+const bindAddress = CONFIG().CADT.BIND_ADDRESS || 'localhost';
 const server = http.createServer(rootRouter);
 
 server.on('error', onError);

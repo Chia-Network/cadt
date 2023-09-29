@@ -17,11 +17,15 @@ export const findAll = async (req, res) => {
       ...pagination,
     });
 
-    return res.json(optionallyPaginatedResponse(auditResults, page, limit));
+    return res.json({
+      ...optionallyPaginatedResponse(auditResults, page, limit),
+      success: true,
+    });
   } catch (error) {
     res.status(400).json({
       message: 'Can not retreive audit data',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -33,6 +37,7 @@ export const findConflicts = async (req, res) => {
     res.status(400).json({
       message: 'Can not retreive audit data',
       error: error.message,
+      success: false,
     });
   }
 };

@@ -82,6 +82,7 @@ export const findAll = async (req, res) => {
     res.status(400).json({
       message: 'Error retreiving staging table',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -107,6 +108,7 @@ export const commit = async (req, res) => {
     res.status(400).json({
       message: 'Error commiting staging table',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -128,6 +130,7 @@ export const destroy = async (req, res) => {
     res.status(400).json({
       message: 'Staging Record can not be removed.',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -146,6 +149,7 @@ export const clean = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: error.message,
+      success: false,
     });
   }
 };
@@ -168,6 +172,7 @@ export const editRecord = async (req, res) => {
     res.status(400).json({
       message: 'Staging Record can not be edited.',
       error: error.message,
+      success: false,
     });
   }
 };
@@ -193,6 +198,7 @@ export const retryRecrod = async (req, res) => {
     res.status(400).json({
       message: 'Staging Record can not be restaged.',
       error: error.message,
+      success: false,
     });
   }
 };

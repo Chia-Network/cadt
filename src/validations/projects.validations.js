@@ -72,7 +72,7 @@ export const projectsGetQuerySchema = Joi.object()
     projectIds: Joi.array().items(Joi.string()).single(),
     order: Joi.string().regex(genericSortColumnRegex),
     filter: Joi.string().regex(genericFilterRegex),
-    onlyTokenizedProjects: Joi.boolean(),
+    onlyMarketplaceProjects: Joi.boolean(),
   })
   .with('page', 'limit')
   .with('limit', 'page');

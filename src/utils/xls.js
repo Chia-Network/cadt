@@ -3,7 +3,7 @@ import _ from 'lodash';
 import xlsx from 'node-xlsx';
 import stream from 'stream';
 
-import { logger } from '../config/logger.cjs';
+import { logger } from '../logger.js';
 
 import { Staging, Organization, LabelUnit, ModelKeys } from './../models';
 

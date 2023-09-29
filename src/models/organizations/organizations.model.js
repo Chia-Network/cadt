@@ -8,15 +8,14 @@ const { Model } = Sequelize;
 import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
-import { logger } from '../../config/logger.cjs';
+import { logger } from '../../logger.js';
 import { FileStore } from '../';
 
 import { getDefaultOrganizationList } from '../../utils/data-loaders';
 
 import { getDataModelVersion } from '../../utils/helpers';
 
-import { getConfig } from '../../utils/config-loader';
-const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
+import { CONFIG } from '../../user-config';
 
 logger.info('CADT:organizations');
 
@@ -120,7 +119,7 @@ class Organization extends Model {
         icon: '',
       });
 
-      const newOrganizationId = USE_SIMULATOR
+      const newOrganizationId = CONFIG().CADT.USE_SIMULATOR
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
         : await datalayer.createDataLayerStore();
 
@@ -136,7 +135,7 @@ class Organization extends Model {
         ]);
       };
 
-      if (!USE_SIMULATOR) {
+      if (!CONFIG().CADT.USE_SIMULATOR) {
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
@@ -154,7 +153,7 @@ class Organization extends Model {
         revertOrganizationIfFailed,
       );
 
-      if (!USE_SIMULATOR) {
+      if (!CONFIG().CADT.USE_SIMULATOR) {
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
@@ -176,7 +175,7 @@ class Organization extends Model {
           orgUid: newOrganizationId,
           registryId: registryVersionId,
           isHome: true,
-          subscribed: USE_SIMULATOR,
+          subscribed: CONFIG().CADT.USE_SIMULATOR,
           fileStoreId,
           name,
           icon,
@@ -195,7 +194,7 @@ class Organization extends Model {
         );
       };
 
-      if (!USE_SIMULATOR) {
+      if (!CONFIG().CADT.USE_SIMULATOR) {
         logger.info('Waiting for New Organization to be confirmed');
         datalayer.getStoreData(
           newRegistryId,
@@ -318,7 +317,7 @@ class Organization extends Model {
         isHome: false,
       });
 
-      if (AUTO_SUBSCRIBE_FILESTORE) {
+      if (CONFIG().CADT.AUTO_SUBSCRIBE_FILESTORE) {
         await FileStore.subscribeToFileStore(orgUid);
       }
     } catch (error) {

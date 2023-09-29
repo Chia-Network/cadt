@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import { Sequelize } from 'sequelize';
 import config from '../config/config.js';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../logger.js';
 import mysql from 'mysql2/promise';
-import { getConfig } from '../utils/config-loader';
+import { CONFIG } from '../user-config.js';
 
 import { migrations } from './migrations';
 import { seeders } from './seeders';
@@ -13,10 +13,28 @@ dotenv.config();
 
 // possible values: local, test
 export const sequelize = new Sequelize(config[process.env.NODE_ENV || 'local']);
+// Suppress the specific warning about empty `options.where`
+sequelize.options.logging = (msg) => {
+  if (
+    msg.includes('Model attributes') &&
+    msg.includes('options.where object is empty')
+  ) {
+    return; // Suppress the warning
+  }
+};
 
 const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
+// Suppress the specific warning about empty `options.where`
+sequelizeMirror.options.logging = (msg) => {
+  if (
+    msg.includes('Model attributes') &&
+    msg.includes('options.where object is empty')
+  ) {
+    return; // Suppress the warning
+  }
+};
 
 logger.info('CADT:mirror-database');
 
@@ -114,18 +132,18 @@ export const prepareDb = async () => {
 
   if (
     mirrorConfig == 'mirror' &&
-    getConfig().MIRROR_DB.DB_HOST &&
-    getConfig().MIRROR_DB.DB_HOST !== ''
+    CONFIG().CADT.MIRROR_DB.DB_HOST &&
+    CONFIG().CADT.MIRROR_DB.DB_HOST !== ''
   ) {
     const connection = await mysql.createConnection({
-      host: getConfig().MIRROR_DB.DB_HOST,
+      host: CONFIG().CADT.MIRROR_DB.DB_HOST,
       port: 3306,
-      user: getConfig().MIRROR_DB.DB_USERNAME,
-      password: getConfig().MIRROR_DB.DB_PASSWORD,
+      user: CONFIG().CADT.MIRROR_DB.DB_USERNAME,
+      password: CONFIG().CADT.MIRROR_DB.DB_PASSWORD,
     });
 
     await connection.query(
-      `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}\`;`,
+      `CREATE DATABASE IF NOT EXISTS \`${CONFIG().CADT.MIRROR_DB.DB_NAME}\`;`,
     );
 
     const db = new Sequelize(config[mirrorConfig]);

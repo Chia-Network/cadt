@@ -1,7 +1,7 @@
 'use strict';
 
 import { Project, Unit, Staging } from './models/index.js';
-import { logger } from './config/logger.cjs';
+import { logger } from './logger.js';
 
 const socketSubscriptions = {};
 

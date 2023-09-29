@@ -5,27 +5,25 @@ import { Organization, Audit } from '../models';
 import datalayer from '../datalayer';
 import { decodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../logger.js';
 
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
 
-logger.info('CADT:task:audit');
+logger.task('CADT:task:audit');
 
 dotenv.config();
-import { getConfig } from '../utils/config-loader';
-
-const CONFIG = getConfig().APP;
+import { CONFIG } from '../user-config';
 
 const task = new Task('sync-audit', async () => {
   try {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    logger.info('Syncing Audit Information');
-    if (!CONFIG.USE_SIMULATOR) {
+    logger.task('Syncing Audit Information');
+    if (!CONFIG().CADT.USE_SIMULATOR) {
       const organizations = await Organization.findAll({
         where: { subscribed: true },
         raw: true,
@@ -38,7 +36,9 @@ const task = new Task('sync-audit', async () => {
     }
   } catch (error) {
     logger.error(
-      `Retrying in ${CONFIG?.TASKS?.AUDIT_SYNC_TASK_INTERVAL || 30} seconds`,
+      `Retrying in ${
+        CONFIG().CADT.TASKS?.AUDIT_SYNC_TASK_INTERVAL || 30
+      } seconds`,
       error,
     );
   }
@@ -46,7 +46,7 @@ const task = new Task('sync-audit', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.AUDIT_SYNC_TASK_INTERVAL || 30,
+    seconds: CONFIG().CADT.TASKS?.AUDIT_SYNC_TASK_INTERVAL || 30,
     runImmediately: true,
   },
   task,
@@ -55,7 +55,7 @@ const job = new SimpleIntervalJob(
 
 const syncOrganizationAudit = async (organization) => {
   try {
-    logger.info(`Syncing Audit: ${_.get(organization, 'name')}`);
+    logger.task(`Syncing Audit: ${_.get(organization, 'name')}`);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     const lastRootSaved = await Audit.findOne({
