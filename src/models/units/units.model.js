@@ -93,14 +93,7 @@ class Unit extends Model {
 
   static async destroy(values, options) {
     safeMirrorDbHandler(() => UnitMirror.destroy(values, options));
-
-    const record = await super.findOne(values.where);
-
-    if (record) {
-      const { orgUid } = record.dataValues;
-      Unit.changes.next(['units', orgUid]);
-    }
-
+    Unit.changes.next(['units']);
     return super.destroy(values, options);
   }
 

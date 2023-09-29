@@ -4,13 +4,16 @@ import { getChiaRoot } from 'chia-root-resolver';
 
 const chiaRoot = getChiaRoot();
 
-const persistanceFolder = `${chiaRoot}/carbon/cadt/${getDataModelVersion()}`;
+const persistanceFolder = `${chiaRoot}/core-registry/cadt/${getDataModelVersion()}`;
 
 export default {
   local: {
     dialect: 'sqlite',
     storage: `${persistanceFolder}/data.sqlite3`,
     logging: false,
+    dialectOptions: {
+      busyTimeout: 10000,
+    },
   },
   simulator: {
     dialect: 'sqlite',

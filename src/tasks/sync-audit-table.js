@@ -1,46 +1,40 @@
 import _ from 'lodash';
 
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Organization, Audit } from '../models';
+import { Organization, Audit, ModelKeys } from '../models';
 import datalayer from '../datalayer';
 import { decodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 import { logger } from '../logger.js';
+import { sequelize } from '../database';
 
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
 
-logger.task('CADT:task:audit');
-
 dotenv.config();
 import { CONFIG } from '../user-config';
 
+let taskIsRunning = false;
+
 const task = new Task('sync-audit', async () => {
   try {
-    await assertDataLayerAvailable();
-    await assertWalletIsSynced();
-
-    logger.task('Syncing Audit Information');
-    if (!CONFIG().CADT.USE_SIMULATOR) {
-      const organizations = await Organization.findAll({
-        where: { subscribed: true },
-        raw: true,
-      });
-      await Promise.all(
-        organizations.map((organization) =>
-          syncOrganizationAudit(organization),
-        ),
-      );
+    if (!taskIsRunning) {
+      taskIsRunning = true;
+      await processJob();
     }
   } catch (error) {
-    logger.error(
-      `Retrying in ${
-        CONFIG().CADT.TASKS?.AUDIT_SYNC_TASK_INTERVAL || 30
-      } seconds`,
-      error,
-    );
+    logger.error(`Error during datasync: ${error.message}`);
+
+    // Log additional information if present in the error object
+    if (error.response && error.response.body) {
+      logger.error(
+        `Additional error details: ${JSON.stringify(error.response.body)}`,
+      );
+    }
+  } finally {
+    taskIsRunning = false;
   }
 });
 
@@ -52,6 +46,65 @@ const job = new SimpleIntervalJob(
   task,
   'sync-audit',
 );
+
+const processJob = async () => {
+  await assertDataLayerAvailable();
+  await assertWalletIsSynced();
+
+  logger.task('Syncing Audit Information');
+  if (!CONFIG().CADT.USE_SIMULATOR) {
+    const organizations = await Organization.findAll({
+      where: { subscribed: true },
+      raw: true,
+    });
+
+    for (const organization of organizations) {
+      await syncOrganizationAudit(organization);
+      await new Promise((resolve) =>
+        setTimeout(
+          resolve,
+          (CONFIG().CADT.TASKS?.AUDIT_SYNC_TASK_INTERVAL || 30) * 1000,
+        ),
+      );
+    }
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+};
+
+async function createTransaction(callback) {
+  let result = null;
+
+  let transaction;
+
+  try {
+    // Check if the database is locked and wait until it's unlocked
+    /* while (await isDatabaseLocked()) {
+      logger.debug('Database is locked. Waiting...');
+      await waitFor(retryDelay);
+    }*/
+
+    logger.trace('Starting transaction');
+    // Start a transaction
+    transaction = await sequelize.transaction();
+
+    // Execute the provided callback with the transaction
+    result = await callback(transaction);
+
+    // Commit the transaction if the callback completes without errors
+    await transaction.commit();
+    logger.trace('Commited transaction');
+
+    return result;
+  } catch (error) {
+    // Roll back the transaction if an error occurs
+    if (transaction) {
+      logger.error('Rolling back transaction');
+      console.error(error);
+      await transaction.rollback();
+    }
+  }
+}
 
 const syncOrganizationAudit = async (organization) => {
   try {
@@ -79,7 +132,7 @@ const syncOrganizationAudit = async (organization) => {
     );
 
     if (!lastRootSaved) {
-      Audit.create({
+      await Audit.create({
         orgUid: organization.orgUid,
         registryId: organization.registryId,
         rootHash: _.get(rootHistory, '[0].root_hash'),
@@ -88,6 +141,20 @@ const syncOrganizationAudit = async (organization) => {
         table: null,
         onchainConfirmationTimeStamp: _.get(rootHistory, '[0].timestamp'),
       });
+
+      // Destroy existing records for this singleton
+      // On a fresh db this does nothing, but when the audit table
+      // is reset this will ensure that this organizations regsitry data is
+      // cleaned up on both the local db and mirror db and ready to resync
+      await Promise.all(
+        Object.keys(ModelKeys).map(async (modelKey) => {
+          ModelKeys[modelKey].destroy({
+            where: {
+              orgUid: organization.orgUid,
+            },
+          });
+        }),
+      );
 
       return;
     }
@@ -127,12 +194,19 @@ const syncOrganizationAudit = async (organization) => {
         diff.type === 'INSERT',
     );
 
-    await Promise.all(
-      kvDiff.map(async (diff) => {
+    // Process any deletes in the kv diff first to ensure correct processing order
+    kvDiff.sort((a, b) => {
+      const typeOrder = { DELETE: 0, INSERT: 1 };
+      return typeOrder[a.type] - typeOrder[b.type];
+    });
+
+    const updateTransaction = async (transaction) => {
+      for (const diff of kvDiff) {
         const key = decodeHex(diff.key);
         const modelKey = key.split('|')[0];
+
         if (!['comment', 'author'].includes(key)) {
-          Audit.create({
+          const auditData = {
             orgUid: organization.orgUid,
             registryId: organization.registryId,
             rootHash: root2.root_hash,
@@ -150,10 +224,44 @@ const syncOrganizationAudit = async (organization) => {
               'author',
               '',
             ),
-          });
+          };
+
+          if (modelKey) {
+            const record = JSON.parse(decodeHex(diff.value));
+
+            if (diff.type === 'INSERT') {
+              const primaryKeyValue =
+                record[ModelKeys[modelKey].primaryKeyAttributes[0]];
+
+              logger.trace(`INSERTING: ${modelKey} - ${primaryKeyValue}`);
+              await ModelKeys[modelKey].upsert(record, { transaction });
+            } else if (diff.type === 'DELETE') {
+              logger.trace(
+                `DELETING: ${modelKey} - ${
+                  record[ModelKeys[modelKey].primaryKeyAttributes[0]]
+                }`,
+              );
+              await ModelKeys[modelKey].destroy({
+                where: {
+                  [ModelKeys[modelKey].primaryKeyAttributes[0]]:
+                    record[ModelKeys[modelKey].primaryKeyAttributes[0]],
+                },
+                transaction,
+              });
+            }
+          }
+
+          // Create the Audit record
+          await Audit.create(auditData, { transaction });
+          await Organization.update(
+            { registryHash: root2.root_hash },
+            { where: { orgUid: organization.orgUid }, transaction },
+          );
         }
-      }),
-    );
+      }
+    };
+
+    return createTransaction(updateTransaction);
   } catch (error) {
     logger.error('Error syncing org audit', error);
   }

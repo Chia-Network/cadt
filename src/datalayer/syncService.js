@@ -11,8 +11,8 @@ import * as simulator from './simulator';
 const POLLING_INTERVAL = 5000;
 const frames = ['-', '\\', '|', '/'];
 
-logger.info('Start Datalayer Update Polling');
 const startDataLayerUpdatePolling = async () => {
+  logger.info('Start Datalayer Update Polling');
   const updateStoreInfo = await dataLayerWasUpdated();
   if (updateStoreInfo.length) {
     await Promise.all(
@@ -240,7 +240,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
       return getSubscribedStoreData(storeId, retry + 1);
     } else {
       logger.debug(
-        `Store Exists and is confirmed, proceededing to get data ${storeId}`,
+        `Store Exists and is confirmed, proceeding to get data ${storeId}`,
       );
     }
   }

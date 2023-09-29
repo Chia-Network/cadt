@@ -135,14 +135,7 @@ class Project extends Model {
 
   static async destroy(values, options) {
     safeMirrorDbHandler(() => ProjectMirror.destroy(values, options));
-
-    const record = await super.findOne(values.where);
-
-    if (record) {
-      const { orgUid } = record.dataValues;
-      Project.changes.next(['projects', orgUid]);
-    }
-
+    Project.changes.next(['projects']);
     return super.destroy(values, options);
   }
 

@@ -1,6 +1,5 @@
 import { ToadScheduler } from 'toad-scheduler';
 
-import syncDataLayer from './sync-datalayer';
 import syncDefaultOrganizations from './sync-default-organizations';
 import syncPickLists from './sync-picklists';
 import syncAudit from './sync-audit-table';
@@ -20,7 +19,6 @@ const start = () => {
   // add default jobs
   const defaultJobs = [
     syncGovernanceBody,
-    syncDataLayer,
     syncDefaultOrganizations,
     syncPickLists,
     syncAudit,

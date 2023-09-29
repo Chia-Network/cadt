@@ -34,6 +34,7 @@
     "@babel/eslint-parser": "^7.22.9",
     "@chia-carbon/core-registry-config": "^1.0.2",
     "@chia-carbon/core-registry-logger": "^1.0.11",
+    "async-waterfall": "^0.1.5",
     "body-parser": "^1.20.2",
     "chia-root-resolver": "^1.0.0",
     "cli-spinner": "^0.2.10",
