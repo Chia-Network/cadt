@@ -1,3 +1,15 @@
+## [1.6.12](https://github.com/Chia-Network/cadt/compare/1.6.11...1.6.12) (2023-09-29)
+
+
+### Features
+
+* add healthcheck ([7b3cc87](https://github.com/Chia-Network/cadt/commit/7b3cc87d447c689ef8f5c22f6f87c6d79c81f706))
+* add onlyTokenizedProjects filter ([0592f97](https://github.com/Chia-Network/cadt/commit/0592f972201b8b7deb5242869b25c20d43e13474))
+* add standard success status to some responses ([c7402c6](https://github.com/Chia-Network/cadt/commit/c7402c66135cd041c4e3263508d39f9af38710e2))
+* improve standard error msg ([27ad530](https://github.com/Chia-Network/cadt/commit/27ad530ac5d737b14afb39cd227c8433a3090910))
+
+
+
 ## [1.6.11](https://github.com/Chia-Network/cadt/compare/1.6.8...1.6.11) (2023-09-15)
 
 
