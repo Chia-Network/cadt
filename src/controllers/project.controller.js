@@ -126,6 +126,7 @@ export const findAll = async (req, res) => {
       projectIds,
       filter,
       order,
+      onlyMarketplaceProjects,
     } = req.query;
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
@@ -206,6 +207,18 @@ export const findAll = async (req, res) => {
 
       where.warehouseProjectId = {
         [Sequelize.Op.in]: _.flatten([projectIds]),
+      };
+    }
+
+    if (onlyMarketplaceProjects) {
+      if (!where) {
+        where = {};
+      }
+
+      const marketplaceProjectIds = await Project.getTokenizedProjectIds();
+
+      where.warehouseProjectId = {
+        [Sequelize.Op.in]: _.flatten([marketplaceProjectIds]),
       };
     }
 

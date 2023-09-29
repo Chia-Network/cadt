@@ -157,6 +157,27 @@ class Project extends Model {
     return upsertResult;
   }
 
+  static async getTokenizedProjectIds() {
+    const sqlQuery = `
+    SELECT Projects.warehouseProjectId
+    FROM Projects
+    INNER JOIN Issuances ON Projects.warehouseProjectId = Issuances.warehouseProjectId
+    INNER JOIN Units ON Issuances.id = Units.issuanceId
+    WHERE Units.marketplaceIdentifier IS NOT NULL AND Units.marketplaceIdentifier != '';
+  `;
+
+    try {
+      const results = await sequelize.query(sqlQuery, {
+        type: sequelize.QueryTypes.SELECT,
+      });
+      return results.map((row) => row.warehouseProjectId);
+    } catch (error) {
+      // Handle errors
+      console.error(error);
+      throw error;
+    }
+  }
+
   static async fts(searchStr, orgUid, pagination, columns = []) {
     const dialect = sequelize.getDialect();
 
