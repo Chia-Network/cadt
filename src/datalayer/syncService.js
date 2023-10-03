@@ -28,6 +28,12 @@ const startDataLayerUpdatePolling = async () => {
           store.storeId,
           store.rootHash,
         );
+
+        console.log('UPDATE STORE', store.storeId, store.rootHash);
+        await Organization.update(
+          { registryHash: store.rootHash },
+          { where: { registryId: store.storeId } },
+        );
       }),
     );
   }
@@ -45,11 +51,6 @@ const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
   if (!_.get(storeData, 'keys_values', []).length) {
     return;
   }
-
-  await Organization.update(
-    { registryHash: rootHash },
-    { where: { registryId: storeId } },
-  );
 
   const organizationToTruncate = await Organization.findOne({
     attributes: ['orgUid'],

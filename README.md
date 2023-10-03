@@ -4,7 +4,7 @@
 
 This project was formerly known as the Climate Warehouse and you may see this term used interchangeably with CADT. 
 
-*Note that breaking changes are introduced in version 1.3.0 and those with older installs are encourage to uninstall and reinstall the CADT software.  Please see the [release notes](https://github.com/Chia-Network/climate-warehouse/releases/tag/1.2.29) for more details.*
+*Pagination is now strongly recommended on the units, projects, and issuances [API endpoints](docs/cadt_rpc_api.md) and will be mandatory in the future. Please adjust your API calls accordingly.*
 
 ## User Guide
 
@@ -114,7 +114,9 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **IS_GOVERNANCE_BODY**: "True" or "false" toggle to enable/disable mode for this instance being a governing body.
   * **DEFAULT_FEE**: [Fee](https://docs.chia.net/mempool/) for each transaction on the Chia blockchain in mojos.  The default is 300000000 mojos (0.0003 XCH) and can be set higher or lower depending on how [busy](https://dashboard.chia.net/d/46EAA05E/mempool-transactions-and-fees?orgId=1) the Chia network is.  If a fee is set very low, it may cause a delay in transaction processing.  
   * **DEFAULT_COIN_AMOUNT**: Units are mojo.  Each DataLayer transaction needs a coin amount and the default is 300000000 mojo.  
+  * **CERTIFICATE_FOLDER_PATH**: If using a custom path for the Chia Blockchain certificates folder, enter the path here to allow CADT to find the certificates and authenticate to the Chia RPC.  CADT assumes the folder structure within the directory specified matches the default Chia SSL directory of `$CHIA_ROOT/config/ssl/`.
   * **DATALAYER_FILE_SERVER_URL**: Publicly available Chia DataLayer HTTP URL and port, including schema (http:// or https://).  If serving DataLayer files from S3, this would be the public URL of the S3 bucket.  Port can be omitted if using standard ports for http or https requests. 
+  * **AUTO_SUBSCRIBE_FILESTORE**: Subscribing to the filestore for any organization is optional. To automatically subscribe and sync the filestore to every organization you subscribe to, set this to `true`.
   * **TASKS**: Section for configuring sync intervals
     * **AUDIT_SYNC_TASK_INTERVAL**:  Default 30
     * **DATAMODEL_SYNC_TASK_INTERVAL**:  Default 60
