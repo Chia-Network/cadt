@@ -32,7 +32,7 @@ const getBaseOptions = () => {
     method: 'POST',
     cert: fs.readFileSync(certFile),
     key: fs.readFileSync(keyFile),
-    timeout: 300000,
+    timeout: 1_800_000,
   };
   return baseOptions;
 };

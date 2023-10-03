@@ -3,81 +3,83 @@
 This page lists commands and examples from the Climate Warehouse RPC API.
 
 Please also see the following related documents:
-  * [CADT installation/configuration guide](/README.md)
-  * [Chia Data Layer CLI](https://docs.chia.net/datalayer-cli) reference
-  * [Chia Data Layer RPC API](https://docs.chia.net/datalayer-rpc) reference
 
-The CADT RPC API is exposed by default on port 31310. This document will give examples to access the RPC API using `http://localhost:31310/v1`.  
+- [CADT installation/configuration guide](/README.md)
+- [Chia Data Layer CLI](https://docs.chia.net/datalayer-cli) reference
+- [Chia Data Layer RPC API](https://docs.chia.net/datalayer-rpc) reference
 
-If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.  
+The CADT RPC API is exposed by default on port 31310. This document will give examples to access the RPC API using `http://localhost:31310/v1`.
+
+If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.
 
 ## Commands
 
-* [`organizations`](#organizations)
-  * [GET Examples](#get-examples)
-    * [List all subscribed organizations](#list-all-subscribed-organizations)
-  * [POST Examples](#post-examples)
-    * [Create an organization](#create-an-organization)
-  * [PUT Examples](#put-examples)
-    * [Subscribe to an organization](#subscribe-to-an-organization)
-* [`projects`](#projects)
-  * [GET Examples](#get-examples-1)
-    * [Show all subscribed projects](#show-all-subscribed-projects)
-    * [List projects by warehouseprojectid](#list-projects-by-warehouseprojectid)
-    * [List projects by orguid](#list-projects-by-orguid)
-    * [Search for projects containing the keyword "forestry"](#search-for-projects-containing-the-keyword-forestry)
-    * [List all projects, with paging](#list-all-projects-with-paging)
-    * [List projects by orguid, with paging](#list-projects-by-orguid-with-paging)
-    * [Search for projects containing the keyword "gold", with paging](#search-for-projects-containing-the-keyword-gold-with-paging)
-    * [List all projects and save the results to an xlsx file](#list-all-projects-and-save-the-results-to-an-xlsx-file)
-    * [Show only the requested columns](#show-only-the-requested-columns)
-  * [POST Examples](#post-examples-1)
-    * [Stage a new project with the minimum required fields](#stage-a-new-project-with-the-minimum-required-fields)
-    * [Stage a new project from a csv file](#stage-a-new-project-from-a-csv-file)
-  * [PUT Examples](#put-examples-1)
-    * [Update a pre-existing project using only the required parameters](#update-a-pre-existing-project-using-only-the-required-parameters)
-    * [Update a pre-existing project from an xlsx file](#update-a-pre-existing-project-from-an-xlsx-file)
-  * [DELETE Examples](#delete-examples)
-    * [Delete a project](#delete-a-project)
-* [`units`](#units)
-  * [GET Examples](#get-examples-2)
-    * [List all subscribed units](#list-all-subscribed-units)
-    * [Search for units containing the keyword "certification"](#search-for-units-containing-the-keyword-certification)
-    * [List units by orguid](#list-units-by-orguid)
-    * [Show all units, with paging](#show-all-units-with-paging)
-    * [List units by orguid, with paging](#list-units-by-orguid-with-paging)
-    * [List all units and save the results to an xlsx file](#list-all-units-and-save-the-results-to-an-xlsx-file)
-    * [List units using all available query string options](#list-units-using-all-available-query-string-options)
-    * [Show only specified columns from all units, with paging](#show-only-specified-columns-from-all-units-with-paging)
-  * [POST Examples](#post-examples-2)
-    * [Create a new unit using only the required fields](#create-a-new-unit-using-only-the-required-fields)
-    * [Create a new unit with pre-existing issuance and labels](#create-a-new-unit-with-pre-existing-issuance-and-labels)
-    * [Split units in four](#split-units-in-four)
-  * [PUT Examples](#put-examples-2)
-    * [Update a pre-existing unit using only the required parameters](#update-a-pre-existing-unit-using-only-the-required-parameters)
-    * [Update a pre-existing unit using an xlsx file](#update-a-pre-existing-unit-using-an-xlsx-file)
-  * [DELETE Examples](#delete-examples-1)
-    * [Delete a unit](#delete-a-unit)
-* [`issuances`](#issuances)
-  * [GET Examples](#get-examples-3)
-    * [List all issuances from subscribed projects](#list-all-issuances-from-subscribed-projects)
-* [`labels`](#labels)
-  * [GET Examples](#get-examples-4)
-    * [List all labels from subscribed projects](#list-all-labels-from-subscribed-projects)
-* [`staging`](#staging)
-  * [GET Examples](#get-examples-5)
-    * [List all projects and units in STAGING](#list-all-projects-and-units-in-staging)
-    * [List all units in STAGING, with paging](#list-all-units-in-staging-with-paging)
-  * [POST Examples](#post-examples-3)
-    * [Commit all projects and units in STAGING](#commit-all-projects-and-units-in-staging)
-    * [Retry committing a single project, using its uuid](#retry-committing-a-single-project-using-its-uuid)
-  * [DELETE Examples](#delete-examples-2)
-    * [Delete all projects and units in STAGING](#delete-all-projects-and-units-in-staging)
-    * [Delete a specific project in STAGING](#delete-a-specific-project-in-staging)
-    * [Delete a specific unit in STAGING](#delete-a-specific-unit-in-staging)
-* [`audit`](#audit)
-  * [GET Examples](#get-examples-6)
-    * [Show the complete history of an organization](#show-the-complete-history-of-an-organization)
+- [`organizations`](#organizations)
+  - [GET Examples](#get-examples)
+    - [List all subscribed organizations](#list-all-subscribed-organizations)
+  - [POST Examples](#post-examples)
+    - [Create an organization](#create-an-organization)
+  - [PUT Examples](#put-examples)
+    - [Subscribe to an organization](#subscribe-to-an-organization)
+- [`projects`](#projects)
+  - [GET Examples](#get-examples-1)
+    - [Show all subscribed projects](#show-all-subscribed-projects)
+    - [List projects by warehouseprojectid](#list-projects-by-warehouseprojectid)
+    - [List projects by orguid](#list-projects-by-orguid)
+    - [Search for projects containing the keyword "forestry"](#search-for-projects-containing-the-keyword-forestry)
+    - [List all projects, with paging](#list-all-projects-with-paging)
+    - [List projects by orguid, with paging](#list-projects-by-orguid-with-paging)
+    - [Search for projects containing the keyword "gold", with paging](#search-for-projects-containing-the-keyword-gold-with-paging)
+    - [Show only projects that have associated units with marketplace identifiers](#show-only-projects-that-have-associated-units-with-marketplace-identifiers)
+    - [List all projects and save the results to an xlsx file](#list-all-projects-and-save-the-results-to-an-xlsx-file)
+    - [Show only the requested columns](#show-only-the-requested-columns)
+  - [POST Examples](#post-examples-1)
+    - [Stage a new project with the minimum required fields](#stage-a-new-project-with-the-minimum-required-fields)
+    - [Stage a new project from a csv file](#stage-a-new-project-from-a-csv-file)
+  - [PUT Examples](#put-examples-1)
+    - [Update a pre-existing project using only the required parameters](#update-a-pre-existing-project-using-only-the-required-parameters)
+    - [Update a pre-existing project from an xlsx file](#update-a-pre-existing-project-from-an-xlsx-file)
+  - [DELETE Examples](#delete-examples)
+    - [Delete a project](#delete-a-project)
+- [`units`](#units)
+  - [GET Examples](#get-examples-2)
+    - [List all subscribed units](#list-all-subscribed-units)
+    - [Search for units containing the keyword "certification"](#search-for-units-containing-the-keyword-certification)
+    - [List units by orguid](#list-units-by-orguid)
+    - [Show all units, with paging](#show-all-units-with-paging)
+    - [List units by orguid, with paging](#list-units-by-orguid-with-paging)
+    - [List all units and save the results to an xlsx file](#list-all-units-and-save-the-results-to-an-xlsx-file)
+    - [List units using all available query string options](#list-units-using-all-available-query-string-options)
+    - [Show only specified columns from all units, with paging](#show-only-specified-columns-from-all-units-with-paging)
+  - [POST Examples](#post-examples-2)
+    - [Create a new unit using only the required fields](#create-a-new-unit-using-only-the-required-fields)
+    - [Create a new unit with pre-existing issuance and labels](#create-a-new-unit-with-pre-existing-issuance-and-labels)
+    - [Split units in four](#split-units-in-four)
+  - [PUT Examples](#put-examples-2)
+    - [Update a pre-existing unit using only the required parameters](#update-a-pre-existing-unit-using-only-the-required-parameters)
+    - [Update a pre-existing unit using an xlsx file](#update-a-pre-existing-unit-using-an-xlsx-file)
+  - [DELETE Examples](#delete-examples-1)
+    - [Delete a unit](#delete-a-unit)
+- [`issuances`](#issuances)
+  - [GET Examples](#get-examples-3)
+    - [List all issuances from subscribed projects](#list-all-issuances-from-subscribed-projects)
+- [`labels`](#labels)
+  - [GET Examples](#get-examples-4)
+    - [List all labels from subscribed projects](#list-all-labels-from-subscribed-projects)
+- [`staging`](#staging)
+  - [GET Examples](#get-examples-5)
+    - [List all projects and units in STAGING](#list-all-projects-and-units-in-staging)
+    - [List all units in STAGING, with paging](#list-all-units-in-staging-with-paging)
+  - [POST Examples](#post-examples-3)
+    - [Commit all projects and units in STAGING](#commit-all-projects-and-units-in-staging)
+    - [Retry committing a single project, using its uuid](#retry-committing-a-single-project-using-its-uuid)
+  - [DELETE Examples](#delete-examples-2)
+    - [Delete all projects and units in STAGING](#delete-all-projects-and-units-in-staging)
+    - [Delete a specific project in STAGING](#delete-a-specific-project-in-staging)
+    - [Delete a specific unit in STAGING](#delete-a-specific-unit-in-staging)
+- [`audit`](#audit)
+  - [GET Examples](#get-examples-6)
+    - [Show the complete history of an organization](#show-the-complete-history-of-an-organization)
 
 ---
 
@@ -108,14 +110,15 @@ curl --location --request GET 'localhost:31310/v1/organizations' --header 'Conte
     }
 }
 ```
------
+
+---
 
 POST Options:
 
-| Key   | Type   | Description |
-|:-----:|:------:|:------------|
-| name  | String | (Required) Name of the organization to be created |
-| icon  | String | (Required) URL of the icon to be used for this organization |
+| Key  |  Type  | Description                                                 |
+| :--: | :----: | :---------------------------------------------------------- |
+| name | String | (Required) Name of the organization to be created           |
+| icon | String | (Required) URL of the icon to be used for this organization |
 
 ### POST Examples
 
@@ -136,7 +139,8 @@ curl --location -g --request POST 'localhost:31310/v1/organizations/' \
   "orgId":"d84ab5fa679726e988b31ecc8ecff0ba8d001e9d65f1529d794fa39d32a5455e"
 }
 ```
------
+
+---
 
 PUT Options: None
 
@@ -151,7 +155,8 @@ curl --location -g --request PUT 'localhost:31310/v1/organizations/'
 // Response
 {"message":"Importing and subscribing organization this can take a few mins."}
 ```
------
+
+---
 
 ## `projects`
 
@@ -159,22 +164,22 @@ Functionality: List subscribed projects, as specified by the appropriate URL opt
 
 Query string options:
 
-| Key                | Type    | Description |
-|:------------------:|:-------:|:------------|
-| None (default)     | N/A     | Display all subscribed projects |
-| warehouseProjectId | String  | Only display subscribed projects matching this warehouseProjectId |
-| orgUid             | String  | Only display subscribed projects matching this orgUid |
-| search             | String  | Display all subscribed projects that contain the specified query (case insensitive) |
-| columns            | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns
-| limit              | Number  | Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
-| page               | Number  | Only display results from this page number (must be used with limit, eg `?page=5&limit=2`) |
-| xls                | Boolean | If `true`, save the results to xls (Excel spreadsheet) format |
+|        Key         |  Type   | Description                                                                                            |
+| :----------------: | :-----: | :----------------------------------------------------------------------------------------------------- |
+|   None (default)   |   N/A   | Display all subscribed projects                                                                        |
+| warehouseProjectId | String  | Only display subscribed projects matching this warehouseProjectId                                      |
+|       orgUid       | String  | Only display subscribed projects matching this orgUid                                                  |
+|       search       | String  | Display all subscribed projects that contain the specified query (case insensitive)                    |
+|      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns          |
+|       limit        | Number  | Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+|        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                          |
 
 ### GET Examples
 
 #### Show all subscribed projects
 
-* In this example, no query string is used. This is the default, which lists all projects
+- In this example, no query string is used. This is the default, which lists all projects
 
 ```json
 // Request
@@ -290,7 +295,7 @@ curl --location --request GET 'localhost:31310/v1/projects' --header 'Content-Ty
         "createdAt":"2022-03-11T05:17:55.427Z",
         "updatedAt":"2022-03-11T05:17:55.427Z"
     }]
-    
+
 },{
     "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
     "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
@@ -325,7 +330,8 @@ curl --location --request GET 'localhost:31310/v1/projects' --header 'Content-Ty
     "estimations":[]
 }]
 ```
------
+
+---
 
 #### List projects by `warehouseProjectId`
 
@@ -344,7 +350,8 @@ curl --location --request GET 'localhost:31310/v1/projects?warehouseProjectId=51
     ...
 }
 ```
------
+
+---
 
 #### List projects by `orgUid`
 
@@ -372,7 +379,8 @@ curl --location --request GET 'localhost:31310/v1/projects?orgUid=77641db780adc6
 }]
 
 ```
------
+
+---
 
 #### Search for projects containing the keyword "forestry"
 
@@ -398,7 +406,8 @@ curl --location --request GET 'localhost:31310/v1/projects?search=forestry' --he
     ...
 }
 ```
------
+
+---
 
 #### List all projects, with paging
 
@@ -421,7 +430,8 @@ curl --location --request GET 'localhost:31310/v1/projects?page=2&limit=1' --hea
     }]
 }
 ```
------
+
+---
 
 #### List projects by `orgUid`, with paging
 
@@ -444,7 +454,8 @@ curl --location --request GET 'localhost:31310/v1/projects?page=2&limit=1&orgUid
     }]
 }
 ```
------
+
+---
 
 #### Search for projects containing the keyword "gold", with paging
 
@@ -468,7 +479,8 @@ curl --location --request GET 'localhost:31310/v1/projects?page=1&limit=1&search
   }]
 }
 ```
------
+
+---
 
 #### List all projects and save the results to an xlsx file
 
@@ -479,7 +491,42 @@ curl --location --request GET 'localhost:31310/v1/projects?xls=true' --header 'C
 // Response
 The results are saved to a file in the current directory called `cw_query.xlsx`.
 ```
------
+
+---
+
+#### Show only projects that have associated units with marketplace identifiers
+
+```json
+// Request
+curl --location --request GET 'http://localhost:31310/v1/projects?page=1&limit=5&onlyMarketplaceProjects' --header 'Content-Type: application/json'
+
+// Response
+{
+  "page":1,
+  "pageCount":1,
+  "data":[{
+    "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+    "currentRegistry":"Climate Action Reserve (CAR)",
+    "registryOfOrigin":"Sweden National Registry",
+    "originProjectId":"123",
+    "program":null,
+    "projectName":"Stop Desertification",
+    "marketplaceIdentifier": "0x12ab"
+  },{
+    "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+    "currentRegistry":"Gold Standard",
+    "registryOfOrigin":"Gold Standard",
+    "originProjectId":"555",
+    "program":null,
+    "projectName":"Stop Deforestation",
+    "marketplaceIdentifier": "0x12ab"
+  }]
+}
+```
+
+---
+
+---
 
 #### Show only the requested columns
 
@@ -508,7 +555,8 @@ curl --location --request GET 'http://localhost:31310/v1/projects?page=1&limit=5
   }]
 }
 ```
------
+
+---
 
 ### POST Examples
 
@@ -536,12 +584,13 @@ curl --location --request POST \
 // Response
 {"message":"Project staged successfully"}
 ```
------
+
+---
 
 #### Stage a new project from a csv file
 
-* For this example, we'll use a file named `createProject.csv`, created from [this example](#list-all-projects-and-save-the-results-to-an-xlsx-file "List all projects and save the results to an xlsx file") and converted to csv format
-* The contents of the csv file used in this example are as follows:
+- For this example, we'll use a file named `createProject.csv`, created from [this example](#list-all-projects-and-save-the-results-to-an-xlsx-file 'List all projects and save the results to an xlsx file') and converted to csv format
+- The contents of the csv file used in this example are as follows:
 
 ```
 warehouseProjectId,orgUid,currentRegistry,projectId,originProjectId,registryOfOrigin,program,projectName,projectLink,projectDeveloper,sector,projectType,projectTags,coveredByNDC,ndcInformation,projectStatus,projectStatusDate,unitMetric,methodology,validationBody,validationDate
@@ -556,7 +605,8 @@ curl --location --request POST 'http://localhost:31310/v1/projects/batch' --form
 // Response
 {"message":"CSV processing complete, your records have been added to the staging table."}
 ```
------
+
+---
 
 ### PUT Examples
 
@@ -587,11 +637,12 @@ curl --location -g --request PUT 'http://localhost:31310/v1/projects' \
 // Response
 {"message":"Project update added to staging"}
 ```
------
+
+---
 
 #### Update a pre-existing project from an xlsx file
 
-* For this example, we'll use a file named `cw_query.xlsx`, created from [this example](#list-all-projects-and-save-the-results-to-an-xlsx-file "List all projects and save the results to an xlsx file") and modified with updates
+- For this example, we'll use a file named `cw_query.xlsx`, created from [this example](#list-all-projects-and-save-the-results-to-an-xlsx-file 'List all projects and save the results to an xlsx file') and modified with updates
 
 ```json
 // Request
@@ -600,7 +651,8 @@ curl --location -g --request PUT 'http://localhost:31310/v1/projects/xlsx' --for
 // Response
 {"message":"Updates from xlsx added to staging"}
 ```
------
+
+---
 
 ### DELETE Examples
 
@@ -617,7 +669,8 @@ curl --location -g --request DELETE 'http://localhost:31310/v1/projects' \
 // Response
 {"message":"Project deleted successfully"}
 ```
------
+
+---
 
 ## `units`
 
@@ -625,16 +678,15 @@ Functionality: List subscribed units, as specified by the appropriate URL option
 
 Query string options:
 
-| Key                | Type    | Description |
-|:------------------:|:-------:|:------------|
-| None (default)     | N/A     | Display all subscribed units |
-| orgUid             | String  | Only display subscribed units matching this orgUid |
-| search             | String  | Display all subscribed units that contain the specified query (case insensitive) |
-| columns            | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns
-| limit              | Number  | Limit the number of subscribed units to be displayed (must be used with page, eg `?page=5&limit=2`) |
-| page               | Number  | Only display results from this page number (must be used with limit, eg `?page=5&limit=2`) |
-| xls                | Boolean | If `true`, save the results to xls (Excel spreadsheet) format |
-
+|      Key       |  Type   | Description                                                                                         |
+| :------------: | :-----: | :-------------------------------------------------------------------------------------------------- |
+| None (default) |   N/A   | Display all subscribed units                                                                        |
+|     orgUid     | String  | Only display subscribed units matching this orgUid                                                  |
+|     search     | String  | Display all subscribed units that contain the specified query (case insensitive)                    |
+|    columns     | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns       |
+|     limit      | Number  | Limit the number of subscribed units to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|      page      | Number  | Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)          |
+|      xls       | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                       |
 
 ### GET Examples
 
@@ -705,6 +757,160 @@ curl --location -g --request GET 'localhost:31310/v1/units' --header 'Content-Ty
   "issuance":null
 }]
 ```
+
+---
+
+#### Include project information in returned units
+
+```json
+// Request
+curl --location -g --request GET 'localhost:31310/v1/units?includeProjectInfoInSearch=true'
+
+// Response
+[{
+  "unitBlockStart":"A345",
+  "unitBlockEnd":"B567",
+  "unitCount":222,
+  "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+  "issuanceId":null,
+  "projectLocationId":"789",
+  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+  "unitOwner":"Sample Owner",
+  "countryJurisdictionOfOwner":"Belize",
+  "inCountryJurisdictionOfOwner":null,
+  "serialNumberBlock":"A345-B567",
+  "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+  "vintageYear":2014,
+  "unitType":"Reduction - technical",
+  "marketplace":null,
+  "marketplaceLink":null,
+  "marketplaceIdentifier":null,
+  "unitTags":null,
+  "unitStatus":"Buffer",
+  "unitStatusReason":null,
+  "unitRegistryLink":"sampleurl.com",
+  "correspondingAdjustmentDeclaration":"Unknown",
+  "correspondingAdjustmentStatus":"Pending",
+  "timeStaged":1647141471,
+  "createdAt":"2022-03-13T05:29:39.647Z",
+  "updatedAt":"2022-03-13T05:29:39.647Z",
+  "labels":[],
+  "issuance":null,
+  "project": {
+    "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+    "currentRegistry":"Climate Action Reserve (CAR)",
+    "projectId":"789",
+    "originProjectId":"123",
+    "registryOfOrigin":"Sweden National Registry",
+    "program":null,
+    "projectName":"Stop Desertification",
+    "projectLink":"desertificationtest.com",
+    "projectDeveloper":"Dev 2",
+    "sector":"Fugitive emissions – from fuels (solid, oil and gas)",
+    "projectType":"Coal Mine Methane",
+    "projectTags":null,
+    "coveredByNDC":"Outside NDC",
+    "ndcInformation":null,
+    "projectStatus":"Registered",
+    "projectStatusDate":"2022-02-02T00:00:00.000Z",
+    "unitMetric":"tCO2e",
+    "methodology":"Substitution of CO2 from fossil or mineral origin by CO2 from biogenic residual sources in the production of inorganic compounds --- Version 3.0",
+    "validationBody":null,
+    "validationDate":null,
+    "timeStaged":1646975765,
+    "createdAt":"2022-03-11T05:17:55.427Z",
+    "updatedAt":"2022-03-11T05:17:55.427Z",
+    "projectLocations":[{
+        "id":"8182100d-7794-4df7-b3b3-758391d13011",
+        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+        "country":"Latvia",
+        "inCountryRegion":null,
+        "geographicIdentifier":"Sample Identifier",
+        "timeStaged":null,
+        "createdAt":"2022-03-11T05:17:55.425Z",
+        "updatedAt":"2022-03-11T05:17:55.425Z"
+    }],
+    "labels":[{
+        "id":"dcacd68e-1cfb-4f06-9798-efa0aacda42c",
+        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+        "label":"Sample Label",
+        "labelType":"Certification",
+        "creditingPeriodStartDate":"2014-03-29T00:00:00.000Z",
+        "creditingPeriodEndDate":"2022-03-30T00:00:00.000Z",
+        "validityPeriodStartDate":"2017-03-08T00:00:00.000Z",
+        "validityPeriodEndDate":"2025-03-19T00:00:00.000Z",
+        "unitQuantity":40,
+        "labelLink":"http://samplelabel.net",
+        "timeStaged":null,
+        "createdAt":"2022-03-11T05:17:55.426Z",
+        "updatedAt":"2022-03-11T05:17:55.426Z"
+    }],
+    "issuances":[{
+        "id":"d9f58b08-af25-461c-88eb-403bb02b135e",
+        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+        "startDate":"2022-01-02T00:00:00.000Z",
+        "endDate":"2022-02-11T00:00:00.000Z",
+        "verificationApproach":"Sample Approach",
+        "verificationReportDate":"2022-03-16T00:00:00.000Z",
+        "verificationBody":"Sample Body",
+        "timeStaged":null,
+        "createdAt":"2022-03-11T05:17:55.426Z",
+        "updatedAt":"2022-03-11T05:17:55.426Z"
+    }],
+    "coBenefits":[{
+        "id":"73cfbe9c-8cea-4aca-94d8-f1641e686787",
+        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+        "cobenefit":"Sample Benefit",
+        "timeStaged":null,
+        "createdAt":"2022-03-11T05:17:55.424Z",
+        "updatedAt":"2022-03-11T05:17:55.424Z"
+    }],
+    "relatedProjects":[{
+        "id":"e880047e-cdf4-45bb-a9df-e706fa427713",
+        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+        "relatedProjectId":"333",
+        "relationshipType":"Sample",
+        "registry":null,
+        "timeStaged":null,
+        "createdAt":"2022-03-11T05:17:55.426Z",
+        "updatedAt":"2022-03-11T05:17:55.426Z"
+    }],
+    "projectRatings":[{
+        "id":"d31c3c75-b944-498d-9557-315f9005f478",
+        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+        "ratingType":"CCQI",
+        "ratingRangeHighest":"100",
+        "ratingRangeLowest":"0",
+        "rating":"97",
+        "ratingLink":"testlink.com",
+        "timeStaged":null,
+        "createdAt":"2022-03-11T05:17:55.427Z",
+        "updatedAt":"2022-03-11T05:17:55.427Z"
+    }],
+    "estimations":[{
+        "id":"c73fb4e7-3bd0-4449-8a57-6137b7c95a1f",
+        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+        "creditingPeriodStart":"2022-02-04T00:00:00.000Z",
+        "creditingPeriodEnd":"2022-03-04T00:00:00.000Z",
+        "unitCount":100,
+        "timeStaged":null,
+        "createdAt":"2022-03-11T05:17:55.427Z",
+        "updatedAt":"2022-03-11T05:17:55.427Z"
+    }]
+  }
+}]
+```
+
+````
+
 -----
 
 #### Search for units containing the keyword "certification"
@@ -717,8 +923,9 @@ curl --location -g --request GET 'localhost:31310/v1/units?search=Certification'
 
 // Response
 
-```
------
+````
+
+---
 
 #### List units by `orgUid`
 
@@ -748,7 +955,8 @@ curl --location -g --request GET \
 }]
 
 ```
------
+
+---
 
 #### Show all units, with paging
 
@@ -794,7 +1002,8 @@ curl --location -g --request GET \
   }
 ]}
 ```
------
+
+---
 
 #### List units by `orgUid`, with paging
 
@@ -840,7 +1049,8 @@ curl --location -g --request GET \
   }]
 }
 ```
------
+
+---
 
 #### List all units and save the results to an xlsx file
 
@@ -851,7 +1061,8 @@ curl --location --request GET 'localhost:31310/v1/units?xls=true' --header 'Cont
 // Response
 The results are saved to a file in the current directory called `cw_query.xlsx`.
 ```
------
+
+---
 
 #### List units using all available query string options
 
@@ -892,7 +1103,8 @@ curl --location -g --request GET 'localhost:31310/v1/units?page=1&limit=10&searc
   "issuance":null
 }
 ```
------
+
+---
 
 #### Show only specified columns from all units, with paging
 
@@ -915,7 +1127,8 @@ curl --location -g --request GET \
   }]
 }
 ```
------
+
+---
 
 ### POST Examples
 
@@ -942,8 +1155,9 @@ curl --location -g --request POST 'localhost:31310/v1/units' \
 // Response
 {"message":"Unit staged successfully"}
 ```
------
-    
+
+---
+
 #### Create a new unit, with pre-existing issuance and labels
 
 This unit will have two labels, one pre-existing (using the "id" and "warehouseProjectId" fields), and one new.
@@ -1010,9 +1224,11 @@ curl --location -g --request POST 'localhost:31310/v1/units' \
 // Response
 {"message":"Unit staged successfully"}
 ```
------
+
+---
 
 #### Split units in four
+
 [todo: This command isn't working yet. See [CW issue 387](https://github.com/Chia-Network/cadt/issues/387) for more info.]
 
 ```json
@@ -1043,13 +1259,14 @@ curl --location -g --request POST 'localhost:31310/units/split' \
 
 // Response
 ```
------
+
+---
 
 ### PUT Examples
 
 #### Update a pre-existing unit using only the required parameters
 
-* Note that `warehouseUnitId` must already exist
+- Note that `warehouseUnitId` must already exist
 
 ```json
 // Request
@@ -1074,11 +1291,12 @@ curl --location -g --request PUT 'localhost:31310/v1/units' \
 {"message":"Unit update added to staging"}
 
 ```
------
+
+---
 
 #### Update a pre-existing unit using an xlsx file
 
-* Note that it's possible to construct an xlsx file for this purpose using [this example](#list-all-units-and-save-the-results-to-an-xlsx-file "List all units and save the results to an xlsx file")
+- Note that it's possible to construct an xlsx file for this purpose using [this example](#list-all-units-and-save-the-results-to-an-xlsx-file 'List all units and save the results to an xlsx file')
 
 ```json
 // Request
@@ -1089,7 +1307,8 @@ curl --location -g --request PUT 'localhost:31310/v1/units/xlsx' \
 {"message":"Updates from xlsx added to staging"}
 
 ```
------
+
+---
 
 ### DELETE Examples
 
@@ -1106,7 +1325,8 @@ curl --location -g --request DELETE 'localhost:31310/v1/units' \
 // Response
 {"message":"Unit deleted successfully"}
 ```
------
+
+---
 
 ## `issuances`
 
@@ -1137,7 +1357,8 @@ curl --location --request GET 'localhost:31310/v1/issuances' --header 'Content-T
   "updatedAt":"2022-03-12T08:58:43.271Z"
 }]
 ```
------
+
+---
 
 ## `labels`
 
@@ -1171,7 +1392,8 @@ curl --location --request GET 'localhost:31310/v1/labels' --header 'Content-Type
   "updatedAt":"2022-03-12T08:58:43.270Z"
 }]
 ```
------
+
+---
 
 ## `staging`
 
@@ -1179,18 +1401,18 @@ Functionality: List, modify, confirm, and cancel projects and units in the `STAG
 
 Options:
 
-| Key                | Type   | Description |
-|:------------------:|:------:|:------------|
-| None (default)     | N/A    | Display all projects and units that are currently in `STAGING` |
-| type               | String | Must be `projects` or `units` |
-| limit              | Number | Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
-| page               | Number | Only display results from this page number (must be used with limit, eg `?page=5&limit=2`) |
+|      Key       |  Type  | Description                                                                                            |
+| :------------: | :----: | :----------------------------------------------------------------------------------------------------- |
+| None (default) |  N/A   | Display all projects and units that are currently in `STAGING`                                         |
+|      type      | String | Must be `projects` or `units`                                                                          |
+|     limit      | Number | Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|      page      | Number | Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
 
 ### GET Examples
 
 #### List all projects and units in `STAGING`
 
-* For this example, there is one project with a `DELETE` action, one project with an `INSERT` action, and one unit with an `INSERT` action:
+- For this example, there is one project with a `DELETE` action, one project with an `INSERT` action, and one unit with an `INSERT` action:
 
 ```json
 // Request
@@ -1303,9 +1525,11 @@ curl --location --request GET 'localhost:31310/v1/staging' --header 'Content-Typ
   }
 }]
 ```
------
+
+---
 
 #### List all units in `STAGING`, with paging
+
 [todo: This call doesn't work yet. see [CW issue 389](https://github.com/Chia-Network/cadt/issues/389) for more info.]
 
 ```json
@@ -1315,15 +1539,17 @@ curl --location --request GET 'localhost:31310/v1/staging?page=1&limit=5&type=un
 
 // Response
 ```
------
+
+---
 
 ### POST Examples
 
 #### Commit all projects and units in `STAGING`
 
-* Note that it is not possible to commit projects or units individually. 
-If you need to commit a single project or unit, 
-then stage and commit it before staging anything new.
+- Note that it is not possible to commit projects or units individually.
+  If you need to commit a single project or unit,
+  then stage and commit it before staging anything new.
+
 ```json
 // Request
 curl --location --request POST \
@@ -1333,7 +1559,8 @@ curl --location --request POST \
 // Response
 {"message":"Staging Table committed to full node"}
 ```
------
+
+---
 
 #### Retry committing a single project, using its `uuid`:
 
@@ -1348,7 +1575,8 @@ curl --location -g --request POST 'localhost:31310/v1/staging/retry' \
 // Response
 {"message":"Staging record re-staged."}
 ```
------
+
+---
 
 ### DELETE Examples
 
@@ -1361,7 +1589,8 @@ curl --location -g --request DELETE 'localhost:31310/v1/staging/clean' \
 // Response
 {"message":"Staging Data Cleaned"}
 ```
------
+
+---
 
 #### Delete a specific project in `STAGING`:
 
@@ -1375,7 +1604,8 @@ curl --location -g --request DELETE 'localhost:31310/v1/staging' \
 // Response
 {"message":"Deleted from stage"}
 ```
------
+
+---
 
 #### Delete a specific unit in `STAGING`:
 
@@ -1389,7 +1619,8 @@ curl --location -g --request DELETE 'localhost:31310/v1/staging' \
 // Response
 {"message":"Deleted from stage"}
 ```
------
+
+---
 
 ## `audit`
 
@@ -1397,9 +1628,9 @@ Functionality: Show the complete history of an organization
 
 Options:
 
-| Key                | Type   | Description |
-|:------------------:|:------:|:------------|
-| orgUid             | String | (Required) Display subscribed projects matching this orgUid |
+|  Key   |  Type  | Description                                                 |
+| :----: | :----: | :---------------------------------------------------------- |
+| orgUid | String | (Required) Display subscribed projects matching this orgUid |
 
 ### GET Examples
 
@@ -1456,4 +1687,5 @@ curl --location --request GET 'localhost:31310/v1/audit?orgUid=77641db780adc6c74
   ...
 }
 ```
------
+
+---

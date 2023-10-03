@@ -19,14 +19,20 @@ const spinner = new Spinner('Waiting for Updates %s');
 spinner.setSpinnerString('|/-\\');
 spinner.setSpinnerDelay(500);
 
+let taskIsRunning = false;
+
 const task = new Task('sync-datalayer', async () => {
   try {
-    await assertDataLayerAvailable();
-    await assertWalletIsSynced();
+    if (!taskIsRunning) {
+      taskIsRunning = true;
+      logger.info('Syncing datalayer data');
+      await assertDataLayerAvailable();
+      await assertWalletIsSynced();
 
-    spinner.stop();
-    spinner.start();
-    datalayer.startDataLayerUpdatePolling();
+      spinner.stop();
+      spinner.start();
+      datalayer.startDataLayerUpdatePolling();
+    }
   } catch (error) {
     logger.error(
       `Retrying in ${
@@ -34,6 +40,8 @@ const task = new Task('sync-datalayer', async () => {
       } seconds`,
       error,
     );
+  } finally {
+    taskIsRunning = false;
   }
 });
 
