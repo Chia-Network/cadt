@@ -1,3 +1,12 @@
+## [1.6.14](https://github.com/Chia-Network/cadt/compare/1.6.13...1.6.14) (2023-10-05)
+
+
+### Features
+
+* improve assetid search ([a1d857e](https://github.com/Chia-Network/cadt/commit/a1d857e6d51db5c4db82bcd73253dd02e7c678d5))
+
+
+
 ## [1.6.13](https://github.com/Chia-Network/cadt/compare/1.6.12...1.6.13) (2023-10-03)
 
 
