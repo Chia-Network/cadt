@@ -117,7 +117,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-
 app.use('/v1', V1Router);
 
 app.use((err, req, res, next) => {
