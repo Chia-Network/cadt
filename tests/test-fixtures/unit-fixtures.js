@@ -42,7 +42,7 @@ export const updateUnit = async (warehouseUnitId, originalRecord) => {
     }
 
     if (typeof updateUnitJson[key] === 'object') {
-      updateUnitJson[key].id = originalRecord[key].id;
+      updateUnitJson[key].id = originalRecord[key]?.id;
     }
   });
 
@@ -69,6 +69,7 @@ export const getUnit = async (warehouseUnitId) => {
 export const checkUnitRecordExists = async (warehouseUnitId) => {
   const record = await Unit.findByPk(warehouseUnitId);
   expect(record).to.be.ok;
+  return record;
 };
 
 export const checkUnitRecordDoesNotExist = async (warehouseUnitId) => {

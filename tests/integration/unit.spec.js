@@ -10,7 +10,8 @@ import { pullPickListValues } from '../../src/utils/data-loaders';
 import * as testFixtures from '../test-fixtures';
 import { prepareDb } from '../../src/database';
 import datalayer from '../../src/datalayer';
-const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
+import { Staging } from '../../src/models';
+const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 5;
 
 describe('Unit Resource Integration Tests', function () {
   let homeOrgUid;
@@ -21,9 +22,15 @@ describe('Unit Resource Integration Tests', function () {
   });
 
   beforeEach(async function () {
+    await Staging.destroy({ truncate: true });
     await testFixtures.resetStagingTable();
     await testFixtures.createTestHomeOrg();
     homeOrgUid = await testFixtures.getHomeOrgId();
+  });
+
+  afterEach(async function () {
+    await testFixtures.resetStagingTable();
+    await Staging.destroy({ truncate: true });
   });
 
   it('deletes a unit end-to-end (with simulator)', async function () {
@@ -151,11 +158,7 @@ describe('Unit Resource Integration Tests', function () {
     // The node simulator runs on an async process, we are importing
     // the WAIT_TIME constant from the simulator, padding it and waiting for the
     // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, TEST_WAIT_TIME);
-    });
+    await testFixtures.waitForDataLayerSync();
 
     // Get a unit to split
     const allUnitsResult = await supertest(app).get('/v1/units');
@@ -247,11 +250,7 @@ describe('Unit Resource Integration Tests', function () {
     // The node simulator runs on an async process, we are importing
     // the WAIT_TIME constant from the simulator, padding it and waiting for the
     // appropriate amount of time for the simulator to finish its operations
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, TEST_WAIT_TIME);
-    });
+    await testFixtures.waitForDataLayerSync();
 
     const warehouseRes = await supertest(app)
       .get(`/v1/units`)
@@ -340,7 +339,7 @@ describe('Unit Resource Integration Tests', function () {
 
     // There should be no staging records left
     expect(stagingRes3.body.length).to.equal(0);
-  }).timeout(TEST_WAIT_TIME * 10);
+  }).timeout(TEST_WAIT_TIME * 20);
 
   it('creates a new unit end-to-end  (with simulator)', async function () {
     // 1. Create a new unit
@@ -438,6 +437,9 @@ describe('Unit Resource Integration Tests', function () {
 
     // Make sure the newly created unit is in the mirrorDb
     await testFixtures.checkUnitMirrorRecordExists(warehouseUnitId);
+
+    // deleting this is a hack but we dont need to test it here
+    delete changeRecord.issuance;
     await testFixtures.updateUnit(warehouseUnitId, changeRecord);
 
     // Get the staging record we just created

@@ -15,6 +15,7 @@ export const CONFIG = () => {
   if (process.env.USE_SIMULATOR) {
     exportedConfig.CADT.USE_SIMULATOR = true;
     exportedConfig.CADT.CHIA_NETWORK = 'testnet';
+    exportedConfig.GENERAL.LOG_LEVEL = 'trace';
   }
   return exportedConfig;
 };

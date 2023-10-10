@@ -122,7 +122,13 @@ class Project extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => ProjectMirror.create(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await ProjectMirror.create(values, mirrorOptions);
+    });
 
     const createResult = await super.create(values, options);
 
@@ -133,14 +139,28 @@ class Project extends Model {
     return createResult;
   }
 
-  static async destroy(values, options) {
-    safeMirrorDbHandler(() => ProjectMirror.destroy(values, options));
+  static async destroy(options) {
+    await safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+
+      await ProjectMirror.destroy(mirrorOptions);
+    });
+
     Project.changes.next(['projects']);
-    return super.destroy(values, options);
+    return super.destroy(options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => ProjectMirror.upsert(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await ProjectMirror.upsert(values, mirrorOptions);
+    });
     const upsertResult = await super.upsert(values, options);
 
     const { orgUid } = values;

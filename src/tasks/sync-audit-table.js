@@ -1,12 +1,12 @@
 import _ from 'lodash';
 
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Organization, Audit, ModelKeys } from '../models';
+import { Organization, Audit, ModelKeys, Staging } from '../models';
 import datalayer from '../datalayer';
 import { decodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 import { logger } from '../logger.js';
-import { sequelize } from '../database';
+import { sequelize, sequelizeMirror } from '../database';
 
 import {
   assertDataLayerAvailable,
@@ -52,14 +52,14 @@ const processJob = async () => {
   await assertWalletIsSynced();
 
   logger.task('Syncing Audit Information');
-  if (!CONFIG().CADT.USE_SIMULATOR) {
-    const organizations = await Organization.findAll({
-      where: { subscribed: true },
-      raw: true,
-    });
+  const organizations = await Organization.findAll({
+    where: { subscribed: true },
+    raw: true,
+  });
 
-    for (const organization of organizations) {
-      await syncOrganizationAudit(organization);
+  for (const organization of organizations) {
+    await syncOrganizationAudit(organization);
+    if (!CONFIG().CADT.USE_SIMULATOR) {
       await new Promise((resolve) =>
         setTimeout(
           resolve,
@@ -69,13 +69,16 @@ const processJob = async () => {
     }
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  if (!CONFIG().CADT.USE_SIMULATOR) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
 };
 
-async function createTransaction(callback) {
+async function createTransaction(callback, afterCommitCallbacks) {
   let result = null;
 
   let transaction;
+  let mirrorTransaction;
 
   try {
     // Check if the database is locked and wait until it's unlocked
@@ -87,12 +90,19 @@ async function createTransaction(callback) {
     logger.trace('Starting transaction');
     // Start a transaction
     transaction = await sequelize.transaction();
+    mirrorTransaction = await sequelizeMirror.transaction();
 
     // Execute the provided callback with the transaction
-    result = await callback(transaction);
+    result = await callback(transaction, mirrorTransaction);
 
     // Commit the transaction if the callback completes without errors
     await transaction.commit();
+    await mirrorTransaction.commit();
+
+    for (const afterCommitCallback of afterCommitCallbacks) {
+      await afterCommitCallback();
+    }
+
     logger.trace('Commited transaction');
 
     return result;
@@ -109,13 +119,21 @@ async function createTransaction(callback) {
 const syncOrganizationAudit = async (organization) => {
   try {
     logger.task(`Syncing Audit: ${_.get(organization, 'name')}`);
+    let afterCommitCallbacks = [];
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
-    const lastRootSaved = await Audit.findOne({
-      where: { registryId: organization.registryId },
-      order: [['createdAt', 'DESC']],
-      raw: true,
-    });
+    let lastRootSaved;
+
+    if (CONFIG().CADT.USE_SIMULATOR) {
+      lastRootSaved = rootHistory[0];
+      lastRootSaved.rootHash = lastRootSaved.root_hash;
+    } else {
+      lastRootSaved = await Audit.findOne({
+        where: { registryId: organization.registryId },
+        order: [['createdAt', 'DESC']],
+        raw: true,
+      });
+    }
 
     if (!rootHistory.length) {
       return;
@@ -200,7 +218,10 @@ const syncOrganizationAudit = async (organization) => {
       return typeOrder[a.type] - typeOrder[b.type];
     });
 
-    const updateTransaction = async (transaction) => {
+    const homeOrg = await Organization.getHomeOrg();
+    // console.log(kvDiff);
+
+    const updateTransaction = async (transaction, mirrorTransaction) => {
       for (const diff of kvDiff) {
         const key = decodeHex(diff.key);
         const modelKey = key.split('|')[0];
@@ -228,40 +249,63 @@ const syncOrganizationAudit = async (organization) => {
 
           if (modelKey) {
             const record = JSON.parse(decodeHex(diff.value));
+            const primaryKeyValue =
+              record[ModelKeys[modelKey].primaryKeyAttributes[0]];
 
             if (diff.type === 'INSERT') {
-              const primaryKeyValue =
-                record[ModelKeys[modelKey].primaryKeyAttributes[0]];
-
               logger.trace(`INSERTING: ${modelKey} - ${primaryKeyValue}`);
-              await ModelKeys[modelKey].upsert(record, { transaction });
+              await ModelKeys[modelKey].upsert(record, {
+                transaction,
+                mirrorTransaction,
+              });
             } else if (diff.type === 'DELETE') {
-              logger.trace(
-                `DELETING: ${modelKey} - ${
-                  record[ModelKeys[modelKey].primaryKeyAttributes[0]]
-                }`,
-              );
+              logger.trace(`DELETING: ${modelKey} - ${primaryKeyValue}`);
               await ModelKeys[modelKey].destroy({
                 where: {
                   [ModelKeys[modelKey].primaryKeyAttributes[0]]:
-                    record[ModelKeys[modelKey].primaryKeyAttributes[0]],
+                    primaryKeyValue,
                 },
                 transaction,
+                mirrorTransaction,
               });
+            }
+
+            if (organization.orgUid === homeOrg?.orgUid) {
+              const stagingUuid = [
+                'unit',
+                'project',
+                'units',
+                'projects',
+              ].includes(modelKey)
+                ? primaryKeyValue
+                : undefined;
+
+              if (stagingUuid) {
+                afterCommitCallbacks.push(async () => {
+                  logger.trace(`DELETING STAGING: ${stagingUuid}`);
+                  await Staging.destroy({
+                    where: { uuid: stagingUuid },
+                  });
+                });
+              }
             }
           }
 
           // Create the Audit record
-          await Audit.create(auditData, { transaction });
+          await Audit.create(auditData, { transaction, mirrorTransaction });
           await Organization.update(
             { registryHash: root2.root_hash },
-            { where: { orgUid: organization.orgUid }, transaction },
+            {
+              where: { orgUid: organization.orgUid },
+              transaction,
+              mirrorTransaction,
+            },
           );
         }
       }
     };
 
-    return createTransaction(updateTransaction);
+    return createTransaction(updateTransaction, afterCommitCallbacks);
   } catch (error) {
     logger.error('Error syncing org audit', error);
   }
