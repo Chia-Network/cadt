@@ -26,25 +26,29 @@ const logDebounce = _.debounce(() => {
 }, 120000);
 
 export const safeMirrorDbHandler = (callback) => {
-  try {
-    sequelizeMirror
-      .authenticate()
-      .then(async () => {
-        try {
-          await callback();
-        } catch (e) {
-          logger.error(`mirror_error:${e.message}`);
-        }
-      })
-      .catch(() => {
-        logDebounce();
-      });
-  } catch (error) {
-    logger.error(
-      'MirrorDB tried to update before it was initialize, will try again later',
-      error,
-    );
-  }
+  return new Promise((resolve) => {
+    try {
+      sequelizeMirror
+        .authenticate()
+        .then(async () => {
+          try {
+            await callback();
+          } catch (e) {
+            logger.error(`mirror_error:${e.message}`);
+          }
+        })
+        .catch(() => {
+          logDebounce();
+        });
+    } catch (error) {
+      logger.error(
+        'MirrorDB tried to update before it was initialize, will try again later',
+        error,
+      );
+    } finally {
+      resolve();
+    }
+  });
 };
 
 export const sanitizeSqliteFtsQuery = (query) => {

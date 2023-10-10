@@ -32,17 +32,35 @@ class Issuance extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => IssuanceMirror.create(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await IssuanceMirror.create(values, mirrorOptions);
+    });
     return super.create(values, options);
   }
 
-  static async destroy(values, options) {
-    safeMirrorDbHandler(() => IssuanceMirror.destroy(values, options));
-    return super.destroy(values, options);
+  static async destroy(options) {
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await IssuanceMirror.destroy(mirrorOptions);
+    });
+    return super.destroy(options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => IssuanceMirror.upsert(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await IssuanceMirror.upsert(values, mirrorOptions);
+    });
     return super.upsert(values, options);
   }
 }
