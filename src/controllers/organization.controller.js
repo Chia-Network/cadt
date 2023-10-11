@@ -391,15 +391,7 @@ export const getMetaData = async (req, res) => {
       where: { orgUid: req.query.orgUid },
     });
 
-    const rawMetadata = JSON.parse(organization.metadata);
-    const cleanedMetadata = {};
-
-    for (const [key, value] of Object.entries(rawMetadata)) {
-      const newKey = key.startsWith('meta_') ? key.substring(5) : key;
-      cleanedMetadata[newKey] = value;
-    }
-
-    return res.json(cleanedMetadata);
+    return res.json(JSON.parse(organization.metadata));
   } catch (error) {
     res.status(400).json({
       message: 'Error getting metadata for organization',
