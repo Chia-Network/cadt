@@ -29,6 +29,7 @@ export const getConfig = _.memoize(() => {
         if (process.env.USE_SIMULATOR) {
           defaultConfig.APP.USE_SIMULATOR = true;
           defaultConfig.APP.CHIA_NETWORK = 'testnet';
+          defaultConfig.APP.TASKS.AUDIT_SYNC_TASK_INTERVAL = 30;
           logger.info(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
         }
 

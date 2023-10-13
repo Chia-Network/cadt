@@ -32,8 +32,6 @@
   },
   "dependencies": {
     "@babel/eslint-parser": "^7.22.9",
-    "@chia-carbon/core-registry-config": "^1.0.2",
-    "@chia-carbon/core-registry-logger": "^1.0.11",
     "body-parser": "^1.20.2",
     "cli-spinner": "^0.2.10",
     "cors": "^2.8.5",
@@ -74,7 +72,6 @@
     "eslint-plugin-es": "^4.1.0",
     "eslint-plugin-mocha": "^10.2.0",
     "husky": "^8.0.3",
-
     "mocha": "^10.2.0",
     "semver": "^7.5.4",
     "sinon": "^16.1.0",

@@ -297,7 +297,7 @@ const getRootHistory = (storeId) => {
 };
 
 const getRootDiff = (storeId, root1, root2) => {
-  if (!USE_SIMULATOR) {
+  if (USE_SIMULATOR) {
     return Simulator.getMockedKvDiffFromStagingTable();
   } else {
     return dataLayer.getRootDiff(storeId, root1, root2);
