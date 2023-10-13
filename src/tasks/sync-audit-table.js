@@ -5,16 +5,17 @@ import { Organization, Audit, ModelKeys, Staging } from '../models';
 import datalayer from '../datalayer';
 import { decodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
-import { logger } from '../logger.js';
+import { logger } from '../config/logger.cjs';
 import { sequelize, sequelizeMirror } from '../database';
-
+import { getConfig } from '../utils/config-loader';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
 
 dotenv.config();
-import { CONFIG } from '../user-config';
+
+const CONFIG = getConfig().APP;
 
 let taskIsRunning = false;
 
@@ -51,15 +52,16 @@ const processJob = async () => {
   await assertDataLayerAvailable();
   await assertWalletIsSynced();
 
-  logger.task('Syncing Audit Information');
+  logger.info('Syncing Audit Information');
   const organizations = await Organization.findAll({
     where: { subscribed: true },
     raw: true,
   });
 
   for (const organization of organizations) {
+    console.log(`Syncing ${organization.name}`);
     await syncOrganizationAudit(organization);
-    if (!CONFIG().CADT.USE_SIMULATOR) {
+    if (!CONFIG.USE_SIMULATOR) {
       await new Promise((resolve) =>
         setTimeout(
           resolve,
@@ -69,7 +71,7 @@ const processJob = async () => {
     }
   }
 
-  if (!CONFIG().CADT.USE_SIMULATOR) {
+  if (!CONFIG.USE_SIMULATOR) {
     await new Promise((resolve) => setTimeout(resolve, 5000));
   }
 };
@@ -81,13 +83,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
   let mirrorTransaction;
 
   try {
-    // Check if the database is locked and wait until it's unlocked
-    /* while (await isDatabaseLocked()) {
-      logger.debug('Database is locked. Waiting...');
-      await waitFor(retryDelay);
-    }*/
-
-    logger.trace('Starting transaction');
+    logger.info('Starting transaction');
     // Start a transaction
     transaction = await sequelize.transaction();
     mirrorTransaction = await sequelizeMirror.transaction();
@@ -103,7 +99,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
       await afterCommitCallback();
     }
 
-    logger.trace('Commited transaction');
+    logger.info('Commited transaction');
 
     return result;
   } catch (error) {
@@ -118,13 +114,14 @@ async function createTransaction(callback, afterCommitCallbacks) {
 
 const syncOrganizationAudit = async (organization) => {
   try {
-    logger.task(`Syncing Audit: ${_.get(organization, 'name')}`);
+    logger.info(`Syncing Audit: ${_.get(organization, 'name')}`);
     let afterCommitCallbacks = [];
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     let lastRootSaved;
 
-    if (CONFIG().CADT.USE_SIMULATOR) {
+    if (CONFIG.USE_SIMULATOR) {
+      console.log('USING MOCK ROOT HISTORY');
       lastRootSaved = rootHistory[0];
       lastRootSaved.rootHash = lastRootSaved.root_hash;
     } else {
@@ -219,7 +216,6 @@ const syncOrganizationAudit = async (organization) => {
     });
 
     const homeOrg = await Organization.getHomeOrg();
-    // console.log(kvDiff);
 
     const updateTransaction = async (transaction, mirrorTransaction) => {
       for (const diff of kvDiff) {
@@ -253,13 +249,13 @@ const syncOrganizationAudit = async (organization) => {
               record[ModelKeys[modelKey].primaryKeyAttributes[0]];
 
             if (diff.type === 'INSERT') {
-              logger.trace(`INSERTING: ${modelKey} - ${primaryKeyValue}`);
+              logger.info(`INSERTING: ${modelKey} - ${primaryKeyValue}`);
               await ModelKeys[modelKey].upsert(record, {
                 transaction,
                 mirrorTransaction,
               });
             } else if (diff.type === 'DELETE') {
-              logger.trace(`DELETING: ${modelKey} - ${primaryKeyValue}`);
+              logger.info(`DELETING: ${modelKey} - ${primaryKeyValue}`);
               await ModelKeys[modelKey].destroy({
                 where: {
                   [ModelKeys[modelKey].primaryKeyAttributes[0]]:
@@ -282,7 +278,7 @@ const syncOrganizationAudit = async (organization) => {
 
               if (stagingUuid) {
                 afterCommitCallbacks.push(async () => {
-                  logger.trace(`DELETING STAGING: ${stagingUuid}`);
+                  logger.info(`DELETING STAGING: ${stagingUuid}`);
                   await Staging.destroy({
                     where: { uuid: stagingUuid },
                   });
@@ -305,7 +301,7 @@ const syncOrganizationAudit = async (organization) => {
       }
     };
 
-    return createTransaction(updateTransaction, afterCommitCallbacks);
+    return await createTransaction(updateTransaction, afterCommitCallbacks);
   } catch (error) {
     logger.error('Error syncing org audit', error);
   }
