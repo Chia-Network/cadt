@@ -25,10 +25,9 @@ module.exports = {
     type: Sequelize.STRING,
     required: true,
   },
-  //There doesn't appear to be a reference to label ID. We must reference labels table to understand if any labels get applied to specific units.
-  // Please insert reference to labels table.
   unitOwner: {
     type: Sequelize.STRING,
+    allowNull: true,
   },
   countryJurisdictionOfOwner: {
     type: Sequelize.STRING,
