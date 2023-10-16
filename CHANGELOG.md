@@ -1,3 +1,17 @@
+## [1.6.26](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.25...1.6.26) (2023-10-16)
+
+
+### Bug Fixes
+
+* unit owner allow null ([96dab4f](https://github.com/Chia-Network/Core-Registry-CADT/commit/96dab4f802999a646078fc6194c5af75541bd824))
+
+
+### Features
+
+* remove meta_ prefix from metadata keys ([4ae7c70](https://github.com/Chia-Network/Core-Registry-CADT/commit/4ae7c70ac4ebff69cd802ea9e554ca0e0c92c419))
+
+
+
 ## [1.6.25](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.24...1.6.25) (2023-09-29)
 
 
