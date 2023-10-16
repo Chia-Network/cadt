@@ -91,7 +91,7 @@ export const unitsSplitSchema = Joi.object({
     .items(
       Joi.object().keys({
         unitCount: Joi.number().required(),
-        unitOwner: Joi.string().allow(null).optional(),
+        unitOwner: Joi.string().allow('', null).optional(),
         unitStatus: Joi.string()
           .custom(pickListValidation('unitStatus'))
           .optional(),
