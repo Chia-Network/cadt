@@ -1,3 +1,12 @@
+## [1.6.27](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.26...1.6.27) (2023-10-16)
+
+
+### Bug Fixes
+
+* allow empty string ([1b91b0f](https://github.com/Chia-Network/Core-Registry-CADT/commit/1b91b0fca45a362ebf1e263f8160135381d41ed0))
+
+
+
 ## [1.6.26](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.25...1.6.26) (2023-10-16)
 
 
