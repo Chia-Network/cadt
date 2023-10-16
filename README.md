@@ -1,5 +1,7 @@
 # Core Registry CADT
 
+![Tested Up to Chia Version](https://raw.githubusercontent.com/Chia-Network/core-registry-api/main/testedChiaVersion.svg)
+
 ​This project is based on the [Climate Action Data Trust (CADT)](https://github.com/Chia-Network/cadt) application that provides the Climate Action Data Trust (CADT) API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain).  This project extends the CADT functionality for better integration with the Core Registry suite of climate tokenization tools.  In most ways, it will be compatible with the upstream CADT project.  For a user interface, see the [CADT UI project](https://github.com/Chia-Network/climate-warehouse-ui) which will connect to the Core Registry CADT API.
 
 This project was formerly known as the Climate Warehouse and you may see this term used interchangeably with CADT. 
