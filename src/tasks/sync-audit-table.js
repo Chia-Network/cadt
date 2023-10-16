@@ -1,7 +1,7 @@
 import _ from 'lodash';
 
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Organization, Audit, ModelKeys, Staging } from '../models';
+import { Organization, Audit, ModelKeys, Staging, Meta } from '../models';
 import datalayer from '../datalayer';
 import { decodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
@@ -12,6 +12,7 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
+import { mirrorDBEnabled } from '../database';
 
 dotenv.config();
 
@@ -23,7 +24,39 @@ const task = new Task('sync-audit', async () => {
   try {
     if (!taskIsRunning) {
       taskIsRunning = true;
-      await processJob();
+
+      const hasMigratedToNewSyncMethod = await Meta.findOne({
+        where: { metaKey: 'migratedToNewSync' },
+      });
+
+      if (hasMigratedToNewSyncMethod || CONFIG.USE_SIMULATOR) {
+        await processJob();
+      } else {
+        logger.info(
+          'Initiating migration to the new synchronization method. This will require a complete resynchronization of all data and may take some time.',
+        );
+
+        for (const modelKey of Object.keys(ModelKeys)) {
+          logger.info(`Resetting ${modelKey}`);
+          await ModelKeys[modelKey].destroy({
+            where: {},
+            truncate: true,
+          });
+        }
+
+        logger.info(`Resetting Audit Table`);
+        await Audit.destroy({
+          where: {},
+          truncate: true,
+        });
+
+        logger.info(`Completing Migration`);
+        await Meta.upsert({
+          metaKey: 'migratedToNewSync',
+          metaValue: 'true',
+        });
+        logger.info(`Migration Complete`);
+      }
     }
   } catch (error) {
     logger.error(`Error during datasync: ${error.message}`);
@@ -52,7 +85,7 @@ const processJob = async () => {
   await assertDataLayerAvailable();
   await assertWalletIsSynced();
 
-  logger.info('Syncing Audit Information');
+  logger.info('Syncing Registry Data');
   const organizations = await Organization.findAll({
     where: { subscribed: true },
     raw: true,
@@ -86,14 +119,20 @@ async function createTransaction(callback, afterCommitCallbacks) {
     logger.info('Starting transaction');
     // Start a transaction
     transaction = await sequelize.transaction();
-    mirrorTransaction = await sequelizeMirror.transaction();
+
+    if (mirrorDBEnabled()) {
+      mirrorTransaction = await sequelizeMirror.transaction();
+    }
 
     // Execute the provided callback with the transaction
     result = await callback(transaction, mirrorTransaction);
 
     // Commit the transaction if the callback completes without errors
     await transaction.commit();
-    await mirrorTransaction.commit();
+
+    if (mirrorDBEnabled()) {
+      await mirrorTransaction.commit();
+    }
 
     for (const afterCommitCallback of afterCommitCallbacks) {
       await afterCommitCallback();
@@ -114,7 +153,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
 
 const syncOrganizationAudit = async (organization) => {
   try {
-    logger.info(`Syncing Audit: ${_.get(organization, 'name')}`);
+    logger.info(`Syncing Registry: ${_.get(organization, 'name')}`);
     let afterCommitCallbacks = [];
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 

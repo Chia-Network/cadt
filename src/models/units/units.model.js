@@ -191,8 +191,6 @@ class Unit extends Model {
       sql = `${sql} AND orgUid = :orgUid`;
     }
 
-    console.log('searchTerm', userSearchInput);
-
     const replacements = { search: userSearchInput, orgUid };
 
     const count = (

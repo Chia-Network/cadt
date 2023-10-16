@@ -43,7 +43,26 @@ const logDebounce = _.debounce(() => {
   logger.info('Mirror DB not connected');
 }, 120000);
 
+export const mirrorDBEnabled = () => {
+  const CONFIG = getConfig();
+  if (
+    mirrorConfig === 'mirror' &&
+    (!CONFIG?.MIRROR_DB?.DB_HOST ||
+      !CONFIG?.MIRROR_DB?.DB_NAME ||
+      !CONFIG?.MIRROR_DB?.DB_USERNAME ||
+      !CONFIG?.MIRROR_DB?.DB_PASSWORD)
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
 export const safeMirrorDbHandler = (callback) => {
+  if (!mirrorDBEnabled()) {
+    return Promise.resolve();
+  }
+
   return new Promise((resolve) => {
     try {
       sequelizeMirror
