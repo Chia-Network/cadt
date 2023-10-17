@@ -285,16 +285,21 @@ const getRootDiff = (storeId, root1, root2) => {
 };
 
 const getStoreData = async (storeId, callback, onFail, retry = 0) => {
-  logger.info(`Getting store data, retry: ${retry}`);
-  if (retry <= 10) {
-    const encodedData = await dataLayer.getStoreData(storeId);
-    if (_.isEmpty(encodedData?.keys_values)) {
-      await new Promise((resolve) => setTimeout(() => resolve(), 120000));
-      return getStoreData(storeId, callback, onFail, retry + 1);
+  try {
+    logger.info(`Getting store data, retry: ${retry}`);
+    if (retry <= 10) {
+      const encodedData = await dataLayer.getStoreData(storeId);
+      if (_.isEmpty(encodedData?.keys_values)) {
+        await new Promise((resolve) => setTimeout(() => resolve(), 120000));
+        return getStoreData(storeId, callback, onFail, retry + 1);
+      } else {
+        callback(decodeDataLayerResponse(encodedData));
+      }
     } else {
-      callback(decodeDataLayerResponse(encodedData));
+      onFail();
     }
-  } else {
+  } catch (error) {
+    logger.error(error.message);
     onFail();
   }
 };
