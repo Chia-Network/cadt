@@ -1,3 +1,12 @@
+## [1.6.28](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.27...1.6.28) (2023-10-17)
+
+
+### Features
+
+* some try catch error handling ([48a4718](https://github.com/Chia-Network/Core-Registry-CADT/commit/48a4718685c9ee3061cf329c2704735eb47284cc))
+
+
+
 ## [1.6.27](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.26...1.6.27) (2023-10-16)
 
 
