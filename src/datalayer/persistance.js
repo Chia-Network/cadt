@@ -316,8 +316,16 @@ const getStoreData = async (storeId, rootHash) => {
   return false;
 };
 
+/**
+ * Fetches the root data for a specific store.
+ *
+ * @param {string} storeId - The ID of the store to fetch data for.
+ * @param {boolean} ignoreEmptyStore - Whether to ignore empty stores.
+ * @returns {Object|boolean} - Returns the data object or false if the fetch operation fails.
+ */
 const getRoot = async (storeId, ignoreEmptyStore = false) => {
-  const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_root`;
+  const { CHIA } = CONFIG();
+  const url = `${CHIA.DATALAYER_HOST}/get_root`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -328,15 +336,10 @@ const getRoot = async (storeId, ignoreEmptyStore = false) => {
       .timeout(timeout)
       .send({ id: storeId });
 
-    const data = response.body;
+    const { confirmed, hash } = response.body;
 
-    if (
-      (data.confirmed && !ignoreEmptyStore) ||
-      (data.confirmed &&
-        ignoreEmptyStore &&
-        !data.hash.includes('0x00000000000'))
-    ) {
-      return data;
+    if (confirmed && (!ignoreEmptyStore || !hash.includes('0x00000000000'))) {
+      return response.body;
     }
 
     return false;
