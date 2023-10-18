@@ -292,28 +292,31 @@ const getRootDiff = (storeId, root1, root2) => {
  * @param {Function} onFail - Function to call when data retrieval fails.
  * @param {number} retry - Number of retry attempts.
  */
-const getStoreData = async (storeId, callback, onFail, retry = 0) => {
-  const MAX_RETRIES = 10;
+const getStoreData = async (storeId, callback, onFail, rootHash, retry = 0) => {
+  const MAX_RETRIES = 50;
   const RETRY_DELAY = 120000;
 
   try {
     logger.info(`Getting store data, retry: ${retry}`);
 
     if (retry > MAX_RETRIES) {
-      return onFail();
+      return onFail(`Max retries exceeded for store ${storeId}`);
     }
 
-    const encodedData = await dataLayer.getStoreData(storeId);
+    const encodedData = await dataLayer.getStoreData(storeId, rootHash);
 
-    if (_.isEmpty(encodedData?.keys_values)) {
+    if (!encodedData || _.isEmpty(encodedData?.keys_values)) {
+      logger.debug(`No data found for store ${storeId}, retrying...`);
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
-      return getStoreData(storeId, callback, onFail, retry + 1);
+      return getStoreData(storeId, callback, onFail, rootHash, retry + 1);
     }
 
-    callback(decodeDataLayerResponse(encodedData));
+    const decodedData = decodeDataLayerResponse(encodedData);
+
+    callback(decodedData);
   } catch (error) {
     logger.error(error.message);
-    onFail();
+    onFail(error.message);
   }
 };
 
@@ -335,30 +338,27 @@ const getCurrentStoreData = async (storeId) => {
  *
  * @param {string} storeId - The ID of the store to check.
  * @param {string} lastRootHash - The last known root hash for comparison.
- * @param {function} onUpdate - Callback to invoke if the store has been updated.
  * @param {function} callback - Callback to invoke to process the store data.
  * @param {function} onFail - Callback to invoke if an operation fails.
  */
-const getStoreIfUpdated = async (
-  storeId,
-  lastRootHash,
-  onUpdate,
-  callback,
-  onFail,
-) => {
+const getStoreIfUpdated = async (storeId, lastRootHash, callback, onFail) => {
   try {
     const rootResponse = await dataLayer.getRoot(storeId);
 
     if (rootResponse.confirmed && rootResponse.hash !== lastRootHash) {
-      logger.debug(`Updating orgUid ${storeId} with hash ${rootResponse.hash}`);
-
       const curriedCallback = (data) => callback(rootResponse.hash, data);
 
-      await getStoreData(storeId, curriedCallback, onFail);
+      await getStoreData(
+        storeId,
+        curriedCallback,
+        onFail,
+        rootResponse.hash,
+        0,
+      );
     }
   } catch (error) {
     logger.error(error.message);
-    onFail();
+    onFail(error.message);
   }
 };
 

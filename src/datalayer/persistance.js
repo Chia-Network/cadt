@@ -300,12 +300,17 @@ const getStoreData = async (storeId, rootHash) => {
         }
         return data;
       }
+
+      logger.error(
+        `FAILED GETTING STORE DATA FOR ${storeId}: ${JSON.stringify(data)}`,
+      );
     } catch (error) {
       logger.info(
         `Unable to find store data for ${storeId} at root ${
           rootHash || 'latest'
         }`,
       );
+      logger.error(error.message);
       return false;
     }
   }

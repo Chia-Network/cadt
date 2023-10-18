@@ -356,8 +356,9 @@ class Organization extends Model {
                 {},
               );
 
-          const onFail = () => {
+          const onFail = (message) => {
             logger.info(`Unable to sync metadata from ${organization.orgUid}`);
+            logger.error(`ORGANIZATION DATA SYNC ERROR: ${message}`);
             Organization.update(
               { orgHash: '0' },
               { where: { orgUid: organization.orgUid } },
@@ -383,13 +384,16 @@ class Organization extends Model {
                 { where: { orgUid: organization.orgUid } },
               );
 
+              logger.debug(
+                `Updating orgUid ${organization.orgUid} with hash ${updateHash}`,
+              );
               await Organization.update(
                 { orgHash: updateHash },
                 { where: { orgUid: organization.orgUid } },
               );
             } catch (error) {
               logger.info(error.message);
-              onFail();
+              onFail(error.message);
             }
           };
 
