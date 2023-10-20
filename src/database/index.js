@@ -18,8 +18,6 @@ const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
 
-logger.info('CADT:mirror-database');
-
 const logDebounce = _.debounce(() => {
   console.log('Mirror DB not connected');
   logger.info('Mirror DB not connected');

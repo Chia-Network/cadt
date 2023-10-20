@@ -9,8 +9,6 @@ import { getConfig } from '../utils/config-loader';
 
 const CONFIG = getConfig().APP;
 
-logger.info('CADT:task:sync-picklists');
-
 const task = new Task('sync-picklist', async () => {
   try {
     await assertDataLayerAvailable();

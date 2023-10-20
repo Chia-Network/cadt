@@ -31,6 +31,7 @@ import ResetDBForNewSingletons from './20220816155101-reset-db-for-new-singleton
 import AddIsTransferColumn from './20220825124702-add-isTransfer-column';
 import AddOrgMetadata from './20220831023546-add-org-metadata';
 import OrgSyncStatus from './20231020201652-OrgSyncStatus';
+import OrgSyncRemaining from './20231020214357-OrgSyncRemainingCount';
 
 export const migrations = [
   {
@@ -168,5 +169,9 @@ export const migrations = [
   {
     migration: OrgSyncStatus,
     name: '20231020201652-OrgSyncStatus',
+  },
+  {
+    migration: OrgSyncRemaining,
+    name: '20231020214357-OrgSyncRemainingCount',
   },
 ];

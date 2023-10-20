@@ -14,8 +14,6 @@ const CONFIG = getConfig();
 import dotenv from 'dotenv';
 dotenv.config();
 
-logger.info('CADT:task:sync-governance');
-
 const task = new Task('sync-governance-meta', async () => {
   try {
     await assertDataLayerAvailable();
