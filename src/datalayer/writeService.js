@@ -10,8 +10,6 @@ import { logger } from '../config/logger.cjs';
 import { Organization } from '../models';
 import { publicIpv4 } from '../utils/ip-tools';
 
-logger.info('CADT:datalayer:writeService');
-
 const { USE_SIMULATOR, DATALAYER_FILE_SERVER_URL } = getConfig().APP;
 
 const createDataLayerStore = async () => {

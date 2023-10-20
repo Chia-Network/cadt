@@ -4,9 +4,9 @@ export default {
   async up(queryInterface, Sequelize) {
     await Promise.all(
       ['organizations'].map((table) => {
-        queryInterface.addColumn(table, 'synced', {
-          type: Sequelize.BOOLEAN,
-          allowNull: false,
+        queryInterface.addColumn(table, 'sync_remaining', {
+          type: Sequelize.INTEGER,
+          allowNull: true,
           defaultValue: false,
         });
       }),
@@ -16,7 +16,7 @@ export default {
   async down(queryInterface) {
     await Promise.all(
       ['organizations'].map((table) => {
-        queryInterface.removeColumn(table, 'synced');
+        queryInterface.removeColumn(table, 'sync_remaining');
       }),
     );
   },

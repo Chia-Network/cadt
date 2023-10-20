@@ -102,6 +102,7 @@ export const importOfferFile = async (req, res) => {
 
     res.json({
       message: 'Offer has been imported for review.',
+      success: true,
     });
   } catch (error) {
     console.trace(error);
@@ -132,6 +133,7 @@ export const commitImportedOfferFile = async (req, res) => {
     res.json({
       message: 'Offer Accepted.',
       tradeId: response.trade_id,
+      success: true,
     });
 
     await Meta.destroy({
