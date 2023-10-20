@@ -1,3 +1,19 @@
+## [1.6.15](https://github.com/Chia-Network/cadt/compare/1.6.14...1.6.15) (2023-10-20)
+
+
+### Bug Fixes
+
+* change default organization sync interval ([fdf25cf](https://github.com/Chia-Network/cadt/commit/fdf25cf826d363ec5eae0831199e81d473d4fa96))
+* improved organization sync ([ca66c9c](https://github.com/Chia-Network/cadt/commit/ca66c9cee79a64a143aeeea00dfb6c9b7bd8d495))
+
+
+### Features
+
+* add some error handling ([7833846](https://github.com/Chia-Network/cadt/commit/78338463d5ad433fc88439137c94f935cfd1cbd6))
+* remove meta_ prefix from metadata keys ([7855be9](https://github.com/Chia-Network/cadt/commit/7855be95a7236d55565134e05483710b17e1e022))
+
+
+
 ## [1.6.14](https://github.com/Chia-Network/cadt/compare/1.6.13...1.6.14) (2023-10-05)
 
 
