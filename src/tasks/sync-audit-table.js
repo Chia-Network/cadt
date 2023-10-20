@@ -55,6 +55,11 @@ const task = new Task('sync-audit', async () => {
           metaKey: 'migratedToNewSync',
           metaValue: 'true',
         });
+
+        await Organization.upsert({
+          synced: false,
+        });
+
         logger.info(`Migration Complete`);
       }
     }
@@ -155,6 +160,8 @@ const syncOrganizationAudit = async (organization) => {
   try {
     logger.info(`Syncing Registry: ${_.get(organization, 'name')}`);
     let afterCommitCallbacks = [];
+
+    const homeOrg = await Organization.getHomeOrg();
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     let lastRootSaved;
@@ -198,7 +205,7 @@ const syncOrganizationAudit = async (organization) => {
 
       // Destroy existing records for this singleton
       // On a fresh db this does nothing, but when the audit table
-      // is reset this will ensure that this organizations regsitry data is
+      // is reset this will ensure that this organizations registry data is
       // cleaned up on both the local db and mirror db and ready to resync
       await Promise.all(
         Object.keys(ModelKeys).map(async (modelKey) => {
@@ -213,7 +220,15 @@ const syncOrganizationAudit = async (organization) => {
       return;
     }
 
-    if (historyIndex === rootHistory.length) {
+    const isSynced = rootHistory[rootHistory.length - 1].root_hash === rootHash;
+
+    await Organization.update(
+      { synced: isSynced },
+      { where: { orgUid: organization.orgUid } },
+    );
+
+    if (isSynced) {
+      logger.info(`No new data to sync for ${organization.name}`);
       return;
     }
 
@@ -253,8 +268,6 @@ const syncOrganizationAudit = async (organization) => {
       const typeOrder = { DELETE: 0, INSERT: 1 };
       return typeOrder[a.type] - typeOrder[b.type];
     });
-
-    const homeOrg = await Organization.getHomeOrg();
 
     const updateTransaction = async (transaction, mirrorTransaction) => {
       for (const diff of kvDiff) {
