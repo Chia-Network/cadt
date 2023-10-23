@@ -28,7 +28,7 @@ const job = new SimpleIntervalJob(
     runImmediately: true,
   },
   task,
-  'sync-picklist',
+  { id: 'sync-picklist', preventOverrun: true },
 );
 
 export default job;

@@ -101,19 +101,23 @@ app.use(function (req, res, next) {
 });
 
 app.use(async function (req, res, next) {
-  // If the home organization is syncing, then we treat all requests as read-only
-  const homeOrg = await Organization.getHomeOrg();
+  if (process.env.NODE_ENV !== 'test') {
+    // If the home organization is syncing, then we treat all requests as read-only
+    const homeOrg = await Organization.getHomeOrg();
 
-  if (req.method !== 'GET' && !homeOrg.synced) {
-    res.status(400).json({
-      message:
-        'Your organization data is still resyncing, please try again after it completes',
-      success: false,
-    });
-  } else if (homeOrg.synced) {
-    res.setHeader(headerKeys.HOME_ORGANIZATION_SYNCED, true);
-  } else {
-    res.setHeader(headerKeys.HOME_ORGANIZATION_SYNCED, false);
+    if (homeOrg) {
+      if (req.method !== 'GET' && !homeOrg.synced) {
+        res.status(400).json({
+          message:
+            'Your organization data is still resyncing, please try again after it completes',
+          success: false,
+        });
+      } else if (homeOrg?.synced) {
+        res.setHeader(headerKeys.HOME_ORGANIZATION_SYNCED, true);
+      } else {
+        res.setHeader(headerKeys.HOME_ORGANIZATION_SYNCED, false);
+      }
+    }
   }
 
   next();

@@ -36,7 +36,7 @@ const job = new SimpleIntervalJob(
     runImmediately: true,
   },
   task,
-  'sync-organization-meta',
+  { id: 'sync-organization-meta', preventOverrun: true },
 );
 
 export default job;

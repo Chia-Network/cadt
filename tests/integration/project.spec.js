@@ -58,6 +58,7 @@ describe('Project Resource Integration Tests', function () {
     await testFixtures.commitStagingRecords();
     await testFixtures.waitForDataLayerSync();
     await testFixtures.waitForDataLayerSync();
+    await testFixtures.waitForDataLayerSync();
 
     // The staging table should be empty after committing
     expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(

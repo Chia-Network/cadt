@@ -2,9 +2,10 @@ import _ from 'lodash';
 
 import { Sequelize } from 'sequelize';
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
+import { Mutex } from 'async-mutex';
 import { Organization, Audit, ModelKeys, Staging, Meta } from '../models';
 import datalayer from '../datalayer';
-import { decodeHex } from '../utils/datalayer-utils';
+import { decodeHex, encodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 import { logger } from '../config/logger.cjs';
 import { sequelize, sequelizeMirror } from '../database';
@@ -16,16 +17,13 @@ import {
 import { mirrorDBEnabled } from '../database';
 
 dotenv.config();
-
+const mutex = new Mutex();
 const CONFIG = getConfig().APP;
 
-let taskIsRunning = false;
-
 const task = new Task('sync-audit', async () => {
-  try {
-    if (!taskIsRunning) {
-      taskIsRunning = true;
-
+  if (!mutex.isLocked()) {
+    const releaseMutex = await mutex.acquire();
+    try {
       const hasMigratedToNewSyncMethod = await Meta.findOne({
         where: { metaKey: 'migratedToNewSync' },
       });
@@ -80,28 +78,28 @@ const task = new Task('sync-audit', async () => {
 
         logger.info(`Migration Complete`);
       }
-    }
-  } catch (error) {
-    logger.error(`Error during datasync: ${error.message}`);
+    } catch (error) {
+      logger.error(`Error during datasync: ${error.message}`);
 
-    // Log additional information if present in the error object
-    if (error.response && error.response.body) {
-      logger.error(
-        `Additional error details: ${JSON.stringify(error.response.body)}`,
-      );
+      // Log additional information if present in the error object
+      if (error.response && error.response.body) {
+        logger.error(
+          `Additional error details: ${JSON.stringify(error.response.body)}`,
+        );
+      }
+    } finally {
+      releaseMutex();
     }
-  } finally {
-    taskIsRunning = false;
   }
 });
 
 const job = new SimpleIntervalJob(
   {
-    seconds: 30,
+    seconds: 10,
     runImmediately: true,
   },
   task,
-  'sync-audit',
+  { id: 'sync-audit', preventOverrun: true },
 );
 
 const processJob = async () => {
@@ -221,27 +219,32 @@ const syncOrganizationAudit = async (organization) => {
       rootHash = lastRootSaved.rootHash;
     }
 
-    const isSynced = rootHistory[rootHistory.length - 1].root_hash === rootHash;
+    let isSynced = rootHistory[rootHistory.length - 1].root_hash === rootHash;
 
     const historyIndex = rootHistory.findIndex(
       (root) => root.root_hash === rootHash,
     );
 
+    const syncRemaining = rootHistory.length - historyIndex - 1;
+
     await Organization.update(
       {
         synced: isSynced,
-        sync_remaining: rootHistory.length - historyIndex - 1,
+        sync_remaining: syncRemaining,
       },
       { where: { orgUid: organization.orgUid } },
     );
 
-    if (isSynced) {
+    if (process.env.NODE_ENV !== 'test' && isSynced) {
       return;
     }
 
     // Organization not synced, sync it
     logger.info(' ');
     logger.info(`Syncing Registry: ${_.get(organization, 'name')}`);
+    logger.info(
+      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced.`,
+    );
 
     if (!CONFIG.USE_SIMULATOR) {
       await new Promise((resolve) => setTimeout(resolve, 30000));
@@ -264,29 +267,29 @@ const syncOrganizationAudit = async (organization) => {
     );
 
     if (_.isEmpty(kvDiff)) {
-      const errorMsg = [
-        `No data found for ${organization.name} in the current generation.`,
+      const warningMsg = [
+        `No data found for ${organization.name} in the current datalayer generation.`,
         `Missing data for root hash: ${root2.root_hash}.`,
-        "Check your internet connection, otherwise the organization's file propagation server may be offline.",
-        'Syncing for this organization will be halted until resolved.',
-        'If the issue persists, contact the organization.',
+        `This issue is often temporary and could be due to a lag in data propagation.`,
+        'Syncing for this organization will be paused until this is resolved.',
+        'For ongoing issues, please contact the organization.',
       ].join(' ');
 
-      logger.error(errorMsg);
+      logger.warn(warningMsg);
       return;
     }
 
-    // 0x636f6d6d656e74 is hex for 'comment'
     const comment = kvDiff.filter(
       (diff) =>
-        (diff.key === '636f6d6d656e74' || diff.key === '0x636f6d6d656e74') &&
+        (diff.key === encodeHex('comment') ||
+          diff.key === `0x${encodeHex('comment')}`) &&
         diff.type === 'INSERT',
     );
 
-    // 0x617574686F72 is hex for 'author'T
     const author = kvDiff.filter(
       (diff) =>
-        (diff.key === '617574686f72' || diff.key === '0x617574686F72') &&
+        (diff.key === encodeHex('author') ||
+          diff.key === `0x${encodeHex('author')}`) &&
         diff.type === 'INSERT',
     );
 
