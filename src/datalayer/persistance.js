@@ -301,12 +301,17 @@ const getStoreData = async (storeId, rootHash) => {
         }
         return data;
       }
+
+      logger.error(
+        `FAILED GETTING STORE DATA FOR ${storeId}: ${JSON.stringify(data)}`,
+      );
     } catch (error) {
       logger.info(
         `Unable to find store data for ${storeId} at root ${
           rootHash || 'latest'
         }`,
       );
+      logger.error(error.message);
       return false;
     }
   }
@@ -329,20 +334,15 @@ const getRoot = async (storeId, ignoreEmptyStore = false) => {
       .timeout(timeout)
       .send({ id: storeId });
 
-    const data = response.body;
+    const { confirmed, hash } = response.body;
 
-    if (
-      (data.confirmed && !ignoreEmptyStore) ||
-      (data.confirmed &&
-        ignoreEmptyStore &&
-        !data.hash.includes('0x00000000000'))
-    ) {
-      return data;
+    if (confirmed && (!ignoreEmptyStore || !hash.includes('0x00000000000'))) {
+      return response.body;
     }
 
     return false;
   } catch (error) {
-    logger.error(error);
+    logger.error(error.message);
     return false;
   }
 };
