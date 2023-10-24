@@ -240,7 +240,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
       return getSubscribedStoreData(storeId, retry + 1);
     } else {
       logger.debug(
-        `Store Exists and is confirmed, proceededing to get data ${storeId}`,
+        `Store Exists and is confirmed, proceeding to get data ${storeId}`,
       );
     }
   }
