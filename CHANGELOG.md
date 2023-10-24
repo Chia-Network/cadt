@@ -1,3 +1,12 @@
+## [1.6.29](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.28...1.6.29) (2023-10-24)
+
+
+### Features
+
+* use common constant for common app data folder ([846d419](https://github.com/Chia-Network/Core-Registry-CADT/commit/846d419777b59540b6e8d1f22c6085606ec01e90))
+
+
+
 ## [1.6.28](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.27...1.6.28) (2023-10-17)
 
 
