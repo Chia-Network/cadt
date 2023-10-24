@@ -1,10 +1,11 @@
 import { CONFIG } from '../user-config';
 import { getDataModelVersion } from '../utils/helpers';
 import { getChiaRoot } from 'chia-root-resolver';
+import { APP_DATA_FOLDER_NAME } from '../constants';
 
 const chiaRoot = getChiaRoot();
 
-const persistanceFolder = `${chiaRoot}/carbon/cadt/${getDataModelVersion()}`;
+const persistanceFolder = `${chiaRoot}/${APP_DATA_FOLDER_NAME}/cadt/${getDataModelVersion()}`;
 
 export default {
   local: {
