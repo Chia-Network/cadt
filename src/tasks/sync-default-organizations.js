@@ -10,8 +10,6 @@ import { CONFIG } from '../user-config';
 import dotenv from 'dotenv';
 dotenv.config();
 
-logger.task('CADT:task:sync-default-organizations');
-
 const task = new Task('sync-default-organizations', async () => {
   try {
     await assertDataLayerAvailable();

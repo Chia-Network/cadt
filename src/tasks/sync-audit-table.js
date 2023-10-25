@@ -1,5 +1,6 @@
 import _ from 'lodash';
 
+import { Sequelize } from 'sequelize';
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Organization, Audit, ModelKeys, Staging, Meta } from '../models';
 import datalayer from '../datalayer';
@@ -7,7 +8,7 @@ import { decodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 import { logger } from '../config/logger.cjs';
 import { sequelize, sequelizeMirror } from '../database';
-import { getConfig } from '../utils/config-loader';
+import { CONFIG } from '../config';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
@@ -15,8 +16,6 @@ import {
 import { mirrorDBEnabled } from '../database';
 
 dotenv.config();
-
-const CONFIG = getConfig().APP;
 
 let taskIsRunning = false;
 
@@ -29,7 +28,7 @@ const task = new Task('sync-audit', async () => {
         where: { metaKey: 'migratedToNewSync' },
       });
 
-      if (hasMigratedToNewSyncMethod || CONFIG.USE_SIMULATOR) {
+      if (hasMigratedToNewSyncMethod || CONFIG().CADT.USE_SIMULATOR) {
         await processJob();
       } else {
         logger.info(
@@ -39,26 +38,43 @@ const task = new Task('sync-audit', async () => {
         for (const modelKey of Object.keys(ModelKeys)) {
           logger.info(`Resetting ${modelKey}`);
           await ModelKeys[modelKey].destroy({
-            where: {},
+            where: {
+              id: {
+                [Sequelize.Op.ne]: null,
+              },
+            },
             truncate: true,
           });
         }
 
         logger.info(`Resetting Audit Table`);
         await Audit.destroy({
-          where: {},
+          where: {
+            id: {
+              [Sequelize.Op.ne]: null,
+            },
+          },
           truncate: true,
         });
 
-        logger.info(`Completing Migration`);
         await Meta.upsert({
           metaKey: 'migratedToNewSync',
           metaValue: 'true',
         });
 
-        await Organization.upsert({
-          synced: false,
-        });
+        await Organization.update(
+          {
+            synced: false,
+            sync_remaining: 0,
+          },
+          {
+            where: {
+              id: {
+                [Sequelize.Op.ne]: null,
+              },
+            },
+          },
+        );
 
         logger.info(`Migration Complete`);
       }
@@ -79,7 +95,7 @@ const task = new Task('sync-audit', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG().CADT.TASKS?.AUDIT_SYNC_TASK_INTERVAL || 30,
+    seconds: 30,
     runImmediately: true,
   },
   task,
@@ -90,27 +106,13 @@ const processJob = async () => {
   await assertDataLayerAvailable();
   await assertWalletIsSynced();
 
-  logger.info('Syncing Registry Data');
   const organizations = await Organization.findAll({
     where: { subscribed: true },
     raw: true,
   });
 
   for (const organization of organizations) {
-    console.log(`Syncing ${organization.name}`);
     await syncOrganizationAudit(organization);
-    if (!CONFIG.USE_SIMULATOR) {
-      await new Promise((resolve) =>
-        setTimeout(
-          resolve,
-          (CONFIG().CADT.TASKS?.AUDIT_SYNC_TASK_INTERVAL || 30) * 1000,
-        ),
-      );
-    }
-  }
-
-  if (!CONFIG.USE_SIMULATOR) {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
   }
 };
 
@@ -158,45 +160,40 @@ async function createTransaction(callback, afterCommitCallbacks) {
 
 const syncOrganizationAudit = async (organization) => {
   try {
-    logger.info(`Syncing Registry: ${_.get(organization, 'name')}`);
     let afterCommitCallbacks = [];
 
     const homeOrg = await Organization.getHomeOrg();
-    const rootHistory = await datalayer.getRootHistory(organization.registryId);
+    const rootHistory = (
+      await datalayer.getRootHistory(organization.registryId)
+    ).sort((a, b) => a.timestamp - b.timestamp);
+
+    if (!rootHistory.length) {
+      logger.info(`No root history found for ${organization.name}`);
+      return;
+    }
 
     let lastRootSaved;
 
-    if (CONFIG.USE_SIMULATOR) {
+    if (CONFIG().CADT.USE_SIMULATOR) {
       console.log('USING MOCK ROOT HISTORY');
       lastRootSaved = rootHistory[0];
       lastRootSaved.rootHash = lastRootSaved.root_hash;
     } else {
       lastRootSaved = await Audit.findOne({
         where: { registryId: organization.registryId },
-        order: [['createdAt', 'DESC']],
+        order: [['onchainConfirmationTimeStamp', 'DESC']],
         raw: true,
       });
     }
 
-    if (!rootHistory.length) {
-      return;
-    }
-
     let rootHash = _.get(rootHistory, '[0].root_hash');
 
-    if (lastRootSaved) {
-      rootHash = lastRootSaved.rootHash;
-    }
-
-    const historyIndex = rootHistory.findIndex(
-      (root) => root.root_hash === rootHash,
-    );
-
     if (!lastRootSaved) {
+      logger.info(`Syncing new registry ${organization.name}`);
       await Audit.create({
         orgUid: organization.orgUid,
         registryId: organization.registryId,
-        rootHash: _.get(rootHistory, '[0].root_hash'),
+        rootHash,
         type: 'CREATE REGISTRY',
         change: null,
         table: null,
@@ -218,24 +215,43 @@ const syncOrganizationAudit = async (organization) => {
       );
 
       return;
+    } else {
+      rootHash = lastRootSaved.rootHash;
     }
 
     const isSynced = rootHistory[rootHistory.length - 1].root_hash === rootHash;
 
+    const historyIndex = rootHistory.findIndex(
+      (root) => root.root_hash === rootHash,
+    );
+
     await Organization.update(
-      { synced: isSynced },
+      {
+        synced: isSynced,
+        sync_remaining: rootHistory.length - historyIndex - 1,
+      },
       { where: { orgUid: organization.orgUid } },
     );
 
     if (isSynced) {
-      logger.info(`No new data to sync for ${organization.name}`);
       return;
+    }
+
+    // Organization not synced, sync it
+    logger.info(' ');
+    logger.info(`Syncing Registry: ${_.get(organization, 'name')}`);
+
+    if (!CONFIG().CADT.USE_SIMULATOR) {
+      await new Promise((resolve) => setTimeout(resolve, 30000));
     }
 
     const root1 = _.get(rootHistory, `[${historyIndex}]`);
     const root2 = _.get(rootHistory, `[${historyIndex + 1}]`);
 
     if (!_.get(root2, 'confirmed')) {
+      logger.info(
+        `Waiting for the latest root for ${organization.name} to confirm`,
+      );
       return;
     }
 
@@ -246,6 +262,15 @@ const syncOrganizationAudit = async (organization) => {
     );
 
     if (_.isEmpty(kvDiff)) {
+      const errorMsg = [
+        `No data found for ${organization.name} in the current generation.`,
+        `Missing data for root hash: ${root2.root_hash}.`,
+        "Check your internet connection, otherwise the organization's file propagation server may be offline.",
+        'Syncing for this organization will be halted until resolved.',
+        'If the issue persists, contact the organization.',
+      ].join(' ');
+
+      logger.error(errorMsg);
       return;
     }
 
@@ -256,7 +281,7 @@ const syncOrganizationAudit = async (organization) => {
         diff.type === 'INSERT',
     );
 
-    // 0x617574686F72 is hex for 'author'
+    // 0x617574686F72 is hex for 'author'T
     const author = kvDiff.filter(
       (diff) =>
         (diff.key === '617574686f72' || diff.key === '0x617574686F72') &&
@@ -353,7 +378,7 @@ const syncOrganizationAudit = async (organization) => {
       }
     };
 
-    return await createTransaction(updateTransaction, afterCommitCallbacks);
+    await createTransaction(updateTransaction, afterCommitCallbacks);
   } catch (error) {
     logger.error('Error syncing org audit', error);
   }

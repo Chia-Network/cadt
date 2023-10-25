@@ -36,21 +36,18 @@ sequelizeMirror.options.logging = (msg) => {
   }
 };
 
-logger.info('CADT:mirror-database');
-
 const logDebounce = _.debounce(() => {
   console.log('Mirror DB not connected');
   logger.info('Mirror DB not connected');
 }, 120000);
 
 export const mirrorDBEnabled = () => {
-  const CONFIG = getConfig();
   if (
     mirrorConfig === 'mirror' &&
-    (!CONFIG?.MIRROR_DB?.DB_HOST ||
-      !CONFIG?.MIRROR_DB?.DB_NAME ||
-      !CONFIG?.MIRROR_DB?.DB_USERNAME ||
-      !CONFIG?.MIRROR_DB?.DB_PASSWORD)
+    (!CONFIG().CADT.MIRROR_DB?.DB_HOST ||
+      !CONFIG().CADT.MIRROR_DB?.DB_NAME ||
+      !CONFIG().CADT.MIRROR_DB?.DB_USERNAME ||
+      !CONFIG().CADT.MIRROR_DB?.DB_PASSWORD)
   ) {
     return false;
   }

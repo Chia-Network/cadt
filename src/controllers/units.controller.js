@@ -110,6 +110,7 @@ export const create = async (req, res) => {
     res.json({
       message: 'Unit staged successfully',
       uuid,
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -324,6 +325,7 @@ export const updateFromXLS = async (req, res) => {
 
     res.json({
       message: 'Updates from xlsx added to staging',
+      success: true,
     });
   } catch (error) {
     logger.error('Batch Upload Failed.', error);
@@ -443,6 +445,7 @@ export const update = async (req, res) => {
 
     res.json({
       message: 'Unit update added to staging',
+      success: true,
     });
   } catch (err) {
     res.status(400).json({
@@ -474,6 +477,7 @@ export const destroy = async (req, res) => {
     await Staging.upsert(stagedData);
     res.json({
       message: 'Unit deleted successfully',
+      success: true,
     });
   } catch (err) {
     res.status(400).json({
@@ -569,6 +573,7 @@ export const split = async (req, res) => {
 
     res.json({
       message: 'Unit split successful',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -591,6 +596,7 @@ export const batchUpload = async (req, res) => {
     res.json({
       message:
         'CSV processing complete, your records have been added to the staging table.',
+      success: true,
     });
   } catch (error) {
     logger.error('Batch Upload Failed.', error);

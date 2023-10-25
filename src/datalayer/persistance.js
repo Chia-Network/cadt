@@ -10,7 +10,6 @@ import { Organization } from '../models';
 import { logger } from '../logger.js';
 import { getChiaRoot } from 'chia-root-resolver';
 
-logger.info('CADT:datalayer:persistance');
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const getBaseOptions = () => {

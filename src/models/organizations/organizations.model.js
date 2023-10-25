@@ -17,8 +17,6 @@ import { getDataModelVersion } from '../../utils/helpers';
 
 import { CONFIG } from '../../user-config';
 
-logger.info('CADT:organizations');
-
 import ModelTypes from './organizations.modeltypes.cjs';
 
 class Organization extends Model {
@@ -55,7 +53,7 @@ class Organization extends Model {
       delete myOrganization.metadata;
     }
 
-    myOrganization.synced = myOrganization.synced === 1;
+    myOrganization.synced = myOrganization?.synced === 1;
 
     if (myOrganization && includeAddress) {
       myOrganization.xchAddress = await datalayer.getPublicAddress();
@@ -80,6 +78,7 @@ class Organization extends Model {
         'fileStoreSubscribed',
         'registryId',
         'registryHash',
+        'sync_remaining',
       ],
     });
 
@@ -346,7 +345,7 @@ class Organization extends Model {
   static async syncOrganizationMeta() {
     try {
       const allSubscribedOrganizations = await Organization.findAll({
-        subscribed: true,
+        where: { subscribed: true },
       });
 
       await Promise.all(

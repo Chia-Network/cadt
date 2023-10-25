@@ -40,8 +40,11 @@ module.exports = {
   },
   synced: {
     type: Sequelize.BOOLEAN,
-    allowNull: true,
     defaultValue: false,
+  },
+  sync_remaining: {
+    type: Sequelize.INTEGER,
+    defaultValue: 0,
   },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,

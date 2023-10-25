@@ -227,7 +227,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
   if (!CONFIG().CADT.USE_SIMULATOR) {
     logger.info(`Getting confirmation for ${storeId}.`);
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
-    logger.info(`Store exists and is found ${storeId}.`);
+    logger.info(`Store found in DataLayer: ${storeId}.`);
     if (!storeExistAndIsConfirmed) {
       logger.info(
         `Retrying subscribe to ${storeId}, store not yet confirmed.`,
@@ -239,9 +239,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
       );
       return getSubscribedStoreData(storeId, retry + 1);
     } else {
-      logger.debug(
-        `Store Exists and is confirmed, proceeding to get data ${storeId}`,
-      );
+      logger.debug(`Store is confirmed, proceeding to get data ${storeId}`);
     }
   }
 

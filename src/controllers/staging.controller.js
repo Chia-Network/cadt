@@ -1,5 +1,6 @@
 import _ from 'lodash';
 
+import { Sequelize } from 'sequelize';
 import { Staging } from '../models';
 
 import {
@@ -22,11 +23,13 @@ export const hasPendingTransactions = async (req, res) => {
     res.json({
       confirmed: true,
       message: 'There are no pending transactions',
+      success: true,
     });
   } catch (error) {
     res.json({
       confirmed: false,
       message: 'There are currently pending transactions',
+      success: true,
     });
   }
 };
@@ -102,7 +105,10 @@ export const commit = async (req, res) => {
       _.get(req, 'body.ids', []),
     );
 
-    res.json({ message: 'Staging Table committed to full node' });
+    res.json({
+      message: 'Staging Table committed to full node',
+      success: true,
+    });
   } catch (error) {
     console.trace(error);
     res.status(400).json({
@@ -125,6 +131,7 @@ export const destroy = async (req, res) => {
     });
     res.json({
       message: 'Deleted from stage',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -140,11 +147,16 @@ export const clean = async (req, res) => {
     await assertIfReadOnlyMode();
     await assertHomeOrgExists();
     await Staging.destroy({
-      where: {},
+      where: {
+        id: {
+          [Sequelize.Op.ne]: null,
+        },
+      },
       truncate: true,
     });
     res.json({
       message: 'Staging Data Cleaned',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -193,6 +205,7 @@ export const retryRecrod = async (req, res) => {
     );
     res.json({
       message: 'Staging record re-staged.',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({

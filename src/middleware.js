@@ -23,6 +23,7 @@ const headerKeys = Object.freeze({
   WALLET_SYNCED: 'x-wallet-synced',
   HOME_ORGANIZATION_SYNCED: 'x-home-org-synced',
   ALL_DATA_SYNCED: 'x-data-synced',
+  SYNC_REMAINING: 'x-sync-remaining',
 });
 
 const app = express();
@@ -125,6 +126,12 @@ app.use(async function (req, res, next) {
   const notSynced = Object.keys(orgMap).find((key) => !orgMap[key].synced);
 
   res.setHeader(headerKeys.ALL_DATA_SYNCED, !notSynced);
+
+  const syncRemaining = Object.keys(orgMap).reduce((agg, key) => {
+    return agg + orgMap[key].sync_remaining;
+  }, 0);
+
+  res.setHeader(headerKeys.SYNC_REMAINING, syncRemaining);
   next();
 });
 

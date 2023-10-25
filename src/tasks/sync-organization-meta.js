@@ -10,13 +10,11 @@ import { logger } from '../logger.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
-logger.task('CADT:task:sync-organizations');
-
 const task = new Task('sync-organization-meta', async () => {
   try {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
-    logger.task('Syncing subscribed organizations');
+
     if (!CONFIG().CADT.USE_SIMULATOR) {
       Organization.syncOrganizationMeta();
     }

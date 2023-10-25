@@ -7,8 +7,6 @@ import {
 } from '../utils/data-assertions';
 import { CONFIG } from '../user-config';
 
-logger.task('CADT:task:sync-picklists');
-
 const task = new Task('sync-picklist', async () => {
   try {
     await assertDataLayerAvailable();

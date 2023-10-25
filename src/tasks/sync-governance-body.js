@@ -12,8 +12,6 @@ import { Organization } from '../models';
 import dotenv from 'dotenv';
 dotenv.config();
 
-logger.task('CADT:task:sync-governance');
-
 const task = new Task('sync-governance-meta', async () => {
   try {
     await assertDataLayerAvailable();
