@@ -35,6 +35,7 @@ class Organization extends Model {
         'registryHash',
         'metadata',
         'prefix',
+        'synced',
       ],
       where: { isHome: true },
       raw: true,
@@ -54,13 +55,15 @@ class Organization extends Model {
       delete myOrganization.metadata;
     }
 
+    myOrganization.synced = myOrganization.synced === 1;
+
     if (myOrganization && includeAddress) {
       myOrganization.xchAddress = await datalayer.getPublicAddress();
       myOrganization.fileStoreSubscribed = true;
       return myOrganization;
     }
 
-    return undefined;
+    return myOrganization;
   }
 
   static async getOrgsMap() {
@@ -73,6 +76,7 @@ class Organization extends Model {
         'prefix',
         'isHome',
         'subscribed',
+        'synced',
         'fileStoreSubscribed',
         'registryId',
         'registryHash',
@@ -269,8 +273,7 @@ class Organization extends Model {
     });
   }
 
-  // eslint-disable-next-line
-  static importOrganization = async (orgUid) => {
+  static async importOrganization(orgUid) {
     try {
       console.log('Importing organization ' + orgUid);
       const orgData = await datalayer.getSubscribedStoreData(orgUid);
@@ -323,10 +326,9 @@ class Organization extends Model {
     } catch (error) {
       logger.info(error.message);
     }
-  };
+  }
 
-  // eslint-disable-next-line
-  static subscribeToOrganization = async (orgUid) => {
+  static async subscribeToOrganization(orgUid) {
     const exists = await Organization.findOne({ where: { orgUid } });
     if (exists) {
       await Organization.update({ subscribed: true }, { where: { orgUid } });
@@ -335,14 +337,13 @@ class Organization extends Model {
         'Can not subscribe, please import this organization first',
       );
     }
-  };
+  }
 
-  // eslint-disable-next-line
-  static unsubscribeToOrganization = async (orgUid) => {
+  static async unsubscribeToOrganization(orgUid) {
     await Organization.update({ subscribed: false }, { orgUid });
-  };
+  }
 
-  static syncOrganizationMeta = async () => {
+  static async syncOrganizationMeta() {
     try {
       const allSubscribedOrganizations = await Organization.findAll({
         subscribed: true,
@@ -403,9 +404,9 @@ class Organization extends Model {
     } catch (error) {
       logger.info(error.message);
     }
-  };
+  }
 
-  static subscribeToDefaultOrganizations = async () => {
+  static async subscribeToDefaultOrganizations() {
     try {
       const defaultOrgs = await getDefaultOrganizationList();
       if (!Array.isArray(defaultOrgs)) {
@@ -428,9 +429,9 @@ class Organization extends Model {
     } catch (error) {
       logger.info(error);
     }
-  };
+  }
 
-  static editOrgMeta = async ({ name, icon, prefix }) => {
+  static async editOrgMeta({ name, icon, prefix }) {
     const myOrganization = await Organization.getHomeOrg();
 
     const payload = {};
@@ -448,10 +449,9 @@ class Organization extends Model {
     }
 
     await datalayer.upsertDataLayer(myOrganization.orgUid, payload);
-  };
+  }
 
-  static addMetadata = async (payload) => {
-    // These first 3 steps update the datalayer as normal
+  static async addMetadata(payload) {
     const myOrganization = await Organization.getHomeOrg();
 
     const metadataForDatalayer = _.mapKeys(
@@ -493,11 +493,11 @@ class Organization extends Model {
       { metadata: updatedMetadataJson },
       { where: { orgUid: myOrganization.orgUid } },
     );
-  };
+  }
 
-  static removeMirror = async (storeId, coinId) => {
+  static async removeMirror(storeId, coinId) {
     datalayer.removeMirror(storeId, coinId);
-  };
+  }
 }
 
 Organization.init(ModelTypes, {

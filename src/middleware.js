@@ -6,7 +6,6 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import { V1Router } from './routes/v1';
 import { CONFIG } from './user-config';
-import { logger } from './logger.js';
 import {
   assertChiaNetworkMatchInConfiguration,
   assertDataLayerAvailable,
@@ -14,6 +13,7 @@ import {
 } from './utils/data-assertions';
 import packageJson from '../package.json' assert { type: 'json' };
 import datalayer from './datalayer';
+import { Organization } from './models';
 
 const headerKeys = Object.freeze({
   API_VERSION_HEADER_KEY: 'x-api-version',
@@ -21,6 +21,8 @@ const headerKeys = Object.freeze({
   DATA_MODEL_VERION_HEADER_KEY: 'x-datamodel-version',
   GOVERNANCE_BODY_HEADER_KEY: 'x-governance-body',
   WALLET_SYNCED: 'x-wallet-synced',
+  HOME_ORGANIZATION_SYNCED: 'x-home-org-synced',
+  ALL_DATA_SYNCED: 'x-data-synced',
 });
 
 const app = express();
@@ -88,15 +90,41 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
-  logger.debug(
-    `Setting header x-api-version to package.json version: ${packageJson.version}`,
-  );
   const version = packageJson.version;
   res.setHeader(headerKeys.API_VERSION_HEADER_KEY, version);
 
   const majorVersion = version.split('.')[0];
   res.setHeader(headerKeys.DATA_MODEL_VERION_HEADER_KEY, `v${majorVersion}`);
 
+  next();
+});
+
+app.use(async function (req, res, next) {
+  if (!CONFIG().CADT.USE_SIMULATOR) {
+    // If the home organization is syncing, then we treat all requests as read-only
+    const homeOrg = await Organization.getHomeOrg();
+
+    if (req.method !== 'GET' && !homeOrg.synced) {
+      res.status(400).json({
+        message:
+          'Your organization data is still resyncing, please try again after it completes',
+        success: false,
+      });
+    } else if (homeOrg.synced) {
+      res.setHeader(headerKeys.HOME_ORGANIZATION_SYNCED, true);
+    } else {
+      res.setHeader(headerKeys.HOME_ORGANIZATION_SYNCED, false);
+    }
+
+    next();
+  }
+});
+
+app.use(async function (req, res, next) {
+  const orgMap = await Organization.getOrgsMap();
+  const notSynced = Object.keys(orgMap).find((key) => !orgMap[key].synced);
+
+  res.setHeader(headerKeys.ALL_DATA_SYNCED, !notSynced);
   next();
 });
 

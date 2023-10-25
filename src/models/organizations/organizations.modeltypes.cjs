@@ -38,6 +38,11 @@ module.exports = {
     allowNull: false,
     defaultValue: '0',
   },
+  synced: {
+    type: Sequelize.BOOLEAN,
+    allowNull: true,
+    defaultValue: false,
+  },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };
