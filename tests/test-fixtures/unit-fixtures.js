@@ -24,6 +24,7 @@ export const deleteUnit = async (warehouseUnitId) => {
     .send({ warehouseUnitId });
   expect(result.body).to.deep.equal({
     message: 'Unit deleted successfully',
+    success: true,
   });
   expect(result.statusCode).to.equal(200);
   return result;
@@ -50,6 +51,7 @@ export const updateUnit = async (warehouseUnitId, originalRecord) => {
 
   expect(result.body).to.deep.equal({
     message: 'Unit update added to staging',
+    success: true,
   });
   expect(result.statusCode).to.equal(200);
 

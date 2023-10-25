@@ -24,6 +24,7 @@ export const commitStagingRecords = async () => {
   expect(results.statusCode).to.equal(200);
   expect(results.body).to.deep.equal({
     message: 'Staging Table committed to full node',
+    success: true,
   });
 
   return results;

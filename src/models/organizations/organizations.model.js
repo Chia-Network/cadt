@@ -22,19 +22,6 @@ import ModelTypes from './organizations.modeltypes.cjs';
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
     const myOrganization = await Organization.findOne({
-      attributes: [
-        'orgUid',
-        'orgHash',
-        'name',
-        'icon',
-        'subscribed',
-        'registryId',
-        'fileStoreId',
-        'registryHash',
-        'metadata',
-        'prefix',
-        'synced',
-      ],
       where: { isHome: true },
       raw: true,
     });
@@ -53,12 +40,14 @@ class Organization extends Model {
       delete myOrganization.metadata;
     }
 
-    myOrganization.synced = myOrganization?.synced === 1;
-
     if (myOrganization && includeAddress) {
       myOrganization.xchAddress = await datalayer.getPublicAddress();
       myOrganization.fileStoreSubscribed = true;
       return myOrganization;
+    }
+
+    if (myOrganization) {
+      myOrganization.synced = myOrganization.synced === 1;
     }
 
     return myOrganization;

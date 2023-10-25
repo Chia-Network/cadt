@@ -153,6 +153,7 @@ describe('Unit Resource Integration Tests', function () {
     expect(createdCommitResult.statusCode).to.equal(200);
     expect(createdCommitResult.body).to.deep.equal({
       message: 'Staging Table committed to full node',
+      success: true,
     });
 
     // The node simulator runs on an async process, we are importing
@@ -185,6 +186,7 @@ describe('Unit Resource Integration Tests', function () {
 
     expect(unitRes.body).to.deep.equal({
       message: 'Unit split successful',
+      success: true,
     });
 
     expect(unitRes.statusCode).to.equal(200);
@@ -241,6 +243,7 @@ describe('Unit Resource Integration Tests', function () {
     expect(stagingRes.statusCode).to.equal(200);
     expect(commitRes.body).to.deep.equal({
       message: 'Staging Table committed to full node',
+      success: true,
     });
 
     // After commiting the true flag should be set to this staging record
