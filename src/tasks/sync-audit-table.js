@@ -221,11 +221,13 @@ const syncOrganizationAudit = async (organization) => {
         raw: true,
       });
 
-      // There was an oversight in the audit model where we named it onChainConfirmationTimeStamp but
-      // the RPC result calls in timestamp. This is a temporary fix to ensure that we can still sync
-      lastRootSaved.timestamp = Number(
-        lastRootSaved.onchainConfirmationTimeStamp,
-      );
+      if (lastRootSaved) {
+        // There was an oversight in the audit model where we named it onChainConfirmationTimeStamp but
+        // the RPC result calls in timestamp. This is a temporary fix to ensure that we can still sync
+        lastRootSaved.timestamp = Number(
+          lastRootSaved?.onchainConfirmationTimeStamp || 0,
+        );
+      }
     }
 
     let generation = _.get(rootHistory, '[0]');
