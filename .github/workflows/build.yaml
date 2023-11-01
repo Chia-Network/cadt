@@ -12,6 +12,10 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: write
+
 jobs:
   build:
     name: Build Binaries
@@ -298,7 +302,10 @@ jobs:
             cadt-linux-x64-deb/*.deb
             cadt-linux-arm64-deb/*.deb
 
+      - name: Gets JWT Token from GitHub
+        uses: Chia-Network/actions/github/jwt@main
+
       - name: Trigger apt repo update
         run: |
-          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/start
-          curl -s -XPOST -H "Authorization: Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/success/deploy
+          curl -s -XPOST -H "Authorization: Bearer ${{ env.JWT_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/start
+          curl -s -XPOST -H "Authorization: Bearer ${{ env.JWT_TOKEN }}" --data '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}' ${{ secrets.GLUE_API_URL }}/api/v1/cadt/${{ github.sha }}/success/deploy
