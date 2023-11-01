@@ -302,7 +302,8 @@ jobs:
             cadt-linux-x64-deb/*.deb
             cadt-linux-arm64-deb/*.deb
 
-      - uses: Chia-Network/actions/github/jwt@main
+      - name: Gets JWT Token from GitHub
+        uses: Chia-Network/actions/github/jwt@main
 
       - name: Trigger apt repo update
         run: |
