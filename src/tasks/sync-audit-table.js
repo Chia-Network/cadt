@@ -226,6 +226,7 @@ const syncOrganizationAudit = async (organization) => {
         lastRootSaved.timestamp = Number(
           lastRootSaved?.onchainConfirmationTimeStamp || 0,
         );
+        lastRootSaved.root_hash = lastRootSaved.rootHash;
       }
     }
 
