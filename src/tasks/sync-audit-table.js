@@ -294,7 +294,9 @@ const syncOrganizationAudit = async (organization) => {
     logger.info(' ');
     logger.info(`Syncing Registry: ${_.get(organization, 'name')}`);
     logger.info(
-      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced.`,
+      `${organization.name} is ${
+        syncRemaining + 1
+      } DataLayer generations away from being fully synced.`,
     );
 
     if (!CONFIG.USE_SIMULATOR) {
