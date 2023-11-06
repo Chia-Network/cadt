@@ -42,15 +42,19 @@ class Governance extends Model {
     );
 
     const onConfirm = async () => {
-      logger.info('Organization confirmed, you are ready to go');
-      await Meta.upsert({
-        metaKey: 'governanceBodyId',
-        metaValue: governanceVersionId,
-      });
-      await Meta.upsert({
-        metaKey: 'mainGoveranceBodyId',
-        metaValue: governanceBodyId,
-      });
+      try {
+        logger.info('Organization confirmed, you are ready to go');
+        await Meta.upsert({
+          metaKey: 'governanceBodyId',
+          metaValue: governanceVersionId,
+        });
+        await Meta.upsert({
+          metaKey: 'mainGoveranceBodyId',
+          metaValue: governanceBodyId,
+        });
+      } catch (error) {
+        logger.error('Error syncing governance data', error);
+      }
     };
 
     if (!CONFIG().CADT.USE_SIMULATOR) {

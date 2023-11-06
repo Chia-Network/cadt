@@ -90,7 +90,7 @@ export const assertWalletIsAvailable = async () => {
   if (!CONFIG().CADT.USE_SIMULATOR) {
     if (!(await datalayer.walletIsAvailable())) {
       throw new Error(
-        'Your wallet is not available, please turn it on to continue using climate warehouse',
+        'Your wallet is not available, please turn it on to continue using CADT',
       );
     }
   }

@@ -16,6 +16,7 @@ const task = new Task('sync-organization-meta', async () => {
     await assertWalletIsSynced();
 
     if (!CONFIG().CADT.USE_SIMULATOR) {
+      logger.task('Syncing subscribed organizations');
       Organization.syncOrganizationMeta();
     }
   } catch (error) {
