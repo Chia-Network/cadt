@@ -7,7 +7,7 @@ import { Organization, Audit, ModelKeys, Staging, Meta } from '../models';
 import datalayer from '../datalayer';
 import { decodeHex, encodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../logger.js';
 import { sequelize, sequelizeMirror } from '../database';
 import { CONFIG } from '../config';
 import {
