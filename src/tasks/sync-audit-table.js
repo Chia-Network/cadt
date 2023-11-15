@@ -180,7 +180,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
       await afterCommitCallback();
     }
 
-    logger.info('Commited transaction');
+    logger.info('Committed transaction');
 
     return result;
   } catch (error) {
