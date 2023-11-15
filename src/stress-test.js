@@ -137,9 +137,25 @@ const waitForWalletSync = async () => {
   return true;
 };
 
+const waitForOrganizationSync = async () => {
+  const response = await superagent.get(
+    `http://127.0.0.1:31310/v1/organizations`,
+  );
+  const data = response.body;
+
+  const isSynced = Object.keys(data).some((key) => data[key].synced);
+
+  if (isSynced) {
+    return true;
+  }
+  console.log('waiting on home org sync');
+  return waitForOrganizationSync();
+};
+
 const start = async () => {
   try {
     await waitForWalletSync();
+    await waitForOrganizationSync();
     const projectIds = [];
     for (let i = 0; i < 20; i++) {
       console.log(`Creating project ${i}`);
