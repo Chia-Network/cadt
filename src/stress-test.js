@@ -125,8 +125,21 @@ const unitData = {
   },
 };
 
+const waitForWalletSync = async () => {
+  const synced = await wallet.walletIsSynced();
+
+  if (!synced) {
+    console.log('Waiting for wallet sync...');
+    await new Promise((resolve) => setTimeout(() => resolve(), 15000));
+    return wallet.walletIsSynced();
+  }
+
+  return true;
+};
+
 const start = async () => {
   try {
+    await waitForWalletSync();
     const projectIds = [];
     for (let i = 0; i < 20; i++) {
       console.log(`Creating project ${i}`);
@@ -147,12 +160,14 @@ const start = async () => {
       ]);
     }
 
+    await waitForWalletSync();
     await wallet.waitForAllTransactionsToConfirm();
     const response = await superagent.post(
       `http://127.0.0.1:31310/v1/staging/commit`,
     );
     console.log(response.body);
     await new Promise((resolve) => setTimeout(resolve, 60000));
+    await waitForWalletSync();
     await wallet.waitForAllTransactionsToConfirm();
 
     logger.info(`End of function`);
