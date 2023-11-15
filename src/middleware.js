@@ -117,10 +117,11 @@ app.use(async function (req, res, next) {
       } else {
         res.setHeader(headerKeys.HOME_ORGANIZATION_SYNCED, false);
       }
+      next();
     }
+  } else {
+    next();
   }
-
-  next();
 });
 
 app.use(async function (req, res, next) {
