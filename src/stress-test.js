@@ -141,8 +141,10 @@ const start = async () => {
       console.log(`Creating units for project ${projectId}`);
       const unit = Object.assign({}, unitData);
       unit.issuance.warehouseProjectId = projectId;
-      await superagent.post(`http://127.0.0.1:31310/v1/units`).send(unit);
-      await superagent.post(`http://127.0.0.1:31310/v1/units`).send(unit);
+      await Promise.all([
+        superagent.post(`http://127.0.0.1:31310/v1/units`).send(unit),
+        superagent.post(`http://127.0.0.1:31310/v1/units`).send(unit),
+      ]);
     }
 
     await wallet.waitForAllTransactionsToConfirm();
@@ -155,9 +157,16 @@ const start = async () => {
 
     logger.info(`End of function`);
     start();
-  } catch {
-    await superagent.delete(`http://127.0.0.1:31310/v1/staging/clean`);
-    start();
+  } catch (error) {
+    console.error('Error occurred:', error);
+    try {
+      await superagent.delete(`http://127.0.0.1:31310/v1/staging/clean`);
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    } finally {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      start();
+    }
   }
 };
 
