@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
-import { CONFIG } from '../user-config';
+import { CONFIG } from '../user-config.js';
 import { getChiaRoot } from 'chia-root-resolver';
 import { logger } from '../logger.js';
 
@@ -97,6 +97,7 @@ const waitForAllTransactionsToConfirm = async () => {
   await new Promise((resolve) => setTimeout(() => resolve(), 15000));
 
   if (unconfirmedTransactions) {
+    console.log('Waiting for all transactions to confirm...');
     return waitForAllTransactionsToConfirm();
   }
 

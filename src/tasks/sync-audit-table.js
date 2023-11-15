@@ -9,7 +9,7 @@ import { decodeHex, encodeHex } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 import { logger } from '../logger.js';
 import { sequelize, sequelizeMirror } from '../database';
-import { CONFIG } from '../config';
+import { CONFIG } from '../user-config';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,

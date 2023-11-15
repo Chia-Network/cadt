@@ -13,6 +13,7 @@
   },
   "scripts": {
     "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
+    "stress": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/stress-test.js",
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --require @babel/register tests/**/*.spec.js --reporter spec --exit --timeout 300000",
     "release": "npx standard-version",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",

@@ -1,5 +1,5 @@
 import ConfigManager from '@chia-carbon/core-registry-config';
-import { defaultConfig } from './utils/defaultConfig';
+import { defaultConfig } from './utils/defaultConfig.js';
 import { APP_DATA_FOLDER_NAME } from './constants';
 const configManager = new ConfigManager(APP_DATA_FOLDER_NAME, defaultConfig);
 
