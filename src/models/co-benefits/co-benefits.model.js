@@ -25,18 +25,36 @@ class CoBenefit extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => CoBenefitMirror.create(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await CoBenefitMirror.create(values, mirrorOptions);
+    });
     return super.create(values, options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => CoBenefitMirror.upsert(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await CoBenefitMirror.upsert(values, mirrorOptions);
+    });
     return super.upsert(values, options);
   }
 
-  static async destroy(values, options) {
-    safeMirrorDbHandler(() => CoBenefitMirror.destroy(values, options));
-    return super.destroy(values, options);
+  static async destroy(options) {
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await CoBenefitMirror.destroy(mirrorOptions);
+    });
+    return super.destroy(options);
   }
 }
 

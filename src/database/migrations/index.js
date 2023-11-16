@@ -31,6 +31,8 @@ import ResetDBForNewSingletons from './20220816155101-reset-db-for-new-singleton
 import AddIsTransferColumn from './20220825124702-add-isTransfer-column';
 import AddOrgMetadata from './20220831023546-add-org-metadata';
 import AddPrefix from './20230824175347-add-prefix';
+import OrgSyncStatus from './20231020201652-OrgSyncStatus';
+import OrgSyncRemaining from './20231020214357-OrgSyncRemainingCount';
 import UnitOwnerNotRequired from './20231016190739-UnitOwnerNotRequired';
 
 export const migrations = [
@@ -169,6 +171,14 @@ export const migrations = [
   {
     migration: AddPrefix,
     name: '20230824175347-add-prefix',
+  },
+  {
+    migration: OrgSyncStatus,
+    name: '20231020201652-OrgSyncStatus',
+  },
+  {
+    migration: OrgSyncRemaining,
+    name: '20231020214357-OrgSyncRemainingCount',
   },
   {
     migration: UnitOwnerNotRequired,

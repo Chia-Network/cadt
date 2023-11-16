@@ -22,18 +22,6 @@ import ModelTypes from './organizations.modeltypes.cjs';
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
     const myOrganization = await Organization.findOne({
-      attributes: [
-        'orgUid',
-        'orgHash',
-        'name',
-        'icon',
-        'subscribed',
-        'registryId',
-        'fileStoreId',
-        'registryHash',
-        'metadata',
-        'prefix',
-      ],
       where: { isHome: true },
       raw: true,
     });
@@ -58,7 +46,11 @@ class Organization extends Model {
       return myOrganization;
     }
 
-    return undefined;
+    if (myOrganization) {
+      myOrganization.synced = myOrganization.synced === 1;
+    }
+
+    return myOrganization;
   }
 
   static async getOrgsMap() {
@@ -71,9 +63,11 @@ class Organization extends Model {
         'prefix',
         'isHome',
         'subscribed',
+        'synced',
         'fileStoreSubscribed',
         'registryId',
         'registryHash',
+        'sync_remaining',
       ],
     });
 
@@ -343,7 +337,7 @@ class Organization extends Model {
   static async syncOrganizationMeta() {
     try {
       const allSubscribedOrganizations = await Organization.findAll({
-        subscribed: true,
+        where: { subscribed: true },
       });
 
       await Promise.all(

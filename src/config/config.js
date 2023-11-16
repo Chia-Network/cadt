@@ -12,6 +12,9 @@ export default {
     dialect: 'sqlite',
     storage: `${persistanceFolder}/data.sqlite3`,
     logging: false,
+    dialectOptions: {
+      busyTimeout: 10000,
+    },
   },
   simulator: {
     dialect: 'sqlite',

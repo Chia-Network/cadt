@@ -25,18 +25,37 @@ class Estimation extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => EstimationMirror.create(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+
+      await EstimationMirror.create(values, mirrorOptions);
+    });
     return super.create(values, options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => EstimationMirror.upsert(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await EstimationMirror.upsert(values, mirrorOptions);
+    });
     return super.upsert(values, options);
   }
 
-  static async destroy(values, options) {
-    safeMirrorDbHandler(() => EstimationMirror.destroy(values, options));
-    return super.destroy(values, options);
+  static async destroy(options) {
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await EstimationMirror.destroy(mirrorOptions);
+    });
+    return super.destroy(options);
   }
 }
 

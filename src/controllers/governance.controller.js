@@ -35,10 +35,12 @@ export const isCreated = async (req, res) => {
     if (results) {
       return res.json({
         created: true,
+        success: true,
       });
     } else {
       return res.json({
         created: false,
+        success: true,
       });
     }
   } catch (error) {
@@ -114,6 +116,7 @@ export const createGoveranceBody = async (req, res) => {
     return res.json({
       message:
         'Setting up new Governance Body on this node, this can take a few mins',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -139,6 +142,7 @@ export const setDefaultOrgList = async (req, res) => {
 
     return res.json({
       message: 'Committed this new organization list to the datalayer',
+      success: true,
     });
   } catch (error) {
     console.trace(error);
@@ -165,6 +169,7 @@ export const setPickList = async (req, res) => {
 
     return res.json({
       message: 'Committed this pick list to the datalayer',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -189,6 +194,7 @@ export const setGlossary = async (req, res) => {
 
     return res.json({
       message: 'Committed glossary to the datalayer',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -204,6 +210,7 @@ export const sync = async (req, res) => {
     Governance.sync();
     return res.json({
       message: 'Syncing Governance Body',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({

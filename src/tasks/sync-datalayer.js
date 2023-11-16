@@ -12,8 +12,6 @@ const Spinner = cliSpinner.Spinner;
 dotenv.config();
 import { CONFIG } from '../user-config';
 
-logger.task('CADT:task:sync-datalayer');
-
 const spinner = new Spinner('Waiting for Updates %s');
 spinner.setSpinnerString('|/-\\');
 spinner.setSpinnerDelay(500);
