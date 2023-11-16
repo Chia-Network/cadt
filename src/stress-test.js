@@ -143,7 +143,9 @@ const waitForOrganizationSync = async () => {
   );
   const data = response.body;
 
-  const isSynced = Object.keys(data).some((key) => data[key].synced);
+  const isSynced = Object.keys(data).some(
+    (key) => data[key].synced && data[key].isHome,
+  );
 
   if (isSynced) {
     return true;

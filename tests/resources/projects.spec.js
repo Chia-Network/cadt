@@ -56,7 +56,7 @@ describe('Project Resource CRUD', function () {
       it('gets all the projects available', async function () {
         // no query params
         const projects = await testFixtures.getProjectByQuery();
-        expect(projects.length).to.equal(11);
+        expect(projects.length).to.equal(12);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects filtered by orgUid', async function () {
