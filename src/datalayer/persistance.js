@@ -10,7 +10,6 @@ import { Organization } from '../models';
 import { logger } from '../config/logger.cjs';
 import { getChiaRoot } from '../utils/chia-root.js';
 
-logger.info('CADT:datalayer:persistance');
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const CONFIG = getConfig().APP;
@@ -583,7 +582,6 @@ const takeOffer = async (offer) => {
       return data;
     }
 
-    console.log(data);
     throw new Error(data.error);
   } catch (error) {
     logger.error(error);
@@ -605,8 +603,6 @@ const verifyOffer = async (offer) => {
       .send(offer);
 
     const data = response.body;
-
-    console.log(data);
 
     if (data.success) {
       return true;

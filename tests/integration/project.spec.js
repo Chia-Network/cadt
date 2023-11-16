@@ -7,14 +7,14 @@ import * as testFixtures from '../test-fixtures';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import { prepareDb } from '../../src/database';
 import datalayer from '../../src/datalayer';
-const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
+const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 5;
 
 describe('Project Resource Integration Tests', function () {
   let homeOrgUid;
 
   before(async function () {
-    await pullPickListValues();
     await prepareDb();
+    await pullPickListValues();
   });
 
   beforeEach(async function () {
@@ -57,6 +57,8 @@ describe('Project Resource Integration Tests', function () {
     // Now push the staging table live
     await testFixtures.commitStagingRecords();
     await testFixtures.waitForDataLayerSync();
+    await testFixtures.waitForDataLayerSync();
+    await testFixtures.waitForDataLayerSync();
 
     // The staging table should be empty after committing
     expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
@@ -83,7 +85,7 @@ describe('Project Resource Integration Tests', function () {
     // process in included in the record we are about to delete
     // Since some data is derived and not in the creation payload,
     // we need to test against the subset of the delete record
-    // We alreay asserted existance of the derived data above
+    // We already asserted existance of the derived data above
     testFixtures.objectContainsSubSet(
       deleteStagingRecord.diff.original,
       newProjectPayload,

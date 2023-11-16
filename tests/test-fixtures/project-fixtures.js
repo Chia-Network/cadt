@@ -37,6 +37,7 @@ export const updateProject = async (warehouseProjectId, originalRecord) => {
 
   expect(result.body).to.deep.equal({
     message: 'Project update added to staging',
+    success: true,
   });
   expect(result.statusCode).to.equal(200);
 
@@ -49,6 +50,7 @@ export const deleteProject = async (warehouseProjectId) => {
     .send({ warehouseProjectId });
   expect(result.body).to.deep.equal({
     message: 'Project deleted successfully',
+    success: true,
   });
   expect(result.statusCode).to.equal(200);
   return result;
