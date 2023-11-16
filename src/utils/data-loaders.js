@@ -9,32 +9,44 @@ let downloadedPickList = {};
 export const getPicklistValues = () => downloadedPickList;
 
 export const pullPickListValues = async () => {
-  if (CONFIG().CADT.USE_SIMULATOR || CONFIG().CADT.USE_DEVELOPMENT_MODE) {
-    downloadedPickList = PickListStub;
-  } else {
-    const governanceData = await Governance.findOne({
-      where: { metaKey: 'pickList' },
-      raw: true,
-    });
+  try {
+    if (CONFIG().CADT.USE_SIMULATOR || CONFIG().CADT.USE_DEVELOPMENT_MODE) {
+      downloadedPickList = PickListStub;
+    } else {
+      const governanceData = await Governance.findOne({
+        where: { metaKey: 'pickList' },
+        raw: true,
+      });
 
-    if (_.get(governanceData, 'metaValue')) {
-      downloadedPickList = JSON.parse(governanceData.metaValue);
+      if (_.get(governanceData, 'metaValue')) {
+        downloadedPickList = JSON.parse(governanceData.metaValue);
+      }
     }
-  }
 
-  return downloadedPickList;
+    return downloadedPickList;
+  } catch (error) {
+    logger.error(error);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return pullPickListValues();
+  }
 };
 
 export const getDefaultOrganizationList = async () => {
-  if (CONFIG().CADT.USE_SIMULATOR || CONFIG().CADT.USE_DEVELOPMENT_MODE) {
-    return [];
-  } else {
-    const governanceData = await Governance.findOne({
-      where: { metaKey: 'orgList' },
-      raw: true,
-    });
+  try {
+    if (CONFIG().CADT.USE_SIMULATOR || CONFIG().CADT.USE_DEVELOPMENT_MODE) {
+      return [];
+    } else {
+      const governanceData = await Governance.findOne({
+        where: { metaKey: 'orgList' },
+        raw: true,
+      });
 
-    return JSON.parse(_.get(governanceData, 'metaValue', '[]'));
+      return JSON.parse(_.get(governanceData, 'metaValue', '[]'));
+    }
+  } catch (error) {
+    logger.error(error);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return getDefaultOrganizationList();
   }
 };
 

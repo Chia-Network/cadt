@@ -13,6 +13,7 @@
   },
   "scripts": {
     "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
+    "stress": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/stress-test.js",
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --require @babel/register tests/**/*.spec.js --reporter spec --exit --timeout 300000",
     "release": "npx standard-version",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
@@ -32,6 +33,7 @@
   },
   "dependencies": {
     "@babel/eslint-parser": "^7.22.15",
+    "async-mutex": "^0.4.0",
     "@chia-carbon/core-registry-config": "^1.0.3",
     "@chia-carbon/core-registry-logger": "^1.0.12",
     "body-parser": "^1.20.2",
@@ -54,7 +56,7 @@
     "socket.io": "^4.7.2",
     "sqlite3": "^5.1.6",
     "superagent": "^8.1.2",
-    "toad-scheduler": "^1.6.1",
+    "toad-scheduler": "^3.0.0",
     "uuidv4": "^6.2.13",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^4.7.1"

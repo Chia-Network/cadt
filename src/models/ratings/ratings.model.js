@@ -25,17 +25,35 @@ class Rating extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => RatingMirror.create(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await RatingMirror.create(values, mirrorOptions);
+    });
     return super.create(values, options);
   }
 
-  static async destroy(values, options) {
-    safeMirrorDbHandler(() => RatingMirror.destroy(values, options));
-    return super.destroy(values, options);
+  static async destroy(options) {
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await RatingMirror.destroy(mirrorOptions);
+    });
+    return super.destroy(options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => RatingMirror.upsert(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await RatingMirror.upsert(values, mirrorOptions);
+    });
     return super.upsert(values, options);
   }
 }

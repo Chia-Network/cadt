@@ -464,55 +464,34 @@ class Staging extends Model {
     return [insertRecords, updateRecords, deleteChangeList];
   };
 
+  /**
+   * Pushes data to the DataLayer.
+   * @param {string} tableToPush - The name of the table to push.
+   * @param {string} comment - The comment to associate with the data.
+   * @param {string} author - The author of the data.
+   * @param {Array} [ids=[]] - Optional array of IDs to use in the query.
+   * @throws {Error} Throws an error if no records are found to send to DataLayer.
+   */
   static async pushToDataLayer(tableToPush, comment, author, ids = []) {
-    let stagedRecords;
+    const whereClause = {
+      commited: false,
+      ...(tableToPush ? { table: tableToPush } : {}),
+      ...(ids.length ? { uuid: { [Sequelize.Op.in]: ids } } : {}),
+    };
 
-    if (tableToPush) {
-      stagedRecords = await Staging.findAll({
-        where: {
-          commited: false,
-          table: tableToPush,
-          ...(ids.length
-            ? {
-                uuid: {
-                  [Sequelize.Op.in]: ids,
-                },
-              }
-            : {}),
-        },
-        raw: true,
-      });
-    } else {
-      stagedRecords = await Staging.findAll({
-        where: {
-          commited: false,
-          ...(ids.length
-            ? {
-                uuid: {
-                  [Sequelize.Op.in]: ids,
-                },
-              }
-            : {}),
-        },
-        raw: true,
-      });
-    }
+    const stagedRecords = await Staging.findAll({
+      where: whereClause,
+      raw: true,
+    });
 
     if (!stagedRecords.length) {
-      throw new Error('No records to send to datalayer');
+      throw new Error('No records to send to DataLayer');
     }
 
-    const unitsChangeList = await Unit.generateChangeListFromStagedData(
-      stagedRecords,
-      comment,
-      author,
-    );
-
-    const projectsChangeList = await Project.generateChangeListFromStagedData(
-      stagedRecords,
-      comment,
-      author,
-    );
+    const [unitsChangeList, projectsChangeList] = await Promise.all([
+      Unit.generateChangeListFromStagedData(stagedRecords, comment, author),
+      Project.generateChangeListFromStagedData(stagedRecords, comment, author),
+    ]);
 
     const unifiedChangeList = {
       ...projectsChangeList,
@@ -529,7 +508,6 @@ class Staging extends Model {
       raw: true,
     });
 
-    // sort so that deletes are first and inserts second
     const finalChangeList = _.uniqBy(
       _.sortBy(_.flatten(_.values(unifiedChangeList)), 'action'),
       (v) => [v.action, v.key].join(),
@@ -539,7 +517,6 @@ class Staging extends Model {
       myOrganization.registryId,
       finalChangeList,
       async () => {
-        // The push failed so revert the commited staging records.
         await Staging.update(
           { failedCommit: true },
           { where: { commited: true } },

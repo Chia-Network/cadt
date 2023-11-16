@@ -36,33 +36,53 @@ sequelizeMirror.options.logging = (msg) => {
   }
 };
 
-logger.info('CADT:mirror-database');
-
 const logDebounce = _.debounce(() => {
   console.log('Mirror DB not connected');
   logger.info('Mirror DB not connected');
 }, 120000);
 
-export const safeMirrorDbHandler = (callback) => {
-  try {
-    sequelizeMirror
-      .authenticate()
-      .then(async () => {
-        try {
-          await callback();
-        } catch (e) {
-          logger.error(`mirror_error:${e.message}`);
-        }
-      })
-      .catch(() => {
-        logDebounce();
-      });
-  } catch (error) {
-    logger.error(
-      'MirrorDB tried to update before it was initialize, will try again later',
-      error,
-    );
+export const mirrorDBEnabled = () => {
+  if (
+    mirrorConfig === 'mirror' &&
+    (!CONFIG().CADT.MIRROR_DB?.DB_HOST ||
+      !CONFIG().CADT.MIRROR_DB?.DB_NAME ||
+      !CONFIG().CADT.MIRROR_DB?.DB_USERNAME ||
+      !CONFIG().CADT.MIRROR_DB?.DB_PASSWORD)
+  ) {
+    return false;
   }
+
+  return true;
+};
+
+export const safeMirrorDbHandler = (callback) => {
+  if (!mirrorDBEnabled()) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    try {
+      sequelizeMirror
+        .authenticate()
+        .then(async () => {
+          try {
+            await callback();
+          } catch (e) {
+            logger.error(`mirror_error:${e.message}`);
+          }
+        })
+        .catch(() => {
+          logDebounce();
+        });
+    } catch (error) {
+      logger.error(
+        'MirrorDB tried to update before it was initialize, will try again later',
+        error,
+      );
+    } finally {
+      resolve();
+    }
+  });
 };
 
 export const sanitizeSqliteFtsQuery = (query) => {

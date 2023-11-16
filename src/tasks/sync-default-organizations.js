@@ -10,8 +10,6 @@ import { CONFIG } from '../user-config';
 import dotenv from 'dotenv';
 dotenv.config();
 
-logger.task('CADT:task:sync-default-organizations');
-
 const task = new Task('sync-default-organizations', async () => {
   try {
     await assertDataLayerAvailable();
@@ -35,7 +33,7 @@ const job = new SimpleIntervalJob(
     runImmediately: true,
   },
   task,
-  'sync-default-organizations',
+  { id: 'sync-default-organizations', preventOverrun: true },
 );
 
 export default job;

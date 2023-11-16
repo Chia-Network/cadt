@@ -21,7 +21,7 @@ export const waitForDataLayerSync = () => {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve();
-    }, TEST_WAIT_TIME * 2);
+    }, TEST_WAIT_TIME * 5);
   });
 };
 

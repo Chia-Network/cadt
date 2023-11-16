@@ -70,7 +70,13 @@ class Unit extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => UnitMirror.create(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await UnitMirror.create(values, mirrorOptions);
+    });
 
     const createResult = await super.create(values, options);
     const { orgUid } = createResult;
@@ -81,7 +87,14 @@ class Unit extends Model {
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => UnitMirror.upsert(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await UnitMirror.upsert(values, mirrorOptions);
+    });
+
     const upsertResult = await super.upsert(values, options);
 
     const { orgUid } = values;
@@ -91,17 +104,17 @@ class Unit extends Model {
     return upsertResult;
   }
 
-  static async destroy(values, options) {
-    safeMirrorDbHandler(() => UnitMirror.destroy(values, options));
+  static async destroy(options) {
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await UnitMirror.destroy(mirrorOptions);
+    });
 
-    const record = await super.findOne(values.where);
-
-    if (record) {
-      const { orgUid } = record.dataValues;
-      Unit.changes.next(['units', orgUid]);
-    }
-
-    return super.destroy(values, options);
+    Unit.changes.next(['units']);
+    return super.destroy(options);
   }
 
   static async fts(
@@ -136,7 +149,12 @@ class Unit extends Model {
     );
   }
 
-  static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
+  static async findAllMySQLFts(
+    userSearchInput,
+    orgUid,
+    pagination,
+    columns = [],
+  ) {
     const { offset, limit } = pagination;
 
     let fields = '*';
@@ -173,7 +191,7 @@ class Unit extends Model {
       sql = `${sql} AND orgUid = :orgUid`;
     }
 
-    const replacements = { search: searchStr, orgUid };
+    const replacements = { search: userSearchInput, orgUid };
 
     const count = (
       await sequelize.query(sql, {
@@ -200,7 +218,7 @@ class Unit extends Model {
   }
 
   static async findAllSqliteFts(
-    searchStr,
+    userSearchInput,
     orgUid,
     pagination,
     columns = [],
@@ -213,9 +231,9 @@ class Unit extends Model {
       fields = columns.join(', ');
     }
 
-    searchStr = sanitizeSqliteFtsQuery(searchStr);
+    userSearchInput = sanitizeSqliteFtsQuery(userSearchInput);
 
-    if (searchStr === '*') {
+    if (userSearchInput === '*') {
       // * isn't a valid matcher on its own. return empty set
       return {
         count: 0,
@@ -223,19 +241,28 @@ class Unit extends Model {
       };
     }
 
-    if (searchStr.startsWith('+')) {
-      searchStr = searchStr.replace('+', ''); // If query starts with +, replace it
+    if (userSearchInput.startsWith('+')) {
+      userSearchInput = userSearchInput.replace('+', ''); // If query starts with +, replace it
     }
 
     let sql = `
     SELECT ${fields} 
-    FROM units_fts
-    WHERE units_fts MATCH :search`;
+      FROM units_fts
+      WHERE units_fts MATCH :search
+    UNION
+    SELECT ${fields} 
+      FROM units_fts
+      WHERE units_fts MATCH :search2
+    `;
 
     if (includeProjectInfo) {
       sql = `SELECT units_fts.*
           FROM units_fts
           WHERE units_fts MATCH :search1
+      UNION
+      SELECT units_fts.*
+          FROM units_fts
+          WHERE units_fts MATCH :search3
       UNION
       SELECT units_fts.*
           FROM units_fts
@@ -249,11 +276,17 @@ class Unit extends Model {
       sql = `${sql} AND units_fts.orgUid = :orgUid`;
     }
 
-    let replacements = { search: searchStr, orgUid };
+    // doing a union search with an 0x is a hack to allow us to search against assetIds easier
+    let replacements = {
+      search: userSearchInput,
+      search2: `0x${userSearchInput}`,
+      orgUid,
+    };
     if (includeProjectInfo) {
       replacements = {
-        search1: searchStr,
-        search2: searchStr,
+        search1: userSearchInput,
+        search2: userSearchInput,
+        search3: `0x${userSearchInput}`,
         orgUid,
       };
     }

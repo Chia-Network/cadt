@@ -38,6 +38,14 @@ module.exports = {
     allowNull: false,
     defaultValue: '0',
   },
+  synced: {
+    type: Sequelize.BOOLEAN,
+    defaultValue: false,
+  },
+  sync_remaining: {
+    type: Sequelize.INTEGER,
+    defaultValue: 0,
+  },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
 };
