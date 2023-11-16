@@ -106,12 +106,13 @@ app.use(async function (req, res, next) {
     const homeOrg = await Organization.getHomeOrg();
 
     if (homeOrg) {
-      if (req.method !== 'GET' && !homeOrg.synced) {
+      if (!['GET', 'DELETE'].includes(req.method) && !homeOrg.synced) {
         res.status(400).json({
           message:
             'Your organization data is still resyncing, please try again after it completes',
           success: false,
         });
+        return;
       } else if (homeOrg?.synced) {
         res.setHeader(headerKeys.HOME_ORGANIZATION_SYNCED, true);
       } else {
