@@ -1,3 +1,26 @@
+#  (2023-11-16)
+
+
+### Bug Fixes
+
+* forward slash ([6e865e5](https://github.com/Chia-Network/Core-Registry-CADT/commit/6e865e50037557ab47226f86b67517de3f4f0998))
+* logging error in sync process ([fa7dd75](https://github.com/Chia-Network/Core-Registry-CADT/commit/fa7dd755fcf49f23afa60a396da6d80d76b8b8d5))
+* middleware fix ([e626995](https://github.com/Chia-Network/Core-Registry-CADT/commit/e62699586526727b35b9e390feddcd89547b4e43))
+* middleware fix ([85da99e](https://github.com/Chia-Network/Core-Registry-CADT/commit/85da99e09a91c4fecd88db31143b1c53cc2fd1b2))
+* middleware fix ([7213ad8](https://github.com/Chia-Network/Core-Registry-CADT/commit/7213ad8b151d7f61e58ea239d732f2f3c399b380))
+* middleware fix ([6d6cde4](https://github.com/Chia-Network/Core-Registry-CADT/commit/6d6cde49e6063599f44d118bc69001934466f864))
+* middleware fix ([40ef6a9](https://github.com/Chia-Network/Core-Registry-CADT/commit/40ef6a90f07c73517b83cba850e7a5d47775c582))
+
+
+### Features
+
+* additional sync updates ([ae3f9d2](https://github.com/Chia-Network/Core-Registry-CADT/commit/ae3f9d2ad78677c912c512145ed27b1592911275))
+* automatic migration to new sync method ([d440e98](https://github.com/Chia-Network/Core-Registry-CADT/commit/d440e98bedb7a9973a8ed195ca7f00416220e303))
+* sync fix by looking at timestamps instead of hashes ([24ebe4a](https://github.com/Chia-Network/Core-Registry-CADT/commit/24ebe4a610782d71c76d0698d891b12ed37e0004))
+* sync fix by looking at timestamps instead of hashes ([b249915](https://github.com/Chia-Network/Core-Registry-CADT/commit/b24991534bfd77e1575913d090b6a7498911eb05))
+
+
+
 ## [1.6.29](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.28...1.6.29) (2023-10-24)
 
 
