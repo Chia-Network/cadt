@@ -6,7 +6,6 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import { V1Router } from './routes/v1';
 import { getConfig } from './utils/config-loader';
-import { logger } from './config/logger.cjs';
 import {
   assertChiaNetworkMatchInConfiguration,
   assertDataLayerAvailable,
@@ -14,6 +13,7 @@ import {
 } from './utils/data-assertions';
 import packageJson from '../package.json' assert { type: 'json' };
 import datalayer from './datalayer';
+import { Organization } from './models';
 
 const { CADT_API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =
   getConfig().APP;
@@ -24,6 +24,9 @@ const headerKeys = Object.freeze({
   DATA_MODEL_VERION_HEADER_KEY: 'x-datamodel-version',
   GOVERNANCE_BODY_HEADER_KEY: 'x-governance-body',
   WALLET_SYNCED: 'x-wallet-synced',
+  HOME_ORGANIZATION_SYNCED: 'x-home-org-synced',
+  ALL_DATA_SYNCED: 'x-data-synced',
+  SYNC_REMAINING: 'x-sync-remaining',
 });
 
 const app = express();
@@ -88,15 +91,50 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
-  logger.info(
-    `Setting header x-api-verion to package.json version: ${packageJson.version}`,
-  );
   const version = packageJson.version;
   res.setHeader(headerKeys.API_VERSION_HEADER_KEY, version);
 
   const majorVersion = version.split('.')[0];
   res.setHeader(headerKeys.DATA_MODEL_VERION_HEADER_KEY, `v${majorVersion}`);
 
+  next();
+});
+
+app.use(async function (req, res, next) {
+  if (process.env.NODE_ENV !== 'test') {
+    // If the home organization is syncing, then we treat all requests as read-only
+    const homeOrg = await Organization.getHomeOrg();
+
+    if (homeOrg) {
+      if (!['GET', 'DELETE'].includes(req.method) && !homeOrg.synced) {
+        res.status(400).json({
+          message:
+            'Your organization data is still resyncing, please try again after it completes',
+          success: false,
+        });
+        return;
+      } else if (homeOrg?.synced) {
+        res.setHeader(headerKeys.HOME_ORGANIZATION_SYNCED, true);
+      } else {
+        res.setHeader(headerKeys.HOME_ORGANIZATION_SYNCED, false);
+      }
+    }
+  }
+
+  next();
+});
+
+app.use(async function (req, res, next) {
+  const orgMap = await Organization.getOrgsMap();
+  const notSynced = Object.keys(orgMap).find((key) => !orgMap[key].synced);
+
+  res.setHeader(headerKeys.ALL_DATA_SYNCED, !notSynced);
+
+  const syncRemaining = Object.keys(orgMap).reduce((agg, key) => {
+    return agg + orgMap[key].sync_remaining;
+  }, 0);
+
+  res.setHeader(headerKeys.SYNC_REMAINING, syncRemaining);
   next();
 });
 

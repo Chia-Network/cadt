@@ -12,13 +12,10 @@ const CONFIG = getConfig().APP;
 import dotenv from 'dotenv';
 dotenv.config();
 
-logger.info('CADT:task:sync-organizations');
-
 const task = new Task('sync-organization-meta', async () => {
   try {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
-    logger.info('Syncing subscribed organizations');
     if (!CONFIG.USE_SIMULATOR) {
       Organization.syncOrganizationMeta();
     }
@@ -39,7 +36,7 @@ const job = new SimpleIntervalJob(
     runImmediately: true,
   },
   task,
-  'sync-organization-meta',
+  { id: 'sync-organization-meta', preventOverrun: true },
 );
 
 export default job;

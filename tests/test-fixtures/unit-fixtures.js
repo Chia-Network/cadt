@@ -24,6 +24,7 @@ export const deleteUnit = async (warehouseUnitId) => {
     .send({ warehouseUnitId });
   expect(result.body).to.deep.equal({
     message: 'Unit deleted successfully',
+    success: true,
   });
   expect(result.statusCode).to.equal(200);
   return result;
@@ -42,7 +43,7 @@ export const updateUnit = async (warehouseUnitId, originalRecord) => {
     }
 
     if (typeof updateUnitJson[key] === 'object') {
-      updateUnitJson[key].id = originalRecord[key].id;
+      updateUnitJson[key].id = originalRecord[key]?.id;
     }
   });
 
@@ -50,6 +51,7 @@ export const updateUnit = async (warehouseUnitId, originalRecord) => {
 
   expect(result.body).to.deep.equal({
     message: 'Unit update added to staging',
+    success: true,
   });
   expect(result.statusCode).to.equal(200);
 
@@ -69,6 +71,7 @@ export const getUnit = async (warehouseUnitId) => {
 export const checkUnitRecordExists = async (warehouseUnitId) => {
   const record = await Unit.findByPk(warehouseUnitId);
   expect(record).to.be.ok;
+  return record;
 };
 
 export const checkUnitRecordDoesNotExist = async (warehouseUnitId) => {

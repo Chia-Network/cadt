@@ -1,3 +1,4 @@
+import { Sequelize } from 'sequelize';
 import { sequelize } from '../database';
 import { Organization } from '../models/organizations';
 
@@ -62,6 +63,7 @@ export const createV2 = async (req, res) => {
       return res.json({
         message: 'Your organization already exists.',
         orgId: myOrganization.orgUid,
+        success: false,
       });
     } else {
       const { name } = req.body;
@@ -81,6 +83,7 @@ export const createV2 = async (req, res) => {
       return res.json({
         message:
           'New organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.',
+        success: true,
       });
     }
   } catch (error) {
@@ -104,6 +107,7 @@ export const create = async (req, res) => {
       return res.json({
         message: 'Your organization already exists.',
         orgId: myOrganization.orgUid,
+        success: false,
       });
     } else {
       const { name, icon } = req.body;
@@ -111,6 +115,7 @@ export const create = async (req, res) => {
 
       return res.json({
         message: 'New organization created successfully.',
+        success: true,
         orgId: await Organization.createHomeOrganization(
           name,
           icon,
@@ -135,13 +140,18 @@ export const resetHomeOrg = async (req, res) => {
     await Promise.all([
       Organization.destroy({ where: { isHome: true } }),
       Staging.destroy({
-        where: {},
+        where: {
+          id: {
+            [Sequelize.Op.ne]: null,
+          },
+        },
         truncate: true,
       }),
     ]);
 
     res.json({
       message: 'Your home organization was reset, please create a new one.',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -162,6 +172,7 @@ export const importOrg = async (req, res) => {
     res.json({
       message:
         'Importing and subscribing organization this can take a few mins.',
+      success: true,
     });
 
     return Organization.importOrganization(orgUid);
@@ -186,6 +197,7 @@ export const importHomeOrg = async (req, res) => {
 
     res.json({
       message: 'Importing home organization.',
+      success: true,
     });
   } catch (error) {
     console.trace(error);
@@ -207,6 +219,7 @@ export const subscribeToOrganization = async (req, res) => {
 
     return res.json({
       message: 'Subscribed to organization',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -242,6 +255,7 @@ export const deleteImportedOrg = async (req, res) => {
     return res.json({
       message:
         'UnSubscribed to organization, you will no longer receive updates.',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -282,6 +296,7 @@ export const unsubscribeToOrganization = async (req, res) => {
     return res.json({
       message:
         'UnSubscribed to organization, you will no longer receive updates.',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -322,6 +337,7 @@ export const resyncOrganization = async (req, res) => {
 
     return res.json({
       message: 'Resyncing organization completed',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -367,6 +383,7 @@ export const addMirror = async (req, res) => {
     await Organization.addMirror(req.body.storeId, req.body.url);
     return res.json({
       message: `Mirror added for ${req.body.storeId}.`,
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -412,6 +429,7 @@ export const removeMirror = async (req, res) => {
     await Organization.removeMirror(req.body.storeId, req.body.coinId);
     return res.json({
       message: `Mirror removed for ${req.body.storeId}.`,
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -426,6 +444,7 @@ export const sync = async (req, res) => {
     Organization.syncOrganizationMeta();
     return res.json({
       message: 'Syncing All Organizations Metadata',
+      success: true,
     });
   } catch (error) {
     res.status(400).json({

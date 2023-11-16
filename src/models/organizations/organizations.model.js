@@ -18,22 +18,11 @@ import { getDataModelVersion } from '../../utils/helpers';
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
-logger.info('CADT:organizations');
-
 import ModelTypes from './organizations.modeltypes.cjs';
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
     const myOrganization = await Organization.findOne({
-      attributes: [
-        'orgUid',
-        'name',
-        'icon',
-        'subscribed',
-        'registryId',
-        'fileStoreId',
-        'metadata',
-      ],
       where: { isHome: true },
       raw: true,
     });
@@ -58,7 +47,11 @@ class Organization extends Model {
       return myOrganization;
     }
 
-    return undefined;
+    if (myOrganization) {
+      myOrganization.synced = myOrganization.synced === 1;
+    }
+
+    return myOrganization;
   }
 
   static async getOrgsMap() {
@@ -69,7 +62,9 @@ class Organization extends Model {
         'icon',
         'isHome',
         'subscribed',
+        'synced',
         'fileStoreSubscribed',
+        'sync_remaining',
       ],
     });
 
@@ -332,7 +327,7 @@ class Organization extends Model {
   static async syncOrganizationMeta() {
     try {
       const allSubscribedOrganizations = await Organization.findAll({
-        subscribed: true,
+        where: { subscribed: true },
       });
 
       await Promise.all(

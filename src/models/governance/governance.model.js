@@ -194,7 +194,11 @@ class Governance extends Model {
     const rollbackChangesIfFailed = async () => {
       logger.info('Reverting Goverance Records');
       await Governance.destroy({
-        where: {},
+        where: {
+          id: {
+            [Sequelize.Op.ne]: null,
+          },
+        },
         truncate: true,
       });
 

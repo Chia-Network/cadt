@@ -34,17 +34,35 @@ class ProjectLocation extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => ProjectLocationMirror.create(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await ProjectLocationMirror.create(values, mirrorOptions);
+    });
     return super.create(values, options);
   }
 
-  static async destroy(values, options) {
-    safeMirrorDbHandler(() => ProjectLocationMirror.destroy(values, options));
-    return super.destroy(values, options);
+  static async destroy(options) {
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await ProjectLocationMirror.destroy(mirrorOptions);
+    });
+    return super.destroy(options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => ProjectLocationMirror.upsert(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await ProjectLocationMirror.upsert(values, mirrorOptions);
+    });
     return super.upsert(values, options);
   }
 }

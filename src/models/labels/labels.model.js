@@ -38,17 +38,35 @@ class Label extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => LabelMirror.create(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await LabelMirror.create(values, mirrorOptions);
+    });
     return super.create(values, options);
   }
 
-  static async destroy(values, options) {
-    safeMirrorDbHandler(() => LabelMirror.destroy(values, options));
-    return super.destroy(values, options);
+  static async destroy(options) {
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await LabelMirror.destroy(mirrorOptions);
+    });
+    return super.destroy(options);
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => LabelMirror.upsert(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await LabelMirror.upsert(values, mirrorOptions);
+    });
     return super.upsert(values, options);
   }
 }

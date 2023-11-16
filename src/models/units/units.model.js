@@ -70,7 +70,13 @@ class Unit extends Model {
   }
 
   static async create(values, options) {
-    safeMirrorDbHandler(() => UnitMirror.create(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await UnitMirror.create(values, mirrorOptions);
+    });
 
     const createResult = await super.create(values, options);
     const { orgUid } = createResult;
@@ -81,7 +87,14 @@ class Unit extends Model {
   }
 
   static async upsert(values, options) {
-    safeMirrorDbHandler(() => UnitMirror.upsert(values, options));
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await UnitMirror.upsert(values, mirrorOptions);
+    });
+
     const upsertResult = await super.upsert(values, options);
 
     const { orgUid } = values;
@@ -91,17 +104,17 @@ class Unit extends Model {
     return upsertResult;
   }
 
-  static async destroy(values, options) {
-    safeMirrorDbHandler(() => UnitMirror.destroy(values, options));
+  static async destroy(options) {
+    safeMirrorDbHandler(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await UnitMirror.destroy(mirrorOptions);
+    });
 
-    const record = await super.findOne(values.where);
-
-    if (record) {
-      const { orgUid } = record.dataValues;
-      Unit.changes.next(['units', orgUid]);
-    }
-
-    return super.destroy(values, options);
+    Unit.changes.next(['units']);
+    return super.destroy(options);
   }
 
   static async fts(
@@ -136,7 +149,12 @@ class Unit extends Model {
     );
   }
 
-  static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
+  static async findAllMySQLFts(
+    userSearchInput,
+    orgUid,
+    pagination,
+    columns = [],
+  ) {
     const { offset, limit } = pagination;
 
     let fields = '*';
@@ -173,7 +191,7 @@ class Unit extends Model {
       sql = `${sql} AND orgUid = :orgUid`;
     }
 
-    const replacements = { search: searchStr, orgUid };
+    const replacements = { search: userSearchInput, orgUid };
 
     const count = (
       await sequelize.query(sql, {
