@@ -19,7 +19,7 @@ import { mirrorDBEnabled } from '../database';
 dotenv.config();
 const mutex = new Mutex();
 
-const task = new Task('sync-audit', async () => {
+const task = new Task('sync-registries', async () => {
   if (!mutex.isLocked()) {
     const releaseMutex = await mutex.acquire();
     try {
@@ -98,7 +98,7 @@ const job = new SimpleIntervalJob(
     runImmediately: true,
   },
   task,
-  { id: 'sync-audit', preventOverrun: true },
+  { id: 'sync-registries', preventOverrun: true },
 );
 
 const processJob = async () => {
