@@ -77,14 +77,14 @@ const clearPendingRoots = async (storeId) => {
     const data = response.body;
 
     if (data.success) {
-      return data.mirrors;
+      return true;
     }
 
-    logger.error(`FAILED GETTING MIRRORS FOR ${storeId}`);
-    return [];
+    logger.error(`Unable to clear pending root for ${storeId}`);
+    return false;
   } catch (error) {
     logger.error(error);
-    return [];
+    return false;
   }
 };
 
@@ -432,10 +432,13 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
 
       if (data.error.includes('Key already present')) {
         logger.info('Pending root detected, waiting 5 seconds and retrying');
-        await clearPendingRoots(storeId);
-        attempts++;
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        continue; // Retry
+        const rootsCleared = await clearPendingRoots(storeId);
+
+        if (rootsCleared) {
+          attempts++;
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue; // Retry
+        }
       }
 
       logger.error(
