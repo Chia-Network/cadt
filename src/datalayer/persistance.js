@@ -72,7 +72,7 @@ const clearPendingRoots = async (storeId) => {
       .key(key)
       .cert(cert)
       .timeout(timeout)
-      .send({ id: storeId });
+      .send({ store_id: storeId });
 
     const data = response.body;
 
