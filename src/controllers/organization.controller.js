@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize';
 import { sequelize } from '../database';
 import { Organization } from '../models/organizations';
+import datalayer from '../datalayer';
 
 import {
   assertHomeOrgExists,
@@ -16,6 +17,29 @@ import { ModelKeys, Audit, Staging } from '../models';
 
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
+};
+
+export const homeOrgSyncStatus = async (req, res) => {
+  try {
+    await assertHomeOrgExists();
+    const walletSynced = await datalayer.walletIsSynced();
+    const homeOrg = await Organization.getHomeOrg();
+
+    return res.json({
+      status: {
+        wallet_synced: walletSynced,
+        home_org_synced: homeOrg?.synced ?? false,
+      },
+      message:
+        'After you detect that wallet is synced, you will want to wait about 5 seconds and call this endpoint again to get the home org status. There is a delay between when the wallet is synced and when the proper status for home org is picked up.',
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message,
+      success: false,
+    });
+  }
 };
 
 export const editHomeOrg = async (req, res) => {
