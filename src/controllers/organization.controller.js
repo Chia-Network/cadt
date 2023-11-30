@@ -31,7 +31,7 @@ export const homeOrgSyncStatus = async (req, res) => {
         home_org_synced: homeOrg?.synced ?? false,
       },
       message:
-        'After you detect that wallet is synced, your want to wait about 5 seconds and call this endpoint again to get the home org status. There is a delay between when the wallet is synced and when the proper status for home org is picked up.',
+        'After you detect that wallet is synced, you will want to wait about 5 seconds and call this endpoint again to get the home org status. There is a delay between when the wallet is synced and when the proper status for home org is picked up.',
       success: true,
     });
   } catch (error) {
