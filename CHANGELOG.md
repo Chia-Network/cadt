@@ -1,4 +1,4 @@
-#  (2023-11-16)
+## [1.7.1](https://github.com/Chia-Network/cadt/compare/1.6.15...1.7.1) (2023-11-30)
 
 
 ### Bug Fixes
@@ -14,6 +14,8 @@
 
 * additional sync updates ([5d047ff](https://github.com/Chia-Network/cadt/commit/5d047ff8036d283301c22232301fcaea71fef054))
 * automatic migration to new sync method ([1bca49e](https://github.com/Chia-Network/cadt/commit/1bca49e2556700ddee218a4a90462fc402309a49))
+* home org status endpoint ([ca18679](https://github.com/Chia-Network/cadt/commit/ca18679760a625b3ad48d8a8faf8e638269091de))
+* home org status endpoint ([b9a01fd](https://github.com/Chia-Network/cadt/commit/b9a01fdac2e55c3fe5c4bd7a1d07479714258f3b))
 * sync fix by looking at timestamps instead of hashes ([71e1272](https://github.com/Chia-Network/cadt/commit/71e12724b7f1885a3951cddfcbd1dac172eeb677))
 * sync fix by looking at timestamps instead of hashes ([f64f650](https://github.com/Chia-Network/cadt/commit/f64f650abdc5acdcd12ffaa58ec721799453b5bf))
 * sync remaining count for organizations ([ef7cf17](https://github.com/Chia-Network/cadt/commit/ef7cf1799b6e5b0db131fa6af2fb354d135ec960))
