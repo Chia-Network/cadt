@@ -20,7 +20,7 @@ export const findAll = async (req, res) => {
 
 export const homeOrgSyncStatus = async (req, res) => {
   try {
-    //await assertHomeOrgExists();
+    await assertHomeOrgExists();
     const walletSynced = await datalayer.walletIsSynced();
     const homeOrg = await Organization.getHomeOrg();
     const pendingCommitsCount = await Staging.count({
