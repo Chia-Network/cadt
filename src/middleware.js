@@ -7,7 +7,6 @@ import cors from 'cors';
 import { V1Router } from './routes/v1';
 import { getConfig } from './utils/config-loader';
 import {
-  assertChiaNetworkMatchInConfiguration,
   assertDataLayerAvailable,
   assertWalletIsAvailable,
 } from './utils/data-assertions';
@@ -43,7 +42,6 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // Common assertions on every endpoint
 app.use(async function (req, res, next) {
   try {
-    await assertChiaNetworkMatchInConfiguration();
     await assertDataLayerAvailable();
     await assertWalletIsAvailable();
     next();

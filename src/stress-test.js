@@ -1,9 +1,8 @@
 import superagent from 'superagent';
 import Logger from '@chia-carbon/core-registry-logger';
-import wallet from './datalayer/wallet';
 
 const logger = new Logger({
-  namespace: 'stress-test',
+  namespace: 'stress-test-cadt-proper',
   projectName: 'stress-test',
   logLevel: 'trace',
   packageVersion: 1.0,
@@ -98,6 +97,8 @@ const unitData = {
   unitTags: 'CC&S, Sequestration, carbon bury',
   unitStatus: 'Held',
   unitStatusReason: 'N/A',
+  unitBlockStart: '1',
+  unitBlockEnd: '10',
   unitRegistryLink:
     'https://www.climateactionreserve.org/about-us/california-climate-action-registry/',
   correspondingAdjustmentDeclaration: 'Committed',
@@ -125,21 +126,9 @@ const unitData = {
   },
 };
 
-const waitForWalletSync = async () => {
-  const synced = await wallet.walletIsSynced();
-
-  if (!synced) {
-    console.log('Waiting for wallet sync...');
-    await new Promise((resolve) => setTimeout(() => resolve(), 15000));
-    return wallet.walletIsSynced();
-  }
-
-  return true;
-};
-
 const waitForOrganizationSync = async () => {
   const response = await superagent.get(
-    `http://127.0.0.1:31310/v1/organizations/status`,
+    `http://localhost:31310/v1/organizations/status`,
   );
   const data = response.body;
 
@@ -148,6 +137,7 @@ const waitForOrganizationSync = async () => {
   }
 
   console.log('waiting on home org sync');
+  await new Promise((resolve) => setTimeout(resolve, 1000));
   return waitForOrganizationSync();
 };
 
@@ -155,30 +145,30 @@ const start = async () => {
   try {
     await waitForOrganizationSync();
     const projectIds = [];
-    for (let i = 0; i < 20; i++) {
+
+    for (let i = 0; i < 80; i++) {
       console.log(`Creating project ${i}`);
       const response = await superagent
-        .post(`http://127.0.0.1:31310/v1/projects`)
+        .post(`http://localhost:31310/v1/projects`)
         .send(projectData);
       const data = response.body;
       projectIds.push(data.uuid);
     }
 
-    for (const projectId of projectIds) {
-      console.log(`Creating units for project ${projectId}`);
-      const unit = Object.assign({}, unitData);
-      unit.issuance.warehouseProjectId = projectId;
-      await Promise.all([
-        superagent.post(`http://127.0.0.1:31310/v1/units`).send(unit),
-        superagent.post(`http://127.0.0.1:31310/v1/units`).send(unit),
-      ]);
-    }
+    await Promise.all(
+      projectIds.map(async (projectId) => {
+        console.log(`Creating units for project ${projectId}`);
+        const unit = Object.assign({}, unitData);
+        unit.issuance.warehouseProjectId = projectId;
+        await Promise.all([
+          superagent.post(`http://localhost:31310/v1/units`).send(unit),
+          superagent.post(`http://localhost:31310/v1/units`).send(unit),
+        ]);
+      }),
+    );
 
-    await waitForWalletSync();
-    await wallet.waitForAllTransactionsToConfirm();
-    await waitForOrganizationSync();
     const response = await superagent.post(
-      `http://127.0.0.1:31310/v1/staging/commit`,
+      `http://localhost:31310/v1/staging/commit`,
     );
     console.log(response.body);
     await waitForOrganizationSync();

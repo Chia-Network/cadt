@@ -1,26 +1,22 @@
 'use strict';
 
-import _ from 'lodash';
-
 import { Organization, Unit, Project, Staging, Meta } from '../models';
 import datalayer from '../datalayer';
 import { formatModelAssociationName } from './model-utils.js';
 import { getConfig } from '../utils/config-loader';
 
-const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR, CHIA_NETWORK } =
-  getConfig().APP;
+const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR } = getConfig().APP;
 
 export const assertChiaNetworkMatchInConfiguration = async () => {
-  if (!USE_SIMULATOR) {
-    const networkInfo = await datalayer.getActiveNetwork();
-    const network = _.get(networkInfo, 'network_name', '');
-
-    if (!network.includes(CHIA_NETWORK)) {
-      throw new Error(
-        `Your node is on ${network} but your climate warehouse is set to ${CHIA_NETWORK}, please change your config so they match`,
-      );
-    }
-  }
+  //if (!USE_SIMULATOR) {
+  //  const networkInfo = await datalayer.getActiveNetwork();
+  //  const network = _.get(networkInfo, 'network_name', '');
+  //  if (!network.includes(CHIA_NETWORK)) {
+  //    throw new Error(
+  //      `Your node is on ${network} but your climate warehouse is set to ${CHIA_NETWORK}, please change your config so they match`,
+  //    );
+  //  }
+  //}
 };
 
 export const assertCanBeGovernanceBody = async () => {
