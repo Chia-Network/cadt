@@ -85,7 +85,8 @@ class Organization extends Model {
         });
 
         organizations[i].dataValues.synced =
-          organizations[i].dataValues.synced === 1 && pendingCommitsCount === 0;
+          organizations[i].dataValues.synced === true &&
+          pendingCommitsCount === 0;
         break;
       }
     }
