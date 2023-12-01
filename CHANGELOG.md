@@ -1,3 +1,14 @@
+## [1.7.2](https://github.com/Chia-Network/cadt/compare/1.7.1...1.7.2) (2023-12-01)
+
+
+### Features
+
+* update home status endpoint ([951aa62](https://github.com/Chia-Network/cadt/commit/951aa62229dae8257b1cabc0b152fd76adedf481))
+* update home status endpoint ([5fce477](https://github.com/Chia-Network/cadt/commit/5fce477ac93263ae362351864c921dbfd8ecfdbb))
+* update home status endpoint ([230ab38](https://github.com/Chia-Network/cadt/commit/230ab38a7d87a14f46202ed95165df4ce462dcec))
+
+
+
 ## [1.7.1](https://github.com/Chia-Network/cadt/compare/1.6.15...1.7.1) (2023-11-30)
 
 
