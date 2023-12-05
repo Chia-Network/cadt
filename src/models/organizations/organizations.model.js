@@ -66,7 +66,6 @@ class Organization extends Model {
         'orgHash',
         'name',
         'icon',
-        'prefix',
         'isHome',
         'subscribed',
         'synced',
