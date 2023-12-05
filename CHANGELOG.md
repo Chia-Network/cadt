@@ -1,3 +1,65 @@
+## [1.7.2](https://github.com/Chia-Network/cadt/compare/1.7.1...1.7.2) (2023-12-01)
+
+
+### Features
+
+* update home status endpoint ([951aa62](https://github.com/Chia-Network/cadt/commit/951aa62229dae8257b1cabc0b152fd76adedf481))
+* update home status endpoint ([5fce477](https://github.com/Chia-Network/cadt/commit/5fce477ac93263ae362351864c921dbfd8ecfdbb))
+* update home status endpoint ([230ab38](https://github.com/Chia-Network/cadt/commit/230ab38a7d87a14f46202ed95165df4ce462dcec))
+
+
+
+## [1.7.1](https://github.com/Chia-Network/cadt/compare/1.6.15...1.7.1) (2023-11-30)
+
+
+### Bug Fixes
+
+* dont mutate homeorg info if no homeorg ([b5f79c1](https://github.com/Chia-Network/cadt/commit/b5f79c1020807de288c9e890660cfe4e18ddeb9c))
+* logging error in sync process ([5ea7c75](https://github.com/Chia-Network/cadt/commit/5ea7c75f9a4a97900c18aae265d0c76b85681bbb))
+* middleware bug during home org resync ([aa610a5](https://github.com/Chia-Network/cadt/commit/aa610a5ecf3d349ae639eb1fbc5bed4166237613))
+* offset for number of generations remaining ([bcb7e42](https://github.com/Chia-Network/cadt/commit/bcb7e42fb84958641024a5b7a119917df513d154))
+* various tweaks for sync to work in this repo ([6f5d407](https://github.com/Chia-Network/cadt/commit/6f5d407ab7b8638c9882befd25572eb96cfa74e7))
+
+
+### Features
+
+* additional sync updates ([5d047ff](https://github.com/Chia-Network/cadt/commit/5d047ff8036d283301c22232301fcaea71fef054))
+* automatic migration to new sync method ([1bca49e](https://github.com/Chia-Network/cadt/commit/1bca49e2556700ddee218a4a90462fc402309a49))
+* home org status endpoint ([ca18679](https://github.com/Chia-Network/cadt/commit/ca18679760a625b3ad48d8a8faf8e638269091de))
+* home org status endpoint ([b9a01fd](https://github.com/Chia-Network/cadt/commit/b9a01fdac2e55c3fe5c4bd7a1d07479714258f3b))
+* sync fix by looking at timestamps instead of hashes ([71e1272](https://github.com/Chia-Network/cadt/commit/71e12724b7f1885a3951cddfcbd1dac172eeb677))
+* sync fix by looking at timestamps instead of hashes ([f64f650](https://github.com/Chia-Network/cadt/commit/f64f650abdc5acdcd12ffaa58ec721799453b5bf))
+* sync remaining count for organizations ([ef7cf17](https://github.com/Chia-Network/cadt/commit/ef7cf1799b6e5b0db131fa6af2fb354d135ec960))
+* sync remaining count for organizations ([bea5410](https://github.com/Chia-Network/cadt/commit/bea5410d69b39ecc6cd8396fe55d65b774f50392))
+* syncing status for all organizations ([4e0e5ac](https://github.com/Chia-Network/cadt/commit/4e0e5ac1835311b15e023ba94a037abab14b45b6))
+
+
+
+## [1.6.15](https://github.com/Chia-Network/cadt/compare/1.6.14...1.6.15) (2023-10-20)
+
+
+### Bug Fixes
+
+* change default organization sync interval ([fdf25cf](https://github.com/Chia-Network/cadt/commit/fdf25cf826d363ec5eae0831199e81d473d4fa96))
+* improved organization sync ([ca66c9c](https://github.com/Chia-Network/cadt/commit/ca66c9cee79a64a143aeeea00dfb6c9b7bd8d495))
+
+
+### Features
+
+* add some error handling ([7833846](https://github.com/Chia-Network/cadt/commit/78338463d5ad433fc88439137c94f935cfd1cbd6))
+* remove meta_ prefix from metadata keys ([7855be9](https://github.com/Chia-Network/cadt/commit/7855be95a7236d55565134e05483710b17e1e022))
+
+
+
+## [1.6.14](https://github.com/Chia-Network/cadt/compare/1.6.13...1.6.14) (2023-10-05)
+
+
+### Features
+
+* improve assetid search ([a1d857e](https://github.com/Chia-Network/cadt/commit/a1d857e6d51db5c4db82bcd73253dd02e7c678d5))
+
+
+
 ## [1.6.13](https://github.com/Chia-Network/cadt/compare/1.6.12...1.6.13) (2023-10-03)
 
 

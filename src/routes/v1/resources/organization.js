@@ -121,4 +121,8 @@ OrganizationRouter.post('/metadata', (req, res) => {
   return OrganizationController.addMetadata(req, res);
 });
 
+OrganizationRouter.get('/status', (req, res) => {
+  return OrganizationController.homeOrgSyncStatus(req, res);
+});
+
 export { OrganizationRouter };
