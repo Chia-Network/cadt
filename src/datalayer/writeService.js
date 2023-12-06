@@ -26,6 +26,7 @@ const createDataLayerStore = async () => {
     await wallet.waitForAllTransactionsToConfirm();
 
     // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
+    // This make sure this runs by default even if the config param is missing
     const shouldMirror = AUTO_MIRROR_EXTERNAL_STORES ?? true;
 
     if (shouldMirror) {
