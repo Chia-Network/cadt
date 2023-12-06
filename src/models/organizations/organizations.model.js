@@ -63,12 +63,15 @@ class Organization extends Model {
     const organizations = await Organization.findAll({
       attributes: [
         'orgUid',
+        'orgHash',
         'name',
         'icon',
         'isHome',
         'subscribed',
         'synced',
         'fileStoreSubscribed',
+        'registryId',
+        'registryHash',
         'sync_remaining',
       ],
     });
