@@ -379,7 +379,7 @@ const getRoots = async (storeIds) => {
 };
 
 const clearPendingRoots = async (storeId) => {
-  const url = `${CONFIG().DATALAYER_URL}/clear_pending_roots`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/clear_pending_roots`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -412,7 +412,9 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
     try {
       await wallet.waitForAllTransactionsToConfirm();
 
-      const url = `${CONFIG().DATALAYER_URL}/batch_update`;
+      const url = `${CONFIG().CHIA.DATALAYER_HOST}/batch_update`;
+
+      logger.info(`POST ${url}`);
       const { cert, key, timeout } = getBaseOptions();
 
       const response = await superagent

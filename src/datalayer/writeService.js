@@ -2,13 +2,12 @@ import _ from 'lodash';
 
 import * as dataLayer from './persistance';
 import wallet from './wallet';
-import fullNode from './fullNode';
 import * as simulator from './simulator';
 import { encodeHex } from '../utils/datalayer-utils';
 import { CONFIG } from '../user-config';
 import { logger } from '../logger.js';
 import { Organization } from '../models';
-import { publicIpv4 } from '../utils/ip-tools';
+import { getMirrorUrl } from '../utils/datalayer-utils';
 
 logger.info('CADT:datalayer:writeService');
 
@@ -27,14 +26,14 @@ const createDataLayerStore = async () => {
     await waitForStoreToBeConfirmed(storeId);
     await wallet.waitForAllTransactionsToConfirm();
 
-    const chiaConfig = fullNode.getChiaConfig();
+    // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
+    // This make sure this runs by default even if the config param is missing
+    const shouldMirror = CONFIG().CADT.AUTO_MIRROR_EXTERNAL_STORES ?? true;
 
-    await dataLayer.addMirror(
-      storeId,
-      CONFIG().CHIA.DATALAYER_FILE_SERVER_URL ||
-        `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
-      true,
-    );
+    if (shouldMirror) {
+      const mirrorUrl = await getMirrorUrl();
+      await dataLayer.addMirror(storeId, mirrorUrl, true);
+    }
   }
 
   return storeId;

@@ -18,6 +18,7 @@ export const CONFIG = () => {
     exportedConfig.CADT.CHIA_NETWORK = 'testnet';
     exportedConfig.GENERAL.LOG_LEVEL = 'trace';
   }
+
   return exportedConfig;
 };
 
