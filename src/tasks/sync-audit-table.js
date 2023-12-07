@@ -194,6 +194,14 @@ async function createTransaction(callback, afterCommitCallbacks) {
   }
 }
 
+const tryParseJSON = (jsonString, defaultValue) => {
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    return defaultValue;
+  }
+};
+
 const syncOrganizationAudit = async (organization) => {
   try {
     let afterCommitCallbacks = [];
@@ -295,9 +303,7 @@ const syncOrganizationAudit = async (organization) => {
     logger.info(' ');
     logger.info(`Syncing Registry: ${_.get(organization, 'name')}`);
     logger.info(
-      `${organization.name} is ${
-        syncRemaining + 1
-      } DataLayer generations away from being fully synced.`,
+      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced.`,
     );
 
     if (!CONFIG.USE_SIMULATOR) {
@@ -357,31 +363,31 @@ const syncOrganizationAudit = async (organization) => {
         const key = decodeHex(diff.key);
         const modelKey = key.split('|')[0];
 
-        if (!['comment', 'author'].includes(key)) {
-          const auditData = {
-            orgUid: organization.orgUid,
-            registryId: organization.registryId,
-            rootHash: root2.root_hash,
-            type: diff.type,
-            table: modelKey,
-            change: decodeHex(diff.value),
-            onchainConfirmationTimeStamp: root2.timestamp,
-            comment: _.get(
-              JSON.parse(
-                decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
-              ),
-              'comment',
-              '',
+        const auditData = {
+          orgUid: organization.orgUid,
+          registryId: organization.registryId,
+          rootHash: root2.root_hash,
+          type: diff.type,
+          table: modelKey,
+          change: decodeHex(diff.value),
+          onchainConfirmationTimeStamp: root2.timestamp,
+          comment: _.get(
+            tryParseJSON(
+              decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
             ),
-            author: _.get(
-              JSON.parse(
-                decodeHex(_.get(author, '[0].value', encodeHex('{}'))),
-              ),
-              'author',
-              '',
+            'comment',
+            '',
+          ),
+          author: _.get(
+            tryParseJSON(
+              decodeHex(_.get(author, '[0].value', encodeHex('{}'))),
             ),
-          };
+            'author',
+            '',
+          ),
+        };
 
+        if (Object.keys(ModelKeys).includes(modelKey)) {
           if (modelKey) {
             const record = JSON.parse(decodeHex(diff.value));
             const primaryKeyValue =
@@ -425,18 +431,18 @@ const syncOrganizationAudit = async (organization) => {
               }
             }
           }
-
-          // Create the Audit record
-          await Audit.create(auditData, { transaction, mirrorTransaction });
-          await Organization.update(
-            { registryHash: root2.root_hash },
-            {
-              where: { orgUid: organization.orgUid },
-              transaction,
-              mirrorTransaction,
-            },
-          );
         }
+
+        // Create the Audit record
+        await Audit.create(auditData, { transaction, mirrorTransaction });
+        await Organization.update(
+          { registryHash: root2.root_hash },
+          {
+            where: { orgUid: organization.orgUid },
+            transaction,
+            mirrorTransaction,
+          },
+        );
       }
     };
 
