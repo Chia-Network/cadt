@@ -387,7 +387,6 @@ const syncOrganizationAudit = async (organization) => {
           ),
         };
 
-        console.log(modelKey);
         if (Object.keys(ModelKeys).includes(modelKey)) {
           if (modelKey) {
             const record = JSON.parse(decodeHex(diff.value));
