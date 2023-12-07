@@ -35,7 +35,7 @@ import {
   formatModelAssociationName,
   getDeletedItems,
 } from '../../utils/model-utils.js';
-import { keyValueToChangeList } from '../../utils/datalayer-utils';
+import { encodeHex, keyValueToChangeList } from '../../utils/datalayer-utils';
 import dataLayer from '../../datalayer';
 
 class Project extends Model {
@@ -384,19 +384,29 @@ class Project extends Model {
     );
 
     const { registryId } = await Organization.getHomeOrg();
-    const currentDataLayer = await dataLayer.getCurrentStoreData(registryId);
-    const currentComment = currentDataLayer.filter(
-      (kv) => kv.key === 'comment',
+
+    const commentValueInStore = await dataLayer.getValue(
+      registryId,
+      encodeHex('comment'),
     );
-    const isUpdateComment = currentComment.length > 0;
+
+    const isUpdateComment =
+      !_.isNil(commentValueInStore) && commentValueInStore !== false;
+
     const commentChangeList = keyValueToChangeList(
       'comment',
       `{"comment": "${comment}"}`,
       isUpdateComment,
     );
 
-    const currentAuthor = currentDataLayer.filter((kv) => kv.key === 'author');
-    const isUpdateAuthor = currentAuthor.length > 0;
+    const authorValueInStore = await dataLayer.getValue(
+      registryId,
+      encodeHex('author'),
+    );
+
+    const isUpdateAuthor =
+      !_.isNil(authorValueInStore) && authorValueInStore !== false;
+
     const authorChangeList = keyValueToChangeList(
       'author',
       `{"author": "${author}"}`,

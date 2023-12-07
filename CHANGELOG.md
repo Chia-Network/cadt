@@ -1,3 +1,22 @@
+## [1.7.5](https://github.com/Chia-Network/cadt/compare/1.7.4...1.7.5) (2023-12-07)
+
+
+### Bug Fixes
+
+* use get_value instead of get_keys_value in author comment changelist ([8f8b055](https://github.com/Chia-Network/cadt/commit/8f8b055b50223154d3d7048ea21b85cb93f1198f))
+
+
+
+## [1.7.4](https://github.com/Chia-Network/cadt/compare/1.7.3...1.7.4) (2023-12-07)
+
+
+### Bug Fixes
+
+* invalid generation handling ([0469cbf](https://github.com/Chia-Network/cadt/commit/0469cbf19cbc5172515f4b6143d56678360032f7))
+* invalid generation handling ([c395bdf](https://github.com/Chia-Network/cadt/commit/c395bdf4f1222f58c907d5ff898f5da16b9c941d))
+
+
+
 ## [1.7.3](https://github.com/Chia-Network/cadt/compare/1.7.2...1.7.3) (2023-12-06)
 
 
