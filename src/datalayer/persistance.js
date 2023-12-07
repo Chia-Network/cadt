@@ -36,6 +36,31 @@ const getBaseOptions = () => {
   return baseOptions;
 };
 
+const getValue = async (storeId, storeKey) => {
+  const url = `${CONFIG.DATALAYER_URL}/get_value`;
+  const { cert, key, timeout } = getBaseOptions();
+
+  try {
+    const response = await superagent
+      .post(url)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
+      .send({ id: storeId, key: storeKey });
+
+    const data = response.body;
+
+    if (data.success) {
+      return data.value;
+    }
+
+    return false;
+  } catch (error) {
+    logger.error(error);
+    return false;
+  }
+};
+
 const getMirrors = async (storeId) => {
   const url = `${CONFIG.DATALAYER_URL}/get_mirrors`;
   const { cert, key, timeout } = getBaseOptions();
@@ -663,4 +688,5 @@ export {
   cancelOffer,
   verifyOffer,
   takeOffer,
+  getValue,
 };
