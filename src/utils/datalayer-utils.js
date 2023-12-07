@@ -71,3 +71,39 @@ export const deserializeMaker = (maker) => {
 
   return changes;
 };
+
+/**
+ * Optimizes and sorts an array of key-value differences.
+ * NOTE: The only reason this function works is because we treat INSERTS as UPSERTS
+ * If that ever changes, this function will need to be removed.
+ *
+ * @param {Array} kvDiff - An array of objects with { key, type } structure.
+ * @returns {Array} - An optimized and sorted array.
+ */
+export const optimizeAndSortKvDiff = (kvDiff) => {
+  const deleteKeys = new Set();
+  const insertKeys = new Set();
+
+  // Populate the Sets for quicker lookup
+  for (const diff of kvDiff) {
+    if (diff.type === 'DELETE') {
+      deleteKeys.add(diff.key);
+    } else if (diff.type === 'INSERT') {
+      insertKeys.add(diff.key);
+    }
+  }
+
+  // Remove DELETE keys that also exist in INSERT keys
+  for (const insertKey of insertKeys) {
+    deleteKeys.delete(insertKey);
+  }
+
+  // Filter and sort the array based on the optimized DELETE keys
+  const filteredArray = kvDiff.filter((diff) => {
+    return diff.type !== 'DELETE' || deleteKeys.has(diff.key);
+  });
+
+  return filteredArray.sort((a, b) => {
+    return a.type === b.type ? 0 : a.type === 'DELETE' ? -1 : 1;
+  });
+};
