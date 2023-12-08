@@ -60,6 +60,31 @@ const getMirrors = async (storeId) => {
   }
 };
 
+const getValue = async (storeId, storeKey) => {
+  const url = `${CONFIG.DATALAYER_URL}/get_value`;
+  const { cert, key, timeout } = getBaseOptions();
+
+  try {
+    const response = await superagent
+      .post(url)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
+      .send({ id: storeId, key: storeKey });
+
+    const data = response.body;
+
+    if (data.success) {
+      return data.value;
+    }
+
+    return false;
+  } catch (error) {
+    logger.error(error);
+    return false;
+  }
+};
+
 const addMirror = async (storeId, url, forceAddMirror = false) => {
   await wallet.waitForAllTransactionsToConfirm();
   const homeOrg = await Organization.getHomeOrg();
@@ -710,4 +735,5 @@ export {
   verifyOffer,
   takeOffer,
   clearPendingRoots,
+  getValue,
 };
