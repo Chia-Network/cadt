@@ -43,7 +43,9 @@ describe('Project Resource CRUD', function () {
     describe('error states', function () {
       it('errors if there if there is no connection to the datalayer', async function () {
         sinon.stub(datalayer, 'dataLayerAvailable').resolves(false);
-        const response = await supertest(app).get('/v1/projects');
+        const response = await supertest(app)
+          .get('/v1/projects')
+          .query({ page: 1, limit: 100 });
         expect(response.statusCode).to.equal(400);
 
         expect(response.body.error).to.equal(
@@ -55,7 +57,10 @@ describe('Project Resource CRUD', function () {
     describe('success states', function () {
       it('gets all the projects available', async function () {
         // no query params
-        const projects = await testFixtures.getProjectByQuery();
+        const projects = await testFixtures.getProjectByQuery({
+          page: 1,
+          limit: 100,
+        });
         expect(projects.length).to.equal(12);
       }).timeout(TEST_WAIT_TIME * 10);
 
@@ -63,6 +68,8 @@ describe('Project Resource CRUD', function () {
         // ?orgUid=XXXX
         const projects = await testFixtures.getProjectByQuery({
           orgUid: 'a807e453-6524-49df-a32d-785e56cf560e',
+          page: 1,
+          limit: 100,
         });
         expect(projects.length).to.equal(3);
       }).timeout(TEST_WAIT_TIME * 10);
@@ -71,6 +78,8 @@ describe('Project Resource CRUD', function () {
         // ?search=XXXX
         const projects = await testFixtures.getProjectByQuery({
           search: 'City of Arcata',
+          page: 1,
+          limit: 100,
         });
         expect(projects.length).to.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
@@ -80,6 +89,8 @@ describe('Project Resource CRUD', function () {
         const projects = await testFixtures.getProjectByQuery({
           orgUid: 'a807e453-6524-49df-a32d-785e56cf560e',
           search: 'City of Arcata',
+          page: 1,
+          limit: 100,
         });
 
         expect(projects.length).to.equal(1);
@@ -222,7 +233,7 @@ describe('Project Resource CRUD', function () {
     describe('error states', function () {
       it('errors if no home organization exists', async function () {
         const responseCreate = await supertest(app)
-          .get('/v1/projects')
+          .post('/v1/projects')
           .send({
             ...newProject,
           });
