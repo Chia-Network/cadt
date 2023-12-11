@@ -63,12 +63,15 @@ class Organization extends Model {
     const organizations = await Organization.findAll({
       attributes: [
         'orgUid',
+        'orgHash',
         'name',
         'icon',
         'isHome',
         'subscribed',
         'synced',
         'fileStoreSubscribed',
+        'registryId',
+        'registryHash',
         'sync_remaining',
       ],
     });
@@ -219,8 +222,8 @@ class Organization extends Model {
     return registryVersionId;
   }
 
-  static async addMirror(storeId, coinId) {
-    await datalayer.addMirror(storeId, coinId);
+  static async addMirror(storeId, url) {
+    await datalayer.addMirror(storeId, url);
   }
 
   static async importHomeOrg(orgUid) {

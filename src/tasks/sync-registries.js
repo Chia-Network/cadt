@@ -130,6 +130,14 @@ async function createTransaction(callback, afterCommitCallbacks) {
   }
 }
 
+const tryParseJSON = (jsonString, defaultValue) => {
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    return defaultValue;
+  }
+};
+
 const syncOrganizationAudit = async (organization) => {
   try {
     let afterCommitCallbacks = [];
@@ -229,9 +237,7 @@ const syncOrganizationAudit = async (organization) => {
     logger.info(' ');
     logger.info(`Syncing ${organization.name} generation ${historyIndex}`);
     logger.info(
-      `${organization.name} is ${
-        syncRemaining + 1
-      } DataLayer generations away from being fully synced.`,
+      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced.`,
     );
 
     if (!CONFIG.USE_SIMULATOR) {
@@ -302,18 +308,22 @@ const syncOrganizationAudit = async (organization) => {
           onchainConfirmationTimeStamp: root2.timestamp,
           generation: historyIndex,
           comment: _.get(
-            JSON.parse(decodeHex(_.get(comment, '[0].value', encodeHex('{}')))),
+            tryParseJSON(
+              decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
+            ),
             'comment',
             '',
           ),
           author: _.get(
-            JSON.parse(decodeHex(_.get(author, '[0].value', encodeHex('{}')))),
+            tryParseJSON(
+              decodeHex(_.get(author, '[0].value', encodeHex('{}'))),
+            ),
             'author',
             '',
           ),
         };
 
-        if (modelKey) {
+        if (modelKey && Object.keys(ModelKeys).includes(modelKey)) {
           const record = JSON.parse(decodeHex(diff.value));
           const primaryKeyValue =
             record[ModelKeys[modelKey].primaryKeyAttributes[0]];

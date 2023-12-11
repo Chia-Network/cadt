@@ -2,15 +2,13 @@ import _ from 'lodash';
 
 import * as dataLayer from './persistance';
 import wallet from './wallet';
-import fullNode from './fullNode';
 import * as simulator from './simulator';
-import { encodeHex } from '../utils/datalayer-utils';
+import { encodeHex, getMirrorUrl } from '../utils/datalayer-utils';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 import { Organization } from '../models';
-import { publicIpv4 } from '../utils/ip-tools';
 
-const { USE_SIMULATOR, DATALAYER_FILE_SERVER_URL } = getConfig().APP;
+const { USE_SIMULATOR, AUTO_MIRROR_EXTERNAL_STORES } = getConfig().APP;
 
 const createDataLayerStore = async () => {
   await wallet.waitForAllTransactionsToConfirm();
@@ -27,14 +25,14 @@ const createDataLayerStore = async () => {
     await waitForStoreToBeConfirmed(storeId);
     await wallet.waitForAllTransactionsToConfirm();
 
-    const chiaConfig = fullNode.getChiaConfig();
+    // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
+    // This make sure this runs by default even if the config param is missing
+    const shouldMirror = AUTO_MIRROR_EXTERNAL_STORES ?? true;
 
-    await dataLayer.addMirror(
-      storeId,
-      DATALAYER_FILE_SERVER_URL ||
-        `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
-      true,
-    );
+    if (shouldMirror) {
+      const mirrorUrl = await getMirrorUrl();
+      await dataLayer.addMirror(storeId, mirrorUrl, true);
+    }
   }
 
   return storeId;
@@ -177,6 +175,14 @@ const removeMirror = (storeId, coinId) => {
   return dataLayer.removeMirror(storeId, coinId);
 };
 
+const getValue = async (storeId, key) => {
+  if (USE_SIMULATOR) {
+    return '7b22636f6d6d656e74223a2022227d';
+  } else {
+    return dataLayer.getValue(storeId, key);
+  }
+};
+
 export default {
   addMirror,
   createDataLayerStore,
@@ -185,4 +191,5 @@ export default {
   syncDataLayer,
   upsertDataLayer,
   removeMirror,
+  getValue,
 };
