@@ -158,6 +158,7 @@ const syncOrganizationAudit = async (organization) => {
       console.log('USING MOCK ROOT HISTORY');
       lastRootSaved = rootHistory[0];
       lastRootSaved.rootHash = lastRootSaved.root_hash;
+      lastRootSaved.generation = 0;
     } else {
       lastRootSaved = await Audit.findOne({
         where: { registryId: organization.registryId },
@@ -175,7 +176,7 @@ const syncOrganizationAudit = async (organization) => {
       }
     }
 
-    let generation = _.get(rootHistory, '[0]');
+    let currentGeneration = _.get(rootHistory, '[0]');
 
     if (!lastRootSaved) {
       logger.info(`Syncing new registry ${organization.name}`);
@@ -183,12 +184,12 @@ const syncOrganizationAudit = async (organization) => {
       await Audit.create({
         orgUid: organization.orgUid,
         registryId: organization.registryId,
-        rootHash: generation.root_hash,
+        rootHash: currentGeneration.root_hash,
         type: 'CREATE REGISTRY',
-        generation: 0,
+        currentGeneration: 0,
         change: null,
         table: null,
-        onchainConfirmationTimeStamp: generation.timestamp.toString(),
+        onchainConfirmationTimeStamp: currentGeneration.timestamp.toString(),
       });
 
       // Destroy existing records for this singleton
@@ -207,18 +208,18 @@ const syncOrganizationAudit = async (organization) => {
 
       return;
     } else {
-      generation = lastRootSaved;
+      currentGeneration = lastRootSaved;
     }
 
-    const historyIndex = generation.generation + 1;
+    const historyIndex = currentGeneration.generation;
 
     if (historyIndex > rootHistory.length) {
       logger.error(
-        `Could not find root history for ${organization.name} with timestamp ${generation.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
+        `Could not find root history for ${organization.name} with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
     }
 
-    const syncRemaining = rootHistory.length - generation.generation;
+    const syncRemaining = rootHistory.length - currentGeneration.generation;
     const isSynced = syncRemaining === 0;
 
     await Organization.update(
