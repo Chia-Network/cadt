@@ -1,5 +1,7 @@
 # Climate Action Data Trust 
 
+**Please review the [CAD Trust Terms and Conditions](docs/CAD_Trust_Registry_Terms_and_Conditions.pdf) and [CAD Trust User Terms and Conditions](docs/CAD_Trust_User_Terms_and_Conditions.pdf).**
+
 ​This project provides the Climate Action Data Trust (CADT) API that integrates with the [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain).  For a user interface, see the [CADT UI project](https://github.com/Chia-Network/climate-warehouse-ui) which will connect to the CADT API.
 
 This project was formerly known as the Climate Warehouse and you may see this term used interchangeably with CADT. 
