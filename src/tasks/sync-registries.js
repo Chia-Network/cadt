@@ -219,7 +219,8 @@ const syncOrganizationAudit = async (organization) => {
       );
     }
 
-    const syncRemaining = rootHistory.length - currentGeneration.generation;
+    const syncRemaining =
+      rootHistory.length - (currentGeneration.generation + 1);
     const isSynced = syncRemaining === 0;
 
     await Organization.update(
