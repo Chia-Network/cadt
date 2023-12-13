@@ -186,7 +186,7 @@ const syncOrganizationAudit = async (organization) => {
         registryId: organization.registryId,
         rootHash: currentGeneration.root_hash,
         type: 'CREATE REGISTRY',
-        currentGeneration: 0,
+        generation: 0,
         change: null,
         table: null,
         onchainConfirmationTimeStamp: currentGeneration.timestamp.toString(),
@@ -219,8 +219,8 @@ const syncOrganizationAudit = async (organization) => {
       );
     }
 
-    const syncRemaining =
-      rootHistory.length - (currentGeneration.generation + 1);
+    const rootHistoryCount = rootHistory.length - 1;
+    const syncRemaining = rootHistoryCount - historyIndex;
     const isSynced = syncRemaining === 0;
 
     await Organization.update(
@@ -248,6 +248,9 @@ const syncOrganizationAudit = async (organization) => {
 
     const root1 = _.get(rootHistory, `[${historyIndex}]`);
     const root2 = _.get(rootHistory, `[${historyIndex + 1}]`);
+
+    logger.info(`ROOT 1 ${JSON.stringify(root1)}`);
+    logger.info(`ROOT 2', ${JSON.stringify(root2)}`);
 
     if (!_.get(root2, 'confirmed')) {
       logger.info(
@@ -295,7 +298,9 @@ const syncOrganizationAudit = async (organization) => {
     const optimizedKvDiff = optimizeAndSortKvDiff(kvDiff);
 
     const updateTransaction = async (transaction, mirrorTransaction) => {
-      logger.info(`Syncing ${organization.name} generation ${historyIndex}`);
+      logger.info(
+        `Syncing ${organization.name} generation ${historyIndex + 1}`,
+      );
       for (const diff of optimizedKvDiff) {
         const key = decodeHex(diff.key);
         const modelKey = key.split('|')[0];
@@ -308,7 +313,7 @@ const syncOrganizationAudit = async (organization) => {
           table: modelKey,
           change: decodeHex(diff.value),
           onchainConfirmationTimeStamp: root2.timestamp,
-          generation: historyIndex,
+          generation: historyIndex + 1,
           comment: _.get(
             tryParseJSON(
               decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
