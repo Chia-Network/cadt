@@ -238,7 +238,7 @@ describe('Project Resource CRUD', function () {
             ...newProject,
           });
 
-        const warehouseProjectId = _.head(responseCreate.body);
+        const warehouseProjectId = responseCreate.body.uuid;
 
         await Organization.destroy({
           where: {},

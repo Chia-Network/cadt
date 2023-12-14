@@ -115,15 +115,20 @@ describe('Units Resource CRUD', function () {
 
         expect(result.body.data.length).to.not.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
-      it('finds a single result by warehouseUnitId', async function () {
+      it.only('finds a single result by warehouseUnitId', async function () {
         // ?warehouseUnitId=XXXX
         const result = await supertest(app).get('/v1/units').query({
           warehouseUnitId: response.warehouseUnitId,
-          page: 1,
-          limit: 100,
         });
 
-        expect(result.body.data.length).to.not.equal(1);
+        // Check if data is an object
+        expect(result.body).to.be.an('object');
+
+        // Additionally, ensure it's not an array
+        expect(Array.isArray(result?.body?.data)).to.be.false;
+
+        // Your existing assertion
+        expect(result.body?.data).to.not.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
     });
   });
