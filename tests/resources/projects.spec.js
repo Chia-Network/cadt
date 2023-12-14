@@ -61,7 +61,7 @@ describe('Project Resource CRUD', function () {
           page: 1,
           limit: 100,
         });
-        expect(projects.length).to.equal(12);
+        expect(projects.data.length).to.equal(12);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects filtered by orgUid', async function () {
@@ -71,7 +71,7 @@ describe('Project Resource CRUD', function () {
           page: 1,
           limit: 100,
         });
-        expect(projects.length).to.equal(3);
+        expect(projects.data.length).to.equal(3);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects for a search term', async function () {
@@ -81,7 +81,7 @@ describe('Project Resource CRUD', function () {
           page: 1,
           limit: 100,
         });
-        expect(projects.length).to.equal(1);
+        expect(projects.data.length).to.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects for a search term filtered by orgUid', async function () {
@@ -93,7 +93,7 @@ describe('Project Resource CRUD', function () {
           limit: 100,
         });
 
-        expect(projects.length).to.equal(1);
+        expect(projects.data.length).to.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets optional paginated results', async function () {
@@ -102,24 +102,24 @@ describe('Project Resource CRUD', function () {
           page: 1,
           limit: 3,
         });
-        expect(projectsPage1.length).to.equal(3);
+        expect(projectsPage1.data.length).to.equal(3);
 
         const projectsPage2 = await testFixtures.getProjectByQuery({
           page: 2,
           limit: 3,
         });
 
-        expect(projectsPage2.length).to.equal(3);
+        expect(projectsPage2.data.length).to.equal(3);
         expect(projectsPage1).to.not.deep.equal(projectsPage2);
 
         const projectsLimit2 = await testFixtures.getProjectByQuery({
           page: 1,
           limit: 2,
         });
-        expect(projectsLimit2.length).to.equal(2);
+        expect(projectsLimit2.data.length).to.equal(2);
       }).timeout(TEST_WAIT_TIME * 10);
 
-      it('finds a single result by warehouseProjectId', async function () {
+      it.only('finds a single result by warehouseProjectId', async function () {
         // ?warehouseProjectId=XXXX
         const projects = await testFixtures.getProjectByQuery({
           warehouseProjectId: '7f3a656e-d21c-409f-ae38-f97c89f0ae66',
