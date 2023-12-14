@@ -119,7 +119,7 @@ describe('Project Resource CRUD', function () {
         expect(projectsLimit2.data.length).to.equal(2);
       }).timeout(TEST_WAIT_TIME * 10);
 
-      it.only('finds a single result by warehouseProjectId', async function () {
+      it('finds a single result by warehouseProjectId', async function () {
         // ?warehouseProjectId=XXXX
         const projects = await testFixtures.getProjectByQuery({
           warehouseProjectId: '7f3a656e-d21c-409f-ae38-f97c89f0ae66',

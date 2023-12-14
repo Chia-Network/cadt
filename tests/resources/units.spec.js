@@ -115,7 +115,7 @@ describe('Units Resource CRUD', function () {
 
         expect(result.body.data.length).to.not.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
-      it.only('finds a single result by warehouseUnitId', async function () {
+      it('finds a single result by warehouseUnitId', async function () {
         // ?warehouseUnitId=XXXX
         const result = await supertest(app).get('/v1/units').query({
           warehouseUnitId: response.warehouseUnitId,
