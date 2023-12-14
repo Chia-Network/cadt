@@ -75,7 +75,7 @@ export const getProjectByQuery = async (query = {}) => {
   // expect(result.body).to.be.an('array');
   expect(result.statusCode).to.equal(200);
 
-  return result.body;
+  return result.body.data;
 };
 
 export const checkProjectRecordExists = async (warehouseProjectId) => {
