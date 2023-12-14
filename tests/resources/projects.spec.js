@@ -102,21 +102,21 @@ describe('Project Resource CRUD', function () {
           page: 1,
           limit: 3,
         });
-        expect(projectsPage1.data.length).to.equal(3);
+        expect(projectsPage1.length).to.equal(3);
 
         const projectsPage2 = await testFixtures.getProjectByQuery({
           page: 2,
           limit: 3,
         });
 
-        expect(projectsPage2.data.length).to.equal(3);
-        expect(projectsPage1.data).to.not.deep.equal(projectsPage2.data);
+        expect(projectsPage2.length).to.equal(3);
+        expect(projectsPage1).to.not.deep.equal(projectsPage2);
 
         const projectsLimit2 = await testFixtures.getProjectByQuery({
           page: 1,
           limit: 2,
         });
-        expect(projectsLimit2.data.length).to.equal(2);
+        expect(projectsLimit2.length).to.equal(2);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('finds a single result by warehouseProjectId', async function () {
