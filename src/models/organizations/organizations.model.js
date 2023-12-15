@@ -9,7 +9,7 @@ import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
 import { logger } from '../../logger.js';
-import { FileStore } from '../';
+import { FileStore, Staging } from '../';
 
 import { getDefaultOrganizationList } from '../../utils/data-loaders';
 
@@ -47,7 +47,12 @@ class Organization extends Model {
     }
 
     if (myOrganization) {
-      myOrganization.synced = myOrganization.synced === 1;
+      const pendingCommitsCount = await Staging.count({
+        where: { commited: true },
+      });
+
+      myOrganization.synced =
+        myOrganization.synced === 1 && pendingCommitsCount === 0;
     }
 
     return myOrganization;
@@ -77,6 +82,14 @@ class Organization extends Model {
           await datalayer.getPublicAddress();
         organizations[i].dataValues.balance =
           await datalayer.getWalletBalance();
+
+        const pendingCommitsCount = await Staging.count({
+          where: { commited: true },
+        });
+
+        organizations[i].dataValues.synced =
+          organizations[i].dataValues.synced === true &&
+          pendingCommitsCount === 0;
         break;
       }
     }
@@ -216,8 +229,8 @@ class Organization extends Model {
     return registryVersionId;
   }
 
-  static async addMirror(storeId, coinId) {
-    await datalayer.addMirror(storeId, coinId);
+  static async addMirror(storeId, url) {
+    await datalayer.addMirror(storeId, url);
   }
 
   static async importHomeOrg(orgUid) {
