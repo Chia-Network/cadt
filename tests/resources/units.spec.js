@@ -112,7 +112,7 @@ describe('Units Resource CRUD', function () {
           .get('/v1/units')
           .query({ warehouseUnitId: response.warehouseUnitId, limit: 1 });
 
-        expect(result.body.length).to.not.equal(1);
+        expect(result.body.length).to.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
     });
   });
