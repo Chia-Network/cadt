@@ -60,22 +60,32 @@ export const baseSchema = {
   timeStaged: Joi.date().timestamp().allow(null).optional(),
 };
 
-export const projectsGetQuerySchema = Joi.object()
-  .keys({
-    page: Joi.number(),
-    limit: Joi.number(),
-    search: Joi.string(),
-    columns: Joi.array().items(Joi.string()).single(),
-    orgUid: Joi.string(),
-    warehouseProjectId: Joi.string(),
-    xls: Joi.boolean(),
-    projectIds: Joi.array().items(Joi.string()).single(),
-    order: Joi.string().regex(genericSortColumnRegex),
-    filter: Joi.string().regex(genericFilterRegex),
-    onlyMarketplaceProjects: Joi.boolean(),
-  })
-  .with('page', 'limit')
-  .with('limit', 'page');
+export const projectsGetQuerySchema = Joi.object({
+  page: Joi.number(),
+  limit: Joi.number(),
+  search: Joi.string(),
+  columns: Joi.array().items(Joi.string()).single(),
+  orgUid: Joi.string(),
+  warehouseProjectId: Joi.string(),
+  xls: Joi.boolean(),
+  projectIds: Joi.array().items(Joi.string()).single(),
+  order: Joi.string().regex(genericSortColumnRegex),
+  filter: Joi.string().regex(genericFilterRegex),
+  onlyMarketplaceProjects: Joi.boolean(),
+})
+  .when(
+    Joi.object({
+      warehouseProjectId: Joi.string().min(1),
+    }).or('warehouseProjectId'),
+    {
+      then: Joi.object(),
+      otherwise: Joi.object({
+        page: Joi.number().required(),
+        limit: Joi.number().required(),
+      }),
+    },
+  )
+  .and('page', 'limit');
 
 export const projectsPostSchema = Joi.object({
   ...baseSchema,
