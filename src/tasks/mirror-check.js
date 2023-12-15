@@ -4,7 +4,7 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../logger';
 import { CONFIG } from '../user-config';
 import { getMirrorUrl } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';

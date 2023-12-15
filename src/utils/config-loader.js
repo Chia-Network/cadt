@@ -3,7 +3,7 @@ import yaml from 'js-yaml';
 import fs from 'fs';
 import path from 'path';
 
-import { logger } from '../config/logger.cjs';
+import { logger } from '../logger';
 
 import { getDataModelVersion } from './helpers';
 import { defaultConfig } from './defaultConfig.js';
