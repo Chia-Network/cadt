@@ -113,7 +113,7 @@ describe('Units Resource CRUD', function () {
           .get('/v1/units')
           .query({ page: 1, limit: 1 });
 
-        expect(result.body.data.length).to.not.equal(1);
+        expect(result.body.data.length).to.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
       it('finds a single result by warehouseUnitId', async function () {
         // ?warehouseUnitId=XXXX
