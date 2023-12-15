@@ -7,7 +7,7 @@ import { logger } from '../logger';
 
 import { getDataModelVersion } from './helpers';
 import { defaultConfig } from './defaultConfig.js';
-import { getChiaRoot } from './chia-root.js';
+import { getChiaRoot } from 'chia-root-resolver';
 
 export const getConfig = _.memoize(() => {
   const chiaRoot = getChiaRoot();
