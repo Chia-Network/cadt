@@ -1,3 +1,108 @@
+#  (2023-11-16)
+
+
+### Bug Fixes
+
+* forward slash ([6e865e5](https://github.com/Chia-Network/Core-Registry-CADT/commit/6e865e50037557ab47226f86b67517de3f4f0998))
+* logging error in sync process ([fa7dd75](https://github.com/Chia-Network/Core-Registry-CADT/commit/fa7dd755fcf49f23afa60a396da6d80d76b8b8d5))
+* middleware fix ([e626995](https://github.com/Chia-Network/Core-Registry-CADT/commit/e62699586526727b35b9e390feddcd89547b4e43))
+* middleware fix ([85da99e](https://github.com/Chia-Network/Core-Registry-CADT/commit/85da99e09a91c4fecd88db31143b1c53cc2fd1b2))
+* middleware fix ([7213ad8](https://github.com/Chia-Network/Core-Registry-CADT/commit/7213ad8b151d7f61e58ea239d732f2f3c399b380))
+* middleware fix ([6d6cde4](https://github.com/Chia-Network/Core-Registry-CADT/commit/6d6cde49e6063599f44d118bc69001934466f864))
+* middleware fix ([40ef6a9](https://github.com/Chia-Network/Core-Registry-CADT/commit/40ef6a90f07c73517b83cba850e7a5d47775c582))
+
+
+### Features
+
+* additional sync updates ([ae3f9d2](https://github.com/Chia-Network/Core-Registry-CADT/commit/ae3f9d2ad78677c912c512145ed27b1592911275))
+* automatic migration to new sync method ([d440e98](https://github.com/Chia-Network/Core-Registry-CADT/commit/d440e98bedb7a9973a8ed195ca7f00416220e303))
+* sync fix by looking at timestamps instead of hashes ([24ebe4a](https://github.com/Chia-Network/Core-Registry-CADT/commit/24ebe4a610782d71c76d0698d891b12ed37e0004))
+* sync fix by looking at timestamps instead of hashes ([b249915](https://github.com/Chia-Network/Core-Registry-CADT/commit/b24991534bfd77e1575913d090b6a7498911eb05))
+
+
+
+## [1.6.29](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.28...1.6.29) (2023-10-24)
+
+
+### Features
+
+* use common constant for common app data folder ([846d419](https://github.com/Chia-Network/Core-Registry-CADT/commit/846d419777b59540b6e8d1f22c6085606ec01e90))
+
+
+
+## [1.6.28](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.27...1.6.28) (2023-10-17)
+
+
+### Features
+
+* some try catch error handling ([48a4718](https://github.com/Chia-Network/Core-Registry-CADT/commit/48a4718685c9ee3061cf329c2704735eb47284cc))
+
+
+
+## [1.6.27](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.26...1.6.27) (2023-10-16)
+
+
+### Bug Fixes
+
+* allow empty string ([1b91b0f](https://github.com/Chia-Network/Core-Registry-CADT/commit/1b91b0fca45a362ebf1e263f8160135381d41ed0))
+
+
+
+## [1.6.26](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.25...1.6.26) (2023-10-16)
+
+
+### Bug Fixes
+
+* unit owner allow null ([96dab4f](https://github.com/Chia-Network/Core-Registry-CADT/commit/96dab4f802999a646078fc6194c5af75541bd824))
+
+
+### Features
+
+* remove meta_ prefix from metadata keys ([4ae7c70](https://github.com/Chia-Network/Core-Registry-CADT/commit/4ae7c70ac4ebff69cd802ea9e554ca0e0c92c419))
+
+
+
+## [1.6.25](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.24...1.6.25) (2023-09-29)
+
+
+### Bug Fixes
+
+* suppress unuseful sequalize warning ([2a6bcba](https://github.com/Chia-Network/Core-Registry-CADT/commit/2a6bcba6e43ef022576b899eaa4763e31833545a))
+
+
+### Features
+
+* add health check ([0fbd690](https://github.com/Chia-Network/Core-Registry-CADT/commit/0fbd690ee3600eacf1ba9ba8c632499a6d1ed01a))
+* add standard success fail message ([aa39b8c](https://github.com/Chia-Network/Core-Registry-CADT/commit/aa39b8c75b30c150a10c15d5176c1e3614970179))
+* add unified config and logger ([645880c](https://github.com/Chia-Network/Core-Registry-CADT/commit/645880c527ca73478591ed8ae7a2e79f41fc2099))
+* use onlyMarketplaceProjects query filter ([249c93c](https://github.com/Chia-Network/Core-Registry-CADT/commit/249c93cd72b9d731da389f802fb0bff110fe9510))
+
+
+
+## [1.6.24](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.22...1.6.24) (2023-09-20)
+
+
+### Bug Fixes
+
+* comment out pagination ([2e4df61](https://github.com/Chia-Network/Core-Registry-CADT/commit/2e4df619fb0e52bcd261498825a26d7a57f7e0b9))
+
+
+### Features
+
+* default pagination on units and projects ([b558e17](https://github.com/Chia-Network/Core-Registry-CADT/commit/b558e1780831cde44a430e04fcfd0378b1c4209b))
+
+
+
+## [1.6.22](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.21...1.6.22) (2023-09-15)
+
+
+### Bug Fixes
+
+* maximum page limit ([673f3f3](https://github.com/Chia-Network/Core-Registry-CADT/commit/673f3f302f015457f1ad853eb157e14c64a61a2c))
+* typo in add file store ([8f00652](https://github.com/Chia-Network/Core-Registry-CADT/commit/8f00652981b6fd3b2e19a1e0d2d805338185f686))
+
+
+
 ## [1.6.21](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.20...1.6.21) (2023-09-13)
 
 
