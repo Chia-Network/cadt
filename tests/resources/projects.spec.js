@@ -56,7 +56,7 @@ describe('Project Resource CRUD', function () {
       it('gets all the projects available', async function () {
         // no query params
         const projects = await testFixtures.getProjectByQuery();
-        expect(projects.data.length).to.equal(12);
+        expect(projects.length).to.equal(12);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects filtered by orgUid', async function () {
@@ -64,7 +64,7 @@ describe('Project Resource CRUD', function () {
         const projects = await testFixtures.getProjectByQuery({
           orgUid: 'a807e453-6524-49df-a32d-785e56cf560e',
         });
-        expect(projects.data.length).to.equal(3);
+        expect(projects.length).to.equal(3);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects for a search term', async function () {
@@ -72,7 +72,7 @@ describe('Project Resource CRUD', function () {
         const projects = await testFixtures.getProjectByQuery({
           search: 'City of Arcata',
         });
-        expect(projects.data.length).to.equal(1);
+        expect(projects.length).to.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects for a search term filtered by orgUid', async function () {
@@ -82,7 +82,7 @@ describe('Project Resource CRUD', function () {
           search: 'City of Arcata',
         });
 
-        expect(projects.data.length).to.equal(1);
+        expect(projects.length).to.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets optional paginated results', async function () {
@@ -223,12 +223,12 @@ describe('Project Resource CRUD', function () {
     describe('error states', function () {
       it('errors if no home organization exists', async function () {
         const responseCreate = await supertest(app)
-          .post('/v1/projects')
+          .get('/v1/projects')
           .send({
             ...newProject,
           });
 
-        const warehouseProjectId = responseCreate.body.uuid;
+        const warehouseProjectId = _.head(responseCreate.body);
 
         await Organization.destroy({
           where: {},
