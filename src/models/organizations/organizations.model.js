@@ -273,7 +273,7 @@ class Organization extends Model {
       const orgData = await datalayer.getSubscribedStoreData(orgUid);
 
       if (!orgData.registryId) {
-        throw new Error(
+        logger.error(
           'Currupted organization, no registryId on the datalayer, can not import',
         );
       }
@@ -419,17 +419,16 @@ class Organization extends Model {
         );
       }
 
-      await Promise.all(
-        defaultOrgs.map(async (org) => {
-          const exists = await Organization.findOne({
-            where: { orgUid: org.orgUid },
-          });
+      for (let i = 0; i < defaultOrgs.length; i++) {
+        const org = defaultOrgs[i];
+        const exists = await Organization.findOne({
+          where: { orgUid: org.orgUid },
+        });
 
-          if (!exists) {
-            Organization.importOrganization(org.orgUid);
-          }
-        }),
-      );
+        if (!exists) {
+          await Organization.importOrganization(org.orgUid);
+        }
+      }
     } catch (error) {
       logger.info(error);
     }
