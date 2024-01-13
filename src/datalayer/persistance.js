@@ -87,6 +87,32 @@ const getMirrors = async (storeId) => {
   }
 };
 
+const clearPendingRoots = async (storeId) => {
+  const url = `${CONFIG.DATALAYER_URL}/clear_pending_roots`;
+  const { cert, key, timeout } = getBaseOptions();
+
+  try {
+    const response = await superagent
+      .post(url)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
+      .send({ store_id: storeId });
+
+    const data = response.body;
+
+    if (data.success) {
+      return true;
+    }
+
+    logger.error(`Unable to clear pending root for ${storeId}`);
+    return false;
+  } catch (error) {
+    logger.error(error);
+    return false;
+  }
+};
+
 const addMirror = async (storeId, url, forceAddMirror = false) => {
   await wallet.waitForAllTransactionsToConfirm();
   const homeOrg = await Organization.getHomeOrg();
@@ -398,51 +424,65 @@ const getRoots = async (storeIds) => {
 };
 
 const pushChangeListToDataLayer = async (storeId, changelist) => {
-  try {
-    await wallet.waitForAllTransactionsToConfirm();
+  let attempts = 0;
+  const maxAttempts = 5;
 
-    const url = `${CONFIG.DATALAYER_URL}/batch_update`;
-    const { cert, key, timeout } = getBaseOptions();
+  while (attempts < maxAttempts) {
+    try {
+      await wallet.waitForAllTransactionsToConfirm();
 
-    const response = await superagent
-      .post(url)
-      .key(key)
-      .cert(cert)
-      .timeout(timeout)
-      .send({
-        changelist,
-        id: storeId,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
-      });
+      const url = `${CONFIG.DATALAYER_URL}/batch_update`;
+      const { cert, key, timeout } = getBaseOptions();
 
-    const data = response.body;
+      const response = await superagent
+        .post(url)
+        .key(key)
+        .cert(cert)
+        .timeout(timeout)
+        .send({
+          changelist,
+          id: storeId,
+          fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        });
 
-    console.log(data);
+      const data = response.body;
+      console.log(data);
 
-    if (data.success) {
-      logger.info(
-        `Success!, Changes were submitted to the datalayer for storeId: ${storeId}`,
+      if (data.success) {
+        logger.info(
+          `Success!, Changes were submitted to the datalayer for storeId: ${storeId}`,
+        );
+        return true;
+      }
+
+      if (data.error.includes('Key already present')) {
+        logger.info('Pending root detected, waiting 5 seconds and retrying');
+        const rootsCleared = await clearPendingRoots(storeId);
+
+        if (rootsCleared) {
+          attempts++;
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue; // Retry
+        }
+      }
+
+      logger.error(
+        `There was an error pushing your changes to the datalayer, ${JSON.stringify(
+          data,
+        )}`,
       );
-      return true;
+      return false;
+    } catch (error) {
+      logger.error(error.message);
+      logger.info('There was an error pushing your changes to the datalayer');
+      return false;
     }
-
-    if (data.error.includes('Key already present')) {
-      logger.info(
-        `The datalayer key was already present, its possible your data was pushed to the datalayer but never broadcasted to the blockchain. This can create a mismatched state in your node.`,
-      );
-      return true;
-    }
-
-    logger.error(
-      `There was an error pushing your changes to the datalayer, ${JSON.stringify(
-        data,
-      )}`,
-    );
-    return false;
-  } catch (error) {
-    logger.error(error.message);
-    logger.info('There was an error pushing your changes to the datalayer');
   }
+
+  logger.error(
+    'Maximum attempts reached. Unable to push changes to the datalayer.',
+  );
+  return false;
 };
 
 const createDataLayerStore = async () => {
@@ -688,5 +728,6 @@ export {
   cancelOffer,
   verifyOffer,
   takeOffer,
+  clearPendingRoots,
   getValue,
 };

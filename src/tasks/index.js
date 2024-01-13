@@ -2,9 +2,10 @@ import { ToadScheduler } from 'toad-scheduler';
 
 import syncDefaultOrganizations from './sync-default-organizations';
 import syncPickLists from './sync-picklists';
-import syncAudit from './sync-audit-table';
+import syncRegistries from './sync-registries';
 import syncOrganizationMeta from './sync-organization-meta';
 import syncGovernanceBody from './sync-governance-body';
+import mirrorCheck from './mirror-check';
 
 const scheduler = new ToadScheduler();
 
@@ -21,8 +22,9 @@ const start = () => {
     syncGovernanceBody,
     syncDefaultOrganizations,
     syncPickLists,
-    syncAudit,
+    syncRegistries,
     syncOrganizationMeta,
+    mirrorCheck,
   ];
   defaultJobs.forEach((defaultJob) => {
     jobRegistry[defaultJob.id] = defaultJob;
