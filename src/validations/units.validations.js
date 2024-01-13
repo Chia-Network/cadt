@@ -53,27 +53,36 @@ export const unitsPostSchema = Joi.object({
   ...unitsBaseSchema,
 });
 
-export const unitsGetQuerySchema = Joi.object()
-  .keys({
-    page: Joi.number(),
-    limit: Joi.number(),
-    search: Joi.string(),
-    warehouseUnitId: Joi.string(),
-    columns: Joi.array().items(Joi.string()).single(),
-    orgUid: Joi.string(),
-    order: Joi.alternatives().try(
-      // backwards compatibility for old order usage
-      Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
-      // new order usage
-      Joi.string().regex(genericSortColumnRegex),
-    ),
-    xls: Joi.boolean(),
-    marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
-    hasMarketplaceIdentifier: Joi.boolean(),
-    includeProjectInfoInSearch: Joi.boolean(),
-    filter: Joi.string().regex(genericFilterRegex),
-  })
-  .with('page', 'limit');
+export const unitsGetQuerySchema = Joi.object({
+  page: Joi.number().min(1),
+  limit: Joi.number().max(100).min(1),
+  search: Joi.string(),
+  warehouseUnitId: Joi.string(),
+  columns: Joi.array().items(Joi.string()).single(),
+  orgUid: Joi.string(),
+  order: Joi.alternatives().try(
+    Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
+    Joi.string().regex(genericSortColumnRegex),
+  ),
+  xls: Joi.boolean(),
+  marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
+  hasMarketplaceIdentifier: Joi.boolean(),
+  includeProjectInfoInSearch: Joi.boolean(),
+  filter: Joi.string().regex(genericFilterRegex),
+})
+  .when(
+    Joi.object({
+      warehouseUnitId: Joi.string().min(1),
+    }).or('warehouseUnitId'),
+    {
+      then: Joi.object(),
+      otherwise: Joi.object({
+        page: Joi.number().min(1).required(),
+        limit: Joi.number().max(100).min(1).required(),
+      }),
+    },
+  )
+  .and('page', 'limit');
 
 export const unitsUpdateSchema = Joi.object({
   warehouseUnitId: Joi.string().required(),

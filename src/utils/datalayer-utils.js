@@ -1,3 +1,7 @@
+import { getConfig } from './config-loader';
+import fullNode from '../datalayer/fullNode';
+import { publicIpv4 } from './ip-tools';
+
 export const encodeHex = (str) => {
   return Buffer.from(str).toString('hex');
 };
@@ -70,4 +74,13 @@ export const deserializeMaker = (maker) => {
   });
 
   return changes;
+};
+
+export const getMirrorUrl = async () => {
+  const { DATALAYER_FILE_SERVER_URL } = getConfig().APP;
+  const chiaConfig = fullNode.getChiaConfig();
+  return (
+    DATALAYER_FILE_SERVER_URL ||
+    `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`
+  );
 };

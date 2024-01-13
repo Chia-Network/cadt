@@ -16,6 +16,10 @@
 [Unit]
 Description=CADT
 
+# Stop automatically restarting if 10 failures in 5 minutes
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
 [Service]
 # Set Chia directory as an environment variable
 Environment=CHIA_ROOT=/home/%i/.chia/mainnet
@@ -26,6 +30,10 @@ ExecStart=/opt/cadt/cadt
 # Start the software with `systemctl start cadt@username`
 User=%i
 Group=%i
+
+# Auto-restart if process stopped outside of systemd
+Restart=on-failure
+RestartSec=10s
 
 [Install]
 WantedBy=multi-user.target
