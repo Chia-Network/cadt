@@ -104,7 +104,7 @@ curl --location --request GET 'localhost:31310/v1/organizations' --header 'Conte
     "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9":{
         "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
         "name":"Org Test",
-        "icon":"https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg",
+        "icon":"https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg",
         "isHome":true,
         "subscribed":true
     }
@@ -130,7 +130,7 @@ curl --location -g --request POST 'localhost:31310/v1/organizations/' \
      --header 'Content-Type: application/json' \
      --data-raw '{
         "name": "Sample Org",
-        "icon": "https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg"
+        "icon": "https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg"
 }'
 
 // Response

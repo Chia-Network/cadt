@@ -138,7 +138,7 @@ describe('Project Resource CRUD', function () {
 
         await supertest(app).post(`/v1/organizations`).send({
           name: 'Test',
-          icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+          icon: 'https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg',
         });
       });
 
@@ -249,7 +249,7 @@ describe('Project Resource CRUD', function () {
 
         await supertest(app).post(`/v1/organizations`).send({
           name: 'Test',
-          icon: 'https://climate-warehouse.s3.us-west-2.amazonaws.com/public/orgs/me.svg',
+          icon: 'https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg',
         });
       }).timeout(TEST_WAIT_TIME * 10);
       it('errors if there is a current set of pending commits', function () {});
