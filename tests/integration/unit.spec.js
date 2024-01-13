@@ -162,11 +162,9 @@ describe('Unit Resource Integration Tests', function () {
     await testFixtures.waitForDataLayerSync();
 
     // Get a unit to split
-    const allUnitsResult = await supertest(app)
-      .get('/v1/units')
-      .query({ page: 1, limit: 100 });
+    const allUnitsResult = await supertest(app).get('/v1/units');
 
-    const unitRecord = _.head(allUnitsResult.body.data);
+    const unitRecord = _.head(allUnitsResult.body);
 
     const warehouseUnitIdToSplit = unitRecord.warehouseUnitId;
     const newUnitOwner = '35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf';

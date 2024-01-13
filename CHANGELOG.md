@@ -1,4 +1,4 @@
-#  (2023-11-16)
+## [1.7.1](https://github.com/Chia-Network/Core-Registry-CADT/compare/1.6.29...1.7.1) (2024-01-04)
 
 
 ### Bug Fixes
@@ -10,14 +10,22 @@
 * middleware fix ([7213ad8](https://github.com/Chia-Network/Core-Registry-CADT/commit/7213ad8b151d7f61e58ea239d732f2f3c399b380))
 * middleware fix ([6d6cde4](https://github.com/Chia-Network/Core-Registry-CADT/commit/6d6cde49e6063599f44d118bc69001934466f864))
 * middleware fix ([40ef6a9](https://github.com/Chia-Network/Core-Registry-CADT/commit/40ef6a90f07c73517b83cba850e7a5d47775c582))
+* tests ([fa2330e](https://github.com/Chia-Network/Core-Registry-CADT/commit/fa2330ea73a295585628ae8d018e94c927299167))
 
 
 ### Features
 
+* add picklistpage endpoint ([28bd1ba](https://github.com/Chia-Network/Core-Registry-CADT/commit/28bd1ba48e2f23a6a122f07c6fe1fa63df3abcf2))
 * additional sync updates ([ae3f9d2](https://github.com/Chia-Network/Core-Registry-CADT/commit/ae3f9d2ad78677c912c512145ed27b1592911275))
 * automatic migration to new sync method ([d440e98](https://github.com/Chia-Network/Core-Registry-CADT/commit/d440e98bedb7a9973a8ed195ca7f00416220e303))
+* inventory reports for dlaas bucket ([b150b85](https://github.com/Chia-Network/Core-Registry-CADT/commit/b150b853353bcf652dc76ea52a12527a1c2808e7))
 * sync fix by looking at timestamps instead of hashes ([24ebe4a](https://github.com/Chia-Network/Core-Registry-CADT/commit/24ebe4a610782d71c76d0698d891b12ed37e0004))
 * sync fix by looking at timestamps instead of hashes ([b249915](https://github.com/Chia-Network/Core-Registry-CADT/commit/b24991534bfd77e1575913d090b6a7498911eb05))
+
+
+### Reverts
+
+* extraneous file ([f713c46](https://github.com/Chia-Network/Core-Registry-CADT/commit/f713c468b73b7ee8e3e0743832cbae96263fe0d1))
 
 
 
