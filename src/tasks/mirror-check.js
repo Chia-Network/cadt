@@ -21,7 +21,7 @@ const task = new Task('mirror-check', async () => {
     // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
     const shouldMirror = CONFIG().CADT.AUTO_MIRROR_EXTERNAL_STORES ?? true;
 
-    if (!CONFIG.USE_SIMULATOR && shouldMirror) {
+    if (!CONFIG().CADT.USE_SIMULATOR && shouldMirror) {
       runMirrorCheck();
     }
   } catch (error) {
