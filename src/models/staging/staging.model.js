@@ -22,6 +22,7 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls';
+import logger from 'build/config/logger.cjs';
 
 class Staging extends Model {
   static changes = new rxjs.Subject();
@@ -512,6 +513,8 @@ class Staging extends Model {
       _.sortBy(_.flatten(_.values(unifiedChangeList)), 'action'),
       (v) => [v.action, v.key].join(),
     );
+
+    logger.debug(JSON.stringify(finalChangeList, null, 2));
 
     await datalayer.pushDataLayerChangeList(
       myOrganization.registryId,
