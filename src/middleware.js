@@ -60,6 +60,11 @@ app.use(function (req, res, next) {
 
 // Add optional API key if set in .env file
 app.use(function (req, res, next) {
+  // Bypass API key check for specific route
+  if (req.path === '/v1/governance/picklistpage') {
+    return next();
+  }
+
   if (CONFIG().CADT.API_KEY && CONFIG().CADT.API_KEY !== '') {
     const apikey = req.header('x-api-key');
     if (CONFIG().CADT.API_KEY === apikey) {
