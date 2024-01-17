@@ -61,7 +61,7 @@ const getMirrors = async (storeId) => {
 };
 
 const getValue = async (storeId, storeKey) => {
-  const url = `${CONFIG.DATALAYER_URL}/get_value`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_value`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
