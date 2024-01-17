@@ -17,12 +17,12 @@ import { makeOffer } from '../../datalayer/persistance';
 
 import ModelTypes from './staging.modeltypes.cjs';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
+import { logger } from '../../logger';
 
 import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls';
-import logger from 'build/config/logger.cjs';
 
 class Staging extends Model {
   static changes = new rxjs.Subject();
