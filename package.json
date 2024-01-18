@@ -1,6 +1,6 @@
 {
   "name": "core-registry-cadt",
-  "version": "1.7",
+  "version": "1.7.2",
   "_comment": "DONT CHANGE MAJOR UNLESS DATAMODEL CHANGES: The major version corresponds to the datamodel version your using, so 2.0.0 means it'll use datamodel v2",
   "private": true,
   "bin": "build/server.js",
@@ -32,8 +32,8 @@
     "assets": "package.json"
   },
   "dependencies": {
-    "@babel/eslint-parser": "^7.22.15",
-    "@chia-carbon/core-registry-config": "^1.0.3",
+    "@babel/eslint-parser": "^7.23.3",
+    "@chia-carbon/core-registry-config": "^1.0.4",
     "@chia-carbon/core-registry-logger": "^1.0.12",
     "async-mutex": "^0.4.0",
     "body-parser": "^1.20.2",
@@ -44,7 +44,7 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-joi-validation": "^5.0.1",
-    "joi": "^17.11.0",
+    "joi": "^17.11.1",
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
     "multer": "^1.4.5-lts.1",
@@ -65,7 +65,7 @@
     "@babel/cli": "^7.23.4",
     "@babel/core": "^7.23.7",
     "@babel/plugin-syntax-import-attributes": "^7.23.3",
-    "@babel/preset-env": "^7.23.7",
+    "@babel/preset-env": "^7.23.8",
     "@babel/register": "^7.23.7",
     "@commitlint/cli": "18.4.4",
     "@commitlint/config-conventional": "^18.4.4",
@@ -79,9 +79,9 @@
     "mocha": "^10.2.0",
     "semver": "^7.5.4",
     "sinon": "^17.0.1",
-    "socket.io-client": "^4.7.3",
+    "socket.io-client": "^4.7.4",
     "standard-version": "^9.5.0",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.4"
   },
   "standard-version": {
     "skip": {

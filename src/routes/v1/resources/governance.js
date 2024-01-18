@@ -69,4 +69,8 @@ GovernanceRouter.post(
   },
 );
 
+GovernanceRouter.get('/picklistpage', (req, res) => {
+  return GovernanceController.renderGovernance(req, res);
+});
+
 export { GovernanceRouter };

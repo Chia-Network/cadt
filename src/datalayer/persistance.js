@@ -61,7 +61,7 @@ const getMirrors = async (storeId) => {
 };
 
 const getValue = async (storeId, storeKey) => {
-  const url = `${CONFIG.DATALAYER_URL}/get_value`;
+  const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_value`;
   const { cert, key, timeout } = getBaseOptions();
 
   try {
@@ -73,6 +73,9 @@ const getValue = async (storeId, storeKey) => {
       .send({ id: storeId, key: storeKey });
 
     const data = response.body;
+
+    logger.debug(JSON.stringify({ id: storeId, key: storeKey }));
+    logger.debug(JSON.stringify(data));
 
     if (data.success) {
       return data.value;

@@ -154,6 +154,65 @@ export const setDefaultOrgList = async (req, res) => {
   }
 };
 
+export const renderGovernance = async (req, res) => {
+  let govPickList;
+  if (CONFIG().CADT.USE_DEVELOPMENT_MODE) {
+    govPickList = pickList;
+  }
+
+  govPickList = await Governance.findOne({
+    where: { metaKey: 'pickList' },
+    raw: true,
+  });
+
+  const parsedPickList = JSON.parse(govPickList.metaValue);
+
+  let htmlContent = `
+  <html>
+  <head>
+    <title>Pick List</title>
+    <script>
+      function copyToClipboard(text) {
+        const elem = document.createElement('textarea');
+        elem.value = text;
+        document.body.appendChild(elem);
+        elem.select();
+        document.execCommand('copy');
+        document.body.removeChild(elem);
+        alert('"' + text + '" copied to clipboard');
+      }
+    </script>
+  </head>
+  <body style="padding: 15px">
+  <!-- Table of Contents section -->
+  <h2>Table of Contents</h2>
+  <div id="navigation"><ul>`;
+
+  for (const key in parsedPickList) {
+    htmlContent += `<li><a href="#${key}">${key}</a></li>`;
+  }
+
+  htmlContent += `</ul></div>
+  <!-- List section -->
+  `;
+
+  for (const key in parsedPickList) {
+    htmlContent += `<h2 id="${key}">${key} <a href="#${key}" style="text-decoration:none;">[#]</a></h2><ol>`;
+    for (const item of parsedPickList[key]) {
+      htmlContent += `<li style="cursor: pointer;" onclick="copyToClipboard('${item.replace(
+        /'/g,
+        "\\'",
+      )}')">${item}</li>`;
+    }
+    htmlContent += '</ol>';
+  }
+
+  htmlContent += '</body></html>';
+
+  res.setHeader('Content-Type', 'text/html');
+  res.send(htmlContent);
+};
+
 // eslint-disable-next-line
 export const setPickList = async (req, res) => {
   try {
