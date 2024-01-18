@@ -17,6 +17,7 @@ import { makeOffer } from '../../datalayer/persistance';
 
 import ModelTypes from './staging.modeltypes.cjs';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
+import { logger } from '../../logger';
 
 import {
   createXlsFromSequelizeResults,
@@ -512,6 +513,8 @@ class Staging extends Model {
       _.sortBy(_.flatten(_.values(unifiedChangeList)), 'action'),
       (v) => [v.action, v.key].join(),
     );
+
+    logger.debug(JSON.stringify(finalChangeList, null, 2));
 
     await datalayer.pushDataLayerChangeList(
       myOrganization.registryId,

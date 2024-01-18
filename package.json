@@ -32,8 +32,8 @@
     "assets": "package.json"
   },
   "dependencies": {
-    "@babel/eslint-parser": "^7.22.15",
-    "@chia-carbon/core-registry-config": "^1.0.3",
+    "@babel/eslint-parser": "^7.23.3",
+    "@chia-carbon/core-registry-config": "^1.0.4",
     "@chia-carbon/core-registry-logger": "^1.0.12",
     "async-mutex": "^0.4.0",
     "body-parser": "^1.20.2",
@@ -44,7 +44,7 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-joi-validation": "^5.0.1",
-    "joi": "^17.11.0",
+    "joi": "^17.11.1",
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
     "multer": "^1.4.5-lts.1",
@@ -52,9 +52,9 @@
     "node-xlsx": "^0.23.0",
     "regenerator-runtime": "^0.13.11",
     "rxjs": "^7.8.1",
-    "sequelize": "^6.33.0",
-    "socket.io": "^4.7.2",
-    "sqlite3": "^5.1.6",
+    "sequelize": "^6.35.2",
+    "socket.io": "^4.7.4",
+    "sqlite3": "^5.1.7",
     "superagent": "^8.1.2",
     "toad-scheduler": "^3.0.0",
     "uuidv4": "^6.2.13",
@@ -67,10 +67,10 @@
     "@babel/plugin-syntax-import-attributes": "^7.23.3",
     "@babel/preset-env": "^7.23.8",
     "@babel/register": "^7.23.7",
-    "@commitlint/cli": "^18.4.4",
+    "@commitlint/cli": "18.4.4",
     "@commitlint/config-conventional": "^18.4.4",
     "babel-plugin-module-resolver": "^5.0.0",
-    "chai": "^5.0.0",
+    "chai": "4.3.10",
     "chai-http": "^4.4.0",
     "eslint": "^8.56.0",
     "eslint-plugin-es": "^4.1.0",
@@ -81,7 +81,7 @@
     "sinon": "^17.0.1",
     "socket.io-client": "^4.7.4",
     "standard-version": "^9.5.0",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.4"
   },
   "standard-version": {
     "skip": {
