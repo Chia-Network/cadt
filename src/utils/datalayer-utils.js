@@ -77,7 +77,7 @@ export const deserializeMaker = (maker) => {
 };
 
 export const getMirrorUrl = async () => {
-  const { DATALAYER_FILE_SERVER_URL } = getConfig().APP;
+  const { DATALAYER_FILE_SERVER_URL } = getConfig().CHIA;
   const chiaConfig = fullNode.getChiaConfig();
   return (
     DATALAYER_FILE_SERVER_URL ||
