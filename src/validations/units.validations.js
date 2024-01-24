@@ -66,6 +66,7 @@ export const unitsGetQuerySchema = Joi.object()
       Joi.string().regex(genericSortColumnRegex),
     ),
     xls: Joi.boolean(),
+    unitIds: Joi.array().items(Joi.string()).single(),
     marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
     hasMarketplaceIdentifier: Joi.boolean(),
     includeProjectInfoInSearch: Joi.boolean(),

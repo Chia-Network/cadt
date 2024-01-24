@@ -131,6 +131,7 @@ export const findAll = async (req, res) => {
       search,
       xls,
       order,
+      unitIds,
       marketplaceIdentifiers,
       hasMarketplaceIdentifier,
       includeProjectInfoInSearch = false,
@@ -199,6 +200,16 @@ export const findAll = async (req, res) => {
 
       where.warehouseUnitId = {
         [Sequelize.Op.in]: mappedResults,
+      };
+    }
+
+    if (unitIds) {
+      if (!where) {
+        where = {};
+      }
+
+      where.warehouseProjectId = {
+        [Sequelize.Op.in]: _.flatten([unitIds]),
       };
     }
 
