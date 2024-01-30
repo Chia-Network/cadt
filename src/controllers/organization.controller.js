@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize';
 import { sequelize } from '../database';
 import { Organization } from '../models/organizations';
+import datalayer from '../datalayer';
 
 import {
   assertHomeOrgExists,
@@ -16,6 +17,33 @@ import { ModelKeys, Audit, Staging } from '../models';
 
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
+};
+
+export const homeOrgSyncStatus = async (req, res) => {
+  try {
+    await assertHomeOrgExists();
+    const walletSynced = await datalayer.walletIsSynced();
+    const homeOrg = await Organization.getHomeOrg();
+    const pendingCommitsCount = await Staging.count({
+      where: { commited: true },
+    });
+
+    return res.json({
+      ready:
+        walletSynced && Boolean(homeOrg?.synced) && pendingCommitsCount === 0,
+      status: {
+        wallet_synced: walletSynced,
+        home_org_synced: Boolean(homeOrg?.synced),
+        pending_commits: pendingCommitsCount,
+      },
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message,
+      success: false,
+    });
+  }
 };
 
 export const editHomeOrg = async (req, res) => {
