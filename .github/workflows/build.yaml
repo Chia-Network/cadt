@@ -26,15 +26,15 @@ jobs:
           - runs-on: ubuntu-latest
             artifact-name: cadt-linux-x64
             build-command: npm run create-linux-x64-dist
-            sqlite-path: ./node_modules/sqlite3/lib/binding/napi-v6-linux-glibc-x64/
+            sqlite-path: ./node_modules/sqlite3/build/Release/
           - runs-on: macos-latest
             artifact-name: cadt-macos-x64
             build-command: npm run create-mac-x64-dist
-            sqlite-path: ./node_modules/sqlite3/lib/binding/napi-v6-darwin-unknown-x64/
+            sqlite-path: ./node_modules/sqlite3/build/Release/
           - runs-on: windows-2019
             artifact-name: cadt-windows-x64
             build-command: npm run create-win-x64-dist
-            sqlite-path: .\node_modules\sqlite3\lib\binding\napi-v6-win32-unknown-x64\
+            sqlite-path: .\node_modules\sqlite3\build\Release\
 
     steps:
       - name: Clean workspace
