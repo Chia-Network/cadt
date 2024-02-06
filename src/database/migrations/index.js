@@ -34,6 +34,7 @@ import AddPrefix from './20230824175347-add-prefix';
 import OrgSyncStatus from './20231020201652-OrgSyncStatus';
 import OrgSyncRemaining from './20231020214357-OrgSyncRemainingCount';
 import UnitOwnerNotRequired from './20231016190739-UnitOwnerNotRequired';
+import AddGenerationIndexToAudit from './20231207142225-AddGenerationIndexToAudit';
 
 export const migrations = [
   {
@@ -183,5 +184,9 @@ export const migrations = [
   {
     migration: UnitOwnerNotRequired,
     name: '20231016190739-UnitOwnerNotRequired',
+  },
+  {
+    migration: AddGenerationIndexToAudit,
+    name: '20231207142225-AddGenerationIndexToAudit',
   },
 ];
