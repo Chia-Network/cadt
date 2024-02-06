@@ -1,11 +1,14 @@
 import _ from 'lodash';
 
-import { Sequelize } from 'sequelize';
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Mutex } from 'async-mutex';
 import { Organization, Audit, ModelKeys, Staging, Meta } from '../models';
 import datalayer from '../datalayer';
-import { decodeHex, encodeHex } from '../utils/datalayer-utils';
+import {
+  decodeHex,
+  encodeHex,
+  optimizeAndSortKvDiff,
+} from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 import { logger } from '../config/logger.cjs';
 import { sequelize, sequelizeMirror } from '../database';
@@ -15,6 +18,10 @@ import {
   assertWalletIsSynced,
 } from '../utils/data-assertions';
 import { mirrorDBEnabled } from '../database';
+import {
+  migrateToNewSync,
+  generateGenerationIndex,
+} from '../utils/sync-migration-utils';
 
 dotenv.config();
 const mutex = new Mutex();
@@ -28,58 +35,23 @@ const task = new Task('sync-registries', async () => {
         where: { metaKey: 'migratedToNewSync' },
       });
 
+      const hasMigratedToGenerationIndexSync = await Meta.findOne({
+        where: { metaKey: 'migratedToIndexBasedSync' },
+      });
+
       if (hasMigratedToNewSyncMethod || CONFIG.USE_SIMULATOR) {
-        await processJob();
-      } else {
-        logger.info(
-          'Initiating migration to the new synchronization method. This will require a complete resynchronization of all data and may take some time.',
-        );
-
-        for (const modelKey of Object.keys(ModelKeys)) {
-          logger.info(`Resetting ${modelKey}`);
-          await ModelKeys[modelKey].destroy({
-            where: {
-              id: {
-                [Sequelize.Op.ne]: null,
-              },
-            },
-            truncate: true,
-          });
+        if (hasMigratedToGenerationIndexSync) {
+          await processJob();
+        } else {
+          await generateGenerationIndex();
         }
-
-        logger.info(`Resetting Audit Table`);
-        await Audit.destroy({
-          where: {
-            id: {
-              [Sequelize.Op.ne]: null,
-            },
-          },
-          truncate: true,
-        });
-
-        await Meta.upsert({
-          metaKey: 'migratedToNewSync',
-          metaValue: 'true',
-        });
-
-        await Organization.update(
-          {
-            synced: false,
-            sync_remaining: 0,
-          },
-          {
-            where: {
-              id: {
-                [Sequelize.Op.ne]: null,
-              },
-            },
-          },
-        );
-
-        logger.info(`Migration Complete`);
+      } else {
+        await migrateToNewSync();
       }
     } catch (error) {
       logger.error(`Error during datasync: ${error.message}`);
+
+      console.trace(error);
 
       // Log additional information if present in the error object
       if (error.response && error.response.body) {
@@ -115,42 +87,6 @@ const processJob = async () => {
     await syncOrganizationAudit(organization);
   }
 };
-
-/**
- * Optimizes and sorts an array of key-value differences.
- * NOTE: The only reason this function works is because we treat INSERTS as UPSERTS
- * If that ever changes, this function will need to be removed.
- *
- * @param {Array} kvDiff - An array of objects with { key, type } structure.
- * @returns {Array} - An optimized and sorted array.
- */
-function optimizeAndSortKvDiff(kvDiff) {
-  const deleteKeys = new Set();
-  const insertKeys = new Set();
-
-  // Populate the Sets for quicker lookup
-  for (const diff of kvDiff) {
-    if (diff.type === 'DELETE') {
-      deleteKeys.add(diff.key);
-    } else if (diff.type === 'INSERT') {
-      insertKeys.add(diff.key);
-    }
-  }
-
-  // Remove DELETE keys that also exist in INSERT keys
-  for (const insertKey of insertKeys) {
-    deleteKeys.delete(insertKey);
-  }
-
-  // Filter and sort the array based on the optimized DELETE keys
-  const filteredArray = kvDiff.filter((diff) => {
-    return diff.type !== 'DELETE' || deleteKeys.has(diff.key);
-  });
-
-  return filteredArray.sort((a, b) => {
-    return a.type === b.type ? 0 : a.type === 'DELETE' ? -1 : 1;
-  });
-}
 
 async function createTransaction(callback, afterCommitCallbacks) {
   let result = null;
@@ -222,10 +158,11 @@ const syncOrganizationAudit = async (organization) => {
       console.log('USING MOCK ROOT HISTORY');
       lastRootSaved = rootHistory[0];
       lastRootSaved.rootHash = lastRootSaved.root_hash;
+      lastRootSaved.generation = 0;
     } else {
       lastRootSaved = await Audit.findOne({
         where: { registryId: organization.registryId },
-        order: [['onchainConfirmationTimeStamp', 'DESC']],
+        order: [['generation', 'DESC']],
         raw: true,
       });
 
@@ -239,18 +176,20 @@ const syncOrganizationAudit = async (organization) => {
       }
     }
 
-    let generation = _.get(rootHistory, '[0]');
+    let currentGeneration = _.get(rootHistory, '[0]');
 
     if (!lastRootSaved) {
       logger.info(`Syncing new registry ${organization.name}`);
+
       await Audit.create({
         orgUid: organization.orgUid,
         registryId: organization.registryId,
-        rootHash: generation.root_hash,
+        rootHash: currentGeneration.root_hash,
         type: 'CREATE REGISTRY',
+        generation: 0,
         change: null,
         table: null,
-        onchainConfirmationTimeStamp: generation.timestamp,
+        onchainConfirmationTimeStamp: currentGeneration.timestamp.toString(),
       });
 
       // Destroy existing records for this singleton
@@ -269,23 +208,20 @@ const syncOrganizationAudit = async (organization) => {
 
       return;
     } else {
-      generation = lastRootSaved;
+      currentGeneration = lastRootSaved;
     }
 
-    let isSynced =
-      rootHistory[rootHistory.length - 1].root_hash === generation.root_hash;
+    const historyIndex = currentGeneration.generation;
 
-    const historyIndex = rootHistory.findIndex(
-      (root) => root.timestamp === generation.timestamp,
-    );
-
-    if (historyIndex === -1) {
+    if (historyIndex > rootHistory.length) {
       logger.error(
-        `Could not find root history for ${organization.name} with timestamp ${generation.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
+        `Could not find root history for ${organization.name} with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
     }
 
-    const syncRemaining = rootHistory.length - historyIndex - 1;
+    const rootHistoryCount = rootHistory.length - 1;
+    const syncRemaining = rootHistoryCount - historyIndex;
+    const isSynced = syncRemaining === 0;
 
     await Organization.update(
       {
@@ -301,7 +237,7 @@ const syncOrganizationAudit = async (organization) => {
 
     // Organization not synced, sync it
     logger.info(' ');
-    logger.info(`Syncing Registry: ${_.get(organization, 'name')}`);
+    logger.info(`Syncing ${organization.name} generation ${historyIndex}`);
     logger.info(
       `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced.`,
     );
@@ -312,6 +248,9 @@ const syncOrganizationAudit = async (organization) => {
 
     const root1 = _.get(rootHistory, `[${historyIndex}]`);
     const root2 = _.get(rootHistory, `[${historyIndex + 1}]`);
+
+    logger.info(`ROOT 1 ${JSON.stringify(root1)}`);
+    logger.info(`ROOT 2', ${JSON.stringify(root2)}`);
 
     if (!_.get(root2, 'confirmed')) {
       logger.info(
@@ -359,6 +298,9 @@ const syncOrganizationAudit = async (organization) => {
     const optimizedKvDiff = optimizeAndSortKvDiff(kvDiff);
 
     const updateTransaction = async (transaction, mirrorTransaction) => {
+      logger.info(
+        `Syncing ${organization.name} generation ${historyIndex + 1}`,
+      );
       for (const diff of optimizedKvDiff) {
         const key = decodeHex(diff.key);
         const modelKey = key.split('|')[0];
@@ -371,6 +313,7 @@ const syncOrganizationAudit = async (organization) => {
           table: modelKey,
           change: decodeHex(diff.value),
           onchainConfirmationTimeStamp: root2.timestamp,
+          generation: historyIndex + 1,
           comment: _.get(
             tryParseJSON(
               decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
@@ -387,48 +330,45 @@ const syncOrganizationAudit = async (organization) => {
           ),
         };
 
-        if (Object.keys(ModelKeys).includes(modelKey)) {
-          if (modelKey) {
-            const record = JSON.parse(decodeHex(diff.value));
-            const primaryKeyValue =
-              record[ModelKeys[modelKey].primaryKeyAttributes[0]];
+        if (modelKey && Object.keys(ModelKeys).includes(modelKey)) {
+          const record = JSON.parse(decodeHex(diff.value));
+          const primaryKeyValue =
+            record[ModelKeys[modelKey].primaryKeyAttributes[0]];
 
-            if (diff.type === 'INSERT') {
-              logger.info(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
-              await ModelKeys[modelKey].upsert(record, {
-                transaction,
-                mirrorTransaction,
-              });
-            } else if (diff.type === 'DELETE') {
-              logger.info(`DELETING: ${modelKey} - ${primaryKeyValue}`);
-              await ModelKeys[modelKey].destroy({
-                where: {
-                  [ModelKeys[modelKey].primaryKeyAttributes[0]]:
-                    primaryKeyValue,
-                },
-                transaction,
-                mirrorTransaction,
-              });
-            }
+          if (diff.type === 'INSERT') {
+            logger.info(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
+            await ModelKeys[modelKey].upsert(record, {
+              transaction,
+              mirrorTransaction,
+            });
+          } else if (diff.type === 'DELETE') {
+            logger.info(`DELETING: ${modelKey} - ${primaryKeyValue}`);
+            await ModelKeys[modelKey].destroy({
+              where: {
+                [ModelKeys[modelKey].primaryKeyAttributes[0]]: primaryKeyValue,
+              },
+              transaction,
+              mirrorTransaction,
+            });
+          }
 
-            if (organization.orgUid === homeOrg?.orgUid) {
-              const stagingUuid = [
-                'unit',
-                'project',
-                'units',
-                'projects',
-              ].includes(modelKey)
-                ? primaryKeyValue
-                : undefined;
+          if (organization.orgUid === homeOrg?.orgUid) {
+            const stagingUuid = [
+              'unit',
+              'project',
+              'units',
+              'projects',
+            ].includes(modelKey)
+              ? primaryKeyValue
+              : undefined;
 
-              if (stagingUuid) {
-                afterCommitCallbacks.push(async () => {
-                  logger.info(`DELETING STAGING: ${stagingUuid}`);
-                  await Staging.destroy({
-                    where: { uuid: stagingUuid },
-                  });
+            if (stagingUuid) {
+              afterCommitCallbacks.push(async () => {
+                logger.info(`DELETING STAGING: ${stagingUuid}`);
+                await Staging.destroy({
+                  where: { uuid: stagingUuid },
                 });
-              }
+              });
             }
           }
         }
