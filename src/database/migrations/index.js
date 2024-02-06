@@ -32,6 +32,7 @@ import AddIsTransferColumn from './20220825124702-add-isTransfer-column';
 import AddOrgMetadata from './20220831023546-add-org-metadata';
 import OrgSyncStatus from './20231020201652-OrgSyncStatus';
 import OrgSyncRemaining from './20231020214357-OrgSyncRemainingCount';
+import AddGenerationIndexToAudit from './20231207142225-AddGenerationIndexToAudit';
 
 export const migrations = [
   {
@@ -173,5 +174,9 @@ export const migrations = [
   {
     migration: OrgSyncRemaining,
     name: '20231020214357-OrgSyncRemainingCount',
+  },
+  {
+    migration: AddGenerationIndexToAudit,
+    name: '20231207142225-AddGenerationIndexToAudit',
   },
 ];
