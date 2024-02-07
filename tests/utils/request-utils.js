@@ -15,7 +15,7 @@ export const get = (url) => {
         }
 
         resolve(res);
-    
+
       });
   });
 };

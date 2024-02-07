@@ -1,9 +1,8 @@
-import chai from 'chai';
+import { expect } from 'chai';
 import _ from 'lodash';
 import * as testFixtures from '../test-fixtures';
 import sinon from 'sinon';
 import datalayer from '../../src/datalayer';
-const { expect } = chai;
 import newProject from '../test-data/new-project.js';
 import supertest from 'supertest';
 import app from '../../src/server';
