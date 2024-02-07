@@ -26,15 +26,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 };
 
-const getSubscribedStoreData = async (storeId, retry = 0) => {
-  if (retry >= 60) {
-    throw new Error(
-      `Max retrys exceeded while trying to subscribe to ${storeId}, Can not subscribe to organization`,
-    );
-  }
-
-  const timeoutInterval = 30000;
-
+const getSubscribedStoreData = async (storeId) => {
   const subscriptions = await dataLayer.getSubscriptions(storeId);
   const alreadySubscribed = subscriptions.includes(storeId);
 
@@ -43,20 +35,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
     const response = await subscribeToStoreOnDataLayer(storeId);
 
     if (!response || !response.success) {
-      if (!response) {
-        logger.info(
-          `Response from subscribe RPC came back undefined, is your datalayer running?`,
-        );
-      }
-      logger.info(
-        `Retrying subscribe to ${storeId}, subscribe failed`,
-        retry + 1,
-      );
-      logger.info('...');
-      await new Promise((resolve) =>
-        setTimeout(() => resolve(), timeoutInterval),
-      );
-      return getSubscribedStoreData(storeId, retry + 1);
+      throw new Error(`Failed to subscribe to ${storeId}`);
     }
   }
 
@@ -67,15 +46,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
     logger.info(`Store found in DataLayer: ${storeId}.`);
     if (!storeExistAndIsConfirmed) {
-      logger.info(
-        `Retrying subscribe to ${storeId}, store not yet confirmed.`,
-        retry + 1,
-      );
-      logger.info('...');
-      await new Promise((resolve) =>
-        setTimeout(() => resolve(), timeoutInterval),
-      );
-      return getSubscribedStoreData(storeId, retry + 1);
+      throw new Error(`Store not found in DataLayer: ${storeId}.`);
     } else {
       logger.debug(`Store is confirmed, proceeding to get data ${storeId}`);
     }
@@ -89,15 +60,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
   }
 
   if (_.isEmpty(encodedData?.keys_values)) {
-    logger.info(
-      `Retrying subscribe to ${storeId}, No data detected in store.`,
-      retry + 1,
-    );
-    logger.info('...');
-    await new Promise((resolve) =>
-      setTimeout(() => resolve(), timeoutInterval),
-    );
-    return getSubscribedStoreData(storeId, retry + 1);
+    throw new Error(`No data found for store ${storeId}`);
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);

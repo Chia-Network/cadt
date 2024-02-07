@@ -1,8 +1,7 @@
 import _ from 'lodash';
 
-import chai from 'chai';
+import { expect } from 'chai';
 import supertest from 'supertest';
-const { expect } = chai;
 
 import app from '../../src/server';
 import { UnitMirror } from '../../src/models';
@@ -37,7 +36,7 @@ describe('Unit Resource Integration Tests', function () {
     /*
       Basic Idea for this test is that we are going to create a unit and verify that
       the new unit propagates through the data layer and into our db. Then we are going
-      to delete the same unit and make sure the delete command propagates through the datalayer 
+      to delete the same unit and make sure the delete command propagates through the datalayer
       then gets removed from our db.
     */
     // create and commit the unit to be deleted
