@@ -219,7 +219,7 @@ const syncOrganizationAudit = async (organization) => {
       );
     }
 
-    const rootHistoryCount = rootHistory.length - 1;
+    const rootHistoryCount = rootHistory.length;
     const syncRemaining = rootHistoryCount - historyIndex;
     const isSynced = syncRemaining === 0;
 
