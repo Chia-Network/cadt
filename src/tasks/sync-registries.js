@@ -221,7 +221,7 @@ const syncOrganizationAudit = async (organization) => {
 
     const rootHistoryCount = rootHistory.length;
     const syncRemaining = rootHistoryCount - historyIndex;
-    const isSynced = syncRemaining === 0;
+    const isSynced = Boolean(rootHistory?.[historyIndex + 1]) === false;
 
     await Organization.update(
       {
