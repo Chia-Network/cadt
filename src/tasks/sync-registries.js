@@ -211,16 +211,16 @@ const syncOrganizationAudit = async (organization) => {
       currentGeneration = lastRootSaved;
     }
 
-    const historyIndex = currentGeneration.generation;
+    const lastProcessedIndex = currentGeneration.generation;
 
-    if (historyIndex > rootHistory.length) {
+    if (lastProcessedIndex > rootHistory.length) {
       logger.error(
         `Could not find root history for ${organization.name} with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
     }
 
     const rootHistoryZeroBasedCount = rootHistory.length - 1;
-    const syncRemaining = rootHistoryZeroBasedCount - historyIndex;
+    const syncRemaining = rootHistoryZeroBasedCount - lastProcessedIndex;
     const isSynced = syncRemaining === 0;
 
     await Organization.update(
@@ -235,7 +235,7 @@ const syncOrganizationAudit = async (organization) => {
       return;
     }
 
-    const toBeProcessedIndex = historyIndex + 1;
+    const toBeProcessedIndex = lastProcessedIndex + 1;
 
     // Organization not synced, sync it
     logger.info(' ');
@@ -250,7 +250,7 @@ const syncOrganizationAudit = async (organization) => {
       await new Promise((resolve) => setTimeout(resolve, 30000));
     }
 
-    const root1 = _.get(rootHistory, `[${historyIndex}]`);
+    const root1 = _.get(rootHistory, `[${lastProcessedIndex}]`);
     const root2 = _.get(rootHistory, `[${toBeProcessedIndex}]`);
 
     logger.info(`ROOT 1 ${JSON.stringify(root1)}`);
