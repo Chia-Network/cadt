@@ -219,9 +219,9 @@ const syncOrganizationAudit = async (organization) => {
       );
     }
 
-    const rootHistoryCount = rootHistory.length;
-    const syncRemaining = rootHistoryCount - historyIndex;
-    const isSynced = Boolean(rootHistory?.[historyIndex + 1]) === false;
+    const rootHistoryZeroBasedCount = rootHistory.length - 1;
+    const syncRemaining = rootHistoryZeroBasedCount - historyIndex;
+    const isSynced = syncRemaining === 0;
 
     await Organization.update(
       {
@@ -235,9 +235,13 @@ const syncOrganizationAudit = async (organization) => {
       return;
     }
 
+    const toBeProcessedIndex = historyIndex + 1;
+
     // Organization not synced, sync it
     logger.info(' ');
-    logger.info(`Syncing ${organization.name} generation ${historyIndex}`);
+    logger.info(
+      `Syncing ${organization.name} generation ${toBeProcessedIndex}`,
+    );
     logger.info(
       `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced.`,
     );
@@ -247,7 +251,7 @@ const syncOrganizationAudit = async (organization) => {
     }
 
     const root1 = _.get(rootHistory, `[${historyIndex}]`);
-    const root2 = _.get(rootHistory, `[${historyIndex + 1}]`);
+    const root2 = _.get(rootHistory, `[${toBeProcessedIndex}]`);
 
     logger.info(`ROOT 1 ${JSON.stringify(root1)}`);
     logger.info(`ROOT 2', ${JSON.stringify(root2)}`);
@@ -299,7 +303,7 @@ const syncOrganizationAudit = async (organization) => {
 
     const updateTransaction = async (transaction, mirrorTransaction) => {
       logger.info(
-        `Syncing ${organization.name} generation ${historyIndex + 1}`,
+        `Syncing ${organization.name} generation ${toBeProcessedIndex}`,
       );
       for (const diff of optimizedKvDiff) {
         const key = decodeHex(diff.key);
@@ -313,7 +317,7 @@ const syncOrganizationAudit = async (organization) => {
           table: modelKey,
           change: decodeHex(diff.value),
           onchainConfirmationTimeStamp: root2.timestamp,
-          generation: historyIndex + 1,
+          generation: toBeProcessedIndex,
           comment: _.get(
             tryParseJSON(
               decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
