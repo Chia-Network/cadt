@@ -1,4 +1,4 @@
-import { getConfig } from './config-loader';
+import { CONFIG } from '../user-config';
 import fullNode from '../datalayer/fullNode';
 import { publicIpv4 } from './ip-tools';
 
@@ -77,7 +77,7 @@ export const deserializeMaker = (maker) => {
 };
 
 export const getMirrorUrl = async () => {
-  const { DATALAYER_FILE_SERVER_URL } = getConfig().CHIA;
+  const { DATALAYER_FILE_SERVER_URL } = CONFIG().CHIA;
   const chiaConfig = fullNode.getChiaConfig();
   return (
     DATALAYER_FILE_SERVER_URL ||
