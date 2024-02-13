@@ -7,6 +7,7 @@ import { Server } from 'socket.io';
 import { connection } from './websocket';
 import { CONFIG } from './user-config';
 import { logger } from './logger.js';
+import { getMirrorUrl } from './utils/datalayer-utils';
 
 import dotenv from 'dotenv';
 
@@ -23,6 +24,7 @@ server.on('listening', onListening);
 
 server.listen(port, bindAddress, () => {
   console.log(`Server listening at http://${bindAddress}:${port}`);
+  console.log(`Mirror URL: ${getMirrorUrl()}`);
 });
 
 const io = new Server(server);
