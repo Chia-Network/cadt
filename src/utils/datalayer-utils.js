@@ -77,11 +77,15 @@ export const deserializeMaker = (maker) => {
 };
 
 export const getMirrorUrl = async () => {
-  const { DATALAYER_FILE_SERVER_URL } = CONFIG().CHIA;
-  console.log(DATALAYER_FILE_SERVER_URL);
-  const chiaConfig = fullNode.getChiaConfig();
-  return (
-    DATALAYER_FILE_SERVER_URL ||
-    `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`
-  );
+  try {
+    const { DATALAYER_FILE_SERVER_URL } = CONFIG().CHIA;
+    console.log(DATALAYER_FILE_SERVER_URL);
+    const chiaConfig = fullNode.getChiaConfig();
+    return (
+      DATALAYER_FILE_SERVER_URL ||
+      `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`
+    );
+  } catch {
+    return null;
+  }
 };
