@@ -62,13 +62,13 @@ export const unitsGetQuerySchema = Joi.object({
   orgUid: Joi.string(),
   order: Joi.alternatives().try(
     Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
-    Joi.string().regex(genericSortColumnRegex),
+    Joi.string().regex(genericSortColumnRegex).min(1).max(100),
   ),
   xls: Joi.boolean(),
   marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
   hasMarketplaceIdentifier: Joi.boolean(),
   includeProjectInfoInSearch: Joi.boolean(),
-  filter: Joi.string().regex(genericFilterRegex),
+  filter: Joi.string().regex(genericFilterRegex).min(1).max(100),
 })
   .when(
     Joi.object({
