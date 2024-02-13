@@ -69,8 +69,8 @@ export const projectsGetQuerySchema = Joi.object({
   warehouseProjectId: Joi.string(),
   xls: Joi.boolean(),
   projectIds: Joi.array().items(Joi.string()).single(),
-  order: Joi.string().regex(genericSortColumnRegex),
-  filter: Joi.string().regex(genericFilterRegex),
+  order: Joi.string().regex(genericSortColumnRegex).max(100).min(1),
+  filter: Joi.string().regex(genericFilterRegex).max(100).min(1),
   onlyMarketplaceProjects: Joi.boolean(),
 })
   .when(
