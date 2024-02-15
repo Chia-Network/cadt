@@ -53,9 +53,15 @@ const runMirrorCheck = async () => {
       const orgData = organizations[org];
       const mirrorUrl = await getMirrorUrl();
 
-      // There is logic within the addMirror function to check if the mirror already exists
-      await Organization.addMirror(orgData.orgUid, mirrorUrl);
-      await Organization.addMirror(orgData.registryId, mirrorUrl);
+      if (mirrorUrl) {
+        // There is logic within the addMirror function to check if the mirror already exists
+        await Organization.addMirror(orgData.orgUid, mirrorUrl);
+        await Organization.addMirror(orgData.registryId, mirrorUrl);
+      } else {
+        logger.error(
+          'Mirror URL is not available, skipping mirror announcement',
+        );
+      }
     }
   }
 };
