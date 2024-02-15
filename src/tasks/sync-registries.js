@@ -151,9 +151,7 @@ const syncOrganizationAudit = async (organization) => {
     let afterCommitCallbacks = [];
 
     const homeOrg = await Organization.getHomeOrg();
-    const rootHistory = (
-      await datalayer.getRootHistory(organization.registryId)
-    ).sort((a, b) => a.timestamp - b.timestamp);
+    const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     if (!rootHistory.length) {
       logger.info(`No root history found for ${organization.name}`);
@@ -219,7 +217,6 @@ const syncOrganizationAudit = async (organization) => {
       currentGeneration = lastRootSaved;
     }
 
-    console.log('@@@@@@@@', currentGeneration);
     const historyIndex = currentGeneration.generation;
 
     if (historyIndex > rootHistory.length) {
