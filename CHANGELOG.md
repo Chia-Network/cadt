@@ -1,3 +1,40 @@
+## [1.7.8](https://github.com/Chia-Network/cadt/compare/1.7.7...1.7.8) (2024-02-15)
+
+
+### Bug Fixes
+
+* clean up old sync code ([fd44165](https://github.com/Chia-Network/cadt/commit/fd441654c6bf724b111baae9b85b5ad383c33e5e))
+* clear pending root if detected on push ([d8b1c22](https://github.com/Chia-Network/cadt/commit/d8b1c22998ca06797eb0ac3ab57ffda93d17c146))
+* clear pending root if detected on push ([fd12c15](https://github.com/Chia-Network/cadt/commit/fd12c153d69b83b645a18bca892254b273d5adec))
+* clear pending root if detected on push ([e280c9a](https://github.com/Chia-Network/cadt/commit/e280c9a7760f1f00980dfd26547276e6d595d0e2))
+* index based sync ([d2ac1a6](https://github.com/Chia-Network/cadt/commit/d2ac1a614557300adbe345ffad16a13befe35e28))
+* maximum file size limit ([94816ac](https://github.com/Chia-Network/cadt/commit/94816ac5eeb2f98a44f44c3dee19692218471f83))
+* optimize retry logic of subscribe ([7da1c6e](https://github.com/Chia-Network/cadt/commit/7da1c6ed1c3e35a131ce40cf02b522ec350eb683))
+* regex validation vulnerability ([21167df](https://github.com/Chia-Network/cadt/commit/21167dff05f086326ceaf3b355c99049d7aa3448))
+* sync remaining bug ([dd4c289](https://github.com/Chia-Network/cadt/commit/dd4c289f33e789a9556d40478d5a03d34acf0828))
+* sync remaining bug ([64dacdf](https://github.com/Chia-Network/cadt/commit/64dacdf7ea376c6ec45fb13a0aee72bd2a004842))
+* sync remaining bug ([192a9e5](https://github.com/Chia-Network/cadt/commit/192a9e5447c3213bfd6309374bda04218523e689))
+* sync remaining bug ([fc4ccb5](https://github.com/Chia-Network/cadt/commit/fc4ccb58b9fc408edfaef5a33589f3c345f8d31d))
+* tests ([a19be01](https://github.com/Chia-Network/cadt/commit/a19be018b8b9c9bd5945542184ae6c8a568f38f8))
+* tests ([927e242](https://github.com/Chia-Network/cadt/commit/927e24215cb28dfb592696d389215e77d8e31d66))
+* tests ([a23ecbc](https://github.com/Chia-Network/cadt/commit/a23ecbccc36e6b18e59d8e24d5536a5db3ebe6f2))
+* tests ([b96a97f](https://github.com/Chia-Network/cadt/commit/b96a97f328114ddc8b299f636092403bdfd04fff))
+* tests for paginated data ([482a20e](https://github.com/Chia-Network/cadt/commit/482a20e2885014dfbc63d6b46ecf2794a5b3fb76))
+* timer setting for organization sync ([617ed51](https://github.com/Chia-Network/cadt/commit/617ed5174915d62deae840784c23455fca0ebc4e))
+
+
+### Features
+
+* add mirror check task ([5629a6c](https://github.com/Chia-Network/cadt/commit/5629a6cab562c0fe4953c87eb29de0cca74c2b3f))
+* add mirror check task ([69b7d01](https://github.com/Chia-Network/cadt/commit/69b7d011c305e00ca6a1c8133386904501258bed))
+* dont upload to web2 gateway if md5 matches ([0f051bf](https://github.com/Chia-Network/cadt/commit/0f051bfeb3bc11896b81d9e2f175ad393769e95a))
+* dont upload to web2 gateway if md5 matches ([7b0bd3b](https://github.com/Chia-Network/cadt/commit/7b0bd3b701931913752c2ed9544477c231db1155))
+* enable wal mode ([4e50833](https://github.com/Chia-Network/cadt/commit/4e50833cc7c367ad29760e2e1833c5d437135ec8))
+* fix counter for sync remaining ([9cf94e0](https://github.com/Chia-Network/cadt/commit/9cf94e0731fe28e4ea348c141569748c48edb254))
+* require pagination ([86e073a](https://github.com/Chia-Network/cadt/commit/86e073a37a2db70208f8d30f8637d5c4a88dd9c4))
+
+
+
 ## [1.7.7](https://github.com/Chia-Network/cadt/compare/1.7.6...1.7.7) (2024-01-13)
 
 
