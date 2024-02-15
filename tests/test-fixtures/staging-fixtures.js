@@ -1,7 +1,6 @@
 import _ from 'lodash';
 
-import chai from 'chai';
-const { expect } = chai;
+import { expect } from 'chai';
 import supertest from 'supertest';
 
 import app from '../../src/server';

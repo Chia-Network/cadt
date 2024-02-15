@@ -1,7 +1,6 @@
 import _ from 'lodash';
 
-import chai from 'chai';
-const { expect } = chai;
+import { expect } from 'chai';
 
 import * as testFixtures from '../test-fixtures';
 import { pullPickListValues } from '../../src/utils/data-loaders';
@@ -27,7 +26,7 @@ describe('Project Resource Integration Tests', function () {
     /*
       Basic Idea for this test is that we are going to create a project and verify that
       the new project propagates through the data layer and into our db. Then we are going
-      to delete the same project and make sure the delete command propagates through the datalayer 
+      to delete the same project and make sure the delete command propagates through the datalayer
       then gets removed from our db.
     */
     // create and commit the project to be deleted
