@@ -1,9 +1,8 @@
-import chai from 'chai';
+import { expect } from 'chai';
 import _ from 'lodash';
 import * as testFixtures from '../test-fixtures';
 import sinon from 'sinon';
 import datalayer from '../../src/datalayer';
-const { expect } = chai;
 import newProject from '../test-data/new-project.js';
 import supertest from 'supertest';
 import app from '../../src/server';
@@ -43,7 +42,9 @@ describe('Project Resource CRUD', function () {
     describe('error states', function () {
       it('errors if there if there is no connection to the datalayer', async function () {
         sinon.stub(datalayer, 'dataLayerAvailable').resolves(false);
-        const response = await supertest(app).get('/v1/projects');
+        const response = await supertest(app)
+          .get('/v1/projects')
+          .query({ page: 1, limit: 100 });
         expect(response.statusCode).to.equal(400);
 
         expect(response.body.error).to.equal(
@@ -55,24 +56,31 @@ describe('Project Resource CRUD', function () {
     describe('success states', function () {
       it('gets all the projects available', async function () {
         // no query params
-        const projects = await testFixtures.getProjectByQuery();
-        expect(projects.length).to.equal(12);
+        const projects = await testFixtures.getProjectByQuery({
+          page: 1,
+          limit: 100,
+        });
+        expect(projects.data.length).to.equal(12);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects filtered by orgUid', async function () {
         // ?orgUid=XXXX
         const projects = await testFixtures.getProjectByQuery({
           orgUid: 'a807e453-6524-49df-a32d-785e56cf560e',
+          page: 1,
+          limit: 100,
         });
-        expect(projects.length).to.equal(3);
+        expect(projects.data.length).to.equal(3);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects for a search term', async function () {
         // ?search=XXXX
         const projects = await testFixtures.getProjectByQuery({
           search: 'City of Arcata',
+          page: 1,
+          limit: 100,
         });
-        expect(projects.length).to.equal(1);
+        expect(projects.data.length).to.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects for a search term filtered by orgUid', async function () {
@@ -80,9 +88,11 @@ describe('Project Resource CRUD', function () {
         const projects = await testFixtures.getProjectByQuery({
           orgUid: 'a807e453-6524-49df-a32d-785e56cf560e',
           search: 'City of Arcata',
+          page: 1,
+          limit: 100,
         });
 
-        expect(projects.length).to.equal(1);
+        expect(projects.data.length).to.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets optional paginated results', async function () {
@@ -99,7 +109,7 @@ describe('Project Resource CRUD', function () {
         });
 
         expect(projectsPage2.data.length).to.equal(3);
-        expect(projectsPage1.data).to.not.deep.equal(projectsPage2.data);
+        expect(projectsPage1).to.not.deep.equal(projectsPage2);
 
         const projectsLimit2 = await testFixtures.getProjectByQuery({
           page: 1,
@@ -222,12 +232,12 @@ describe('Project Resource CRUD', function () {
     describe('error states', function () {
       it('errors if no home organization exists', async function () {
         const responseCreate = await supertest(app)
-          .get('/v1/projects')
+          .post('/v1/projects')
           .send({
             ...newProject,
           });
 
-        const warehouseProjectId = _.head(responseCreate.body);
+        const warehouseProjectId = responseCreate.body.uuid;
 
         await Organization.destroy({
           where: {},

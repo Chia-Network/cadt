@@ -1,8 +1,7 @@
 import _ from 'lodash';
 
 import supertest from 'supertest';
-import chai from 'chai';
-const { expect } = chai;
+import { expect } from 'chai';
 
 import app from '../../src/server';
 import newProject from '../test-data/new-project.js';
@@ -68,7 +67,9 @@ export const getProject = async (warehouseProjectId) => {
 };
 
 export const getProjectByQuery = async (query = {}) => {
-  const result = await supertest(app).get('/v1/projects').query(query);
+  const result = await supertest(app)
+    .get('/v1/projects')
+    .query({ page: 1, limit: 100, ...query });
 
   // expect(result.body).to.be.an('array');
   expect(result.statusCode).to.equal(200);

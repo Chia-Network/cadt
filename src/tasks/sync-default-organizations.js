@@ -21,7 +21,7 @@ const task = new Task('sync-default-organizations', async () => {
   } catch (error) {
     logger.error(
       `Retrying in ${
-        CONFIG?.TASK?.GOVERNANCE_SYNC_TASK_INTERVAL || 30
+        CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30
       } seconds`,
       error,
     );
@@ -30,7 +30,7 @@ const task = new Task('sync-default-organizations', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASK?.GOVERNANCE_SYNC_TASK_INTERVAL || 30,
+    seconds: CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30,
     runImmediately: true,
   },
   task,

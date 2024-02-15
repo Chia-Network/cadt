@@ -1,8 +1,7 @@
 import _ from 'lodash';
 
-import chai from 'chai';
+import { expect } from 'chai';
 import supertest from 'supertest';
-const { expect } = chai;
 
 import app from '../../src/server';
 import { UnitMirror } from '../../src/models';
@@ -37,7 +36,7 @@ describe('Unit Resource Integration Tests', function () {
     /*
       Basic Idea for this test is that we are going to create a unit and verify that
       the new unit propagates through the data layer and into our db. Then we are going
-      to delete the same unit and make sure the delete command propagates through the datalayer 
+      to delete the same unit and make sure the delete command propagates through the datalayer
       then gets removed from our db.
     */
     // create and commit the unit to be deleted
@@ -164,9 +163,11 @@ describe('Unit Resource Integration Tests', function () {
     await testFixtures.waitForDataLayerSync();
 
     // Get a unit to split
-    const allUnitsResult = await supertest(app).get('/v1/units');
+    const allUnitsResult = await supertest(app)
+      .get('/v1/units')
+      .query({ page: 1, limit: 100 });
 
-    const unitRecord = _.head(allUnitsResult.body);
+    const unitRecord = _.head(allUnitsResult.body.data);
 
     const warehouseUnitIdToSplit = unitRecord.warehouseUnitId;
     const newUnitOwner = '35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf';

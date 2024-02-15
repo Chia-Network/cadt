@@ -1,7 +1,7 @@
 import _ from 'lodash';
 
-import { decodeHex, decodeDataLayerResponse } from '../utils/datalayer-utils';
-import { Organization, Staging, ModelKeys, Simulator } from '../models';
+import { decodeDataLayerResponse } from '../utils/datalayer-utils';
+import { Simulator } from '../models';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.cjs';
 
@@ -11,171 +11,6 @@ import * as simulator from './simulator';
 const { USE_SIMULATOR } = getConfig().APP;
 
 const POLLING_INTERVAL = 5000;
-const frames = ['-', '\\', '|', '/'];
-
-const startDataLayerUpdatePolling = async () => {
-  logger.info('Start Datalayer Update Polling');
-  const updateStoreInfo = await dataLayerWasUpdated();
-  if (updateStoreInfo.length) {
-    await Promise.all(
-      updateStoreInfo.map(async (store) => {
-        logger.info(
-          `Updates found syncing storeId: ${store.storeId} ${
-            frames[Math.floor(Math.random() * 3)]
-          }`,
-        );
-        await syncDataLayerStoreToClimateWarehouse(
-          store.storeId,
-          store.rootHash,
-        );
-
-        console.log('UPDATE STORE', store.storeId, store.rootHash);
-        await Organization.update(
-          { registryHash: store.rootHash },
-          { where: { registryId: store.storeId } },
-        );
-      }),
-    );
-  }
-};
-
-const syncDataLayerStoreToClimateWarehouse = async (storeId, rootHash) => {
-  let storeData;
-
-  if (USE_SIMULATOR) {
-    storeData = await simulator.getStoreData(storeId, rootHash);
-  } else {
-    storeData = await dataLayer.getStoreData(storeId, rootHash);
-  }
-
-  if (!_.get(storeData, 'keys_values', []).length) {
-    return;
-  }
-
-  const organizationToTruncate = await Organization.findOne({
-    attributes: ['orgUid'],
-    where: { registryId: storeId },
-    raw: true,
-  });
-
-  try {
-    if (_.get(organizationToTruncate, 'orgUid')) {
-      const truncateOrganizationPromises = Object.keys(ModelKeys).map((key) =>
-        ModelKeys[key].destroy({
-          where: { orgUid: organizationToTruncate.orgUid },
-        }),
-      );
-
-      await Promise.all(truncateOrganizationPromises);
-
-      await Promise.all(
-        storeData.keys_values.map(async (kv) => {
-          const key = decodeHex(kv.key.replace(`${storeId}_`, ''));
-          const modelKey = key.split('|')[0];
-          let value;
-
-          try {
-            value = JSON.parse(decodeHex(kv.value));
-          } catch (err) {
-            console.trace(err);
-            logger.error(`Cant parse json value: ${decodeHex(kv.value)}`);
-          }
-
-          if (ModelKeys[modelKey]) {
-            await ModelKeys[modelKey].upsert(value);
-
-            const stagingUuid =
-              modelKey === 'unit'
-                ? value.warehouseUnitId
-                : modelKey === 'project'
-                ? value.warehouseProjectId
-                : undefined;
-
-            if (stagingUuid) {
-              await Staging.destroy({
-                where: { uuid: stagingUuid },
-              });
-            }
-          }
-        }),
-      );
-
-      // clean up any staging records than involved delete commands,
-      // since we cant track that they came in through the uuid,
-      // we can infer this because diff.original is null instead of empty object.
-      await Staging.cleanUpCommitedAndInvalidRecords();
-    }
-  } catch (error) {
-    console.trace('ERROR DURING SYNC TRANSACTION', error);
-  }
-};
-
-const dataLayerWasUpdated = async () => {
-  const organizations = await Organization.findAll({
-    attributes: ['registryId', 'registryHash'],
-    where: { subscribed: true },
-    raw: true,
-  });
-
-  // exit early if there are no subscribed organizations
-  if (!organizations.length) {
-    return [];
-  }
-
-  const subscribedOrgIds = organizations.map((org) => org.registryId);
-
-  if (!subscribedOrgIds.length) {
-    return [];
-  }
-
-  let rootResponse;
-  if (USE_SIMULATOR) {
-    rootResponse = await simulator.getRoots(subscribedOrgIds);
-  } else {
-    rootResponse = await dataLayer.getRoots(subscribedOrgIds);
-  }
-
-  if (!rootResponse.success) {
-    return [];
-  }
-
-  const updatedStores = rootResponse.root_hashes.filter((rootHash) => {
-    const org = organizations.find(
-      (org) => org.registryId == rootHash.id.replace('0x', ''),
-    );
-
-    if (org) {
-      // When a transfer is made, the climate warehouse is locked from making updates
-      // while waiting for the transfer to either be completed or rejected.
-      // This means that we know the transfer completed when the root hash changed
-      // and we can remove it from the pending staging table.
-      if (org.isHome == 1 && org.registryHash != rootHash.hash) {
-        Staging.destroy({ where: { isTransfer: true } });
-      }
-
-      // store has been updated if its confirmed and the hash has changed
-      return rootHash.confirmed && org.registryHash != rootHash.hash;
-    }
-
-    return false;
-  });
-
-  if (!updatedStores.length) {
-    return [];
-  }
-
-  const updateStoreInfo = await Promise.all(
-    updatedStores.map(async (rootHash) => {
-      const storeId = rootHash.id.replace('0x', '');
-      return {
-        storeId,
-        rootHash: rootHash.hash,
-      };
-    }),
-  );
-
-  return updateStoreInfo;
-};
 
 const unsubscribeFromDataLayerStore = async (storeId) => {
   if (!USE_SIMULATOR) {
@@ -191,15 +26,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 };
 
-const getSubscribedStoreData = async (storeId, retry = 0) => {
-  if (retry >= 60) {
-    throw new Error(
-      `Max retrys exceeded while trying to subscribe to ${storeId}, Can not subscribe to organization`,
-    );
-  }
-
-  const timeoutInterval = 30000;
-
+const getSubscribedStoreData = async (storeId) => {
   const subscriptions = await dataLayer.getSubscriptions(storeId);
   const alreadySubscribed = subscriptions.includes(storeId);
 
@@ -208,20 +35,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
     const response = await subscribeToStoreOnDataLayer(storeId);
 
     if (!response || !response.success) {
-      if (!response) {
-        logger.info(
-          `Response from subscribe RPC came back undefined, is your datalayer running?`,
-        );
-      }
-      logger.info(
-        `Retrying subscribe to ${storeId}, subscribe failed`,
-        retry + 1,
-      );
-      logger.info('...');
-      await new Promise((resolve) =>
-        setTimeout(() => resolve(), timeoutInterval),
-      );
-      return getSubscribedStoreData(storeId, retry + 1);
+      throw new Error(`Failed to subscribe to ${storeId}`);
     }
   }
 
@@ -232,15 +46,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
     logger.info(`Store found in DataLayer: ${storeId}.`);
     if (!storeExistAndIsConfirmed) {
-      logger.info(
-        `Retrying subscribe to ${storeId}, store not yet confirmed.`,
-        retry + 1,
-      );
-      logger.info('...');
-      await new Promise((resolve) =>
-        setTimeout(() => resolve(), timeoutInterval),
-      );
-      return getSubscribedStoreData(storeId, retry + 1);
+      throw new Error(`Store not found in DataLayer: ${storeId}.`);
     } else {
       logger.debug(`Store is confirmed, proceeding to get data ${storeId}`);
     }
@@ -254,15 +60,7 @@ const getSubscribedStoreData = async (storeId, retry = 0) => {
   }
 
   if (_.isEmpty(encodedData?.keys_values)) {
-    logger.info(
-      `Retrying subscribe to ${storeId}, No data detected in store.`,
-      retry + 1,
-    );
-    logger.info('...');
-    await new Promise((resolve) =>
-      setTimeout(() => resolve(), timeoutInterval),
-    );
-    return getSubscribedStoreData(storeId, retry + 1);
+    throw new Error(`No data found for store ${storeId}`);
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);
@@ -399,9 +197,6 @@ export const waitForAllTransactionsToConfirm = async () => {
 };
 
 export default {
-  startDataLayerUpdatePolling,
-  syncDataLayerStoreToClimateWarehouse,
-  dataLayerWasUpdated,
   subscribeToStoreOnDataLayer,
   getSubscribedStoreData,
   getRootHistory,
