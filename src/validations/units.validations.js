@@ -63,14 +63,14 @@ export const unitsGetQuerySchema = Joi.object()
       // backwards compatibility for old order usage
       Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
       // new order usage
-      Joi.string().regex(genericSortColumnRegex),
+      Joi.string().regex(genericSortColumnRegex).max(100).min(1),
     ),
     xls: Joi.boolean(),
     unitIds: Joi.array().items(Joi.string()).single(),
     marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
     hasMarketplaceIdentifier: Joi.boolean(),
     includeProjectInfoInSearch: Joi.boolean(),
-    filter: Joi.string().regex(genericFilterRegex),
+    filter: Joi.string().regex(genericFilterRegex).max(100).min(1),
   })
   .with('page', 'limit');
 

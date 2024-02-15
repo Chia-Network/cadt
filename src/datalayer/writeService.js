@@ -32,7 +32,11 @@ const createDataLayerStore = async () => {
 
     if (shouldMirror) {
       const mirrorUrl = await getMirrorUrl();
-      await dataLayer.addMirror(storeId, mirrorUrl, true);
+      if (mirrorUrl) {
+        await dataLayer.addMirror(storeId, mirrorUrl, true);
+      } else {
+        logger.error('Mirror URL not available, skipping mirror announcement.');
+      }
     }
   }
 
