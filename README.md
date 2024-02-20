@@ -22,6 +22,15 @@ Please see the [CADT RPC API Guide](docs/cadt_rpc_api.md).
 
 [Releases are tagged in Github](https://github.com/Chia-Network/climate-warehouse/tags), and binaries are built for Windows, macOS, and Linux. ARM binaries are available for Debian versions of Linux only. 
 
+### Prerequisites
+
+It is recommended to run [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain) Full Node, Wallet, DataLayer, and DataLayer HTTP on the same server as CADT.  While the Full Node is not strictly required, it will ensure the best and most reliable performance.  
+
+
+### System Requirements
+
+
+
 ### Linux
 
 A binary file that can run on all Linux distributions on x86 hardware can be found for each tagged release named `cadt-linux-x64-<version>.zip`.  This zip file will extract to the `cadt-linux-64` directory by default, where the `cadt` file can be executed to run the API.  
