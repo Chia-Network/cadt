@@ -38,17 +38,8 @@ const task = new Task('sync-registries', async () => {
         where: { metaKey: 'migratedToIndexBasedSync' },
       });
 
-      console.log(
-        '############',
-        hasMigratedToNewSyncMethod?.metaValue,
-        hasMigratedToGenerationIndexSync?.metaValue,
-      );
-
-      if (
-        !hasMigratedToNewSyncMethod?.metaValue ||
-        !CONFIG().CADT.USE_SIMULATOR
-      ) {
-        if (!hasMigratedToGenerationIndexSync?.metaValue) {
+      if (hasMigratedToNewSyncMethod || CONFIG().CADT.USE_SIMULATOR) {
+        if (hasMigratedToGenerationIndexSync) {
           await processJob();
         } else {
           await generateGenerationIndex();
@@ -217,16 +208,16 @@ const syncOrganizationAudit = async (organization) => {
       currentGeneration = lastRootSaved;
     }
 
-    const historyIndex = currentGeneration.generation;
+    const lastProcessedIndex = currentGeneration.generation;
 
-    if (historyIndex > rootHistory.length) {
+    if (lastProcessedIndex > rootHistory.length) {
       logger.error(
         `Could not find root history for ${organization.name} with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
     }
 
-    const rootHistoryCount = rootHistory.length - 1;
-    const syncRemaining = rootHistoryCount - historyIndex;
+    const rootHistoryZeroBasedCount = rootHistory.length - 1;
+    const syncRemaining = rootHistoryZeroBasedCount - lastProcessedIndex;
     const isSynced = syncRemaining === 0;
 
     await Organization.update(
@@ -241,9 +232,13 @@ const syncOrganizationAudit = async (organization) => {
       return;
     }
 
+    const toBeProcessedIndex = lastProcessedIndex + 1;
+
     // Organization not synced, sync it
     logger.info(' ');
-    logger.info(`Syncing ${organization.name} generation ${historyIndex}`);
+    logger.info(
+      `Syncing ${organization.name} generation ${toBeProcessedIndex}`,
+    );
     logger.info(
       `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced.`,
     );
@@ -252,8 +247,8 @@ const syncOrganizationAudit = async (organization) => {
       await new Promise((resolve) => setTimeout(resolve, 30000));
     }
 
-    const root1 = _.get(rootHistory, `[${historyIndex}]`);
-    const root2 = _.get(rootHistory, `[${historyIndex + 1}]`);
+    const root1 = _.get(rootHistory, `[${lastProcessedIndex}]`);
+    const root2 = _.get(rootHistory, `[${toBeProcessedIndex}]`);
 
     logger.info(`ROOT 1 ${JSON.stringify(root1)}`);
     logger.info(`ROOT 2', ${JSON.stringify(root2)}`);
@@ -305,7 +300,7 @@ const syncOrganizationAudit = async (organization) => {
 
     const updateTransaction = async (transaction, mirrorTransaction) => {
       logger.info(
-        `Syncing ${organization.name} generation ${historyIndex + 1}`,
+        `Syncing ${organization.name} generation ${toBeProcessedIndex}`,
       );
       for (const diff of optimizedKvDiff) {
         const key = decodeHex(diff.key);
@@ -319,7 +314,7 @@ const syncOrganizationAudit = async (organization) => {
           table: modelKey,
           change: decodeHex(diff.value),
           onchainConfirmationTimeStamp: root2.timestamp,
-          generation: historyIndex + 1,
+          generation: toBeProcessedIndex,
           comment: _.get(
             tryParseJSON(
               decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),

@@ -22,9 +22,9 @@ const server = http.createServer(rootRouter);
 server.on('error', onError);
 server.on('listening', onListening);
 
-server.listen(port, bindAddress, () => {
+server.listen(port, bindAddress, async () => {
   console.log(`Server listening at http://${bindAddress}:${port}`);
-  console.log(`Mirror URL: ${getMirrorUrl()}`);
+  console.log(`Mirror URL: ${await getMirrorUrl()}`);
 });
 
 const io = new Server(server);
