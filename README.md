@@ -12,7 +12,9 @@ This project was formerly known as the Climate Warehouse, and you may see this t
 
 The CADT application is designed to run 24/7, much like any other API.  While it is possible to run it on-demand only when API requests need to be made, this guide assumes a permanently running solution.  
 
-The simplest way to run the CADT application is to use the same machine the Chia Wallet, Datalayer, and Datalayer HTTP services reside on. CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
+The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, Datalayer, and Datalayer HTTP services reside on. CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
+
+For Chia installation instructions, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd) to start/stop and automatically start Chia at boot.
 
 ### How to use the API
 
@@ -22,14 +24,15 @@ Please see the [CADT RPC API Guide](docs/cadt_rpc_api.md).
 
 [Releases are tagged in Github](https://github.com/Chia-Network/climate-warehouse/tags), and binaries are built for Windows, macOS, and Linux. ARM binaries are available for Debian versions of Linux only. 
 
-### Prerequisites
-
-It is recommended to run [Chia Blockchain](https://github.com/Chia-Network/chia-blockchain) Full Node, Wallet, DataLayer, and DataLayer HTTP on the same server as CADT.  While the Full Node is not strictly required, it will ensure the best and most reliable performance.  
-
-
 ### System Requirements
 
+CADT and Chia system usage will depend on many factors, including how busy the blockchain is, how much data is being mirrored by DataLayer, and how much data CADT is ingesting and processing.  The current minimum requirements for running CADT and Chia together on a system are:
 
+* 4 CPU cores
+* 8 GB RAM
+* 300 GB disk space
+
+ARM and x86 systems are supported.  While Windows, MacOS, and all versions of Linux are supported, Ubuntu Linux is the recommended operating system as is used most in testing and our internal hosting. 
 
 ### Linux
 
