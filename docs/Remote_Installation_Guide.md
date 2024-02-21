@@ -39,7 +39,7 @@ Ubuntu is the preferred OS to use as the Chia and CADT software is packaged and 
 
 By installing both Chia and CADT onto a single machine, you will have created your cloud instance of the CADT and can begin submitting data to the instance. 
 
-Please note that the CADT software is meant to be running 24/7. If the cloud machine needs to restart or goes down for any reason, the software will need to be restarted - more information on how to automate this in the [automate services startup with systemd](#automate-services-startup-with-systemd) section.  Also note that this guide is operating system agnostic, but is generally written from the perspective of an Ubuntu Linux installation in an AWS cloud environment.
+Please note that the CADT software is meant to be running 24/7. If installing with `apt` on Ubuntu, systemd can be used to manage the CADT state. See the [README](https://github.com/Chia-Network/cadt/blob/docs-updates-feb20/README.md#debian-based-linux-distros-ubuntu-mint-etc) for more information about using systemd.  
 
 Note: the optional MySQL instance can be very small and is mainly used for internal analytics for the registry. Any of the cloud provider MySQL-compatible appliances (such as Amazon’s RDS) work well for this application. We recommend the machine for the MySQL instance to have at least:
 
