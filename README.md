@@ -14,7 +14,7 @@ The CADT application is designed to run 24/7, much like any other API.  While it
 
 The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, Datalayer, and Datalayer HTTP services reside on. CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
 
-For Chia installation instructions, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd) to start/stop and automatically start Chia at boot.
+For Chia installation instructions, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd).
 
 ### How to use the API
 
@@ -32,7 +32,7 @@ CADT and Chia system usage will depend on many factors, including how busy the b
 * 8 GB RAM
 * 300 GB disk space
 
-ARM and x86 systems are supported.  While Windows, MacOS, and all versions of Linux are supported, Ubuntu Linux is the recommended operating system as is used most in testing and our internal hosting. 
+ARM and x86 systems are supported.  While Windows, MacOS, and all versions of Linux are supported, Ubuntu Linux is the recommended operating system as it is used most in testing and our internal hosting. 
 
 ### Linux
 
@@ -131,14 +131,14 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   * **CERTIFICATE_FOLDER_PATH**: If using a custom path for the Chia Blockchain certificates folder, enter the path here to allow CADT to find the certificates and authenticate to the Chia RPC.  CADT assumes the folder structure within the directory specified matches the default Chia SSL directory of `$CHIA_ROOT/config/ssl/`.
   * **DATALAYER_FILE_SERVER_URL**: Publicly available Chia DataLayer HTTP URL and port, including schema (http:// or https://).  If serving DataLayer files from S3, this would be the public URL of the S3 bucket. Port can be omitted if using standard ports for http or https requests. 
   * **AUTO_SUBSCRIBE_FILESTORE**: Subscribing to the filestore for any organization is optional. To automatically subscribe and sync the filestore to every organization you subscribe to, set this to `true`.
+  * **AUTO_MIRROR_EXTERNAL_STORES**: When set to true (the default), CADT will automatically create mirrors for each store you are subscribed to.  Mirroring all subscriptions using the `DATALAYER_FILE_SERVER_URL` will make the entire CADT network more resiliant and distributed.  
   * **TASKS**: Section for configuring sync intervals
-    * **AUDIT_SYNC_TASK_INTERVAL**:  Default 30
-    * **DATAMODEL_SYNC_TASK_INTERVAL**:  Default 60
-    * **GOVERNANCE_SYNC_TASK_INTERVAL**:  Default 86400
-    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**:  Default 86400
-    * **PICKLIST_SYNC_TASK_INTERVAL**:  Default 30
+    * **GOVERNANCE_SYNC_TASK_INTERVAL**:  Syncs new organizations from the governance node.  Default 86400.
+    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**:  Syncs organization data from the blockchain. Default 300.
+    * **PICKLIST_SYNC_TASK_INTERVAL**:  Syncs picklist from the governance node. Default 30.
+    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 300.
 * **GOVERNANCE**: Section on settings for the Governance body to connect to.
-  * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT network will be connected to.  While there could be multiple governance body IDs, the default of `23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e` is the right ID for most people. 
+  * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT network will be connected to.  While there could be multiple governance body IDs, the default of `23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e` is the right ID for most people on mainnet. 
 
 ​
 Note that the CADT application will need to be restarted after any changes to the config.yaml file. 
