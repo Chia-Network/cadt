@@ -33,12 +33,7 @@ Employees of the registry can access the data being reported to CADT in two diff
 
 ## Installation Overview
 
-Deploying the CADT requires installing both the Chia blockchain software and the CADT API server software. For cloud deployments, both pieces of software are typically installed on the same machine, but can be installed on different machines and pointed to one another. The machine should have at the least the following minimum specs:
-
-* Dual core 1.5Ghz CPU (64 bit) x86
-* 8 GB ram
-* Python version 3.8+
-* 250 gb SSD disk space
+Deploying the CADT requires installing both the Chia blockchain software and the CADT API server software. For cloud deployments, both pieces of software are typically installed on the same machine, but can be installed on different machines and pointed to one another. For minimum machine specs, refer to the [README](https://github.com/Chia-Network/cadt#system-requirements).  
 
 Ubuntu is the preferred OS to use as the Chia and CADT software is packaged and tested primarily with Ubuntu. Other Linux distributions should run Chia and CADT just fine, but may not be extensively tested or have packages routinely built.  Windows or Mac systems can be used to host a remote CADT instance (see the Local Installation Guide for more details), but this guide focuses on Ubuntu as our recommended solution.  
 
