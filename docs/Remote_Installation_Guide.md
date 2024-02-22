@@ -59,9 +59,13 @@ The general idea is that the CADT creates local files to represent the data chan
 
 When using the built-in Chia DataLayer HTTP service, files will be served from the default location of `~/.chia/mainnet/data_layer/db/server_files_location_mainnet/` where the last part `mainnet` will change to the name of the network you are connected to (such at `testnet11`). This path is configurable in the Chia config file `~/.chia/mainnet/config/config.yaml`. Also configurable is the port that the DataLayer HTTP service will listen on, which is 8575 by default. Be sure this port is open when using the DataLayer HTTP service.   
 
-First, create an S3 bucket and [give the public read access](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteAccessPermissionsReqd.html). The server running Chia and CADT will need to write to this bucket, which can be done with access and secret keys from an IAM user, or, more preferably, an [instance profile](https://aws.amazon.com/premiumsupport/knowledge-center/ec2-instance-access-s3-bucket/) granting the EC2 instance access to the S3 bucket.  Be sure to capture the public URL for this S3 bucket, as you will be using it when editing the configuration file for the CADT.
+To add encryption to Chia DataLayer HTTP requests, use a reverse proxy such as [Nginx](https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/) or [Apache](https://httpd.apache.org/docs/2.4/howto/reverse_proxy.html). Even simpler, Nginx or Apache (or any other web server software) can be configured to serve files directly from the DataLayer file directory at `~/.chia/mainnet/data_layer/db/server_files_location_mainnet/` by default. As long as the address to the files matches the value in the cadt `config.yaml` file for `DATALAYER_FILE_SERVER_URL`, remote CADT and Chia DataLayer instances will be able to read the files. 
 
-Next you’ll need a script to sync the files from the Chia service up to the S3 bucket. This feature is under active development and is expected to be easier in the future, but currently the process requires installing the [official AWS CLI tool](https://aws.amazon.com/cli/), inotify-tools (`sudo apt install inotify-tools`) and then writing a custom syncing script.  We offer the [following script](https://gist.github.com/TheLastCicada/e87b618a1f25c6e1a20b81501bbf7313#file-datalayer-s3-sync) as a starting point.  The variables COMMAND and WATCHDIR will need to be altered to match the paths on your system and your S3 bucket name. By default, the path to the Chia DataLayer files that need to be synced is `~/.chia/mainnet/data_layer/db/server_files_location` for mainnet and `~/.chia/mainnet/data_layer/db/server_files_location_testnet10` when running on testnet. 
+To use cloud storage to serve the DataLayer files, they must first be synced to the service.  This example describes how to set this up with Amazon S3, but any cloud storage that can serve files publicly could be used. Cloud storage provides an infinitely scalable and inexpensive storage location, and directs this traffic away from your CADT instance where potentially sensitive data is stored, giving this method some security benefits.  
+
+To start, create an S3 bucket and [give the public read access](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteAccessPermissionsReqd.html). The server running Chia and CADT will need to write to this bucket, which can be done with access and secret keys from an IAM user, or, more preferably, an [instance profile](https://aws.amazon.com/premiumsupport/knowledge-center/ec2-instance-access-s3-bucket/) granting the EC2 instance access to the S3 bucket.  Be sure to capture the public URL for this S3 bucket, as you will be using it when editing the configuration file for the CADT.
+
+Next you’ll need a script to sync the files from the Chia service up to the S3 bucket. This feature is under active development and is expected to be easier in the future, but currently the process requires installing the [official AWS CLI tool](https://aws.amazon.com/cli/), inotify-tools (`sudo apt install inotify-tools`) and then writing a custom syncing script.  We offer the [following script](https://gist.github.com/TheLastCicada/e87b618a1f25c6e1a20b81501bbf7313#file-datalayer-s3-sync) as a starting point.  The variables COMMAND and WATCHDIR will need to be altered to match the paths on your system and your S3 bucket name. By default, the path to the Chia DataLayer files that need to be synced is `~/.chia/mainnet/data_layer/db/server_files_location_mainnet` for mainnet and `~/.chia/mainnet/data_layer/db/server_files_location_testnet11` when running on testnet11. 
 
 Once the datalayer-s3-sync script is configured, copy it to `/usr/local/bin/datalayer-s3-sync` and make it executable with `chmod +x /usr/local/bin/datalayer-s3-sync`.  You can then use the provided systemd file by copying it to `/etc/systemd/system/datalayer-s3-sync.service` and updating the “User” and “Group” in the datalayer-s3-sync.service file to match the user that Chia runs as on your system. Next do `sudo systemctl daemon-reload`. Now you can start the datalayer-s3-sync process with `sudo systemctl start datalayer-s3-sync` and enable it to start at boot with `systemctl enable datalayer-s3-sync`. 
 
@@ -70,7 +74,7 @@ Once the datalayer-s3-sync script is configured, copy it to `/usr/local/bin/data
 
 To start with the installation, we suggest starting at the link below. This will give you step by step instructions to install the Chia blockchain. We recommend following the instructions for CLI only version using apt.
 
-[https://github.com/Chia-Network/chia-blockchain/wiki/INSTALL#ubuntudebian](https://github.com/Chia-Network/chia-blockchain/wiki/INSTALL#ubuntudebian)
+[https://docs.chia.net/installation/#using-the-cli](https://docs.chia.net/installation/#using-the-cli)
 
 Once the installation is complete, you can check if it was successful by running the following commands.
 
@@ -96,11 +100,18 @@ Once the installation is complete, you can check if it was successful by running
 
 * Returns the public address of the chia wallet that was created (look for “first wallet address”)
 
-**chia start node wallet data**
+**sudo systemctl start chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu**  
 
-* Starts the Chia node, wallet, and DataLayer services for use with the CADT. 
+* Assuming that you are logged in as the "ubuntu" user, this starts the Chia node, wallet, and datalayer using [systemd](https://docs.chia.net/installation/#systemd)
+* Add **data-layer-http@ubuntu** to the start command if using the Chia built-in webserver for datalayer file access
 * NOTE: if this is the first time you are starting the Chia software, it may take a few minutes (up to 15 mins) to fully start up
     * Status commands listed below will not work until everything has started up. Future startups should be faster
+
+**sudo systemctl enable chia-full-node@ubuntu chia-wallet@ubuntu chia-data-layer@ubuntu**
+
+* Assumes you are using the "ubuntu" user
+* Set Chia node, wallet, and datalayer to start at boot
+* Add **data-layer-http@ubuntu** to also start the Chia built-in webserver at boot
 
 **chia show -s**
 
@@ -122,11 +133,17 @@ To begin the installation of the CADT API server, it is recommended to follow th
 
 [https://github.com/Chia-Network/cadt#debian-based-linux-distros-ubuntu-mint-etc](https://github.com/Chia-Network/cadt#debian-based-linux-distros-ubuntu-mint-etc)
 
-Once installed, run the CADT executable by entering
+Once installed, start CADT by entering
 
-`/opt/cadt/cadt`  
+`sudo systemctl start cadt@ubuntu`
 
-The executable will run in the foreground of your terminal window and display a bunch of output. If Chia services are not running properly, you will see messages similar to the below:
+This assumes you are using the "ubuntu" user. To view the logs for CADT, use [journalctl](https://www.digitalocean.com/community/tutorials/how-to-use-journalctl-to-view-and-manipulate-systemd-logs) like so:
+
+`journalctl -u cadt@ubuntu`
+
+This will show all CADT logs for the user ubuntu. To follow the logs in real-time, add `-f` to the journalctl command (use ctrl+c to exit). 
+
+ If Chia services are not running properly, you will see messages similar to the below:
 
 ![CADT errors when Chia services are not running](images/CADT-no-chia-output.png "CADT errors when Chia services are not running")
 
@@ -138,72 +155,17 @@ The terminal window should print some success messages relating to finding gover
 
 There should be messages saying “governance config found” and data is being downloaded.
 
-When you successfully run cadt, it will create the config file at /.chia/mainnet/cadt/v1/config.yaml.  The configuration file options are documented at [https://github.com/Chia-Network/cadt#configuration](https://github.com/Chia-Network/cadt#configuration).  
+When you successfully run CADT, it will create the config file at /.chia/mainnet/cadt/v1/config.yaml.  The configuration file options are documented at [https://github.com/Chia-Network/cadt#configuration](https://github.com/Chia-Network/cadt#configuration).  
 
 If you chose to set up a cloud storage object like the AWS S3 bucket, then you should use the public URL for the cloud storage object as the value for configuration variable “DATALAYER_FILE_SERVER_URL”.
 
-The cadt executable needs to be restarted to pick up any changes to the config.yaml file, which can be done with ctrl+c in the terminal window where cadt is running and then simply starting the executable again.
-
-
-## Automate services startup with systemd
-
-If you have followed the above instructions, you may want to automatically start the Chia and CADT services upon machine reboot/startup. Instructions for Chia services are as follows:
-
-Start by downloading the systemd templates (daemon, full-node, wallet, data-layer) by doing:
-
-**sudo curl https://raw.githubusercontent.com/Chia-Network/ansible-roles/chia-blockchain/templates/systemd/chia-daemon.service.j2 -o /etc/systemd/system/chia-daemon.service**
-
-**sudo curl https://raw.githubusercontent.com/Chia-Network/ansible-roles/chia-blockchain/templates/systemd/chia-full-node.service.j2 -o /etc/systemd/system/chia-full-node.service**
-
-**sudo curl https://raw.githubusercontent.com/Chia-Network/ansible-roles/chia-blockchain/templates/systemd/chia-wallet.service.j2 -o /etc/systemd/system/chia-wallet.service**
-
-**sudo curl https://raw.githubusercontent.com/Chia-Network/ansible-roles/chia-blockchain/templates/systemd/chia-data-layer.service.j2 -o /etc/systemd/system/chia-data-layer.service**
-
-Next, edit each file, following along the comments in each.
-
-Once complete, do
-
-**sudo systemctl daemon-reload** 
-
-This will update systemd with the latest changes. Do this every time you make a change to any of the chia.service files.
-
-Next, do the following commands
-
-**sudo systemctl start chia-daemon**
-
-to start the Chia daemon
-
-**sudo systemctl start chia-full-node**
-
-to start the Chia full-node
-
-**sudo systemctl start chia-wallet**
-
-to start the Chia wallet
-
-**sudo systemctl start chia-data-layer**
-
-to start the Chia data-layer
-
-**sudo systemctl status chia-[service]**
-
-to ensure each Chia service is running successfully (Look for Active: active (running))
-
-**sudo systemctl enable chia-[service]** 
-
-to set each Chia service to run at boot
-
-Instructions for CADT services can be found at the link below:
-
-[https://github.com/Chia-Network/cadt#systemd-init-script](https://github.com/Chia-Network/cadt#systemd-init-script)
-
-Please note that while this is the recommended approach to interacting with the software in a cloud environment, this is not necessary. If you need to reboot or restart your cloud environment, you can simply restart Chia and CADT services manually instead.
+The CADT executable needs to be restarted to pick up any changes to the config.yaml file, which can be done with `sudo systemctl restart cadt@ubuntu`.
 
 ## Install CADT UI (optional)
 
-Based on your organizational use case, you may or may not need to consider the [CADT UI](https://github.com/Chia-Network/climate-warehouse-ui). The CADT UI is useful for visualizing the data that is entered into the CADT, but presumably the data will be visible on the public observer node. 
+Based on your organizational use case, you may or may not need to consider the [CADT UI](https://github.com/Chia-Network/cadt-ui). The CADT UI is useful for visualizing the data that is entered into the CADT, but presumably the data will be visible on the [public observer node](https://observer.climateactiondata.org/). 
 
-The CADT UI is a javascript application that connects to the CADT API.  It is offered as a desktop application packaged with Electron, or as a web application.  If running as a web application, most organizations will host the UI on the same server as the CADT API or in a public S3 bucket.  Alternatively, each user can run the desktop application on their workstation and connect to the single CADT API.  In either scenario, the CADT API must be connectable from the user’s workstation, which usually means making it publicly available on port 31310.  Additional installation instructions can be found in the README of the Github repo [https://github.com/Chia-Network/climate-warehouse-ui](https://github.com/Chia-Network/climate-warehouse-ui). 
+The CADT UI is a javascript application that connects to the CADT API.  It is offered as a desktop application packaged with Electron, or as a web application.  If running as a web application, most organizations will host the UI on the same server as the CADT API or in a public S3 bucket.  Alternatively, each user can run the desktop application on their workstation and connect to the single CADT API.  In either scenario, the CADT API must be connectable from the user’s workstation, which usually means making it publicly available on port 31310.  Additional installation instructions can be found in the README of the Github repo [https://github.com/Chia-Network/cadt-ui](https://github.com/Chia-Network/cadt-ui). 
 
 When making your CADT API public, take care to set up an API_KEY to prevent unauthorized access.  Alternatively, the CADT API can be run in READ_ONLY mode, which only exposes data publicly available on the blockchain.  Set the API_KEY by editing the configuration file on your instance that is running the CADT API server. Users will connect to the CADT UI server and enter the “API_KEY” to authenticate their session to the CADT API server. 
 
