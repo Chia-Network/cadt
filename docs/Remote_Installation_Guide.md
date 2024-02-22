@@ -47,11 +47,17 @@ Note: the optional MySQL instance can be very small and is mainly used for inter
 * 1 GB ram
 * 50gb disk space
 
-## Configure cloud file access point (AWS S3 bucket)
+## Configure File Access Point
 
-In order for external parties to access the data you will eventually report to the cloud instance of CADT, you will need to set up a file access point. While this file access point can simply be the server running Chia and CADT services, it is recommended to make the file access point a cloud storage object so that inbound requests from external parties do not hit the server that holds the cryptographic keys. 
+In order for external parties to access the data you will eventually report to the cloud instance of CADT, you will need to set up a file access point. This file access point can simply be the server running Chia and CADT services, or it could be a cloud storage object such as S3. The URL of the file access point is set in the CADT config file and the files simply need to be served at that URL.   
 
-The general idea is that the CADT creates local files to represent the data changes made. These local files are then copied up to the cloud storage object. The instructions below will explain how to do this with an Amazon S3 bucket, but the same strategies can be applied to other cloud providers.
+The general idea is that the CADT creates local files to represent the data changes made. These files could be served 3 ways:
+
+1.  Use the Chia built-in webserver
+2.  Use a locally installed web server like Apache or Nginx
+3.  Sync the files to cloud storage, such as Amazon S3
+
+When using the built-in Chia DataLayer HTTP service, files will be served from the default location of `~/.chia/mainnet/data_layer/db/server_files_location_mainnet/` where the last part `mainnet` will change to the name of the network you are connected to (such at `testnet11`). This path is configurable in the Chia config file `~/.chia/mainnet/config/config.yaml`. Also configurable is the port that the DataLayer HTTP service will listen on, which is 8575 by default. Be sure this port is open when using the DataLayer HTTP service.   
 
 First, create an S3 bucket and [give the public read access](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteAccessPermissionsReqd.html). The server running Chia and CADT will need to write to this bucket, which can be done with access and secret keys from an IAM user, or, more preferably, an [instance profile](https://aws.amazon.com/premiumsupport/knowledge-center/ec2-instance-access-s3-bucket/) granting the EC2 instance access to the S3 bucket.  Be sure to capture the public URL for this S3 bucket, as you will be using it when editing the configuration file for the CADT.
 
