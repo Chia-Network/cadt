@@ -114,14 +114,19 @@ export const optimizeAndSortKvDiff = (kvDiff) => {
 
 export const getMirrorUrl = async () => {
   try {
-    const { DATALAYER_FILE_SERVER_URL } = CONFIG().CHIA;
-    console.log(DATALAYER_FILE_SERVER_URL);
+    const DATALAYER_FILE_SERVER_URL = CONFIG().CHIA.DATALAYER_FILE_SERVER_URL;
+    console.log('Config Mirror Url', DATALAYER_FILE_SERVER_URL);
+
     const chiaConfig = fullNode.getChiaConfig();
-    return (
-      DATALAYER_FILE_SERVER_URL ||
-      `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`
-    );
-  } catch {
+
+    const finalUrl = DATALAYER_FILE_SERVER_URL
+      ? DATALAYER_FILE_SERVER_URL
+      : `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`;
+
+    console.log('Resolved Mirror Url', finalUrl);
+    return finalUrl;
+  } catch (error) {
+    console.log('Error getting mirror url', error);
     return null;
   }
 };
