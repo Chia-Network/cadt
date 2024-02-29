@@ -3,12 +3,11 @@ import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
 import { CONFIG } from '../user-config';
-import fullNode from './fullNode';
-import { publicIpv4 } from '../utils/ip-tools';
 import wallet from './wallet';
 import { Organization } from '../models';
 import { logger } from '../logger.js';
 import { getChiaRoot } from 'chia-root-resolver';
+import { getMirrorUrl } from './utils/datalayer-utils';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
@@ -91,6 +90,9 @@ const getValue = async (storeId, storeKey) => {
 const addMirror = async (storeId, url, forceAddMirror = false) => {
   await wallet.waitForAllTransactionsToConfirm();
   const homeOrg = await Organization.getHomeOrg();
+  logger.info(
+    `Checking mirrors for storeID is ${storeId} with mirror URL ${url}`,
+  );
 
   if (!homeOrg && !forceAddMirror) {
     logger.info(`No home org detected so skipping mirror for ${storeId}`);
@@ -105,7 +107,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
   );
 
   if (mirror) {
-    logger.info(`Mirror already available for ${storeId}`);
+    logger.info(`Mirror already available for ${storeId} at ${url}`);
     return true;
   }
 
@@ -564,12 +566,9 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
     if (Object.keys(data).includes('success') && data.success) {
       logger.info(`Successfully Subscribed: ${storeId}`);
 
-      const chiaConfig = fullNode.getChiaConfig();
+      const mirrorUrl = await getMirrorUrl();
 
-      await addMirror(
-        storeId,
-        `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`,
-      );
+      await addMirror(storeId, mirrorUrl);
 
       return data;
     }

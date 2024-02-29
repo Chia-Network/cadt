@@ -44,10 +44,9 @@ const job = new SimpleIntervalJob(
 );
 
 const runMirrorCheck = async () => {
-  const homeOrg = Organization.getHomeOrg();
-
+  const homeOrg = await Organization.getHomeOrg();
   if (homeOrg) {
-    const organizations = Organization.getOrgsMap();
+    const organizations = await Organization.getOrgsMap();
     const orgs = Object.keys(organizations);
     for (const org of orgs) {
       const orgData = organizations[org];
