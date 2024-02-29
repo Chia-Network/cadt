@@ -116,7 +116,7 @@ export const optimizeAndSortKvDiff = (kvDiff) => {
 export const getMirrorUrl = async () => {
   try {
     const DATALAYER_FILE_SERVER_URL = CONFIG().CHIA.DATALAYER_FILE_SERVER_URL;
-    logger.debug('Config Mirror Url', DATALAYER_FILE_SERVER_URL);
+    console.debug('Config Mirror Url', DATALAYER_FILE_SERVER_URL);
 
     const chiaConfig = fullNode.getChiaConfig();
 
@@ -124,7 +124,7 @@ export const getMirrorUrl = async () => {
       ? DATALAYER_FILE_SERVER_URL
       : `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`;
 
-    logger.debug('Resolved Mirror Url', finalUrl);
+    console.debug('Resolved Mirror Url', finalUrl);
     return finalUrl;
   } catch (error) {
     logger.error('Error getting mirror url', error);
