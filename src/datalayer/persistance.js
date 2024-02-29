@@ -94,6 +94,13 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     `Checking mirrors for storeID is ${storeId} with mirror URL ${url}`,
   );
 
+  if (!url) {
+    logger.info(
+      `No DATALAYER_FILE_SERVER_URL specified so skipping mirror for ${storeId}`,
+    );
+    return false;
+  }
+
   if (!homeOrg && !forceAddMirror) {
     logger.info(`No home org detected so skipping mirror for ${storeId}`);
     return false;

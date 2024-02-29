@@ -58,7 +58,7 @@ const runMirrorCheck = async () => {
         await Organization.addMirror(orgData.registryId, mirrorUrl);
       } else {
         logger.error(
-          'Mirror URL is not available, skipping mirror announcement',
+          'DATALAYER_FILE_SERVER_URL not set, skipping mirror announcement',
         );
       }
     }
