@@ -11,8 +11,6 @@ const scheduler = new ToadScheduler();
 
 const jobRegistry = {};
 
-console.log('ZGB: In the scheduler logic now'); //zgb
-
 const addJobToScheduler = (job) => {
   jobRegistry[job.id] = job;
   scheduler.addSimpleIntervalJob(job);
