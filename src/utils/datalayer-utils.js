@@ -1,6 +1,5 @@
 import { getConfig } from './config-loader';
-import fullNode from '../datalayer/fullNode';
-import { publicIpv4 } from './ip-tools';
+import { logger } from '../logger.js';
 
 export const encodeHex = (str) => {
   return Buffer.from(str).toString('hex');
@@ -113,10 +112,12 @@ export const optimizeAndSortKvDiff = (kvDiff) => {
 };
 
 export const getMirrorUrl = async () => {
+  try {
   const { DATALAYER_FILE_SERVER_URL } = getConfig().APP;
-  const chiaConfig = fullNode.getChiaConfig();
-  return (
-    DATALAYER_FILE_SERVER_URL ||
-    `http://${await publicIpv4()}:${chiaConfig.data_layer.host_port}`
-  );
+  logger.debug(`Resolved Mirror Url: ${DATALAYER_FILE_SERVER_URL}`);
+  return DATALAYER_FILE_SERVER_URL;
+  } catch (error) {
+    logger.error('Error getting DATALAYER_FILE_SERVER_URL: ${error}');
+    return null;
+  }
 };
