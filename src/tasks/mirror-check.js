@@ -57,9 +57,10 @@ const runMirrorCheck = async () => {
         await Organization.addMirror(orgData.orgUid, mirrorUrl);
         await Organization.addMirror(orgData.registryId, mirrorUrl);
       } else {
-      logger.error(
-        'DATALAYER_FILE_SERVER_URL not set, skipping mirror announcement',
-      );
+        logger.error(
+          'DATALAYER_FILE_SERVER_URL not set, skipping mirror announcement',
+        );
+      }
     }
   }
 };
