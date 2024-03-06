@@ -61,27 +61,22 @@ export const baseSchema = {
 };
 
 export const projectsGetQuerySchema = Joi.object({
-  page: Joi.number(),
-  limit: Joi.number(),
+  page: Joi.number().optional(),
+  limit: Joi.number().max(100).min(1).optional(),
   search: Joi.string(),
   columns: Joi.array().items(Joi.string()).single(),
   orgUid: Joi.string(),
   warehouseProjectId: Joi.string(),
   xls: Joi.boolean(),
   projectIds: Joi.array().items(Joi.string()).single(),
-  order: Joi.string().regex(genericSortColumnRegex).max(100).min(1),
-  filter: Joi.string().regex(genericFilterRegex).max(100).min(1),
+  order: Joi.string().regex(genericSortColumnRegex),
+  filter: Joi.string().regex(genericFilterRegex),
   onlyMarketplaceProjects: Joi.boolean(),
 })
   .when(
-    Joi.alternatives().try(
-      Joi.object({ warehouseProjectId: Joi.string().min(1) }),
-      Joi.object({
-        projectIds: Joi.array().items(Joi.string()).single().min(1),
-      }),
-    ),
+    Joi.object({ projectIds: Joi.array().items(Joi.string()).single().min(1) }),
     {
-      then: Joi.object(),
+      then: Joi.object().options({ presence: 'optional' }), // Make page and limit optional
       otherwise: Joi.object({
         page: Joi.number().required(),
         limit: Joi.number().required(),
