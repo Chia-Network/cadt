@@ -74,21 +74,12 @@ export const projectsGetQuerySchema = Joi.object({
   onlyMarketplaceProjects: Joi.boolean(),
 })
   .when(
-    Joi.object({
-      warehouseProjectId: Joi.string().min(1),
-    }).or('warehouseProjectId'),
-    {
-      then: Joi.object(),
-      otherwise: Joi.object({
-        page: Joi.number().required(),
-        limit: Joi.number().required(),
+    Joi.alternatives().try(
+      Joi.object({ warehouseProjectId: Joi.string().min(1) }),
+      Joi.object({
+        projectIds: Joi.array().items(Joi.string()).single().min(1),
       }),
-    },
-  )
-  .when(
-    Joi.object({
-      projectIds: Joi.array().items(Joi.string()).single().min(1),
-    }),
+    ),
     {
       then: Joi.object(),
       otherwise: Joi.object({
