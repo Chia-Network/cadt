@@ -63,27 +63,25 @@ export const baseSchema = {
 export const projectsGetQuerySchema = Joi.object({
   page: Joi.number().optional(),
   limit: Joi.number().max(100).min(1).optional(),
-  search: Joi.string(),
-  columns: Joi.array().items(Joi.string()).single(),
-  orgUid: Joi.string(),
-  warehouseProjectId: Joi.string(),
-  xls: Joi.boolean(),
-  projectIds: Joi.array().items(Joi.string()).single(),
-  order: Joi.string().regex(genericSortColumnRegex),
-  filter: Joi.string().regex(genericFilterRegex),
-  onlyMarketplaceProjects: Joi.boolean(),
-})
-  .when(
-    Joi.object({ projectIds: Joi.array().items(Joi.string()).single().min(1) }),
-    {
-      then: Joi.object().options({ presence: 'optional' }), // Make page and limit optional
-      otherwise: Joi.object({
-        page: Joi.number().required(),
-        limit: Joi.number().required(),
-      }),
-    },
-  )
-  .and('page', 'limit');
+  search: Joi.string().optional(),
+  columns: Joi.array().items(Joi.string()).single().optional(),
+  orgUid: Joi.string().optional(),
+  warehouseProjectId: Joi.string().optional(),
+  xls: Joi.boolean().optional(),
+  projectIds: Joi.array().items(Joi.string()).single().optional(),
+  order: Joi.string().regex(genericSortColumnRegex).optional(),
+  filter: Joi.string().regex(genericFilterRegex).optional(),
+  onlyMarketplaceProjects: Joi.boolean().optional(),
+}).when(Joi.object({ warehouseProjectId: Joi.string().required() }).unknown(), {
+  then: Joi.object({
+    page: Joi.number().optional(),
+    limit: Joi.number().optional(),
+  }),
+  otherwise: Joi.object({
+    page: Joi.number().required(),
+    limit: Joi.number().required(),
+  }),
+});
 
 export const projectsPostSchema = Joi.object({
   ...baseSchema,
