@@ -72,16 +72,22 @@ export const projectsGetQuerySchema = Joi.object({
   order: Joi.string().regex(genericSortColumnRegex).optional(),
   filter: Joi.string().regex(genericFilterRegex).optional(),
   onlyMarketplaceProjects: Joi.boolean().optional(),
-}).when(Joi.object({ warehouseProjectId: Joi.string().required() }).unknown(), {
-  then: Joi.object({
-    page: Joi.number().optional(),
-    limit: Joi.number().optional(),
-  }),
-  otherwise: Joi.object({
-    page: Joi.number().required(),
-    limit: Joi.number().required(),
-  }),
-});
+}).when(
+  Joi.alternatives([
+    Joi.object({ projectIds: Joi.string().required() }).unknown(),
+    Joi.object({ warehouseProjectId: Joi.string().required() }).unknown(),
+  ]),
+  {
+    then: Joi.object({
+      page: Joi.number().optional(),
+      limit: Joi.number().optional(),
+    }),
+    otherwise: Joi.object({
+      page: Joi.number().required(),
+      limit: Joi.number().required(),
+    }),
+  },
+);
 
 export const projectsPostSchema = Joi.object({
   ...baseSchema,
