@@ -222,8 +222,11 @@ class Organization extends Model {
     return registryVersionId;
   }
 
-  static async addMirror(storeId, url) {
-    await datalayer.addMirror(storeId, url);
+  static async addMirror(storeId, url, force = false) {
+    logger.info(
+      `ZGB: in organizations.model.js, storeId is ${storeId}, force is ${force}, url is ${url}`,
+    );
+    await datalayer.addMirror(storeId, url, force);
   }
 
   static async importHomeOrg(orgUid) {

@@ -114,7 +114,7 @@ export const optimizeAndSortKvDiff = (kvDiff) => {
 export const getMirrorUrl = async () => {
   try {
     const { DATALAYER_FILE_SERVER_URL } = getConfig().APP;
-    logger.debug(`Resolved Mirror Url: ${DATALAYER_FILE_SERVER_URL}`);
+    logger.info(`Resolved Mirror Url: ${DATALAYER_FILE_SERVER_URL}`);
     return DATALAYER_FILE_SERVER_URL;
   } catch (error) {
     logger.error('Error getting DATALAYER_FILE_SERVER_URL: ${error}');
