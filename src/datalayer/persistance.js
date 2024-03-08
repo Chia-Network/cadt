@@ -113,15 +113,8 @@ const clearPendingRoots = async (storeId) => {
 };
 
 const addMirror = async (storeId, url, forceAddMirror = false) => {
-  logger.info(
-    `ZGB: in persistance.js, forceAddMirror is ${forceAddMirror}, url is ${url}, storeId is ${storeId}`,
-  );
-
   await wallet.waitForAllTransactionsToConfirm();
   const homeOrg = await Organization.getHomeOrg();
-  logger.info(
-    `ZGB: homeorg is ${homeOrg}, forceAddMirror is ${forceAddMirror}, url is ${url}, storeId is ${storeId}`,
-  );
 
   logger.info(
     `Checking mirrors for storeID is ${storeId} with mirror URL ${url}`,
@@ -572,7 +565,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
       const mirrorUrl = await getMirrorUrl();
 
-      await addMirror(storeId, mirrorUrl);
+      await addMirror(storeId, mirrorUrl, true);
 
       return data;
     }

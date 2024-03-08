@@ -19,12 +19,10 @@ const task = new Task('mirror-check', async () => {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    logger.info(`ZGB: In the loop to do the mirror-check - no logic run yet`);
     // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
     const shouldMirror = CONFIG?.AUTO_MIRROR_EXTERNAL_STORES ?? true;
 
     if (!CONFIG.USE_SIMULATOR && shouldMirror) {
-      logger.info(`ZGB: Conditions met for mirror-check - trying now`);
       runMirrorCheck();
     }
   } catch (error) {
@@ -47,11 +45,9 @@ const job = new SimpleIntervalJob(
 const runMirrorCheck = async () => {
   const organizations = await Organization.getOrgsMap();
   const orgs = Object.keys(organizations);
-  logger.info(`ZGB: orgs available: ${orgs}`);
   for (const org of orgs) {
     const orgData = organizations[org];
     const mirrorUrl = await getMirrorUrl();
-    logger.info(`ZGB: Working on mirror for ${org} with URL ${mirrorUrl}`);
     if (mirrorUrl) {
       // There is logic within the addMirror function to check if the mirror already exists
       await Organization.addMirror(orgData.orgUid, mirrorUrl, true);

@@ -223,9 +223,6 @@ class Organization extends Model {
   }
 
   static async addMirror(storeId, url, force = false) {
-    logger.info(
-      `ZGB: in organizations.model.js, storeId is ${storeId}, force is ${force}, url is ${url}`,
-    );
     await datalayer.addMirror(storeId, url, force);
   }
 
