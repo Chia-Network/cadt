@@ -1,3 +1,12 @@
+## [1.7.10](https://github.com/Chia-Network/cadt/compare/1.7.9...1.7.10) (2024-03-06)
+
+
+### Bug Fixes
+
+* do not require pagination when projectIds is used as a query param ([c9b32cc](https://github.com/Chia-Network/cadt/commit/c9b32cc7f5887eb376a68a5135677ed44fda6674))
+
+
+
 ## [1.7.9](https://github.com/Chia-Network/cadt/compare/1.7.8...1.7.9) (2024-02-26)
 
 

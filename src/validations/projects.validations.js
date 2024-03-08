@@ -85,6 +85,18 @@ export const projectsGetQuerySchema = Joi.object({
       }),
     },
   )
+  .when(
+    Joi.object({
+      projectIds: Joi.array().items(Joi.string()).single().min(1),
+    }),
+    {
+      then: Joi.object(),
+      otherwise: Joi.object({
+        page: Joi.number().required(),
+        limit: Joi.number().required(),
+      }),
+    },
+  )
   .and('page', 'limit');
 
 export const projectsPostSchema = Joi.object({
