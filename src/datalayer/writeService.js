@@ -38,8 +38,8 @@ const createDataLayerStore = async () => {
   return storeId;
 };
 
-const addMirror = async (storeId, url) => {
-  return dataLayer.addMirror(storeId, url);
+const addMirror = async (storeId, url, force = false) => {
+  return dataLayer.addMirror(storeId, url, force);
 };
 
 const waitForStoreToBeConfirmed = async (storeId, retry = 0) => {
