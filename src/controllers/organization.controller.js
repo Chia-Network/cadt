@@ -403,8 +403,6 @@ export const addMetadata = async (req, res) => {
 
 export const addMirror = async (req, res) => {
   try {
-    console.info(`ZGB: We are in the organization.controller.js file now`);
-
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
     await assertHomeOrgExists();
