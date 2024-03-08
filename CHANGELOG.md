@@ -1,3 +1,12 @@
+## [1.7.11](https://github.com/Chia-Network/cadt/compare/1.7.10...1.7.11) (2024-03-08)
+
+
+### Bug Fixes
+
+* improve mirror logic ([af205a5](https://github.com/Chia-Network/cadt/commit/af205a58fbff2812a4e2cc37121e8c9a3cb724b9))
+
+
+
 ## [1.7.10](https://github.com/Chia-Network/cadt/compare/1.7.9...1.7.10) (2024-03-06)
 
 
