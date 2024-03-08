@@ -33,6 +33,9 @@ const createDataLayerStore = async () => {
     if (shouldMirror) {
       const mirrorUrl = await getMirrorUrl();
       if (mirrorUrl) {
+        logger.info(
+          `Now attempting to create new mirror for ${storeId} at ${mirrorUrl}`,
+        );
         await dataLayer.addMirror(storeId, mirrorUrl, true);
       } else {
         logger.error('Mirror URL not available, skipping mirror announcement.');
@@ -43,8 +46,8 @@ const createDataLayerStore = async () => {
   return storeId;
 };
 
-const addMirror = async (storeId, url) => {
-  return dataLayer.addMirror(storeId, url);
+const addMirror = async (storeId, url, force = false) => {
+  return dataLayer.addMirror(storeId, url, force);
 };
 
 const waitForStoreToBeConfirmed = async (storeId, retry = 0) => {

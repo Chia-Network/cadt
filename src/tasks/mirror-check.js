@@ -44,24 +44,19 @@ const job = new SimpleIntervalJob(
 );
 
 const runMirrorCheck = async () => {
-  const homeOrg = Organization.getHomeOrg();
-
-  if (homeOrg) {
-    const organizations = Organization.getOrgsMap();
-    const orgs = Object.keys(organizations);
-    for (const org of orgs) {
-      const orgData = organizations[org];
-      const mirrorUrl = await getMirrorUrl();
-
-      if (mirrorUrl) {
-        // There is logic within the addMirror function to check if the mirror already exists
-        await Organization.addMirror(orgData.orgUid, mirrorUrl);
-        await Organization.addMirror(orgData.registryId, mirrorUrl);
-      } else {
-        logger.error(
-          'Mirror URL is not available, skipping mirror announcement',
-        );
-      }
+  const organizations = await Organization.getOrgsMap();
+  const orgs = Object.keys(organizations);
+  for (const org of orgs) {
+    const orgData = organizations[org];
+    const mirrorUrl = await getMirrorUrl();
+    if (mirrorUrl) {
+      // There is logic within the addMirror function to check if the mirror already exists
+      await Organization.addMirror(orgData.orgUid, mirrorUrl, true);
+      await Organization.addMirror(orgData.registryId, mirrorUrl, true);
+    } else {
+      logger.error(
+        'DATALAYER_FILE_SERVER_URL not set, skipping mirror announcement',
+      );
     }
   }
 };
