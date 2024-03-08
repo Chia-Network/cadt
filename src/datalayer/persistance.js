@@ -575,7 +575,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
       const mirrorUrl = await getMirrorUrl();
 
-      await addMirror(storeId, mirrorUrl);
+      await addMirror(storeId, mirrorUrl, true);
 
       return data;
     }

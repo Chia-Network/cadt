@@ -114,7 +114,6 @@ export const optimizeAndSortKvDiff = (kvDiff) => {
 export const getMirrorUrl = async () => {
   try {
     const finalUrl = CONFIG().CHIA.DATALAYER_FILE_SERVER_URL;
-
     logger.debug(`Resolved Mirror Url: ${finalUrl}`);
     return finalUrl;
   } catch (error) {
