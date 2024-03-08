@@ -222,8 +222,8 @@ class Organization extends Model {
     return registryVersionId;
   }
 
-  static async addMirror(storeId, url) {
-    await datalayer.addMirror(storeId, url);
+  static async addMirror(storeId, url, force = false) {
+    await datalayer.addMirror(storeId, url, force);
   }
 
   static async importHomeOrg(orgUid) {
