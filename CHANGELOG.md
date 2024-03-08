@@ -1,3 +1,16 @@
+## [1.7.12](https://github.com/Chia-Network/cadt/compare/1.7.11...1.7.12) (2024-03-08)
+
+
+### Bug Fixes
+
+* allow other params when using projectids ([ddf21be](https://github.com/Chia-Network/cadt/commit/ddf21be38cc04860029d8a5e587ef0f0da0e960d))
+* joi ([f437359](https://github.com/Chia-Network/cadt/commit/f437359380bb2f24241c8611a22e5f5e68f730b1))
+* projectIds ([2c0a083](https://github.com/Chia-Network/cadt/commit/2c0a083a7dbeac26c077f72b36f03d58911bf065))
+* refactor validation ([4c742af](https://github.com/Chia-Network/cadt/commit/4c742af78b324d2745fa844bbb5bc57bd7cc9c25))
+* refactor validation ([b023d65](https://github.com/Chia-Network/cadt/commit/b023d653b1f0d4b1968bc6b2448e6a21a1f95711))
+
+
+
 ## [1.7.11](https://github.com/Chia-Network/cadt/compare/1.7.10...1.7.11) (2024-03-08)
 
 
