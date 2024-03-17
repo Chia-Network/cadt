@@ -64,7 +64,7 @@
     "@babel/plugin-syntax-import-attributes": "^7.23.3",
     "@babel/preset-env": "^7.24.0",
     "@babel/register": "^7.23.7",
-    "@commitlint/cli": "^19.0.3",
+    "@commitlint/cli": "^19.2.0",
     "@commitlint/config-conventional": "^19.0.3",
     "babel-plugin-module-resolver": "^5.0.0",
     "chai": "^5.1.0",
