@@ -54,8 +54,8 @@ export const unitsPostSchema = Joi.object({
 });
 
 export const unitsGetQuerySchema = Joi.object({
-  page: Joi.number().min(1),
-  limit: Joi.number().max(100).min(1),
+  page: Joi.number().min(1).required(),
+  limit: Joi.number().max(100).min(1).required(),
   search: Joi.string(),
   warehouseUnitId: Joi.string(),
   columns: Joi.array().items(Joi.string()).single(),
@@ -67,21 +67,22 @@ export const unitsGetQuerySchema = Joi.object({
   xls: Joi.boolean(),
   marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
   hasMarketplaceIdentifier: Joi.boolean(),
+  onlyTokenizedUnits: Joi.boolean(),
   includeProjectInfoInSearch: Joi.boolean(),
   filter: Joi.string().regex(genericFilterRegex).min(1).max(100),
 })
-  .when(
-    Joi.object({
-      warehouseUnitId: Joi.string().min(1),
-    }).or('warehouseUnitId'),
-    {
-      then: Joi.object(),
-      otherwise: Joi.object({
-        page: Joi.number().min(1).required(),
-        limit: Joi.number().max(100).min(1).required(),
-      }),
-    },
-  )
+  .when(Joi.object({ warehouseUnitId: Joi.exist() }).unknown(), {
+    then: Joi.object({
+      page: Joi.number().min(1).optional(),
+      limit: Joi.number().max(100).min(1).optional(),
+    }),
+  })
+  .when(Joi.object({ onlyTokenizedUnits: Joi.exist() }).unknown(), {
+    then: Joi.object({
+      page: Joi.number().min(1).optional(),
+      limit: Joi.number().max(100).min(1).optional(),
+    }),
+  })
   .and('page', 'limit');
 
 export const unitsUpdateSchema = Joi.object({
