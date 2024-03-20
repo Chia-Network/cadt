@@ -136,7 +136,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
     * **GOVERNANCE_SYNC_TASK_INTERVAL**:  Syncs new organizations from the governance node.  Default 86400.
     * **ORGANIZATION_META_SYNC_TASK_INTERVAL**:  Syncs organization data from the blockchain. Default 300.
     * **PICKLIST_SYNC_TASK_INTERVAL**:  Syncs picklist from the governance node. Default 30.
-    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 300.
+    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 86460.
 * **GOVERNANCE**: Section on settings for the Governance body to connect to.
   * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT network will be connected to.  While there could be multiple governance body IDs, the default of `23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e` is the right ID for most people on mainnet. 
 
