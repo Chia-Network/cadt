@@ -51,28 +51,37 @@ export const unitsPostSchema = Joi.object({
   ...unitsBaseSchema,
 });
 
-export const unitsGetQuerySchema = Joi.object()
-  .keys({
-    page: Joi.number().min(1),
-    limit: Joi.number().max(100).min(1),
-    search: Joi.string(),
-    warehouseUnitId: Joi.string(),
-    columns: Joi.array().items(Joi.string()).single(),
-    orgUid: Joi.string(),
-    order: Joi.alternatives().try(
-      // backwards compatibility for old order usage
-      Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
-      // new order usage
-      Joi.string().regex(genericSortColumnRegex).max(100).min(1),
-    ),
-    xls: Joi.boolean(),
-    unitIds: Joi.array().items(Joi.string()).single(),
-    marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
-    hasMarketplaceIdentifier: Joi.boolean(),
-    includeProjectInfoInSearch: Joi.boolean(),
-    filter: Joi.string().regex(genericFilterRegex).max(100).min(1),
+export const unitsGetQuerySchema = Joi.object({
+  page: Joi.number().min(1).required(),
+  limit: Joi.number().max(100).min(1).required(),
+  search: Joi.string(),
+  warehouseUnitId: Joi.string(),
+  columns: Joi.array().items(Joi.string()).single(),
+  orgUid: Joi.string(),
+  order: Joi.alternatives().try(
+    Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
+    Joi.string().regex(genericSortColumnRegex).min(1).max(100),
+  ),
+  xls: Joi.boolean(),
+  marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
+  hasMarketplaceIdentifier: Joi.boolean(),
+  onlyTokenizedUnits: Joi.boolean(),
+  includeProjectInfoInSearch: Joi.boolean(),
+  filter: Joi.string().regex(genericFilterRegex).min(1).max(100),
+})
+  .when(Joi.object({ warehouseUnitId: Joi.exist() }).unknown(), {
+    then: Joi.object({
+      page: Joi.number().min(1).optional(),
+      limit: Joi.number().max(100).min(1).optional(),
+    }),
   })
-  .with('page', 'limit');
+  .when(Joi.object({ onlyTokenizedUnits: Joi.exist() }).unknown(), {
+    then: Joi.object({
+      page: Joi.number().min(1).optional(),
+      limit: Joi.number().max(100).min(1).optional(),
+    }),
+  })
+  .and('page', 'limit');
 
 export const unitsUpdateSchema = Joi.object({
   warehouseUnitId: Joi.string().required(),
