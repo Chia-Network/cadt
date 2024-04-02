@@ -133,15 +133,18 @@ export const findAll = async (req, res) => {
       hasMarketplaceIdentifier,
       includeProjectInfoInSearch = false,
       filter,
-      onlyTokenizedUnits = false,
+      onlyTokenizedUnits,
     } = req.query;
 
-    // Initialize `where` with `orgUid` if provided and not 'all'
-    let where = orgUid && orgUid !== 'all' ? { orgUid } : {};
+    let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
 
-    // Apply generic filter if exists
     if (filter) {
+      if (!where) {
+        where = {};
+      }
+
       const matches = filter.match(genericFilterRegex);
+      // check if the value param is an array so we can parse it
       const valueMatches = matches[2].match(isArrayRegex);
       where[matches[1]] = {
         [Sequelize.Op[matches[3]]]: valueMatches
@@ -151,14 +154,24 @@ export const findAll = async (req, res) => {
     }
 
     const includes = Unit.getAssociatedModels();
-    columns = columns
-      ? columns.filter((col) =>
-          Unit.defaultColumns
-            .concat(includes.map(formatModelAssociationName))
-            .includes(col),
-        )
-      : Unit.defaultColumns.concat(includes.map(formatModelAssociationName));
-    if (!columns.length) columns = ['warehouseUnitId'];
+
+    if (columns) {
+      // Remove any unsupported columns
+      columns = columns.filter((col) =>
+        Unit.defaultColumns
+          .concat(includes.map(formatModelAssociationName))
+          .includes(col),
+      );
+    } else {
+      columns = Unit.defaultColumns.concat(
+        includes.map(formatModelAssociationName),
+      );
+    }
+
+    // If only FK fields have been specified, select just ID
+    if (!columns.length) {
+      columns = ['warehouseUnitId'];
+    }
 
     let pagination = { page: undefined, limit: undefined };
 
@@ -170,39 +183,91 @@ export const findAll = async (req, res) => {
         Unit.defaultColumns,
         includeProjectInfoInSearch,
       );
+
+      const mappedResults = ftsResults.rows.map((ftsResult) =>
+        _.get(ftsResult, 'dataValues.warehouseUnitId'),
+      );
+
+      if (!where) {
+        where = {};
+      }
+
       where.warehouseUnitId = {
-        [Sequelize.Op.in]: ftsResults.rows.map((ftsResult) =>
-          _.get(ftsResult, 'dataValues.warehouseUnitId'),
-        ),
+        [Sequelize.Op.in]: mappedResults,
       };
     }
 
-    // Combine marketplaceIdentifier related conditions
     if (marketplaceIdentifiers) {
+      if (!where) {
+        where = {};
+      }
+
       where.marketplaceIdentifier = {
         [Sequelize.Op.in]: _.flatten([marketplaceIdentifiers]),
       };
-    } else if (typeof hasMarketplaceIdentifier === 'boolean') {
-      where.marketplaceIdentifier = hasMarketplaceIdentifier
-        ? { [Sequelize.Op.not]: null }
-        : { [Sequelize.Op.eq]: null };
+    } else if (
+      typeof hasMarketplaceIdentifier === 'boolean' &&
+      hasMarketplaceIdentifier === true
+    ) {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.not]: null,
+      };
+    } else if (
+      typeof hasMarketplaceIdentifier === 'boolean' &&
+      hasMarketplaceIdentifier === false
+    ) {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.eq]: null,
+      };
+    } else if (
+      typeof onlyTokenizedUnits === 'boolean' &&
+      onlyTokenizedUnits === true
+    ) {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.not]: true,
+      };
+      where.marketplace = {
+        [Sequelize.Op.eq]: 'Tokenized on Chia',
+      };
+    } else if (
+      typeof onlyTokenizedUnits === 'boolean' &&
+      onlyTokenizedUnits === false
+    ) {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplace = {
+        [Sequelize.Op.not]: 'Tokenized on Chia',
+      };
     }
 
-    // Combine onlyTokenizedUnits related conditions
-    if (typeof onlyTokenizedUnits === 'boolean') {
-      where.marketplace = onlyTokenizedUnits
-        ? { [Sequelize.Op.eq]: 'Tokenized on Chia' }
-        : { [Sequelize.Op.not]: 'Tokenized on Chia' };
-    }
+    // default to DESC
+    let resultOrder = [['timeStaged', 'DESC']];
 
-    // Order handling simplified
-    let resultOrder = order?.match(genericSortColumnRegex)
-      ? [[order[1], order[2]]]
-      : order === 'SERIALNUMBER'
-        ? [['serialNumberBlock', 'ASC']]
-        : order === 'ASC'
-          ? [['timeStaged', 'ASC']]
-          : [['timeStaged', 'DESC']];
+    if (order?.match(genericSortColumnRegex)) {
+      const matches = order.match(genericSortColumnRegex);
+      resultOrder = [[matches[1], matches[2]]];
+    } else {
+      // backwards compatibility for old order usage
+      if (order && order === 'SERIALNUMBER') {
+        resultOrder = [['serialNumberBlock', 'ASC']];
+      } else if (order && order === 'ASC') {
+        resultOrder = [['timeStaged', 'ASC']];
+      }
+    }
 
     const results = await Unit.findAndCountAll({
       where,
@@ -214,26 +279,26 @@ export const findAll = async (req, res) => {
 
     const response = optionallyPaginatedResponse(results, page, limit);
 
-    return xls
-      ? sendXls(
-          Unit.name,
-          createXlsFromSequelizeResults({
-            rows: response,
-            model: Unit,
-            toStructuredCsv: false,
-          }),
-          res,
-        )
-      : res.json(response);
+    if (!xls) {
+      return res.json(response);
+    } else {
+      return sendXls(
+        Unit.name,
+        createXlsFromSequelizeResults({
+          rows: response,
+          model: Unit,
+          toStructuredCsv: false,
+        }),
+        res,
+      );
+    }
   } catch (error) {
     console.trace(error);
-    res
-      .status(400)
-      .json({
-        message: 'Error retrieving units',
-        error: error.message,
-        success: false,
-      });
+    res.status(400).json({
+      message: 'Error retrieving units',
+      error: error.message,
+      success: false,
+    });
   }
 };
 
