@@ -136,7 +136,7 @@ export const findAll = async (req, res) => {
       hasMarketplaceIdentifier,
       includeProjectInfoInSearch = false,
       filter,
-      onlyTokenizedUnits = false,
+      onlyTokenizedUnits,
     } = req.query;
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
