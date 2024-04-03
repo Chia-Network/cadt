@@ -9,6 +9,7 @@ const socketSubscriptions = {};
 const authenticate = () => true;
 
 export const connection = (socket) => {
+  console.log('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@');
   socket.on('authentication', () => {
     if (!authenticate(socket)) {
       logger.error('authentication failure');
