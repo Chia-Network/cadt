@@ -240,7 +240,10 @@ export const findAll = async (req, res) => {
       where.marketplaceIdentifier = {
         [Sequelize.Op.eq]: null,
       };
-    } else if (onlyTokenizedUnits) {
+    } else if (
+      typeof onlyTokenizedUnits === 'boolean' &&
+      onlyTokenizedUnits === true
+    ) {
       if (!where) {
         where = {};
       }
@@ -250,6 +253,17 @@ export const findAll = async (req, res) => {
       };
       where.marketplace = {
         [Sequelize.Op.eq]: 'Tokenized on Chia',
+      };
+    } else if (
+      typeof onlyTokenizedUnits === 'boolean' &&
+      onlyTokenizedUnits === false
+    ) {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplace = {
+        [Sequelize.Op.not]: 'Tokenized on Chia',
       };
     }
 
