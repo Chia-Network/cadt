@@ -43,7 +43,7 @@
     "joi": "^17.12.1",
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
-    "log-update": "^4.0.0",
+    "log-update": "^6.0.0",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.9.3",
     "node-xlsx": "^0.23.0",
