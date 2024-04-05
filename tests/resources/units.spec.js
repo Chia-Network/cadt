@@ -56,7 +56,7 @@ describe('Units Resource CRUD', function () {
       it('gets all the units filtered by orgUid', async function () {
         const result = await supertest(app)
           .get('/v1/units')
-          .query({ orgUid: response.orgUid });
+          .query({ orgUid: response.orgUid, page: 1, limit: 100 });
 
         expect(result.body.length).to.not.equal(1);
         // ?orgUid=XXXX
@@ -98,7 +98,12 @@ describe('Units Resource CRUD', function () {
         // ?orgUid=XXXX&search=XXXX
         const result = await supertest(app)
           .get('/v1/units')
-          .query({ orgUid: response.orgUid, search: 'Certification' });
+          .query({
+            orgUid: response.orgUid,
+            search: 'Certification',
+            page: 1,
+            limit: 100,
+          });
 
         expect(result.body.length).to.not.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
@@ -114,6 +119,8 @@ describe('Units Resource CRUD', function () {
         // ?warehouseUnitId=XXXX
         const result = await supertest(app).get('/v1/units').query({
           warehouseUnitId: response.warehouseUnitId,
+          page: 1,
+          limit: 100,
         });
 
         // Check if data is an object
