@@ -1,3 +1,25 @@
+## [1.7.13](https://github.com/Chia-Network/cadt/compare/1.7.12...1.7.13) (2024-04-05)
+
+
+### Bug Fixes
+
+* change DATALAYER_FILE_SERVER_URL check from error to info ([4451575](https://github.com/Chia-Network/cadt/commit/4451575cb03bf84fd0d21dd5d2997dcf131bb311))
+* false clause of onlytokenizedunits ([b6f5468](https://github.com/Chia-Network/cadt/commit/b6f5468788d1f8aac7b9a84125ad019e3bf64491))
+* handle onlytokenizedunits false clause ([343bae2](https://github.com/Chia-Network/cadt/commit/343bae24f699fc93590ee73f939ac7a9222f0834))
+* import logger correctly for mirror-check ([63b74b6](https://github.com/Chia-Network/cadt/commit/63b74b6666227055522292c43f033b3593f3622b))
+* mirror logic fixes for url and scheduled tasks ([96ac698](https://github.com/Chia-Network/cadt/commit/96ac6989e3c63661491bd58c77438480db61fd09))
+* mirror logic when no homeorg ([06bfe79](https://github.com/Chia-Network/cadt/commit/06bfe79db35fd3997b233164e2d0418f911e5e43))
+* mirror url logic ([46ba5ae](https://github.com/Chia-Network/cadt/commit/46ba5aebbbf4ecf84230fb100bfd2d2834216aa5))
+* update default MIRROR_CHECK_TASK_INTERVAL to be much longer ([1d980db](https://github.com/Chia-Network/cadt/commit/1d980db0bfebcb12c5fd6cc155d1cd2e1d832963))
+* wip debugging mirror logic ([6c561c5](https://github.com/Chia-Network/cadt/commit/6c561c5a87056245872382a329aebeec14dc276a))
+
+
+### Features
+
+* add only tokenized units query param ([2fdf0b2](https://github.com/Chia-Network/cadt/commit/2fdf0b21798a66af1d7b9a4d84d8ded2cc09472f))
+
+
+
 ## [1.7.12](https://github.com/Chia-Network/cadt/compare/1.7.11...1.7.12) (2024-03-08)
 
 
