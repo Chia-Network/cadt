@@ -31,7 +31,9 @@ describe('Units Resource CRUD', function () {
         await testFixtures.createNewUnit();
         await testFixtures.commitStagingRecords();
         await testFixtures.waitForDataLayerSync();
-        const result = await supertest(app).get('/v1/units');
+        const result = await supertest(app)
+          .get('/v1/units')
+          .query({ page: 1, limit: 100 });
         response = result.body[0];
       });
 
@@ -44,7 +46,9 @@ describe('Units Resource CRUD', function () {
 
       it('gets all the units available', async function () {
         // no query params
-        const result = await supertest(app).get('/v1/units').query({});
+        const result = await supertest(app)
+          .get('/v1/units')
+          .query({ page: 1, limit: 100 });
 
         expect(result.body.length).to.not.equal(0);
       }).timeout(TEST_WAIT_TIME * 10);
@@ -73,7 +77,7 @@ describe('Units Resource CRUD', function () {
 
         const result = await supertest(app)
           .get('/v1/units')
-          .query({ order: 'SERIALNUMBER' });
+          .query({ order: 'SERIALNUMBER', page: 1, limit: 100 });
 
         expect(result.body[0].serialNumberBlock).to.equal('AAAAA1-AAAAA2');
         expect(result.body[1].serialNumberBlock).to.equal('AAAAA11-AAAAA21');
@@ -86,7 +90,7 @@ describe('Units Resource CRUD', function () {
         // ?search=XXXX
         const result = await supertest(app)
           .get('/v1/units')
-          .query({ search: 'Certification' });
+          .query({ search: 'Certification', page: 1, limit: 100 });
 
         expect(result.body.length).to.not.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
