@@ -133,6 +133,7 @@ export const findAll = async (req, res) => {
       hasMarketplaceIdentifier,
       includeProjectInfoInSearch = false,
       filter,
+      onlyTokenizedUnits,
     } = req.query;
 
     let where = orgUid != null && orgUid !== 'all' ? { orgUid } : undefined;
@@ -225,6 +226,31 @@ export const findAll = async (req, res) => {
 
       where.marketplaceIdentifier = {
         [Sequelize.Op.eq]: null,
+      };
+    } else if (
+      typeof onlyTokenizedUnits === 'boolean' &&
+      onlyTokenizedUnits === true
+    ) {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.not]: true,
+      };
+      where.marketplace = {
+        [Sequelize.Op.eq]: 'Tokenized on Chia',
+      };
+    } else if (
+      typeof onlyTokenizedUnits === 'boolean' &&
+      onlyTokenizedUnits === false
+    ) {
+      if (!where) {
+        where = {};
+      }
+
+      where.marketplace = {
+        [Sequelize.Op.not]: 'Tokenized on Chia',
       };
     }
 

@@ -54,31 +54,36 @@ export const unitsPostSchema = Joi.object({
 });
 
 export const unitsGetQuerySchema = Joi.object({
-  page: Joi.number().min(1).optional(),
-  limit: Joi.number().max(100).min(1).optional(),
-  search: Joi.string().optional(),
-  warehouseUnitId: Joi.string().optional(),
-  columns: Joi.array().items(Joi.string()).single().optional(),
-  orgUid: Joi.string().optional(),
+  page: Joi.number().min(1).required(),
+  limit: Joi.number().max(100).min(1).required(),
+  search: Joi.string(),
+  warehouseUnitId: Joi.string(),
+  columns: Joi.array().items(Joi.string()).single(),
+  orgUid: Joi.string(),
   order: Joi.alternatives().try(
     Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC').optional(),
     Joi.string().regex(genericSortColumnRegex).min(1).max(100).optional(),
   ),
-  xls: Joi.boolean().optional(),
-  marketplaceIdentifiers: Joi.array().items(Joi.string()).single().optional(),
-  hasMarketplaceIdentifier: Joi.boolean().optional(),
-  includeProjectInfoInSearch: Joi.boolean().optional(),
-  filter: Joi.string().regex(genericFilterRegex).min(1).max(100).optional(),
-}).when(Joi.object({ warehouseUnitId: Joi.string().required() }).unknown(), {
-  then: Joi.object({
-    page: Joi.number().optional(),
-    limit: Joi.number().optional(),
-  }),
-  otherwise: Joi.object({
-    page: Joi.number().min(1).required(),
-    limit: Joi.number().max(100).min(1).required(),
-  }),
-});
+  xls: Joi.boolean(),
+  marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
+  hasMarketplaceIdentifier: Joi.boolean(),
+  onlyTokenizedUnits: Joi.boolean(),
+  includeProjectInfoInSearch: Joi.boolean(),
+  filter: Joi.string().regex(genericFilterRegex).min(1).max(100),
+})
+  .when(Joi.object({ warehouseUnitId: Joi.exist() }).unknown(), {
+    then: Joi.object({
+      page: Joi.number().min(1).optional(),
+      limit: Joi.number().max(100).min(1).optional(),
+    }),
+  })
+  .when(Joi.object({ onlyTokenizedUnits: Joi.exist() }).unknown(), {
+    then: Joi.object({
+      page: Joi.number().min(1).optional(),
+      limit: Joi.number().max(100).min(1).optional(),
+    }),
+  })
+  .and('page', 'limit');
 
 export const unitsUpdateSchema = Joi.object({
   warehouseUnitId: Joi.string().required(),
