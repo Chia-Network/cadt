@@ -56,7 +56,7 @@
     "toad-scheduler": "^3.0.1",
     "uuidv4": "^6.2.13",
     "winston": "^3.11.0",
-    "winston-daily-rotate-file": "^4.7.1"
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.24.1",
