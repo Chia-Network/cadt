@@ -61,8 +61,8 @@ export const unitsGetQuerySchema = Joi.object({
   columns: Joi.array().items(Joi.string()).single(),
   orgUid: Joi.string(),
   order: Joi.alternatives().try(
-    Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
-    Joi.string().regex(genericSortColumnRegex).min(1).max(100),
+    Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC').optional(),
+    Joi.string().regex(genericSortColumnRegex).min(1).max(100).optional(),
   ),
   xls: Joi.boolean(),
   marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
