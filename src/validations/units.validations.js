@@ -83,6 +83,12 @@ export const unitsGetQuerySchema = Joi.object({
       limit: Joi.number().max(100).min(1).optional(),
     }),
   })
+  .when(Joi.object({ xls: Joi.exist() }).unknown(), {
+    then: Joi.object({
+      page: Joi.number().min(1).optional(),
+      limit: Joi.number().max(100).min(1).optional(),
+    }),
+  })
   .and('page', 'limit');
 
 export const unitsUpdateSchema = Joi.object({
