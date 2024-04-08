@@ -76,6 +76,7 @@ export const projectsGetQuerySchema = Joi.object({
   Joi.alternatives([
     Joi.object({ projectIds: Joi.string().required() }).unknown(),
     Joi.object({ warehouseProjectId: Joi.string().required() }).unknown(),
+    Joi.object({ xls: Joi.string().required() }).unknown(),
   ]),
   {
     then: Joi.object({
