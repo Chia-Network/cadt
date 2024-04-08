@@ -34,7 +34,7 @@ describe('Units Resource CRUD', function () {
         const result = await supertest(app)
           .get('/v1/units')
           .query({ page: 1, limit: 100 });
-        response = result.body[0];
+        response = result.body.data[0];
       });
 
       afterEach(async function () {
@@ -50,7 +50,7 @@ describe('Units Resource CRUD', function () {
           .get('/v1/units')
           .query({ page: 1, limit: 100 });
 
-        expect(result.body.length).to.not.equal(0);
+        expect(result.body.data.length).to.not.equal(0);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the units filtered by orgUid', async function () {
@@ -58,11 +58,11 @@ describe('Units Resource CRUD', function () {
           .get('/v1/units')
           .query({ orgUid: response.orgUid, page: 1, limit: 100 });
 
-        expect(result.body.length).to.not.equal(1);
+        expect(result.body.data.length).to.not.equal(1);
         // ?orgUid=XXXX
       }).timeout(TEST_WAIT_TIME * 10);
 
-      it.skip('orders by serial number', async function () {
+      it('orders by serial number', async function () {
         const newUnit1 = _.cloneDeep(newUnit);
         newUnit1.unitBlockStart = 'AAAAA1';
         newUnit1.unitBlockEnd = 'AAAAA2';
@@ -79,9 +79,11 @@ describe('Units Resource CRUD', function () {
           .get('/v1/units')
           .query({ order: 'SERIALNUMBER', page: 1, limit: 100 });
 
-        expect(result.body[0].serialNumberBlock).to.equal('AAAAA1-AAAAA2');
-        expect(result.body[1].serialNumberBlock).to.equal('AAAAA11-AAAAA21');
-        expect(result.body[2].serialNumberBlock).to.equal(
+        expect(result.body.data[0].serialNumberBlock).to.equal('AAAAA1-AAAAA2');
+        expect(result.body.data[1].serialNumberBlock).to.equal(
+          'AAAAA11-AAAAA21',
+        );
+        expect(result.body.data[2].serialNumberBlock).to.equal(
           'AXJJFSLGHSHEJ1000-AXJJFSLGHSHEJ1010',
         );
       }).timeout(TEST_WAIT_TIME * 10);
@@ -92,20 +94,18 @@ describe('Units Resource CRUD', function () {
           .get('/v1/units')
           .query({ search: 'Certification', page: 1, limit: 100 });
 
-        expect(result.body.length).to.not.equal(1);
+        expect(result.body.data.length).to.not.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
       it('gets all the units for a search term filtered by orgUid', async function () {
         // ?orgUid=XXXX&search=XXXX
-        const result = await supertest(app)
-          .get('/v1/units')
-          .query({
-            orgUid: response.orgUid,
-            search: 'Certification',
-            page: 1,
-            limit: 100,
-          });
+        const result = await supertest(app).get('/v1/units').query({
+          orgUid: response.orgUid,
+          search: 'Certification',
+          page: 1,
+          limit: 100,
+        });
 
-        expect(result.body.length).to.not.equal(1);
+        expect(result.body.data.length).to.not.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
       it('gets optional paginated results', async function () {
         // ?page=X&limit=10
@@ -113,14 +113,12 @@ describe('Units Resource CRUD', function () {
           .get('/v1/units')
           .query({ page: 1, limit: 1 });
 
-        expect(result.body.length).to.not.equal(1);
+        expect(result.body.data.length).to.equal(1);
       }).timeout(TEST_WAIT_TIME * 10);
       it('finds a single result by warehouseUnitId', async function () {
         // ?warehouseUnitId=XXXX
         const result = await supertest(app).get('/v1/units').query({
           warehouseUnitId: response.warehouseUnitId,
-          page: 1,
-          limit: 100,
         });
 
         // Check if data is an object
