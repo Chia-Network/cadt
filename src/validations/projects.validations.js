@@ -74,6 +74,12 @@ export const projectsGetQuerySchema = Joi.object()
     filter: Joi.string().regex(genericFilterRegex).max(100).min(1),
     onlyMarketplaceProjects: Joi.boolean(),
   })
+  .when(Joi.object({ xls: Joi.exist() }).unknown(), {
+    then: Joi.object({
+      page: Joi.number().min(1).optional(),
+      limit: Joi.number().max(100).min(1).optional(),
+    }),
+  })
   .with('page', 'limit')
   .with('limit', 'page');
 
