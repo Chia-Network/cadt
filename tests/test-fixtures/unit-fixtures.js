@@ -2,7 +2,6 @@ import _ from 'lodash';
 
 import supertest from 'supertest';
 import { expect } from 'chai';
-
 import app from '../../src/server';
 import newUnit from '../test-data/new-unit.js';
 import updateUnitJson from '../test-data/update-unit.js';
