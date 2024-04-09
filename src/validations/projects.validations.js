@@ -63,7 +63,7 @@ export const baseSchema = {
 export const projectsGetQuerySchema = Joi.object()
   .keys({
     page: Joi.number().min(1),
-    limit: Joi.number().max(100).min(1),
+    limit: Joi.number().max(1000).min(1),
     search: Joi.string(),
     columns: Joi.array().items(Joi.string()).single(),
     orgUid: Joi.string(),
