@@ -1,3 +1,14 @@
+## [1.7.14](https://github.com/Chia-Network/cadt/compare/1.7.13...1.7.14) (2024-04-09)
+
+
+### Bug Fixes
+
+* allow unpaginated requests on xls download ([e13bf3e](https://github.com/Chia-Network/cadt/commit/e13bf3e45f6473ce9f7170bec33f256e3f5716a4))
+* move max limit to 1000 for pagination ([6141a03](https://github.com/Chia-Network/cadt/commit/6141a03bc765e451450302fe6e52a2a1dcbe482d))
+* untokenized units sql operator ([b54d439](https://github.com/Chia-Network/cadt/commit/b54d43984bbc7d934c48502a18a3d69ac8300415))
+
+
+
 ## [1.7.13](https://github.com/Chia-Network/cadt/compare/1.7.12...1.7.13) (2024-04-05)
 
 
