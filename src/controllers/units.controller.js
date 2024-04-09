@@ -263,7 +263,10 @@ export const findAll = async (req, res) => {
       }
 
       where.marketplace = {
-        [Sequelize.Op.not]: 'Tokenized on Chia',
+        [Sequelize.Op.or]: [
+          { [Sequelize.Op.is]: null },
+          { [Sequelize.Op.not]: 'Tokenized on Chia' },
+        ],
       };
     }
 
