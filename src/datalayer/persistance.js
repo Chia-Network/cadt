@@ -37,6 +37,8 @@ const getMirrors = async (storeId) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_mirrors`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url} ${storeId}`);
+
   try {
     const response = await superagent
       .post(url)
@@ -62,6 +64,8 @@ const getMirrors = async (storeId) => {
 const getValue = async (storeId, storeKey) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_value`;
   const { cert, key, timeout } = getBaseOptions();
+
+  logger.trace(`RPC Call: ${url} ${storeId}`);
 
   try {
     const response = await superagent
@@ -118,6 +122,10 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     return true;
   }
 
+  logger.trace(
+    `RPC Call: ${CONFIG().CHIA.DATALAYER_HOST}/add_mirror ${storeId}`,
+  );
+
   try {
     const options = {
       id: storeId,
@@ -168,6 +176,8 @@ const removeMirror = async (storeId, coinId) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/delete_mirror`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url} ${storeId}`);
+
   try {
     const response = await superagent
       .post(url)
@@ -198,6 +208,8 @@ const getRootDiff = async (storeId, root1, root2) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_kv_diff`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url} ${storeId}`);
+
   try {
     const response = await superagent
       .post(url)
@@ -226,6 +238,8 @@ const getRootDiff = async (storeId, root1, root2) => {
 const getRootHistory = async (storeId) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_root_history`;
   const { cert, key, timeout } = getBaseOptions();
+
+  logger.trace(`RPC Call: ${url} ${storeId}`);
 
   try {
     const response = await superagent
@@ -285,6 +299,8 @@ const dataLayerAvailable = async () => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_routes`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url}`);
+
   try {
     const response = await superagent
       .post(url)
@@ -319,6 +335,8 @@ const getStoreData = async (storeId, rootHash) => {
 
     const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_keys_values`;
     const { cert, key, timeout } = getBaseOptions();
+
+    logger.trace(`RPC Call: ${url} ${storeId}`);
 
     try {
       const response = await superagent
@@ -369,6 +387,8 @@ const getRoot = async (storeId, ignoreEmptyStore = false) => {
   const url = `${CHIA.DATALAYER_HOST}/get_root`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url} ${storeId}`);
+
   try {
     const response = await superagent
       .post(url)
@@ -394,6 +414,8 @@ const getRoots = async (storeIds) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_roots`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url}`);
+
   try {
     const response = await superagent
       .post(url)
@@ -418,6 +440,8 @@ const getRoots = async (storeIds) => {
 const clearPendingRoots = async (storeId) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/clear_pending_roots`;
   const { cert, key, timeout } = getBaseOptions();
+
+  logger.trace(`RPC Call: ${url} ${storeId}`);
 
   try {
     const response = await superagent
@@ -452,6 +476,7 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
       const url = `${CONFIG().CHIA.DATALAYER_HOST}/batch_update`;
 
       logger.info(`POST ${url}`);
+      logger.trace(`RPC Call: ${url} ${storeId}`);
       const { cert, key, timeout } = getBaseOptions();
 
       const response = await superagent
@@ -509,6 +534,8 @@ const createDataLayerStore = async () => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/create_data_store`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url}`);
+
   try {
     const response = await superagent
       .post(url)
@@ -556,6 +583,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   const { cert, key, timeout } = getBaseOptions();
 
   logger.info(`Subscribing to: ${storeId}`);
+  logger.trace(`RPC Call: ${url} ${storeId}`);
 
   try {
     const response = await superagent
@@ -595,6 +623,8 @@ const getSubscriptions = async () => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/subscriptions`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url}`);
+
   try {
     const response = await superagent
       .post(url)
@@ -621,6 +651,8 @@ const getSubscriptions = async () => {
 const makeOffer = async (offer) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/make_offer`;
   const { cert, key, timeout } = getBaseOptions();
+
+  logger.trace(`RPC Call: ${url}`);
 
   try {
     const response = await superagent
@@ -650,6 +682,8 @@ const takeOffer = async (offer) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/take_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url}`);
+
   try {
     const response = await superagent
       .post(url)
@@ -676,6 +710,8 @@ const verifyOffer = async (offer) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/verify_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url}`);
+
   try {
     const response = await superagent
       .post(url)
@@ -700,6 +736,8 @@ const verifyOffer = async (offer) => {
 const cancelOffer = async (tradeId) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/cancel_offer`;
   const { cert, key, timeout } = getBaseOptions();
+
+  logger.trace(`RPC Call: ${url}`);
 
   try {
     const response = await superagent
