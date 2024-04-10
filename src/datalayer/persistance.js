@@ -474,10 +474,9 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
       await wallet.waitForAllTransactionsToConfirm();
 
       const url = `${CONFIG().CHIA.DATALAYER_HOST}/batch_update`;
-
-      logger.info(`POST ${url}`);
-      logger.trace(`RPC Call: ${url} ${storeId}`);
       const { cert, key, timeout } = getBaseOptions();
+
+      logger.trace(`RPC Call: ${url} ${storeId}`);
 
       const response = await superagent
         .post(url)
