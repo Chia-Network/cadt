@@ -767,6 +767,8 @@ const getSyncStatus = async (storeId) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_sync_status`;
   const { cert, key, timeout } = getBaseOptions();
 
+  logger.trace(`RPC Call: ${url}`);
+
   try {
     const response = await superagent
       .post(url)
