@@ -28,6 +28,8 @@ export const homeOrgSyncStatus = async (req, res) => {
       where: { commited: true },
     });
 
+    const { sync_status } = await datalayer.getSyncStatus(homeOrg.orgUid);
+
     return res.json({
       ready:
         walletSynced && Boolean(homeOrg?.synced) && pendingCommitsCount === 0,
@@ -35,6 +37,8 @@ export const homeOrgSyncStatus = async (req, res) => {
         wallet_synced: walletSynced,
         home_org_synced: Boolean(homeOrg?.synced),
         pending_commits: pendingCommitsCount,
+        home_org_profile_synced:
+          sync_status.target_root_hash === homeOrg.orgHash,
       },
       success: true,
     });
