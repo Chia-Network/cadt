@@ -69,7 +69,7 @@ export const unitsGetQuerySchema = Joi.object({
   hasMarketplaceIdentifier: Joi.boolean(),
   onlyTokenizedUnits: Joi.boolean(),
   includeProjectInfoInSearch: Joi.boolean(),
-  filter: Joi.string().regex(genericFilterRegex).min(1).max(100),
+  filter: Joi.string().regex(genericFilterRegex),
 })
   .when(Joi.object({ warehouseUnitId: Joi.exist() }).unknown(), {
     then: Joi.object({
