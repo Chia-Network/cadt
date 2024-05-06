@@ -265,7 +265,7 @@ const syncOrganizationAudit = async (organization) => {
 
     const { sync_status } = await datalayer.getSyncStatus(homeOrg.orgUid);
 
-    if (sync_status.root_hash !== sync_status.target_root_hash) {
+    if (toBeProcessedIndex > sync_status.generation) {
       const warningMsg = [
         `No data found for ${organization.name} in the current datalayer generation.`,
         `Missing data for root hash: ${root2.root_hash}.`,
