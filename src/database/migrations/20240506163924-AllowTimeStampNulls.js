@@ -9,7 +9,6 @@ export default {
    * List of table names to be modified.
    */
   tables: [
-    'audit',
     'coBenefits',
     'estimations',
     'issuances',
@@ -29,21 +28,16 @@ export default {
    * @returns {Promise<void>}
    */
   async up(queryInterface, Sequelize) {
-    await Promise.all(
-      this.tables.map((table) => {
-        return queryInterface
-          .changeColumn(table, 'createdAt', {
-            allowNull: true,
-            type: Sequelize.DATE,
-          })
-          .then(() => {
-            return queryInterface.changeColumn(table, 'updatedAt', {
-              allowNull: true,
-              type: Sequelize.DATE,
-            });
-          });
-      }),
-    );
+    for (const table of this.tables) {
+      await queryInterface.changeColumn(table, 'createdAt', {
+        allowNull: true,
+        type: Sequelize.DATE,
+      });
+      await queryInterface.changeColumn(table, 'updatedAt', {
+        allowNull: true,
+        type: Sequelize.DATE,
+      });
+    }
   },
 
   /**
@@ -52,20 +46,15 @@ export default {
    * @returns {Promise<void>}
    */
   async down(queryInterface, Sequelize) {
-    await Promise.all(
-      this.tables.map((table) => {
-        return queryInterface
-          .changeColumn(table, 'createdAt', {
-            allowNull: false,
-            type: Sequelize.DATE,
-          })
-          .then(() => {
-            return queryInterface.changeColumn(table, 'updatedAt', {
-              allowNull: false,
-              type: Sequelize.DATE,
-            });
-          });
-      }),
-    );
+    for (const table of this.tables) {
+      await queryInterface.changeColumn(table, 'createdAt', {
+        allowNull: false,
+        type: Sequelize.DATE,
+      });
+      await queryInterface.changeColumn(table, 'updatedAt', {
+        allowNull: false,
+        type: Sequelize.DATE,
+      });
+    }
   },
 };

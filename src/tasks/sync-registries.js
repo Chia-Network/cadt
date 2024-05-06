@@ -263,7 +263,7 @@ const syncOrganizationAudit = async (organization) => {
       return;
     }
 
-    const { sync_status } = await datalayer.getSyncStatus(homeOrg.orgUid);
+    const { sync_status } = await datalayer.getSyncStatus(organization.orgUid);
 
     if (toBeProcessedIndex > sync_status.generation) {
       const warningMsg = [
