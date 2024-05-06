@@ -33,6 +33,7 @@ import AddOrgMetadata from './20220831023546-add-org-metadata';
 import OrgSyncStatus from './20231020201652-OrgSyncStatus';
 import OrgSyncRemaining from './20231020214357-OrgSyncRemainingCount';
 import AddGenerationIndexToAudit from './20231207142225-AddGenerationIndexToAudit';
+import AllowTimeStampNulls from './20240506163924-AllowTimeStampNulls';
 
 export const migrations = [
   {
@@ -178,5 +179,9 @@ export const migrations = [
   {
     migration: AddGenerationIndexToAudit,
     name: '20231207142225-AddGenerationIndexToAudit',
+  },
+  {
+    migration: AllowTimeStampNulls,
+    name: '20240506163924-AllowTimeStampNulls',
   },
 ];
