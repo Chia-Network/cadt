@@ -210,7 +210,6 @@ const syncOrganizationAudit = async (organization) => {
     }
 
     const lastProcessedIndex = currentGeneration.generation;
-    logger.debug(`1 Last processed index: ${lastProcessedIndex}`);
 
     if (lastProcessedIndex > rootHistory.length) {
       logger.error(
@@ -236,8 +235,6 @@ const syncOrganizationAudit = async (organization) => {
     }
 
     const toBeProcessedIndex = lastProcessedIndex + 1;
-    logger.debug(`3 Last processed index: ${lastProcessedIndex}`);
-    logger.debug(`4 To be processed index: ${toBeProcessedIndex}`);
 
     // Organization not synced, sync it
     logger.info(' ');
@@ -252,9 +249,8 @@ const syncOrganizationAudit = async (organization) => {
       await new Promise((resolve) => setTimeout(resolve, 30000));
     }
 
-    logger.debug(`5 Last processed index: ${lastProcessedIndex}`);
     const root1 = _.get(rootHistory, `[${lastProcessedIndex}]`);
-    logger.debug(`6 To be processed index: ${toBeProcessedIndex}`);
+
     const root2 = _.get(rootHistory, `[${toBeProcessedIndex}]`);
 
     logger.info(`ROOT 1 ${JSON.stringify(root1)}`);
@@ -267,16 +263,9 @@ const syncOrganizationAudit = async (organization) => {
       return;
     }
 
-    logger.debug(`7 Last processed index: ${lastProcessedIndex}`);
-    logger.debug(`8 To be processed index: ${toBeProcessedIndex}`);
+    const { sync_status } = await datalayer.getSyncStatus(organization.orgUid);
 
-    const kvDiff = await datalayer.getRootDiff(
-      organization.registryId,
-      root1.root_hash,
-      root2.root_hash,
-    );
-
-    if (_.isEmpty(kvDiff)) {
+    if (toBeProcessedIndex > sync_status.generation) {
       const warningMsg = [
         `No data found for ${organization.name} in the current datalayer generation.`,
         `Missing data for root hash: ${root2.root_hash}.`,
@@ -288,6 +277,12 @@ const syncOrganizationAudit = async (organization) => {
       logger.warn(warningMsg);
       return;
     }
+
+    const kvDiff = await datalayer.getRootDiff(
+      organization.registryId,
+      root1.root_hash,
+      root2.root_hash,
+    );
 
     const comment = kvDiff.filter(
       (diff) =>
