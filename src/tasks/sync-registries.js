@@ -247,22 +247,23 @@ const syncOrganizationAudit = async (organization) => {
 
     if (!CONFIG.USE_SIMULATOR) {
       await new Promise((resolve) => setTimeout(resolve, 30000));
-    }
 
-    const { sync_status } = await datalayer.getSyncStatus(organization.orgUid);
-    console.log(sync_status, lastProcessedIndex, sync_status.generation);
+      const { sync_status } = await datalayer.getSyncStatus(
+        organization.orgUid,
+      );
 
-    if (lastProcessedIndex > sync_status.generation) {
-      const warningMsg = [
-        `No data found for ${organization.name} in the current datalayer generation.`,
-        `DataLayer not yet caught up to generation ${lastProcessedIndex}.`,
-        `This issue is often temporary and could be due to a lag in data propagation.`,
-        'Syncing for this organization will be paused until this is resolved.',
-        'For ongoing issues, please contact the organization.',
-      ].join(' ');
+      if (lastProcessedIndex > sync_status.generation) {
+        const warningMsg = [
+          `No data found for ${organization.name} in the current datalayer generation.`,
+          `DataLayer not yet caught up to generation ${lastProcessedIndex}.`,
+          `This issue is often temporary and could be due to a lag in data propagation.`,
+          'Syncing for this organization will be paused until this is resolved.',
+          'For ongoing issues, please contact the organization.',
+        ].join(' ');
 
-      logger.warn(warningMsg);
-      return;
+        logger.warn(warningMsg);
+        return;
+      }
     }
 
     const root1 = _.get(rootHistory, `[${lastProcessedIndex}]`);
