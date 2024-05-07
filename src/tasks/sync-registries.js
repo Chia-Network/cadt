@@ -309,88 +309,107 @@ const syncOrganizationAudit = async (organization) => {
       logger.info(
         `Syncing ${organization.name} generation ${toBeProcessedIndex}`,
       );
-      for (const diff of optimizedKvDiff) {
-        const key = decodeHex(diff.key);
-        const modelKey = key.split('|')[0];
 
+      if (_.isEmpty(optimizedKvDiff)) {
         const auditData = {
           orgUid: organization.orgUid,
           registryId: organization.registryId,
           rootHash: root2.root_hash,
-          type: diff.type,
-          table: modelKey,
-          change: decodeHex(diff.value),
+          type: 'NO CHANGE',
+          table: null,
+          change: null,
           onchainConfirmationTimeStamp: root2.timestamp,
           generation: toBeProcessedIndex,
-          comment: _.get(
-            tryParseJSON(
-              decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
-            ),
-            'comment',
-            '',
-          ),
-          author: _.get(
-            tryParseJSON(
-              decodeHex(_.get(author, '[0].value', encodeHex('{}'))),
-            ),
-            'author',
-            '',
-          ),
+          comment: '',
+          author: '',
         };
 
-        if (modelKey && Object.keys(ModelKeys).includes(modelKey)) {
-          const record = JSON.parse(decodeHex(diff.value));
-          const primaryKeyValue =
-            record[ModelKeys[modelKey].primaryKeyAttributes[0]];
+        await Audit.create(auditData, { transaction, mirrorTransaction });
+      } else {
+        for (const diff of optimizedKvDiff) {
+          const key = decodeHex(diff.key);
+          const modelKey = key.split('|')[0];
 
-          if (diff.type === 'INSERT') {
-            logger.info(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
-            await ModelKeys[modelKey].upsert(record, {
-              transaction,
-              mirrorTransaction,
-            });
-          } else if (diff.type === 'DELETE') {
-            logger.info(`DELETING: ${modelKey} - ${primaryKeyValue}`);
-            await ModelKeys[modelKey].destroy({
-              where: {
-                [ModelKeys[modelKey].primaryKeyAttributes[0]]: primaryKeyValue,
-              },
-              transaction,
-              mirrorTransaction,
-            });
-          }
+          const auditData = {
+            orgUid: organization.orgUid,
+            registryId: organization.registryId,
+            rootHash: root2.root_hash,
+            type: diff.type,
+            table: modelKey,
+            change: decodeHex(diff.value),
+            onchainConfirmationTimeStamp: root2.timestamp,
+            generation: toBeProcessedIndex,
+            comment: _.get(
+              tryParseJSON(
+                decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
+              ),
+              'comment',
+              '',
+            ),
+            author: _.get(
+              tryParseJSON(
+                decodeHex(_.get(author, '[0].value', encodeHex('{}'))),
+              ),
+              'author',
+              '',
+            ),
+          };
 
-          if (organization.orgUid === homeOrg?.orgUid) {
-            const stagingUuid = [
-              'unit',
-              'project',
-              'units',
-              'projects',
-            ].includes(modelKey)
-              ? primaryKeyValue
-              : undefined;
+          if (modelKey && Object.keys(ModelKeys).includes(modelKey)) {
+            const record = JSON.parse(decodeHex(diff.value));
+            const primaryKeyValue =
+              record[ModelKeys[modelKey].primaryKeyAttributes[0]];
 
-            if (stagingUuid) {
-              afterCommitCallbacks.push(async () => {
-                logger.info(`DELETING STAGING: ${stagingUuid}`);
-                await Staging.destroy({
-                  where: { uuid: stagingUuid },
-                });
+            if (diff.type === 'INSERT') {
+              logger.info(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
+              await ModelKeys[modelKey].upsert(record, {
+                transaction,
+                mirrorTransaction,
+              });
+            } else if (diff.type === 'DELETE') {
+              logger.info(`DELETING: ${modelKey} - ${primaryKeyValue}`);
+              await ModelKeys[modelKey].destroy({
+                where: {
+                  [ModelKeys[modelKey].primaryKeyAttributes[0]]:
+                    primaryKeyValue,
+                },
+                transaction,
+                mirrorTransaction,
               });
             }
-          }
-        }
 
-        // Create the Audit record
-        await Audit.create(auditData, { transaction, mirrorTransaction });
-        await Organization.update(
-          { registryHash: root2.root_hash },
-          {
-            where: { orgUid: organization.orgUid },
-            transaction,
-            mirrorTransaction,
-          },
-        );
+            if (organization.orgUid === homeOrg?.orgUid) {
+              const stagingUuid = [
+                'unit',
+                'project',
+                'units',
+                'projects',
+              ].includes(modelKey)
+                ? primaryKeyValue
+                : undefined;
+
+              if (stagingUuid) {
+                afterCommitCallbacks.push(async () => {
+                  logger.info(`DELETING STAGING: ${stagingUuid}`);
+                  await Staging.destroy({
+                    where: { uuid: stagingUuid },
+                  });
+                });
+              }
+            }
+          }
+
+          // Create the Audit record
+          await Audit.create(auditData, { transaction, mirrorTransaction });
+          await Organization.update(
+            { registryHash: root2.root_hash },
+            {
+              where: { orgUid: organization.orgUid },
+              transaction,
+              mirrorTransaction,
+            },
+          );
+        }
       }
     };
 
