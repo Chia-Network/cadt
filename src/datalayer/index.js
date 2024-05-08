@@ -2,7 +2,7 @@ import writeService from './writeService';
 import syncService from './syncService';
 import wallet from './wallet';
 import fullNode from './fullNode';
-import persistance from './persistance';
+import * as persistance from './persistance';
 
 export default {
   ...writeService,
