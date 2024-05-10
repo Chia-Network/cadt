@@ -383,37 +383,37 @@ const syncOrganizationAudit = async (organization) => {
                 mirrorTransaction,
               });
             }
+          }
 
-            if (organization.orgUid === homeOrg?.orgUid) {
-              afterCommitCallbacks.push(async () => {
-                logger.info(`ATTEMPTING TO TRUNCATE STAGING TABLE`);
+          if (organization.orgUid === homeOrg?.orgUid) {
+            afterCommitCallbacks.push(async () => {
+              logger.info(`ATTEMPTING TO TRUNCATE STAGING TABLE`);
 
-                let success = false;
-                let attempts = 0;
-                const maxAttempts = 5; // Set a maximum number of attempts to avoid infinite loops
+              let success = false;
+              let attempts = 0;
+              const maxAttempts = 5; // Set a maximum number of attempts to avoid infinite loops
 
-                while (!success && attempts < maxAttempts) {
-                  try {
-                    await Staging.truncate();
-                    success = true; // If truncate succeeds, set success to true to exit the loop
-                    logger.info('STAGING TABLE TRUNCATED SUCCESSFULLY');
-                  } catch (error) {
-                    attempts++;
+              while (!success && attempts < maxAttempts) {
+                try {
+                  await Staging.truncate();
+                  success = true; // If truncate succeeds, set success to true to exit the loop
+                  logger.info('STAGING TABLE TRUNCATED SUCCESSFULLY');
+                } catch (error) {
+                  attempts++;
+                  logger.error(
+                    `TRUNCATION FAILED ON ATTEMPT ${attempts}: ${error.message}`,
+                  );
+                  if (attempts < maxAttempts) {
+                    logger.info('WAITING 1 SECOND BEFORE RETRYING...');
+                    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
+                  } else {
                     logger.error(
-                      `TRUNCATION FAILED ON ATTEMPT ${attempts}: ${error.message}`,
+                      'MAXIMUM TRUNCATION ATTEMPTS REACHED, GIVING UP',
                     );
-                    if (attempts < maxAttempts) {
-                      logger.info('WAITING 1 SECOND BEFORE RETRYING...');
-                      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
-                    } else {
-                      logger.error(
-                        'MAXIMUM TRUNCATION ATTEMPTS REACHED, GIVING UP',
-                      );
-                    }
                   }
                 }
-              });
-            }
+              }
+            });
           }
 
           // Create the Audit record
