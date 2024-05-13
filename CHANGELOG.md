@@ -1,3 +1,25 @@
+## [1.7.15](https://github.com/Chia-Network/cadt/compare/1.7.14...1.7.15) (2024-05-13)
+
+
+### Bug Fixes
+
+* assertNoPendingCommits ([70f09e8](https://github.com/Chia-Network/cadt/commit/70f09e8aa0ec72761b014c9bb25345ff781e9670))
+* clear staging table ([75cbca0](https://github.com/Chia-Network/cadt/commit/75cbca003994858b1c816712c17075091ec3e3d5))
+* empty sync ([1a19a04](https://github.com/Chia-Network/cadt/commit/1a19a04907c11bd22f6b54b4d9c812df3a18d065))
+* missing function ([4cf1159](https://github.com/Chia-Network/cadt/commit/4cf11598d008601bf248d39c31a522eeefcd1f13))
+* missing function ([35230b9](https://github.com/Chia-Network/cadt/commit/35230b9d86c628487637009db0e975f3f97d2bf9))
+* registry id on sync status ([3678a9b](https://github.com/Chia-Network/cadt/commit/3678a9b161da6c9ffcb8d69feffc685f58beb9a2))
+* sync status export ([61271c0](https://github.com/Chia-Network/cadt/commit/61271c00fb0ff8cdda4ec8223fe52e526aeac999))
+* truncate staging only once ([2ff211d](https://github.com/Chia-Network/cadt/commit/2ff211dd98119f77fbc64494693315e9a558f470))
+* truncate staging only once ([49ae20f](https://github.com/Chia-Network/cadt/commit/49ae20f0ed4b4fdac51db2883a632ce0e07a8bd8))
+
+
+### Features
+
+* add homeorg profile sync status ([ea011ee](https://github.com/Chia-Network/cadt/commit/ea011ee4d3374a6ee2751323fbdd0e309febfc71))
+
+
+
 ## [1.7.14](https://github.com/Chia-Network/cadt/compare/1.7.13...1.7.14) (2024-04-09)
 
 
