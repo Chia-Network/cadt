@@ -126,7 +126,7 @@ POST Options:
 
 ```json
 // Request
-curl --location -g --request POST 'localhost:31310/v1/organizations/create' \
+curl --location -g --request POST 'localhost:31310/v1/organizations/' \
      --header 'Content-Type: application/json' \
      --data-raw '{
         "name": "Sample Org",

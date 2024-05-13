@@ -175,10 +175,6 @@ const removeMirror = (storeId, coinId) => {
   return dataLayer.removeMirror(storeId, coinId);
 };
 
-const getSyncStatus = (orgUid) => {
-  return dataLayer.getSyncStatus(orgUid);
-};
-
 const getValue = async (storeId, key) => {
   if (USE_SIMULATOR) {
     return '7b22636f6d6d656e74223a2022227d';
@@ -196,5 +192,4 @@ export default {
   upsertDataLayer,
   removeMirror,
   getValue,
-  getSyncStatus,
 };
