@@ -104,7 +104,7 @@ const getSyncStatus = async (storeId) => {
   if (USE_SIMULATOR) {
     return {
       sync_status: {
-        generation: 100,
+        generation: 10000,
       },
     };
   } else {
