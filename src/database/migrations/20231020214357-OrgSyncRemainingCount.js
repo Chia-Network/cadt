@@ -2,22 +2,26 @@
 
 export default {
   async up(queryInterface, Sequelize) {
-    await Promise.all(
-      ['organizations'].map((table) => {
-        queryInterface.addColumn(table, 'sync_remaining', {
-          type: Sequelize.INTEGER,
-          allowNull: true,
-          defaultValue: false,
-        });
-      }),
-    );
+    const tableDescription =
+      await queryInterface.describeTable('organizations');
+
+    // Check if the 'sync_remaining' column exists before adding it
+    if (!tableDescription.sync_remaining) {
+      await queryInterface.addColumn('organizations', 'sync_remaining', {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        defaultValue: false,
+      });
+    }
   },
 
   async down(queryInterface) {
-    await Promise.all(
-      ['organizations'].map((table) => {
-        queryInterface.removeColumn(table, 'sync_remaining');
-      }),
-    );
+    const tableDescription =
+      await queryInterface.describeTable('organizations');
+
+    // Check if the 'sync_remaining' column exists before removing it
+    if (tableDescription.sync_remaining) {
+      await queryInterface.removeColumn('organizations', 'sync_remaining');
+    }
   },
 };

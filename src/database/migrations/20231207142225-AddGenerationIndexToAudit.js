@@ -2,21 +2,23 @@
 
 export default {
   async up(queryInterface, Sequelize) {
-    await Promise.all(
-      ['audit'].map((table) => {
-        queryInterface.addColumn(table, 'generation', {
-          type: Sequelize.INTEGER,
-          allowNull: true,
-        });
-      }),
-    );
+    const table = 'audit';
+    const tableDescription = await queryInterface.describeTable(table);
+
+    if (!tableDescription.generation) {
+      await queryInterface.addColumn(table, 'generation', {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+      });
+    }
   },
 
   async down(queryInterface) {
-    await Promise.all(
-      ['audit'].map((table) => {
-        queryInterface.removeColumn(table, 'generation');
-      }),
-    );
+    const table = 'audit';
+    const tableDescription = await queryInterface.describeTable(table);
+
+    if (tableDescription.generation) {
+      await queryInterface.removeColumn(table, 'generation');
+    }
   },
 };

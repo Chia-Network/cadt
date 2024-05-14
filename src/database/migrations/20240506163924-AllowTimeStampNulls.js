@@ -28,15 +28,17 @@ export default {
    * @returns {Promise<void>}
    */
   async up(queryInterface, Sequelize) {
-    for (const table of this.tables) {
-      await queryInterface.changeColumn(table, 'createdAt', {
-        allowNull: true,
-        type: Sequelize.DATE,
-      });
-      await queryInterface.changeColumn(table, 'updatedAt', {
-        allowNull: true,
-        type: Sequelize.DATE,
-      });
+    if (queryInterface.sequelize.getDialect() === 'sqlite') {
+      for (const table of this.tables) {
+        await queryInterface.changeColumn(table, 'createdAt', {
+          allowNull: true,
+          type: Sequelize.DATE,
+        });
+        await queryInterface.changeColumn(table, 'updatedAt', {
+          allowNull: true,
+          type: Sequelize.DATE,
+        });
+      }
     }
   },
 

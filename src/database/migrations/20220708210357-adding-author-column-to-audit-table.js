@@ -2,21 +2,23 @@
 
 export default {
   async up(queryInterface, Sequelize) {
-    await Promise.all(
-      ['audit'].map((table) => {
-        queryInterface.addColumn(table, 'author', {
-          type: Sequelize.STRING,
-          allowNull: true,
-        });
-      }),
-    );
+    const tableDescription = await queryInterface.describeTable('audit');
+
+    // Check if the 'author' column exists before adding it
+    if (!tableDescription.author) {
+      await queryInterface.addColumn('audit', 'author', {
+        type: Sequelize.STRING,
+        allowNull: true,
+      });
+    }
   },
 
   async down(queryInterface) {
-    await Promise.all(
-      ['audit'].map((table) => {
-        queryInterface.removeColumn(table, 'author');
-      }),
-    );
+    const tableDescription = await queryInterface.describeTable('audit');
+
+    // Check if the 'author' column exists before removing it
+    if (tableDescription.author) {
+      await queryInterface.removeColumn('audit', 'author');
+    }
   },
 };
