@@ -100,6 +100,18 @@ const getRootDiff = (storeId, root1, root2) => {
   }
 };
 
+const getSyncStatus = async (storeId) => {
+  if (USE_SIMULATOR) {
+    return {
+      sync_status: {
+        generation: 100,
+      },
+    };
+  } else {
+    return dataLayer.getSyncStatus(storeId);
+  }
+};
+
 /**
  * Fetches store data and invokes either a callback or an error handler.
  *
@@ -208,4 +220,5 @@ export default {
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
   waitForAllTransactionsToConfirm,
+  getSyncStatus,
 };

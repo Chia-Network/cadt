@@ -296,9 +296,7 @@ const syncOrganizationAudit = async (organization) => {
       }
     }
 
-    logger.debug(`5 Last processed index: ${lastProcessedIndex}`);
     const root1 = _.get(rootHistory, `[${lastProcessedIndex}]`);
-    logger.debug(`6 To be processed index: ${toBeProcessedIndex}`);
     const root2 = _.get(rootHistory, `[${toBeProcessedIndex}]`);
 
     logger.info(`ROOT 1 ${JSON.stringify(root1)}`);
@@ -310,9 +308,6 @@ const syncOrganizationAudit = async (organization) => {
       );
       return;
     }
-
-    logger.debug(`7 Last processed index: ${lastProcessedIndex}`);
-    logger.debug(`8 To be processed index: ${toBeProcessedIndex}`);
 
     const kvDiff = await datalayer.getRootDiff(
       organization.registryId,
