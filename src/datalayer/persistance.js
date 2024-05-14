@@ -716,34 +716,6 @@ const cancelOffer = async (tradeId) => {
   }
 };
 
-const getSyncStatus = async (storeId) => {
-  const url = `${CONFIG.DATALAYER_URL}/get_sync_status`;
-  const { cert, key, timeout } = getBaseOptions();
-
-  try {
-    const response = await superagent
-      .post(url)
-      .key(key)
-      .cert(cert)
-      .timeout(timeout)
-      .send({
-        id: storeId,
-      });
-
-    const data = response.body;
-
-    // We just care that we got some response, not what the response is
-    if (Object.keys(data).includes('success')) {
-      return data;
-    }
-
-    return false;
-  } catch (error) {
-    logger.error(error);
-    return false;
-  }
-};
-
 export {
   addMirror,
   makeOffer,
@@ -765,5 +737,4 @@ export {
   takeOffer,
   clearPendingRoots,
   getValue,
-  getSyncStatus,
 };

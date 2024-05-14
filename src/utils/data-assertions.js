@@ -58,15 +58,23 @@ export const assertIfReadOnlyMode = async () => {
 };
 
 export const assertNoPendingCommits = async () => {
-  const pendingCommits = await Staging.findAll({
-    where: { commited: true, failedCommit: false },
-    raw: true,
-  });
+  if (USE_SIMULATOR) {
+    const pendingCommits = await Staging.findAll({
+      where: { commited: true, failedCommit: false },
+      raw: true,
+    });
 
-  if (pendingCommits.length > 0) {
-    throw new Error(
-      'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
-    );
+    if (pendingCommits.length > 0) {
+      throw new Error(
+        'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
+      );
+    }
+  } else {
+    if (await datalayer.hasUnconfirmedTransactions()) {
+      throw new Error(
+        'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
+      );
+    }
   }
 };
 
