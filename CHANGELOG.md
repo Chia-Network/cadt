@@ -1,4 +1,4 @@
-## [1.7.15](https://github.com/Chia-Network/cadt/compare/1.7.14...1.7.15) (2024-05-13)
+## [1.7.15](https://github.com/Chia-Network/cadt/compare/1.7.14...1.7.15) (2024-05-15)
 
 
 ### Bug Fixes
@@ -8,6 +8,7 @@
 * empty sync ([1a19a04](https://github.com/Chia-Network/cadt/commit/1a19a04907c11bd22f6b54b4d9c812df3a18d065))
 * missing function ([4cf1159](https://github.com/Chia-Network/cadt/commit/4cf11598d008601bf248d39c31a522eeefcd1f13))
 * missing function ([35230b9](https://github.com/Chia-Network/cadt/commit/35230b9d86c628487637009db0e975f3f97d2bf9))
+* null fix during sync ([2a28d13](https://github.com/Chia-Network/cadt/commit/2a28d138f3bd3956f57c4936159a52250148a972))
 * registry id on sync status ([3678a9b](https://github.com/Chia-Network/cadt/commit/3678a9b161da6c9ffcb8d69feffc685f58beb9a2))
 * sync status export ([61271c0](https://github.com/Chia-Network/cadt/commit/61271c00fb0ff8cdda4ec8223fe52e526aeac999))
 * truncate staging only once ([2ff211d](https://github.com/Chia-Network/cadt/commit/2ff211dd98119f77fbc64494693315e9a558f470))
