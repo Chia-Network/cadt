@@ -395,6 +395,17 @@ const syncOrganizationAudit = async (organization) => {
 
             if (diff.type === 'INSERT') {
               logger.info(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
+
+              // Remove updatedAt fields if they exist
+              // This is because the db will update this field automatically and its not allowed to be null
+              delete record.updatedAt;
+
+              // if createdAt is null, remove it, so that the db will update it automatically
+              // this field is also not allowed to be null
+              if (_.isNil(record.createdAt)) {
+                delete record.createdAt;
+              }
+
               await ModelKeys[modelKey].upsert(record, {
                 transaction,
                 mirrorTransaction,
