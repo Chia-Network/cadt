@@ -78,7 +78,7 @@
     "sinon": "^17.0.1",
     "socket.io-client": "^4.7.5",
     "standard-version": "^9.5.0",
-    "supertest": "^6.3.4"
+    "supertest": "^7.0.0"
   },
   "standard-version": {
     "skip": {
