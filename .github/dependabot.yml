@@ -6,3 +6,11 @@ updates:
       interval: "weekly"
       day: "sunday"
     target-branch: "develop"
+
+  - package-ecosystem: "github-actions"
+    directory: /
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 10
+    reviewers: ["cmmarslender", "Starttoaster", "pmaslana", "TheLastCicada"]
