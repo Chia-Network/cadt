@@ -292,7 +292,7 @@ jobs:
           zip -r cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-x64
 
       - name: Release
-        uses: softprops/action-gh-release@v0.1.15
+        uses: softprops/action-gh-release@v2.0.5
         with:
           files: |
             cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
