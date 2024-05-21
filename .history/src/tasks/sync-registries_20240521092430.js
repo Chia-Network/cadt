@@ -285,7 +285,7 @@ const syncOrganizationAudit = async (organization) => {
       if (toBeProcessedIndex > sync_status.generation) {
         const warningMsg = [
           `No data found for ${organization.name} in the current datalayer generation.`,
-          `DataLayer not yet caught up to generation ${toBeProcessedIndex}. The current processed generation is ${sync_status.generation}.`,
+          `DataLayer not yet caught up to generation ${lastProcessedIndex}. The current processed generation is ${sync_status.generation}.`,
           `This issue is often temporary and could be due to a lag in data propagation.`,
           'Syncing for this organization will be paused until this is resolved.',
           'For ongoing issues, please contact the organization.',
