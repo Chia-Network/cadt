@@ -286,7 +286,7 @@ const syncOrganizationAudit = async (organization) => {
         organization.registryId,
       );
 
-      if (lastProcessedIndex > sync_status.generation) {
+      if (toBeProcessedIndex > sync_status.generation) {
         const warningMsg = [
           `No data found for ${organization.name} (store ${organization.orgUid}) in the current datalayer generation.`,
           `DataLayer not yet caught up to generation ${lastProcessedIndex}. The current processed generation is ${sync_status.generation}.`,
