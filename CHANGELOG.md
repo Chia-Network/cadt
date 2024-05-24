@@ -1,3 +1,59 @@
+## [1.7.15](https://github.com/Chia-Network/cadt/compare/1.7.14...1.7.15) (2024-05-15)
+
+
+### Bug Fixes
+
+* assertNoPendingCommits ([70f09e8](https://github.com/Chia-Network/cadt/commit/70f09e8aa0ec72761b014c9bb25345ff781e9670))
+* clear staging table ([75cbca0](https://github.com/Chia-Network/cadt/commit/75cbca003994858b1c816712c17075091ec3e3d5))
+* empty sync ([1a19a04](https://github.com/Chia-Network/cadt/commit/1a19a04907c11bd22f6b54b4d9c812df3a18d065))
+* missing function ([4cf1159](https://github.com/Chia-Network/cadt/commit/4cf11598d008601bf248d39c31a522eeefcd1f13))
+* missing function ([35230b9](https://github.com/Chia-Network/cadt/commit/35230b9d86c628487637009db0e975f3f97d2bf9))
+* null fix during sync ([2a28d13](https://github.com/Chia-Network/cadt/commit/2a28d138f3bd3956f57c4936159a52250148a972))
+* registry id on sync status ([3678a9b](https://github.com/Chia-Network/cadt/commit/3678a9b161da6c9ffcb8d69feffc685f58beb9a2))
+* sync status export ([61271c0](https://github.com/Chia-Network/cadt/commit/61271c00fb0ff8cdda4ec8223fe52e526aeac999))
+* truncate staging only once ([2ff211d](https://github.com/Chia-Network/cadt/commit/2ff211dd98119f77fbc64494693315e9a558f470))
+* truncate staging only once ([49ae20f](https://github.com/Chia-Network/cadt/commit/49ae20f0ed4b4fdac51db2883a632ce0e07a8bd8))
+
+
+### Features
+
+* add homeorg profile sync status ([ea011ee](https://github.com/Chia-Network/cadt/commit/ea011ee4d3374a6ee2751323fbdd0e309febfc71))
+
+
+
+## [1.7.14](https://github.com/Chia-Network/cadt/compare/1.7.13...1.7.14) (2024-04-09)
+
+
+### Bug Fixes
+
+* allow unpaginated requests on xls download ([e13bf3e](https://github.com/Chia-Network/cadt/commit/e13bf3e45f6473ce9f7170bec33f256e3f5716a4))
+* move max limit to 1000 for pagination ([6141a03](https://github.com/Chia-Network/cadt/commit/6141a03bc765e451450302fe6e52a2a1dcbe482d))
+* untokenized units sql operator ([b54d439](https://github.com/Chia-Network/cadt/commit/b54d43984bbc7d934c48502a18a3d69ac8300415))
+
+
+
+## [1.7.13](https://github.com/Chia-Network/cadt/compare/1.7.12...1.7.13) (2024-04-05)
+
+
+### Bug Fixes
+
+* change DATALAYER_FILE_SERVER_URL check from error to info ([4451575](https://github.com/Chia-Network/cadt/commit/4451575cb03bf84fd0d21dd5d2997dcf131bb311))
+* false clause of onlytokenizedunits ([b6f5468](https://github.com/Chia-Network/cadt/commit/b6f5468788d1f8aac7b9a84125ad019e3bf64491))
+* handle onlytokenizedunits false clause ([343bae2](https://github.com/Chia-Network/cadt/commit/343bae24f699fc93590ee73f939ac7a9222f0834))
+* import logger correctly for mirror-check ([63b74b6](https://github.com/Chia-Network/cadt/commit/63b74b6666227055522292c43f033b3593f3622b))
+* mirror logic fixes for url and scheduled tasks ([96ac698](https://github.com/Chia-Network/cadt/commit/96ac6989e3c63661491bd58c77438480db61fd09))
+* mirror logic when no homeorg ([06bfe79](https://github.com/Chia-Network/cadt/commit/06bfe79db35fd3997b233164e2d0418f911e5e43))
+* mirror url logic ([46ba5ae](https://github.com/Chia-Network/cadt/commit/46ba5aebbbf4ecf84230fb100bfd2d2834216aa5))
+* update default MIRROR_CHECK_TASK_INTERVAL to be much longer ([1d980db](https://github.com/Chia-Network/cadt/commit/1d980db0bfebcb12c5fd6cc155d1cd2e1d832963))
+* wip debugging mirror logic ([6c561c5](https://github.com/Chia-Network/cadt/commit/6c561c5a87056245872382a329aebeec14dc276a))
+
+
+### Features
+
+* add only tokenized units query param ([2fdf0b2](https://github.com/Chia-Network/cadt/commit/2fdf0b21798a66af1d7b9a4d84d8ded2cc09472f))
+
+
+
 ## [1.7.12](https://github.com/Chia-Network/cadt/compare/1.7.11...1.7.12) (2024-03-08)
 
 

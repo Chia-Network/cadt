@@ -62,7 +62,7 @@ export const baseSchema = {
 
 export const projectsGetQuerySchema = Joi.object({
   page: Joi.number().optional(),
-  limit: Joi.number().max(100).min(1).optional(),
+  limit: Joi.number().max(1000).min(1).optional(),
   search: Joi.string().optional(),
   columns: Joi.array().items(Joi.string()).single().optional(),
   orgUid: Joi.string().optional(),
@@ -76,6 +76,7 @@ export const projectsGetQuerySchema = Joi.object({
   Joi.alternatives([
     Joi.object({ projectIds: Joi.string().required() }).unknown(),
     Joi.object({ warehouseProjectId: Joi.string().required() }).unknown(),
+    Joi.object({ xls: Joi.string().required() }).unknown(),
   ]),
   {
     then: Joi.object({

@@ -138,6 +138,33 @@ const tryParseJSON = (jsonString, defaultValue) => {
   }
 };
 
+const truncateStaging = async () => {
+  logger.info(`ATTEMPTING TO TRUNCATE STAGING TABLE`);
+
+  let success = false;
+  let attempts = 0;
+  const maxAttempts = 5; // Set a maximum number of attempts to avoid infinite loops
+
+  while (!success && attempts < maxAttempts) {
+    try {
+      await Staging.truncate();
+      success = true; // If truncate succeeds, set success to true to exit the loop
+      logger.info('STAGING TABLE TRUNCATED SUCCESSFULLY');
+    } catch (error) {
+      attempts++;
+      logger.error(
+        `TRUNCATION FAILED ON ATTEMPT ${attempts}: ${error.message}`,
+      );
+      if (attempts < maxAttempts) {
+        logger.info('WAITING 1 SECOND BEFORE RETRYING...');
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
+      } else {
+        logger.error('MAXIMUM TRUNCATION ATTEMPTS REACHED, GIVING UP');
+      }
+    }
+  }
+};
+
 const syncOrganizationAudit = async (organization) => {
   try {
     let afterCommitCallbacks = [];
@@ -146,7 +173,9 @@ const syncOrganizationAudit = async (organization) => {
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     if (!rootHistory.length) {
-      logger.info(`No root history found for ${organization.name}`);
+      logger.info(
+        `No root history found for ${organization.name} (store ${organization.orgUid})`,
+      );
       return;
     }
 
@@ -177,7 +206,9 @@ const syncOrganizationAudit = async (organization) => {
     let currentGeneration = _.get(rootHistory, '[0]');
 
     if (!lastRootSaved) {
-      logger.info(`Syncing new registry ${organization.name}`);
+      logger.info(
+        `Syncing new registry ${organization.name} (store ${organization.orgUid})`,
+      );
 
       await Audit.create({
         orgUid: organization.orgUid,
@@ -214,7 +245,7 @@ const syncOrganizationAudit = async (organization) => {
 
     if (lastProcessedIndex > rootHistory.length) {
       logger.error(
-        `Could not find root history for ${organization.name} with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
+        `Could not find root history for ${organization.name} (store ${organization.orgUid}) with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
     }
 
@@ -242,14 +273,31 @@ const syncOrganizationAudit = async (organization) => {
     // Organization not synced, sync it
     logger.info(' ');
     logger.info(
-      `Syncing ${organization.name} generation ${toBeProcessedIndex}`,
+      `Syncing ${organization.name} generation ${toBeProcessedIndex} (store ${organization.orgUid})`,
     );
     logger.info(
-      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced.`,
+      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced (store ${organization.orgUid}).`,
     );
 
     if (!CONFIG.USE_SIMULATOR) {
       await new Promise((resolve) => setTimeout(resolve, 30000));
+
+      const { sync_status } = await datalayer.getSyncStatus(
+        organization.registryId,
+      );
+
+      if (toBeProcessedIndex > sync_status.generation) {
+        const warningMsg = [
+          `No data found for ${organization.name} (store ${organization.orgUid}) in the current datalayer generation.`,
+          `DataLayer not yet caught up to generation ${lastProcessedIndex}. The current processed generation is ${sync_status.generation}.`,
+          `This issue is often temporary and could be due to a lag in data propagation.`,
+          'Syncing for this organization will be paused until this is resolved.',
+          'For ongoing issues, please contact the organization.',
+        ].join(' ');
+
+        logger.warn(warningMsg);
+        return;
+      }
     }
 
     logger.debug(`5 Last processed index: ${lastProcessedIndex}`);
@@ -262,7 +310,7 @@ const syncOrganizationAudit = async (organization) => {
 
     if (!_.get(root2, 'confirmed')) {
       logger.info(
-        `Waiting for the latest root for ${organization.name} to confirm`,
+        `Waiting for the latest root for ${organization.name} to confirm (store ${organization.orgUid})`,
       );
       return;
     }
@@ -275,19 +323,6 @@ const syncOrganizationAudit = async (organization) => {
       root1.root_hash,
       root2.root_hash,
     );
-
-    if (_.isEmpty(kvDiff)) {
-      const warningMsg = [
-        `No data found for ${organization.name} in the current datalayer generation.`,
-        `Missing data for root hash: ${root2.root_hash}.`,
-        `This issue is often temporary and could be due to a lag in data propagation.`,
-        'Syncing for this organization will be paused until this is resolved.',
-        'For ongoing issues, please contact the organization.',
-      ].join(' ');
-
-      logger.warn(warningMsg);
-      return;
-    }
 
     const comment = kvDiff.filter(
       (diff) =>
@@ -310,92 +345,105 @@ const syncOrganizationAudit = async (organization) => {
 
     const updateTransaction = async (transaction, mirrorTransaction) => {
       logger.info(
-        `Syncing ${organization.name} generation ${toBeProcessedIndex}`,
+        `Syncing ${organization.name} generation ${toBeProcessedIndex} (store ${organization.orgUid})`,
       );
-      for (const diff of optimizedKvDiff) {
-        const key = decodeHex(diff.key);
-        const modelKey = key.split('|')[0];
-
+      if (_.isEmpty(optimizedKvDiff)) {
         const auditData = {
           orgUid: organization.orgUid,
           registryId: organization.registryId,
           rootHash: root2.root_hash,
-          type: diff.type,
-          table: modelKey,
-          change: decodeHex(diff.value),
+          type: 'NO CHANGE',
+          table: null,
+          change: null,
           onchainConfirmationTimeStamp: root2.timestamp,
           generation: toBeProcessedIndex,
-          comment: _.get(
-            tryParseJSON(
-              decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
-            ),
-            'comment',
-            '',
-          ),
-          author: _.get(
-            tryParseJSON(
-              decodeHex(_.get(author, '[0].value', encodeHex('{}'))),
-            ),
-            'author',
-            '',
-          ),
+          comment: '',
+          author: '',
         };
 
-        if (modelKey && Object.keys(ModelKeys).includes(modelKey)) {
-          const record = JSON.parse(decodeHex(diff.value));
-          const primaryKeyValue =
-            record[ModelKeys[modelKey].primaryKeyAttributes[0]];
+        await Audit.create(auditData, { transaction, mirrorTransaction });
+      } else {
+        for (const diff of optimizedKvDiff) {
+          const key = decodeHex(diff.key);
+          const modelKey = key.split('|')[0];
 
-          if (diff.type === 'INSERT') {
-            logger.info(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
-            await ModelKeys[modelKey].upsert(record, {
-              transaction,
-              mirrorTransaction,
-            });
-          } else if (diff.type === 'DELETE') {
-            logger.info(`DELETING: ${modelKey} - ${primaryKeyValue}`);
-            await ModelKeys[modelKey].destroy({
-              where: {
-                [ModelKeys[modelKey].primaryKeyAttributes[0]]: primaryKeyValue,
-              },
-              transaction,
-              mirrorTransaction,
-            });
-          }
+          const auditData = {
+            orgUid: organization.orgUid,
+            registryId: organization.registryId,
+            rootHash: root2.root_hash,
+            type: diff.type,
+            table: modelKey,
+            change: decodeHex(diff.value),
+            onchainConfirmationTimeStamp: root2.timestamp,
+            generation: toBeProcessedIndex,
+            comment: _.get(
+              tryParseJSON(
+                decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
+              ),
+              'comment',
+              '',
+            ),
+            author: _.get(
+              tryParseJSON(
+                decodeHex(_.get(author, '[0].value', encodeHex('{}'))),
+              ),
+              'author',
+              '',
+            ),
+          };
 
-          if (organization.orgUid === homeOrg?.orgUid) {
-            const stagingUuid = [
-              'unit',
-              'project',
-              'units',
-              'projects',
-            ].includes(modelKey)
-              ? primaryKeyValue
-              : undefined;
+          if (modelKey && Object.keys(ModelKeys).includes(modelKey)) {
+            const record = JSON.parse(decodeHex(diff.value));
+            const primaryKeyValue =
+              record[ModelKeys[modelKey].primaryKeyAttributes[0]];
 
-            if (stagingUuid) {
-              afterCommitCallbacks.push(async () => {
-                logger.info(`DELETING STAGING: ${stagingUuid}`);
-                await Staging.destroy({
-                  where: { uuid: stagingUuid },
-                });
+            if (diff.type === 'INSERT') {
+              logger.info(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
+
+              // Remove updatedAt fields if they exist
+              // This is because the db will update this field automatically and its not allowed to be null
+              delete record.updatedAt;
+
+              // if createdAt is null, remove it, so that the db will update it automatically
+              // this field is also not allowed to be null
+              if (_.isNil(record.createdAt)) {
+                delete record.createdAt;
+              }
+
+              await ModelKeys[modelKey].upsert(record, {
+                transaction,
+                mirrorTransaction,
+              });
+            } else if (diff.type === 'DELETE') {
+              logger.info(`DELETING: ${modelKey} - ${primaryKeyValue}`);
+              await ModelKeys[modelKey].destroy({
+                where: {
+                  [ModelKeys[modelKey].primaryKeyAttributes[0]]:
+                    primaryKeyValue,
+                },
+                transaction,
+                mirrorTransaction,
               });
             }
           }
-        }
 
-        // Create the Audit record
-        await Audit.create(auditData, { transaction, mirrorTransaction });
-        await Organization.update(
-          { registryHash: root2.root_hash },
-          {
-            where: { orgUid: organization.orgUid },
-            transaction,
-            mirrorTransaction,
-          },
-        );
+          // Create the Audit record
+          await Audit.create(auditData, { transaction, mirrorTransaction });
+          await Organization.update(
+            { registryHash: root2.root_hash },
+            {
+              where: { orgUid: organization.orgUid },
+              transaction,
+              mirrorTransaction,
+            },
+          );
+        }
       }
     };
+
+    if (organization.orgUid === homeOrg?.orgUid) {
+      afterCommitCallbacks.push(truncateStaging);
+    }
 
     await createTransaction(updateTransaction, afterCommitCallbacks);
   } catch (error) {
