@@ -4,6 +4,7 @@ import {
   paginationParams,
   optionallyPaginatedResponse,
 } from '../utils/helpers';
+import _ from 'lodash';
 
 export const findAll = async (req, res) => {
   try {
@@ -20,7 +21,7 @@ export const findAll = async (req, res) => {
     return res.json(optionallyPaginatedResponse(auditResults, page, limit));
   } catch (error) {
     res.status(400).json({
-      message: 'Can not retreive audit data',
+      message: 'Can not retrieve audit data',
       error: error.message,
       success: false,
     });
@@ -32,7 +33,30 @@ export const findConflicts = async (req, res) => {
     return res.json(await Audit.findConflicts());
   } catch (error) {
     res.status(400).json({
-      message: 'Can not retreive audit data',
+      message: 'Can not retrieve audit data',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
+export const resetToGeneration = async (req, res) => {
+  try {
+    const { generation, orgUid } = req.body;
+    const result = await Audit.resetToGeneration(generation, orgUid);
+    if (_.isNil(result)) {
+      throw new Error('query failed');
+    }
+    return res.json({
+      message: result
+        ? 'reset to generation ' + String(generation)
+        : 'no matching records',
+      recordsDeleted: result,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'failed to change generation',
       error: error.message,
       success: false,
     });

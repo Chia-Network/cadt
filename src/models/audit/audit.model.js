@@ -1,6 +1,6 @@
 'use strict';
 
-import Sequelize from 'sequelize';
+import Sequelize, { Op } from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize, safeMirrorDbHandler } from '../../database';
 import { AuditMirror } from './audit.model.mirror';
@@ -44,6 +44,23 @@ class Audit extends Model {
   static async findConflicts() {
     const [results] = await sequelize.query(findDuplicateIssuancesSql);
     return results;
+  }
+
+  static async resetToGeneration(generation, orgUid) {
+    if (orgUid) {
+      return await Audit.destroy({
+        where: {
+          orgUid: orgUid,
+          generation: { [Op.gt]: generation },
+        },
+      });
+    } else {
+      return await Audit.destroy({
+        where: {
+          generation: { [Op.gt]: generation },
+        },
+      });
+    }
   }
 }
 

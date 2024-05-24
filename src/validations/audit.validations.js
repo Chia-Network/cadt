@@ -9,3 +9,8 @@ export const auditGetSchema = Joi.object()
   })
   .with('page', 'limit')
   .with('limit', 'page');
+
+export const auditResetGenerationSchema = Joi.object().keys({
+  generation: Joi.number(),
+  orgUid: Joi.string().optional(),
+});
