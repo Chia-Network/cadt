@@ -6,7 +6,8 @@ import joiExpress from 'express-joi-validation';
 import { AuditController } from '../../../controllers';
 import {
   auditGetSchema,
-  auditResetGenerationSchema,
+  auditResetToDateSchema,
+  auditResetToGenerationSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -22,9 +23,17 @@ AuditRouter.get('/findConflicts', (req, res) => {
 
 AuditRouter.post(
   '/resetToGeneration',
-  validator.body(auditResetGenerationSchema),
+  validator.body(auditResetToGenerationSchema),
   (req, res) => {
     return AuditController.resetToGeneration(req, res);
+  },
+);
+
+AuditRouter.post(
+  '/resetToDate',
+  validator.body(auditResetToDateSchema),
+  (req, res) => {
+    return AuditController.resetToDate(req, res);
   },
 );
 

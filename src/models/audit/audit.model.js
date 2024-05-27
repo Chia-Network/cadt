@@ -62,6 +62,39 @@ class Audit extends Model {
       });
     }
   }
+
+  static async resetToDate(date) {
+    const parsedDate = Math.round(date.valueOf() / 1000);
+
+    return await Audit.destroy({
+      where: sequelize.where(
+        sequelize.cast(
+          sequelize.col('onChainConfirmationTimeStamp'),
+          'UNSIGNED',
+        ),
+        {
+          [Sequelize.Op.gte]: parsedDate,
+        },
+      ),
+    });
+  }
+
+  static async resetOrgToDate(date, orgUid) {
+    const parsedDate = Math.round(date.valueOf() / 1000);
+
+    return await Audit.destroy({
+      where: {
+        orgUid: orgUid,
+        [Sequelize.Op.and]: sequelize.where(
+          sequelize.cast(
+            sequelize.col('onchainConfirmationTimeStamp'),
+            'UNSIGNED',
+          ),
+          { [Sequelize.Op.gte]: parsedDate },
+        ),
+      },
+    });
+  }
 }
 
 Audit.init(ModelTypes, {
