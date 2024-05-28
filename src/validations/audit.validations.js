@@ -15,7 +15,8 @@ export const auditResetToGenerationSchema = Joi.object().keys({
   orgUid: Joi.string().optional(),
 });
 
-export const auditResetToDateSchema = Joi.object().keys({
-  date: Joi.date().timestamp(),
+export const auditResetToTimestampSchema = Joi.object().keys({
+  timestamp: Joi.date().timestamp(),
   orgUid: Joi.string().optional(),
+  includeHomeOrg: Joi.bool().optional(),
 });

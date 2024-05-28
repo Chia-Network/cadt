@@ -41,9 +41,13 @@ export const findConflicts = async (req, res) => {
 
 export const resetToGeneration = async (req, res) => {
   try {
-    const { generation, orgUid } = req.body;
+    const { generation, orgUid, includeHomeOrg } = req.body;
 
-    const result = await Audit.resetToGeneration(generation, orgUid);
+    const result = await Audit.resetToGeneration(
+      generation,
+      orgUid,
+      includeHomeOrg,
+    );
     if (_.isNil(result)) {
       throw new Error('query failed');
     }
@@ -70,18 +74,20 @@ export const resetToGeneration = async (req, res) => {
   }
 };
 
-export const resetToDate = async (req, res) => {
+export const resetToTimestamp = async (req, res) => {
   try {
-    const { date, orgUid } = req.body;
+    const { timestamp, orgUid, includeHomeOrg } = req.body;
 
     const result = orgUid
-      ? await Audit.resetOrgToDate(date, orgUid)
-      : await Audit.resetToDate(date);
+      ? await Audit.resetOrgToTimestamp(timestamp, orgUid)
+      : await Audit.resetToTimestamp(timestamp, includeHomeOrg);
     if (_.isNil(result)) {
       throw new Error('query failed');
     }
     return res.json({
-      message: result ? 'reset to date ' + String(date) : 'no matching records',
+      message: result
+        ? 'reset to date ' + String(timestamp)
+        : 'no matching records',
       success: true,
     });
   } catch (error) {
