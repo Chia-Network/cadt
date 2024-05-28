@@ -1,10 +1,10 @@
 import { Audit } from '../models';
-
+import _ from 'lodash';
 import {
   paginationParams,
   optionallyPaginatedResponse,
 } from '../utils/helpers';
-import _ from 'lodash';
+
 export const findAll = async (req, res) => {
   try {
     let { page, limit, orgUid, order } = req.query;
@@ -51,7 +51,6 @@ export const resetToGeneration = async (req, res) => {
       message: result
         ? 'reset to generation ' + String(generation)
         : 'no matching records',
-      recordsDeleted: result,
       success: true,
     });
   } catch (error) {
@@ -83,7 +82,6 @@ export const resetToDate = async (req, res) => {
     }
     return res.json({
       message: result ? 'reset to date ' + String(date) : 'no matching records',
-      recordsDeleted: result,
       success: true,
     });
   } catch (error) {
