@@ -73,7 +73,7 @@ class Audit extends Model {
           'UNSIGNED',
         ),
         {
-          [Sequelize.Op.gte]: parsedDate,
+          [Sequelize.Op.gt]: parsedDate,
         },
       ),
     });
@@ -90,7 +90,7 @@ class Audit extends Model {
             sequelize.col('onchainConfirmationTimeStamp'),
             'UNSIGNED',
           ),
-          { [Sequelize.Op.gte]: parsedDate },
+          { [Sequelize.Op.gt]: parsedDate },
         ),
       },
     });
