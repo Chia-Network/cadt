@@ -47,20 +47,15 @@ class Audit extends Model {
   }
 
   static async resetToGeneration(generation, orgUid) {
+    const where = {
+      generation: { [Op.gt]: generation },
+    };
+
     if (orgUid) {
-      return await Audit.destroy({
-        where: {
-          orgUid: orgUid,
-          generation: { [Op.gt]: generation },
-        },
-      });
-    } else {
-      return await Audit.destroy({
-        where: {
-          generation: { [Op.gt]: generation },
-        },
-      });
+      where.orgUid = orgUid;
     }
+
+    return await Audit.destroy({ where });
   }
 
   static async resetToDate(date) {
