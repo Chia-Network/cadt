@@ -66,8 +66,8 @@ class Audit extends Model {
     return await Audit.destroy({ where });
   }
 
-  static async resetToDate(timestamp, includeHomeOrg) {
-    const timestampInSeconds = Math.round(timestamp.valueOf() / 1000);
+  static async resetToDate(date, includeHomeOrg) {
+    const timestampInSeconds = Math.round(new Date(date).valueOf() / 1000);
     const homeOrgUid = Organization.getHomeOrg()?.uid;
 
     const conditions = [
@@ -87,8 +87,8 @@ class Audit extends Model {
     return await Audit.destroy({ where: { [Sequelize.Op.and]: conditions } });
   }
 
-  static async resetOrgToDate(timestamp, orgUid) {
-    const timestampInSeconds = Math.round(timestamp.valueOf() / 1000);
+  static async resetOrgToDate(date, orgUid) {
+    const timestampInSeconds = Math.round(new Date(date).valueOf() / 1000);
 
     return await Audit.destroy({
       where: {
