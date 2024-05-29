@@ -86,20 +86,20 @@ export const resetToTimestamp = async (req, res) => {
     }
     return res.json({
       message: result
-        ? 'reset to date ' + String(timestamp)
+        ? 'reset to timestamp ' + String(timestamp)
         : 'no matching records',
       success: true,
     });
   } catch (error) {
     if (error.message === 'SQLITE_BUSY: database is locked') {
       res.status(400).json({
-        message: 'failed to reset to date',
+        message: 'failed to reset to timestamp',
         error: 'cadt is currently syncing, please try again later',
         success: false,
       });
     } else {
       res.status(400).json({
-        message: 'failed to reset to date',
+        message: 'failed to reset to timestamp',
         error: error.message,
         success: false,
       });

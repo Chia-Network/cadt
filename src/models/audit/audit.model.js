@@ -1,6 +1,6 @@
 'use strict';
 
-import Sequelize, { Op } from 'sequelize';
+import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize, safeMirrorDbHandler } from '../../database';
 import { AuditMirror } from './audit.model.mirror';
@@ -52,11 +52,11 @@ class Audit extends Model {
     const homeOrgUid = homeOrg?.uid;
 
     const where = {
-      generation: { [Op.gt]: generation },
+      generation: { [Sequelize.Op.gt]: generation },
     };
 
     if (!includeHomeOrg && homeOrgUid && orgUid !== homeOrgUid) {
-      where.orgUid = { [Op.ne]: homeOrgUid };
+      where.orgUid = { [Sequelize.Op.ne]: homeOrgUid };
     }
 
     if (orgUid) {
