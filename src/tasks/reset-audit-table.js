@@ -9,11 +9,12 @@ dotenv.config();
 
 const task = new Task('reset-audit-table', async () => {
   try {
-    const taskHasRun = await Meta.findOne({
+    const { metaValue: taskHasRun } = await Meta.findOne({
       where: {
         metaKey: 'may2024AuditResetTaskHasRun',
       },
       attributes: ['metaValue'],
+      raw: true,
     });
 
     if (taskHasRun === 'true') {
