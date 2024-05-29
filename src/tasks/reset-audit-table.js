@@ -16,8 +16,6 @@ const task = new Task('reset-audit-table', async () => {
       attributes: ['metaValue'],
     });
 
-    console.log(taskHasRun);
-
     if (taskHasRun === 'true') {
       return;
     }
@@ -25,13 +23,31 @@ const task = new Task('reset-audit-table', async () => {
     logger.info('performing audit table reset');
 
     const where = { type: 'NO CHANGE' };
-    const noChangeEntries = Audit.findAll({ where });
+    const noChangeEntries = await Audit.findAll({ where });
 
-    if (noChangeEntries) {
-      return;
+    if (noChangeEntries.length) {
+      const result = await Audit.resetToTimestamp('1715385600000'); // ms timestamp for 5/11/2024
+      logger.info(
+        'audit table has been reset, records modified: ' + String(result),
+      );
     }
 
-    await Audit.resetToTimestamp('1715385600000'); // ms timestamp for 5/11/2024
+    if (taskHasRun === null) {
+      await Meta.create({
+        metaKey: 'may2024AuditResetTaskHasRun',
+        metaValue: 'true',
+      });
+    } else {
+      await Meta.update(
+        { metavalue: 'true' },
+        {
+          where: {
+            metakey: 'may2024AuditResetTaskHasRun',
+          },
+          returning: true,
+        },
+      );
+    }
   } catch (error) {
     logger.error(
       `Retrying in ${
