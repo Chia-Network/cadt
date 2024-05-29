@@ -6,7 +6,7 @@ import joiExpress from 'express-joi-validation';
 import { AuditController } from '../../../controllers';
 import {
   auditGetSchema,
-  auditResetToTimestampSchema,
+  auditResetToDateSchema,
   auditResetToGenerationSchema,
 } from '../../../validations';
 
@@ -30,10 +30,10 @@ AuditRouter.post(
 );
 
 AuditRouter.post(
-  '/resetToTimestamp',
-  validator.body(auditResetToTimestampSchema),
+  '/resetToDate',
+  validator.body(auditResetToDateSchema),
   (req, res) => {
-    return AuditController.resetToTimestamp(req, res);
+    return AuditController.resetToDate(req, res);
   },
 );
 

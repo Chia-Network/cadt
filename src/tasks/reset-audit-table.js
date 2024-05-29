@@ -5,17 +5,20 @@ import { getConfig } from '../utils/config-loader';
 const CONFIG = getConfig().APP;
 
 import dotenv from 'dotenv';
+import _ from 'lodash';
 dotenv.config();
 
 const task = new Task('reset-audit-table', async () => {
   try {
-    const { metaValue: taskHasRun } = await Meta.findOne({
+    const metaResult = await Meta.findOne({
       where: {
         metaKey: 'may2024AuditResetTaskHasRun',
       },
       attributes: ['metaValue'],
       raw: true,
     });
+
+    const taskHasRun = metaResult?.metaValue;
 
     if (taskHasRun === 'true') {
       return;
@@ -27,13 +30,13 @@ const task = new Task('reset-audit-table', async () => {
     const noChangeEntries = await Audit.findAll({ where });
 
     if (noChangeEntries.length) {
-      const result = await Audit.resetToTimestamp('1715385600000'); // ms timestamp for 5/11/2024
+      const result = await Audit.resetToDate('2024-05-11');
       logger.info(
         'audit table has been reset, records modified: ' + String(result),
       );
     }
 
-    if (taskHasRun === null) {
+    if (_.isNil(taskHasRun)) {
       await Meta.create({
         metaKey: 'may2024AuditResetTaskHasRun',
         metaValue: 'true',

@@ -12,12 +12,12 @@ export const auditGetSchema = Joi.object()
 
 export const auditResetToGenerationSchema = Joi.object().keys({
   generation: Joi.number(),
-  orgUid: Joi.string().optional(),
+  orgUid: Joi.string(),
   includeHomeOrg: Joi.bool().optional(),
 });
 
-export const auditResetToTimestampSchema = Joi.object().keys({
-  timestamp: Joi.date().timestamp(),
+export const auditResetToDateSchema = Joi.object().keys({
+  date: Joi.date(),
   orgUid: Joi.string().optional(),
   includeHomeOrg: Joi.bool().optional(),
 });
