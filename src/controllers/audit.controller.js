@@ -41,13 +41,9 @@ export const findConflicts = async (req, res) => {
 
 export const resetToGeneration = async (req, res) => {
   try {
-    const { generation, orgUid, includeHomeOrg } = req.body;
+    const { generation, orgUid } = req.body;
 
-    const result = await Audit.resetToGeneration(
-      generation,
-      orgUid,
-      includeHomeOrg,
-    );
+    const result = await Audit.resetToGeneration(generation, orgUid);
     if (_.isNil(result)) {
       throw new Error('query failed');
     }

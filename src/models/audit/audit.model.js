@@ -47,17 +47,10 @@ class Audit extends Model {
     return results;
   }
 
-  static async resetToGeneration(generation, orgUid, includeHomeOrg) {
-    const homeOrg = Organization.getHomeOrg();
-    const homeOrgUid = homeOrg?.uid;
-
+  static async resetToGeneration(generation, orgUid) {
     const where = {
       generation: { [Sequelize.Op.gt]: generation },
     };
-
-    if (!includeHomeOrg && homeOrgUid && orgUid !== homeOrgUid) {
-      where.orgUid = { [Sequelize.Op.ne]: homeOrgUid };
-    }
 
     if (orgUid) {
       where.orgUid = orgUid;

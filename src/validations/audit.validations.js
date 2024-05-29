@@ -13,7 +13,6 @@ export const auditGetSchema = Joi.object()
 export const auditResetToGenerationSchema = Joi.object().keys({
   generation: Joi.number(),
   orgUid: Joi.string(),
-  includeHomeOrg: Joi.bool().optional(),
 });
 
 export const auditResetToDateSchema = Joi.object().keys({
