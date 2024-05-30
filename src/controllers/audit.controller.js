@@ -4,6 +4,7 @@ import {
   paginationParams,
   optionallyPaginatedResponse,
 } from '../utils/helpers';
+import { assertIfReadOnlyMode } from '../utils/data-assertions.js';
 
 export const findAll = async (req, res) => {
   try {
@@ -41,6 +42,7 @@ export const findConflicts = async (req, res) => {
 
 export const resetToGeneration = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     const { generation, orgUid } = req.body;
 
     const result = await Audit.resetToGeneration(generation, orgUid);
@@ -72,6 +74,7 @@ export const resetToGeneration = async (req, res) => {
 
 export const resetToDate = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     const { date, orgUid, includeHomeOrg } = req.body;
 
     const result = orgUid
