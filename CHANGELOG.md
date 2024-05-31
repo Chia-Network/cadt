@@ -1,3 +1,30 @@
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
+
+
+### Bug Fixes
+
+* add storeId to log messages that previously only had store name ([8510dc9](https://github.com/Chia-Network/cadt/commit/8510dc940febd2957a815fabe3786038555ff05c))
+* add storeId to log messages that previously only had store name ([f46384d](https://github.com/Chia-Network/cadt/commit/f46384d80815edbc95e4bf7dd0d8817e01150a0e))
+* reset audit table task ([819ebb0](https://github.com/Chia-Network/cadt/commit/819ebb0c6be50abfc6ae52f93a638eaa5124d6e1))
+* reset audit table task ([10285f2](https://github.com/Chia-Network/cadt/commit/10285f2554d049eff05203de16fc7fc11c9d5c71))
+* reset to date ([4a5845d](https://github.com/Chia-Network/cadt/commit/4a5845d8eaa880500739903452ef04f954bccfd1))
+* reset to date endpoint query ([f94fe1e](https://github.com/Chia-Network/cadt/commit/f94fe1ee6086b2e97cc131cde45aff11671bc014))
+* reset to generation validation schema ([4541b1b](https://github.com/Chia-Network/cadt/commit/4541b1b00dad277b1c91bee6c44d8a5030a08665))
+* task meta data retrieval ([5b8bcbe](https://github.com/Chia-Network/cadt/commit/5b8bcbe51fbb6a8ce6059977a2e23086550bdf56))
+* task meta data retrieval ([729e79d](https://github.com/Chia-Network/cadt/commit/729e79dc3e2fcf5ba3af18b20ed06e15b901daae))
+* use toBeProcessedIndex ([33bc5d0](https://github.com/Chia-Network/cadt/commit/33bc5d05178a0943213970b099a96c771a3ee0af))
+* use toBeProcessedIndex ([478de36](https://github.com/Chia-Network/cadt/commit/478de3649d39752f6c6b328b6b6bea23fcc68b3d))
+
+
+### Features
+
+* added option to exclude home org ([75f05ef](https://github.com/Chia-Network/cadt/commit/75f05ef60acc893203795d1c5d2d47a78301ae88))
+* added read-only check to reset date and audit endpoints ([2b015c2](https://github.com/Chia-Network/cadt/commit/2b015c2f2b9de5330388b93b7c865eb83be7ad38))
+* added resetToDate audit endpoint ([69733fc](https://github.com/Chia-Network/cadt/commit/69733fc4128402d370b7dd2b87d4b7753061a316))
+* added resetToGeneration audit endpoint ([aa851b9](https://github.com/Chia-Network/cadt/commit/aa851b9d2f2ce8402cb9de2235f087ca8a536706))
+
+
+
 ## [1.7.15](https://github.com/Chia-Network/cadt/compare/1.7.14...1.7.15) (2024-05-15)
 
 
