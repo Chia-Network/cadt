@@ -1,9 +1,6 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Audit, Meta } from '../models';
 import { logger } from '../config/logger.cjs';
-import { getConfig } from '../utils/config-loader';
-const CONFIG = getConfig().APP;
-
 import dotenv from 'dotenv';
 import _ from 'lodash';
 dotenv.config();
@@ -53,18 +50,13 @@ const task = new Task('reset-audit-table', async () => {
       );
     }
   } catch (error) {
-    logger.error(
-      `Retrying in ${
-        CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30
-      } seconds`,
-      error,
-    );
+    logger.error('Retrying in 600 seconds', error);
   }
 });
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.RESET_AUDIT_TASK_INTERVAL || 30,
+    seconds: 600,
     runImmediately: true,
   },
   task,
