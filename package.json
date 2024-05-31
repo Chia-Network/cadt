@@ -31,7 +31,7 @@
     "assets": "package.json"
   },
   "dependencies": {
-    "@babel/eslint-parser": "^7.23.10",
+    "@babel/eslint-parser": "^7.24.6",
     "async-mutex": "^0.4.1",
     "body-parser": "^1.20.2",
     "cli-spinner": "^0.2.10",
