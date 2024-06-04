@@ -4,9 +4,9 @@ import * as dataLayer from './persistance';
 import wallet from './wallet';
 import * as simulator from './simulator';
 import { encodeHex, getMirrorUrl } from '../utils/datalayer-utils';
-import { logger } from '../config/logger.cjs';
 import { Organization } from '../models';
 import { CONFIG } from '../user-config.js';
+import { logger } from '../logger.js';
 
 const createDataLayerStore = async () => {
   await wallet.waitForAllTransactionsToConfirm();
