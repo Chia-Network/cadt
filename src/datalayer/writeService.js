@@ -3,19 +3,16 @@ import _ from 'lodash';
 import * as dataLayer from './persistance';
 import wallet from './wallet';
 import * as simulator from './simulator';
-import { encodeHex } from '../utils/datalayer-utils';
-import { CONFIG } from '../user-config';
-import { logger } from '../logger.js';
+import { encodeHex, getMirrorUrl } from '../utils/datalayer-utils';
+import { logger } from '../config/logger.cjs';
 import { Organization } from '../models';
-import { getMirrorUrl } from '../utils/datalayer-utils';
-
-logger.info('CADT:datalayer:writeService');
+import { CONFIG } from '../user-config.js';
 
 const createDataLayerStore = async () => {
   await wallet.waitForAllTransactionsToConfirm();
 
   let storeId;
-  if (CONFIG().CADT.USE_SIMULATOR) {
+  if (CONFIG.CADT.USE_SIMULATOR) {
     storeId = await simulator.createDataLayerStore();
   } else {
     storeId = await dataLayer.createDataLayerStore();
@@ -28,18 +25,11 @@ const createDataLayerStore = async () => {
 
     // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
     // This make sure this runs by default even if the config param is missing
-    const shouldMirror = CONFIG().CADT.AUTO_MIRROR_EXTERNAL_STORES ?? true;
+    const shouldMirror = CONFIG.CADT.AUTO_MIRROR_EXTERNAL_STORES ?? true;
 
     if (shouldMirror) {
       const mirrorUrl = await getMirrorUrl();
-      if (mirrorUrl) {
-        logger.info(
-          `Now attempting to create new mirror for ${storeId} at ${mirrorUrl}`,
-        );
-        await dataLayer.addMirror(storeId, mirrorUrl, true);
-      } else {
-        logger.error('Mirror URL not available, skipping mirror announcement.');
-      }
+      await dataLayer.addMirror(storeId, mirrorUrl, true);
     }
   }
 
@@ -139,9 +129,6 @@ export const pushChangesWhenStoreIsAvailable = async (
   failedCallback = _.noop,
   retryAttempts = 0,
 ) => {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 1000);
-  });
   if (CONFIG().CADT.USE_SIMULATOR) {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
@@ -186,6 +173,10 @@ const removeMirror = (storeId, coinId) => {
   return dataLayer.removeMirror(storeId, coinId);
 };
 
+const getSyncStatus = (orgUid) => {
+  return dataLayer.getSyncStatus(orgUid);
+};
+
 const getValue = async (storeId, key) => {
   if (CONFIG().CADT.USE_SIMULATOR) {
     return '7b22636f6d6d656e74223a2022227d';
@@ -203,4 +194,5 @@ export default {
   upsertDataLayer,
   removeMirror,
   getValue,
+  getSyncStatus,
 };
