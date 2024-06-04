@@ -145,7 +145,9 @@ const syncOrganizationAudit = async (organization) => {
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     if (!rootHistory.length) {
-      logger.info(`No root history found for ${organization.name}`);
+      logger.info(
+        `No root history found for ${organization.name} (store ${organization.orgUid})`,
+      );
       return;
     }
 
@@ -176,7 +178,9 @@ const syncOrganizationAudit = async (organization) => {
     let currentGeneration = _.get(rootHistory, '[0]');
 
     if (!lastRootSaved) {
-      logger.info(`Syncing new registry ${organization.name}`);
+      logger.info(
+        `Syncing new registry ${organization.name} (store ${organization.orgUid})`,
+      );
 
       await Audit.create({
         orgUid: organization.orgUid,
@@ -212,7 +216,7 @@ const syncOrganizationAudit = async (organization) => {
 
     if (lastProcessedIndex > rootHistory.length) {
       logger.error(
-        `Could not find root history for ${organization.name} with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
+        `Could not find root history for ${organization.name} (store ${organization.orgUid}) with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
     }
 
@@ -237,10 +241,10 @@ const syncOrganizationAudit = async (organization) => {
     // Organization not synced, sync it
     logger.info(' ');
     logger.info(
-      `Syncing ${organization.name} generation ${toBeProcessedIndex}`,
+      `Syncing ${organization.name} generation ${toBeProcessedIndex} (store ${organization.orgUid})`,
     );
     logger.info(
-      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced.`,
+      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced (store ${organization.orgUid}).`,
     );
 
     if (!CONFIG().CADT.USE_SIMULATOR) {
@@ -255,7 +259,7 @@ const syncOrganizationAudit = async (organization) => {
 
     if (!_.get(root2, 'confirmed')) {
       logger.info(
-        `Waiting for the latest root for ${organization.name} to confirm`,
+        `Waiting for the latest root for ${organization.name} to confirm (store ${organization.orgUid})`,
       );
       return;
     }
@@ -300,7 +304,7 @@ const syncOrganizationAudit = async (organization) => {
 
     const updateTransaction = async (transaction, mirrorTransaction) => {
       logger.info(
-        `Syncing ${organization.name} generation ${toBeProcessedIndex}`,
+        `Syncing ${organization.name} generation ${toBeProcessedIndex} (store ${organization.orgUid})`,
       );
       for (const diff of optimizedKvDiff) {
         const key = decodeHex(diff.key);
