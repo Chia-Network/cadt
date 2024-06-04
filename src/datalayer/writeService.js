@@ -12,7 +12,7 @@ const createDataLayerStore = async () => {
   await wallet.waitForAllTransactionsToConfirm();
 
   let storeId;
-  if (CONFIG.CADT.USE_SIMULATOR) {
+  if (CONFIG().CADT.USE_SIMULATOR) {
     storeId = await simulator.createDataLayerStore();
   } else {
     storeId = await dataLayer.createDataLayerStore();
