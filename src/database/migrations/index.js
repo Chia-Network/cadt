@@ -35,6 +35,7 @@ import OrgSyncStatus from './20231020201652-OrgSyncStatus';
 import OrgSyncRemaining from './20231020214357-OrgSyncRemainingCount';
 import UnitOwnerNotRequired from './20231016190739-UnitOwnerNotRequired';
 import AddGenerationIndexToAudit from './20231207142225-AddGenerationIndexToAudit';
+import CreateStatisticsCache from './20240604214216-create-statistics-cache.js';
 
 export const migrations = [
   {
@@ -188,5 +189,9 @@ export const migrations = [
   {
     migration: AddGenerationIndexToAudit,
     name: '20231207142225-AddGenerationIndexToAudit',
+  },
+  {
+    migration: CreateStatisticsCache,
+    name: '20240604214216-create-statistics-cache',
   },
 ];
