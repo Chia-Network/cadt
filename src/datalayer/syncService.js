@@ -90,6 +90,18 @@ const getRootHistory = (storeId) => {
   }
 };
 
+const getSyncStatus = async (storeId) => {
+  if (!CONFIG().CADT.USE_SIMULATOR) {
+    return {
+      sync_status: {
+        generation: 10000,
+      },
+    };
+  } else {
+    return dataLayer.getSyncStatus(storeId);
+  }
+};
+
 const getRootDiff = (storeId, root1, root2) => {
   if (CONFIG().CADT.USE_SIMULATOR) {
     return Simulator.getMockedKvDiffFromStagingTable();
@@ -206,4 +218,5 @@ export default {
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
   waitForAllTransactionsToConfirm,
+  getSyncStatus,
 };
