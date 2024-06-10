@@ -1,8 +1,13 @@
-import { Statistics } from '../models/index.js';
+import { Organization, Statistics } from '../models/index.js';
 import { startOfYear, endOfYear } from 'date-fns';
 
 export const projects = async (req, res) => {
   try {
+    const homeOrg = await Organization.getHomeOrg();
+    if (!homeOrg?.orgUid) {
+      throw new Error('a home organization must exist to use this resource');
+    }
+
     const { dateRangeStart, dateRangeEnd, ytd } = req.query;
 
     const startDate = new Date(dateRangeStart);
@@ -48,6 +53,11 @@ export const projects = async (req, res) => {
 
 export const tonsCo2 = async (req, res) => {
   try {
+    const homeOrg = await Organization.getHomeOrg();
+    if (!homeOrg?.orgUid) {
+      throw new Error('a home organization must exist to use this resource');
+    }
+
     const { set, dateRangeStart, dateRangeEnd, ytd } = req.query;
 
     const startDate = new Date(dateRangeStart);
@@ -128,6 +138,11 @@ export const tonsCo2 = async (req, res) => {
 
 export const carbonByMethodology = async (req, res) => {
   try {
+    const homeOrg = await Organization.getHomeOrg();
+    if (!homeOrg?.orgUid) {
+      throw new Error('a home organization must exist to use this resource');
+    }
+
     // Your actual logic to get the carbonByMethodology data will go here.
     // This is an example placeholder.
     const placeholderCarbonByMethodology =
