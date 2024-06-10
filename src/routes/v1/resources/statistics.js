@@ -3,7 +3,10 @@
 import express from 'express';
 
 import { StatisticsController } from '../../../controllers';
-import { projectsStatisticsGetQuerySchema } from '../../../validations/statistics.validations.js';
+import {
+  projectsStatisticsGetQuerySchema,
+  tonsCo2StatisticsGetQuerySchema,
+} from '../../../validations/statistics.validations.js';
 import joiExpress from 'express-joi-validation';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -18,9 +21,13 @@ StatisticsRouter.get(
   },
 );
 
-StatisticsRouter.get('/tonsCo2', (req, res) => {
-  return StatisticsController.tonsCo2(req, res);
-});
+StatisticsRouter.get(
+  '/tonsCo2',
+  validator.query(tonsCo2StatisticsGetQuerySchema),
+  (req, res) => {
+    return StatisticsController.tonsCo2(req, res);
+  },
+);
 
 StatisticsRouter.get('/carbonByMethodology', (req, res) => {
   return StatisticsController.carbonByMethodology(req, res);
