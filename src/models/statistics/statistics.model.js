@@ -9,6 +9,8 @@ import { StatisticsMirror } from './statistics.model.mirror';
 import ModelTypes from './statistics.modeltypes.cjs';
 import { Project } from '../projects/index.js';
 import { Organization } from '../organizations/index.js';
+import { Issuance } from '../issuances/index.js';
+import _ from 'lodash';
 
 class Statistics extends Model {
   static async create(values, options) {
@@ -66,6 +68,147 @@ class Statistics extends Model {
     });
   }
 
+  static async getProjectCount(projectStatus, dateRangeStart, dateRangeEnd) {
+    const homeOrg = await Organization.getHomeOrg();
+
+    const andConditions = [{ orgUid: homeOrg.orgUid }];
+
+    if (projectStatus) {
+      andConditions.push({ projectStatus });
+    }
+
+    if (dateRangeStart && dateRangeEnd) {
+      andConditions.push({
+        updatedAt: {
+          [Sequelize.Op.between]: [
+            new Date(dateRangeStart),
+            new Date(dateRangeEnd),
+          ],
+        },
+      });
+    }
+
+    const where = {
+      [Sequelize.Op.and]: andConditions,
+    };
+
+    return await Project.count({
+      where,
+    });
+  }
+
+  static async getUnitTableTonsCo2Count(
+    unitStatus,
+    dateRangeStart,
+    dateRangeEnd,
+  ) {
+    const homeOrg = await Organization.getHomeOrg();
+
+    const andConditions = [{ orgUid: homeOrg.orgUid }];
+
+    if (unitStatus) {
+      andConditions.push({ unitStatus });
+    } else {
+      andConditions.push({ unitStatus: { [Sequelize.Op.not]: 'Cancelled' } });
+    }
+
+    if (dateRangeStart && dateRangeEnd) {
+      andConditions.push({
+        updatedAt: {
+          [Sequelize.Op.between]: [
+            new Date(dateRangeStart),
+            new Date(dateRangeEnd),
+          ],
+        },
+      });
+    }
+
+    const where = {
+      [Sequelize.Op.and]: andConditions,
+    };
+
+    const [result] = await Unit.findAll({
+      where,
+      attributes: [
+        [
+          sequelize.fn(
+            'SUM',
+            sequelize.fn(
+              'IFNULL',
+              sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
+              0,
+            ),
+          ),
+          'unitCount',
+        ],
+      ],
+      raw: true,
+    });
+
+    return result?.unitCount || 0;
+  }
+
+  static async getProjectAttributeBasedTonsCo2Count(projectSelectors) {
+    const homeOrg = await Organization.getHomeOrg();
+    const { dateRangeStart, dateRangeEnd, ...projectAttributes } =
+      projectSelectors;
+
+    const warehouseProjectIds = await Project.findAll({
+      where: {
+        [Sequelize.Op.and]: {
+          orgUid: homeOrg.orgUid,
+          ...(!_.isEmpty(projectAttributes) && { ...projectAttributes }),
+          ...(dateRangeStart &&
+            dateRangeEnd && {
+              updatedAt: {
+                [Sequelize.Op.between]: {
+                  dateRangeStart,
+                  dateRangeEnd,
+                },
+              },
+            }),
+        },
+      },
+      attributes: ['warehouseProjectId'],
+    }).then((warehouseProjectIds) =>
+      warehouseProjectIds.map((project) => project.warehouseProjectId),
+    );
+
+    const issuanceIds = await Issuance.findAll({
+      attributes: ['id'],
+      where: {
+        warehouseProjectId: {
+          [Sequelize.Op.in]: warehouseProjectIds,
+        },
+      },
+      raw: true,
+    }).then((issuances) => issuances.map((issuance) => issuance.id));
+
+    const [ndcUnitResult] = await Unit.findAll({
+      where: {
+        issuanceId: {
+          [Sequelize.Op.in]: issuanceIds,
+        },
+      },
+      attributes: [
+        [
+          sequelize.fn(
+            'SUM',
+            sequelize.fn(
+              'IFNULL',
+              sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
+              0,
+            ),
+          ),
+          'unitCount',
+        ],
+      ],
+      raw: true,
+    });
+
+    return ndcUnitResult?.unitCount || 0;
+  }
+
   static async getDateRangeProjectStatistics(dateRangeStart, dateRangeEnd) {
     await Statistics.removeStaleTableEntries();
 
@@ -75,51 +218,21 @@ class Statistics extends Model {
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const homeOrg = await Organization.getHomeOrg();
-      const registeredProjectsCount = await Project.count({
-        where: {
-          [Sequelize.Op.and]: {
-            projectStatus: 'Registered',
-            orgUid: homeOrg.orgUid,
-            updatedAt: {
-              [Sequelize.Op.between]: [
-                new Date(dateRangeStart),
-                new Date(dateRangeEnd),
-              ],
-            },
-          },
-        },
-      });
-
-      const authorizedProjectsCount = await Project.count({
-        where: {
-          [Sequelize.Op.and]: {
-            projectStatus: 'Authorized',
-            orgUid: homeOrg.orgUid,
-            updatedAt: {
-              [Sequelize.Op.between]: [
-                new Date(dateRangeStart),
-                new Date(dateRangeEnd),
-              ],
-            },
-          },
-        },
-      });
-
-      const completedProjectsCount = await Project.count({
-        where: {
-          [Sequelize.Op.and]: {
-            projectStatus: 'Completed',
-            orgUid: homeOrg.orgUid,
-            updatedAt: {
-              [Sequelize.Op.between]: [
-                new Date(dateRangeStart),
-                new Date(dateRangeEnd),
-              ],
-            },
-          },
-        },
-      });
+      const registeredProjectsCount = await Statistics.getProjectCount(
+        'Registered',
+        dateRangeStart,
+        dateRangeEnd,
+      );
+      const authorizedProjectsCount = await Statistics.getProjectCount(
+        'Authorized',
+        dateRangeStart,
+        dateRangeEnd,
+      );
+      const completedProjectsCount = await Statistics.getProjectCount(
+        'Completed',
+        dateRangeStart,
+        dateRangeEnd,
+      );
 
       const result = {
         registeredProjectsCount,
@@ -145,33 +258,12 @@ class Statistics extends Model {
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const homeOrg = Organization.getHomeOrg();
-      const registeredProjectsCount = await Project.count({
-        where: {
-          [Sequelize.Op.and]: {
-            projectStatus: 'Registered',
-            orgUid: homeOrg.orgUid,
-          },
-        },
-      });
-
-      const authorizedProjectsCount = await Project.count({
-        where: {
-          [Sequelize.Op.and]: {
-            projectStatus: 'Authorized',
-            orgUid: homeOrg.orgUid,
-          },
-        },
-      });
-
-      const completedProjectsCount = await Project.count({
-        where: {
-          [Sequelize.Op.and]: {
-            projectStatus: 'Completed',
-            orgUid: homeOrg.orgUid,
-          },
-        },
-      });
+      const registeredProjectsCount =
+        await Statistics.getProjectCount('Registered');
+      const authorizedProjectsCount =
+        await Statistics.getProjectCount('Authorized');
+      const completedProjectsCount =
+        await Statistics.getProjectCount('Completed');
 
       const result = {
         registeredProjectsCount,
@@ -191,58 +283,16 @@ class Statistics extends Model {
   static async getIssuedAuthorizedNdcTonsCo2() {
     await Statistics.removeStaleTableEntries();
 
-    const uri = `/statistics/tonsCo2?set=issued-authorized-ndc`;
+    const uri = `/statistics/tonsCo2?set=issuedAuthorizedNdc`;
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const homeOrg = Organization.getHomeOrg();
-      const [issuedTonsResult] = await Unit.findAll({
-        where: {
-          orgUid: homeOrg.orgUid,
-        },
-        attributes: [
-          [
-            sequelize.fn(
-              'SUM',
-              sequelize.fn(
-                'IFNULL',
-                sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
-                0,
-              ),
-            ),
-            'unitSum',
-          ],
-        ],
-      });
-
-      const [authorizedTonsResult] = await Unit.findAll({
-        where: {
-          [Sequelize.Op.and]: {
-            unitStatus: 'Authorized',
-            orgUid: homeOrg.orgUid,
-          },
-        },
-        attributes: [
-          [
-            sequelize.fn(
-              'SUM',
-              sequelize.fn(
-                'IFNULL',
-                sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
-                0,
-              ),
-            ),
-            'unitSum',
-          ],
-        ],
-      });
-
-      const issuedTonsCount = issuedTonsResult?.dataValues?.unitSum || 0;
+      const issuedTonsCount = await Statistics.getUnitTableTonsCo2Count();
       const authorizedTonsCount =
-        authorizedTonsResult?.dataValues?.unitSum || 0;
-      const ndcTonsCount = 0;
+        await Statistics.getUnitTableTonsCo2Count('Authorized');
+      const ndcTonsCount = await Statistics.calculateNdcTonsCo2Count();
 
       const result = {
         issuedTonsCount,
@@ -271,66 +321,22 @@ class Statistics extends Model {
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const homeOrg = Organization.getHomeOrg();
-      const [issuedTonsResult] = await Unit.findAll({
-        where: {
-          [Sequelize.Op.and]: {
-            orgUid: homeOrg.orgUid,
-            updatedAt: {
-              [Sequelize.Op.between]: [
-                new Date(dateRangeStart),
-                new Date(dateRangeEnd),
-              ],
-            },
-          },
-        },
-        attributes: [
-          [
-            sequelize.fn(
-              'SUM',
-              sequelize.fn(
-                'IFNULL',
-                sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
-                0,
-              ),
-            ),
-            'unitSum',
-          ],
-        ],
-      });
-
-      const [authorizedTonsResult] = await Unit.findAll({
-        where: {
-          [Sequelize.Op.and]: {
-            unitStatus: 'Authorized',
-            orgUid: homeOrg.orgUid,
-            updatedAt: {
-              [Sequelize.Op.between]: [
-                new Date(dateRangeStart),
-                new Date(dateRangeEnd),
-              ],
-            },
-          },
-        },
-        attributes: [
-          [
-            sequelize.fn(
-              'SUM',
-              sequelize.fn(
-                'IFNULL',
-                sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
-                0,
-              ),
-            ),
-            'unitSum',
-          ],
-        ],
-      });
-
-      const issuedTonsCount = issuedTonsResult?.dataValues?.unitSum || 0;
-      const authorizedTonsCount =
-        authorizedTonsResult?.dataValues?.unitSum || 0;
-      const ndcTonsCount = 0;
+      const issuedTonsCount = await Statistics.getUnitTableTonsCo2Count(
+        null,
+        dateRangeStart,
+        dateRangeEnd,
+      );
+      const authorizedTonsCount = await Statistics.getUnitTableTonsCo2Count(
+        'Authorized',
+        dateRangeStart,
+        dateRangeEnd,
+      );
+      const ndcTonsCount =
+        await Statistics.getProjectAttributeBasedTonsCo2Count({
+          coveredByNDC: 'Inside NDC',
+          dateRangeStart,
+          dateRangeEnd,
+        });
 
       const result = {
         issuedTonsCount,
@@ -356,53 +362,10 @@ class Statistics extends Model {
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const homeOrg = Organization.getHomeOrg();
-      const [retiredTonsResult] = await Unit.findAll({
-        where: {
-          [Sequelize.Op.and]: {
-            unitStatus: 'Retired',
-            orgUid: homeOrg.orgUid,
-          },
-        },
-        attributes: [
-          [
-            sequelize.fn(
-              'SUM',
-              sequelize.fn(
-                'IFNULL',
-                sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
-                0,
-              ),
-            ),
-            'unitSum',
-          ],
-        ],
-      });
-
-      const [bufferTonsResult] = await Unit.findAll({
-        where: {
-          [Sequelize.Op.and]: {
-            unitStatus: 'Retired',
-            orgUid: homeOrg.orgUid,
-          },
-        },
-        attributes: [
-          [
-            sequelize.fn(
-              'SUM',
-              sequelize.fn(
-                'IFNULL',
-                sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
-                0,
-              ),
-            ),
-            'unitSum',
-          ],
-        ],
-      });
-
-      const bufferTonsCount = bufferTonsResult?.dataValues?.unitSum || 0;
-      const retiredTonsCount = retiredTonsResult?.dataValues?.unitSum || 0;
+      const bufferTonsCount =
+        await Statistics.getUnitTableTonsCo2Count('Buffer');
+      const retiredTonsCount =
+        await Statistics.getUnitTableTonsCo2Count('Retired');
 
       const result = {
         bufferTonsCount,
@@ -427,64 +390,16 @@ class Statistics extends Model {
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const homeOrg = Organization.getHomeOrg();
-      const [retiredTonsResult] = await Unit.findAll({
-        where: {
-          [Sequelize.Op.and]: {
-            unitStatus: 'Retired',
-            orgUid: homeOrg.orgUid,
-            updatedAt: {
-              [Sequelize.Op.between]: [
-                new Date(dateRangeStart),
-                new Date(dateRangeEnd),
-              ],
-            },
-          },
-        },
-        attributes: [
-          [
-            sequelize.fn(
-              'SUM',
-              sequelize.fn(
-                'IFNULL',
-                sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
-                0,
-              ),
-            ),
-            'unitSum',
-          ],
-        ],
-      });
-
-      const [bufferTonsResult] = await Unit.findAll({
-        where: {
-          [Sequelize.Op.and]: {
-            unitStatus: 'Retired',
-            updatedAt: {
-              [Sequelize.Op.between]: [
-                new Date(dateRangeStart),
-                new Date(dateRangeEnd),
-              ],
-            },
-          },
-        },
-        attributes: [
-          [
-            sequelize.fn(
-              'SUM',
-              sequelize.fn(
-                'IFNULL',
-                sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
-                0,
-              ),
-            ),
-            'unitSum',
-          ],
-        ],
-      });
-
-      const bufferTonsCount = bufferTonsResult?.dataValues?.unitSum || 0;
-      const retiredTonsCount = retiredTonsResult?.dataValues?.unitSum || 0;
+      const retiredTonsCount = await Statistics.getUnitTableTonsCo2Count(
+        'Retired',
+        dateRangeStart,
+        dateRangeEnd,
+      );
+      const bufferTonsCount = await Statistics.getUnitTableTonsCo2Count(
+        'Buffer',
+        dateRangeStart,
+        dateRangeEnd,
+      );
 
       const result = {
         bufferTonsCount,
@@ -497,6 +412,22 @@ class Statistics extends Model {
       });
 
       return result;
+    }
+  }
+
+  static async getTonsCo2ByMethodology(dateRangeStart, dateRangeEnd) {
+    await Statistics.removeStaleTableEntries();
+
+    const uri =
+      dateRangeStart && dateRangeEnd
+        ? `/statistics/issuedCarbonByMethodology?dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`
+        : `/statistics/issuedCarbonByMethodology`;
+    const cacheResult = await Statistics.getCachedResult(uri);
+
+    if (cacheResult?.statisticsJsonString) {
+      return JSON.parse(cacheResult.statisticsJsonString);
+    } else {
+      console.log('not implemented');
     }
   }
 }

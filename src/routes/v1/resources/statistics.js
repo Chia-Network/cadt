@@ -29,8 +29,8 @@ StatisticsRouter.get(
   },
 );
 
-StatisticsRouter.get('/carbonByMethodology', (req, res) => {
-  return StatisticsController.carbonByMethodology(req, res);
+StatisticsRouter.get('/issuedCarbonByMethodology', (req, res) => {
+  return StatisticsController.issuedCarbonByMethodology(req, res);
 });
 
 export { StatisticsRouter };

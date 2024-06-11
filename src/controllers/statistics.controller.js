@@ -13,36 +13,27 @@ export const projects = async (req, res) => {
     const startDate = new Date(dateRangeStart);
     const endDate = new Date(dateRangeEnd);
 
+    let result;
     if (!dateRangeStart && !dateRangeEnd && !ytd) {
-      const result = await Statistics.getProjectStatistics();
-
-      res.json({
-        data: result,
-        success: true,
-      });
+      result = await Statistics.getProjectStatistics();
     } else if (ytd) {
-      const result = await Statistics.getDateRangeProjectStatistics(
+      result = await Statistics.getDateRangeProjectStatistics(
         startOfYear(new Date()),
         endOfYear(new Date()),
       );
-
-      res.json({
-        data: result,
-        success: true,
-      });
     } else if (startDate && endDate) {
-      const result = await Statistics.getDateRangeProjectStatistics(
+      result = await Statistics.getDateRangeProjectStatistics(
         startDate,
         endDate,
       );
-
-      res.json({
-        data: result,
-        success: true,
-      });
     } else {
       throw new Error('invalid date query params');
     }
+
+    res.json({
+      data: result,
+      success: true,
+    });
   } catch (error) {
     res.status(400).json({
       message: error.message,
@@ -55,7 +46,7 @@ export const tonsCo2 = async (req, res) => {
   try {
     const homeOrg = await Organization.getHomeOrg();
     if (!homeOrg?.orgUid) {
-      throw new Error('a home organization must exist to use this resource');
+      throw new Error('A home organization must exist to use this resource');
     }
 
     const { set, dateRangeStart, dateRangeEnd, ytd } = req.query;
@@ -63,71 +54,47 @@ export const tonsCo2 = async (req, res) => {
     const startDate = new Date(dateRangeStart);
     const endDate = new Date(dateRangeEnd);
 
+    let result = null;
     if (set === 'issuedAuthorizedNdc') {
       if (!dateRangeStart && !dateRangeEnd && !ytd) {
-        const result = await Statistics.getIssuedAuthorizedNdcTonsCo2();
-
-        res.json({
-          data: result,
-          success: true,
-        });
+        result = await Statistics.getIssuedAuthorizedNdcTonsCo2();
       } else if (ytd) {
-        const result = await Statistics.getDateRangeIssuedAuthorizedNdcTonsCo2(
+        result = await Statistics.getDateRangeIssuedAuthorizedNdcTonsCo2(
           startOfYear(new Date()),
           endOfYear(new Date()),
         );
-
-        res.json({
-          data: result,
-          success: true,
-        });
       } else if (startDate && endDate) {
-        const result = await Statistics.getDateRangeIssuedAuthorizedNdcTonsCo2(
+        result = await Statistics.getDateRangeIssuedAuthorizedNdcTonsCo2(
           startDate,
           endDate,
         );
-
-        res.json({
-          data: result,
-          success: true,
-        });
-      } else {
-        throw new Error('invalid query params');
       }
     } else if (set === 'retiredBuffer') {
       if (!dateRangeStart && !dateRangeEnd && !ytd) {
-        const result = await Statistics.getRetiredBufferTonsCo2();
-
-        res.json({
-          data: result,
-          success: true,
-        });
+        result = await Statistics.getRetiredBufferTonsCo2();
       } else if (ytd) {
-        const result = await Statistics.getDateRangeRetiredBufferTonsCo2(
+        result = await Statistics.getDateRangeRetiredBufferTonsCo2(
           startOfYear(new Date()),
           endOfYear(new Date()),
         );
-
-        res.json({
-          data: result,
-          success: true,
-        });
       } else if (startDate && endDate) {
-        const result = await Statistics.getDateRangeRetiredBufferTonsCo2(
+        result = await Statistics.getDateRangeRetiredBufferTonsCo2(
           startDate,
           endDate,
         );
-
-        res.json({
-          data: result,
-          success: true,
-        });
-      } else {
-        throw new Error('invalid query params');
       }
     } else {
       throw new Error('missing "set" query parameter');
     }
+
+    if (!result) {
+      throw new Error('invalid query params');
+    }
+
+    res.json({
+      data: result,
+      success: true,
+    });
   } catch (error) {
     res.status(400).json({
       message: error.message,
@@ -136,23 +103,43 @@ export const tonsCo2 = async (req, res) => {
   }
 };
 
-export const carbonByMethodology = async (req, res) => {
+export const issuedCarbonByMethodology = async (req, res) => {
   try {
     const homeOrg = await Organization.getHomeOrg();
     if (!homeOrg?.orgUid) {
       throw new Error('a home organization must exist to use this resource');
     }
 
-    // Your actual logic to get the carbonByMethodology data will go here.
-    // This is an example placeholder.
-    const placeholderCarbonByMethodology =
-      'This is your carbonByMethodology data.';
+    const { dateRangeStart, dateRangeEnd, ytd } = req.query;
 
-    res.json({ carbonByMethodology: placeholderCarbonByMethodology });
-  } catch (err) {
-    res.status(500).json({
-      message: 'Error retrieving Carbon by Methodology Data',
-      error: err.message,
+    const startDate = new Date(dateRangeStart);
+    const endDate = new Date(dateRangeEnd);
+
+    let result;
+    if (!dateRangeStart && !dateRangeEnd && !ytd) {
+      result = await Statistics.getProjectStatistics();
+    } else if (ytd) {
+      result = await Statistics.getDateRangeProjectStatistics(
+        startOfYear(new Date()),
+        endOfYear(new Date()),
+      );
+    } else if (startDate && endDate) {
+      result = await Statistics.getDateRangeProjectStatistics(
+        startDate,
+        endDate,
+      );
+    } else {
+      throw new Error('invalid date query params');
+    }
+
+    res.json({
+      data: result,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message,
+      success: false,
     });
   }
 };
