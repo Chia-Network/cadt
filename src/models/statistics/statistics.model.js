@@ -109,7 +109,11 @@ class Statistics extends Model {
     if (unitStatus) {
       andConditions.push({ unitStatus });
     } else {
-      andConditions.push({ unitStatus: { [Sequelize.Op.not]: 'Cancelled' } });
+      andConditions.push({
+        unitStatus: {
+          [Sequelize.Op.not]: 'Cancelled',
+        },
+      });
     }
 
     if (dateRangeStart && dateRangeEnd) {
@@ -184,10 +188,15 @@ class Statistics extends Model {
       raw: true,
     }).then((issuances) => issuances.map((issuance) => issuance.id));
 
-    const [ndcUnitResult] = await Unit.findAll({
+    const [unitResult] = await Unit.findAll({
       where: {
-        issuanceId: {
-          [Sequelize.Op.in]: issuanceIds,
+        [Sequelize.Op.and]: {
+          unitStatus: {
+            [Sequelize.Op.not]: 'Cancelled',
+          },
+          issuanceId: {
+            [Sequelize.Op.in]: issuanceIds,
+          },
         },
       },
       attributes: [
@@ -206,13 +215,16 @@ class Statistics extends Model {
       raw: true,
     });
 
-    return ndcUnitResult?.unitCount || 0;
+    return unitResult?.unitCount || 0;
   }
 
-  static async getDateRangeProjectStatistics(dateRangeStart, dateRangeEnd) {
+  static async getProjectStatistics(dateRangeStart, dateRangeEnd) {
     await Statistics.removeStaleTableEntries();
 
-    const uri = `/statistics/projects?dateRangeStart=${dateRangeStart.valueOf()}&dateRangeEnd=${dateRangeEnd.valueOf()}`;
+    const uri =
+      dateRangeStart && dateRangeEnd
+        ? `/statistics/projects?dateRangeStart=${dateRangeStart.valueOf()}&dateRangeEnd=${dateRangeEnd.valueOf()}`
+        : `/statistics/projects`;
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
@@ -249,73 +261,13 @@ class Statistics extends Model {
     }
   }
 
-  static async getProjectStatistics() {
+  static async getIssuedAuthorizedNdcTonsCo2(dateRangeStart, dateRangeEnd) {
     await Statistics.removeStaleTableEntries();
 
-    const uri = `/statistics/projects`;
-    const cacheResult = await Statistics.getCachedResult(uri);
-
-    if (cacheResult?.statisticsJsonString) {
-      return JSON.parse(cacheResult.statisticsJsonString);
-    } else {
-      const registeredProjectsCount =
-        await Statistics.getProjectCount('Registered');
-      const authorizedProjectsCount =
-        await Statistics.getProjectCount('Authorized');
-      const completedProjectsCount =
-        await Statistics.getProjectCount('Completed');
-
-      const result = {
-        registeredProjectsCount,
-        authorizedProjectsCount,
-        completedProjectsCount,
-      };
-
-      await Statistics.create({
-        uri,
-        statisticsJsonString: JSON.stringify(result),
-      });
-
-      return result;
-    }
-  }
-
-  static async getIssuedAuthorizedNdcTonsCo2() {
-    await Statistics.removeStaleTableEntries();
-
-    const uri = `/statistics/tonsCo2?set=issuedAuthorizedNdc`;
-    const cacheResult = await Statistics.getCachedResult(uri);
-
-    if (cacheResult?.statisticsJsonString) {
-      return JSON.parse(cacheResult.statisticsJsonString);
-    } else {
-      const issuedTonsCount = await Statistics.getUnitTableTonsCo2Count();
-      const authorizedTonsCount =
-        await Statistics.getUnitTableTonsCo2Count('Authorized');
-      const ndcTonsCount = await Statistics.calculateNdcTonsCo2Count();
-
-      const result = {
-        issuedTonsCount,
-        authorizedTonsCount,
-        ndcTonsCount,
-      };
-
-      await Statistics.create({
-        uri,
-        statisticsJsonString: JSON.stringify(result),
-      });
-
-      return result;
-    }
-  }
-
-  static async getDateRangeIssuedAuthorizedNdcTonsCo2(
-    dateRangeStart,
-    dateRangeEnd,
-  ) {
-    await Statistics.removeStaleTableEntries();
-
-    const uri = `/statistics/tonsCo2?set=issuedAuthorizedNdc&dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`;
+    const uri =
+      dateRangeStart && dateRangeEnd
+        ? `/statistics/tonsCo2?set=issuedAuthorizedNdc&dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`
+        : `/statistics/tonsCo2?set=issuedAuthorizedNdc`;
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
@@ -353,38 +305,13 @@ class Statistics extends Model {
     }
   }
 
-  static async getRetiredBufferTonsCo2() {
+  static async getRetiredBufferTonsCo2(dateRangeStart, dateRangeEnd) {
     await Statistics.removeStaleTableEntries();
 
-    const uri = `/statistics/tonsCo2?set=retiredBuffer`;
-    const cacheResult = await Statistics.getCachedResult(uri);
-
-    if (cacheResult?.statisticsJsonString) {
-      return JSON.parse(cacheResult.statisticsJsonString);
-    } else {
-      const bufferTonsCount =
-        await Statistics.getUnitTableTonsCo2Count('Buffer');
-      const retiredTonsCount =
-        await Statistics.getUnitTableTonsCo2Count('Retired');
-
-      const result = {
-        bufferTonsCount,
-        retiredTonsCount,
-      };
-
-      await Statistics.create({
-        uri,
-        statisticsJsonString: JSON.stringify(result),
-      });
-
-      return result;
-    }
-  }
-
-  static async getDateRangeRetiredBufferTonsCo2(dateRangeStart, dateRangeEnd) {
-    await Statistics.removeStaleTableEntries();
-
-    const uri = `/statistics/tonsCo2?set=retiredBuffer&dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`;
+    const uri =
+      dateRangeStart && dateRangeEnd
+        ? `/statistics/tonsCo2?set=retiredBuffer&dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`
+        : `/statistics/tonsCo2?set=retiredBuffer`;
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
@@ -415,19 +342,39 @@ class Statistics extends Model {
     }
   }
 
-  static async getTonsCo2ByMethodology(dateRangeStart, dateRangeEnd) {
+  static async getTonsCo2ByMethodology(
+    methodologies,
+    dateRangeStart,
+    dateRangeEnd,
+  ) {
     await Statistics.removeStaleTableEntries();
 
-    const uri =
+    let uri =
       dateRangeStart && dateRangeEnd
-        ? `/statistics/issuedCarbonByMethodology?dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`
-        : `/statistics/issuedCarbonByMethodology`;
+        ? `/statistics/issuedCarbonByMethodology?methodologies=${methodologies}dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`
+        : `/statistics/issuedCarbonByMethodology?methodologies=${methodologies}`;
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      console.log('not implemented');
+      const result = {};
+
+      for (const methodology of methodologies) {
+        result[methodology] =
+          await Statistics.getProjectAttributeBasedTonsCo2Count({
+            methodology,
+            dateRangeStart,
+            dateRangeEnd,
+          });
+      }
+
+      await Statistics.create({
+        uri,
+        statisticsJsonString: JSON.stringify(result),
+      });
+
+      return result;
     }
   }
 }

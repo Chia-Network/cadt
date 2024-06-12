@@ -22,3 +22,17 @@ export const tonsCo2StatisticsGetQuerySchema = Joi.object()
   .with('dateRangeEnd', 'dateRangeStart')
   .oxor('ytd', 'dateRangeStart')
   .oxor('ytd', 'dateRangeEnd');
+
+export const issuedCarbonByMethodologySchema = Joi.object()
+  .keys({
+    methodology: Joi.string(),
+    methodologyList: Joi.array().items(Joi.string()).min(1),
+    dateRangeStart: Joi.date(),
+    dateRangeEnd: Joi.date(),
+    ytd: Joi.boolean(),
+  })
+  .with('dateRangeStart', 'dateRangeEnd')
+  .with('dateRangeEnd', 'dateRangeStart')
+  .oxor('ytd', 'dateRangeStart')
+  .oxor('ytd', 'dateRangeEnd')
+  .xor('methodology', 'methodologyList');

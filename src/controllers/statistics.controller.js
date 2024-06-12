@@ -17,15 +17,12 @@ export const projects = async (req, res) => {
     if (!dateRangeStart && !dateRangeEnd && !ytd) {
       result = await Statistics.getProjectStatistics();
     } else if (ytd) {
-      result = await Statistics.getDateRangeProjectStatistics(
+      result = await Statistics.getProjectStatistics(
         startOfYear(new Date()),
         endOfYear(new Date()),
       );
     } else if (startDate && endDate) {
-      result = await Statistics.getDateRangeProjectStatistics(
-        startDate,
-        endDate,
-      );
+      result = await Statistics.getProjectStatistics(startDate, endDate);
     } else {
       throw new Error('invalid date query params');
     }
@@ -59,12 +56,12 @@ export const tonsCo2 = async (req, res) => {
       if (!dateRangeStart && !dateRangeEnd && !ytd) {
         result = await Statistics.getIssuedAuthorizedNdcTonsCo2();
       } else if (ytd) {
-        result = await Statistics.getDateRangeIssuedAuthorizedNdcTonsCo2(
+        result = await Statistics.getIssuedAuthorizedNdcTonsCo2(
           startOfYear(new Date()),
           endOfYear(new Date()),
         );
       } else if (startDate && endDate) {
-        result = await Statistics.getDateRangeIssuedAuthorizedNdcTonsCo2(
+        result = await Statistics.getIssuedAuthorizedNdcTonsCo2(
           startDate,
           endDate,
         );
@@ -73,15 +70,12 @@ export const tonsCo2 = async (req, res) => {
       if (!dateRangeStart && !dateRangeEnd && !ytd) {
         result = await Statistics.getRetiredBufferTonsCo2();
       } else if (ytd) {
-        result = await Statistics.getDateRangeRetiredBufferTonsCo2(
+        result = await Statistics.getRetiredBufferTonsCo2(
           startOfYear(new Date()),
           endOfYear(new Date()),
         );
       } else if (startDate && endDate) {
-        result = await Statistics.getDateRangeRetiredBufferTonsCo2(
-          startDate,
-          endDate,
-        );
+        result = await Statistics.getRetiredBufferTonsCo2(startDate, endDate);
       }
     } else {
       throw new Error('missing "set" query parameter');
@@ -110,21 +104,26 @@ export const issuedCarbonByMethodology = async (req, res) => {
       throw new Error('a home organization must exist to use this resource');
     }
 
-    const { dateRangeStart, dateRangeEnd, ytd } = req.query;
+    const { dateRangeStart, dateRangeEnd, ytd, methodology, methodologyList } =
+      req.query;
+
+    const methodologies = methodology ? [methodology] : methodologyList;
 
     const startDate = new Date(dateRangeStart);
     const endDate = new Date(dateRangeEnd);
 
     let result;
     if (!dateRangeStart && !dateRangeEnd && !ytd) {
-      result = await Statistics.getProjectStatistics();
+      result = await Statistics.getTonsCo2ByMethodology(methodologies);
     } else if (ytd) {
-      result = await Statistics.getDateRangeProjectStatistics(
+      result = await Statistics.getTonsCo2ByMethodology(
+        methodologies,
         startOfYear(new Date()),
         endOfYear(new Date()),
       );
     } else if (startDate && endDate) {
-      result = await Statistics.getDateRangeProjectStatistics(
+      result = await Statistics.getTonsCo2ByMethodology(
+        methodologies,
         startDate,
         endDate,
       );
@@ -133,7 +132,9 @@ export const issuedCarbonByMethodology = async (req, res) => {
     }
 
     res.json({
-      data: result,
+      data: {
+        issuedTonsCo2: result,
+      },
       success: true,
     });
   } catch (error) {
