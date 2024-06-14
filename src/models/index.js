@@ -8,7 +8,6 @@ import { Unit } from './units';
 import { Issuance } from './issuances';
 import { Estimation } from './estimations';
 import { LabelUnit } from './labelUnits';
-import { Statistics } from './statistics/index.js';
 
 Project.associate();
 CoBenefit.associate();
@@ -56,5 +55,4 @@ export const ModelKeys = {
   project: Project,
   projectRatings: Rating,
   projectLocations: ProjectLocation,
-  statistics: Statistics,
 };
