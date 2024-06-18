@@ -1,8 +1,7 @@
 'use strict';
 
-import { Unit } from '../units/index.js';
-
 const { Model } = Sequelize;
+import { Unit } from '../units/index.js';
 import Sequelize from 'sequelize';
 import { sequelize, safeMirrorDbHandler } from '../../database';
 import { StatisticsMirror } from './statistics.model.mirror';
@@ -150,6 +149,78 @@ class Statistics extends Model {
     });
 
     return result?.unitCount || 0;
+  }
+
+  static async getAllMethodologyTonsCo2Count() {
+    const homeOrg = await Organization.getHomeOrg();
+
+    const [result] = await sequelize.query(
+      `
+        WITH methodology_warehouse_projects AS (
+            SELECT
+                methodology,
+                warehouseProjectId
+            FROM
+                projects
+            WHERE
+                orgUid = :orgUid
+              AND
+                projectStatus != 'Cancelled'
+            )
+
+        SELECT
+            mwp.methodology,
+            SUM(
+                CASE
+                    WHEN u.unitCount IS NULL THEN 0
+                    WHEN u.unitCount GLOB '*[^0-9]*' THEN 0
+                    ELSE CAST(u.unitCount AS INTEGER)
+                END
+            ) AS totalUnitCount
+        FROM
+            methodology_warehouse_projects mwp
+          JOIN
+            issuances i ON mwp.warehouseProjectId = i.warehouseProjectId
+          JOIN
+            units u ON u.issuanceId = i.id
+        GROUP BY
+            mwp.methodology
+    `,
+      {
+        replacements: {
+          orgUid: homeOrg.orgUid,
+        },
+      },
+    );
+
+    const [allMethodologies] = await sequelize.query(
+      `
+        SELECT methodology
+        FROM projects
+        WHERE
+            orgUid = :orgUid
+          AND
+            projectStatus != 'Cancelled'
+        GROUP BY methodology
+    `,
+      {
+        replacements: {
+          orgUid: homeOrg.orgUid,
+        },
+      },
+    );
+
+    const methodologyTonsCo2Count = result.reduce((acc, obj) => {
+      acc[obj.methodology] = obj.totalUnitCount;
+      return acc;
+    }, {});
+
+    allMethodologies.forEach((methodology) => {
+      const count = methodologyTonsCo2Count?.[methodology.methodology];
+      methodology.tonsCo2 = count || 0;
+    });
+
+    return allMethodologies;
   }
 
   static async getProjectAttributeBasedTonsCo2Count(projectSelectors) {
@@ -349,29 +420,39 @@ class Statistics extends Model {
   ) {
     await Statistics.removeStaleTableEntries();
 
-    let uri =
-      dateRangeStart && dateRangeEnd
-        ? `/statistics/issuedCarbonByMethodology?methodologies=${methodologies}dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`
-        : `/statistics/issuedCarbonByMethodology?methodologies=${methodologies}`;
+    let uri = '';
+    if (dateRangeStart && dateRangeEnd && methodologies) {
+      uri = `/statistics/issuedCarbonByMethodology?methodologies=${methodologies}dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`;
+    } else if (dateRangeStart && dateRangeEnd) {
+      uri = `/statistics/issuedCarbonByMethodology?methodologies=${methodologies}`;
+    } else {
+      uri = `/statistics/issuedCarbonByMethodology`;
+    }
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const result = {};
+      let result = {};
 
-      for (const methodology of methodologies) {
-        result[methodology] =
-          await Statistics.getProjectAttributeBasedTonsCo2Count({
-            methodology,
-            dateRangeStart,
-            dateRangeEnd,
-          });
+      if (methodologies) {
+        for (const methodology of methodologies) {
+          result[methodology] =
+            await Statistics.getProjectAttributeBasedTonsCo2Count({
+              methodology,
+              dateRangeStart,
+              dateRangeEnd,
+            });
+        }
+      } else {
+        result = await Statistics.getAllMethodologyTonsCo2Count();
       }
+
+      const stringResult = JSON.stringify(result);
 
       await Statistics.create({
         uri,
-        statisticsJsonString: JSON.stringify(result),
+        statisticsJsonString: stringResult,
       });
 
       return result;

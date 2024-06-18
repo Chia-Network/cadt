@@ -35,4 +35,4 @@ export const issuedCarbonByMethodologySchema = Joi.object()
   .with('dateRangeEnd', 'dateRangeStart')
   .oxor('ytd', 'dateRangeStart')
   .oxor('ytd', 'dateRangeEnd')
-  .xor('methodology', 'methodologyList');
+  .oxor('methodology', 'methodologyList');
