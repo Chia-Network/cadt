@@ -1,4 +1,4 @@
-pr_target_grant: develop
+pr_target_branch: develop
 assign_users:
   - TheLastCicada
 commit_prefix: "chore: "
