@@ -448,11 +448,9 @@ class Statistics extends Model {
         result = await Statistics.getAllMethodologyTonsCo2Count();
       }
 
-      const stringResult = JSON.stringify(result);
-
       await Statistics.create({
         uri,
-        statisticsJsonString: stringResult,
+        statisticsJsonString: JSON.stringify(result),
       });
 
       return result;
