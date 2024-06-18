@@ -78,7 +78,7 @@ class Statistics extends Model {
 
     if (dateRangeStart && dateRangeEnd) {
       andConditions.push({
-        updatedAt: {
+        createdAt: {
           [Sequelize.Op.between]: [
             new Date(dateRangeStart),
             new Date(dateRangeEnd),
@@ -117,7 +117,7 @@ class Statistics extends Model {
 
     if (dateRangeStart && dateRangeEnd) {
       andConditions.push({
-        updatedAt: {
+        createdAt: {
           [Sequelize.Op.between]: [
             new Date(dateRangeStart),
             new Date(dateRangeEnd),
@@ -151,11 +151,10 @@ class Statistics extends Model {
     return result?.unitCount || 0;
   }
 
-  static async getAllMethodologyTonsCo2Count() {
+  static async getAllMethodologyTonsCo2Count(dateRangeStart, dateRangeEnd) {
     const homeOrg = await Organization.getHomeOrg();
 
-    const [result] = await sequelize.query(
-      `
+    let methodologyCountQuery = `
         WITH methodology_warehouse_projects AS (
             SELECT
                 methodology,
@@ -183,15 +182,23 @@ class Statistics extends Model {
             issuances i ON mwp.warehouseProjectId = i.warehouseProjectId
           JOIN
             units u ON u.issuanceId = i.id
-        GROUP BY
-            mwp.methodology
-    `,
-      {
-        replacements: {
-          orgUid: homeOrg.orgUid,
-        },
-      },
-    );
+    `;
+
+    const methodologyCountQueryReplacements = {
+      orgUid: homeOrg.orgUid,
+    };
+
+    if (dateRangeStart && dateRangeEnd) {
+      methodologyCountQuery += ` WHERE u.createdAt BETWEEN :dateRangeStart AND :dateRangeEnd `;
+      methodologyCountQueryReplacements.dateRangeStart = dateRangeStart;
+      methodologyCountQueryReplacements.dateRangeEnd = dateRangeEnd;
+    }
+
+    methodologyCountQuery += ` GROUP BY mwp.methodology `;
+
+    const [result] = await sequelize.query(methodologyCountQuery, {
+      replacements: methodologyCountQueryReplacements,
+    });
 
     const [allMethodologies] = await sequelize.query(
       `
@@ -235,7 +242,7 @@ class Statistics extends Model {
           ...(!_.isEmpty(projectAttributes) && { ...projectAttributes }),
           ...(dateRangeStart &&
             dateRangeEnd && {
-              updatedAt: {
+              createdAt: {
                 [Sequelize.Op.between]: {
                   dateRangeStart,
                   dateRangeEnd,
@@ -445,7 +452,10 @@ class Statistics extends Model {
             });
         }
       } else {
-        result = await Statistics.getAllMethodologyTonsCo2Count();
+        result = await Statistics.getAllMethodologyTonsCo2Count(
+          dateRangeStart,
+          dateRangeEnd,
+        );
       }
 
       await Statistics.create({
