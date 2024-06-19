@@ -50,3 +50,5 @@ export const issuedCarbonByProjectTypeSchema = Joi.object()
   .oxor('ytd', 'dateRangeStart')
   .oxor('ytd', 'dateRangeEnd')
   .oxor('projectType', 'projectTypeList');
+
+export const unitCountByStatusSchema = Joi.object();

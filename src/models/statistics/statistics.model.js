@@ -586,6 +586,36 @@ class Statistics extends Model {
       return result;
     }
   }
+
+  static async getUnitCountByStatus() {
+    await Statistics.removeStaleTableEntries();
+    const homeOrg = await Organization.getHomeOrg();
+    const uri = `/statistics/unitCountByStatus`;
+    const cacheResult = await Statistics.getCachedResult(uri);
+
+    if (cacheResult?.statisticsJsonString) {
+      return JSON.parse(cacheResult.statisticsJsonString);
+    } else {
+      const result = await Unit.findAll({
+        where: {
+          orgUid: homeOrg.orgUid,
+        },
+        attributes: [
+          'unitStatus',
+          [sequelize.fn('COUNT', sequelize.col('unitStatus')), 'count'],
+        ],
+        group: 'unitStatus',
+        raw: true,
+      });
+
+      await Statistics.create({
+        uri,
+        statisticsJsonString: JSON.stringify(result),
+      });
+
+      return result;
+    }
+  }
 }
 
 Statistics.init(ModelTypes, {

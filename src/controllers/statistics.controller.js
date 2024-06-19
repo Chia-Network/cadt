@@ -192,3 +192,26 @@ export const issuedCarbonByProjectType = async (req, res) => {
     });
   }
 };
+
+export const unitCountByStatus = async (req, res) => {
+  try {
+    const homeOrg = await Organization.getHomeOrg();
+    if (!homeOrg?.orgUid) {
+      throw new Error('a home organization must exist to use this resource');
+    }
+
+    const result = await Statistics.getUnitCountByStatus();
+
+    res.json({
+      data: {
+        unitCountsByStatus: result,
+      },
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message,
+      success: false,
+    });
+  }
+};
