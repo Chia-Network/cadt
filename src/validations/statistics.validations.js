@@ -36,3 +36,17 @@ export const issuedCarbonByMethodologySchema = Joi.object()
   .oxor('ytd', 'dateRangeStart')
   .oxor('ytd', 'dateRangeEnd')
   .oxor('methodology', 'methodologyList');
+
+export const issuedCarbonByProjectTypeSchema = Joi.object()
+  .keys({
+    projectType: Joi.string(),
+    projectTypeList: Joi.array().items(Joi.string()).min(1),
+    dateRangeStart: Joi.date(),
+    dateRangeEnd: Joi.date(),
+    ytd: Joi.boolean(),
+  })
+  .with('dateRangeStart', 'dateRangeEnd')
+  .with('dateRangeEnd', 'dateRangeStart')
+  .oxor('ytd', 'dateRangeStart')
+  .oxor('ytd', 'dateRangeEnd')
+  .oxor('projectType', 'projectTypeList');

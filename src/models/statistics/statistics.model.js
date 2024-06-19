@@ -163,8 +163,6 @@ class Statistics extends Model {
                 projects
             WHERE
                 orgUid = :orgUid
-              AND
-                projectStatus != 'Cancelled'
             )
 
         SELECT
@@ -182,6 +180,7 @@ class Statistics extends Model {
             issuances i ON mwp.warehouseProjectId = i.warehouseProjectId
           JOIN
             units u ON u.issuanceId = i.id
+        WHERE u.unitStatus != "Cancelled"
     `;
 
     const methodologyCountQueryReplacements = {
@@ -189,7 +188,7 @@ class Statistics extends Model {
     };
 
     if (dateRangeStart && dateRangeEnd) {
-      methodologyCountQuery += ` WHERE u.createdAt BETWEEN :dateRangeStart AND :dateRangeEnd `;
+      methodologyCountQuery += ` AND u.createdAt BETWEEN :dateRangeStart AND :dateRangeEnd `;
       methodologyCountQueryReplacements.dateRangeStart = dateRangeStart;
       methodologyCountQueryReplacements.dateRangeEnd = dateRangeEnd;
     }
@@ -206,8 +205,6 @@ class Statistics extends Model {
         FROM projects
         WHERE
             orgUid = :orgUid
-          AND
-            projectStatus != 'Cancelled'
         GROUP BY methodology
     `,
       {
@@ -228,6 +225,82 @@ class Statistics extends Model {
     });
 
     return allMethodologies;
+  }
+
+  static async getAllProjectTypesTonsCo2Count(dateRangeStart, dateRangeEnd) {
+    const homeOrg = await Organization.getHomeOrg();
+
+    let projectCountQuery = `
+        WITH project_type_warehouse_projects AS (
+            SELECT
+                projectType,
+                warehouseProjectId
+            FROM
+                projects
+            WHERE
+                orgUid = :orgUid
+            )
+
+        SELECT
+            ptwp.projectType,
+            SUM(
+                CASE
+                    WHEN u.unitCount IS NULL THEN 0
+                    WHEN u.unitCount GLOB '*[^0-9]*' THEN 0
+                    ELSE CAST(u.unitCount AS INTEGER)
+                END
+            ) AS totalUnitCount
+        FROM
+            project_type_warehouse_projects ptwp
+          JOIN
+            issuances i ON ptwp.warehouseProjectId = i.warehouseProjectId
+          JOIN
+            units u ON u.issuanceId = i.id
+        WHERE u.unitStatus != "Cancelled"
+    `;
+
+    const projectTypeCountQueryReplacements = {
+      orgUid: homeOrg.orgUid,
+    };
+
+    if (dateRangeStart && dateRangeEnd) {
+      projectCountQuery += ` AND u.createdAt BETWEEN :dateRangeStart AND :dateRangeEnd `;
+      projectTypeCountQueryReplacements.dateRangeStart = dateRangeStart;
+      projectTypeCountQueryReplacements.dateRangeEnd = dateRangeEnd;
+    }
+
+    projectCountQuery += ` GROUP BY ptwp.projectType `;
+
+    const [result] = await sequelize.query(projectCountQuery, {
+      replacements: projectTypeCountQueryReplacements,
+    });
+
+    const [allProjectTypes] = await sequelize.query(
+      `
+        SELECT projectType
+        FROM projects
+        WHERE
+            orgUid = :orgUid
+        GROUP BY projectType
+    `,
+      {
+        replacements: {
+          orgUid: homeOrg.orgUid,
+        },
+      },
+    );
+
+    const projectTypeTonsCo2Count = result.reduce((acc, obj) => {
+      acc[obj.projectType] = obj.totalUnitCount;
+      return acc;
+    }, {});
+
+    allProjectTypes.forEach((projectType) => {
+      const count = projectTypeTonsCo2Count?.[projectType.projectType];
+      projectType.tonsCo2 = count || 0;
+    });
+
+    return allProjectTypes;
   }
 
   static async getProjectAttributeBasedTonsCo2Count(projectSelectors) {
@@ -453,6 +526,53 @@ class Statistics extends Model {
         }
       } else {
         result = await Statistics.getAllMethodologyTonsCo2Count(
+          dateRangeStart,
+          dateRangeEnd,
+        );
+      }
+
+      await Statistics.create({
+        uri,
+        statisticsJsonString: JSON.stringify(result),
+      });
+
+      return result;
+    }
+  }
+
+  static async getTonsCo2ByProjectType(
+    projectTypes,
+    dateRangeStart,
+    dateRangeEnd,
+  ) {
+    await Statistics.removeStaleTableEntries();
+
+    let uri = '';
+    if (dateRangeStart && dateRangeEnd && projectTypes) {
+      uri = `/statistics/issuedCarbonByProjectType?projectTypes=${projectTypes}dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`;
+    } else if (dateRangeStart && dateRangeEnd) {
+      uri = `/statistics/issuedCarbonByProjectType?projectTypes=${projectTypes}`;
+    } else {
+      uri = `/statistics/issuedCarbonByProjectType`;
+    }
+    const cacheResult = await Statistics.getCachedResult(uri);
+
+    if (cacheResult?.statisticsJsonString) {
+      return JSON.parse(cacheResult.statisticsJsonString);
+    } else {
+      let result = {};
+
+      if (projectTypes) {
+        for (const projectType of projectTypes) {
+          result[projectType] =
+            await Statistics.getProjectAttributeBasedTonsCo2Count({
+              projectType: projectType,
+              dateRangeStart,
+              dateRangeEnd,
+            });
+        }
+      } else {
+        result = await Statistics.getAllProjectTypesTonsCo2Count(
           dateRangeStart,
           dateRangeEnd,
         );

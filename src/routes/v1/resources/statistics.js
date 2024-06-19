@@ -5,6 +5,7 @@ import express from 'express';
 import { StatisticsController } from '../../../controllers';
 import {
   issuedCarbonByMethodologySchema,
+  issuedCarbonByProjectTypeSchema,
   projectsStatisticsGetQuerySchema,
   tonsCo2StatisticsGetQuerySchema,
 } from '../../../validations/statistics.validations.js';
@@ -35,6 +36,14 @@ StatisticsRouter.get(
   validator.query(issuedCarbonByMethodologySchema),
   (req, res) => {
     return StatisticsController.issuedCarbonByMethodology(req, res);
+  },
+);
+
+StatisticsRouter.get(
+  '/issuedCarbonByProjectType',
+  validator.query(issuedCarbonByProjectTypeSchema),
+  (req, res) => {
+    return StatisticsController.issuedCarbonByProjectType(req, res);
   },
 );
 

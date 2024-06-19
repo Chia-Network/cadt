@@ -144,3 +144,51 @@ export const issuedCarbonByMethodology = async (req, res) => {
     });
   }
 };
+
+export const issuedCarbonByProjectType = async (req, res) => {
+  try {
+    const homeOrg = await Organization.getHomeOrg();
+    if (!homeOrg?.orgUid) {
+      throw new Error('a home organization must exist to use this resource');
+    }
+
+    const { dateRangeStart, dateRangeEnd, ytd, projectType, projectTypeList } =
+      req.query;
+
+    const projectTypes = projectType ? [projectType] : projectTypeList;
+
+    const startDate = new Date(dateRangeStart);
+    const endDate = new Date(dateRangeEnd);
+
+    let result;
+    if (!dateRangeStart && !dateRangeEnd && !ytd) {
+      result = await Statistics.getTonsCo2ByProjectType(projectTypes);
+    } else if (ytd) {
+      result = await Statistics.getTonsCo2ByMethodology(
+        projectTypes,
+        startOfYear(new Date()),
+        endOfYear(new Date()),
+      );
+    } else if (startDate && endDate) {
+      result = await Statistics.getTonsCo2ByMethodology(
+        projectTypes,
+        startDate,
+        endDate,
+      );
+    } else {
+      throw new Error('invalid date query params');
+    }
+
+    res.json({
+      data: {
+        issuedTonsCo2: result,
+      },
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message,
+      success: false,
+    });
+  }
+};
