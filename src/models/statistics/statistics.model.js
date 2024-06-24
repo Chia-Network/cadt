@@ -67,72 +67,81 @@ class Statistics extends Model {
     });
   }
 
-  static async getProjectCount(projectStatus, dateRangeStart, dateRangeEnd) {
+  static async getProjectCount(projectStatus) {
     const homeOrg = await Organization.getHomeOrg();
 
-    const andConditions = [{ orgUid: homeOrg.orgUid }];
-
-    if (projectStatus) {
-      andConditions.push({ projectStatus });
-    }
-
-    if (dateRangeStart && dateRangeEnd) {
-      andConditions.push({
-        createdAt: {
-          [Sequelize.Op.between]: [
-            new Date(dateRangeStart),
-            new Date(dateRangeEnd),
-          ],
-        },
-      });
-    }
-
-    const where = {
-      [Sequelize.Op.and]: andConditions,
-    };
-
     return await Project.count({
-      where,
+      where: {
+        [Sequelize.Op.and]: {
+          orgUid: homeOrg.orgUid,
+          projectStatus,
+        },
+      },
     });
   }
 
   static async getUnitTableTonsCo2Count(
-    unitStatus,
-    dateRangeStart,
-    dateRangeEnd,
+    unitStatusList,
+    unitTypeList,
+    vintageYearRangeStart,
+    vintageYearRangeEnd,
   ) {
     const homeOrg = await Organization.getHomeOrg();
-
     const andConditions = [{ orgUid: homeOrg.orgUid }];
 
-    if (unitStatus) {
-      andConditions.push({ unitStatus });
-    } else {
+    if (
+      unitStatusList &&
+      !unitStatusList.find((status) => status?.toLowerCase() === 'all')
+    ) {
       andConditions.push({
         unitStatus: {
-          [Sequelize.Op.not]: 'Cancelled',
+          [Sequelize.Op.or]: unitStatusList,
         },
       });
     }
 
-    if (dateRangeStart && dateRangeEnd) {
+    if (
+      unitTypeList &&
+      !unitTypeList.find((status) => status?.toLowerCase() === 'all')
+    ) {
       andConditions.push({
-        createdAt: {
-          [Sequelize.Op.between]: [
-            new Date(dateRangeStart),
-            new Date(dateRangeEnd),
-          ],
+        unitStatus: {
+          [Sequelize.Op.or]: unitTypeList,
         },
       });
     }
 
-    const where = {
-      [Sequelize.Op.and]: andConditions,
-    };
+    if (vintageYearRangeStart && vintageYearRangeEnd) {
+      andConditions.push({
+        vintageYear: {
+          [Sequelize.Op.between]: {
+            vintageYearRangeStart,
+            vintageYearRangeEnd,
+          },
+        },
+      });
+    }
 
-    const [result] = await Unit.findAll({
-      where,
+    const attributes = [];
+
+    if (unitStatusList) {
+      attributes.push('unitStatus');
+    }
+
+    if (vintageYearRangeStart && vintageYearRangeEnd) {
+      attributes.push('vintageYear');
+    }
+
+    if (unitTypeList) {
+      attributes.push('unitType');
+    }
+
+    const queryResult = await Unit.findAll({
+      where: {
+        [Sequelize.Op.and]: andConditions,
+      },
       attributes: [
+        ...attributes,
         [
           sequelize.fn(
             'SUM',
@@ -142,13 +151,14 @@ class Statistics extends Model {
               0,
             ),
           ),
-          'unitCount',
+          'tonsCo2',
         ],
       ],
+      group: attributes,
       raw: true,
     });
 
-    return result?.unitCount || 0;
+    return queryResult;
   }
 
   static async getAllMethodologyTonsCo2Count(dateRangeStart, dateRangeEnd) {
@@ -313,15 +323,6 @@ class Statistics extends Model {
         [Sequelize.Op.and]: {
           orgUid: homeOrg.orgUid,
           ...(!_.isEmpty(projectAttributes) && { ...projectAttributes }),
-          ...(dateRangeStart &&
-            dateRangeEnd && {
-              createdAt: {
-                [Sequelize.Op.between]: {
-                  dateRangeStart,
-                  dateRangeEnd,
-                },
-              },
-            }),
         },
       },
       attributes: ['warehouseProjectId'],
@@ -348,6 +349,9 @@ class Statistics extends Model {
           issuanceId: {
             [Sequelize.Op.in]: issuanceIds,
           },
+          vintageYear: {
+            [Sequelize.Op.between]: [dateRangeStart, dateRangeEnd],
+          },
         },
       },
       attributes: [
@@ -369,33 +373,21 @@ class Statistics extends Model {
     return unitResult?.unitCount || 0;
   }
 
-  static async getProjectStatistics(dateRangeStart, dateRangeEnd) {
+  static async getProjectStatistics() {
     await Statistics.removeStaleTableEntries();
 
-    const uri =
-      dateRangeStart && dateRangeEnd
-        ? `/statistics/projects?dateRangeStart=${dateRangeStart.valueOf()}&dateRangeEnd=${dateRangeEnd.valueOf()}`
-        : `/statistics/projects`;
+    const uri = `/statistics/projects`;
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const registeredProjectsCount = await Statistics.getProjectCount(
-        'Registered',
-        dateRangeStart,
-        dateRangeEnd,
-      );
-      const authorizedProjectsCount = await Statistics.getProjectCount(
-        'Authorized',
-        dateRangeStart,
-        dateRangeEnd,
-      );
-      const completedProjectsCount = await Statistics.getProjectCount(
-        'Completed',
-        dateRangeStart,
-        dateRangeEnd,
-      );
+      const registeredProjectsCount =
+        await Statistics.getProjectCount('Registered');
+      const authorizedProjectsCount =
+        await Statistics.getProjectCount('Authorized');
+      const completedProjectsCount =
+        await Statistics.getProjectCount('Completed');
 
       const result = {
         registeredProjectsCount,
@@ -412,78 +404,39 @@ class Statistics extends Model {
     }
   }
 
-  static async getIssuedAuthorizedNdcTonsCo2(dateRangeStart, dateRangeEnd) {
+  static async getTonsCo2(
+    unitStatusList,
+    unitTypeList,
+    vintageYearRangeStart,
+    vintageYearRangeEnd,
+  ) {
     await Statistics.removeStaleTableEntries();
 
-    const uri =
-      dateRangeStart && dateRangeEnd
-        ? `/statistics/tonsCo2?set=issuedAuthorizedNdc&dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`
-        : `/statistics/tonsCo2?set=issuedAuthorizedNdc`;
-    const cacheResult = await Statistics.getCachedResult(uri);
+    let uri = `/statistics/tonsCo2`;
 
-    if (cacheResult?.statisticsJsonString) {
-      return JSON.parse(cacheResult.statisticsJsonString);
-    } else {
-      const issuedTonsCount = await Statistics.getUnitTableTonsCo2Count(
-        null,
-        dateRangeStart,
-        dateRangeEnd,
-      );
-      const authorizedTonsCount = await Statistics.getUnitTableTonsCo2Count(
-        'Authorized',
-        dateRangeStart,
-        dateRangeEnd,
-      );
-      const ndcTonsCount =
-        await Statistics.getProjectAttributeBasedTonsCo2Count({
-          coveredByNDC: 'Inside NDC',
-          dateRangeStart,
-          dateRangeEnd,
-        });
-
-      const result = {
-        issuedTonsCount,
-        authorizedTonsCount,
-        ndcTonsCount,
-      };
-
-      await Statistics.create({
-        uri,
-        statisticsJsonString: JSON.stringify(result),
-      });
-
-      return result;
+    if (vintageYearRangeStart && vintageYearRangeEnd) {
+      uri += `?vintageYearRangeStart=${vintageYearRangeStart}&vintageYearRangeEnd=${vintageYearRangeEnd}`;
     }
-  }
 
-  static async getRetiredBufferTonsCo2(dateRangeStart, dateRangeEnd) {
-    await Statistics.removeStaleTableEntries();
+    if (unitStatusList) {
+      uri += `&unitStatusList=${unitStatusList}`;
+    }
 
-    const uri =
-      dateRangeStart && dateRangeEnd
-        ? `/statistics/tonsCo2?set=retiredBuffer&dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`
-        : `/statistics/tonsCo2?set=retiredBuffer`;
+    if (unitTypeList) {
+      uri += `&byUnitType=${unitStatusList}`;
+    }
+
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const retiredTonsCount = await Statistics.getUnitTableTonsCo2Count(
-        'Retired',
-        dateRangeStart,
-        dateRangeEnd,
+      const result = await Statistics.getUnitTableTonsCo2Count(
+        unitStatusList,
+        unitTypeList,
+        vintageYearRangeStart,
+        vintageYearRangeEnd,
       );
-      const bufferTonsCount = await Statistics.getUnitTableTonsCo2Count(
-        'Buffer',
-        dateRangeStart,
-        dateRangeEnd,
-      );
-
-      const result = {
-        bufferTonsCount,
-        retiredTonsCount,
-      };
-
       await Statistics.create({
         uri,
         statisticsJsonString: JSON.stringify(result),
@@ -547,7 +500,7 @@ class Statistics extends Model {
   ) {
     await Statistics.removeStaleTableEntries();
 
-    let uri = '';
+    let uri = ``;
     if (dateRangeStart && dateRangeEnd && projectTypes) {
       uri = `/statistics/issuedCarbonByProjectType?projectTypes=${projectTypes}dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`;
     } else if (dateRangeStart && dateRangeEnd) {

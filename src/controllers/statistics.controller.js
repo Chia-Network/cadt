@@ -1,5 +1,4 @@
 import { Organization, Statistics } from '../models/index.js';
-import { startOfYear, endOfYear } from 'date-fns';
 
 export const projects = async (req, res) => {
   try {
@@ -8,24 +7,7 @@ export const projects = async (req, res) => {
       throw new Error('a home organization must exist to use this resource');
     }
 
-    const { dateRangeStart, dateRangeEnd, ytd } = req.query;
-
-    const startDate = new Date(dateRangeStart);
-    const endDate = new Date(dateRangeEnd);
-
-    let result;
-    if (!dateRangeStart && !dateRangeEnd && !ytd) {
-      result = await Statistics.getProjectStatistics();
-    } else if (ytd) {
-      result = await Statistics.getProjectStatistics(
-        startOfYear(new Date()),
-        endOfYear(new Date()),
-      );
-    } else if (startDate && endDate) {
-      result = await Statistics.getProjectStatistics(startDate, endDate);
-    } else {
-      throw new Error('invalid date query params');
-    }
+    const result = await Statistics.getProjectStatistics();
 
     res.json({
       data: result,
@@ -46,40 +28,32 @@ export const tonsCo2 = async (req, res) => {
       throw new Error('A home organization must exist to use this resource');
     }
 
-    const { set, dateRangeStart, dateRangeEnd, ytd } = req.query;
+    const {
+      unitStatus,
+      unitStatusList,
+      unitType,
+      unitTypeList,
+      vintageYear,
+      vintageYearRangeStart,
+      vintageYearRangeEnd,
+    } = req.query;
 
-    const startDate = new Date(dateRangeStart);
-    const endDate = new Date(dateRangeEnd);
+    const unitStatusArr = unitStatus ? [unitStatus] : unitStatusList;
+    const unitTypeArr = unitType ? [unitType] : unitTypeList;
 
-    let result = null;
-    if (set === 'issuedAuthorizedNdc') {
-      if (!dateRangeStart && !dateRangeEnd && !ytd) {
-        result = await Statistics.getIssuedAuthorizedNdcTonsCo2();
-      } else if (ytd) {
-        result = await Statistics.getIssuedAuthorizedNdcTonsCo2(
-          startOfYear(new Date()),
-          endOfYear(new Date()),
-        );
-      } else if (startDate && endDate) {
-        result = await Statistics.getIssuedAuthorizedNdcTonsCo2(
-          startDate,
-          endDate,
-        );
-      }
-    } else if (set === 'retiredBuffer') {
-      if (!dateRangeStart && !dateRangeEnd && !ytd) {
-        result = await Statistics.getRetiredBufferTonsCo2();
-      } else if (ytd) {
-        result = await Statistics.getRetiredBufferTonsCo2(
-          startOfYear(new Date()),
-          endOfYear(new Date()),
-        );
-      } else if (startDate && endDate) {
-        result = await Statistics.getRetiredBufferTonsCo2(startDate, endDate);
-      }
-    } else {
-      throw new Error('missing "set" query parameter');
-    }
+    const firstYear = Number.parseInt(
+      vintageYear ? vintageYear : vintageYearRangeStart,
+    );
+    const lastYear = Number.parseInt(
+      vintageYear ? vintageYear : vintageYearRangeEnd,
+    );
+
+    const result = await Statistics.getTonsCo2(
+      unitStatusArr,
+      unitTypeArr,
+      firstYear,
+      lastYear,
+    );
 
     if (!result) {
       throw new Error('invalid query params');
@@ -104,28 +78,27 @@ export const issuedCarbonByMethodology = async (req, res) => {
       throw new Error('a home organization must exist to use this resource');
     }
 
-    const { dateRangeStart, dateRangeEnd, ytd, methodology, methodologyList } =
-      req.query;
+    const {
+      vintageYearRangeStart,
+      vintageYearRangeEnd,
+      vintageYear,
+      methodology,
+      methodologyList,
+    } = req.query;
 
-    const methodologies = methodology ? [methodology] : methodologyList;
+    const methodologyArr = methodology ? [methodology] : methodologyList;
 
-    const startDate = new Date(dateRangeStart);
-    const endDate = new Date(dateRangeEnd);
+    const firstYear = vintageYear ? vintageYear : vintageYearRangeStart;
+    const lastYear = vintageYear ? vintageYear : vintageYearRangeEnd;
 
     let result;
-    if (!dateRangeStart && !dateRangeEnd && !ytd) {
-      result = await Statistics.getTonsCo2ByMethodology(methodologies);
-    } else if (ytd) {
+    if (!vintageYearRangeStart && !vintageYearRangeEnd && !vintageYear) {
+      result = await Statistics.getTonsCo2ByMethodology(methodologyArr);
+    } else if (firstYear && lastYear) {
       result = await Statistics.getTonsCo2ByMethodology(
-        methodologies,
-        startOfYear(new Date()),
-        endOfYear(new Date()),
-      );
-    } else if (startDate && endDate) {
-      result = await Statistics.getTonsCo2ByMethodology(
-        methodologies,
-        startDate,
-        endDate,
+        methodologyArr,
+        firstYear,
+        lastYear,
       );
     } else {
       throw new Error('invalid date query params');
@@ -152,28 +125,27 @@ export const issuedCarbonByProjectType = async (req, res) => {
       throw new Error('a home organization must exist to use this resource');
     }
 
-    const { dateRangeStart, dateRangeEnd, ytd, projectType, projectTypeList } =
-      req.query;
+    const {
+      vintageYearRangeStart,
+      vintageYearRangeEnd,
+      vintageYear,
+      projectType,
+      projectTypeList,
+    } = req.query;
 
-    const projectTypes = projectType ? [projectType] : projectTypeList;
+    const projectTypeArr = projectType ? [projectType] : projectTypeList;
 
-    const startDate = new Date(dateRangeStart);
-    const endDate = new Date(dateRangeEnd);
+    const firstYear = vintageYear ? vintageYear : vintageYearRangeStart;
+    const lastYear = vintageYear ? vintageYear : vintageYearRangeEnd;
 
     let result;
-    if (!dateRangeStart && !dateRangeEnd && !ytd) {
-      result = await Statistics.getTonsCo2ByProjectType(projectTypes);
-    } else if (ytd) {
-      result = await Statistics.getTonsCo2ByMethodology(
-        projectTypes,
-        startOfYear(new Date()),
-        endOfYear(new Date()),
-      );
-    } else if (startDate && endDate) {
-      result = await Statistics.getTonsCo2ByMethodology(
-        projectTypes,
-        startDate,
-        endDate,
+    if (!vintageYearRangeStart && !vintageYearRangeEnd && !vintageYear) {
+      result = await Statistics.getTonsCo2ByProjectType(projectTypeArr);
+    } else if (firstYear && lastYear) {
+      result = await Statistics.getTonsCo2ByProjectType(
+        projectTypeArr,
+        firstYear,
+        lastYear,
       );
     } else {
       throw new Error('invalid date query params');
