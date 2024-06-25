@@ -373,10 +373,10 @@ class Statistics extends Model {
     return unitResult?.unitCount || 0;
   }
 
-  static async getProjectStatistics() {
+  static async getProjectStatusCounts() {
     await Statistics.removeStaleTableEntries();
 
-    const uri = `/statistics/projects`;
+    const uri = `/statistics/projects?counts=true`;
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
@@ -394,6 +394,43 @@ class Statistics extends Model {
         authorizedProjectsCount,
         completedProjectsCount,
       };
+
+      await Statistics.create({
+        uri,
+        statisticsJsonString: JSON.stringify(result),
+      });
+
+      return result;
+    }
+  }
+
+  static async getRehostedProjectCounts() {
+    await Statistics.removeStaleTableEntries();
+    const homeOrg = await Organization.getHomeOrg();
+    const uri = `/statistics/projects?rehosted=true`;
+    const cacheResult = await Statistics.getCachedResult(uri);
+
+    if (cacheResult?.statisticsJsonString) {
+      return JSON.parse(cacheResult.statisticsJsonString);
+    } else {
+      const query = `
+        SELECT
+          currentRegistry,
+          SUM(CASE WHEN currentRegistry = registryOfOrigin THEN 1 ELSE 0 END) AS originProjectCount,
+          SUM(CASE WHEN currentRegistry <> registryOfOrigin THEN 1 ELSE 0 END) AS rehostedProjectCount
+        FROM
+          Projects
+        WHERE
+          orgUid = :orgUid
+        GROUP BY
+          currentRegistry;
+        `;
+
+      const [result] = await sequelize.query(query, {
+        replacements: {
+          orgUid: homeOrg.orgUid,
+        },
+      });
 
       await Statistics.create({
         uri,
@@ -530,36 +567,6 @@ class Statistics extends Model {
           dateRangeEnd,
         );
       }
-
-      await Statistics.create({
-        uri,
-        statisticsJsonString: JSON.stringify(result),
-      });
-
-      return result;
-    }
-  }
-
-  static async getUnitCountByStatus() {
-    await Statistics.removeStaleTableEntries();
-    const homeOrg = await Organization.getHomeOrg();
-    const uri = `/statistics/unitCountByStatus`;
-    const cacheResult = await Statistics.getCachedResult(uri);
-
-    if (cacheResult?.statisticsJsonString) {
-      return JSON.parse(cacheResult.statisticsJsonString);
-    } else {
-      const result = await Unit.findAll({
-        where: {
-          orgUid: homeOrg.orgUid,
-        },
-        attributes: [
-          'unitStatus',
-          [sequelize.fn('COUNT', sequelize.col('unitStatus')), 'count'],
-        ],
-        group: 'unitStatus',
-        raw: true,
-      });
 
       await Statistics.create({
         uri,

@@ -7,7 +7,16 @@ export const projects = async (req, res) => {
       throw new Error('a home organization must exist to use this resource');
     }
 
-    const result = await Statistics.getProjectStatistics();
+    const { status, rehosted } = req.query;
+
+    let result;
+    if (status) {
+      result = await Statistics.getProjectStatusCounts();
+    } else if (rehosted) {
+      result = await Statistics.getRehostedProjectCounts();
+    } else {
+      throw new Error('invalid query params');
+    }
 
     res.json({
       data: result,
@@ -154,29 +163,6 @@ export const issuedCarbonByProjectType = async (req, res) => {
     res.json({
       data: {
         issuedTonsCo2: result,
-      },
-      success: true,
-    });
-  } catch (error) {
-    res.status(400).json({
-      message: error.message,
-      success: false,
-    });
-  }
-};
-
-export const unitCountByStatus = async (req, res) => {
-  try {
-    const homeOrg = await Organization.getHomeOrg();
-    if (!homeOrg?.orgUid) {
-      throw new Error('a home organization must exist to use this resource');
-    }
-
-    const result = await Statistics.getUnitCountByStatus();
-
-    res.json({
-      data: {
-        unitCountsByStatus: result,
       },
       success: true,
     });

@@ -8,7 +8,6 @@ import {
   issuedCarbonByProjectTypeSchema,
   projectsStatisticsGetQuerySchema,
   tonsCo2StatisticsGetQuerySchema,
-  unitCountByStatusSchema,
 } from '../../../validations/statistics.validations.js';
 import joiExpress from 'express-joi-validation';
 
@@ -45,14 +44,6 @@ StatisticsRouter.get(
   validator.query(issuedCarbonByProjectTypeSchema),
   (req, res) => {
     return StatisticsController.issuedCarbonByProjectType(req, res);
-  },
-);
-
-StatisticsRouter.get(
-  '/unitCountByStatus',
-  validator.query(unitCountByStatusSchema),
-  (req, res) => {
-    return StatisticsController.unitCountByStatus(req, res);
   },
 );
 

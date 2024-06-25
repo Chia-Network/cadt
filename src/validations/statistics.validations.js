@@ -1,6 +1,11 @@
 import Joi from 'joi';
 
-export const projectsStatisticsGetQuerySchema = Joi.object();
+export const projectsStatisticsGetQuerySchema = Joi.object()
+  .keys({
+    status: Joi.boolean(),
+    rehosted: Joi.boolean(),
+  })
+  .xor('status', 'rehosted');
 
 export const tonsCo2StatisticsGetQuerySchema = Joi.object()
   .keys({
@@ -52,5 +57,3 @@ export const issuedCarbonByProjectTypeSchema = Joi.object()
   .oxor('vintageYear', 'vintageYearRangeStart')
   .oxor('vintageYear', 'vintageYearRangeEnd')
   .oxor('projectType', 'projectTypeList');
-
-export const unitCountByStatusSchema = Joi.object();
