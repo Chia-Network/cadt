@@ -3,8 +3,7 @@
 const { Model } = Sequelize;
 import { Unit } from '../units/index.js';
 import Sequelize from 'sequelize';
-import { sequelize, safeMirrorDbHandler } from '../../database';
-import { StatisticsMirror } from './statistics.model.mirror';
+import { sequelize } from '../../database';
 import ModelTypes from './statistics.modeltypes.cjs';
 import { Project } from '../projects/index.js';
 import { Organization } from '../organizations/index.js';
@@ -12,42 +11,8 @@ import { Issuance } from '../issuances/index.js';
 import _ from 'lodash';
 
 class Statistics extends Model {
-  static async create(values, options) {
-    safeMirrorDbHandler(async () => {
-      const mirrorOptions = {
-        ...options,
-        transaction: options?.mirrorTransaction,
-      };
-      await StatisticsMirror.create(values, mirrorOptions);
-    });
-    return super.create(values, options);
-  }
-
-  static async destroy(options) {
-    safeMirrorDbHandler(async () => {
-      const mirrorOptions = {
-        ...options,
-        transaction: options?.mirrorTransaction,
-      };
-      await StatisticsMirror.destroy(mirrorOptions);
-    });
-    return super.destroy(options);
-  }
-
-  static async upsert(values, options) {
-    safeMirrorDbHandler(async () => {
-      const mirrorOptions = {
-        ...options,
-        transaction: options?.mirrorTransaction,
-      };
-      await StatisticsMirror.upsert(values, mirrorOptions);
-    });
-    return super.upsert(values, options);
-  }
-
   static async removeStaleTableEntries() {
     const invalidationDate = new Date(Date.now().valueOf() - 300000); // time 5 mins ago
-
     const where = {
       createdAt: {
         [Sequelize.Op.notBetween]: [invalidationDate, new Date()],
@@ -80,299 +45,6 @@ class Statistics extends Model {
     });
   }
 
-  static async getUnitTableTonsCo2Count(
-    unitStatusList,
-    unitTypeList,
-    vintageYearRangeStart,
-    vintageYearRangeEnd,
-  ) {
-    const homeOrg = await Organization.getHomeOrg();
-    const andConditions = [{ orgUid: homeOrg.orgUid }];
-
-    if (
-      unitStatusList &&
-      !unitStatusList.find((status) => status?.toLowerCase() === 'all')
-    ) {
-      andConditions.push({
-        unitStatus: {
-          [Sequelize.Op.or]: unitStatusList,
-        },
-      });
-    }
-
-    if (
-      unitTypeList &&
-      !unitTypeList.find((status) => status?.toLowerCase() === 'all')
-    ) {
-      andConditions.push({
-        unitStatus: {
-          [Sequelize.Op.or]: unitTypeList,
-        },
-      });
-    }
-
-    if (vintageYearRangeStart && vintageYearRangeEnd) {
-      andConditions.push({
-        vintageYear: {
-          [Sequelize.Op.between]: {
-            vintageYearRangeStart,
-            vintageYearRangeEnd,
-          },
-        },
-      });
-    }
-
-    const attributes = [];
-
-    if (unitStatusList) {
-      attributes.push('unitStatus');
-    }
-
-    if (vintageYearRangeStart && vintageYearRangeEnd) {
-      attributes.push('vintageYear');
-    }
-
-    if (unitTypeList) {
-      attributes.push('unitType');
-    }
-
-    const queryResult = await Unit.findAll({
-      where: {
-        [Sequelize.Op.and]: andConditions,
-      },
-      attributes: [
-        ...attributes,
-        [
-          sequelize.fn(
-            'SUM',
-            sequelize.fn(
-              'IFNULL',
-              sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
-              0,
-            ),
-          ),
-          'tonsCo2',
-        ],
-      ],
-      group: attributes,
-      raw: true,
-    });
-
-    return queryResult;
-  }
-
-  static async getAllMethodologyTonsCo2Count(dateRangeStart, dateRangeEnd) {
-    const homeOrg = await Organization.getHomeOrg();
-
-    let methodologyCountQuery = `
-        WITH methodology_warehouse_projects AS (
-            SELECT
-                methodology,
-                warehouseProjectId
-            FROM
-                projects
-            WHERE
-                orgUid = :orgUid
-            )
-
-        SELECT
-            mwp.methodology,
-            SUM(
-                CASE
-                    WHEN u.unitCount IS NULL THEN 0
-                    WHEN u.unitCount GLOB '*[^0-9]*' THEN 0
-                    ELSE CAST(u.unitCount AS INTEGER)
-                END
-            ) AS totalUnitCount
-        FROM
-            methodology_warehouse_projects mwp
-          JOIN
-            issuances i ON mwp.warehouseProjectId = i.warehouseProjectId
-          JOIN
-            units u ON u.issuanceId = i.id
-        WHERE u.unitStatus != "Cancelled"
-    `;
-
-    const methodologyCountQueryReplacements = {
-      orgUid: homeOrg.orgUid,
-    };
-
-    if (dateRangeStart && dateRangeEnd) {
-      methodologyCountQuery += ` AND u.createdAt BETWEEN :dateRangeStart AND :dateRangeEnd `;
-      methodologyCountQueryReplacements.dateRangeStart = dateRangeStart;
-      methodologyCountQueryReplacements.dateRangeEnd = dateRangeEnd;
-    }
-
-    methodologyCountQuery += ` GROUP BY mwp.methodology `;
-
-    const [result] = await sequelize.query(methodologyCountQuery, {
-      replacements: methodologyCountQueryReplacements,
-    });
-
-    const [allMethodologies] = await sequelize.query(
-      `
-        SELECT methodology
-        FROM projects
-        WHERE
-            orgUid = :orgUid
-        GROUP BY methodology
-    `,
-      {
-        replacements: {
-          orgUid: homeOrg.orgUid,
-        },
-      },
-    );
-
-    const methodologyTonsCo2Count = result.reduce((acc, obj) => {
-      acc[obj.methodology] = obj.totalUnitCount;
-      return acc;
-    }, {});
-
-    allMethodologies.forEach((methodology) => {
-      const count = methodologyTonsCo2Count?.[methodology.methodology];
-      methodology.tonsCo2 = count || 0;
-    });
-
-    return allMethodologies;
-  }
-
-  static async getAllProjectTypesTonsCo2Count(dateRangeStart, dateRangeEnd) {
-    const homeOrg = await Organization.getHomeOrg();
-
-    let projectCountQuery = `
-        WITH project_type_warehouse_projects AS (
-            SELECT
-                projectType,
-                warehouseProjectId
-            FROM
-                projects
-            WHERE
-                orgUid = :orgUid
-            )
-
-        SELECT
-            ptwp.projectType,
-            SUM(
-                CASE
-                    WHEN u.unitCount IS NULL THEN 0
-                    WHEN u.unitCount GLOB '*[^0-9]*' THEN 0
-                    ELSE CAST(u.unitCount AS INTEGER)
-                END
-            ) AS totalUnitCount
-        FROM
-            project_type_warehouse_projects ptwp
-          JOIN
-            issuances i ON ptwp.warehouseProjectId = i.warehouseProjectId
-          JOIN
-            units u ON u.issuanceId = i.id
-        WHERE u.unitStatus != "Cancelled"
-    `;
-
-    const projectTypeCountQueryReplacements = {
-      orgUid: homeOrg.orgUid,
-    };
-
-    if (dateRangeStart && dateRangeEnd) {
-      projectCountQuery += ` AND u.createdAt BETWEEN :dateRangeStart AND :dateRangeEnd `;
-      projectTypeCountQueryReplacements.dateRangeStart = dateRangeStart;
-      projectTypeCountQueryReplacements.dateRangeEnd = dateRangeEnd;
-    }
-
-    projectCountQuery += ` GROUP BY ptwp.projectType `;
-
-    const [result] = await sequelize.query(projectCountQuery, {
-      replacements: projectTypeCountQueryReplacements,
-    });
-
-    const [allProjectTypes] = await sequelize.query(
-      `
-        SELECT projectType
-        FROM projects
-        WHERE
-            orgUid = :orgUid
-        GROUP BY projectType
-    `,
-      {
-        replacements: {
-          orgUid: homeOrg.orgUid,
-        },
-      },
-    );
-
-    const projectTypeTonsCo2Count = result.reduce((acc, obj) => {
-      acc[obj.projectType] = obj.totalUnitCount;
-      return acc;
-    }, {});
-
-    allProjectTypes.forEach((projectType) => {
-      const count = projectTypeTonsCo2Count?.[projectType.projectType];
-      projectType.tonsCo2 = count || 0;
-    });
-
-    return allProjectTypes;
-  }
-
-  static async getProjectAttributeBasedTonsCo2Count(projectSelectors) {
-    const homeOrg = await Organization.getHomeOrg();
-    const { dateRangeStart, dateRangeEnd, ...projectAttributes } =
-      projectSelectors;
-
-    const warehouseProjectIds = await Project.findAll({
-      where: {
-        [Sequelize.Op.and]: {
-          orgUid: homeOrg.orgUid,
-          ...(!_.isEmpty(projectAttributes) && { ...projectAttributes }),
-        },
-      },
-      attributes: ['warehouseProjectId'],
-    }).then((warehouseProjectIds) =>
-      warehouseProjectIds.map((project) => project.warehouseProjectId),
-    );
-
-    const issuanceIds = await Issuance.findAll({
-      attributes: ['id'],
-      where: {
-        warehouseProjectId: {
-          [Sequelize.Op.in]: warehouseProjectIds,
-        },
-      },
-      raw: true,
-    }).then((issuances) => issuances.map((issuance) => issuance.id));
-
-    const [unitResult] = await Unit.findAll({
-      where: {
-        [Sequelize.Op.and]: {
-          unitStatus: {
-            [Sequelize.Op.not]: 'Cancelled',
-          },
-          issuanceId: {
-            [Sequelize.Op.in]: issuanceIds,
-          },
-          vintageYear: {
-            [Sequelize.Op.between]: [dateRangeStart, dateRangeEnd],
-          },
-        },
-      },
-      attributes: [
-        [
-          sequelize.fn(
-            'SUM',
-            sequelize.fn(
-              'IFNULL',
-              sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
-              0,
-            ),
-          ),
-          'unitCount',
-        ],
-      ],
-      raw: true,
-    });
-
-    return unitResult?.unitCount || 0;
-  }
-
   static async getProjectStatusCounts() {
     await Statistics.removeStaleTableEntries();
 
@@ -382,18 +54,17 @@ class Statistics extends Model {
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const registeredProjectsCount =
-        await Statistics.getProjectCount('Registered');
-      const authorizedProjectsCount =
-        await Statistics.getProjectCount('Authorized');
-      const completedProjectsCount =
-        await Statistics.getProjectCount('Completed');
-
-      const result = {
-        registeredProjectsCount,
-        authorizedProjectsCount,
-        completedProjectsCount,
-      };
+      const homeOrg = await Organization.getHomeOrg();
+      const result = await Project.findAll({
+        attributes: [
+          'projectStatus',
+          [Sequelize.fn('COUNT', Sequelize.col('projectStatus')), 'count'],
+        ],
+        where: {
+          orgUid: homeOrg.orgUid,
+        },
+        group: 'projectStatus',
+      });
 
       await Statistics.create({
         uri,
@@ -406,13 +77,14 @@ class Statistics extends Model {
 
   static async getRehostedProjectCounts() {
     await Statistics.removeStaleTableEntries();
-    const homeOrg = await Organization.getHomeOrg();
     const uri = `/statistics/projects?rehosted=true`;
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
+      const homeOrg = await Organization.getHomeOrg();
+
       const query = `
         SELECT
           currentRegistry,
@@ -468,12 +140,78 @@ class Statistics extends Model {
     if (cacheResult?.statisticsJsonString) {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
-      const result = await Statistics.getUnitTableTonsCo2Count(
-        unitStatusList,
-        unitTypeList,
-        vintageYearRangeStart,
-        vintageYearRangeEnd,
-      );
+      const homeOrg = await Organization.getHomeOrg();
+      const andConditions = [{ orgUid: homeOrg.orgUid }];
+
+      if (
+        unitStatusList &&
+        !unitStatusList.find((status) => status?.toLowerCase() === 'all')
+      ) {
+        andConditions.push({
+          unitStatus: {
+            [Sequelize.Op.or]: unitStatusList,
+          },
+        });
+      }
+
+      if (
+        unitTypeList &&
+        !unitTypeList.find((status) => status?.toLowerCase() === 'all')
+      ) {
+        andConditions.push({
+          unitStatus: {
+            [Sequelize.Op.or]: unitTypeList,
+          },
+        });
+      }
+
+      if (vintageYearRangeStart && vintageYearRangeEnd) {
+        andConditions.push({
+          vintageYear: {
+            [Sequelize.Op.between]: {
+              vintageYearRangeStart,
+              vintageYearRangeEnd,
+            },
+          },
+        });
+      }
+
+      const attributes = [];
+
+      if (unitStatusList) {
+        attributes.push('unitStatus');
+      }
+
+      if (vintageYearRangeStart && vintageYearRangeEnd) {
+        attributes.push('vintageYear');
+      }
+
+      if (unitTypeList) {
+        attributes.push('unitType');
+      }
+
+      const result = await Unit.findAll({
+        where: {
+          [Sequelize.Op.and]: andConditions,
+        },
+        attributes: [
+          ...attributes,
+          [
+            sequelize.fn(
+              'SUM',
+              sequelize.fn(
+                'IFNULL',
+                sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
+                0,
+              ),
+            ),
+            'tonsCo2',
+          ],
+        ],
+        group: attributes,
+        raw: true,
+      });
+
       await Statistics.create({
         uri,
         statisticsJsonString: JSON.stringify(result),
@@ -485,15 +223,15 @@ class Statistics extends Model {
 
   static async getTonsCo2ByMethodology(
     methodologies,
-    dateRangeStart,
-    dateRangeEnd,
+    vintageYearRangeStart,
+    vintageYearRangeEnd,
   ) {
     await Statistics.removeStaleTableEntries();
 
     let uri = '';
-    if (dateRangeStart && dateRangeEnd && methodologies) {
-      uri = `/statistics/issuedCarbonByMethodology?methodologies=${methodologies}dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`;
-    } else if (dateRangeStart && dateRangeEnd) {
+    if (vintageYearRangeStart && vintageYearRangeEnd && methodologies) {
+      uri = `/statistics/issuedCarbonByMethodology?methodologies=${methodologies}vintageYearRangeStart=${vintageYearRangeStart}&vintageYearRangeEnd=${vintageYearRangeEnd}`;
+    } else if (vintageYearRangeStart && vintageYearRangeEnd) {
       uri = `/statistics/issuedCarbonByMethodology?methodologies=${methodologies}`;
     } else {
       uri = `/statistics/issuedCarbonByMethodology`;
@@ -507,17 +245,16 @@ class Statistics extends Model {
 
       if (methodologies) {
         for (const methodology of methodologies) {
-          result[methodology] =
-            await Statistics.getProjectAttributeBasedTonsCo2Count({
-              methodology,
-              dateRangeStart,
-              dateRangeEnd,
-            });
+          result[methodology] = await getProjectAttributeBasedTonsCo2Count({
+            methodology,
+            vintageYearRangeStart,
+            vintageYearRangeEnd,
+          });
         }
       } else {
-        result = await Statistics.getAllMethodologyTonsCo2Count(
-          dateRangeStart,
-          dateRangeEnd,
+        result = await getAllMethodologyTonsCo2Count(
+          vintageYearRangeStart,
+          vintageYearRangeEnd,
         );
       }
 
@@ -532,15 +269,15 @@ class Statistics extends Model {
 
   static async getTonsCo2ByProjectType(
     projectTypes,
-    dateRangeStart,
-    dateRangeEnd,
+    vintageYearRangeStart,
+    vintageYearRangeEnd,
   ) {
     await Statistics.removeStaleTableEntries();
 
     let uri = ``;
-    if (dateRangeStart && dateRangeEnd && projectTypes) {
-      uri = `/statistics/issuedCarbonByProjectType?projectTypes=${projectTypes}dateRangeStart=${dateRangeStart}&dateRangeEnd=${dateRangeEnd}`;
-    } else if (dateRangeStart && dateRangeEnd) {
+    if (vintageYearRangeStart && vintageYearRangeEnd && projectTypes) {
+      uri = `/statistics/issuedCarbonByProjectType?projectTypes=${projectTypes}vintageYearRangeStart=${vintageYearRangeStart}&vintageYearRangeEnd=${vintageYearRangeEnd}`;
+    } else if (vintageYearRangeStart && vintageYearRangeEnd) {
       uri = `/statistics/issuedCarbonByProjectType?projectTypes=${projectTypes}`;
     } else {
       uri = `/statistics/issuedCarbonByProjectType`;
@@ -554,17 +291,16 @@ class Statistics extends Model {
 
       if (projectTypes) {
         for (const projectType of projectTypes) {
-          result[projectType] =
-            await Statistics.getProjectAttributeBasedTonsCo2Count({
-              projectType: projectType,
-              dateRangeStart,
-              dateRangeEnd,
-            });
+          result[projectType] = await getProjectAttributeBasedTonsCo2Count({
+            projectType,
+            vintageYearRangeStart,
+            vintageYearRangeEnd,
+          });
         }
       } else {
-        result = await Statistics.getAllProjectTypesTonsCo2Count(
-          dateRangeStart,
-          dateRangeEnd,
+        result = await getAllProjectTypesTonsCo2Count(
+          vintageYearRangeStart,
+          vintageYearRangeEnd,
         );
       }
 
@@ -588,3 +324,223 @@ Statistics.init(ModelTypes, {
 });
 
 export { Statistics };
+
+const getAllMethodologyTonsCo2Count = async (
+  vintageYearRangeStart,
+  vintageYearRangeEnd,
+) => {
+  const homeOrg = await Organization.getHomeOrg();
+
+  let methodologyCountQuery = `
+        WITH methodology_warehouse_projects AS (
+            SELECT
+                methodology,
+                warehouseProjectId
+            FROM
+                projects
+            WHERE
+                orgUid = :orgUid
+            )
+
+        SELECT
+            mwp.methodology,
+            SUM(
+                CASE
+                    WHEN u.unitCount IS NULL THEN 0
+                    WHEN u.unitCount GLOB '*[^0-9]*' THEN 0
+                    ELSE CAST(u.unitCount AS INTEGER)
+                END
+            ) AS totalUnitCount
+        FROM
+            methodology_warehouse_projects mwp
+          JOIN
+            issuances i ON mwp.warehouseProjectId = i.warehouseProjectId
+          JOIN
+            units u ON u.issuanceId = i.id
+        WHERE u.unitStatus != "Cancelled"
+    `;
+
+  const methodologyCountQueryReplacements = {
+    orgUid: homeOrg.orgUid,
+  };
+
+  if (vintageYearRangeStart && vintageYearRangeEnd) {
+    methodologyCountQuery += ` AND u.vintageYear BETWEEN :vintageYearRangeStart AND :vintageYearRangeEnd `;
+    methodologyCountQueryReplacements.vintageYearRangeStart =
+      vintageYearRangeStart;
+    methodologyCountQueryReplacements.vintageYearRangeEnd = vintageYearRangeEnd;
+  }
+
+  methodologyCountQuery += ` GROUP BY mwp.methodology `;
+
+  const [result] = await sequelize.query(methodologyCountQuery, {
+    replacements: methodologyCountQueryReplacements,
+  });
+
+  const [allMethodologies] = await sequelize.query(
+    `
+        SELECT methodology
+        FROM projects
+        WHERE
+            orgUid = :orgUid
+        GROUP BY methodology
+    `,
+    {
+      replacements: {
+        orgUid: homeOrg.orgUid,
+      },
+    },
+  );
+
+  const methodologyTonsCo2Count = result.reduce((acc, obj) => {
+    acc[obj.methodology] = obj.totalUnitCount;
+    return acc;
+  }, {});
+
+  allMethodologies.forEach((methodology) => {
+    const count = methodologyTonsCo2Count?.[methodology.methodology];
+    methodology.tonsCo2 = count || 0;
+  });
+
+  return allMethodologies;
+};
+
+const getAllProjectTypesTonsCo2Count = async (
+  vintageYearRangeStart,
+  vintageYearRangeEnd,
+) => {
+  const homeOrg = await Organization.getHomeOrg();
+
+  let projectCountQuery = `
+        WITH project_type_warehouse_projects AS (
+            SELECT
+                projectType,
+                warehouseProjectId
+            FROM
+                projects
+            WHERE
+                orgUid = :orgUid
+            )
+
+        SELECT
+            ptwp.projectType,
+            SUM(
+                CASE
+                    WHEN u.unitCount IS NULL THEN 0
+                    WHEN u.unitCount GLOB '*[^0-9]*' THEN 0
+                    ELSE CAST(u.unitCount AS INTEGER)
+                END
+            ) AS totalUnitCount
+        FROM
+            project_type_warehouse_projects ptwp
+          JOIN
+            issuances i ON ptwp.warehouseProjectId = i.warehouseProjectId
+          JOIN
+            units u ON u.issuanceId = i.id
+        WHERE u.unitStatus != "Cancelled"
+    `;
+
+  const projectTypeCountQueryReplacements = {
+    orgUid: homeOrg.orgUid,
+  };
+
+  if (vintageYearRangeStart && vintageYearRangeEnd) {
+    projectCountQuery += ` AND u.vintageYear BETWEEN :vintageYearRangeStart AND :vintageYearRangeEnd `;
+    projectTypeCountQueryReplacements.vintageYearRangeStart =
+      vintageYearRangeStart;
+    projectTypeCountQueryReplacements.vintageYearRangeEnd = vintageYearRangeEnd;
+  }
+
+  projectCountQuery += ` GROUP BY ptwp.projectType `;
+
+  const [result] = await sequelize.query(projectCountQuery, {
+    replacements: projectTypeCountQueryReplacements,
+  });
+
+  const [allProjectTypes] = await sequelize.query(
+    `
+        SELECT projectType
+        FROM projects
+        WHERE
+            orgUid = :orgUid
+        GROUP BY projectType
+    `,
+    {
+      replacements: {
+        orgUid: homeOrg.orgUid,
+      },
+    },
+  );
+
+  const projectTypeTonsCo2Count = result.reduce((acc, obj) => {
+    acc[obj.projectType] = obj.totalUnitCount;
+    return acc;
+  }, {});
+
+  allProjectTypes.forEach((projectType) => {
+    const count = projectTypeTonsCo2Count?.[projectType.projectType];
+    projectType.tonsCo2 = count || 0;
+  });
+
+  return allProjectTypes;
+};
+
+const getProjectAttributeBasedTonsCo2Count = async (projectSelectors) => {
+  const homeOrg = await Organization.getHomeOrg();
+  const { vintageYearRangeStart, vintageYearRangeEnd, ...projectAttributes } =
+    projectSelectors;
+
+  const warehouseProjectIds = await Project.findAll({
+    where: {
+      [Sequelize.Op.and]: {
+        orgUid: homeOrg.orgUid,
+        ...(!_.isEmpty(projectAttributes) && { ...projectAttributes }),
+      },
+    },
+    attributes: ['warehouseProjectId'],
+  }).then((warehouseProjectIds) =>
+    warehouseProjectIds.map((project) => project.warehouseProjectId),
+  );
+
+  const issuanceIds = await Issuance.findAll({
+    attributes: ['id'],
+    where: {
+      warehouseProjectId: {
+        [Sequelize.Op.in]: warehouseProjectIds,
+      },
+    },
+    raw: true,
+  }).then((issuances) => issuances.map((issuance) => issuance.id));
+
+  const [unitResult] = await Unit.findAll({
+    where: {
+      [Sequelize.Op.and]: {
+        unitStatus: {
+          [Sequelize.Op.not]: 'Cancelled',
+        },
+        issuanceId: {
+          [Sequelize.Op.in]: issuanceIds,
+        },
+        vintageYear: {
+          [Sequelize.Op.between]: [vintageYearRangeStart, vintageYearRangeEnd],
+        },
+      },
+    },
+    attributes: [
+      [
+        sequelize.fn(
+          'SUM',
+          sequelize.fn(
+            'IFNULL',
+            sequelize.cast(sequelize.col('unitCount'), 'SIGNED'),
+            0,
+          ),
+        ),
+        'unitCount',
+      ],
+    ],
+    raw: true,
+  });
+
+  return unitResult?.unitCount || 0;
+};
