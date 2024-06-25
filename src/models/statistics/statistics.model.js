@@ -32,19 +32,6 @@ class Statistics extends Model {
     });
   }
 
-  static async getProjectCount(projectStatus) {
-    const homeOrg = await Organization.getHomeOrg();
-
-    return await Project.count({
-      where: {
-        [Sequelize.Op.and]: {
-          orgUid: homeOrg.orgUid,
-          projectStatus,
-        },
-      },
-    });
-  }
-
   static async getProjectStatusCounts() {
     await Statistics.removeStaleTableEntries();
 
@@ -55,7 +42,18 @@ class Statistics extends Model {
       return JSON.parse(cacheResult.statisticsJsonString);
     } else {
       const homeOrg = await Organization.getHomeOrg();
-      const result = await Project.findAll({
+
+      const allStatusResults = await Project.findAll({
+        attributes: [
+          [
+            sequelize.fn('DISTINCT', sequelize.col('projectStatus')),
+            'projectStatus',
+          ],
+        ],
+        raw: true,
+      });
+
+      const countResult = await Project.findAll({
         attributes: [
           'projectStatus',
           [Sequelize.fn('COUNT', Sequelize.col('projectStatus')), 'count'],
@@ -64,14 +62,28 @@ class Statistics extends Model {
           orgUid: homeOrg.orgUid,
         },
         group: 'projectStatus',
+        raw: true,
+      });
+
+      const projectCounts = countResult.reduce((acc, curr) => {
+        acc[curr.projectStatus] = curr.count;
+        return acc;
+      }, {});
+
+      allStatusResults.forEach((status) => {
+        if (projectCounts?.[status.projectStatus]) {
+          status.count = projectCounts[status.projectStatus];
+        } else {
+          status.count = 0;
+        }
       });
 
       await Statistics.create({
         uri,
-        statisticsJsonString: JSON.stringify(result),
+        statisticsJsonString: JSON.stringify(countResult),
       });
 
-      return result;
+      return allStatusResults;
     }
   }
 
