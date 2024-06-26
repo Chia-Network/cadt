@@ -7,13 +7,13 @@ export const projects = async (req, res) => {
       throw new Error('a home organization must exist to use this resource');
     }
 
-    const { status, rehosted } = req.query;
+    const { status, hostRegistry } = req.query;
 
     let result;
     if (status) {
       result = await Statistics.getProjectStatusCounts();
-    } else if (rehosted) {
-      result = await Statistics.getRehostedProjectCounts();
+    } else if (hostRegistry) {
+      result = await Statistics.getProjectHostRegistryCounts();
     } else {
       throw new Error('invalid query params');
     }

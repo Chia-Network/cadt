@@ -3,9 +3,9 @@ import Joi from 'joi';
 export const projectsStatisticsGetQuerySchema = Joi.object()
   .keys({
     status: Joi.boolean(),
-    rehosted: Joi.boolean(),
+    hostRegistry: Joi.boolean(),
   })
-  .xor('status', 'rehosted');
+  .xor('status', 'hostRegistry');
 
 export const tonsCo2StatisticsGetQuerySchema = Joi.object()
   .keys({

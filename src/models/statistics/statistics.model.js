@@ -1,5 +1,7 @@
 'use strict';
 
+import { fuzzyStringMatch } from '../../utils/string-utils.js';
+
 const { Model } = Sequelize;
 import { Unit } from '../units/index.js';
 import Sequelize from 'sequelize';
@@ -87,9 +89,9 @@ class Statistics extends Model {
     }
   }
 
-  static async getRehostedProjectCounts() {
+  static async getProjectHostRegistryCounts() {
     await Statistics.removeStaleTableEntries();
-    const uri = `/statistics/projects?rehosted=true`;
+    const uri = `/statistics/projects?hostRegistry=true`;
     const cacheResult = await Statistics.getCachedResult(uri);
 
     if (cacheResult?.statisticsJsonString) {
@@ -97,23 +99,29 @@ class Statistics extends Model {
     } else {
       const homeOrg = await Organization.getHomeOrg();
 
-      const query = `
-        SELECT
-          currentRegistry,
-          SUM(CASE WHEN currentRegistry = registryOfOrigin THEN 1 ELSE 0 END) AS originProjectCount,
-          SUM(CASE WHEN currentRegistry <> registryOfOrigin THEN 1 ELSE 0 END) AS rehostedProjectCount
-        FROM
-          Projects
-        WHERE
-          orgUid = :orgUid
-        GROUP BY
-          currentRegistry;
-        `;
-
-      const [result] = await sequelize.query(query, {
-        replacements: {
+      const currentRegistries = await Project.findAll({
+        where: {
           orgUid: homeOrg.orgUid,
         },
+        attributes: ['currentRegistry'],
+        raw: true,
+      });
+
+      const result = {
+        selfHostedProjectCount: 0,
+        externallyHostedProjectCount: 0,
+      };
+
+      currentRegistries.forEach(({ currentRegistry }) => {
+        const { percentMatch } = fuzzyStringMatch(
+          homeOrg.name,
+          currentRegistry,
+        );
+        if (percentMatch > 70) {
+          result.selfHostedProjectCount++;
+        } else {
+          result.externallyHostedProjectCount++;
+        }
       });
 
       await Statistics.create({
