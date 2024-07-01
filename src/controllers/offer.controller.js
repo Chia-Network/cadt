@@ -4,13 +4,13 @@ import { Meta, Staging } from '../models';
 
 import {
   assertHomeOrgExists,
-  assertNoPendingCommits,
   assertWalletIsSynced,
   assertIfReadOnlyMode,
   assertStagingTableNotEmpty,
   assertStagingTableIsEmpty,
   assertNoActiveOfferFile,
   assertActiveOfferFile,
+  assertNoPendingCommitsExcludingTransfers,
 } from '../utils/data-assertions';
 
 import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
@@ -26,7 +26,7 @@ export const generateOfferFile = async (req, res) => {
     await assertStagingTableNotEmpty();
     await assertHomeOrgExists();
     await assertWalletIsSynced();
-    await assertNoPendingCommits();
+    await assertNoPendingCommitsExcludingTransfers();
 
     const offerFile = await Staging.generateOfferFile();
     res.json(offerFile);
@@ -46,7 +46,7 @@ export const cancelActiveOffer = async (req, res) => {
     await assertStagingTableNotEmpty();
     await assertHomeOrgExists();
     await assertWalletIsSynced();
-    await assertNoPendingCommits();
+    await assertNoPendingCommitsExcludingTransfers();
 
     const activeOffer = await Meta.findOne({
       where: { metaKey: 'activeOfferTradeId' },
@@ -79,7 +79,7 @@ export const importOfferFile = async (req, res) => {
     await assertStagingTableIsEmpty();
     await assertHomeOrgExists();
     await assertWalletIsSynced();
-    await assertNoPendingCommits();
+    await assertNoPendingCommitsExcludingTransfers();
     await assertNoActiveOfferFile();
 
     if (!req.file) {
@@ -121,7 +121,7 @@ export const commitImportedOfferFile = async (req, res) => {
     await assertStagingTableIsEmpty();
     await assertHomeOrgExists();
     await assertWalletIsSynced();
-    await assertNoPendingCommits();
+    await assertNoPendingCommitsExcludingTransfers();
 
     const offerFile = await Meta.findOne({
       where: { metaKey: 'activeOffer' },
