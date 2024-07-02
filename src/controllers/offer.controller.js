@@ -11,6 +11,7 @@ import {
   assertNoActiveOfferFile,
   assertActiveOfferFile,
   assertNoPendingCommitsExcludingTransfers,
+  assertNoPendingCommits,
 } from '../utils/data-assertions';
 
 import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
@@ -79,7 +80,7 @@ export const importOfferFile = async (req, res) => {
     await assertStagingTableIsEmpty();
     await assertHomeOrgExists();
     await assertWalletIsSynced();
-    await assertNoPendingCommitsExcludingTransfers();
+    await assertNoPendingCommits();
     await assertNoActiveOfferFile();
 
     if (!req.file) {
