@@ -194,8 +194,6 @@ export const getCurrentOfferInfo = async (req, res) => {
     const makerChanges = deserializeMaker(offerFile.offer.maker);
     const takerChanges = deserializeTaker(offerFile.offer.taker);
 
-    console.log(makerChanges);
-
     let maker = makerChanges.filter((record) => record.table === 'project');
 
     makerChanges.forEach((record) => {
