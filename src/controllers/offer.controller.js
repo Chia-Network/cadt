@@ -131,16 +131,16 @@ export const commitImportedOfferFile = async (req, res) => {
 
     const response = await datalayer.takeOffer(JSON.parse(offerFile.metaValue));
 
-    res.json({
-      message: 'Offer Accepted.',
-      tradeId: response.trade_id,
-      success: true,
-    });
-
     await Meta.destroy({
       where: {
         metaKey: 'activeOffer',
       },
+    });
+
+    res.json({
+      message: 'Offer Accepted.',
+      tradeId: response.trade_id,
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -160,6 +160,11 @@ export const cancelImportedOfferFile = async (req, res) => {
         metaKey: 'activeOffer',
       },
     });
+
+    res.json({
+      message: 'Offer Cancelled',
+      success: true,
+    });
   } catch (error) {
     res.status(400).json({
       message: 'Can not cancel offer.',
@@ -171,7 +176,15 @@ export const cancelImportedOfferFile = async (req, res) => {
 
 export const getCurrentOfferInfo = async (req, res) => {
   try {
-    await assertActiveOfferFile();
+    try {
+      await assertActiveOfferFile();
+    } catch (error) {
+      res.status(200).json({
+        message: 'No offer to accept',
+        success: true,
+      });
+      return;
+    }
 
     const offerFileJson = await Meta.findOne({
       where: { metaKey: 'activeOffer' },
@@ -231,9 +244,9 @@ export const getCurrentOfferInfo = async (req, res) => {
         maker,
         taker,
       },
+      success: true,
     });
   } catch (error) {
-    console.trace(error);
     res.status(400).json({
       message: 'Can not get offer.',
       error: error.message,
