@@ -176,6 +176,7 @@ export const cancelImportedOfferFile = async (req, res) => {
 
 export const getCurrentOfferInfo = async (req, res) => {
   try {
+    /* fix for when old cadt-ui is no longer supported
     try {
       await assertActiveOfferFile();
     } catch (error) {
@@ -185,6 +186,10 @@ export const getCurrentOfferInfo = async (req, res) => {
       });
       return;
     }
+     */
+
+    // replace with above
+    await assertActiveOfferFile();
 
     const offerFileJson = await Meta.findOne({
       where: { metaKey: 'activeOffer' },
