@@ -38,9 +38,11 @@ ARM and x86 systems are supported.  While Windows, MacOS, and all versions of Li
 
 A binary file that can run on all Linux distributions on x86 hardware can be found for each tagged release named `cadt-linux-x64-<version>.zip`.  This zip file will extract to the `cadt-linux-64` directory by default, where the `cadt` file can be executed to run the API.  
 
-#### Debian-based Linux Distros (Ubuntu, Mint, etc)
+#### Recommended Method: APT on Debian-based Linux Distros (Ubuntu, Mint, etc)
 
-The CADT API can be installed with `apt`.  Both ARM and x86 versions can be installed this way. 
+The CADT API and the Chia Blockchain software can be installed with `apt`.  Both ARM and x86 versions can be installed this way. 
+
+1.  
 
 1. Start by updating apt and allowing repository download over HTTPS:
 
