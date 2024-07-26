@@ -25,7 +25,7 @@ const createDataLayerStore = async () => {
 
     // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
     // This make sure this runs by default even if the config param is missing
-    const shouldMirror = CONFIG.CADT.AUTO_MIRROR_EXTERNAL_STORES ?? true;
+    const shouldMirror = CONFIG().CADT.AUTO_MIRROR_EXTERNAL_STORES ?? true;
 
     if (shouldMirror) {
       const mirrorUrl = await getMirrorUrl();
