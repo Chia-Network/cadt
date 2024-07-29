@@ -1,5 +1,5 @@
-import { getConfig } from '../utils/config-loader';
-import { getDataModelVersion } from '../utils/helpers';
+import { getConfig } from '../utils/config-loader.js';
+import { getDataModelVersion } from '../utils/helpers.js';
 import { getChiaRoot } from '../utils/chia-root.js';
 
 const chiaRoot = getChiaRoot();

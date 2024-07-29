@@ -2,12 +2,12 @@
 
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize, safeMirrorDbHandler } from '../../database';
-import { Project } from '../projects';
-import { Unit } from '../units';
+import { sequelize, safeMirrorDbHandler } from '../../database/index.js';
+import { Project } from '../projects/index.js';
+import { Unit } from '../units/index.js';
 
 import ModelTypes from './labels.modeltypes.cjs';
-import { LabelMirror } from './labels.model.mirror';
+import { LabelMirror } from './labels.model.mirror.js';
 
 class Label extends Model {
   static associate() {

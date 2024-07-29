@@ -1,5 +1,5 @@
 import supertest from 'supertest';
-import app from '../../src/server';
+import app from '../../src/server.js';
 
 export const createTestHomeOrg = async () => {
   const response = await supertest(app).post(`/v1/organizations`).send({

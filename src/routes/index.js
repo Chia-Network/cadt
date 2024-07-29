@@ -1,12 +1,12 @@
 'use strict';
 
-import { prepareDb } from '../database';
-import scheduler from '../tasks';
-import { sequelize } from '../database';
+import { prepareDb } from '../database/index.js';
+import scheduler from '../tasks/index.js';
+import { sequelize } from '../database/index.js';
 import { logger } from '../config/logger.cjs';
-import { pullPickListValues } from '../utils/data-loaders';
+import { pullPickListValues } from '../utils/data-loaders.js';
 
-import app from '../middleware';
+import app from '../middleware.js';
 
 sequelize.authenticate().then(async () => {
   logger.info('Connected to database');

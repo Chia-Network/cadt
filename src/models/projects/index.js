@@ -1,3 +1,3 @@
-export * from './projects.model';
-export * from './projects.mock';
-export * from './projects.model.mirror';
+export * from './projects.model.js';
+export * from './projects.mock.js';
+export * from './projects.model.mirror.js';

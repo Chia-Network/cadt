@@ -1,2 +1,2 @@
-export * from './issuances.model';
-export * from './issuances.mock';
+export * from './issuances.model.js';
+export * from './issuances.mock.js';

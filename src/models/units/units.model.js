@@ -7,19 +7,22 @@ import {
   sequelize,
   safeMirrorDbHandler,
   sanitizeSqliteFtsQuery,
-} from '../../database';
-import { Label, Issuance, Staging, Organization } from '../../models';
-import { UnitMirror } from './units.model.mirror';
+} from '../../database/index.js';
+import { Label, Issuance, Staging, Organization } from '../../models/index.js';
+import { UnitMirror } from './units.model.mirror.js';
 import ModelTypes from './units.modeltypes.cjs';
 
 import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
-} from '../../utils/xls';
-import { encodeHex, keyValueToChangeList } from '../../utils/datalayer-utils';
+} from '../../utils/xls.js';
+import {
+  encodeHex,
+  keyValueToChangeList,
+} from '../../utils/datalayer-utils.js';
 import { unitsUpdateSchema } from '../../validations/index.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
-import dataLayer from '../../datalayer';
+import dataLayer from '../../datalayer/index.js';
 
 const { Model } = Sequelize;
 

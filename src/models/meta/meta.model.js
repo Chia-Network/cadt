@@ -2,7 +2,7 @@
 
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize } from '../../database';
+import { sequelize } from '../../database/index.js';
 
 import ModelTypes from './meta.modeltypes.cjs';
 

@@ -3,12 +3,12 @@
 import express from 'express';
 import joiExpress from 'express-joi-validation';
 
-import { GovernanceController } from '../../../controllers';
+import { GovernanceController } from '../../../controllers/index.js';
 import {
   governanceSubscribeSchema,
   setOrgListSchema,
   governancePickListSchema,
-} from '../../../validations';
+} from '../../../validations/index.js';
 
 const validator = joiExpress.createValidator({ passError: true });
 const GovernanceRouter = express.Router();

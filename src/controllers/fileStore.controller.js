@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { FileStore } from '../models';
+import { FileStore } from '../models/index.js';
 
 export const subscribeToFileStore = (req, res) => {
   try {

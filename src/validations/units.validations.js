@@ -1,13 +1,13 @@
 import Joi from 'joi';
 
-import { issuanceSchema } from './issuances.validation';
-import { labelSchema } from './labels.validations';
+import { issuanceSchema } from './issuances.validation.js';
+import { labelSchema } from './labels.validations.js';
 
-import { pickListValidation } from '../utils/validation-utils';
+import { pickListValidation } from '../utils/validation-utils.js';
 import {
   genericFilterRegex,
   genericSortColumnRegex,
-} from '../utils/string-utils';
+} from '../utils/string-utils.js';
 
 const unitsBaseSchema = {
   // warehouseUnitId - derived upon unit creation

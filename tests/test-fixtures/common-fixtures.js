@@ -8,9 +8,9 @@ import {
   ProjectLocation,
   Rating,
   Estimation,
-} from '../../src/models';
+} from '../../src/models/index.js';
 
-import datalayer from '../../src/datalayer';
+import datalayer from '../../src/datalayer/index.js';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
 // The node simulator runs on an async process, we are importing

@@ -2,10 +2,10 @@ import _ from 'lodash';
 
 import supertest from 'supertest';
 import { expect } from 'chai';
-import app from '../../src/server';
+import app from '../../src/server.js';
 import newUnit from '../test-data/new-unit.js';
 import updateUnitJson from '../test-data/update-unit.js';
-import { UnitMirror, Unit } from '../../src/models';
+import { UnitMirror, Unit } from '../../src/models/index.js';
 
 export const createNewUnit = async (payload = newUnit) => {
   const result = await supertest(app).post('/v1/units').send(payload);

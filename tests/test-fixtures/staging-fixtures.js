@@ -3,7 +3,7 @@ import _ from 'lodash';
 import { expect } from 'chai';
 import supertest from 'supertest';
 
-import app from '../../src/server';
+import app from '../../src/server.js';
 
 export const resetStagingTable = async () => {
   await supertest(app).delete(`/v1/staging/clean`);

@@ -1,12 +1,12 @@
 import _ from 'lodash';
 
-import * as dataLayer from './persistance';
-import wallet from './wallet';
-import * as simulator from './simulator';
-import { encodeHex, getMirrorUrl } from '../utils/datalayer-utils';
-import { getConfig } from '../utils/config-loader';
+import * as dataLayer from './persistance.js';
+import wallet from './wallet.js';
+import * as simulator from './simulator.js';
+import { encodeHex, getMirrorUrl } from '../utils/datalayer-utils.js';
+import { getConfig } from '../utils/config-loader.js';
 import { logger } from '../config/logger.cjs';
-import { Organization } from '../models';
+import { Organization } from '../models/index.js';
 
 const { USE_SIMULATOR, AUTO_MIRROR_EXTERNAL_STORES } = getConfig().APP;
 

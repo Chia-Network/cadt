@@ -1,12 +1,12 @@
 import _ from 'lodash';
 
-import { decodeDataLayerResponse } from '../utils/datalayer-utils';
-import { Simulator } from '../models';
-import { getConfig } from '../utils/config-loader';
+import { decodeDataLayerResponse } from '../utils/datalayer-utils.js';
+import { Simulator } from '../models/index.js';
+import { getConfig } from '../utils/config-loader.js';
 import { logger } from '../config/logger.cjs';
 
-import * as dataLayer from './persistance';
-import * as simulator from './simulator';
+import * as dataLayer from './persistance.js';
+import * as simulator from './simulator.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
 

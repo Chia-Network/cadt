@@ -1,11 +1,11 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { pullPickListValues } from '../utils/data-loaders';
+import { pullPickListValues } from '../utils/data-loaders.js';
 import { logger } from '../config/logger.cjs';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
-} from '../utils/data-assertions';
-import { getConfig } from '../utils/config-loader';
+} from '../utils/data-assertions.js';
+import { getConfig } from '../utils/config-loader.js';
 
 const CONFIG = getConfig().APP;
 

@@ -3,13 +3,13 @@ import _ from 'lodash';
 import { expect } from 'chai';
 import supertest from 'supertest';
 
-import app from '../../src/server';
-import { UnitMirror } from '../../src/models';
-import { pullPickListValues } from '../../src/utils/data-loaders';
+import app from '../../src/server.js';
+import { UnitMirror } from '../../src/models/index.js';
+import { pullPickListValues } from '../../src/utils/data-loaders.js';
 import * as testFixtures from '../test-fixtures';
-import { prepareDb } from '../../src/database';
-import datalayer from '../../src/datalayer';
-import { Staging } from '../../src/models';
+import { prepareDb } from '../../src/database/index.js';
+import datalayer from '../../src/datalayer/index.js';
+import { Staging } from '../../src/models/index.js';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 5;
 
 describe('Unit Resource Integration Tests', function () {

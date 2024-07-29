@@ -3,13 +3,13 @@ import supertest from 'supertest';
 import { expect } from 'chai';
 import sinon from 'sinon';
 
-import { Organization } from '../../src/models';
-import app from '../../src/server';
+import { Organization } from '../../src/models/index.js';
+import app from '../../src/server.js';
 import * as testFixtures from '../test-fixtures';
-import datalayer from '../../src/datalayer';
-import { prepareDb } from '../../src/database';
+import datalayer from '../../src/datalayer/index.js';
+import { prepareDb } from '../../src/database/index.js';
 import newUnit from '../test-data/new-unit.js';
-import { pullPickListValues } from '../../src/utils/data-loaders';
+import { pullPickListValues } from '../../src/utils/data-loaders.js';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
 describe('Units Resource CRUD', function () {

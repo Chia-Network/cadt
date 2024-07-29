@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { pickListValidation } from '../utils/validation-utils';
+import { pickListValidation } from '../utils/validation-utils.js';
 
 export const locationSchema = Joi.object({
   // orgUid - derived upon creation

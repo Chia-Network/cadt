@@ -1,5 +1,5 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Audit, Meta } from '../models';
+import { Audit, Meta } from '../models/index.js';
 import { logger } from '../config/logger.cjs';
 import dotenv from 'dotenv';
 import _ from 'lodash';

@@ -3,10 +3,10 @@ import _ from 'lodash';
 import supertest from 'supertest';
 import { expect } from 'chai';
 
-import app from '../../src/server';
+import app from '../../src/server.js';
 import newProject from '../test-data/new-project.js';
 import updateProjectJson from '../test-data/update-project.js';
-import { ProjectMirror, Project } from '../../src/models';
+import { ProjectMirror, Project } from '../../src/models/index.js';
 
 export const createNewProject = async (payload = newProject) => {
   const result = await supertest(app).post('/v1/projects').send(payload);

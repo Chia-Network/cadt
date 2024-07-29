@@ -14,7 +14,7 @@ import {
   GovernanceRouter,
   FileStoreRouter,
   OfferRouter,
-} from './resources';
+} from './resources/index.js';
 
 V1Router.use('/projects', ProjectRouter);
 V1Router.use('/units', UnitRouter);

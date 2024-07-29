@@ -1,13 +1,13 @@
-import { Project } from './projects';
-import { CoBenefit } from './co-benefits';
-import { ProjectLocation } from './locations';
-import { Label } from './labels';
-import { Rating } from './ratings';
-import { RelatedProject } from './related-projects';
-import { Unit } from './units';
-import { Issuance } from './issuances';
-import { Estimation } from './estimations';
-import { LabelUnit } from './labelUnits';
+import { Project } from './projects/index.js';
+import { CoBenefit } from './co-benefits/index.js';
+import { ProjectLocation } from './locations/index.js';
+import { Label } from './labels/index.js';
+import { Rating } from './ratings/index.js';
+import { RelatedProject } from './related-projects/index.js';
+import { Unit } from './units/index.js';
+import { Issuance } from './issuances/index.js';
+import { Estimation } from './estimations/index.js';
+import { LabelUnit } from './labelUnits/index.js';
 
 Project.associate();
 CoBenefit.associate();
@@ -19,23 +19,23 @@ Unit.associate();
 Issuance.associate();
 Estimation.associate();
 
-export * from './projects';
-export * from './co-benefits';
-export * from './locations';
-export * from './ratings';
-export * from './labels';
-export * from './related-projects';
-export * from './units';
-export * from './issuances';
-export * from './staging';
-export * from './organizations';
-export * from './meta';
-export * from './simulator';
-export * from './labelUnits';
-export * from './estimations';
-export * from './audit';
-export * from './governance';
-export * from './file-store';
+export * from './projects/index.js';
+export * from './co-benefits/index.js';
+export * from './locations/index.js';
+export * from './ratings/index.js';
+export * from './labels/index.js';
+export * from './related-projects/index.js';
+export * from './units/index.js';
+export * from './issuances/index.js';
+export * from './staging/index.js';
+export * from './organizations/index.js';
+export * from './meta/index.js';
+export * from './simulator/index.js';
+export * from './labelUnits/index.js';
+export * from './estimations/index.js';
+export * from './audit/index.js';
+export * from './governance/index.js';
+export * from './file-store/index.js';
 
 export const ModelKeys = {
   unit: Unit,

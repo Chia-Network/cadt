@@ -2,10 +2,10 @@
 
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize, safeMirrorDbHandler } from '../../database';
+import { sequelize, safeMirrorDbHandler } from '../../database/index.js';
 
 import ModelTypes from './labelUnits.modeltypes.cjs';
-import { LabelUnitMirror } from './labelUnits.model.mirror';
+import { LabelUnitMirror } from './labelUnits.model.mirror.js';
 
 class LabelUnit extends Model {
   static async create(values, options) {

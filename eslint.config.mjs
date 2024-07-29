@@ -46,5 +46,6 @@ export default [...compat.extends("eslint:recommended", "plugin:mocha/recommende
 
     rules: {
         "es/no-dynamic-import": "error",
+        "mocha/consistent-spacing-between-blocks": "off",
     },
 }];

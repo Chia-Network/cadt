@@ -6,14 +6,20 @@ import Sequelize from 'sequelize';
 const Op = Sequelize.Op;
 
 const { Model } = Sequelize;
-import { Project, Unit, Organization, Issuance, Meta } from '../../models';
-import { encodeHex, generateOffer } from '../../utils/datalayer-utils';
+import {
+  Project,
+  Unit,
+  Organization,
+  Issuance,
+  Meta,
+} from '../../models/index.js';
+import { encodeHex, generateOffer } from '../../utils/datalayer-utils.js';
 
 import * as rxjs from 'rxjs';
-import { sequelize } from '../../database';
+import { sequelize } from '../../database/index.js';
 
-import datalayer from '../../datalayer';
-import { makeOffer } from '../../datalayer/persistance';
+import datalayer from '../../datalayer/index.js';
+import { makeOffer } from '../../datalayer/persistance.js';
 
 import ModelTypes from './staging.modeltypes.cjs';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
@@ -21,7 +27,7 @@ import { formatModelAssociationName } from '../../utils/model-utils.js';
 import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
-} from '../../utils/xls';
+} from '../../utils/xls.js';
 
 class Staging extends Model {
   static changes = new rxjs.Subject();

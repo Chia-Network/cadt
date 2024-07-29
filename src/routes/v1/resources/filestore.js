@@ -9,8 +9,8 @@ const FileStoreRouter = express.Router();
 
 const upload = multer();
 
-import { FileStoreController } from '../../../controllers';
-import { getFileSchema, subscribedSchema } from '../../../validations';
+import { FileStoreController } from '../../../controllers/index.js';
+import { getFileSchema, subscribedSchema } from '../../../validations/index.js';
 
 FileStoreRouter.post('/get_file', validator.body(getFileSchema), (req, res) => {
   return FileStoreController.getFile(req, res);

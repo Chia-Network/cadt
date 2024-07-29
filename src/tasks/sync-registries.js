@@ -2,26 +2,32 @@ import _ from 'lodash';
 
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Mutex } from 'async-mutex';
-import { Organization, Audit, ModelKeys, Staging, Meta } from '../models';
-import datalayer from '../datalayer';
+import {
+  Organization,
+  Audit,
+  ModelKeys,
+  Staging,
+  Meta,
+} from '../models/index.js';
+import datalayer from '../datalayer/index.js';
 import {
   decodeHex,
   encodeHex,
   optimizeAndSortKvDiff,
-} from '../utils/datalayer-utils';
+} from '../utils/datalayer-utils.js';
 import dotenv from 'dotenv';
 import { logger } from '../config/logger.cjs';
-import { sequelize, sequelizeMirror } from '../database';
-import { getConfig } from '../utils/config-loader';
+import { sequelize, sequelizeMirror } from '../database/index.js';
+import { getConfig } from '../utils/config-loader.js';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
-} from '../utils/data-assertions';
-import { mirrorDBEnabled } from '../database';
+} from '../utils/data-assertions.js';
+import { mirrorDBEnabled } from '../database/index.js';
 import {
   migrateToNewSync,
   generateGenerationIndex,
-} from '../utils/sync-migration-utils';
+} from '../utils/sync-migration-utils.js';
 
 dotenv.config();
 const mutex = new Mutex();
@@ -133,6 +139,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
 const tryParseJSON = (jsonString, defaultValue) => {
   try {
     return JSON.parse(jsonString);
+    // eslint-disable-next-line no-unused-vars
   } catch (error) {
     return defaultValue;
   }

@@ -1,12 +1,12 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Organization } from '../models';
+import { Organization } from '../models/index.js';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
-} from '../utils/data-assertions';
+} from '../utils/data-assertions.js';
 import { logger } from '../config/logger.cjs';
-import { getConfig } from '../utils/config-loader';
-import { getMirrorUrl } from '../utils/datalayer-utils';
+import { getConfig } from '../utils/config-loader.js';
+import { getMirrorUrl } from '../utils/datalayer-utils.js';
 import dotenv from 'dotenv';
 
 const CONFIG = getConfig().APP;

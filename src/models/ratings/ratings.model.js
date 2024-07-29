@@ -1,11 +1,11 @@
 'use strict';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize, safeMirrorDbHandler } from '../../database';
-import { Project } from '../projects/index';
+import { sequelize, safeMirrorDbHandler } from '../../database/index.js';
+import { Project } from '../projects/index.js';
 
 import ModelTypes from './ratings.modeltypes.cjs';
-import { RatingMirror } from './ratings.model.mirror';
+import { RatingMirror } from './ratings.model.mirror.js';
 
 class Rating extends Model {
   static associate() {

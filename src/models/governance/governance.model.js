@@ -2,13 +2,13 @@
 
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize } from '../../database';
-import { Meta } from '../../models';
-import datalayer from '../../datalayer';
-import { keyValueToChangeList } from '../../utils/datalayer-utils';
-import { getConfig } from '../../utils/config-loader';
+import { sequelize } from '../../database/index.js';
+import { Meta } from '../meta/index.js';
+import datalayer from '../../datalayer/index.js';
+import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
+import { getConfig } from '../../utils/config-loader.js';
 import { logger } from '../../config/logger.cjs';
-import { getDataModelVersion } from '../../utils/helpers';
+import { getDataModelVersion } from '../../utils/helpers.js';
 import PickListStub from './governance.stub.js';
 
 const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;

@@ -1,6 +1,6 @@
-import { Label, Organization } from '../models';
+import { Label, Organization } from '../models/index.js';
 
-import { assertHomeOrgExists } from '../utils/data-assertions';
+import { assertHomeOrgExists } from '../utils/data-assertions.js';
 
 export const findAll = async (req, res) => {
   try {

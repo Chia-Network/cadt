@@ -1,8 +1,8 @@
 import _ from 'lodash';
 import superagent from 'superagent';
-import { Governance } from '../models';
+import { Governance } from '../models/index.js';
 import PickListStub from '../models/governance/governance.stub.js';
-import { getConfig } from '../utils/config-loader';
+import { getConfig } from './config-loader.js';
 import { logger } from '../config/logger.cjs';
 
 const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;

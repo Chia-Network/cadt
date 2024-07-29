@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
-import { getConfig } from '../utils/config-loader';
+import { getConfig } from '../utils/config-loader.js';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { logger } from '../config/logger.cjs';
 

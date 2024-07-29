@@ -1,6 +1,6 @@
 import _ from 'lodash';
 
-import { Meta, Staging } from '../models';
+import { Meta, Staging } from '../models/index.js';
 
 import {
   assertHomeOrgExists,
@@ -12,12 +12,15 @@ import {
   assertActiveOfferFile,
   assertNoPendingCommitsExcludingTransfers,
   assertNoPendingCommits,
-} from '../utils/data-assertions';
+} from '../utils/data-assertions.js';
 
-import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
+import {
+  deserializeMaker,
+  deserializeTaker,
+} from '../utils/datalayer-utils.js';
 
-import * as datalayer from '../datalayer/persistance';
-import { getConfig } from '../utils/config-loader';
+import * as datalayer from '../datalayer/persistance.js';
+import { getConfig } from '../utils/config-loader.js';
 
 const CONFIG = getConfig().APP;
 

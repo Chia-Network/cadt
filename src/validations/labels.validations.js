@@ -1,6 +1,6 @@
 import Joi from 'joi';
-import { labelUnitSchema } from './labelUnit.validations';
-import { pickListValidation } from '../utils/validation-utils';
+import { labelUnitSchema } from './labelUnit.validations.js';
+import { pickListValidation } from '../utils/validation-utils.js';
 
 export const labelSchema = Joi.object({
   // orgUid - derived upon creation

@@ -1,2 +1,2 @@
-export * from './labelUnits.model';
-export * from './labelUnits.mock';
+export * from './labelUnits.model.js';
+export * from './labelUnits.mock.js';

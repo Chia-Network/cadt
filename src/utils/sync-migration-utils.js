@@ -1,8 +1,8 @@
 import { Sequelize } from 'sequelize';
-import { Organization, Audit, ModelKeys, Meta } from '../models';
+import { Organization, Audit, ModelKeys, Meta } from '../models/index.js';
 import { logger } from '../config/logger.cjs';
-import datalayer from '../datalayer';
-import { sequelize } from '../database';
+import datalayer from '../datalayer/index.js';
+import { sequelize } from '../database/index.js';
 
 export const migrateToNewSync = async () => {
   logger.info(

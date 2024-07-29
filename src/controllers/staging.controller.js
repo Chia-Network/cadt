@@ -1,12 +1,12 @@
 import _ from 'lodash';
 
 import { Sequelize } from 'sequelize';
-import { Staging } from '../models';
+import { Staging } from '../models/index.js';
 
 import {
   optionallyPaginatedResponse,
   paginationParams,
-} from '../utils/helpers';
+} from '../utils/helpers.js';
 
 import {
   assertStagingRecordExists,
@@ -15,7 +15,7 @@ import {
   assertWalletIsSynced,
   assertIfReadOnlyMode,
   assertStagingTableNotEmpty,
-} from '../utils/data-assertions';
+} from '../utils/data-assertions.js';
 
 export const hasPendingTransactions = async (req, res) => {
   try {
@@ -29,6 +29,7 @@ export const hasPendingTransactions = async (req, res) => {
     res.json({
       confirmed: false,
       message: 'There are currently pending transactions',
+      error: error.message,
       success: true,
     });
   }

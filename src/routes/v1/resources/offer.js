@@ -1,7 +1,7 @@
 'use strict';
 
 import express from 'express';
-import { OfferController } from '../../../controllers';
+import { OfferController } from '../../../controllers/index.js';
 import multer from 'multer';
 
 const OfferRouter = express.Router();

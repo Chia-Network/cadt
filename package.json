@@ -6,13 +6,13 @@
   "bin": "build/server.js",
   "type": "module",
   "engines": {
-    "node": ">=16.13"
+    "node": ">=20.16"
   },
   "lint-staged": {
     "*.+(js|ts|tsx)": "npm run lint:prettier-eslint"
   },
   "scripts": {
-    "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
+    "start": "npx cross-env NODE_ENV=local node ./src/server.js",
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --require @babel/register tests/**/*.spec.js --reporter spec --exit --timeout 300000",
     "release": "npx standard-version",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
@@ -44,7 +44,7 @@
     "lodash": "^4.17.21",
     "log-update": "^4.0.0",
     "multer": "^1.4.5-lts.1",
-    "mysql2": "^3.10.2",
+    "mysql2": "^3.10.3",
     "node-xlsx": "^0.23.0",
     "regenerator-runtime": "^0.13.11",
     "rxjs": "^7.8.1",
@@ -60,9 +60,9 @@
   "devDependencies": {
     "@babel/cli": "^7.24.8",
     "@babel/core": "^7.24.9",
-    "@babel/eslint-parser": "^7.24.8",
+    "@babel/eslint-parser": "^7.25.0",
     "@babel/plugin-syntax-import-attributes": "^7.24.7",
-    "@babel/preset-env": "^7.24.8",
+    "@babel/preset-env": "^7.25.0",
     "@babel/register": "^7.24.6",
     "@commitlint/cli": "^19.3.0",
     "@commitlint/config-conventional": "^19.2.2",
@@ -75,9 +75,9 @@
     "eslint-plugin-es": "^4.1.0",
     "eslint-plugin-mocha": "^10.4.3",
     "globals": "^15.8.0",
-    "husky": "^9.0.11",
-    "mocha": "^10.6.0",
-    "semver": "^7.6.2",
+    "mocha": "^10.7.0",
+    "prettier": "^3.3.3",
+    "semver": "^7.6.3",
     "sinon": "^18.0.0",
     "socket.io-client": "^4.7.5",
     "standard-version": "^9.5.0",

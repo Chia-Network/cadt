@@ -2,7 +2,7 @@
 
 import express from 'express';
 
-import { IssuanceController } from '../../../controllers';
+import { IssuanceController } from '../../../controllers/index.js';
 
 const IssuanceRouter = express.Router();
 

@@ -5,13 +5,19 @@ import { uuid as uuidv4 } from 'uuidv4';
 import { Sequelize } from 'sequelize';
 import xlsx from 'node-xlsx';
 
-import { Staging, Unit, Label, Issuance, Organization } from '../models';
+import {
+  Staging,
+  Unit,
+  Label,
+  Issuance,
+  Organization,
+} from '../models/index.js';
 
 import {
   columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
-} from '../utils/helpers';
+} from '../utils/helpers.js';
 
 import {
   assertOrgIsHomeOrg,
@@ -21,9 +27,9 @@ import {
   assertNoPendingCommits,
   assertRecordExistance,
   assertIfReadOnlyMode,
-} from '../utils/data-assertions';
+} from '../utils/data-assertions.js';
 
-import { createUnitRecordsFromCsv } from '../utils/csv-utils';
+import { createUnitRecordsFromCsv } from '../utils/csv-utils.js';
 import {
   collapseTablesData,
   createXlsFromSequelizeResults,
@@ -31,13 +37,13 @@ import {
   tableDataFromXlsx,
   updateTableWithData,
   transformMetaUid,
-} from '../utils/xls';
+} from '../utils/xls.js';
 
 import {
   genericFilterRegex,
   genericSortColumnRegex,
   isArrayRegex,
-} from '../utils/string-utils';
+} from '../utils/string-utils.js';
 
 import { formatModelAssociationName } from '../utils/model-utils.js';
 import { logger } from '../config/logger.cjs';

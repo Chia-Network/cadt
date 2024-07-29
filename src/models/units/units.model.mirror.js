@@ -2,7 +2,7 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 
-import { sequelizeMirror, safeMirrorDbHandler } from '../../database';
+import { sequelizeMirror, safeMirrorDbHandler } from '../../database/index.js';
 import ModelTypes from './units.modeltypes.cjs';
 
 class UnitMirror extends Model {}

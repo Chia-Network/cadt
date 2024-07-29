@@ -1,10 +1,10 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Organization } from '../models';
-import { getConfig } from '../utils/config-loader';
+import { Organization } from '../models/index.js';
+import { getConfig } from '../utils/config-loader.js';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
-} from '../utils/data-assertions';
+} from '../utils/data-assertions.js';
 import { logger } from '../config/logger.cjs';
 
 const CONFIG = getConfig().APP;

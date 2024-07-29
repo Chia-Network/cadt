@@ -3,10 +3,10 @@ import { Sequelize, QueryTypes } from 'sequelize';
 import config from '../config/config.js';
 import { logger } from '../config/logger.cjs';
 import mysql from 'mysql2/promise';
-import { getConfig } from '../utils/config-loader';
+import { getConfig } from '../utils/config-loader.js';
 
-import { migrations } from './migrations';
-import { seeders } from './seeders';
+import { migrations } from './migrations/index.js';
+import { seeders } from './seeders/index.js';
 
 import dotenv from 'dotenv';
 dotenv.config();

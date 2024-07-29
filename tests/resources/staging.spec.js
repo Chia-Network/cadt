@@ -1,10 +1,10 @@
-import app from '../../src/server';
+import app from '../../src/server.js';
 import supertest from 'supertest';
 import newProject from '../test-data/new-project.js';
-import { pullPickListValues } from '../../src/utils/data-loaders';
+import { pullPickListValues } from '../../src/utils/data-loaders.js';
 import { expect } from 'chai';
-import { prepareDb } from '../../src/database';
-import datalayer from '../../src/datalayer';
+import { prepareDb } from '../../src/database/index.js';
+import datalayer from '../../src/datalayer/index.js';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
 describe('Staging Resource CRUD', function () {

@@ -7,11 +7,11 @@
 
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize } from '../../database';
-import { Organization } from '../';
+import { sequelize } from '../../database/index.js';
+import { Organization } from '../index.js';
 
-import datalayer from '../../datalayer';
-import { encodeHex } from '../../utils/datalayer-utils';
+import datalayer from '../../datalayer/index.js';
+import { encodeHex } from '../../utils/datalayer-utils.js';
 
 import ModelTypes from './file-store.modeltypes.cjs';
 

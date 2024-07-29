@@ -5,17 +5,17 @@ import _ from 'lodash';
 
 const { Model } = Sequelize;
 
-import { sequelize } from '../../database';
+import { sequelize } from '../../database/index.js';
 
-import datalayer from '../../datalayer';
+import datalayer from '../../datalayer/index.js';
 import { logger } from '../../config/logger.cjs';
-import { FileStore, Staging } from '../';
+import { FileStore, Staging } from '../index.js';
 
-import { getDefaultOrganizationList } from '../../utils/data-loaders';
+import { getDefaultOrganizationList } from '../../utils/data-loaders.js';
 
-import { getDataModelVersion } from '../../utils/helpers';
+import { getDataModelVersion } from '../../utils/helpers.js';
 
-import { getConfig } from '../../utils/config-loader';
+import { getConfig } from '../../utils/config-loader.js';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
 import ModelTypes from './organizations.modeltypes.cjs';

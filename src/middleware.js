@@ -4,16 +4,16 @@ import _ from 'lodash';
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import { V1Router } from './routes/v1';
-import { getConfig } from './utils/config-loader';
+import { V1Router } from './routes/v1/index.js';
+import { getConfig } from './utils/config-loader.js';
 import {
   assertChiaNetworkMatchInConfiguration,
   assertDataLayerAvailable,
   assertWalletIsAvailable,
-} from './utils/data-assertions';
+} from './utils/data-assertions.js';
 import packageJson from '../package.json' assert { type: 'json' };
-import datalayer from './datalayer';
-import { Organization } from './models';
+import datalayer from './datalayer/index.js';
+import { Organization } from './models/index.js';
 
 const { CADT_API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =
   getConfig().APP;

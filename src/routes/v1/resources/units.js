@@ -1,7 +1,7 @@
 'use strict';
 
 import express from 'express';
-import { UnitController } from '../../../controllers';
+import { UnitController } from '../../../controllers/index.js';
 import joiExpress from 'express-joi-validation';
 import multer from 'multer';
 
@@ -11,7 +11,7 @@ import {
   unitsUpdateSchema,
   unitsDeleteSchema,
   unitsSplitSchema,
-} from '../../../validations';
+} from '../../../validations/index.js';
 
 const validator = joiExpress.createValidator({ passError: true });
 const UnitRouter = express.Router();

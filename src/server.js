@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 import 'regenerator-runtime/runtime.js';
-import rootRouter from './routes';
+import rootRouter from './routes/index.js';
 import http from 'http';
 import { Server } from 'socket.io';
-import { connection } from './websocket';
-import { getConfig } from './utils/config-loader';
+import { connection } from './websocket.js';
+import { getConfig } from './utils/config-loader.js';
 import { logger } from './config/logger.cjs';
 
 import dotenv from 'dotenv';

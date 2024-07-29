@@ -6,7 +6,7 @@ import { Readable } from 'stream';
 
 import { logger } from '../config/logger.cjs';
 
-import { Organization, Project, Staging, Unit } from '../models';
+import { Organization, Project, Staging, Unit } from '../models/index.js';
 
 import {
   assertOrgIsHomeOrg,

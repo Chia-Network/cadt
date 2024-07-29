@@ -1,2 +1,2 @@
-export * from './labels.model';
-export * from './labels.mock';
+export * from './labels.model.js';
+export * from './labels.mock.js';

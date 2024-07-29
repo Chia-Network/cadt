@@ -3,9 +3,9 @@ import _ from 'lodash';
 import { expect } from 'chai';
 
 import * as testFixtures from '../test-fixtures';
-import { pullPickListValues } from '../../src/utils/data-loaders';
-import { prepareDb } from '../../src/database';
-import datalayer from '../../src/datalayer';
+import { pullPickListValues } from '../../src/utils/data-loaders.js';
+import { prepareDb } from '../../src/database/index.js';
+import datalayer from '../../src/datalayer/index.js';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 5;
 
 describe('Project Resource Integration Tests', function () {

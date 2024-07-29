@@ -1,7 +1,7 @@
 'use strict';
 
 import express from 'express';
-import { ProjectController } from '../../../controllers';
+import { ProjectController } from '../../../controllers/index.js';
 import joiExpress from 'express-joi-validation';
 import multer from 'multer';
 
@@ -10,7 +10,7 @@ import {
   projectsGetQuerySchema,
   projectsUpdateSchema,
   projectsDeleteSchema,
-} from '../../../validations';
+} from '../../../validations/index.js';
 
 const validator = joiExpress.createValidator({ passError: true });
 const ProjectRouter = express.Router();

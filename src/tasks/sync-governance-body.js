@@ -1,13 +1,13 @@
 import _ from 'lodash';
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Governance } from '../models';
+import { Governance } from '../models/index.js';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
-} from '../utils/data-assertions';
-import { getConfig } from '../utils/config-loader';
+} from '../utils/data-assertions.js';
+import { getConfig } from '../utils/config-loader.js';
 import { logger } from '../config/logger.cjs';
-import { Organization } from '../models';
+import { Organization } from '../models/index.js';
 
 const CONFIG = getConfig();
 

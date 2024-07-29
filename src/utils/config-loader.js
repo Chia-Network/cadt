@@ -5,7 +5,7 @@ import path from 'path';
 
 import { logger } from '../config/logger.cjs';
 
-import { getDataModelVersion } from './helpers';
+import { getDataModelVersion } from './helpers.js';
 import { defaultConfig } from './defaultConfig.js';
 import { getChiaRoot } from './chia-root.js';
 
@@ -23,7 +23,8 @@ export const getConfig = _.memoize(() => {
         }
 
         fs.writeFileSync(configFile, yaml.dump(defaultConfig), 'utf8');
-      } catch (err) {
+        // eslint-disable-next-line no-unused-vars
+      } catch (error) {
         // if it still doesnt exist that means we are in an env without write permissions
         // so just load the default env
         if (process.env.USE_SIMULATOR) {

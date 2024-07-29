@@ -4,7 +4,7 @@ import express from 'express';
 import joiExpress from 'express-joi-validation';
 import multer from 'multer';
 
-import { OrganizationController } from '../../../controllers';
+import { OrganizationController } from '../../../controllers/index.js';
 import {
   importOrganizationSchema,
   newOrganizationSchema,
@@ -15,7 +15,7 @@ import {
   removeMirrorSchema,
   addMirrorSchema,
   getMetaDataSchema,
-} from '../../../validations';
+} from '../../../validations/index.js';
 
 const validator = joiExpress.createValidator({ passError: true });
 const OrganizationRouter = express.Router();

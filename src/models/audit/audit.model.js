@@ -2,8 +2,8 @@
 
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize, safeMirrorDbHandler } from '../../database';
-import { AuditMirror } from './audit.model.mirror';
+import { sequelize, safeMirrorDbHandler } from '../../database/index.js';
+import { AuditMirror } from './audit.model.mirror.js';
 import ModelTypes from './audit.modeltypes.cjs';
 import findDuplicateIssuancesSql from './sql/find-duplicate-issuances.sql.js';
 import { Organization } from '../organizations/index.js';

@@ -5,11 +5,16 @@ import stream from 'stream';
 
 import { logger } from '../config/logger.cjs';
 
-import { Staging, Organization, LabelUnit, ModelKeys } from './../models';
+import {
+  Staging,
+  Organization,
+  LabelUnit,
+  ModelKeys,
+} from './../models/index.js';
 
-import { sequelize } from '../database';
-import { assertOrgIsHomeOrg } from './data-assertions';
-import { encodeHex } from './datalayer-utils';
+import { sequelize } from '../database/index.js';
+import { assertOrgIsHomeOrg } from './data-assertions.js';
+import { encodeHex } from './datalayer-utils.js';
 
 import { isPluralized } from './string-utils.js';
 import { formatModelAssociationName } from './model-utils.js';
@@ -207,7 +212,7 @@ function buildObjectXlsData({
         columnsWithSpecialTreatment[name] == null ||
         !columnsWithSpecialTreatment[name].includes(column)
           ? primaryKeyProp
-          : primaryKeyMap[column] ?? primaryKeyMap['default'];
+          : (primaryKeyMap[column] ?? primaryKeyMap['default']);
 
       if (!Array.isArray(itemValue)) {
         const primaryKeyValue =

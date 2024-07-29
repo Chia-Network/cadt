@@ -1,2 +1,2 @@
-export * from './staging.model';
-export * from './staging.mock';
+export * from './staging.model.js';
+export * from './staging.mock.js';

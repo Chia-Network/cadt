@@ -3,9 +3,9 @@
 import _ from 'lodash';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
-import { sequelize } from '../../database';
-import { encodeHex } from '../../utils/datalayer-utils';
-import { ModelKeys, Staging } from '../index';
+import { sequelize } from '../../database/index.js';
+import { encodeHex } from '../../utils/datalayer-utils.js';
+import { ModelKeys, Staging } from '../index.js';
 
 import ModelTypes from './simulator.modeltypes.cjs';
 import { uuid as uuidv4 } from 'uuidv4';

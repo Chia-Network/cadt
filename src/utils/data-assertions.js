@@ -2,10 +2,10 @@
 
 import _ from 'lodash';
 
-import { Organization, Unit, Project, Staging, Meta } from '../models';
-import datalayer from '../datalayer';
+import { Organization, Unit, Project, Staging, Meta } from '../models/index.js';
+import datalayer from '../datalayer/index.js';
 import { formatModelAssociationName } from './model-utils.js';
-import { getConfig } from '../utils/config-loader';
+import { getConfig } from './config-loader.js';
 
 const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR, CHIA_NETWORK } =
   getConfig().APP;

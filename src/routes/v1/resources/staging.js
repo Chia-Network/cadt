@@ -2,14 +2,14 @@
 
 import express from 'express';
 import joiExpress from 'express-joi-validation';
-import { StagingController } from '../../../controllers';
+import { StagingController } from '../../../controllers/index.js';
 
 import {
   stagingDeleteSchema,
   stagingGetQuerySchema,
   stagingRetrySchema,
   commitStagingSchema,
-} from '../../../validations';
+} from '../../../validations/index.js';
 
 const validator = joiExpress.createValidator({ passError: true });
 const StagingRouter = express.Router();

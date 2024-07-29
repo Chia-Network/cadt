@@ -1,10 +1,10 @@
 import supertest from 'supertest';
-import app from '../../src/server';
+import app from '../../src/server.js';
 import { Organization } from '../../src/models/organizations/index.js';
 import { expect } from 'chai';
-import { prepareDb } from '../../src/database';
-import datalayer from '../../src/datalayer';
-import { pullPickListValues } from '../../src/utils/data-loaders';
+import { prepareDb } from '../../src/database/index.js';
+import datalayer from '../../src/datalayer/index.js';
+import { pullPickListValues } from '../../src/utils/data-loaders.js';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 import * as testFixtures from '../test-fixtures';
 

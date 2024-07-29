@@ -1,9 +1,9 @@
-import { Audit } from '../models';
+import { Audit } from '../models/index.js';
 import _ from 'lodash';
 import {
   paginationParams,
   optionallyPaginatedResponse,
-} from '../utils/helpers';
+} from '../utils/helpers.js';
 import { assertIfReadOnlyMode } from '../utils/data-assertions.js';
 
 export const findAll = async (req, res) => {

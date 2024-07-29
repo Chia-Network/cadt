@@ -2,9 +2,9 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 
-import { EstimationMirror } from './estimations.model.mirror';
-import { sequelize, safeMirrorDbHandler } from '../../database';
-import { Project } from '../projects';
+import { EstimationMirror } from './estimations.model.mirror.js';
+import { sequelize, safeMirrorDbHandler } from '../../database/index.js';
+import { Project } from '../projects/index.js';
 import ModelTypes from './estimations.modeltypes.cjs';
 
 class Estimation extends Model {

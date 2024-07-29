@@ -1,12 +1,13 @@
 import chai from 'chai';
 import chaiHttp from 'chai-http';
-import app from '../../src/server';
+import app from '../../src/server.js';
 
 chai.use(chaiHttp);
 
 export const get = (url) => {
   return new Promise((resolve, reject) => {
-    chai.request(app)
+    chai
+      .request(app)
       .get(url)
       .end((err, res) => {
         if (err) {
@@ -15,7 +16,6 @@ export const get = (url) => {
         }
 
         resolve(res);
-
       });
   });
 };

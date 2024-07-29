@@ -4,7 +4,7 @@ import { Sequelize } from 'sequelize';
 import xlsx from 'node-xlsx';
 import { uuid as uuidv4 } from 'uuidv4';
 
-import { Staging, Project, Organization, ModelKeys } from '../models';
+import { Staging, Project, Organization, ModelKeys } from '../models/index.js';
 
 import { logger } from '../config/logger.cjs';
 
@@ -12,13 +12,13 @@ import {
   genericFilterRegex,
   genericSortColumnRegex,
   isArrayRegex,
-} from '../utils/string-utils';
+} from '../utils/string-utils.js';
 
 import {
   columnsToInclude,
   optionallyPaginatedResponse,
   paginationParams,
-} from '../utils/helpers';
+} from '../utils/helpers.js';
 
 import {
   assertOrgIsHomeOrg,
@@ -29,9 +29,9 @@ import {
   assertRecordExistance,
   assertIfReadOnlyMode,
   assertStagingTableIsEmpty,
-} from '../utils/data-assertions';
+} from '../utils/data-assertions.js';
 
-import { createProjectRecordsFromCsv } from '../utils/csv-utils';
+import { createProjectRecordsFromCsv } from '../utils/csv-utils.js';
 
 import {
   tableDataFromXlsx,
@@ -40,7 +40,7 @@ import {
   updateTableWithData,
   collapseTablesData,
   transformMetaUid,
-} from '../utils/xls';
+} from '../utils/xls.js';
 import { formatModelAssociationName } from '../utils/model-utils.js';
 
 export const create = async (req, res) => {

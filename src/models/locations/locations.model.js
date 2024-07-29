@@ -3,12 +3,12 @@
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 
-import { sequelize, safeMirrorDbHandler } from '../../database';
-import { Project } from '../projects';
-import { Unit } from '../units';
+import { sequelize, safeMirrorDbHandler } from '../../database/index.js';
+import { Project } from '../projects/index.js';
+import { Unit } from '../units/index.js';
 
 import ModelTypes from './locations.modeltypes.cjs';
-import { ProjectLocationMirror } from './locations.model.mirror';
+import { ProjectLocationMirror } from './locations.model.mirror.js';
 
 class ProjectLocation extends Model {
   static associate() {

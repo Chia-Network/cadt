@@ -9,7 +9,7 @@ import {
   sequelize,
   safeMirrorDbHandler,
   sanitizeSqliteFtsQuery,
-} from '../../database';
+} from '../../database/index.js';
 
 import {
   RelatedProject,
@@ -21,22 +21,25 @@ import {
   Estimation,
   Rating,
   Organization,
-} from '../';
+} from '../index.js';
 
 import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
-} from '../../utils/xls';
+} from '../../utils/xls.js';
 
 import ModelTypes from './projects.modeltypes.cjs';
-import { ProjectMirror } from './projects.model.mirror';
-import { projectsUpdateSchema } from '../../validations/index';
+import { ProjectMirror } from './projects.model.mirror.js';
+import { projectsUpdateSchema } from '../../validations/index.js';
 import {
   formatModelAssociationName,
   getDeletedItems,
 } from '../../utils/model-utils.js';
-import { encodeHex, keyValueToChangeList } from '../../utils/datalayer-utils';
-import dataLayer from '../../datalayer';
+import {
+  encodeHex,
+  keyValueToChangeList,
+} from '../../utils/datalayer-utils.js';
+import dataLayer from '../../datalayer/index.js';
 
 class Project extends Model {
   static stagingTableName = 'Projects';

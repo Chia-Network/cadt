@@ -7,14 +7,14 @@ import {
   labelSchema,
   issuanceSchema,
   estimationSchema,
-} from '../validations';
+} from '../validations/index.js';
 
 import {
   genericFilterRegex,
   genericSortColumnRegex,
-} from '../utils/string-utils';
+} from '../utils/string-utils.js';
 
-import { pickListValidation } from '../utils/validation-utils';
+import { pickListValidation } from '../utils/validation-utils.js';
 
 export const baseSchema = {
   // warehouseProjectId - derived upon creation

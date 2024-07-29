@@ -2,12 +2,12 @@ import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
-import { getConfig } from '../utils/config-loader';
-import wallet from './wallet';
-import { Organization } from '../models';
+import { getConfig } from '../utils/config-loader.js';
+import wallet from './wallet.js';
+import { Organization } from '../models/index.js';
 import { logger } from '../config/logger.cjs';
 import { getChiaRoot } from '../utils/chia-root.js';
-import { getMirrorUrl } from '../utils/datalayer-utils';
+import { getMirrorUrl } from '../utils/datalayer-utils.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
