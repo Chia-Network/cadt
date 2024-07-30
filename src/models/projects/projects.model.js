@@ -283,7 +283,6 @@ class Project extends Model {
     const { offset, limit } = pagination;
 
     let fields = '*';
-
     searchStr = sanitizeSqliteFtsQuery(searchStr);
 
     if (searchStr === '*') {
