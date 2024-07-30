@@ -117,11 +117,11 @@ export const migrations = [
   },
   {
     migration: CreateGoveranceTable,
-    name: '20220315134151-create-governance-table.js',
+    name: '20220315134151-create-governance-table',
   },
   {
     migration: AddCommentColumnToDataModelTables,
-    name: '20220428144558-add-comment-column-to-all-datamodels.js',
+    name: '20220428144558-add-comment-column-to-all-datamodels',
   },
   {
     migration: AddSerialNumberFields,
@@ -129,54 +129,54 @@ export const migrations = [
   },
   {
     migration: AddDescriptionFieldToProjects,
-    name: '20220509125335-add-description-field-to-projects.js',
+    name: '20220509125335-add-description-field-to-projects',
   },
   {
     migration: RepopulateVirtualTables,
-    name: '20220515223227-re-populate-virtual-tables.js',
+    name: '20220515223227-re-populate-virtual-tables',
   },
   {
     migration: AddAuthorColumnToAuditTable,
-    name: '20220708210357-adding-author-column-to-audit-table.js',
+    name: '20220708210357-adding-author-column-to-audit-table',
   },
   {
     migration: CreateFileStore,
-    name: '20220724212553-create-file-store.js',
+    name: '20220724212553-create-file-store',
   },
   {
     migration: AddOptionalMethodology2FieldToProject,
-    name: '20220721212845-add-optional-methodology2-field-to-project.js',
+    name: '20220721212845-add-optional-methodology2-field-to-project',
   },
   {
     migration: AddFiltStoreSubscribedColumnToProject,
-    name: '20220724161782-add-file-store-subscribed-column-to-project.js',
+    name: '20220724161782-add-file-store-subscribed-column-to-project',
   },
   {
     migration: PopulateUnitsFTS,
-    name: '20220808192709-populate-units-fts.js',
+    name: '20220808192709-populate-units-fts',
   },
   {
     migration: ResetDBForNewSingletons,
-    name: '20220816155101-reset-db-for-new-singletons.js',
+    name: '20220816155101-reset-db-for-new-singletons',
   },
   {
     migration: AddIsTransferColumn,
-    name: '20220825124702-add-isTransfer-column.js',
+    name: '20220825124702-add-isTransfer-column',
   },
   {
     migration: AddOrgMetadata,
-    name: '20220831023546-add-org-metadata.js',
+    name: '20220831023546-add-org-metadata',
   },
   {
     migration: OrgSyncStatus,
-    name: '20231020201652-OrgSyncStatus.js',
+    name: '20231020201652-OrgSyncStatus',
   },
   {
     migration: OrgSyncRemaining,
-    name: '20231020214357-OrgSyncRemainingCount.js',
+    name: '20231020214357-OrgSyncRemainingCount',
   },
   {
     migration: AddGenerationIndexToAudit,
-    name: '20231207142225-AddGenerationIndexToAudit.js',
+    name: '20231207142225-AddGenerationIndexToAudit',
   },
 ];
