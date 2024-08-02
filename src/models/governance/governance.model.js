@@ -164,7 +164,7 @@ class Governance extends Model {
 
     if (!governanceBodyId) {
       throw new Error(
-        'There is no Goverance Body that you own that can be edited',
+        'There is no Governance Body that you own that can be edited',
       );
     }
 

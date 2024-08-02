@@ -93,3 +93,30 @@ export const getDataModelVersion = () => {
   const majorVersion = version.split('.')[0];
   return `v${majorVersion}`;
 };
+
+/**
+ * the issuance table does not allow the verificationBody to be null. by requirement this field is nullable.
+ * this function defines null or undefined verificationBody for all issuances that exist in a staged record
+ * @param stagedRecord from the staging table
+ */
+export const updateNilVerificationBodyAsEmptyString = (stagedRecord) => {
+  try {
+    if (stagedRecord?.data && stagedRecord?.table === 'Projects') {
+      const data = JSON.parse(stagedRecord.data);
+      data?.issuances?.forEach((issuance) => {
+        if (!issuance?.validationBody) {
+          issuance.validationBody = '';
+        }
+      });
+      stagedRecord.data = JSON.stringify(data);
+    } else if (stagedRecord?.data && stagedRecord?.table === 'Units') {
+      const data = JSON.parse(stagedRecord.data);
+      if (data?.issuance && !data.issuance?.validationBody) {
+        data.issuance.validationBody = '';
+      }
+      stagedRecord.data = JSON.stringify(data);
+    }
+  } catch {
+    return;
+  }
+};
