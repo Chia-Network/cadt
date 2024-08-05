@@ -40,7 +40,7 @@ export default {
         },
         verificationBody: {
           type: Sequelize.STRING,
-          required: true,
+          required: false,
         },
         timeStaged: {
           type: Sequelize.STRING,
