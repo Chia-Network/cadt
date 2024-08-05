@@ -22,6 +22,7 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls';
+import { updateNilVerificationBodyAsEmptyString } from '../../utils/helpers.js';
 
 class Staging extends Model {
   static changes = new rxjs.Subject();
@@ -487,6 +488,11 @@ class Staging extends Model {
     if (!stagedRecords.length) {
       throw new Error('No records to send to DataLayer');
     }
+
+    // replace nil issuance validationBody values with empty strings
+    stagedRecords.forEach((record) =>
+      updateNilVerificationBodyAsEmptyString(record),
+    );
 
     const [unitsChangeList, projectsChangeList] = await Promise.all([
       Unit.generateChangeListFromStagedData(stagedRecords, comment, author),
