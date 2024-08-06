@@ -6,30 +6,37 @@
   "bin": "build/server.js",
   "type": "module",
   "engines": {
-    "node": ">=16.13"
+    "node": ">=20.16"
   },
   "lint-staged": {
     "*.+(js|ts|tsx)": "npm run lint:prettier-eslint"
   },
   "scripts": {
-    "start": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/server.js",
+    "start": "npx cross-env NODE_ENV=local node --import=extensionless/register --no-warnings ./src/server.js",
     "stress": "npx cross-env NODE_ENV=local node --experimental-specifier-resolution=node --no-warnings ./src/stress-test.js",
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --require @babel/register tests/**/*.spec.js --reporter spec --exit --timeout 300000",
     "release": "npx standard-version",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
     "prepare": "husky install",
-    "build": "babel src --keep-file-extension --out-dir build --copy-files && cp package.json ./build",
+    "build": "babel src --keep-file-extension --out-dir build --copy-files && cp package.json build && node change-build-package-type-commonjs.cjs",
     "build-migrations": "babel migrations --keep-file-extension --out-dir dist/migrations --copy-files",
     "prepare-binary": "rm -rf dist && mkdir dist",
     "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-win-x64 --out-path dist",
-    "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-macos-x64 --out-path dist",
-    "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-linux-x64 --out-path dist",
+    "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-macos-x64 --out-path dist",
+    "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-linux-x64 --out-path dist",
     "create-linux-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node16-linux-arm64 --out-path dist"
   },
   "pkg": {
-    "scripts": "package.json",
-    "assets": "package.json"
+    "scripts": "build/package.json"
+  },
+  "extensionless": {
+    "lookFor": [
+      "js",
+      "mjs",
+      "cjs",
+      "json"
+    ]
   },
   "dependencies": {
     "@babel/eslint-parser": "^7.24.5",
@@ -44,6 +51,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-joi-validation": "^5.0.1",
+    "extensionless": "^1.9.9",
     "joi": "^17.13.1",
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
@@ -69,6 +77,7 @@
     "@babel/register": "^7.24.6",
     "@commitlint/cli": "19.3.0",
     "@commitlint/config-conventional": "^19.2.2",
+    "@yao-pkg/pkg": "^5.12.0",
     "babel-plugin-module-resolver": "^5.0.2",
     "chai": "5.1.1",
     "chai-http": "^5.0.0",

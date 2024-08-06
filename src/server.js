@@ -12,7 +12,6 @@ import { getMirrorUrl } from './utils/datalayer-utils';
 import dotenv from 'dotenv';
 
 dotenv.config();
-
 logger.info('CADT:server');
 
 const port = CONFIG().CADT.PORT || 3030;
