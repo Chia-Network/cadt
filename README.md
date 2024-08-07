@@ -16,6 +16,8 @@ The simplest way to run the CADT application is to use the same machine the Chia
 
 For Chia installation instructions, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd).
 
+After the initial installation, it will take anywhere from a few days to a few weeks to sync the Chia full node.  During this time, CADT will be usable and function normally, but some transactions may be slower than when the full node is synced.  The Chia wallet may also fall out of sync occassionally, which will show up as an error in the CADT logs.  This is expected behavior and the wallet will stay in sync reliably once the Chia full node finishes syncing.  Check the status of the full node sync with `chia show -s`.  
+
 ### How to use the API
 
 Please see the [CADT RPC API Guide](docs/cadt_rpc_api.md).
@@ -42,8 +44,6 @@ A binary file that can run on all Linux distributions on x86 hardware can be fou
 
 The CADT API and the Chia Blockchain software can be installed with `apt`.  Both ARM and x86 versions can be installed this way. 
 
-1.  
-
 1. Start by updating apt and allowing repository download over HTTPS:
 
 ```
@@ -57,38 +57,73 @@ sudo apt-get install ca-certificates curl gnupg
 curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | sudo gpg --dearmor -o /usr/share/keyrings/chia.gpg
 ```
 
-3. Use the following command to set up the repository.
+3. Use the following command to set up the CADT repository.
 
 ```
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/cadt/debian/ stable main" | sudo tee /etc/apt/sources.list.d/cadt.list > /dev/null
 ```
 
-4.  Install CADT
+4. Add the Chia repository (via the [official Chia installation instructions](https://docs.chia.net/installation/#using-the-cli))
+
+```
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | sudo tee /etc/apt/sources.list.d/chia.list > /dev/null
+```
+
+4.  Install Chia CLI and CADT
 
 ```
 sudo apt-get update
-sudo apt-get install cadt
+sudo apt-get install chia-blockchain-cli cadt
 ```
 
-5.  Start CADT with systemd
+5.  Start Chia Wallet and Datalayer with [systemd](https://docs.chia.net/installation/#systemd)
+
+```
+sudo systemctl start chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME>
+```
+
+For `<USERNAME>`, enter the user that Chia runs as (the user with the `.chia` directory in their home directory).  For example, if the `ubuntu` is where Chia runs, start Chia with `systemctl start chia-wallet@ubuntu`.
+
+Optional:  If using Chia's built-in HTTP server to share datalayer files, start the `chia-data-layer-http` service with
+
+```
+sudo systemctl start chia-data-layer-http@<USERNAME>
+```
+
+6.  Start CADT with systemd
 
 ```
 sudo systemctl start cadt@<USERNAME>
 ```
-For `<USERNAME>`, enter the user that Chia runs as (the user with the `.chia` directory in their home directory).  For example, if the `ubuntu` is where Chia runs, start CADT with `systemctl start cadt@ubuntu`.
 
-6.  Set CADT to run at boot
+7.  Set Chia and CADT to run at boot
 
 ```
-sudo systemctl enable cadt@<USERNAME>
+sudo systemctl enable chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME> cadt@<USERNAME>
+```
+
+If using the built-in HTTP server for datalayer, start it at boot with
+
+```
+sudo systemctl enable chia-data-layer-http@<USERNAME>
+```
+
+9.  View CADT logs to validate
+
+```
+journalctl -u cadt@<USERNAME> -f
+(ctrl+c to exit)
 ```
 
 ### Installation from Source
+
+*Installation from source is only recommended for those contributing code to CADT and is not intended to be used in production.*
 
 You'll need:
 ​
 - Git
 - [nvm](https://github.com/nvm-sh/nvm) - This app uses `nvm` to align node versions across development, CI and production. If you're working on Windows, you should consider [nvm-windows](https://github.com/coreybutler/nvm-windows)
+- A working [Chia installation](https://docs.chia.net/installation/#using-the-cli) running wallet and datalayer (full node recommended)
 
 To install from source:
 
