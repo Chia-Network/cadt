@@ -69,14 +69,14 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | sudo tee /etc/apt/sources.list.d/chia.list > /dev/null
 ```
 
-4.  Install Chia CLI and CADT
+5.  Install Chia CLI and CADT
 
 ```
 sudo apt-get update
 sudo apt-get install chia-blockchain-cli cadt
 ```
 
-5.  Start Chia Wallet and Datalayer with [systemd](https://docs.chia.net/installation/#systemd)
+6.  Start Chia Wallet and Datalayer with [systemd](https://docs.chia.net/installation/#systemd)
 
 ```
 sudo systemctl start chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME>
@@ -90,13 +90,13 @@ Optional:  If using Chia's built-in HTTP server to share datalayer files, start 
 sudo systemctl start chia-data-layer-http@<USERNAME>
 ```
 
-6.  Start CADT with systemd
+7.  Start CADT with systemd
 
 ```
 sudo systemctl start cadt@<USERNAME>
 ```
 
-7.  Set Chia and CADT to run at boot
+8.  Set Chia and CADT to run at boot
 
 ```
 sudo systemctl enable chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME> cadt@<USERNAME>
@@ -108,7 +108,7 @@ If using the built-in HTTP server for datalayer, start it at boot with
 sudo systemctl enable chia-data-layer-http@<USERNAME>
 ```
 
-9.  View CADT logs to validate
+10.  View CADT logs to validate
 
 ```
 journalctl -u cadt@<USERNAME> -f
