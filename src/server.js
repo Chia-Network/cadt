@@ -11,6 +11,7 @@ import { logger } from './config/logger.cjs';
 import dotenv from 'dotenv';
 
 dotenv.config();
+logger.info('CADT:server');
 
 const port = getConfig().APP.CW_PORT || 3030;
 const bindAddress = getConfig().APP.BIND_ADDRESS || 'localhost';
