@@ -6,7 +6,7 @@
   "bin": "build/server.js",
   "type": "module",
   "engines": {
-    "node": ">=16.13"
+    "node": ">=20.16"
   },
   "lint-staged": {
     "*.+(js|ts|tsx)": "npm run lint:prettier-eslint"
