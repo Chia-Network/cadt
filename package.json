@@ -13,11 +13,11 @@
   },
   "scripts": {
     "start": "npx cross-env NODE_ENV=local node --import=extensionless/register --no-warnings ./src/server.js",
-    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --require @babel/register tests/**/*.spec.js --reporter spec --exit --timeout 300000",
+    "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/**/*.spec.js --reporter spec --exit --timeout 300000",
     "release": "npx standard-version",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
-    "prepare": "husky install",
+    "prepare": "husky",
     "build": "babel src --keep-file-extension --out-dir build --copy-files && cp package.json ./build && node change-build-package-type-commonjs.cjs",
     "build-migrations": "babel migrations --keep-file-extension --out-dir dist/migrations --copy-files",
     "prepare-binary": "rm -rf dist && mkdir dist",
