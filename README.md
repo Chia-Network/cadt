@@ -14,9 +14,11 @@ The CADT application is designed to run 24/7, much like any other API.  While it
 
 The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, Datalayer, and Datalayer HTTP services reside on. CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
 
-For Chia installation instructions, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd).
+Basic Chia installation instructions are provided below, but further installation options, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd).
 
-After the initial installation, it will take anywhere from a few days to a few weeks to sync the Chia full node.  During this time, CADT will be usable and function normally, but some transactions may be slower than when the full node is synced.  The Chia wallet may also fall out of sync occassionally, which will show up as an error in the CADT logs.  This is expected behavior and the wallet will stay in sync reliably once the Chia full node finishes syncing.  Check the status of the full node sync with `chia show -s`.  
+After the initial installation, it will take anywhere from a few days (most likely for a cloud-hosted server) to a few weeks (possible on lower-powered systems or servers with slow connections) to sync the Chia full node.  During this time, CADT can start syncing, but any writes to CADT are likely to fail.  For best results, we recommend waiting for the Chia full node to finish syncing before using CADT.  Check the status of the full node sync with `chia show -s`.  
+
+*Those familiar with bittorrent and have a fast connection can speed up the full node syncing by [downloading the database](https://www.chia.net/downloads/#database-checkpoint) and copying it into place manually*
 
 ### How to use the API
 
