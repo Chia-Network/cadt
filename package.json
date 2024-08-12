@@ -85,7 +85,7 @@
     "extensionless": "^1.9.9",
     "globals": "^15.9.0",
     "husky": "^9.1.4",
-    "mocha": "^10.7.0",
+    "mocha": "^10.7.3",
     "semver": "^7.6.3",
     "sinon": "^18.0.0",
     "socket.io-client": "^4.7.5",
