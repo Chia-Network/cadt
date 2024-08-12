@@ -1,6 +1,6 @@
 import supertest from 'supertest';
 import app from '../../src/server';
-import { Organization } from '../../src/models/organizations/index.js';
+import { Organization } from '../../src/models/index.js';
 import { expect } from 'chai';
 import { prepareDb } from '../../src/database';
 import datalayer from '../../src/datalayer';
