@@ -465,6 +465,7 @@ export const removeMirror = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: 'Error removing mirror for organization',
+      error: error.message,
       success: false,
     });
   }

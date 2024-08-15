@@ -176,9 +176,9 @@ export const cancelImportedOfferFile = async (req, res) => {
 
 export const getCurrentOfferInfo = async (req, res) => {
   try {
-    /* fix for when old cadt-ui is no longer supported
     try {
       await assertActiveOfferFile();
+      // eslint-disable-next-line no-unused-vars
     } catch (error) {
       res.status(200).json({
         message: 'No offer to accept',
@@ -186,10 +186,6 @@ export const getCurrentOfferInfo = async (req, res) => {
       });
       return;
     }
-     */
-
-    // replace with above
-    await assertActiveOfferFile();
 
     const offerFileJson = await Meta.findOne({
       where: { metaKey: 'activeOffer' },
