@@ -1,3 +1,29 @@
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+### Bug Fixes
+
+* bug in which active transfers prevent transfer related actions ([78a5b5b](https://github.com/Chia-Network/cadt/commit/78a5b5b75bba3538a26bd87f18991c1564da4223))
+* changes in previous commit that broke old cadt-ui ([7a4f632](https://github.com/Chia-Network/cadt/commit/7a4f632b734068cd1d5f5cdd5668e0fea8088175))
+* corrected assertion call ([15f20c6](https://github.com/Chia-Network/cadt/commit/15f20c6057e0fd73b5c7af208d4cc6151fffaa79))
+* incorrect payload format to make_offer rpc ([fd52b4a](https://github.com/Chia-Network/cadt/commit/fd52b4a2cb90738c4f2c77a30b04290d918b9624))
+* removed console.log ([0244efe](https://github.com/Chia-Network/cadt/commit/0244efe45d1c036d9eaff95dc4afb2a68fba17f2))
+* removed old pkg ([05b1352](https://github.com/Chia-Network/cadt/commit/05b1352832898da483333cf38a794d6ad4713d6d))
+* testing ([2ec0d38](https://github.com/Chia-Network/cadt/commit/2ec0d389501c649e5fee03c68a54ccb7745942b3))
+
+
+### Features
+
+* /offer/accept conforms to RESTful protocol. will return 200 with message if no offer ([d585902](https://github.com/Chia-Network/cadt/commit/d585902cf79f0780bccd0b46159ae7b427b9b5e6))
+* corrected verificationBody empty string function ([5e614b0](https://github.com/Chia-Network/cadt/commit/5e614b08f797bd23f6932265e33a35382dd4833d))
+* node 20 update complete ([8a2e16d](https://github.com/Chia-Network/cadt/commit/8a2e16d8ced782099889d9894a670bcbc5402cc9))
+* node 20 update complete ([c51ca8b](https://github.com/Chia-Network/cadt/commit/c51ca8bf8f5ec6262c187b67bdcb16dc37c98244))
+* node 20 update complete ([a626aae](https://github.com/Chia-Network/cadt/commit/a626aaee5a61fce65660a6987f9928052060ae4e))
+* offer tweaks and RESTful compliance ([0756fc9](https://github.com/Chia-Network/cadt/commit/0756fc9a31ce2fbae62ad07b76f41977293875e3))
+* verificationBody is now not required for issuances ([39bfdd1](https://github.com/Chia-Network/cadt/commit/39bfdd101108317001ea4a9031bf27c570c9022e))
+
+
+
 ## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
 
 
