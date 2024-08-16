@@ -611,6 +611,7 @@ const getSubscriptions = async () => {
 const makeOffer = async (offer) => {
   const url = `${CONFIG.DATALAYER_URL}/make_offer`;
   const { cert, key, timeout } = getBaseOptions();
+  offer.fee = CONFIG.DEFAULT_FEE;
 
   try {
     const response = await superagent
@@ -618,10 +619,7 @@ const makeOffer = async (offer) => {
       .key(key)
       .cert(cert)
       .timeout(timeout)
-      .send({
-        ...offer,
-        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
-      });
+      .send(offer);
 
     const data = response.body;
 

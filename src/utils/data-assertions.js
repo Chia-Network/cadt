@@ -70,6 +70,19 @@ export const assertNoPendingCommits = async () => {
   }
 };
 
+export const assertNoPendingCommitsExcludingTransfers = async () => {
+  const pendingCommits = await Staging.findAll({
+    where: { commited: true, failedCommit: false, isTransfer: false },
+    raw: true,
+  });
+
+  if (pendingCommits.length > 0) {
+    throw new Error(
+      'You currently have changes pending on the blockchain. Please wait for them to propagate before making more changes',
+    );
+  }
+};
+
 export const assertWalletIsSynced = async () => {
   if (!USE_SIMULATOR) {
     if (!(await datalayer.walletIsSynced())) {

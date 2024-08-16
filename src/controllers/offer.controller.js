@@ -4,13 +4,14 @@ import { Meta, Staging } from '../models';
 
 import {
   assertHomeOrgExists,
-  assertNoPendingCommits,
   assertWalletIsSynced,
   assertIfReadOnlyMode,
   assertStagingTableNotEmpty,
   assertStagingTableIsEmpty,
   assertNoActiveOfferFile,
   assertActiveOfferFile,
+  assertNoPendingCommitsExcludingTransfers,
+  assertNoPendingCommits,
 } from '../utils/data-assertions';
 
 import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
@@ -26,7 +27,7 @@ export const generateOfferFile = async (req, res) => {
     await assertStagingTableNotEmpty();
     await assertHomeOrgExists();
     await assertWalletIsSynced();
-    await assertNoPendingCommits();
+    await assertNoPendingCommitsExcludingTransfers();
 
     const offerFile = await Staging.generateOfferFile();
     res.json(offerFile);
@@ -46,7 +47,7 @@ export const cancelActiveOffer = async (req, res) => {
     await assertStagingTableNotEmpty();
     await assertHomeOrgExists();
     await assertWalletIsSynced();
-    await assertNoPendingCommits();
+    await assertNoPendingCommitsExcludingTransfers();
 
     const activeOffer = await Meta.findOne({
       where: { metaKey: 'activeOfferTradeId' },
@@ -121,7 +122,7 @@ export const commitImportedOfferFile = async (req, res) => {
     await assertStagingTableIsEmpty();
     await assertHomeOrgExists();
     await assertWalletIsSynced();
-    await assertNoPendingCommits();
+    await assertNoPendingCommitsExcludingTransfers();
 
     const offerFile = await Meta.findOne({
       where: { metaKey: 'activeOffer' },
@@ -130,16 +131,16 @@ export const commitImportedOfferFile = async (req, res) => {
 
     const response = await datalayer.takeOffer(JSON.parse(offerFile.metaValue));
 
-    res.json({
-      message: 'Offer Accepted.',
-      tradeId: response.trade_id,
-      success: true,
-    });
-
     await Meta.destroy({
       where: {
         metaKey: 'activeOffer',
       },
+    });
+
+    res.json({
+      message: 'Offer Accepted.',
+      tradeId: response.trade_id,
+      success: true,
     });
   } catch (error) {
     res.status(400).json({
@@ -159,6 +160,11 @@ export const cancelImportedOfferFile = async (req, res) => {
         metaKey: 'activeOffer',
       },
     });
+
+    res.json({
+      message: 'Offer Cancelled',
+      success: true,
+    });
   } catch (error) {
     res.status(400).json({
       message: 'Can not cancel offer.',
@@ -170,7 +176,16 @@ export const cancelImportedOfferFile = async (req, res) => {
 
 export const getCurrentOfferInfo = async (req, res) => {
   try {
-    await assertActiveOfferFile();
+    try {
+      await assertActiveOfferFile();
+      // eslint-disable-next-line no-unused-vars
+    } catch (error) {
+      res.status(200).json({
+        message: 'No offer to accept',
+        success: true,
+      });
+      return;
+    }
 
     const offerFileJson = await Meta.findOne({
       where: { metaKey: 'activeOffer' },
@@ -192,8 +207,6 @@ export const getCurrentOfferInfo = async (req, res) => {
 
     const makerChanges = deserializeMaker(offerFile.offer.maker);
     const takerChanges = deserializeTaker(offerFile.offer.taker);
-
-    console.log(makerChanges);
 
     let maker = makerChanges.filter((record) => record.table === 'project');
 
@@ -232,9 +245,9 @@ export const getCurrentOfferInfo = async (req, res) => {
         maker,
         taker,
       },
+      success: true,
     });
   } catch (error) {
-    console.trace(error);
     res.status(400).json({
       message: 'Can not get offer.',
       error: error.message,

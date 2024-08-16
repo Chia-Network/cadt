@@ -207,7 +207,7 @@ function buildObjectXlsData({
         columnsWithSpecialTreatment[name] == null ||
         !columnsWithSpecialTreatment[name].includes(column)
           ? primaryKeyProp
-          : primaryKeyMap[column] ?? primaryKeyMap['default'];
+          : (primaryKeyMap[column] ?? primaryKeyMap['default']);
 
       if (!Array.isArray(itemValue)) {
         const primaryKeyValue =
