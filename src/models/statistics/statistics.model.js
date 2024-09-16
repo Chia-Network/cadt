@@ -82,7 +82,7 @@ class Statistics extends Model {
 
       await Statistics.create({
         uri,
-        statisticsJsonString: JSON.stringify(countResult),
+        statisticsJsonString: JSON.stringify(allStatusResults),
       });
 
       return allStatusResults;
