@@ -6,6 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const packageJson = require('../../package.json');
+const {getConfig} = require("../utils/config-loader.js");
 
 const getChiaRoot = () => {
   let chiaRoot;
@@ -43,7 +44,7 @@ const logFormat = format.printf(
 );
 
 const logger = createLogger({
-  level: 'info',
+  level: getConfig().APP.LOG_LEVEL || 'info',
   format: format.combine(
     logFormat,
     // format.label({ label: path.basename(process.main.filename) }),
