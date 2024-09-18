@@ -4,7 +4,7 @@ import { uuid as uuidv4 } from 'uuidv4';
 import csv from 'csvtojson';
 import { Readable } from 'stream';
 
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 
 import { Organization, Project, Staging, Unit } from '../models';
 

@@ -1,6 +1,6 @@
 import { Sequelize } from 'sequelize';
 import { Organization, Audit, ModelKeys, Meta } from '../models';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 import datalayer from '../datalayer';
 import { sequelize } from '../database';
 

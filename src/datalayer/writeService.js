@@ -5,7 +5,7 @@ import wallet from './wallet';
 import * as simulator from './simulator';
 import { encodeHex, getMirrorUrl } from '../utils/datalayer-utils';
 import { getConfig } from '../utils/config-loader';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 import { Organization } from '../models';
 
 const { USE_SIMULATOR, AUTO_MIRROR_EXTERNAL_STORES } = getConfig().APP;

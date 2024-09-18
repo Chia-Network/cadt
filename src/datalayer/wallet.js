@@ -3,7 +3,7 @@ import path from 'path';
 import superagent from 'superagent';
 import { getConfig } from '../utils/config-loader';
 import { getChiaRoot } from '../utils/chia-root.js';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 

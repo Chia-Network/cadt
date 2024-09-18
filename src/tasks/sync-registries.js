@@ -10,7 +10,7 @@ import {
   optimizeAndSortKvDiff,
 } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 import { sequelize, sequelizeMirror } from '../database';
 import { getConfig } from '../utils/config-loader';
 import {

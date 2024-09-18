@@ -1,27 +1,19 @@
 import { getConfig } from '../utils/config-loader';
 import { getDataModelVersion } from '../utils/helpers';
 import { getChiaRoot } from '../utils/chia-root.js';
-import { logger } from './logger.cjs';
+import { logger } from './logger.js';
 
 const chiaRoot = getChiaRoot();
 const persistanceFolder = `${chiaRoot}/cadt/${getDataModelVersion()}`;
 
-const sequelizeQueryLogger = (query, executionTime) => {
-  logger.debug(`Query executed in ${executionTime}ms: ${query}`);
-};
-
-const sequelizeMirrorQueryLogger = (query, executionTime) => {
-  logger.debug(` Mirror query executed in ${executionTime}ms: ${query}`);
-};
-
 const appLogLevel = getConfig().APP.LOG_LEVEL;
 const localLogging =
   appLogLevel === 'silly' || appLogLevel === 'debug'
-    ? sequelizeQueryLogger
+    ? (query) => logger.debug(`SQLite Sequelize ${query}`)
     : false;
 const mirrorLogging =
   appLogLevel === 'silly' || appLogLevel === 'debug'
-    ? sequelizeMirrorQueryLogger
+    ? (query) => logger.debug(`Mirror DB Sequelize ${query}`)
     : false;
 
 export default {
