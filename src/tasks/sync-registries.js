@@ -267,6 +267,10 @@ const syncOrganizationAudit = async (organization) => {
     const rootHistoryZeroBasedCount = rootHistory.length - 1;
     const syncRemaining = rootHistoryZeroBasedCount - lastProcessedIndex;
     const isSynced = syncRemaining === 0;
+    logger.debug(`2 the root history length for ${organization.name} is ${rootHistory.length} 
+    and the last processed generation is ${lastProcessedIndex}`);
+    logger.debug(`2 the highest root history index is ${rootHistoryZeroBasedCount}, 
+    given this and the last processed index, the number of generations left to sync is ${syncRemaining}`);
 
     logger.debug(
       `updating organization model with new sync status for ${organization.name}`,
