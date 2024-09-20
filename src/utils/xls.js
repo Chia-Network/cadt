@@ -3,7 +3,7 @@ import _ from 'lodash';
 import xlsx from 'node-xlsx';
 import stream from 'stream';
 
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 
 import { Staging, Organization, LabelUnit, ModelKeys } from './../models';
 
@@ -207,7 +207,7 @@ function buildObjectXlsData({
         columnsWithSpecialTreatment[name] == null ||
         !columnsWithSpecialTreatment[name].includes(column)
           ? primaryKeyProp
-          : (primaryKeyMap[column] ?? primaryKeyMap['default']);
+          : primaryKeyMap[column] ?? primaryKeyMap['default'];
 
       if (!Array.isArray(itemValue)) {
         const primaryKeyValue =

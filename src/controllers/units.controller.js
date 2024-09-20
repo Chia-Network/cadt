@@ -40,7 +40,7 @@ import {
 } from '../utils/string-utils';
 
 import { formatModelAssociationName } from '../utils/model-utils.js';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 
 export const create = async (req, res) => {
   try {

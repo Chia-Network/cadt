@@ -10,7 +10,7 @@ import {
   optimizeAndSortKvDiff,
 } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 import { sequelize, sequelizeMirror } from '../database';
 import { getConfig } from '../utils/config-loader';
 import {
@@ -29,6 +29,7 @@ const CONFIG = getConfig().APP;
 
 const task = new Task('sync-registries', async () => {
   if (!mutex.isLocked()) {
+    logger.debug('running sync registries task');
     const releaseMutex = await mutex.acquire();
     try {
       const hasMigratedToNewSyncMethod = await Meta.findOne({
@@ -78,6 +79,8 @@ const processJob = async () => {
   await assertDataLayerAvailable();
   await assertWalletIsSynced();
 
+  logger.debug(`running sync-registries proccessJob()`);
+  logger.debug(`querying organization model`);
   const organizations = await Organization.findAll({
     where: { subscribed: true },
     raw: true,
@@ -95,7 +98,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
   let mirrorTransaction;
 
   try {
-    logger.info('Starting transaction');
+    logger.info('Starting sequelize transaction');
     // Start a transaction
     transaction = await sequelize.transaction();
 
@@ -117,7 +120,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
       await afterCommitCallback();
     }
 
-    logger.info('Commited transaction');
+    logger.info('Commited sequelize transaction');
 
     return result;
   } catch (error) {
@@ -133,7 +136,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
 const tryParseJSON = (jsonString, defaultValue) => {
   try {
     return JSON.parse(jsonString);
-  } catch (error) {
+  } catch {
     return defaultValue;
   }
 };
@@ -166,10 +169,13 @@ const truncateStaging = async () => {
 };
 
 const syncOrganizationAudit = async (organization) => {
+  logger.debug(`syncing organization audit for ${organization.name}`);
   try {
     let afterCommitCallbacks = [];
 
+    logger.debug(`querying organization model for home org`);
     const homeOrg = await Organization.getHomeOrg();
+    logger.debug(`querying datalayer for ${organization.name} root history`);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     if (!rootHistory.length) {
@@ -187,6 +193,9 @@ const syncOrganizationAudit = async (organization) => {
       lastRootSaved.rootHash = lastRootSaved.root_hash;
       lastRootSaved.generation = 0;
     } else {
+      logger.debug(
+        `querying audit table for last root of ${organization.name}`,
+      );
       lastRootSaved = await Audit.findOne({
         where: { registryId: organization.registryId },
         order: [['generation', 'DESC']],
@@ -210,6 +219,7 @@ const syncOrganizationAudit = async (organization) => {
         `Syncing new registry ${organization.name} (store ${organization.orgUid})`,
       );
 
+      logger.debug(`creating 'CREATE REGISTRY' audit entry`);
       await Audit.create({
         orgUid: organization.orgUid,
         registryId: organization.registryId,
@@ -227,6 +237,9 @@ const syncOrganizationAudit = async (organization) => {
       // cleaned up on both the local db and mirror db and ready to resync
       await Promise.all(
         Object.keys(ModelKeys).map(async (modelKey) => {
+          logger.debug(
+            `peforming destroy operation on home organization data in model ${modelKey}`,
+          );
           ModelKeys[modelKey].destroy({
             where: {
               orgUid: organization.orgUid,
@@ -241,7 +254,9 @@ const syncOrganizationAudit = async (organization) => {
     }
 
     const lastProcessedIndex = currentGeneration.generation;
-    logger.debug(`1 Last processed index: ${lastProcessedIndex}`);
+    logger.debug(
+      `1 Last processed index of ${organization.name}: ${lastProcessedIndex}`,
+    );
 
     if (lastProcessedIndex > rootHistory.length) {
       logger.error(
@@ -252,7 +267,14 @@ const syncOrganizationAudit = async (organization) => {
     const rootHistoryZeroBasedCount = rootHistory.length - 1;
     const syncRemaining = rootHistoryZeroBasedCount - lastProcessedIndex;
     const isSynced = syncRemaining === 0;
+    logger.debug(`2 the root history length for ${organization.name} is ${rootHistory.length} 
+    and the last processed generation is ${lastProcessedIndex}`);
+    logger.debug(`2 the highest root history index is ${rootHistoryZeroBasedCount}, 
+    given this and the last processed index, the number of generations left to sync is ${syncRemaining}`);
 
+    logger.debug(
+      `updating organization model with new sync status for ${organization.name}`,
+    );
     await Organization.update(
       {
         synced: isSynced,
@@ -262,13 +284,19 @@ const syncOrganizationAudit = async (organization) => {
     );
 
     if (process.env.NODE_ENV !== 'test' && isSynced) {
-      logger.debug(`3 Last processed index: ${lastProcessedIndex}`);
+      logger.debug(
+        `3 Last processed index of ${organization.name}: ${lastProcessedIndex}`,
+      );
       return;
     }
 
     const toBeProcessedIndex = lastProcessedIndex + 1;
-    logger.debug(`3 Last processed index: ${lastProcessedIndex}`);
-    logger.debug(`4 To be processed index: ${toBeProcessedIndex}`);
+    logger.debug(
+      `3 Last processed index of ${organization.name}: ${lastProcessedIndex}`,
+    );
+    logger.debug(
+      `4 To be processed index of ${organization.name}: ${toBeProcessedIndex}`,
+    );
 
     // Organization not synced, sync it
     logger.info(' ');
@@ -282,6 +310,7 @@ const syncOrganizationAudit = async (organization) => {
     if (!CONFIG.USE_SIMULATOR) {
       await new Promise((resolve) => setTimeout(resolve, 30000));
 
+      logger.debug(`querying datalayer for ${organization.name} sync status`);
       const { sync_status } = await datalayer.getSyncStatus(
         organization.registryId,
       );
@@ -300,28 +329,40 @@ const syncOrganizationAudit = async (organization) => {
       }
     }
 
-    logger.debug(`5 Last processed index: ${lastProcessedIndex}`);
-    const root1 = _.get(rootHistory, `[${lastProcessedIndex}]`);
-    logger.debug(`6 To be processed index: ${toBeProcessedIndex}`);
-    const root2 = _.get(rootHistory, `[${toBeProcessedIndex}]`);
+    logger.debug(
+      `5 Last processed index of ${organization.name}: ${lastProcessedIndex}`,
+    );
+    const lastProcessedRoot = _.get(rootHistory, `[${lastProcessedIndex}]`);
+    logger.debug(
+      `6 To be processed index of ${organization.name}: ${toBeProcessedIndex}`,
+    );
+    const rootToBeProcessed = _.get(rootHistory, `[${toBeProcessedIndex}]`);
 
-    logger.info(`ROOT 1 ${JSON.stringify(root1)}`);
-    logger.info(`ROOT 2', ${JSON.stringify(root2)}`);
+    logger.debug(
+      `last processed root of ${organization.name}: ${JSON.stringify(lastProcessedRoot)}`,
+    );
+    logger.debug(
+      `root to be processed of ${organization.name}: ${JSON.stringify(rootToBeProcessed)}`,
+    );
 
-    if (!_.get(root2, 'confirmed')) {
+    if (!_.get(rootToBeProcessed, 'confirmed')) {
       logger.info(
         `Waiting for the latest root for ${organization.name} to confirm (store ${organization.orgUid})`,
       );
       return;
     }
 
-    logger.debug(`7 Last processed index: ${lastProcessedIndex}`);
-    logger.debug(`8 To be processed index: ${toBeProcessedIndex}`);
+    logger.debug(
+      `7 Last processed index of ${organization.name}: ${lastProcessedIndex}`,
+    );
+    logger.debug(
+      `8 To be processed index of ${organization.name}: ${toBeProcessedIndex}`,
+    );
 
     const kvDiff = await datalayer.getRootDiff(
       organization.registryId,
-      root1.root_hash,
-      root2.root_hash,
+      lastProcessedRoot.root_hash,
+      rootToBeProcessed.root_hash,
     );
 
     const comment = kvDiff.filter(
@@ -351,30 +392,41 @@ const syncOrganizationAudit = async (organization) => {
         const auditData = {
           orgUid: organization.orgUid,
           registryId: organization.registryId,
-          rootHash: root2.root_hash,
+          rootHash: rootToBeProcessed.root_hash,
           type: 'NO CHANGE',
           table: null,
           change: null,
-          onchainConfirmationTimeStamp: root2.timestamp,
+          onchainConfirmationTimeStamp: rootToBeProcessed.timestamp,
           generation: toBeProcessedIndex,
           comment: '',
           author: '',
         };
 
+        logger.debug(`optimized kv diff is empty between ${organization.name} generations ${lastProcessedIndex}
+         and ${toBeProcessedIndex}\n(roots [generation ${lastProcessedIndex}] ${lastProcessedRoot} 
+         and [generation ${toBeProcessedIndex}] ${rootToBeProcessed})`);
+        logger.debug(`creating audit entry`);
         await Audit.create(auditData, { transaction, mirrorTransaction });
       } else {
+        logger.debug(`processing optimized kv diff for ${organization.name} generations ${lastProcessedIndex}
+         and ${toBeProcessedIndex}\n(roots [generation ${lastProcessedIndex}] ${lastProcessedRoot} 
+         and [generation ${toBeProcessedIndex}] ${rootToBeProcessed})`);
+
         for (const diff of optimizedKvDiff) {
           const key = decodeHex(diff.key);
           const modelKey = key.split('|')[0];
+          logger.debug(
+            `proccessing kv diff entry for organization ${organization.name} with key ${key}`,
+          );
 
           const auditData = {
             orgUid: organization.orgUid,
             registryId: organization.registryId,
-            rootHash: root2.root_hash,
+            rootHash: rootToBeProcessed.root_hash,
             type: diff.type,
             table: modelKey,
             change: decodeHex(diff.value),
-            onchainConfirmationTimeStamp: root2.timestamp,
+            onchainConfirmationTimeStamp: rootToBeProcessed.timestamp,
             generation: toBeProcessedIndex,
             comment: _.get(
               tryParseJSON(
@@ -410,6 +462,9 @@ const syncOrganizationAudit = async (organization) => {
                 delete record.createdAt;
               }
 
+              logger.debug(
+                `upserting diff record and transaction to ${modelKey} model`,
+              );
               await ModelKeys[modelKey].upsert(record, {
                 transaction,
                 mirrorTransaction,
@@ -428,9 +483,12 @@ const syncOrganizationAudit = async (organization) => {
           }
 
           // Create the Audit record
+          logger.debug(
+            `creating audit model entry for ${organization.name} transacton`,
+          );
           await Audit.create(auditData, { transaction, mirrorTransaction });
           await Organization.update(
-            { registryHash: root2.root_hash },
+            { registryHash: rootToBeProcessed.root_hash },
             {
               where: { orgUid: organization.orgUid },
               transaction,

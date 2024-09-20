@@ -3,8 +3,6 @@ import yaml from 'js-yaml';
 import fs from 'fs';
 import path from 'path';
 
-import { logger } from '../config/logger.cjs';
-
 import { getDataModelVersion } from './helpers';
 import { defaultConfig } from './defaultConfig.js';
 import { getChiaRoot } from './chia-root.js';
@@ -23,14 +21,14 @@ export const getConfig = _.memoize(() => {
         }
 
         fs.writeFileSync(configFile, yaml.dump(defaultConfig), 'utf8');
-      } catch (err) {
+      } catch {
         // if it still doesnt exist that means we are in an env without write permissions
         // so just load the default env
         if (process.env.USE_SIMULATOR) {
           defaultConfig.APP.USE_SIMULATOR = true;
           defaultConfig.APP.CHIA_NETWORK = 'testnet';
           defaultConfig.APP.TASKS.AUDIT_SYNC_TASK_INTERVAL = 30;
-          logger.info(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
+          console.log(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
         }
 
         return defaultConfig;
@@ -42,14 +40,14 @@ export const getConfig = _.memoize(() => {
 
       if (typeof process.env.USE_SIMULATOR === 'string') {
         yml.APP.USE_SIMULATOR = true;
-        logger.info(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
+        console.log(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
       }
 
       return yml;
     } catch (e) {
-      logger.error(`Config file not found at ${configFile}`, e);
+      console.error(`Config file not found at ${configFile}`, e);
     }
   } catch (e) {
-    logger.error(`Config file not found at ${configFile}`, e);
+    console.error(`Config file not found at ${configFile}`, e);
   }
 });

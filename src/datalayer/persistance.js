@@ -5,7 +5,7 @@ import superagent from 'superagent';
 import { getConfig } from '../utils/config-loader';
 import wallet from './wallet';
 import { Organization } from '../models';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { getMirrorUrl } from '../utils/datalayer-utils';
 

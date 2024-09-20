@@ -8,7 +8,7 @@ const { Model } = Sequelize;
 import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
-import { logger } from '../../config/logger.cjs';
+import { logger } from '../../config/logger.js';
 import { FileStore, Staging } from '../';
 
 import { getDefaultOrganizationList } from '../../utils/data-loaders';
@@ -212,7 +212,6 @@ class Organization extends Model {
     }
   }
 
-  // eslint-disable-next-line
   static async appendNewRegistry(registryId, dataVersion) {
     const registryVersionId = await datalayer.createDataLayerStore();
     await datalayer.syncDataLayer(registryId, {
