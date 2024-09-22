@@ -132,8 +132,8 @@ To install from source:
 ```
 git clone git@github.com:Chia-Network/cadt.git
 cd cadt
-nvm install 18.16
-nvm use 18.16
+nvm install 20.16
+nvm use 20.16
 npm run start
 ```
 
