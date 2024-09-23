@@ -178,9 +178,9 @@ const syncOrganizationAudit = async (organization) => {
     logger.debug(`querying datalayer for ${organization.name} root history`);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
-    if (!rootHistory.length) {
+    if (!rootHistory?.length) {
       logger.warn(
-        `No root history found for ${organization.name} (store ${organization.orgUid})`,
+        `Could not find root history for ${organization.name} (orgUid ${organization.orgUid}) with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
       return;
     }
@@ -257,13 +257,6 @@ const syncOrganizationAudit = async (organization) => {
     logger.debug(
       `1 Last processed index of ${organization.name}: ${lastProcessedIndex}`,
     );
-
-    if (!rootHistory?.length) {
-      logger.error(
-        `Could not find root history for ${organization.name} (store ${organization.orgUid}) with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
-      );
-      return;
-    }
 
     const rootHistoryZeroBasedCount = rootHistory.length - 1;
     const syncRemaining = rootHistoryZeroBasedCount - lastProcessedIndex;
