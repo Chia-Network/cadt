@@ -178,9 +178,9 @@ const syncOrganizationAudit = async (organization) => {
     logger.debug(`querying datalayer for ${organization.name} root history`);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
-    if (!rootHistory.length) {
+    if (!rootHistory?.length) {
       logger.warn(
-        `No root history found for ${organization.name} (store ${organization.orgUid})`,
+        `Could not find root history for ${organization.name} (orgUid ${organization.orgUid}) with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
       return;
     }
@@ -258,13 +258,6 @@ const syncOrganizationAudit = async (organization) => {
       `1 Last processed index of ${organization.name}: ${lastProcessedIndex}`,
     );
 
-    if (!rootHistory?.length) {
-      logger.error(
-        `Could not find root history for ${organization.name} (store ${organization.orgUid}) with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
-      );
-      return;
-    }
-
     const rootHistoryZeroBasedCount = rootHistory.length - 1;
     const syncRemaining = rootHistoryZeroBasedCount - lastProcessedIndex;
     const isSynced = syncRemaining === 0;
@@ -287,7 +280,7 @@ const syncOrganizationAudit = async (organization) => {
 
     if (process.env.NODE_ENV !== 'test' && isSynced) {
       logger.debug(
-        `3 Last processed index of ${organization.name}: ${lastProcessedIndex}`,
+        `${organization.name}: is synced. the last processed index is ${lastProcessedIndex} and the highest root history index is ${rootHistoryZeroBasedCount}`,
       );
       return;
     }
