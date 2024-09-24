@@ -20,12 +20,8 @@ const mirrorQueryLogger = (query) => {
 };
 
 const appLogLevel = getConfig().APP.LOG_LEVEL;
-const localLogging =
-  appLogLevel === 'silly' || appLogLevel === 'debug' ? localQueryLogger : false;
-const mirrorLogging =
-  appLogLevel === 'silly' || appLogLevel === 'debug'
-    ? mirrorQueryLogger
-    : false;
+const localLogging = appLogLevel === 'silly' ? localQueryLogger : false;
+const mirrorLogging = appLogLevel === 'silly' ? mirrorQueryLogger : false;
 
 export default {
   local: {
