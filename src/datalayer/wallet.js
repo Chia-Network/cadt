@@ -120,7 +120,7 @@ const hasUnconfirmedTransactions = async () => {
   const data = JSON.parse(response.text);
 
   if (data.success) {
-    console.log(
+    logger.info(
       `Pending confirmations: ${
         data.transactions.filter((transaction) => !transaction.confirmed).length
       }`,
