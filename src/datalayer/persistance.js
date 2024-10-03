@@ -522,7 +522,10 @@ const createDataLayerStore = async () => {
   }
 };
 
-const subscribeToStoreOnDataLayer = async (storeId) => {
+const subscribeToStoreOnDataLayer = async (
+  storeId,
+  restoreHomeOrgOverride = false,
+) => {
   if (!storeId) {
     logger.info(`No storeId found to subscribe to: ${storeId}`);
     return false;
@@ -530,12 +533,16 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
   const homeOrg = await Organization.getHomeOrg();
 
-  if (homeOrg && [(homeOrg.orgUid, homeOrg.registryId)].includes(storeId)) {
+  if (
+    !restoreHomeOrgOverride &&
+    homeOrg &&
+    [(homeOrg.orgUid, homeOrg.registryId)].includes(storeId)
+  ) {
     logger.info(`Cant subscribe to self: ${storeId}`);
     return { success: true };
   }
 
-  const subscriptions = await getSubscriptions();
+  const { storeIds: subscriptions } = await getSubscriptions();
 
   if (subscriptions.includes(storeId)) {
     logger.info(`Already subscribed to: ${storeId}`);
@@ -578,14 +585,15 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 };
 
 const getSubscriptions = async () => {
-  if (CONFIG.USE_SIMULATOR) {
-    return [];
-  }
-
-  const url = `${CONFIG.DATALAYER_URL}/subscriptions`;
-  const { cert, key, timeout } = getBaseOptions();
-
   try {
+    if (CONFIG.USE_SIMULATOR) {
+      return { success: true, storeIds: [] };
+    }
+
+    const url = `${CONFIG.DATALAYER_URL}/subscriptions`;
+    const { cert, key, timeout } = getBaseOptions();
+
+    logger.debug(`invoking ${url} to retrieve subscriptions`);
     const response = await superagent
       .post(url)
       .key(key)
@@ -594,17 +602,49 @@ const getSubscriptions = async () => {
       .send({});
 
     const data = response.body;
+    logger.debug(`data returned from ${url}: ${data.store_ids}`);
 
     if (data.success) {
-      // console.log('Your Subscriptions:', data.store_ids);
-      return data.store_ids;
+      return { success: true, storeIds: data.store_ids };
     }
 
-    logger.error(`FAILED GETTING SUBSCRIPTIONS ON DATALAYER`);
-    return [];
+    logger.error(`Failed to retrieve subscriptions from datalayer`);
+    return { success: false, storeIds: [] };
   } catch (error) {
     logger.error(error);
-    return [];
+    return { success: false, storeIds: [] };
+  }
+};
+
+const getOwnedStores = async () => {
+  try {
+    if (CONFIG.USE_SIMULATOR) {
+      return { success: true, storeIds: [] };
+    }
+
+    const url = `${CONFIG.DATALAYER_URL}/get_owned_stores`;
+    const { cert, key, timeout } = getBaseOptions();
+
+    logger.debug(`invoking ${url} to retrieve owned stores`);
+    const response = await superagent
+      .post(url)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
+      .send({});
+
+    const data = response.body;
+    logger.debug(`data returned from ${url}: ${data.store_ids}`);
+
+    if (data.success) {
+      return { success: true, storeIds: data.store_ids };
+    }
+
+    logger.error(`Failed to retrieve owned stores from datalayer`);
+    return { success: false, storeIds: [] };
+  } catch (error) {
+    logger.error(error);
+    return { success: false, storeIds: [] };
   }
 };
 
@@ -762,6 +802,7 @@ export {
   pushChangeListToDataLayer,
   createDataLayerStore,
   getSubscriptions,
+  getOwnedStores,
   cancelOffer,
   verifyOffer,
   takeOffer,
