@@ -178,9 +178,9 @@ const syncOrganizationAudit = async (organization) => {
     logger.debug(`querying datalayer for ${organization.name} root history`);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
-    if (!rootHistory.length) {
-      logger.info(
-        `No root history found for ${organization.name} (store ${organization.orgUid})`,
+    if (!rootHistory?.length) {
+      logger.warn(
+        `Could not find root history for ${organization.name} (orgUid ${organization.orgUid}) with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
       return;
     }
@@ -258,20 +258,15 @@ const syncOrganizationAudit = async (organization) => {
       `1 Last processed index of ${organization.name}: ${lastProcessedIndex}`,
     );
 
-    if (lastProcessedIndex > rootHistory.length) {
-      logger.error(
-        `Could not find root history for ${organization.name} (store ${organization.orgUid}) with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
-      );
-    }
-
     const rootHistoryZeroBasedCount = rootHistory.length - 1;
     const syncRemaining = rootHistoryZeroBasedCount - lastProcessedIndex;
     const isSynced = syncRemaining === 0;
-    logger.debug(`2 the root history length for ${organization.name} is ${rootHistory.length} 
-    and the last processed generation is ${lastProcessedIndex}`);
-    logger.debug(`2 the highest root history index is ${rootHistoryZeroBasedCount}, 
-    given this and the last processed index, the number of generations left to sync is ${syncRemaining}`);
-
+    logger.debug(
+      `2 the root history length for ${organization.name} is ${rootHistory.length} and the last processed generation is ${lastProcessedIndex}`,
+    );
+    logger.debug(
+      `2 the highest root history index is ${rootHistoryZeroBasedCount}, given this and the last processed index, the number of generations left to sync is ${syncRemaining}`,
+    );
     logger.debug(
       `updating organization model with new sync status for ${organization.name}`,
     );
@@ -285,7 +280,7 @@ const syncOrganizationAudit = async (organization) => {
 
     if (process.env.NODE_ENV !== 'test' && isSynced) {
       logger.debug(
-        `3 Last processed index of ${organization.name}: ${lastProcessedIndex}`,
+        `${organization.name}: is synced. the last processed index is ${lastProcessedIndex} and the highest root history index is ${rootHistoryZeroBasedCount}`,
       );
       return;
     }
@@ -314,6 +309,36 @@ const syncOrganizationAudit = async (organization) => {
       const { sync_status } = await datalayer.getSyncStatus(
         organization.registryId,
       );
+
+      if (
+        sync_status &&
+        sync_status?.generation &&
+        sync_status?.target_generation
+      ) {
+        logger.debug(
+          `store ${organization.registryId} (${organization.name}) is currently at generation ${sync_status.generation} with a target generation of ${sync_status.target_generation}`,
+        );
+      } else {
+        logger.error(
+          `could not get datalayer sync status for store ${organization.registryId} (${organization.name}). pausing sync until sync status can be retrieved`,
+        );
+        return;
+      }
+
+      const orgRequiredResetDueToInvalidGenerationIndex =
+        await orgGenerationMismatchCheck(
+          organization.orgUid,
+          lastProcessedIndex,
+          sync_status.generation,
+          sync_status.target_generation,
+        );
+
+      if (orgRequiredResetDueToInvalidGenerationIndex) {
+        logger.info(
+          `${organization.name} was ahead of datalayer and needed to resync a few generations. trying again shortly...`,
+        );
+        return;
+      }
 
       if (toBeProcessedIndex > sync_status.generation) {
         const warningMsg = [
@@ -506,6 +531,44 @@ const syncOrganizationAudit = async (organization) => {
     await createTransaction(updateTransaction, afterCommitCallbacks);
   } catch (error) {
     logger.error('Error syncing org audit', error);
+  }
+};
+
+/**
+ * checks if an organization needs to be reset to a generation, and performs the reset. notifies the caller that the
+ * org was reset.
+ *
+ * datalayer store singletons can lose generation indexes due to blockchain reorgs. while the data is intact, in datalayer
+ * and cadt, this effectively makes the last synced cadt generation a 'future' generation, which causes problems.
+ *
+ * if the DL store is synced, and the cadt generation is higher than the DL generation, the org is resynced to 2 generations
+ * back from the highest DL generation
+ * @param orgUid
+ * @param cadtLastProcessedGeneration
+ * @param registryStoreGeneration
+ * @param registryStoreTargetGeneration
+ * @return {Promise<boolean>}
+ */
+const orgGenerationMismatchCheck = async (
+  orgUid,
+  cadtLastProcessedGeneration,
+  registryStoreGeneration,
+  registryStoreTargetGeneration,
+) => {
+  const storeSynced = registryStoreGeneration === registryStoreTargetGeneration;
+  const lastProcessedGenerationIndexDoesNotExistInDatalayer =
+    cadtLastProcessedGeneration > registryStoreGeneration;
+
+  if (storeSynced && lastProcessedGenerationIndexDoesNotExistInDatalayer) {
+    const resetToGeneration = registryStoreGeneration - 2; // -2 to have a margin
+    logger.info(
+      `resetting org with orgUid ${orgUid} to generation ${resetToGeneration}`,
+    );
+
+    await Audit.resetToGeneration(resetToGeneration, orgUid);
+    return true;
+  } else {
+    return false;
   }
 };
 

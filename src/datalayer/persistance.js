@@ -733,6 +733,10 @@ const getSyncStatus = async (storeId) => {
     // We just care that we got some response, not what the response is
     if (Object.keys(data).includes('success')) {
       return data;
+    } else {
+      logger.warn(
+        `datalayer '/get_sync_status' RPC failed to get sync status for ${storeId}`,
+      );
     }
 
     return false;

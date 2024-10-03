@@ -10,22 +10,18 @@ const persistanceFolder = `${chiaRoot}/cadt/${getDataModelVersion()}`;
 const localQueryLogger = (query) => {
   const queryString = query.split(/:\s(.+)/)[1];
   const queryHash = createHash('md5').update(queryString).digest('hex');
-  logger.debug(`SQLite Sequelize [query hash: ${queryHash}]\n\t${query}`);
+  logger.silly(`SQLite Sequelize [query hash: ${queryHash}]\n\t${query}`);
 };
 
 const mirrorQueryLogger = (query) => {
   const queryString = query.split(/:\s(.+)/)[1];
   const queryHash = createHash('md5').update(queryString).digest('hex');
-  logger.debug(`Mirror DB Sequelize [query hash: ${queryHash}]\n\t${query}`);
+  logger.silly(`Mirror DB Sequelize [query hash: ${queryHash}]\n\t${query}`);
 };
 
 const appLogLevel = getConfig().APP.LOG_LEVEL;
-const localLogging =
-  appLogLevel === 'silly' || appLogLevel === 'debug' ? localQueryLogger : false;
-const mirrorLogging =
-  appLogLevel === 'silly' || appLogLevel === 'debug'
-    ? mirrorQueryLogger
-    : false;
+const localLogging = appLogLevel === 'silly' ? localQueryLogger : false;
+const mirrorLogging = appLogLevel === 'silly' ? mirrorQueryLogger : false;
 
 export default {
   local: {
