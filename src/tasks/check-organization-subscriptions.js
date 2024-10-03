@@ -1,6 +1,6 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { getConfig } from '../utils/config-loader.js';
-import { Organization } from '../models/index.js';
+import { Meta, Organization } from '../models/index.js';
 import {
   getOwnedStores,
   getSubscriptions,
@@ -11,6 +11,21 @@ import { logger } from '../config/logger.js';
 const CONFIG = getConfig();
 
 const task = new Task('check-oranization-subscriptions', async () => {
+  const hasMigratedToNewSyncMethod = await Meta.findOne({
+    where: { metaKey: 'migratedToNewSync' },
+  });
+
+  const hasMigratedToGenerationIndexSync = await Meta.findOne({
+    where: { metaKey: 'migratedToIndexBasedSync' },
+  });
+
+  if (!hasMigratedToGenerationIndexSync || !hasMigratedToNewSyncMethod) {
+    logger.debug(
+      'skipping check organization subscriptions task: waiting for migration tasks to complete',
+    );
+    return;
+  }
+
   logger.debug('running check organization subscriptions task');
 
   try {
