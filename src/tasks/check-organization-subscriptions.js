@@ -23,9 +23,9 @@ const task = new Task('check-oranization-subscriptions', async () => {
     }
 
     for (const organization of organizations) {
-      const { orgUid, registryId, isHome } = organization;
+      const { orgUid, registryId, isHome, name } = organization;
       logger.debug(
-        `validating that datalayer is subscribed to stores ${orgUid} and ${registryId}`,
+        `validating that datalayer is subscribed org store ${orgUid} and registry store ${registryId} belonging to ${name}`,
       );
 
       if (isHome) {
