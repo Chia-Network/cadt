@@ -615,16 +615,16 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 };
 
 const getSubscriptions = async () => {
-  if (CONFIG().CADT.USE_SIMULATOR) {
-    return [];
-  }
-
-  const url = `${CONFIG().CHIA.DATALAYER_HOST}/subscriptions`;
-  const { cert, key, timeout } = getBaseOptions();
-
-  logger.trace(`RPC Call: ${url}`);
-
   try {
+    if (CONFIG().CADT.USE_SIMULATOR) {
+      return { success: true, storeIds: [] };
+    }
+
+    const url = `${CONFIG().CHIA.DATALAYER_HOST}/subscriptions`;
+    const { cert, key, timeout } = getBaseOptions();
+
+    logger.trace(`RPC Call: ${url}`);
+
     const response = await superagent
       .post(url)
       .key(key)
@@ -633,17 +633,50 @@ const getSubscriptions = async () => {
       .send({});
 
     const data = response.body;
+    logger.debug(`data returned from ${url}: ${data.store_ids}`);
 
     if (data.success) {
-      // console.log('Your Subscriptions:', data.store_ids);
-      return data.store_ids;
+      return { success: true, storeIds: data.store_ids };
     }
 
-    logger.error(`FAILED GETTING SUBSCRIPTIONS ON DATALAYER`);
-    return [];
+    logger.error(`Failed to retrieve subscriptions from datalayer`);
+    return { success: false, storeIds: [] };
   } catch (error) {
     logger.error(error);
-    return [];
+    return { success: false, storeIds: [] };
+  }
+};
+
+const getOwnedStores = async () => {
+  try {
+    if (CONFIG().CADT.USE_SIMULATOR) {
+      return { success: true, storeIds: [] };
+    }
+
+    const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_owned_stores`;
+    const { cert, key, timeout } = getBaseOptions();
+
+    logger.trace(`RPC Call: ${url}`);
+
+    const response = await superagent
+      .post(url)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
+      .send({});
+
+    const data = response.body;
+    logger.debug(`data returned from ${url}: ${data.store_ids}`);
+
+    if (data.success) {
+      return { success: true, storeIds: data.store_ids };
+    }
+
+    logger.error(`Failed to retrieve owned stores from datalayer`);
+    return { success: false, storeIds: [] };
+  } catch (error) {
+    logger.error(error);
+    return { success: false, storeIds: [] };
   }
 };
 
@@ -809,6 +842,7 @@ export {
   pushChangeListToDataLayer,
   createDataLayerStore,
   getSubscriptions,
+  getOwnedStores,
   cancelOffer,
   verifyOffer,
   takeOffer,
