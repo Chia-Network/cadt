@@ -54,16 +54,24 @@ export const migrateToNewSync = async () => {
 };
 
 export const generateGenerationIndex = async () => {
+  logger.debug('generating generation index');
+  logger.debug('querying organization model');
   const organizations = await Organization.findAll({
     where: { subscribed: true },
     raw: true,
   });
 
   for (const organization of organizations) {
+    logger.debug(
+      `querying datalayer to get root history of store ${organization.name}`,
+    );
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
 
     for (let i = 0; i < rootHistory.length; i++) {
       // Find the oldest timestamp with a null value
+      logger.debug(
+        `querying audit table for ${organization.name} generaton #${i}`,
+      );
       const oldestNullGenerations = await Audit.findAll({
         where: {
           registryId: organization.registryId,
