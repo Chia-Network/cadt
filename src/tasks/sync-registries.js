@@ -259,7 +259,8 @@ const syncOrganizationAudit = async (organization) => {
     );
 
     const rootHistoryZeroBasedCount = rootHistory.length - 1;
-    const syncRemaining = rootHistoryZeroBasedCount - lastProcessedIndex;
+    const syncRemaining =
+      Math.abs(rootHistoryZeroBasedCount) - Math.abs(lastProcessedIndex);
     const isSynced = syncRemaining === 0;
     logger.debug(
       `2 the root history length for ${organization.name} is ${rootHistory.length} and the last processed generation index is ${lastRootSavedToAuditTable.generation}`,
