@@ -141,7 +141,7 @@ npm run start
 
 Chia has a few test networks called "[testnets](https://docs.chia.net/testnets/)".  Testnets allow anyone to test applications using plentiful and low value TXCH instead of needing to purchace XCH.  We recommend running a testnet version of CADT as well as your production mainnet version in order to test integrations, software updates, and experiment in a low-stakes environment.    
 
-CADT runs on a testnet called "testnetA" which is different than the main Chia testnet, testnet11.  TestnetA has a CADT governance node (id `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`) and an [observer](https://chia-cadt-demo.chiamanaged.com/).  To configure your Chia and CADT environment to use testnetA, do the following:
+CADT runs on a testnet called "testnetA" which is different than the main Chia testnet, testnet11.  TestnetA has a CADT governance node and an [observer](https://chia-cadt-demo.chiamanaged.com/).  To configure your Chia and CADT environment to use testnetA, do the following:
 
 *Note - these instructions only work with Chia version 2.4.4 and above*
 
@@ -189,6 +189,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   *  **DB_HOST**: Hostname of the MySQL database
 * **APP**:  This section is for configuring the CADT application.
   * **CW_PORT**: CADT port where the API will be available. 31310 by default.
+  * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries. 
   * **BIND_ADDRESS**: By default, CADT listens on localhost only. To enable remote connections to CADT, change this to `0.0.0.0` to listen on all network interfaces, or to an IP address to listen on a specific network interface. 
   * **DATALAYER_URL**: URL and port to connect to the [Chia DataLayer RPC](https://docs.chia.net/datalayer-rpc). If Chia is installed locally with default settings, https://localhost:8562 will work. 
   * **WALLET_URL**: URL and port to connect to the [Chia Wallet RPC](https://docs.chia.net/wallet-rpc). If Chia is installed on the same machine as CADT with default settings, https://localhost:9256 will work.
