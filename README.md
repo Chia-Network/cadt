@@ -143,9 +143,32 @@ Chia has a few test networks called "[testnets](https://docs.chia.net/testnets/)
 
 CADT runs on a testnet called "testnetA" which is different than the main Chia testnet, testnet11.  TestnetA has a CADT governance node (id `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`) and an [observer](https://chia-cadt-demo.chiamanaged.com/).  To configure your Chia and CADT environment to use testnetA, do the following:
 
+*Note - these instructions only work with Chia version 2.4.4 and above*
+
  1. Follow the [instructions here and install chia-tools](https://github.com/chia-network/chia-tools?tab=readme-ov-file#apt-repo-installation).
  
- 2.  
+ 2.  Use chia-tools to switch to testneta in the Chia config 
+ 
+      `chia-tools network switch testneta`
+
+ 3.  Restart Chia 
+ 
+     `sudo systemctl restart chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME>`
+
+ 4.  Stop CADT
+
+     `sudo systemctl stop cadt@<USERNAME>`
+
+ 4.  Update the `GOVERNANCE_BODY_ID` in `~/.chia/mainnet/cadt/v1/config.yaml` to be `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`
+
+ 5.  If you already were running CADT on mainnet, delete the CADT database
+
+     `rm ~/.chia/mainnet/cadt/v1/data.sqlite3*`
+
+ 6.  Start CADT
+     
+     `sudo systemctl start cadt@<USERNAME>`
+
 
 ### Ports, Networking, and Security
 
