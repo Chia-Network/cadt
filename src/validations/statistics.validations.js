@@ -14,9 +14,9 @@ export const tonsCo2StatisticsGetQuerySchema = Joi.object()
       .items(Joi.string())
       .min(1)
       .invalid(Joi.string().pattern(/^(?!.*\ball\b).*$/i)),
-    vintageYearRangeStart: Joi.date(),
-    vintageYearRangeEnd: Joi.date(),
-    vintageYear: Joi.date(),
+    vintageYearRangeStart: Joi.number().min(1900).max(5000),
+    vintageYearRangeEnd: Joi.number().min(1900).max(5000),
+    vintageYear: Joi.number().min(1900).max(5000),
     unitType: Joi.string(),
     unitTypeList: Joi.array()
       .items(Joi.string())
