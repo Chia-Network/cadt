@@ -755,6 +755,14 @@ const cancelOffer = async (tradeId) => {
 };
 
 const getSyncStatus = async (storeId) => {
+  if (CONFIG.USE_SIMULATOR) {
+    return {
+      sync_status: {
+        generation: 10000,
+      },
+    };
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/get_sync_status`;
   const { cert, key, timeout } = getBaseOptions();
 
