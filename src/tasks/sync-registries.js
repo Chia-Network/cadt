@@ -357,7 +357,7 @@ const syncOrganizationAudit = async (organization) => {
         return;
       }
 
-      if (toBeProcessedDatalayerGenerationIndex + 1 > sync_status.generation) {
+      if (toBeProcessedDatalayerGenerationIndex > sync_status.generation) {
         const warningMsg = [
           `Generation ${toBeProcessedDatalayerGenerationIndex + 1} does not exist in ${organization.name} (registry store ${organization.registryId}) root history`,
           `DataLayer not yet caught up to generation ${auditTableHighestProcessedGenerationIndex + 1}. The the highest generation datalayer has synced is ${sync_status.generation}.`,
