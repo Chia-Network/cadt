@@ -234,7 +234,7 @@ const syncOrganizationAudit = async (organization) => {
 
     if (!lastRootSavedToAuditTable) {
       logger.info(
-        `Syncing new registry ${organization.name} (store ${organization.orgUid})`,
+        `Syncing new registry ${organization.name} (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
       );
 
       logger.debug(`creating 'CREATE REGISTRY' audit entry`);
@@ -317,10 +317,10 @@ const syncOrganizationAudit = async (organization) => {
     // Organization not synced, sync it
     logger.info(' ');
     logger.info(
-      `Syncing ${organization.name} generation index ${toBeProcessedDatalayerGenerationIndex} (store ${organization.orgUid})`,
+      `Syncing ${organization.name} generation index ${toBeProcessedDatalayerGenerationIndex} (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
     );
     logger.info(
-      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced (store ${organization.orgUid}).`,
+      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced (orgUid ${organization.orgUid}, registryId ${organization.registryId}).`,
     );
 
     if (!CONFIG.USE_SIMULATOR) {
@@ -395,7 +395,7 @@ const syncOrganizationAudit = async (organization) => {
 
     if (!_.get(rootToBeProcessed, 'confirmed')) {
       logger.info(
-        `Waiting for the latest root for ${organization.name} to confirm (store ${organization.orgUid})`,
+        `Waiting for the latest root for ${organization.name} to confirm (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
       );
       return;
     }
@@ -434,7 +434,7 @@ const syncOrganizationAudit = async (organization) => {
 
     const updateTransaction = async (transaction, mirrorTransaction) => {
       logger.info(
-        `Syncing ${organization.name} generation ${toBeProcessedDatalayerGenerationIndex} (store ${organization.orgUid})`,
+        `Syncing ${organization.name} generation ${toBeProcessedDatalayerGenerationIndex} (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
       );
       if (_.isEmpty(optimizedKvDiff)) {
         const auditData = {
