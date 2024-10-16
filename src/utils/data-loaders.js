@@ -3,7 +3,7 @@ import superagent from 'superagent';
 import { Governance } from '../models';
 import PickListStub from '../models/governance/governance.stub.js';
 import { getConfig } from '../utils/config-loader';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 
 const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
 

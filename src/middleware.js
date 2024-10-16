@@ -14,6 +14,7 @@ import {
 import packageJson from '../package.json' assert { type: 'json' };
 import datalayer from './datalayer';
 import { Organization } from './models';
+import { logger } from './config/logger.js';
 
 const { CADT_API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =
   getConfig().APP;
@@ -39,6 +40,34 @@ app.use(
 
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+
+// Request logger middleware
+app.use((req, res, next) => {
+  logger.verbose(`Received request: ${req.method} ${req.originalUrl}`, {
+    method: req.method,
+    url: req.originalUrl,
+    headers: req.headers,
+    timestamp: new Date().toISOString(),
+  });
+
+  const startTime = Date.now();
+
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    logger.verbose(
+      `Processed request: ${req.method} ${req.originalUrl}, status: ${res.statusCode}, duration: ${duration}ms`,
+      {
+        method: req.method,
+        url: req.originalUrl,
+        status: res.statusCode,
+        responseTime: duration,
+        timestamp: new Date().toISOString(),
+      },
+    );
+  });
+
+  next();
+});
 
 // Common assertions on every endpoint
 app.use(async function (req, res, next) {

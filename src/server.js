@@ -6,7 +6,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import { connection } from './websocket';
 import { getConfig } from './utils/config-loader';
-import { logger } from './config/logger.cjs';
+import { logger } from './config/logger.js';
 
 import dotenv from 'dotenv';
 

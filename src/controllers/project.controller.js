@@ -6,7 +6,7 @@ import { uuid as uuidv4 } from 'uuidv4';
 
 import { Staging, Project, Organization, ModelKeys } from '../models';
 
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 
 import {
   genericFilterRegex,

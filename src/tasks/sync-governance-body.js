@@ -6,7 +6,7 @@ import {
   assertWalletIsSynced,
 } from '../utils/data-assertions';
 import { getConfig } from '../utils/config-loader';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 import { Organization } from '../models';
 
 const CONFIG = getConfig();

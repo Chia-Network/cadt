@@ -28,7 +28,7 @@ class FileStore extends Model {
       );
     }
 
-    datalayer.subscribeToStoreOnDataLayer(organization.fileStoreId);
+    await datalayer.subscribeToStoreOnDataLayer(organization.fileStoreId);
     Organization.update({ fileStoreSubscribed: true });
   }
 

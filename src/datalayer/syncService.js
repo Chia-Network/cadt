@@ -3,7 +3,7 @@ import _ from 'lodash';
 import { decodeDataLayerResponse } from '../utils/datalayer-utils';
 import { Simulator } from '../models';
 import { getConfig } from '../utils/config-loader';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 
 import * as dataLayer from './persistance';
 import * as simulator from './simulator';
@@ -27,7 +27,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 };
 
 const getSubscribedStoreData = async (storeId) => {
-  const subscriptions = await dataLayer.getSubscriptions(storeId);
+  const { storeIds: subscriptions } = await dataLayer.getSubscriptions(storeId);
   const alreadySubscribed = subscriptions.includes(storeId);
 
   if (!alreadySubscribed) {

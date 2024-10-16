@@ -1,16 +1,17 @@
-const winston = require('winston');
-const { format, transports, createLogger } = winston;
-const DailyRotateFile = require('winston-daily-rotate-file');
+import winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import packageJson from '../../package.json' assert { type: 'json' };
+import { getConfig } from '../utils/config-loader.js';
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const packageJson = require('../../package.json');
+const { format, transports, createLogger } = winston;
 
 const getChiaRoot = () => {
   let chiaRoot;
 
-  if(process.env.CHIA_ROOT) {
+  if (process.env.CHIA_ROOT) {
     chiaRoot = path.resolve(process.env.CHIA_ROOT);
   } else {
     const homeDir = os.homedir();
@@ -33,6 +34,7 @@ const logDir = `${chiaRoot}/cadt/${getDataModelVersion()}/logs`;
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
+
 const logFormat = format.printf(
   (info) =>
     `${info.timestamp} [${packageJson.version}] [${info.level}]: ${info.message} ${
@@ -43,29 +45,34 @@ const logFormat = format.printf(
 );
 
 const logger = createLogger({
-  level: 'info',
+  level: getConfig().APP.LOG_LEVEL || 'info',
   format: format.combine(
     logFormat,
-    // format.label({ label: path.basename(process.main.filename) }),
     format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     format.metadata({ fillExcept: ['message', 'level', 'timestamp'] }),
   ),
   transports: [
-    // Write all logs with importance level of `error` or less to `error.log`
     new transports.File({
       filename: `${logDir}/error.log`,
       level: 'error',
       format: format.combine(format.json()),
     }),
-    // Write all logs with importance level of `info` or less to `combined.log`
     new transports.File({
       filename: `${logDir}/combined.log`,
       format: format.combine(format.json()),
     }),
-    // Rotate logs to `application-%DATE%.log`
     new DailyRotateFile({
       filename: `${logDir}/application-%DATE%.log`,
       datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m',
+      utc: true,
+      format: format.combine(format.json()),
+    }),
+    new DailyRotateFile({
+      filename: `${logDir}/debug-%DATE%.log`,
+      datePattern: 'YYYY-MM-DD',
+      level: 'debug',
       zippedArchive: true,
       maxSize: '20m',
       utc: true,
@@ -99,9 +106,6 @@ const logger = createLogger({
   exitOnError: false,
 });
 
-//
-// If not in production then log to the `console`
-//
 if (process.env.NODE_ENV !== 'production') {
   logger.add(
     new transports.Console({
@@ -114,6 +118,4 @@ if (process.env.NODE_ENV !== 'production') {
   );
 }
 
-module.exports = {
-  logger,
-};
+export { logger };

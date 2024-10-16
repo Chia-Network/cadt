@@ -1,5 +1,5 @@
 import { getConfig } from './config-loader';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 
 export const encodeHex = (str) => {
   return Buffer.from(str).toString('hex');
@@ -116,7 +116,7 @@ export const getMirrorUrl = async () => {
     const { DATALAYER_FILE_SERVER_URL } = getConfig().APP;
     logger.info(`Resolved Mirror Url: ${DATALAYER_FILE_SERVER_URL}`);
     return DATALAYER_FILE_SERVER_URL;
-  } catch (error) {
+  } catch {
     logger.error('Error getting DATALAYER_FILE_SERVER_URL: ${error}');
     return null;
   }

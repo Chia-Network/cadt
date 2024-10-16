@@ -10,7 +10,7 @@ import {
   optimizeAndSortKvDiff,
 } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 import { sequelize, sequelizeMirror } from '../database';
 import { getConfig } from '../utils/config-loader';
 import {
@@ -29,6 +29,7 @@ const CONFIG = getConfig().APP;
 
 const task = new Task('sync-registries', async () => {
   if (!mutex.isLocked()) {
+    logger.debug('running sync registries task');
     const releaseMutex = await mutex.acquire();
     try {
       const hasMigratedToNewSyncMethod = await Meta.findOne({
@@ -78,6 +79,8 @@ const processJob = async () => {
   await assertDataLayerAvailable();
   await assertWalletIsSynced();
 
+  logger.debug(`running sync-registries proccessJob()`);
+  logger.debug(`querying organization model`);
   const organizations = await Organization.findAll({
     where: { subscribed: true },
     raw: true,
@@ -95,7 +98,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
   let mirrorTransaction;
 
   try {
-    logger.info('Starting transaction');
+    logger.info('Starting sequelize transaction');
     // Start a transaction
     transaction = await sequelize.transaction();
 
@@ -117,7 +120,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
       await afterCommitCallback();
     }
 
-    logger.info('Commited transaction');
+    logger.info('Commited sequelize transaction');
 
     return result;
   } catch (error) {
@@ -133,7 +136,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
 const tryParseJSON = (jsonString, defaultValue) => {
   try {
     return JSON.parse(jsonString);
-  } catch (error) {
+  } catch {
     return defaultValue;
   }
 };
@@ -166,59 +169,85 @@ const truncateStaging = async () => {
 };
 
 const syncOrganizationAudit = async (organization) => {
+  logger.debug(`syncing organization audit for ${organization.name}`);
   try {
     let afterCommitCallbacks = [];
 
+    logger.debug(`querying organization model for home org`);
     const homeOrg = await Organization.getHomeOrg();
+    logger.debug(`querying datalayer for ${organization.name} root history`);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
+    logger.debug(`querying datalayer for ${organization.name} sync status`);
+    const { sync_status } = await datalayer.getSyncStatus(
+      organization.registryId,
+    );
 
-    if (!rootHistory.length) {
-      logger.info(
-        `No root history found for ${organization.name} (store ${organization.orgUid})`,
+    if (!rootHistory?.length) {
+      logger.warn(
+        `Could not find root history for ${organization.name} (orgUid ${organization.orgUid}, registryId ${organization.registryId}), something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
       return;
     }
 
-    let lastRootSaved;
+    if (
+      process.env.NODE_ENV !== 'test' &&
+      rootHistory.length - 1 !== sync_status?.generation
+    ) {
+      logger.warn(
+        `the root history length does not match the number of synced generations for ${organization.name} (registry store Id ${organization.registryId}). something is wrong and the sync for this organization will be paused until this is resolved. `,
+      );
+      return;
+    }
+
+    /**
+     * IMPORTANT: audit data 'generation' field is a generation INDEX, not the actual generation number
+     */
+    let lastRootSavedToAuditTable;
 
     if (CONFIG.USE_SIMULATOR) {
       console.log('USING MOCK ROOT HISTORY');
-      lastRootSaved = rootHistory[0];
-      lastRootSaved.rootHash = lastRootSaved.root_hash;
-      lastRootSaved.generation = 0;
+      lastRootSavedToAuditTable = rootHistory[0];
+      lastRootSavedToAuditTable.rootHash = lastRootSavedToAuditTable.root_hash;
+      lastRootSavedToAuditTable.generation = 0;
     } else {
-      lastRootSaved = await Audit.findOne({
+      logger.debug(
+        `querying audit table for last root of ${organization.name}`,
+      );
+      lastRootSavedToAuditTable = await Audit.findOne({
         where: { registryId: organization.registryId },
         order: [['generation', 'DESC']],
         raw: true,
       });
 
-      if (lastRootSaved) {
+      if (lastRootSavedToAuditTable) {
         // There was an oversight in the audit model where we named it onChainConfirmationTimeStamp but
         // the RPC result calls in timestamp. This is a temporary fix to ensure that we can still sync
-        lastRootSaved.timestamp = Number(
-          lastRootSaved?.onchainConfirmationTimeStamp || 0,
+        lastRootSavedToAuditTable.timestamp = Number(
+          lastRootSavedToAuditTable?.onchainConfirmationTimeStamp || 0,
         );
-        lastRootSaved.root_hash = lastRootSaved.rootHash;
+        lastRootSavedToAuditTable.root_hash =
+          lastRootSavedToAuditTable.rootHash;
       }
     }
 
-    let currentGeneration = _.get(rootHistory, '[0]');
+    const highestStoreGeneration = _.get(rootHistory, '[0]');
 
-    if (!lastRootSaved) {
+    if (!lastRootSavedToAuditTable) {
       logger.info(
-        `Syncing new registry ${organization.name} (store ${organization.orgUid})`,
+        `Syncing new registry ${organization.name} (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
       );
 
+      logger.debug(`creating 'CREATE REGISTRY' audit entry`);
       await Audit.create({
         orgUid: organization.orgUid,
         registryId: organization.registryId,
-        rootHash: currentGeneration.root_hash,
+        rootHash: highestStoreGeneration.root_hash,
         type: 'CREATE REGISTRY',
         generation: 0,
         change: null,
         table: null,
-        onchainConfirmationTimeStamp: currentGeneration.timestamp.toString(),
+        onchainConfirmationTimeStamp:
+          highestStoreGeneration.timestamp.toString(),
       });
 
       // Destroy existing records for this singleton
@@ -227,6 +256,9 @@ const syncOrganizationAudit = async (organization) => {
       // cleaned up on both the local db and mirror db and ready to resync
       await Promise.all(
         Object.keys(ModelKeys).map(async (modelKey) => {
+          logger.debug(
+            `performing destroy operation on home organization data in model ${modelKey}`,
+          );
           ModelKeys[modelKey].destroy({
             where: {
               orgUid: organization.orgUid,
@@ -236,23 +268,28 @@ const syncOrganizationAudit = async (organization) => {
       );
 
       return;
-    } else {
-      currentGeneration = lastRootSaved;
     }
 
-    const lastProcessedIndex = currentGeneration.generation;
-    logger.debug(`1 Last processed index: ${lastProcessedIndex}`);
+    const auditTableHighestProcessedGenerationIndex =
+      lastRootSavedToAuditTable.generation; // generation -> generation INDEX
+    logger.debug(
+      `1 Last processed generation index of ${organization.name}: ${auditTableHighestProcessedGenerationIndex}`,
+    );
 
-    if (lastProcessedIndex > rootHistory.length) {
-      logger.error(
-        `Could not find root history for ${organization.name} (store ${organization.orgUid}) with timestamp ${currentGeneration.timestamp}, something is wrong and the sync for this organization will be paused until this is resolved.`,
-      );
-    }
-
-    const rootHistoryZeroBasedCount = rootHistory.length - 1;
-    const syncRemaining = rootHistoryZeroBasedCount - lastProcessedIndex;
+    const rootHistoryHighestGenerationIndex = rootHistory.length - 1;
+    const syncRemaining =
+      Math.abs(rootHistoryHighestGenerationIndex) -
+      Math.abs(auditTableHighestProcessedGenerationIndex);
     const isSynced = syncRemaining === 0;
-
+    logger.debug(
+      `2 the root history length for ${organization.name} is ${rootHistory.length} and the last processed generation index is ${auditTableHighestProcessedGenerationIndex}`,
+    );
+    logger.debug(
+      `2 the highest root history index is ${rootHistoryHighestGenerationIndex}, given this and the last processed index, the number of generations left to sync is ${syncRemaining}`,
+    );
+    logger.debug(
+      `updating organization model with new sync status for ${organization.name}`,
+    );
     await Organization.update(
       {
         synced: isSynced,
@@ -262,34 +299,68 @@ const syncOrganizationAudit = async (organization) => {
     );
 
     if (process.env.NODE_ENV !== 'test' && isSynced) {
-      logger.debug(`3 Last processed index: ${lastProcessedIndex}`);
+      logger.debug(
+        `${organization.name}: is synced. the last processed index is ${auditTableHighestProcessedGenerationIndex} and the highest root history index is ${rootHistoryHighestGenerationIndex}`,
+      );
       return;
     }
 
-    const toBeProcessedIndex = lastProcessedIndex + 1;
-    logger.debug(`3 Last processed index: ${lastProcessedIndex}`);
-    logger.debug(`4 To be processed index: ${toBeProcessedIndex}`);
+    const toBeProcessedDatalayerGenerationIndex =
+      auditTableHighestProcessedGenerationIndex + 1;
+    logger.debug(
+      `3 Last processed generation index of ${organization.name}: ${auditTableHighestProcessedGenerationIndex}`,
+    );
+    logger.debug(
+      `4 To be processed generation index of ${organization.name}: ${toBeProcessedDatalayerGenerationIndex}`,
+    );
 
     // Organization not synced, sync it
     logger.info(' ');
     logger.info(
-      `Syncing ${organization.name} generation ${toBeProcessedIndex} (store ${organization.orgUid})`,
+      `Syncing ${organization.name} generation index ${toBeProcessedDatalayerGenerationIndex} (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
     );
     logger.info(
-      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced (store ${organization.orgUid}).`,
+      `${organization.name} is ${syncRemaining} DataLayer generations away from being fully synced (orgUid ${organization.orgUid}, registryId ${organization.registryId}).`,
     );
 
     if (!CONFIG.USE_SIMULATOR) {
       await new Promise((resolve) => setTimeout(resolve, 30000));
 
-      const { sync_status } = await datalayer.getSyncStatus(
-        organization.registryId,
-      );
+      if (
+        sync_status &&
+        sync_status?.generation &&
+        sync_status?.target_generation
+      ) {
+        logger.debug(
+          `store ${organization.registryId} (${organization.name}) is currently at generation ${sync_status.generation} with a target generation of ${sync_status.target_generation}`,
+        );
+      } else {
+        logger.error(
+          `could not get datalayer sync status for store ${organization.registryId} (${organization.name}). pausing sync until sync status can be retrieved`,
+        );
+        return;
+      }
 
-      if (toBeProcessedIndex > sync_status.generation) {
+      const orgRequiredResetDueToInvalidGenerationIndex =
+        await orgGenerationMismatchCheck(
+          organization.orgUid,
+          auditTableHighestProcessedGenerationIndex,
+          rootHistoryHighestGenerationIndex,
+          sync_status.generation,
+          sync_status.target_generation,
+        );
+
+      if (orgRequiredResetDueToInvalidGenerationIndex) {
+        logger.info(
+          `${organization.name} was ahead of datalayer and needed to resync a few generations. trying again shortly...`,
+        );
+        return;
+      }
+
+      if (toBeProcessedDatalayerGenerationIndex > sync_status.generation) {
         const warningMsg = [
-          `No data found for ${organization.name} (store ${organization.orgUid}) in the current datalayer generation.`,
-          `DataLayer not yet caught up to generation ${lastProcessedIndex}. The current processed generation is ${sync_status.generation}.`,
+          `Generation ${toBeProcessedDatalayerGenerationIndex + 1} does not exist in ${organization.name} (registry store ${organization.registryId}) root history`,
+          `DataLayer not yet caught up to generation ${auditTableHighestProcessedGenerationIndex + 1}. The the highest generation datalayer has synced is ${sync_status.generation}.`,
           `This issue is often temporary and could be due to a lag in data propagation.`,
           'Syncing for this organization will be paused until this is resolved.',
           'For ongoing issues, please contact the organization.',
@@ -300,28 +371,46 @@ const syncOrganizationAudit = async (organization) => {
       }
     }
 
-    logger.debug(`5 Last processed index: ${lastProcessedIndex}`);
-    const root1 = _.get(rootHistory, `[${lastProcessedIndex}]`);
-    logger.debug(`6 To be processed index: ${toBeProcessedIndex}`);
-    const root2 = _.get(rootHistory, `[${toBeProcessedIndex}]`);
+    logger.debug(
+      `5 Last processed index of ${organization.name}: ${auditTableHighestProcessedGenerationIndex}`,
+    );
+    const lastProcessedRoot = _.get(
+      rootHistory,
+      `[${auditTableHighestProcessedGenerationIndex}]`,
+    );
+    logger.debug(
+      `6 To be processed index of ${organization.name}: ${toBeProcessedDatalayerGenerationIndex}`,
+    );
+    const rootToBeProcessed = _.get(
+      rootHistory,
+      `[${toBeProcessedDatalayerGenerationIndex}]`,
+    );
 
-    logger.info(`ROOT 1 ${JSON.stringify(root1)}`);
-    logger.info(`ROOT 2', ${JSON.stringify(root2)}`);
+    logger.debug(
+      `last processed root of ${organization.name}: ${JSON.stringify(lastProcessedRoot)}`,
+    );
+    logger.debug(
+      `root to be processed of ${organization.name}: ${JSON.stringify(rootToBeProcessed)}`,
+    );
 
-    if (!_.get(root2, 'confirmed')) {
+    if (!_.get(rootToBeProcessed, 'confirmed')) {
       logger.info(
-        `Waiting for the latest root for ${organization.name} to confirm (store ${organization.orgUid})`,
+        `Waiting for the latest root for ${organization.name} to confirm (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
       );
       return;
     }
 
-    logger.debug(`7 Last processed index: ${lastProcessedIndex}`);
-    logger.debug(`8 To be processed index: ${toBeProcessedIndex}`);
+    logger.debug(
+      `7 Last processed index of ${organization.name}: ${auditTableHighestProcessedGenerationIndex}`,
+    );
+    logger.debug(
+      `8 To be processed index of ${organization.name}: ${toBeProcessedDatalayerGenerationIndex}`,
+    );
 
     const kvDiff = await datalayer.getRootDiff(
       organization.registryId,
-      root1.root_hash,
-      root2.root_hash,
+      lastProcessedRoot.root_hash,
+      rootToBeProcessed.root_hash,
     );
 
     const comment = kvDiff.filter(
@@ -345,37 +434,46 @@ const syncOrganizationAudit = async (organization) => {
 
     const updateTransaction = async (transaction, mirrorTransaction) => {
       logger.info(
-        `Syncing ${organization.name} generation ${toBeProcessedIndex} (store ${organization.orgUid})`,
+        `Syncing ${organization.name} generation ${toBeProcessedDatalayerGenerationIndex} (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
       );
       if (_.isEmpty(optimizedKvDiff)) {
         const auditData = {
           orgUid: organization.orgUid,
           registryId: organization.registryId,
-          rootHash: root2.root_hash,
+          rootHash: rootToBeProcessed.root_hash,
           type: 'NO CHANGE',
           table: null,
           change: null,
-          onchainConfirmationTimeStamp: root2.timestamp,
-          generation: toBeProcessedIndex,
+          onchainConfirmationTimeStamp: rootToBeProcessed.timestamp,
+          generation: toBeProcessedDatalayerGenerationIndex,
           comment: '',
           author: '',
         };
 
+        logger.debug(`optimized kv diff is empty between ${organization.name} generation indices ${auditTableHighestProcessedGenerationIndex} and ${toBeProcessedDatalayerGenerationIndex}
+        (roots [generation ${lastRootSavedToAuditTable.generation}] ${lastProcessedRoot.root_hash} and [generation ${lastRootSavedToAuditTable.generation + 1}] ${rootToBeProcessed.root_hash})`);
+        logger.debug(`creating audit entry`);
         await Audit.create(auditData, { transaction, mirrorTransaction });
       } else {
+        logger.debug(`processing optimized kv diff for ${organization.name} generation indices ${auditTableHighestProcessedGenerationIndex} and ${toBeProcessedDatalayerGenerationIndex}
+        (roots [generation ${lastRootSavedToAuditTable.generation}] ${lastProcessedRoot.root_hash} and [generation ${lastRootSavedToAuditTable.generation + 1}] ${rootToBeProcessed.root_hash})`);
+
         for (const diff of optimizedKvDiff) {
           const key = decodeHex(diff.key);
           const modelKey = key.split('|')[0];
+          logger.debug(
+            `proccessing kv diff entry for organization ${organization.name} with key ${key}`,
+          );
 
           const auditData = {
             orgUid: organization.orgUid,
             registryId: organization.registryId,
-            rootHash: root2.root_hash,
+            rootHash: rootToBeProcessed.root_hash,
             type: diff.type,
             table: modelKey,
             change: decodeHex(diff.value),
-            onchainConfirmationTimeStamp: root2.timestamp,
-            generation: toBeProcessedIndex,
+            onchainConfirmationTimeStamp: rootToBeProcessed.timestamp,
+            generation: toBeProcessedDatalayerGenerationIndex,
             comment: _.get(
               tryParseJSON(
                 decodeHex(_.get(comment, '[0].value', encodeHex('{}'))),
@@ -410,6 +508,9 @@ const syncOrganizationAudit = async (organization) => {
                 delete record.createdAt;
               }
 
+              logger.debug(
+                `upserting diff record and transaction to ${modelKey} model`,
+              );
               await ModelKeys[modelKey].upsert(record, {
                 transaction,
                 mirrorTransaction,
@@ -428,9 +529,12 @@ const syncOrganizationAudit = async (organization) => {
           }
 
           // Create the Audit record
+          logger.debug(
+            `creating audit model entry for ${organization.name} transacton`,
+          );
           await Audit.create(auditData, { transaction, mirrorTransaction });
           await Organization.update(
-            { registryHash: root2.root_hash },
+            { registryHash: rootToBeProcessed.root_hash },
             {
               where: { orgUid: organization.orgUid },
               transaction,
@@ -448,6 +552,50 @@ const syncOrganizationAudit = async (organization) => {
     await createTransaction(updateTransaction, afterCommitCallbacks);
   } catch (error) {
     logger.error('Error syncing org audit', error);
+  }
+};
+
+/**
+ * checks if an organization's generations are ahead of needs to be reset , and performs the reset. notifies the caller that the
+ * org was reset.
+ *
+ * datalayer store singletons can lose generation indexes due to blockchain reorgs. while the data is intact, in datalayer
+ * and cadt, this effectively makes the last synced cadt generation a 'future' generation, which causes problems.
+ *
+ * if the DL store is synced, and the cadt generation is higher than the DL generation, the org is resynced to 2 generations
+ * back from the highest DL generation
+ * @param orgUid
+ * @param cadtLastProcessedGenerationIndex
+ * @param registryStoreSyncGeneration
+ * @param registryStoreHighestRootHistoryIndex
+ * @param registryStoreSyncTargetGeneration
+ * @return {Promise<boolean>}
+ */
+const orgGenerationMismatchCheck = async (
+  orgUid,
+  cadtLastProcessedGenerationIndex,
+  registryStoreHighestRootHistoryIndex,
+  registryStoreSyncGeneration,
+  registryStoreSyncTargetGeneration,
+) => {
+  const storeSynced =
+    registryStoreSyncGeneration === registryStoreSyncTargetGeneration;
+  const lastProcessedGenerationIndexDoesNotExistInDatalayer =
+    cadtLastProcessedGenerationIndex > registryStoreHighestRootHistoryIndex;
+  logger.debug(
+    `orgGenerationMismatchCheck() data layer registry store synced: ${storeSynced}, last cadt generation exists in data layer: ${!lastProcessedGenerationIndexDoesNotExistInDatalayer}`,
+  );
+
+  if (storeSynced && lastProcessedGenerationIndexDoesNotExistInDatalayer) {
+    const resetToGeneration = registryStoreSyncGeneration - 2; // -2 to have a margin
+    logger.info(
+      `resetting org with orgUid ${orgUid} to generation ${resetToGeneration}`,
+    );
+
+    await Audit.resetToGeneration(resetToGeneration, orgUid);
+    return true;
+  } else {
+    return false;
   }
 };
 
