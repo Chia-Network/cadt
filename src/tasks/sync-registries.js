@@ -184,7 +184,7 @@ const syncOrganizationAudit = async (organization) => {
 
     if (!rootHistory?.length) {
       logger.warn(
-        `Could not find root history for ${organization.name} (orgUid ${organization.orgUid}), something is wrong and the sync for this organization will be paused until this is resolved.`,
+        `Could not find root history for ${organization.name} (orgUid ${organization.orgUid}, registryId ${organization.registryId}), something is wrong and the sync for this organization will be paused until this is resolved.`,
       );
       return;
     }
