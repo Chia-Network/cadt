@@ -12,7 +12,7 @@ This project was formerly known as the Climate Warehouse, and you may see this t
 
 The CADT application is designed to run 24/7, much like any other API.  While it is possible to run it on-demand only when API requests need to be made, this guide assumes a permanently running solution.  
 
-The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, Datalayer, and Datalayer HTTP services reside on. CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
+The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, Datalayer, and Datalayer-HTTP services reside on. CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
 
 Basic Chia installation instructions are provided below, but further installation options, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd).
 
@@ -136,6 +136,39 @@ nvm install 20.16
 nvm use 20.16
 npm run start
 ```
+
+### Datalayer HTTP File Serving
+
+CADT relies on all participants publicly sharing their data over Chia Datalayer, which includes sharing the Chia-generated `.dat` files over HTTP.  The files are located in `~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>/` (where `<NETWORK>` is the Chia network, usually either "mainnet" or "testneta") and can be shared over any web-accessible HTTP endpoint, including
+
+* Using the built-in datalayer-http service (see [Installation](#installation) instructions below).  Datalayer-http runs on port 8575 by default which may need to be opened in your firewall configuration or forwarded by your router.  Additionally, a static IP address will be required, which is not offered by default on some hosting providers.  On AWS, assign an Elastic IP to the EC2 instance or use an Application Load Balancer to solve this.  
+
+* Using Nginx, Apache, Caddy, or any other web server.  This also requires a static IP address, or dynamically assigned DNS record.  Another challenge is that the default location for the .dat files is in the user's home directory, which the web server software will not have read-access to.  One simple solution is 
+  * `mv ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK> /var/www/` - move the datalayer file directory outside of the home directory
+  * `chmod -R 744 /var/www/server_files_location_<NETWORK>` - change permissions on all datalayer files to be read by any user
+  * `ln -s /var/www/server_files_location_<NETWORK> ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>` - create a shortcut from the old location to the new
+  * Use [Nginx](https://nginx.org/), [Apache](https://httpd.apache.org/), [Caddy](https://caddyserver.com/), or any web server to serve the files over HTTP.  Here is a sample Nginx config:
+
+  ```
+  server {
+    listen 80;
+
+    root /var/www/server_files_location_<NETWORK>;
+
+    server_name datalayer.example.com;
+
+    index index.html;
+
+    expires 30d;
+    add_header Pragma "public";
+    add_header Cache-Control "public";
+    
+  }
+  ```
+
+* Use [S3](https://aws.amazon.com/s3/) or other object store.  Datalayer .dat files can be synced to any cloud file storage solution that can serve them publicly over HTTP.  One recommended solution using S3 is to [use this script and follow the installation and usage instructions in the README](https://github.com/TheLastCicada/Chia-Datalayer-S3-Sync).   
+
+
 
 ### Run CADT on a Testnet
 
