@@ -42,5 +42,8 @@ jobs:
       - name: install global packages
         run: npm i -g @babel/cli sequelize-cli cross-env
 
+      - name: Show home directory
+        run: ls -lah ~
+
       - name: npm tests
         run: npm run test

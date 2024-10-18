@@ -12,7 +12,7 @@ This project was formerly known as the Climate Warehouse, and you may see this t
 
 The CADT application is designed to run 24/7, much like any other API.  While it is possible to run it on-demand only when API requests need to be made, this guide assumes a permanently running solution.  
 
-The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, Datalayer, and Datalayer HTTP services reside on. CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
+The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, Datalayer, and Datalayer-HTTP services reside on. CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
 
 Basic Chia installation instructions are provided below, but further installation options, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd).
 
@@ -132,10 +132,76 @@ To install from source:
 ```
 git clone git@github.com:Chia-Network/cadt.git
 cd cadt
-nvm install 18.16
-nvm use 18.16
+nvm install 20.16
+nvm use 20.16
 npm run start
 ```
+
+### Datalayer HTTP File Serving
+
+CADT relies on all participants publicly sharing their data over Chia Datalayer, which includes sharing the Chia-generated `.dat` files over HTTP.  The files are located in `~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>/` (where `<NETWORK>` is the Chia network, usually either "mainnet" or "testneta") and can be shared over any web-accessible HTTP endpoint, including
+
+* Using the built-in datalayer-http service (see [Installation](#installation) instructions below).  Datalayer-http runs on port 8575 by default which may need to be opened in your firewall configuration or forwarded by your router.  Additionally, a static IP address will be required, which is not offered by default on some hosting providers.  On AWS, assign an Elastic IP to the EC2 instance or use an Application Load Balancer to solve this.  
+
+* Using Nginx, Apache, Caddy, or any other web server.  This also requires a static IP address, or dynamically assigned DNS record.  Another challenge is that the default location for the .dat files is in the user's home directory, which the web server software will not have read-access to.  One simple solution is 
+  * `mv ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK> /var/www/` - move the datalayer file directory outside of the home directory
+  * `chmod -R 744 /var/www/server_files_location_<NETWORK>` - change permissions on all datalayer files to be read by any user
+  * `ln -s /var/www/server_files_location_<NETWORK> ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>` - create a shortcut from the old location to the new
+  * Use [Nginx](https://nginx.org/), [Apache](https://httpd.apache.org/), [Caddy](https://caddyserver.com/), or any web server to serve the files over HTTP.  Here is a sample Nginx config:
+
+  ```
+  server {
+    listen 80;
+
+    root /var/www/server_files_location_<NETWORK>;
+
+    server_name datalayer.example.com;
+
+    index index.html;
+
+    expires 30d;
+    add_header Pragma "public";
+    add_header Cache-Control "public";
+    
+  }
+  ```
+
+* Use [S3](https://aws.amazon.com/s3/) or other object store.  Datalayer .dat files can be synced to any cloud file storage solution that can serve them publicly over HTTP.  One recommended solution using S3 is to [use this script and follow the installation and usage instructions in the README](https://github.com/TheLastCicada/Chia-Datalayer-S3-Sync).   
+
+
+
+### Run CADT on a Testnet
+
+Chia has a few test networks called "[testnets](https://docs.chia.net/testnets/)".  Testnets allow anyone to test applications using plentiful and low value TXCH instead of needing to purchace XCH.  We recommend running a testnet version of CADT in order to test integrations, software updates, and experiment in a low-stakes environment.    
+
+CADT runs on a testnet called "testnetA" which is different than the main Chia testnet, testnet11.  TestnetA has a CADT governance node and an [observer](https://chia-cadt-demo.chiamanaged.com/).  To configure your Chia and CADT environment to use testnetA, do the following:
+
+*Note - these instructions only work with Chia version 2.4.4 and above*
+
+ 1. Follow the [instructions here and install chia-tools](https://github.com/chia-network/chia-tools?tab=readme-ov-file#apt-repo-installation).
+ 
+ 2.  Use chia-tools to switch to testneta in the Chia config 
+ 
+      `chia-tools network switch testneta`
+
+ 3.  Restart Chia 
+ 
+     `sudo systemctl restart chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME>`
+
+ 4.  Stop CADT
+
+     `sudo systemctl stop cadt@<USERNAME>`
+
+ 4.  Update the `GOVERNANCE_BODY_ID` in `~/.chia/mainnet/cadt/v1/config.yaml` to be `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`
+
+ 5.  If you already were running CADT on mainnet, delete the CADT database
+
+     `rm ~/.chia/mainnet/cadt/v1/data.sqlite3*`
+
+ 6.  Start CADT
+     
+     `sudo systemctl start cadt@<USERNAME>`
+
 
 ### Ports, Networking, and Security
 
@@ -156,6 +222,7 @@ In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add
   *  **DB_HOST**: Hostname of the MySQL database
 * **APP**:  This section is for configuring the CADT application.
   * **CW_PORT**: CADT port where the API will be available. 31310 by default.
+  * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries. 
   * **BIND_ADDRESS**: By default, CADT listens on localhost only. To enable remote connections to CADT, change this to `0.0.0.0` to listen on all network interfaces, or to an IP address to listen on a specific network interface. 
   * **DATALAYER_URL**: URL and port to connect to the [Chia DataLayer RPC](https://docs.chia.net/datalayer-rpc). If Chia is installed locally with default settings, https://localhost:8562 will work. 
   * **WALLET_URL**: URL and port to connect to the [Chia Wallet RPC](https://docs.chia.net/wallet-rpc). If Chia is installed on the same machine as CADT with default settings, https://localhost:9256 will work.

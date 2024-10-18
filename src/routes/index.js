@@ -3,7 +3,7 @@
 import { prepareDb } from '../database';
 import scheduler from '../tasks';
 import { sequelize } from '../database';
-import { logger } from '../config/logger.cjs';
+import { logger } from '../config/logger.js';
 import { pullPickListValues } from '../utils/data-loaders';
 
 import app from '../middleware';

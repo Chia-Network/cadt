@@ -7,7 +7,7 @@ import { Meta } from '../../models';
 import datalayer from '../../datalayer';
 import { keyValueToChangeList } from '../../utils/datalayer-utils';
 import { getConfig } from '../../utils/config-loader';
-import { logger } from '../../config/logger.cjs';
+import { logger } from '../../config/logger.js';
 import { getDataModelVersion } from '../../utils/helpers';
 import PickListStub from './governance.stub.js';
 
