@@ -141,7 +141,7 @@ npm run start
 
 CADT relies on all participants publicly sharing their data over Chia Datalayer, which includes sharing the Chia-generated `.dat` files over HTTP.  The files are located in `~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>/` (where `<NETWORK>` is the Chia network, usually either "mainnet" or "testneta") and can be shared over any web-accessible HTTP endpoint, including
 
-* Using the built-in datalayer-http service (see [Installation](#installation) instructions below).  Datalayer-http runs on port 8575 by default which may need to be opened in your firewall configuration or forwarded by your router.  Additionally, a static IP address will be required, which is not offered by default on some hosting providers.  On AWS, assign an Elastic IP to the EC2 instance or use an Application Load Balancer to solve this.  
+* Using the built-in datalayer-http service (see [Installation](#installation) instructions below).  Datalayer-http runs on port 8575 by default which may need to be opened in your firewall configuration or forwarded by your router.  Additionally, a static IP address, or stable DNS record, will be required, which is not offered by default on some hosting providers.  On AWS, assign an Elastic IP to the EC2 instance or use an Application Load Balancer to solve this.  
 
 * Using Nginx, Apache, Caddy, or any other web server.  This also requires a static IP address, or dynamically assigned DNS record.  Another challenge is that the default location for the .dat files is in the user's home directory, which the web server software will not have read-access to.  One simple solution is 
   * `mv ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK> /var/www/` - move the datalayer file directory outside of the home directory
@@ -168,7 +168,7 @@ CADT relies on all participants publicly sharing their data over Chia Datalayer,
 
 * Use [S3](https://aws.amazon.com/s3/) or other object store.  Datalayer .dat files can be synced to any cloud file storage solution that can serve them publicly over HTTP.  One recommended solution using S3 is to [use this script and follow the installation and usage instructions in the README](https://github.com/TheLastCicada/Chia-Datalayer-S3-Sync).   
 
-
+Once the .dat files are publicly available, update `DATALAYER_FILE_SERVER_URL` in the [CADT configuration file](#configuration) with the URL or IP address (always include http:// or https://) and the port, then restart CADT.  CADT will begin to create mirrors at this URL for your data and all stores you are subscribed to.  
 
 ### Run CADT on a Testnet
 
