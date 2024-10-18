@@ -1,3 +1,35 @@
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+### Bug Fixes
+
+* a few more logging improvments ([6093019](https://github.com/Chia-Network/cadt/commit/60930190638fc8c353c6d913c05110623bfe727e))
+* failing tests due to zero vs one based generation count mismatch ([ca8d15c](https://github.com/Chia-Network/cadt/commit/ca8d15cde7e060e5d3f9e663ae64d6614c9a5c4f))
+* failing tests due to zero vs one based generation count mismatch ([293bf14](https://github.com/Chia-Network/cadt/commit/293bf14e90cb3c4d8491d0f88edc08509bf0abeb))
+* improve log messages to include registryId for easier debugging ([a78a6cb](https://github.com/Chia-Network/cadt/commit/a78a6cb5f23d8a56e9f6363623b4ca2eb925dff9))
+* registry sync stopping pre-maturely ([c7d57bf](https://github.com/Chia-Network/cadt/commit/c7d57bf5ecae17da5f93eea3bea844250a09fda7))
+
+
+### Features
+
+* added migration task checks ([aef3a42](https://github.com/Chia-Network/cadt/commit/aef3a4240ccc192b99357df1e0eacd4090dac027))
+* added query logger ([a89fcdd](https://github.com/Chia-Network/cadt/commit/a89fcdde17e7d12c9f559cb0abc2204b62e27c2d))
+* added simulator check to getSyncStatus ([f0cf847](https://github.com/Chia-Network/cadt/commit/f0cf8476aa5a86defbafffa8481023f0d7376e62))
+* added sync registries logging ([b5c863c](https://github.com/Chia-Network/cadt/commit/b5c863c8c7921e21228796877a1f5c6409ac8ca4))
+* added task to check subscriptions and resubscribe to missing org stores ([93cfeea](https://github.com/Chia-Network/cadt/commit/93cfeea83b19282d8f3b307cac86fb53fc87ad05))
+* added task to check subscriptions and resubscribe to missing org stores ([b6c0b4c](https://github.com/Chia-Network/cadt/commit/b6c0b4c2ad242340d0e16ac9d1d91d4134a0d582))
+* additional logging ([c965a53](https://github.com/Chia-Network/cadt/commit/c965a53154906903b2ea8b5257e3913755005ba8))
+* check to reset org generations if cadt is ahead of DL ([b8e2529](https://github.com/Chia-Network/cadt/commit/b8e25290b436cea819a601935c6e0b97f7ab865d))
+* converted logger to ES module for use with config-loader ([473b590](https://github.com/Chia-Network/cadt/commit/473b5904e5bb95be2c905788e2efe11cbe2f7837))
+* minor logging improvements ([0f14b1d](https://github.com/Chia-Network/cadt/commit/0f14b1d417d5e14a6d09203d915970e8177bbdab))
+* minor logging improvements ([0408228](https://github.com/Chia-Network/cadt/commit/0408228d17b788bcf6b828035c8097486073d4bf))
+* named organization in log output ([da42348](https://github.com/Chia-Network/cadt/commit/da42348d1d300975e6bf981c043079200ff28903))
+* sql logging hashes queries ([6d95bab](https://github.com/Chia-Network/cadt/commit/6d95bab90220a25897469dabd3510a2003084dea))
+* sync-registries task refinements ([2e8b8f0](https://github.com/Chia-Network/cadt/commit/2e8b8f0b2d69123eadc804c9f3706f7e9d3d1a29))
+* sync-registries task refinements ([a37775c](https://github.com/Chia-Network/cadt/commit/a37775c16db877003aaa0310005528e9f7e8a72d))
+
+
+
 ## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
 
 
