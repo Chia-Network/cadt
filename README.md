@@ -78,7 +78,7 @@ sudo apt-get update
 sudo apt-get install chia-blockchain-cli cadt
 ```
 
-6.  Start Chia Wallet and Datalayer with [systemd](https://docs.chia.net/installation/#systemd)
+6.  Start Chia Wallet, Full Node, and Datalayer with [systemd](https://docs.chia.net/installation/#systemd)
 
 ```
 sudo systemctl start chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME>
@@ -110,7 +110,7 @@ If using the built-in HTTP server for datalayer, start it at boot with
 sudo systemctl enable chia-data-layer-http@<USERNAME>
 ```
 
-10.  View CADT logs to validate
+9.  View CADT logs to validate
 
 ```
 journalctl -u cadt@<USERNAME> -f
@@ -132,8 +132,8 @@ To install from source:
 ```
 git clone git@github.com:Chia-Network/cadt.git
 cd cadt
-nvm install 20.16
-nvm use 20.16
+nvm install
+nvm use
 npm run start
 ```
 
