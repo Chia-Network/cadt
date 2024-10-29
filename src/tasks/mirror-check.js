@@ -1,5 +1,5 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Organization } from '../models';
+import { Meta, Organization } from '../models';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
@@ -22,7 +22,7 @@ const task = new Task('mirror-check', async () => {
     const shouldMirror = CONFIG().CADT.AUTO_MIRROR_EXTERNAL_STORES ?? true;
 
     if (!CONFIG().CADT.USE_SIMULATOR && shouldMirror) {
-      runMirrorCheck();
+      await runMirrorCheck();
     }
   } catch (error) {
     logger.error(
@@ -44,20 +44,49 @@ const job = new SimpleIntervalJob(
 );
 
 const runMirrorCheck = async () => {
-  const organizations = await Organization.getOrgsMap();
-  const orgs = Object.keys(organizations);
-  for (const org of orgs) {
-    const orgData = organizations[org];
-    const mirrorUrl = await getMirrorUrl();
-    if (mirrorUrl) {
+  const mirrorUrl = await getMirrorUrl();
+
+  if (mirrorUrl) {
+    const governanceOrgUidResult = await Meta.findOne({
+      where: { metaKey: 'governanceBodyId' },
+      attributes: ['metaValue'],
+      raw: true,
+    });
+    const governanceRegistryIdResult = await Meta.findOne({
+      where: { metaKey: 'mainGoveranceBodyId' },
+      attributes: ['metaValue'],
+      raw: true,
+    });
+
+    if (
+      governanceOrgUidResult?.metaValue &&
+      governanceRegistryIdResult?.metaValue
+    ) {
+      // There is logic within the addMirror function to check if the mirror already exists
+      await Organization.addMirror(
+        governanceOrgUidResult?.metaValue,
+        mirrorUrl,
+        true,
+      );
+      await Organization.addMirror(
+        governanceRegistryIdResult?.metaValue,
+        mirrorUrl,
+        true,
+      );
+    }
+
+    const organizations = await Organization.getOrgsMap();
+    const orgs = Object.keys(organizations);
+    for (const org of orgs) {
+      const orgData = organizations[org];
       // There is logic within the addMirror function to check if the mirror already exists
       await Organization.addMirror(orgData.orgUid, mirrorUrl, true);
       await Organization.addMirror(orgData.registryId, mirrorUrl, true);
-    } else {
-      logger.error(
-        'DATALAYER_FILE_SERVER_URL not set, skipping mirror announcement',
-      );
     }
+  } else {
+    logger.info(
+      'DATALAYER_FILE_SERVER_URL not set, skipping mirror announcements',
+    );
   }
 };
 

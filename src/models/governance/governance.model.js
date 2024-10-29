@@ -1,6 +1,7 @@
 'use strict';
 
 import Sequelize from 'sequelize';
+
 const { Model } = Sequelize;
 import { sequelize } from '../../database';
 import { Meta } from '../../models';
@@ -28,7 +29,7 @@ class Governance extends Model {
     const governanceVersionId = await datalayer.createDataLayerStore();
 
     const revertOrganizationIfFailed = async () => {
-      logger.info('Reverting Failed Governance Body Creation');
+      logger.warn('Reverting Failed Governance Body Creation');
       await Meta.destroy({ where: { metaKey: 'governanceBodyId' } });
     };
 
@@ -43,7 +44,6 @@ class Governance extends Model {
 
     const onConfirm = async () => {
       try {
-        logger.info('Organization confirmed, you are ready to go');
         await Meta.upsert({
           metaKey: 'governanceBodyId',
           metaValue: governanceVersionId,
@@ -52,6 +52,7 @@ class Governance extends Model {
           metaKey: 'mainGoveranceBodyId',
           metaValue: governanceBodyId,
         });
+        logger.info('Governance body confirmed, you are ready to go');
       } catch (error) {
         logger.error('Error syncing governance data', error);
       }
