@@ -87,13 +87,17 @@ const runMirrorCheck = async () => {
       GOVERNANCE_CONFIG.GOVERNANCE_BODY_ID,
     );
 
-    // add governance mirrors if non-governance instance
-    await Organization.addMirror(
-      GOVERNANCE_CONFIG.GOVERNANCE_BODY_ID,
-      mirrorUrl,
-      true,
-    );
-    await Organization.addMirror(governanceStoreValue, mirrorUrl, true);
+    if (governanceStoreValue?.v1) {
+      // add governance mirrors if non-governance instance
+      await Organization.addMirror(
+        GOVERNANCE_CONFIG.GOVERNANCE_BODY_ID,
+        mirrorUrl,
+        true,
+      );
+      await Organization.addMirror(governanceStoreValue, mirrorUrl, true);
+    } else {
+      logger.warn('error adding governance mirrors');
+    }
   }
 
   const organizations = await Organization.getOrgsMap();
