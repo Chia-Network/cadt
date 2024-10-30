@@ -94,7 +94,7 @@ const runMirrorCheck = async () => {
         mirrorUrl,
         true,
       );
-      await Organization.addMirror(governanceStoreValue?.v1, mirrorUrl, true);
+      await Organization.addMirror(governanceStoreValue.v1, mirrorUrl, true);
     } else {
       logger.warn('error adding governance mirrors');
     }
