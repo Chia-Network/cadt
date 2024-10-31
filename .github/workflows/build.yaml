@@ -82,9 +82,20 @@ jobs:
       - name: Copy sqlite3
         run: cp ${{ matrix.sqlite-path }}node_sqlite3.node ./dist/
 
+      - name: Test for secrets access
+        id: check_secrets
+        shell: bash
+        run: |
+          unset HAS_SIGNING_SECRET
+
+          if [ -n "$SIGNING_SECRET" ]; then HAS_SIGNING_SECRET='true' ; fi
+          echo "HAS_SIGNING_SECRET=${HAS_SIGNING_SECRET}" >> "$GITHUB_OUTPUT"
+        env:
+          SIGNING_SECRET: "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}"
+
       # Windows Code Signing
       - name: Sign windows artifacts
-        if: matrix.runs-on == 'windows-2019'
+        if: matrix.runs-on == 'windows-2019' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
         uses: chia-network/actions/digicert/windows-sign@main
         with:
           sm_api_key: ${{ secrets.SM_API_KEY }}
@@ -95,7 +106,7 @@ jobs:
 
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
-        if: matrix.runs-on == 'macos-latest'
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
         uses: Apple-Actions/import-codesign-certs@v1
         with:
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
@@ -103,7 +114,7 @@ jobs:
           p12-password: ${{ secrets.APPLE_DEV_ID_INSTALLER_PASS }}
 
       - name: Import Apple Application signing certificate
-        if: matrix.runs-on == 'macos-latest'
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
         uses: Apple-Actions/import-codesign-certs@v1
         with:
           create-keychain: false # Created when importing the first cert
@@ -130,6 +141,9 @@ jobs:
           echo "Signing the .pkg"
           productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg
 
+      - name: Notarize Mac .pkg
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        run: |
           echo "Notarizing the .pkg"
           xcrun notarytool submit \
           --wait \
