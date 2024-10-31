@@ -122,28 +122,37 @@ jobs:
           p12-file-base64: ${{ secrets.APPLE_DEV_ID_APP }}
           p12-password: ${{ secrets.APPLE_DEV_ID_APP_PASS }}
 
-      - name: Build Mac .pkg
+      - name: Prep building Mac .pkg
         if: matrix.runs-on == 'macos-latest'
         run: |
           rm -rf ${{ github.workspace }}/build-scripts/macos/darwin/application || true
           cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
 
+      - name: Sign Mac binaries
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        run: |
           echo "Signing the binaries"
           codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/build-scripts/macos/application/cadt
           codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp ${{ github.workspace }}/build-scripts/macos/application/node_sqlite3.node
 
+      - name: Build Mac .pkg
+        if: matrix.runs-on == 'macos-latest'
+        run: |
           # Makes the .pkg in ./build-scripts/macos/target/pkg
           echo "Building the .pkg"
           bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh CADT
 
+          mkdir -p ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload
+          cp ${{ github.workspace }}/build-scripts/macos/target/pkg/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/CADT-macos-installer-x64.pkg
+
+      - name: Notarize Mac .pkg
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        run: |
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
           echo "Signing the .pkg"
           productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg
 
-      - name: Notarize Mac .pkg
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
-        run: |
           echo "Notarizing the .pkg"
           xcrun notarytool submit \
           --wait \
@@ -152,12 +161,15 @@ jobs:
           --team-id "${{ secrets.APPLE_TEAM_ID }}" \
           "${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg"
 
+          rm -f ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/*
+          mv ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/
+
       - name: Upload Mac Installer
         if: matrix.runs-on == 'macos-latest'
         uses: actions/upload-artifact@v3
         with:
           name: cadt-mac-installer
-          path: ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
+          path: ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
