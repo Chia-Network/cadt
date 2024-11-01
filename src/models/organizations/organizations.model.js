@@ -219,7 +219,6 @@ class Organization extends Model {
     }
   }
 
-  // eslint-disable-next-line
   static async appendNewRegistry(registryId, dataVersion) {
     const registryVersionId = await datalayer.createDataLayerStore();
     await datalayer.syncDataLayer(registryId, {
@@ -241,7 +240,6 @@ class Organization extends Model {
     }
 
     const orgDataObj = orgData.reduce((obj, curr) => {
-      console.log(curr);
       obj[curr.key] = curr.value;
       return obj;
     }, {});
