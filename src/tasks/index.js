@@ -7,6 +7,7 @@ import syncOrganizationMeta from './sync-organization-meta';
 import syncGovernanceBody from './sync-governance-body';
 import mirrorCheck from './mirror-check';
 import checkOrganizationSubscriptions from './check-organization-subscriptions.js';
+import resetAuditTable from './reset-audit-table.js';
 
 const scheduler = new ToadScheduler();
 
@@ -27,6 +28,7 @@ const start = () => {
     syncOrganizationMeta,
     mirrorCheck,
     checkOrganizationSubscriptions,
+    resetAuditTable,
   ];
   defaultJobs.forEach((defaultJob) => {
     jobRegistry[defaultJob.id] = defaultJob;
