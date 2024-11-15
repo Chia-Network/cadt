@@ -20,17 +20,17 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
   - [POST Examples](#post-examples)
     - [Create an organization](#create-an-organization)
   - [PUT Examples](#put-examples)
-    - [Subscribe to an organization](#subscribe-to-an-organization)
+    - [Import a home organization](#import-a-home-organization-that-datalayer-is-subscribed-to)
+  - [DELETE Examples](#delete-examples)
+    - [Reset a home organization](#reset-home-organization)
+  - [Additional organizations resources](#additional-organizations-resources)
 - [`projects`](#projects)
   - [GET Examples](#get-examples-1)
-    - [Show all subscribed projects](#show-all-subscribed-projects)
-    - [List projects by warehouseprojectid](#list-projects-by-warehouseprojectid)
+    - [Show all subscribed projects](#show-projects-currently-in-the-cadt-database)
+    - [Get a single project record by warehouseprojectid](#get-a-single-project-record-by-warehouseprojectid)
     - [List projects by orguid](#list-projects-by-orguid)
     - [Search for projects containing the keyword "forestry"](#search-for-projects-containing-the-keyword-forestry)
-    - [List all projects, with paging](#list-all-projects-with-paging)
-    - [List projects by orguid, with paging](#list-projects-by-orguid-with-paging)
-    - [Search for projects containing the keyword "gold", with paging](#search-for-projects-containing-the-keyword-gold-with-paging)
-    - [Show only projects that have associated units with marketplace identifiers](#show-only-projects-that-have-associated-units-with-marketplace-identifiers)
+    - [Show only projects with one or more associated units containing a marketplace identifier](#show-only-projects-with-one-or-more-associated-units-containing-a-marketplace-identifier)
     - [List all projects and save the results to an xlsx file](#list-all-projects-and-save-the-results-to-an-xlsx-file)
     - [Show only the requested columns](#show-only-the-requested-columns)
   - [POST Examples](#post-examples-1)
@@ -95,66 +95,134 @@ GET Options: None
 
 #### List all subscribed organizations
 
-```json
-// Request
+Request
+```sh
 curl --location --request GET 'localhost:31310/v1/organizations' --header 'Content-Type: application/json'
+```
 
-// Response
+Response
+```json
 {
-    "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9":{
-        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-        "name":"Org Test",
-        "icon":"https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg",
-        "isHome":true,
-        "subscribed":true
-    }
+  "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9":{
+    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+    "orgHash": "0x14d8ea0f809c73c649827837cada5ec4d931153839383008a28c59fd1de86d2e",
+    "name":"Org Test",
+    "icon":"https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg",
+    "isHome":true,
+    "subscribed":true,
+    "synced": true,
+    "fileStoreSubscribed": "0",
+    "registryId": "xfy7oofvb31bg07stafbqxcug7mmmjzxg0gi8r1nwkv63u3pxwy85s5xpgs204bk",
+    "registryHash": "0x34c4671f721ff0132b4eb80a8e0d46ffb446ec8f03ed87368adcd29415cdbac4",
+    "sync_remaining": 0
+    },
+  "37651db8203d4c6c71f1ff357804eg6ag99eaa0k15f426aac5c896ga39bddji2":{
+    "orgUid":"37651db8203d4c6c71f1ff357804eg6ag99eaa0k15f426aac5c896ga39bddji2",
+    "orgHash": "0xb238e414a8df2ff5f1d1a67ca3db35c40bcb021624d5f34f9b539c0fa800272f",
+    "name":"Number 2 Org Test",
+    "icon":"https://www.chia.net/wp-content/uploads/2023/01/chia-logo-light.svg",
+    "isHome":true,
+    "subscribed":true,
+    "synced": false,
+    "fileStoreSubscribed": "0",
+    "registryId": "aigcyhuhhe4wxp2owt6j7cezr5dqpluh7g1ybtopkn2cvxz1vjjwnw146xhzuq3i",
+    "registryHash": "0x38vhoibwjnchsw0re23dsxnb7cr64dg7v717sfqkfcrs94e8z03munmnzk8jpes9",
+    "sync_remaining": 0
+  }
 }
+
 ```
 
 ---
 
 POST Options:
 
-| Key  |  Type  | Description                                                 |
-| :--: | :----: | :---------------------------------------------------------- |
-| name | String | (Required) Name of the organization to be created           |
-| icon | String | (Required) URL of the icon to be used for this organization |
+|  Key   |   Type   |                         Description                          |
+|:------:|:--------:|:------------------------------------------------------------:|
+|  name  |  String  |      (Required) Name of the organization to be created       |
+|  icon  |  String  | (Required) URL of the icon to be used for this organization  |
 
 ### POST Examples
 
 #### Create an organization
 
-```json
-// Request
+Request
+```sh
 curl --location -g --request POST 'localhost:31310/v1/organizations/create' \
      --header 'Content-Type: application/json' \
      --data-raw '{
         "name": "Sample Org",
         "icon": "https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg"
 }'
+```
 
-// Response
+Response (after up 30 minutes)
+```json
 {
   "message":"New organization created successfully.",
-  "orgId":"d84ab5fa679726e988b31ecc8ecff0ba8d001e9d65f1529d794fa39d32a5455e"
+  "orgUid":"d84ab5fa679726e988b31ecc8ecff0ba8d001e9d65f1529d794fa39d32a5455e"
 }
 ```
 
 ---
 
-PUT Options: None
+PUT Options: 
+
+|  Key   |  Type   |                     Description                      |
+|:------:|:-------:|:----------------------------------------------------:|
+| orgUid | String  | (Required) OrgUid of the home organization to import |
 
 ### PUT Examples
 
-#### Subscribe to an organization
+#### Import a home organization that datalayer is subscribed to
 
-```json
-// Request
-curl --location -g --request PUT 'localhost:31310/v1/organizations/'
-
-// Response
-{"message":"Importing and subscribing organization this can take a few mins."}
+Request
+```sh
+curl --location -g --request PUT 'http://localhost:31310/v1/organizations/' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "orgUid": "foobar"
+}'
 ```
+Response
+```json
+{
+  "message":"Importing home organization."
+}
+```
+
+DELETE Options: None
+
+### DELETE Examples
+
+#### Reset home organization
+
+Request
+```sh
+curl --location --request DELETE 'http://localhost:31310/v1/organizations/'
+```
+Response
+```json
+{
+  "message": "Your home organization was reset, please create a new one.",
+  "success": true
+
+}
+```
+
+### Additional Organizations Resources
+- POST `/organizations/remove-mirror` - given a store ID and coin ID removes the mirror for a given store 
+- POST `/organizations/sync` - runs the process to sync all subscribed organization metadata with datalayer
+- POST `/organizations/create` - create an organization without an icon 
+- POST `/organizations/edit` - update an organization name and/or icon 
+- PUT `/organizations/import` - subscribe and import an organization via OrgUid 
+- DELETE `organizations/import` - delete an organization's record from the CADT instance DB 
+- PUT `organizations/subscribe` - subscribe to an organization datalayer singleton 
+- DELETE `organizations/unsubscribe` - unsubscribe from an organization datalayer singleton and keep CADT data 
+- PUT `organizations/resync` - resync an organization from datalayer 
+- POST `organizations/mirror` - add a mirror for a datalayer store via the store ID 
+- GET `organizations/metadata` - get an organizations metadata using the OrgUid 
+- GET `organizations/status` - the sync status of an organization via the OrgUid
 
 ---
 
@@ -164,54 +232,60 @@ Functionality: List subscribed projects, as specified by the appropriate URL opt
 
 Query string options:
 
-|        Key         |  Type   | Description                                                                                            |
-| :----------------: | :-----: | :----------------------------------------------------------------------------------------------------- |
-|   None (default)   |   N/A   | Display all subscribed projects                                                                        |
-| warehouseProjectId | String  | Only display subscribed projects matching this warehouseProjectId                                      |
-|       orgUid       | String  | Only display subscribed projects matching this orgUid                                                  |
-|       search       | String  | Display all subscribed projects that contain the specified query (case insensitive)                    |
-|      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns          |
-|       limit        | Number  | Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
-|        page        | Number  | Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
-|        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                          |
+|        Key         |  Type   | Description                                                                                                                     |
+|:------------------:|:-------:|:--------------------------------------------------------------------------------------------------------------------------------|
+|   None (default)   |   N/A   | Display all subscribed projects                                                                                                 |
+| warehouseProjectId | String  | Only display subscribed projects matching this warehouseProjectId                                                               |
+|       orgUid       | String  | Only display subscribed projects matching this orgUid                                                                           |
+|       search       | String  | Display all subscribed projects that contain the specified query (case insensitive)                                             |
+|      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns                                   |
+|       limit        | Number  | (Conditionally Required) Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+|        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |
+
 
 ### GET Examples
 
-#### Show all subscribed projects
+#### Show projects currently in the CADT database
 
-- In this example, no query string is used. This is the default, which lists all projects
+- This request is the most basic call to /projects and displays result from all organizations. Pagination is required.
 
+```sh
+curl --location --request GET 'http://localhost:31310/v1/projects?page=5&limit=10' \
+--header 'Content-Type: application/json'
+```
+Response
 ```json
-// Request
-curl --location --request GET 'localhost:31310/v1/projects' --header 'Content-Type: application/json'
-
-// Response
-[{
-    "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "currentRegistry":"Climate Action Reserve (CAR)",
-    "projectId":"789",
-    "originProjectId":"123",
-    "registryOfOrigin":"Sweden National Registry",
-    "program":null,
-    "projectName":"Stop Desertification",
-    "projectLink":"desertificationtest.com",
-    "projectDeveloper":"Dev 2",
-    "sector":"Fugitive emissions – from fuels (solid, oil and gas)",
-    "projectType":"Coal Mine Methane",
-    "projectTags":null,
-    "coveredByNDC":"Outside NDC",
-    "ndcInformation":null,
-    "projectStatus":"Registered",
-    "projectStatusDate":"2022-02-02T00:00:00.000Z",
-    "unitMetric":"tCO2e",
-    "methodology":"Substitution of CO2 from fossil or mineral origin by CO2 from biogenic residual sources in the production of inorganic compounds --- Version 3.0",
-    "validationBody":null,
-    "validationDate":null,
-    "timeStaged":1646975765,
-    "createdAt":"2022-03-11T05:17:55.427Z",
-    "updatedAt":"2022-03-11T05:17:55.427Z",
-    "projectLocations":[{
+{
+  "page": 5,
+  "pageCount": 18,
+  "data": [
+    {
+      "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "currentRegistry":"Climate Action Reserve (CAR)",
+      "projectId":"789",
+      "originProjectId":"123",
+      "registryOfOrigin":"Sweden National Registry",
+      "program":null,
+      "projectName":"Stop Desertification",
+      "projectLink":"desertificationtest.com",
+      "projectDeveloper":"Dev 2",
+      "sector":"Fugitive emissions – from fuels (solid, oil and gas)",
+      "projectType":"Coal Mine Methane",
+      "projectTags":null,
+      "coveredByNDC":"Outside NDC",
+      "ndcInformation":null,
+      "projectStatus":"Registered",
+      "projectStatusDate":"2022-02-02T00:00:00.000Z",
+      "unitMetric":"tCO2e",
+      "methodology":"Substitution of CO2 from fossil or mineral origin by CO2 from biogenic residual sources in the production of inorganic compounds --- Version 3.0",
+      "validationBody":null,
+      "validationDate":null,
+      "timeStaged":1646975765,
+      "createdAt":"2022-03-11T05:17:55.427Z",
+      "updatedAt":"2022-03-11T05:17:55.427Z",
+      "projectLocations":[{
         "id":"8182100d-7794-4df7-b3b3-758391d13011",
         "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
         "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
@@ -221,8 +295,8 @@ curl --location --request GET 'localhost:31310/v1/projects' --header 'Content-Ty
         "timeStaged":null,
         "createdAt":"2022-03-11T05:17:55.425Z",
         "updatedAt":"2022-03-11T05:17:55.425Z"
-    }],
-    "labels":[{
+      }],
+      "labels":[{
         "id":"dcacd68e-1cfb-4f06-9798-efa0aacda42c",
         "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
         "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
@@ -237,8 +311,8 @@ curl --location --request GET 'localhost:31310/v1/projects' --header 'Content-Ty
         "timeStaged":null,
         "createdAt":"2022-03-11T05:17:55.426Z",
         "updatedAt":"2022-03-11T05:17:55.426Z"
-    }],
-    "issuances":[{
+      }],
+      "issuances":[{
         "id":"d9f58b08-af25-461c-88eb-403bb02b135e",
         "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
         "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
@@ -250,8 +324,8 @@ curl --location --request GET 'localhost:31310/v1/projects' --header 'Content-Ty
         "timeStaged":null,
         "createdAt":"2022-03-11T05:17:55.426Z",
         "updatedAt":"2022-03-11T05:17:55.426Z"
-    }],
-    "coBenefits":[{
+      }],
+      "coBenefits":[{
         "id":"73cfbe9c-8cea-4aca-94d8-f1641e686787",
         "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
         "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
@@ -259,8 +333,8 @@ curl --location --request GET 'localhost:31310/v1/projects' --header 'Content-Ty
         "timeStaged":null,
         "createdAt":"2022-03-11T05:17:55.424Z",
         "updatedAt":"2022-03-11T05:17:55.424Z"
-    }],
-    "relatedProjects":[{
+      }],
+      "relatedProjects":[{
         "id":"e880047e-cdf4-45bb-a9df-e706fa427713",
         "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
         "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
@@ -270,8 +344,8 @@ curl --location --request GET 'localhost:31310/v1/projects' --header 'Content-Ty
         "timeStaged":null,
         "createdAt":"2022-03-11T05:17:55.426Z",
         "updatedAt":"2022-03-11T05:17:55.426Z"
-    }],
-    "projectRatings":[{
+      }],
+      "projectRatings":[{
         "id":"d31c3c75-b944-498d-9557-315f9005f478",
         "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
         "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
@@ -283,8 +357,8 @@ curl --location --request GET 'localhost:31310/v1/projects' --header 'Content-Ty
         "timeStaged":null,
         "createdAt":"2022-03-11T05:17:55.427Z",
         "updatedAt":"2022-03-11T05:17:55.427Z"
-    }],
-    "estimations":[{
+      }],
+      "estimations":[{
         "id":"c73fb4e7-3bd0-4449-8a57-6137b7c95a1f",
         "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
         "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
@@ -294,60 +368,67 @@ curl --location --request GET 'localhost:31310/v1/projects' --header 'Content-Ty
         "timeStaged":null,
         "createdAt":"2022-03-11T05:17:55.427Z",
         "updatedAt":"2022-03-11T05:17:55.427Z"
-    }]
+      }]
 
-},{
-    "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "currentRegistry":"Gold Standard",
-    "projectId":"555",
-    "originProjectId":"555",
-    "registryOfOrigin":"Gold Standard",
-    "program":null,
-    "projectName":"Stop Deforestation",
-    "projectLink":"http://testurl.com",
-    "projectDeveloper":"Example Developer",
-    "sector":"Agriculture Forestry and Other Land Use (AFOLU)",
-    "projectType":"Soil Enrichment",
-    "projectTags":null,
-    "coveredByNDC":"Unknown",
-    "ndcInformation":null,
-    "projectStatus":"Listed",
-    "projectStatusDate":"2022-03-02T00:00:00.000Z",
-    "unitMetric":"tCO2e",
-    "methodology":"Decomposition of fluoroform (HFC-23) waste streams --- Version 6.0.0",
-    "validationBody":null,
-    "validationDate":null,
-    "timeStaged":1646803417,
-    "createdAt":"2022-03-11T05:17:55.422Z",
-    "updatedAt":"2022-03-11T05:17:55.422Z",
-    "projectLocations":[],
-    "labels":[],
-    "issuances":[],
-    "coBenefits":[],
-    "relatedProjects":[],
-    "projectRatings":[],
-    "estimations":[]
-}]
+    },
+    {
+      "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "currentRegistry":"Gold Standard",
+      "projectId":"555",
+      "originProjectId":"555",
+      "registryOfOrigin":"Gold Standard",
+      "program":null,
+      "projectName":"Stop Deforestation",
+      "projectLink":"http://testurl.com",
+      "projectDeveloper":"Example Developer",
+      "sector":"Agriculture Forestry and Other Land Use (AFOLU)",
+      "projectType":"Soil Enrichment",
+      "projectTags":null,
+      "coveredByNDC":"Unknown",
+      "ndcInformation":null,
+      "projectStatus":"Listed",
+      "projectStatusDate":"2022-03-02T00:00:00.000Z",
+      "unitMetric":"tCO2e",
+      "methodology":"Decomposition of fluoroform (HFC-23) waste streams --- Version 6.0.0",
+      "validationBody":null,
+      "validationDate":null,
+      "timeStaged":1646803417,
+      "createdAt":"2022-03-11T05:17:55.422Z",
+      "updatedAt":"2022-03-11T05:17:55.422Z",
+      "projectLocations":[],
+      "labels":[],
+      "issuances":[],
+      "coBenefits":[],
+      "relatedProjects":[],
+      "projectRatings":[],
+      "estimations":[]
+    }
+  ]
+}
+  
 ```
 
 ---
 
-#### List projects by `warehouseProjectId`
+#### Get a single project record by `warehouseProjectId`
 
-```json
-// Request
+- Pagination is not required when providing a warehouseProjectId
+
+Request
+```sh
 curl --location --request GET 'localhost:31310/v1/projects?warehouseProjectId=51ca9638-22b0-4e14-ae7a-c09d23b37b58' --header 'Content-Type: application/json'
-
-// Response
+```
+Response
+```json
 {
-    "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "currentRegistry":"Gold Standard",
-    "projectId":"555",
-    ...
-    abbreviated (output is same as above)
-    ...
+  "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+  "currentRegistry":"Gold Standard",
+  "projectId":"555",
+  ...
+  abbreviated project record (see first example)
+  ...
 }
 ```
 
@@ -355,28 +436,40 @@ curl --location --request GET 'localhost:31310/v1/projects?warehouseProjectId=51
 
 #### List projects by `orgUid`
 
-```json
-// Request
-curl --location --request GET 'localhost:31310/v1/projects?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9' --header 'Content-Type: application/json'
+- Pagination is required when querying for projects by OrgUid
 
-// Response
-[{
-    "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "currentRegistry":"Climate Action Reserve (CAR)",
-    "projectId":"789",
-    ...
-    abbreviated (output is same as above)
-    ...
-},{
-    "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "currentRegistry":"Gold Standard",
-    "projectId":"555",
-    ...
-    abbreviated (output is same as above)
-    ...
-}]
+Request
+```sh
+curl --location --request GET 'localhost:31310/v1/projects?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9&page=5&limit=12' --header 'Content-Type: application/json'
+```
+Response
+```json
+{
+  "page": 5,
+  "pageCount": 18,
+  "data": [
+    {
+      "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "currentRegistry":"Climate Action Reserve (CAR)",
+      "projectId":"789",
+      ...
+      abbreviated project record (see first example)
+      ...
+    },
+    {
+      "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "currentRegistry":"Gold Standard",
+      "projectId":"555",
+      ...
+      abbreviated project record (see first example)
+      ...
+    }
+  ]
+}
+
+
 
 ```
 
@@ -384,99 +477,53 @@ curl --location --request GET 'localhost:31310/v1/projects?orgUid=77641db780adc6
 
 #### Search for projects containing the keyword "forestry"
 
-```json
-// Request
-curl --location --request GET 'localhost:31310/v1/projects?search=forestry' --header 'Content-Type: application/json'
+- Pagination is required when querying with a text search string
 
-// Response
-[{
-    "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "currentRegistry":"Gold Standard",
-    "projectId":"555",
-    "originProjectId":"555",
-    "registryOfOrigin":"Gold Standard",
-    "program":null,
-    "projectName":"Stop Deforestation",
-    "projectLink":"http://testurl.com",
-    "projectDeveloper":"Example Developer",
-    "sector":"Agriculture Forestry and Other Land Use (AFOLU)",
-    ...
-    abbreviated (output is same as above)
-    ...
-}
+Request
+```shell
+curl --location --request GET 'localhost:31310/v1/projects?search=forestry&page=5&limit=10' --header 'Content-Type: application/json'
 ```
 
----
-
-#### List all projects, with paging
-
+Response
 ```json
-// Request
-curl --location --request GET 'localhost:31310/v1/projects?page=2&limit=1' --header 'Content-Type: application/json'
-
-// Response
-{
-    "page":2,
-    "pageCount":2,
-    "data":[{
-        "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-        "currentRegistry":"Gold Standard",
-        "projectId":"555",
-        ...
-        abbreviated (output is same as above)
-        ...
-    }]
-}
-```
-
----
-
-#### List projects by `orgUid`, with paging
-
-```json
-// Request
-curl --location --request GET 'localhost:31310/v1/projects?page=2&limit=1&orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9' --header 'Content-Type: application/json'
-
-// Response
-{
-    "page":2,
-    "pageCount":2,
-    "data":[{
-        "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-        "currentRegistry":"Gold Standard",
-        "projectId":"555",
-        ...
-        abbreviated (output is same as above)
-        ...
-    }]
-}
-```
-
----
-
-#### Search for projects containing the keyword "gold", with paging
-
-```json
-// Request
-curl --location --request GET 'localhost:31310/v1/projects?page=1&limit=1&search=gold' --header 'Content-Type: application/json'
-
-// Response
 
 {
-  "page":1,
-  "pageCount":1,
-  "data":[{
-    "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "currentRegistry":"Gold Standard",
-    "projectId":"555",
-    ...
-    abbreviated (output is same as above)
-    ...
-  }]
+  "page": 5,
+  "pageCount": 18,
+  "data": [
+    {
+      "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "currentRegistry":"Gold Standard",
+      "projectId":"555",
+      "originProjectId":"555",
+      "registryOfOrigin":"Gold Standard",
+      "program":null,
+      "projectName":"Stop Deforestation",
+      "projectLink":"http://testurl.com",
+      "projectDeveloper":"Example Developer",
+      "sector":"Agriculture Forestry and Other Land Use (AFOLU)",
+      ...
+      abbreviated project record (see first example)
+      ...
+    },
+    {
+      "warehouseProjectId":"c400b659-d36e-44f7-a575-b6f1a2ed9662",
+      "orgUid":"37651db8203d4c6c71f1ff357804eg6ag99eaa0k15f426aac5c896ga39bddji2",
+      "currentRegistry":"Verra",
+      "projectId":"123",
+      "originProjectId":"321",
+      "registryOfOrigin":"CDM",
+      "program":null,
+      "projectName":"Test Project 123",
+      "projectLink":"http://test102url.com",
+      "projectDeveloper":"Example Developer",
+      "sector":"Agriculture Forestry and Other Land Use (AFOLU)",
+      ...
+      abbreviated project record (see first example)
+      ...
+    }
+  ]
 }
 ```
 
@@ -484,75 +531,91 @@ curl --location --request GET 'localhost:31310/v1/projects?page=1&limit=1&search
 
 #### List all projects and save the results to an xlsx file
 
-```json
-// Request
-curl --location --request GET 'localhost:31310/v1/projects?xls=true' --header 'Content-Type: application/json' > cw_query.xlsx
+- All other projects query params can be used in combination with the `xls` query param
 
-// Response
-The results are saved to a file in the current directory called `cw_query.xlsx`.
+Request
+```sh
+curl --location --request GET 'localhost:31310/v1/projects?xls=true' --header 'Content-Type: application/json' > projects.xlsx
 ```
+Response: 
+
+Download stream to download the XLS file of project records.
+Using the above `curl` will save the results to a file in the current directory called `projects.xlsx`.
+
 
 ---
 
-#### Show only projects that have associated units with marketplace identifiers
+#### Show only projects with one or more associated units containing a marketplace identifier
 
+- Pagination is required when searching for project records by presence of unit marketplace identifiers
+
+Request
+
+```sh
+curl --location --request GET 'http://localhost:31310/v1/projects?page=1&limit=5&onlyMarketplaceProjects=true' --header 'Content-Type: application/json'
+```
+Response
 ```json
-// Request
-curl --location --request GET 'http://localhost:31310/v1/projects?page=1&limit=5&onlyMarketplaceProjects' --header 'Content-Type: application/json'
-
-// Response
 {
-  "page":1,
-  "pageCount":1,
-  "data":[{
-    "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-    "currentRegistry":"Climate Action Reserve (CAR)",
-    "registryOfOrigin":"Sweden National Registry",
-    "originProjectId":"123",
-    "program":null,
-    "projectName":"Stop Desertification",
-    "marketplaceIdentifier": "0x12ab"
-  },{
-    "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-    "currentRegistry":"Gold Standard",
-    "registryOfOrigin":"Gold Standard",
-    "originProjectId":"555",
-    "program":null,
-    "projectName":"Stop Deforestation",
-    "marketplaceIdentifier": "0x12ab"
-  }]
+  "page": 5,
+  "pageCount": 18,
+  "data": [
+    {
+      "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "currentRegistry":"Climate Action Reserve (CAR)",
+      "projectId":"789",
+      "marketplaceIdentifier": "0x35063k71qbg5a8de324e52d6e4c35dd69c48b757477800d48c983ed17aea1b98",
+      ...
+      abbreviated project record (see first example)
+      ...
+    },
+    {
+      "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "currentRegistry":"Gold Standard",
+      "projectId":"555",
+      "marketplaceIdentifier": "0x1930eagkbc83dhh589433475c2faff5f914fa65f5a27c0fee5327a58s24696e9",
+      ...
+      abbreviated project record (see first example)
+      ...
+    }
+  ]
 }
-```
 
----
+```
 
 ---
 
 #### Show only the requested columns
 
-```json
-// Request
+Request
+```shell
 curl --location --request GET 'http://localhost:31310/v1/projects?page=1&limit=5&columns=warehouseProjectId&columns=currentRegistry&columns=registryOfOrigin&columns=originProjectId&columns=program&columns=projectName' --header 'Content-Type: application/json'
-
-// Response
+```
+Response
+```json
 {
   "page":1,
   "pageCount":1,
-  "data":[{
-    "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-    "currentRegistry":"Climate Action Reserve (CAR)",
-    "registryOfOrigin":"Sweden National Registry",
-    "originProjectId":"123",
-    "program":null,
-    "projectName":"Stop Desertification"
-  },{
-    "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-    "currentRegistry":"Gold Standard",
-    "registryOfOrigin":"Gold Standard",
-    "originProjectId":"555",
-    "program":null,
-    "projectName":"Stop Deforestation"
-  }]
+  "data": [
+    {
+      "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "currentRegistry":"Climate Action Reserve (CAR)",
+      "registryOfOrigin":"Sweden National Registry",
+      "originProjectId":"123",
+      "program":null,
+      "projectName":"Stop Desertification"
+    },
+    {
+      "warehouseProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+      "currentRegistry":"Gold Standard",
+      "registryOfOrigin":"Gold Standard",
+      "originProjectId":"555",
+      "program":null,
+      "projectName":"Stop Deforestation"
+    }
+  ]
 }
 ```
 
@@ -562,8 +625,8 @@ curl --location --request GET 'http://localhost:31310/v1/projects?page=1&limit=5
 
 #### Stage a new project with the minimum required fields
 
-```json
-// Request
+Request
+```sh
 curl --location --request POST \
      -F 'projectId=c9d147e2-bc07-4e68-a76d-43424fa8cd4e' \
      -F 'originProjectId=12345-123-123-12345' \
@@ -580,9 +643,14 @@ curl --location --request POST \
      -F 'unitMetric=tCO2e' \
      -F 'methodology=Integrated Solar Combined Cycle (ISCC) projects --- Version 1.0.0' \
      'http://localhost:31310/v1/projects'
-
-// Response
-{"message":"Project staged successfully"}
+```
+Response
+```json
+{
+  "message": "Project staged successfully",
+  "uuid": "",
+  "success": true
+}
 ```
 
 ---

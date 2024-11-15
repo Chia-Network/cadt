@@ -233,7 +233,6 @@ class Organization extends Model {
     }
 
     const orgDataObj = orgData.reduce((obj, curr) => {
-      console.log(curr);
       obj[curr.key] = curr.value;
       return obj;
     }, {});
@@ -268,13 +267,14 @@ class Organization extends Model {
 
   static async importOrganization(orgUid) {
     try {
-      console.log('Importing organization ' + orgUid);
+      logger.info('Importing organization ' + orgUid);
       const orgData = await datalayer.getSubscribedStoreData(orgUid);
 
       if (!orgData.registryId) {
         logger.error(
-          'Currupted organization, no registryId on the datalayer, can not import',
+          'Corrupted organization, no registryId on the datalayer, can not import',
         );
+        return;
       }
 
       logger.info(`IMPORTING REGISTRY: ${orgData.registryId}`);

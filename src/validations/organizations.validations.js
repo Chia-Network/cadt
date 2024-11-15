@@ -1,8 +1,8 @@
 import Joi from 'joi';
 
-export const newOrganizationSchema = Joi.object({
+export const newOrganizationWithIconSchema = Joi.object({
   name: Joi.string().required(),
-  icon: Joi.string().optional(),
+  icon: Joi.string().required(),
 });
 
 export const importOrganizationSchema = Joi.object({
