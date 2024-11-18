@@ -18,6 +18,7 @@ import { getDataModelVersion } from '../../utils/helpers';
 import { CONFIG } from '../../user-config';
 
 import ModelTypes from './organizations.modeltypes.cjs';
+import { waitForSyncRegistries } from '../../utils/model-utils.js';
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -441,7 +442,6 @@ class Organization extends Model {
 
   static async editOrgMeta({ name, icon, prefix }) {
     const myOrganization = await Organization.getHomeOrg();
-
     const payload = {};
 
     if (name) {
@@ -513,6 +513,10 @@ Organization.init(ModelTypes, {
   sequelize,
   modelName: 'organization',
   timestamps: true,
+});
+
+Organization.addHook('beforeFind', async () => {
+  await waitForSyncRegistries();
 });
 
 export { Organization };
