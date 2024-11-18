@@ -18,9 +18,12 @@ import { getDataModelVersion } from '../../utils/helpers';
 import { CONFIG } from '../../user-config';
 
 import ModelTypes from './organizations.modeltypes.cjs';
+import { waitForSyncRegistries } from '../../utils/model-utils.js';
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
+    await waitForSyncRegistries();
+
     const myOrganization = await Organization.findOne({
       where: { isHome: true },
       raw: true,
@@ -59,6 +62,8 @@ class Organization extends Model {
   }
 
   static async getOrgsMap() {
+    await waitForSyncRegistries();
+
     const organizations = await Organization.findAll({
       attributes: [
         'orgUid',
@@ -328,6 +333,8 @@ class Organization extends Model {
   }
 
   static async subscribeToOrganization(orgUid) {
+    await waitForSyncRegistries();
+
     const exists = await Organization.findOne({ where: { orgUid } });
     if (exists) {
       await Organization.update({ subscribed: true }, { where: { orgUid } });
@@ -346,6 +353,8 @@ class Organization extends Model {
    * Synchronizes metadata for all subscribed organizations.
    */
   static async syncOrganizationMeta() {
+    await waitForSyncRegistries();
+
     try {
       const allSubscribedOrganizations = await Organization.findAll({
         where: { subscribed: true },
@@ -416,6 +425,8 @@ class Organization extends Model {
   }
 
   static async subscribeToDefaultOrganizations() {
+    await waitForSyncRegistries();
+
     try {
       const defaultOrgs = await getDefaultOrganizationList();
       if (!Array.isArray(defaultOrgs)) {
@@ -440,8 +451,9 @@ class Organization extends Model {
   }
 
   static async editOrgMeta({ name, icon, prefix }) {
-    const myOrganization = await Organization.getHomeOrg();
+    await waitForSyncRegistries();
 
+    const myOrganization = await Organization.getHomeOrg();
     const payload = {};
 
     if (name) {
@@ -513,6 +525,10 @@ Organization.init(ModelTypes, {
   sequelize,
   modelName: 'organization',
   timestamps: true,
+});
+
+Organization.addHook('beforeFind', async () => {
+  await waitForSyncRegistries();
 });
 
 export { Organization };
