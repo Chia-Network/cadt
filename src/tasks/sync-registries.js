@@ -1,7 +1,6 @@
 import _ from 'lodash';
 
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Mutex } from 'async-mutex';
 import { Organization, Audit, ModelKeys, Staging, Meta } from '../models';
 import datalayer from '../datalayer';
 import {
@@ -22,15 +21,18 @@ import {
   migrateToNewSync,
   generateGenerationIndex,
 } from '../utils/sync-migration-utils';
+import {
+  processingUpdateTransactionMutex,
+  syncRegistriesTaskMutex,
+} from '../utils/model-utils.js';
 
 dotenv.config();
-const mutex = new Mutex();
 const CONFIG = getConfig().APP;
 
 const task = new Task('sync-registries', async () => {
-  if (!mutex.isLocked()) {
-    logger.debug('running sync registries task');
-    const releaseMutex = await mutex.acquire();
+  logger.debug('sync registries task invoked');
+  if (!syncRegistriesTaskMutex.isLocked()) {
+    const releaseSyncTaskMutex = await syncRegistriesTaskMutex.acquire();
     try {
       const hasMigratedToNewSyncMethod = await Meta.findOne({
         where: { metaKey: 'migratedToNewSync' },
@@ -61,7 +63,7 @@ const task = new Task('sync-registries', async () => {
         );
       }
     } finally {
-      releaseMutex();
+      releaseSyncTaskMutex();
     }
   }
 });
@@ -97,8 +99,11 @@ async function createTransaction(callback, afterCommitCallbacks) {
   let transaction;
   let mirrorTransaction;
 
+  logger.info('Starting sequelize transaction and acquiring transaction mutex');
+  const releaseTransactionMutex =
+    await processingUpdateTransactionMutex.acquire();
+
   try {
-    logger.info('Starting sequelize transaction');
     // Start a transaction
     transaction = await sequelize.transaction();
 
@@ -130,6 +135,8 @@ async function createTransaction(callback, afterCommitCallbacks) {
       console.error(error);
       await transaction.rollback();
     }
+  } finally {
+    releaseTransactionMutex();
   }
 }
 
