@@ -454,7 +454,7 @@ export const destroy = async (req, res) => {
     await Staging.create(stagedData);
 
     res.json({
-      message: 'Project deleted successfully',
+      message: 'Project deletion staged successfully',
       success: true,
     });
   } catch (err) {

@@ -38,22 +38,23 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Stage a new project from a csv file](#stage-a-new-project-from-a-csv-file)
   - [PUT Examples](#put-examples-1)
     - [Update a pre-existing project using only the required parameters](#update-a-pre-existing-project-using-only-the-required-parameters)
+    - [Update a project record with pre-existing issuance and labels](#create-a-new-project-record-with-pre-existing-issuance-and-labels)
     - [Update a pre-existing project from an xlsx file](#update-a-pre-existing-project-from-an-xlsx-file)
   - [DELETE Examples](#delete-examples)
     - [Delete a project](#delete-a-project)
+  - [Additional projects resources](#additional-projects-resources)
 - [`units`](#units)
   - [GET Examples](#get-examples-2)
-    - [List all subscribed units](#list-all-subscribed-units)
-    - [Search for units containing the keyword "certification"](#search-for-units-containing-the-keyword-certification)
-    - [List units by orguid](#list-units-by-orguid)
-    - [Show all units, with paging](#show-all-units-with-paging)
-    - [List units by orguid, with paging](#list-units-by-orguid-with-paging)
+    - [List all units from subscribed organizations](#list-all-units-from-subscribed-organizations)
+    - [Search for units containing the keyword "certification"](#search-for-units-containing-the-keyword-renewable)
+    - [Include project information in returned units](#include-project-information-in-returned-units)
+    - [List units by OrgUid](#list-units-by-orguid)
     - [List all units and save the results to an xlsx file](#list-all-units-and-save-the-results-to-an-xlsx-file)
     - [List units using all available query string options](#list-units-using-all-available-query-string-options)
-    - [Show only specified columns from all units, with paging](#show-only-specified-columns-from-all-units-with-paging)
+    - [Specify unit columns to include and list all unit records](#specify-unit-columns-to-include-and-list-all-unit-records)
   - [POST Examples](#post-examples-2)
     - [Create a new unit using only the required fields](#create-a-new-unit-using-only-the-required-fields)
-    - [Create a new unit with pre-existing issuance and labels](#create-a-new-unit-with-pre-existing-issuance-and-labels)
+    - [Create a new unit record with pre-existing issuance and labels](#create-a-new-unit-record-with-pre-existing-issuance-and-labels)
     - [Split units in four](#split-units-in-four)
   - [PUT Examples](#put-examples-2)
     - [Update a pre-existing unit using only the required parameters](#update-a-pre-existing-unit-using-only-the-required-parameters)
@@ -77,6 +78,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Delete all projects and units in STAGING](#delete-all-projects-and-units-in-staging)
     - [Delete a specific project in STAGING](#delete-a-specific-project-in-staging)
     - [Delete a specific unit in STAGING](#delete-a-specific-unit-in-staging)
+  - [Additional Units Resources](#additional-units-resources)
 - [`audit`](#audit)
   - [GET Examples](#get-examples-6)
     - [Show the complete history of an organization](#show-the-complete-history-of-an-organization)
@@ -648,7 +650,7 @@ Response
 ```json
 {
   "message": "Project staged successfully",
-  "uuid": "",
+  "uuid": "9a29f826-ea60-489f-a290-c734e8fd57f1",
   "success": true
 }
 ```
@@ -657,21 +659,25 @@ Response
 
 #### Stage a new project from a csv file
 
-- For this example, we'll use a file named `createProject.csv`, created from [this example](#list-all-projects-and-save-the-results-to-an-xlsx-file 'List all projects and save the results to an xlsx file') and converted to csv format
-- The contents of the csv file used in this example are as follows:
+- For this example, we'll use a file named `createProject.csv` with the required fields of a project record in CSV.
 
+`createProject.csv`
 ```
 warehouseProjectId,orgUid,currentRegistry,projectId,originProjectId,registryOfOrigin,program,projectName,projectLink,projectDeveloper,sector,projectType,projectTags,coveredByNDC,ndcInformation,projectStatus,projectStatusDate,unitMetric,methodology,validationBody,validationDate
 f925cb3f-f59a-4ba4-8844-e2a63eb38221,f048f0c4e2ef2d852354a71a0839687301376eeef4358f6204795723ef906bcf,,c9d147e2-bc07-4e68-a76d-43424fa8cd4e,12345-123-123-12345,UNFCCC,,POST sample,http://testurl.com,POST developer,Manufacturing industries,Conservation,,Inside NDC,Shuffletag,Registered,2022-03-12T00:00:00.000Z,tCO2e,Integrated Solar Combined Cycle (ISCC) projects --- Version 1.0.0,,
 
 ```
 
-```json
-// Request
+```shell
 curl --location --request POST 'http://localhost:31310/v1/projects/batch' --form 'csv=@"./createProject.csv"'
+```
 
-// Response
-{"message":"CSV processing complete, your records have been added to the staging table."}
+Response
+```json
+{
+  "message":"CSV processing complete, your records have been added to the staging table.",
+  "success": true
+}
 ```
 
 ---
@@ -680,8 +686,8 @@ curl --location --request POST 'http://localhost:31310/v1/projects/batch' --form
 
 #### Update a pre-existing project using only the required parameters
 
-```json
-// Request
+Request
+```sh
 curl --location -g --request PUT 'http://localhost:31310/v1/projects' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -701,42 +707,132 @@ curl --location -g --request PUT 'http://localhost:31310/v1/projects' \
     "unitMetric": "tCO2e",
     "methodology": "Baseline methodology for water pumping efficiency improvements --- Version 2.0"
 }'
-
-// Response
-{"message":"Project update added to staging"}
+```
+Response
+```json
+{
+  "message": "Project update added to staging",
+  "success": true
+}
 ```
 
 ---
 
-#### Update a pre-existing project from an xlsx file
+#### Create a new project record with pre-existing issuance and labels
 
-- For this example, we'll use a file named `cw_query.xlsx`, created from [this example](#list-all-projects-and-save-the-results-to-an-xlsx-file 'List all projects and save the results to an xlsx file') and modified with updates
+- Please note that when creating a new record using existing records, the request must include:
+  - The data for new child record _**without**_ a `id` and `warehouseProjectId`
+    - See the first label in the below example
+  - The complete data for the existing child record _**including**_ its `id` and `warehouseProjectId`
+    - See the issuance and second label in the below example
+- The result of this query will be a staged new project record using an existing issuance and label, in addition to the
+  creation of a new label record
 
+Request
+```shell
+curl --location -g --request PUT 'localhost:31310/v1/projects' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "warehouseProjectId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+    "projectId": "987",
+    "originProjectId": "555",
+    "registryOfOrigin": "Verra",
+    "projectName": "Stop Deforestation",
+    "projectLink": "http://testurl.com",
+    "projectDeveloper": "Example Developer",
+    "sector": "Mining/Mineral production",
+    "projectType": "Afforestation",
+    "coveredByNDC": "Inside NDC",
+    "ndcInformation": "Shuffletag",
+    "projectStatus": "Listed",
+    "projectStatusDate": "2022-03-19",
+    "unitMetric": "tCO2e",
+    "methodology": "Baseline methodology for water pumping efficiency improvements --- Version 2.0"
+    "issuance": {
+        "id":"d9f58b08-af25-461c-88eb-403bb02b135e",
+        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+        "startDate":"2022-01-02T00:00:00.000Z",
+        "endDate":"2022-02-11T00:00:00.000Z",
+        "verificationApproach":"Sample Approach",
+        "verificationReportDate":"2022-03-16T00:00:00.000Z",
+        "verificationBody":"Sample Body"
+    },
+    "labels": [
+        {
+            "label":"Sample Label",
+            "labelType":"Certification",
+            "creditingPeriodStartDate":"2014-03-29T00:00:00.000Z",
+            "creditingPeriodEndDate":"2022-03-30T00:00:00.000Z",
+            "validityPeriodStartDate":"2017-03-08T00:00:00.000Z",
+            "validityPeriodEndDate":"2025-03-19T00:00:00.000Z",
+            "unitQuantity":40,
+            "labelLink":"http://samplelabel.net"
+        },
+        {
+            "id": "dcacd68e-1cfb-4f06-9798-efa0aacda42c",
+            "warehouseProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+            "label": "mclaren1",
+            "labelType": "Certification",
+            "creditingPeriodStartDate": "2022-02-03",
+            "creditingPeriodEndDate": "2022-03-04",
+            "validityPeriodStartDate": "2022-02-03",
+            "validityPeriodEndDate": "2022-03-04",
+            "unitQuantity": "10",
+            "labelLink": "https://www.chia.net/"
+        }
+    ]
+}'
+```
+Response
 ```json
-// Request
-curl --location -g --request PUT 'http://localhost:31310/v1/projects/xlsx' --form 'xlsx=@"./cw_query.xlsx"'
+{
+  "message":"Project staged successfully",
+  "success": true
+}
+```
 
-// Response
-{"message":"Updates from xlsx added to staging"}
+---
+
+#### Update a pre-existing project record from a xlsx file
+
+- For this example, we'll use a file named `cw_query.xlsx`, created from [this example](#list-all-projects-and-save-the-results-to-an-xlsx-file) and modified with updates
+
+Request
+```shell
+curl --location -g --request PUT 'http://localhost:31310/v1/projects/xlsx' --form 'xlsx=@"./cw_query.xlsx"'
+```
+Response
+```json
+{
+  "message": "Updates from xlsx added to staging",
+  "success": true
+}
 ```
 
 ---
 
 ### DELETE Examples
 
-#### Delete a project
+#### Delete a project record
 
-```json
-// Request
+Request
+```shell
 curl --location -g --request DELETE 'http://localhost:31310/v1/projects' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "warehouseProjectId": "693d37f6-318e-4d8b-9e14-3d2328b569be"
   }'
-
-// Response
-{"message":"Project deleted successfully"}
 ```
+Response
+```json
+{
+  "message": "Project deletion staged successfully",
+  "success": true
+}
+```
+
+### Additional Projects Resources
+- PUT `projects/transfer` - stage the transfer of a project from another CADT organization to the instance home organization
 
 ---
 
@@ -746,443 +842,468 @@ Functionality: List subscribed units, as specified by the appropriate URL option
 
 Query string options:
 
-|      Key       |  Type   | Description                                                                                         |
-| :------------: | :-----: | :-------------------------------------------------------------------------------------------------- |
-| None (default) |   N/A   | Display all subscribed units                                                                        |
-|     orgUid     | String  | Only display subscribed units matching this orgUid                                                  |
-|     search     | String  | Display all subscribed units that contain the specified query (case insensitive)                    |
-|    columns     | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns       |
-|     limit      | Number  | Limit the number of subscribed units to be displayed (must be used with page, eg `?page=5&limit=2`) |
-|      page      | Number  | Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)          |
-|      xls       | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                       |
+|       Key        |              Type               |                                             Description                                              |
+|:----------------:|:-------------------------------:|:----------------------------------------------------------------------------------------------------:|
+|  None (default)  |               N/A               |                                     Display all subscribed units                                     |
+|      orgUid      |             String              |                          Only display subscribed units matching this orgUid                          |
+|      search      |             String              |           Display all subscribed units that contain the specified query (case insensitive)           |
+|     columns      |             String              |    Limit the result to the specified column. Can be used multiple times to show multiple columns     |
+|      limit       | (Conditionally Required) Number | Limit the number of subscribed units to be displayed (must be used with page, eg `?page=5&limit=2`)  |
+|       page       | (Conditionally Required) Number |      Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)      |
+|       xls        |             Boolean             |                    If `true`, save the results to xls (Excel spreadsheet) format                     |
 
 ### GET Examples
 
-#### List all subscribed units
+#### List all units from subscribed organizations
 
+- This request is the most basic call to /units and displays result from all organizations. Pagination is required.
+
+Request
+```shell
+curl --location -g --request GET 'localhost:31310/v1/units?page=1&limit=10' --header 'Content-Type: application/json'
+```
+Response
 ```json
-// Request
-curl --location -g --request GET 'localhost:31310/v1/units' --header 'Content-Type: application/json'
 
-// Response
-[{
-  "unitBlockStart":"A345",
-  "unitBlockEnd":"B567",
-  "unitCount":222,
-  "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
-  "issuanceId":null,
-  "projectLocationId":"789",
-  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-  "unitOwner":"Sample Owner",
-  "countryJurisdictionOfOwner":"Belize",
-  "inCountryJurisdictionOfOwner":null,
-  "serialNumberBlock":"A345-B567",
-  "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
-  "vintageYear":2014,
-  "unitType":"Reduction - technical",
-  "marketplace":null,
-  "marketplaceLink":null,
-  "marketplaceIdentifier":null,
-  "unitTags":null,
-  "unitStatus":"Buffer",
-  "unitStatusReason":null,
-  "unitRegistryLink":"sampleurl.com",
-  "correspondingAdjustmentDeclaration":"Unknown",
-  "correspondingAdjustmentStatus":"Pending",
-  "timeStaged":1647141471,
-  "createdAt":"2022-03-13T05:29:39.647Z",
-  "updatedAt":"2022-03-13T05:29:39.647Z",
-  "labels":[],
-  "issuance":null
-},{
-  "unitBlockStart":"abc123",
-  "unitBlockEnd":"abd124",
-  "unitCount":1,
-  "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
-  "issuanceId":null,
-  "projectLocationId":"44",
-  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-  "unitOwner":"44",
-  "countryJurisdictionOfOwner":"United States of America",
-  "inCountryJurisdictionOfOwner":null,
-  "serialNumberBlock":"abc123-abd124",
-  "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
-  "vintageYear":2022,
-  "unitType":"Reduction - nature",
-  "marketplace":null,
-  "marketplaceLink":null,
-  "marketplaceIdentifier":null,
-  "unitTags":null,
-  "unitStatus":"Held",
-  "unitStatusReason":null,
-  "unitRegistryLink":"http://registry.link",
-  "correspondingAdjustmentDeclaration":"Committed",
-  "correspondingAdjustmentStatus":"Not Started",
-  "timeStaged":1646806230,
-  "createdAt":"2022-03-13T05:29:39.642Z",
-  "updatedAt":"2022-03-13T05:29:39.642Z",
-  "labels":[],
-  "issuance":null
-}]
+{
+  "page": 1,
+  "pageCount": 3134,
+  "data": [
+      {
+      "unitBlockStart":"A345",
+      "unitBlockEnd":"B567",
+      "unitCount":222,
+      "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "issuanceId":null,
+      "projectLocationId":"789",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "unitOwner":"Sample Owner",
+      "countryJurisdictionOfOwner":"Belize",
+      "inCountryJurisdictionOfOwner":null,
+      "serialNumberBlock":"A345-B567",
+      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+      "vintageYear":2014,
+      "unitType":"Reduction - technical",
+      "marketplace":null,
+      "marketplaceLink":null,
+      "marketplaceIdentifier":null,
+      "unitTags":null,
+      "unitStatus":"Buffer",
+      "unitStatusReason":null,
+      "unitRegistryLink":"sampleurl.com",
+      "correspondingAdjustmentDeclaration":"Unknown",
+      "correspondingAdjustmentStatus":"Pending",
+      "timeStaged":1647141471,
+      "createdAt":"2022-03-13T05:29:39.647Z",
+      "updatedAt":"2022-03-13T05:29:39.647Z",
+      "labels":[],
+      "issuance": {
+        "id": "1f743827-1208-40a7-a2f4-b5ka688776a1",
+        "orgUid": "53e508f320f32f51bc53c336d4d1bab5b7a87f8aaeb73fdbd9a87f57eef74b5b",
+        "warehouseProjectId": "3b5b6482-7776-4221-956e-b10a88ea65cf",
+        "startDate": "2020-01-01T00:00:00.000Z",
+        "endDate": "2020-12-31T00:00:00.000Z",
+        "verificationApproach": "Rule-based verification approach",
+        "verificationReportDate": "2021-08-18T00:00:00.000Z",
+        "verificationBody": "Certification Services",
+        "timeStaged": null,
+        "createdAt": "2023-11-28T09:27:33.034Z",
+        "updatedAt": "2024-08-20T22:19:54.170Z"
+      }
+    },
+    {
+      "unitBlockStart":"abc123",
+      "unitBlockEnd":"abd124",
+      "unitCount":1,
+      "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
+      "issuanceId":null,
+      "projectLocationId":"44",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "unitOwner":"44",
+      "countryJurisdictionOfOwner":"United States of America",
+      "inCountryJurisdictionOfOwner":null,
+      "serialNumberBlock":"abc123-abd124",
+      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+      "vintageYear":2022,
+      "unitType":"Reduction - nature",
+      "marketplace":null,
+      "marketplaceLink":null,
+      "marketplaceIdentifier":null,
+      "unitTags":null,
+      "unitStatus":"Held",
+      "unitStatusReason":null,
+      "unitRegistryLink":"http://registry.link",
+      "correspondingAdjustmentDeclaration":"Committed",
+      "correspondingAdjustmentStatus":"Not Started",
+      "timeStaged":1646806230,
+      "createdAt":"2022-03-13T05:29:39.642Z",
+      "updatedAt":"2022-03-13T05:29:39.642Z",
+      "labels":[],
+      "issuance":null
+    }
+  ]
+}
+
 ```
 
 ---
 
-#### Include project information in returned units
+#### Search for units containing the keyword renewable
 
+- Pagination is required when querying for project records with a text search
+
+Request
+```shell
+curl --location -g --request GET 'localhost:31310/v1/units?search=renewable&page=1&limit=1'
+```
+Response
 ```json
-// Request
-curl --location -g --request GET 'localhost:31310/v1/units?includeProjectInfoInSearch=true'
-
-// Response
-[{
-  "unitBlockStart":"A345",
-  "unitBlockEnd":"B567",
-  "unitCount":222,
-  "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
-  "issuanceId":null,
-  "projectLocationId":"789",
-  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-  "unitOwner":"Sample Owner",
-  "countryJurisdictionOfOwner":"Belize",
-  "inCountryJurisdictionOfOwner":null,
-  "serialNumberBlock":"A345-B567",
-  "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
-  "vintageYear":2014,
-  "unitType":"Reduction - technical",
-  "marketplace":null,
-  "marketplaceLink":null,
-  "marketplaceIdentifier":null,
-  "unitTags":null,
-  "unitStatus":"Buffer",
-  "unitStatusReason":null,
-  "unitRegistryLink":"sampleurl.com",
-  "correspondingAdjustmentDeclaration":"Unknown",
-  "correspondingAdjustmentStatus":"Pending",
-  "timeStaged":1647141471,
-  "createdAt":"2022-03-13T05:29:39.647Z",
-  "updatedAt":"2022-03-13T05:29:39.647Z",
-  "labels":[],
-  "issuance":null,
-  "project": {
-    "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "currentRegistry":"Climate Action Reserve (CAR)",
-    "projectId":"789",
-    "originProjectId":"123",
-    "registryOfOrigin":"Sweden National Registry",
-    "program":null,
-    "projectName":"Stop Desertification",
-    "projectLink":"desertificationtest.com",
-    "projectDeveloper":"Dev 2",
-    "sector":"Fugitive emissions – from fuels (solid, oil and gas)",
-    "projectType":"Coal Mine Methane",
-    "projectTags":null,
-    "coveredByNDC":"Outside NDC",
-    "ndcInformation":null,
-    "projectStatus":"Registered",
-    "projectStatusDate":"2022-02-02T00:00:00.000Z",
-    "unitMetric":"tCO2e",
-    "methodology":"Substitution of CO2 from fossil or mineral origin by CO2 from biogenic residual sources in the production of inorganic compounds --- Version 3.0",
-    "validationBody":null,
-    "validationDate":null,
-    "timeStaged":1646975765,
-    "createdAt":"2022-03-11T05:17:55.427Z",
-    "updatedAt":"2022-03-11T05:17:55.427Z",
-    "projectLocations":[{
-        "id":"8182100d-7794-4df7-b3b3-758391d13011",
-        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-        "country":"Latvia",
-        "inCountryRegion":null,
-        "geographicIdentifier":"Sample Identifier",
-        "timeStaged":null,
-        "createdAt":"2022-03-11T05:17:55.425Z",
-        "updatedAt":"2022-03-11T05:17:55.425Z"
-    }],
-    "labels":[{
-        "id":"dcacd68e-1cfb-4f06-9798-efa0aacda42c",
-        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-        "label":"Sample Label",
-        "labelType":"Certification",
-        "creditingPeriodStartDate":"2014-03-29T00:00:00.000Z",
-        "creditingPeriodEndDate":"2022-03-30T00:00:00.000Z",
-        "validityPeriodStartDate":"2017-03-08T00:00:00.000Z",
-        "validityPeriodEndDate":"2025-03-19T00:00:00.000Z",
-        "unitQuantity":40,
-        "labelLink":"http://samplelabel.net",
-        "timeStaged":null,
-        "createdAt":"2022-03-11T05:17:55.426Z",
-        "updatedAt":"2022-03-11T05:17:55.426Z"
-    }],
-    "issuances":[{
-        "id":"d9f58b08-af25-461c-88eb-403bb02b135e",
-        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-        "startDate":"2022-01-02T00:00:00.000Z",
-        "endDate":"2022-02-11T00:00:00.000Z",
-        "verificationApproach":"Sample Approach",
-        "verificationReportDate":"2022-03-16T00:00:00.000Z",
-        "verificationBody":"Sample Body",
-        "timeStaged":null,
-        "createdAt":"2022-03-11T05:17:55.426Z",
-        "updatedAt":"2022-03-11T05:17:55.426Z"
-    }],
-    "coBenefits":[{
-        "id":"73cfbe9c-8cea-4aca-94d8-f1641e686787",
-        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-        "cobenefit":"Sample Benefit",
-        "timeStaged":null,
-        "createdAt":"2022-03-11T05:17:55.424Z",
-        "updatedAt":"2022-03-11T05:17:55.424Z"
-    }],
-    "relatedProjects":[{
-        "id":"e880047e-cdf4-45bb-a9df-e706fa427713",
-        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-        "relatedProjectId":"333",
-        "relationshipType":"Sample",
-        "registry":null,
-        "timeStaged":null,
-        "createdAt":"2022-03-11T05:17:55.426Z",
-        "updatedAt":"2022-03-11T05:17:55.426Z"
-    }],
-    "projectRatings":[{
-        "id":"d31c3c75-b944-498d-9557-315f9005f478",
-        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-        "ratingType":"CCQI",
-        "ratingRangeHighest":"100",
-        "ratingRangeLowest":"0",
-        "rating":"97",
-        "ratingLink":"testlink.com",
-        "timeStaged":null,
-        "createdAt":"2022-03-11T05:17:55.427Z",
-        "updatedAt":"2022-03-11T05:17:55.427Z"
-    }],
-    "estimations":[{
-        "id":"c73fb4e7-3bd0-4449-8a57-6137b7c95a1f",
-        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-        "creditingPeriodStart":"2022-02-04T00:00:00.000Z",
-        "creditingPeriodEnd":"2022-03-04T00:00:00.000Z",
-        "unitCount":100,
-        "timeStaged":null,
-        "createdAt":"2022-03-11T05:17:55.427Z",
-        "updatedAt":"2022-03-11T05:17:55.427Z"
-    }]
-  }
-}]
+{
+  "page": 1,
+  "pageCount": 3134,
+  "data": [
+    {
+      "unitBlockStart":"A345",
+      "unitBlockEnd":"B567",
+      "unitCount":222,
+      "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "issuanceId":null,
+      "projectLocationId":"789",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "unitOwner":"Sample Owner",
+      "countryJurisdictionOfOwner":"Belize",
+      "inCountryJurisdictionOfOwner":null,
+      "serialNumberBlock":"A345-B567",
+      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+      "vintageYear":2014,
+      "unitType":"Reduction - technical",
+      "marketplace":null,
+      "marketplaceLink":null,
+      "marketplaceIdentifier":null,
+      "unitTags":"Renewable energy,Energy efficiency",
+      "unitStatus":"Buffer",
+      "unitStatusReason":null,
+      "unitRegistryLink":"sampleurl.com",
+      "correspondingAdjustmentDeclaration":"Unknown",
+      "correspondingAdjustmentStatus":"Pending",
+      "timeStaged":1647141471,
+      "createdAt":"2022-03-13T05:29:39.647Z",
+      "updatedAt":"2022-03-13T05:29:39.647Z",
+      "labels":[],
+      "issuance": {
+        "id": "1f743827-1208-40a7-a2f4-b5ka688776a1",
+        "orgUid": "53e508f320f32f51bc53c336d4d1bab5b7a87f8aaeb73fdbd9a87f57eef74b5b",
+        "warehouseProjectId": "3b5b6482-7776-4221-956e-b10a88ea65cf",
+        "startDate": "2020-01-01T00:00:00.000Z",
+        "endDate": "2020-12-31T00:00:00.000Z",
+        "verificationApproach": "Rule-based verification approach",
+        "verificationReportDate": "2021-08-18T00:00:00.000Z",
+        "verificationBody": "Certification Services",
+        "timeStaged": null,
+        "createdAt": "2023-11-28T09:27:33.034Z",
+        "updatedAt": "2024-08-20T22:19:54.170Z"
+      }
+    },
+    {
+      "unitBlockStart":"abc123",
+      "unitBlockEnd":"abd124",
+      "unitCount":1,
+      "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
+      "issuanceId":null,
+      "projectLocationId":"44",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "unitOwner":"44",
+      "countryJurisdictionOfOwner":"United States of America",
+      "inCountryJurisdictionOfOwner":null,
+      "serialNumberBlock":"abc123-abd124",
+      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+      "vintageYear":2022,
+      "unitType":"Reduction - nature",
+      "marketplace":null,
+      "marketplaceLink":null,
+      "marketplaceIdentifier":null,
+      "unitTags":"Renewable energy,Energy efficiency",
+      "unitStatus":"Held",
+      "unitStatusReason":null,
+      "unitRegistryLink":"http://registry.link",
+      "correspondingAdjustmentDeclaration":"Committed",
+      "correspondingAdjustmentStatus":"Not Started",
+      "timeStaged":1646806230,
+      "createdAt":"2022-03-13T05:29:39.642Z",
+      "updatedAt":"2022-03-13T05:29:39.642Z",
+      "labels":[],
+      "issuance":null
+    }
+  ]
+}
 ```
 
-````
+#### Include project information in returned units
 
------
+- Pagination is required when searching project record content in assoc
 
-#### Search for units containing the keyword "certification"
-[todo: This isn't implemented yet.
-See [CW issue 232](https://github.com/Chia-Network/climate-warehouse/issues/232) for more info]
+Request
+```shell
+curl --location -g --request GET 'localhost:31310/v1/units?includeProjectInfoInSearch=true&search=HydroPower&page=1&limit=1'
+```
 
+Response
 ```json
-// Request
-curl --location -g --request GET 'localhost:31310/v1/units?search=Certification'
-
-// Response
-
-````
+{
+  "page": 1,
+  "pageCount": 3134,
+  "data": [
+    {
+      "unitBlockStart":"A345",
+      "unitBlockEnd":"B567",
+      "unitCount":222,
+      "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "issuanceId":null,
+      "projectLocationId":"789",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "unitOwner":"Sample Owner",
+      "countryJurisdictionOfOwner":"Belize",
+      "inCountryJurisdictionOfOwner":null,
+      "serialNumberBlock":"A345-B567",
+      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+      "vintageYear":2014,
+      "unitType":"Reduction - technical",
+      "marketplace":null,
+      "marketplaceLink":null,
+      "marketplaceIdentifier":null,
+      "unitTags":null,
+      "unitStatus":"Buffer",
+      "unitStatusReason":null,
+      "unitRegistryLink":"sampleurl.com",
+      "correspondingAdjustmentDeclaration":"Unknown",
+      "correspondingAdjustmentStatus":"Pending",
+      "timeStaged":1647141471,
+      "createdAt":"2022-03-13T05:29:39.647Z",
+      "updatedAt":"2022-03-13T05:29:39.647Z",
+      "labels":[],
+      "issuance":null,
+      "project": {
+        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+        "currentRegistry":"Climate Action Reserve (CAR)",
+        "projectId":"789",
+        "originProjectId":"123",
+        "registryOfOrigin":"Sweden National Registry",
+        "program":null,
+        "projectName":"Stop Desertification",
+        "projectLink":"desertificationtest.com",
+        "projectDeveloper":"Dev 2",
+        "sector":"Fugitive emissions – from fuels (solid, oil and gas)",
+        "projectType":"Coal Mine Methane",
+        "projectTags":null,
+        "coveredByNDC":"Outside NDC",
+        "ndcInformation":null,
+        "projectStatus":"Registered",
+        "projectStatusDate":"2022-02-02T00:00:00.000Z",
+        "unitMetric":"tCO2e",
+        "methodology":"Substitution of CO2 from fossil or mineral origin by CO2 from biogenic residual sources in the production of inorganic compounds --- Version 3.0",
+        "validationBody":null,
+        "validationDate":null,
+        "timeStaged":1646975765,
+        "createdAt":"2022-03-11T05:17:55.427Z",
+        "updatedAt":"2022-03-11T05:17:55.427Z",
+        "projectLocations":[{
+            "id":"8182100d-7794-4df7-b3b3-758391d13011",
+            "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+            "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+            "country":"Latvia",
+            "inCountryRegion":null,
+            "geographicIdentifier":"Sample Identifier",
+            "timeStaged":null,
+            "createdAt":"2022-03-11T05:17:55.425Z",
+            "updatedAt":"2022-03-11T05:17:55.425Z"
+        }],
+        "labels":[{
+            "id":"dcacd68e-1cfb-4f06-9798-efa0aacda42c",
+            "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+            "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+            "label":"Sample Label",
+            "labelType":"Certification",
+            "creditingPeriodStartDate":"2014-03-29T00:00:00.000Z",
+            "creditingPeriodEndDate":"2022-03-30T00:00:00.000Z",
+            "validityPeriodStartDate":"2017-03-08T00:00:00.000Z",
+            "validityPeriodEndDate":"2025-03-19T00:00:00.000Z",
+            "unitQuantity":40,
+            "labelLink":"http://samplelabel.net",
+            "timeStaged":null,
+            "createdAt":"2022-03-11T05:17:55.426Z",
+            "updatedAt":"2022-03-11T05:17:55.426Z"
+        }],
+        "issuances":[{
+            "id":"d9f58b08-af25-461c-88eb-403bb02b135e",
+            "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+            "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+            "startDate":"2022-01-02T00:00:00.000Z",
+            "endDate":"2022-02-11T00:00:00.000Z",
+            "verificationApproach":"Sample Approach",
+            "verificationReportDate":"2022-03-16T00:00:00.000Z",
+            "verificationBody":"Sample Body",
+            "timeStaged":null,
+            "createdAt":"2022-03-11T05:17:55.426Z",
+            "updatedAt":"2022-03-11T05:17:55.426Z"
+        }],
+        "coBenefits":[{
+            "id":"73cfbe9c-8cea-4aca-94d8-f1641e686787",
+            "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+            "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+            "cobenefit":"Sample Benefit",
+            "timeStaged":null,
+            "createdAt":"2022-03-11T05:17:55.424Z",
+            "updatedAt":"2022-03-11T05:17:55.424Z"
+        }],
+        "relatedProjects":[{
+            "id":"e880047e-cdf4-45bb-a9df-e706fa427713",
+            "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+            "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+            "relatedProjectId":"333",
+            "relationshipType":"Sample",
+            "registry":null,
+            "timeStaged":null,
+            "createdAt":"2022-03-11T05:17:55.426Z",
+            "updatedAt":"2022-03-11T05:17:55.426Z"
+        }],
+        "projectRatings":[{
+            "id":"d31c3c75-b944-498d-9557-315f9005f478",
+            "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+            "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+            "ratingType":"CCQI",
+            "ratingRangeHighest":"100",
+            "ratingRangeLowest":"0",
+            "rating":"97",
+            "ratingLink":"testlink.com",
+            "timeStaged":null,
+            "createdAt":"2022-03-11T05:17:55.427Z",
+            "updatedAt":"2022-03-11T05:17:55.427Z"
+        }],
+        "estimations":[{
+            "id":"c73fb4e7-3bd0-4449-8a57-6137b7c95a1f",
+            "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+            "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+            "creditingPeriodStart":"2022-02-04T00:00:00.000Z",
+            "creditingPeriodEnd":"2022-03-04T00:00:00.000Z",
+            "unitCount":100,
+            "timeStaged":null,
+            "createdAt":"2022-03-11T05:17:55.427Z",
+            "updatedAt":"2022-03-11T05:17:55.427Z"
+        }]
+      }
+    }
+  ]
+}
+```
 
 ---
 
 #### List units by `orgUid`
 
-```json
-// Request
+- Pagination is required when requesting unit records by OrgUid 
+
+Request
+```shell
 curl --location -g --request GET \
-     'localhost:31310/v1/units?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9' \
+     'localhost:31310/v1/units?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9&page=1&limit=2' \
      --header 'Content-Type: application/json'
-
-// Response
-[{
-  "unitBlockStart":"A345",
-  "unitBlockEnd":"B567",
-  "unitCount":222,
-  "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
-  ...
-  abbreviated (output is same as above)
-  ...
-},{
-  "unitBlockStart":"abc123",
-  "unitBlockEnd":"abd124",
-  "unitCount":1,
-  "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
-  ...
-  abbreviated (output is same as above)
-  ...
-}]
-
 ```
-
----
-
-#### Show all units, with paging
-
+Response
 ```json
-// Request
-curl --location -g --request GET \
-     'localhost:31310/v1/units?page=2&limit=1' \
-     --header 'Content-Type: application/json'
-
-// Response
 {
-  "page":2,
-  "pageCount":2,
-  "data":[{
-    "unitBlockStart":"abc123",
-    "unitBlockEnd":"abd124",
-    "unitCount":1,
-    "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
-    "issuanceId":null,
-    "projectLocationId":"44",
-    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "unitOwner":"44",
-    "countryJurisdictionOfOwner":"United States of America",
-    "inCountryJurisdictionOfOwner":null,
-    "serialNumberBlock":"abc123-abd124",
-    "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
-    "vintageYear":2022,
-    "unitType":"Reduction - nature",
-    "marketplace":null,
-    "marketplaceLink":null,
-    "marketplaceIdentifier":null,
-    "unitTags":null,
-    "unitStatus":"Held",
-    "unitStatusReason":null,
-    "unitRegistryLink":"http://registry.link",
-    "correspondingAdjustmentDeclaration":"Committed",
-    "correspondingAdjustmentStatus":"Not Started",
-    "timeStaged":1646806230,
-    "createdAt":"2022-03-13T05:29:39.642Z",
-    "updatedAt":"2022-03-13T05:29:39.642Z",
-    "labels":[],
-    "issuance":null
-  }
-]}
-```
-
----
-
-#### List units by `orgUid`, with paging
-
-```json
-// Request
-curl --location -g --request GET \
-     'localhost:31310/v1/units?page=1&limit=1&orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9' \
-     --header 'Content-Type: application/json'
-
-// Response
-{
-  "page":1,
-  "pageCount":2,
-  "data":[{
-    "unitBlockStart":"A345",
-    "unitBlockEnd":"B567",
-    "unitCount":222,
-    "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
-    "issuanceId":null,
-    "projectLocationId":"789",
-    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "unitOwner":"Sample Owner",
-    "countryJurisdictionOfOwner":"Belize",
-    "inCountryJurisdictionOfOwner":null,
-    "serialNumberBlock":"A345-B567",
-    "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
-    "vintageYear":2014,
-    "unitType":"Reduction - technical",
-    "marketplace":null,
-    "marketplaceLink":null,
-    "marketplaceIdentifier":null,
-    "unitTags":null,
-    "unitStatus":"Buffer",
-    "unitStatusReason":null,
-    "unitRegistryLink":"sampleurl.com",
-    "correspondingAdjustmentDeclaration":"Unknown",
-    "correspondingAdjustmentStatus":"Pending",
-    "timeStaged":1647141471,
-    "createdAt":"2022-03-13T05:29:39.647Z",
-    "updatedAt":"2022-03-13T05:29:39.647Z",
-    "labels":[],
-    "issuance":null
-  }]
+  "page": 1,
+  "pageCount": 7,
+  "data": [
+    {
+      "unitBlockStart":"A345",
+      "unitBlockEnd":"B567",0
+      "unitCount":222,
+      "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      ...
+      abbreviated unit record (see first example)
+      ...
+    },
+    {
+      "unitBlockStart":"abc123",
+      "unitBlockEnd":"abd124",
+      "unitCount":1,
+      "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
+      ...
+      abbreviated unit record (see first example)
+      ...
+    }
+  ]
 }
+
 ```
 
 ---
 
 #### List all units and save the results to an xlsx file
 
-```json
-// Request
-curl --location --request GET 'localhost:31310/v1/units?xls=true' --header 'Content-Type: application/json' > cw_units.xlsx
+- All other unit query params can be used in combination with the `xls` query param
 
-// Response
-The results are saved to a file in the current directory called `cw_query.xlsx`.
+Request
+```sh
+curl --location --request GET 'localhost:31310/v1/units?xls=true' --header 'Content-Type: application/json' > units.xlsx
 ```
+Response:
+
+Download stream to download the XLS file of unit records.
+Using the above `curl` will save the results to a file in the current directory called `units.xlsx`.
 
 ---
 
 #### List units using all available query string options
 
-```json
-// Request
+Response
+```shell
 curl --location -g --request GET 'localhost:31310/v1/units?page=1&limit=10&search=Reduction&warehouseUnitId=89d7a102-a5a6-4f80-bc67-d28eba4952f3&columns=all&orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9&xls=false' \
 --header 'Content-Type: application/json'
-
-// Response
+```
+Request
+```json
 {
-  "unitBlockStart":"A345",
-  "unitBlockEnd":"B567",
-  "unitCount":222,
-  "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
-  "issuanceId":null,
-  "projectLocationId":"789",
-  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-  "unitOwner":"Sample Owner",
-  "countryJurisdictionOfOwner":"Belize",
-  "inCountryJurisdictionOfOwner":null,
-  "serialNumberBlock":"A345-B567",
-  "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
-  "vintageYear":2014,
-  "unitType":"Reduction - technical",
-  "marketplace":null,
-  "marketplaceLink":null,
-  "marketplaceIdentifier":null,
-  "unitTags":null,
-  "unitStatus":"Buffer",
-  "unitStatusReason":null,
-  "unitRegistryLink":"sampleurl.com",
-  "correspondingAdjustmentDeclaration":"Unknown",
-  "correspondingAdjustmentStatus":"Pending",
-  "timeStaged":1647141471,
-  "createdAt":"2022-03-13T05:29:39.647Z",
-  "updatedAt":"2022-03-13T05:29:39.647Z",
-  "labels":[],
-  "issuance":null
+  "page": 1,
+  "pageCount": 7,
+  "data": [
+    {
+      "unitBlockStart":"A345",
+      "unitBlockEnd":"B567",
+      "unitCount":222,
+      "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      ...
+      abbreviated unit record (see first example)
+      ...
+    },
+    {
+      "unitBlockStart":"abc123",
+      "unitBlockEnd":"abd124",
+      "unitCount":1,
+      "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
+      ...
+      abbreviated unit record (see first example)
+      ...
+    }
+  ]
 }
 ```
 
 ---
 
-#### Show only specified columns from all units, with paging
+#### Specify unit columns to include and list all unit records
 
-```json
-// Request
+- Pagination is required when specifying columns to return in unit records
+
+Request
+```shell
 curl --location -g --request GET \
     'localhost:31310/v1/units?page=1&limit=1&columns=countryJurisdictionOfOwner&columns=inCountryJurisdictionOfOwner&columns=serialNumberBlock&columns=unitIdentifier&columns=unitType&columns=intentedBuyerOrgUid&columns=marketplace' \
     --header 'Content-Type: application/json'
-
-// Response
+```
+Response
+```json
 {
   "page":1,
   "pageCount":2,
@@ -1202,39 +1323,48 @@ curl --location -g --request GET \
 
 #### Create a new unit using only the required fields
 
-```json
-// Request
+```shell
 curl --location -g --request POST 'localhost:31310/v1/units' \
      --header 'Content-Type: application/json' \
      --data-raw '{
        "projectLocationId": "ID_USA",
        "unitOwner": "Chia",
        "countryJurisdictionOfOwner": "Andorra",
-       "serialNumberBlock": "QWERTY9800-ASDFGH9850",
-       "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
        "vintageYear": 1998,
        "unitType": "Removal - technical",
-       "unitStatus": "For Sale",
+       "unitStatus": "Held",
+       "unitBlockStart": "abc123",
+       "unitBlockEnd": "bcd456",
+       "unitCount": 200,
        "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
        "correspondingAdjustmentDeclaration": "Unknown",
        "correspondingAdjustmentStatus": "Not Started"
 }'
+```
 
-// Response
-{"message":"Unit staged successfully"}
+```json
+{
+  "message":"Unit staged successfully",
+  "uuid":"9a29f826-ea60-489f-a290-c734e8fd57f1",
+  "success":true
+}
 ```
 
 ---
 
-#### Create a new unit, with pre-existing issuance and labels
+#### Create a new unit record with pre-existing issuance and labels
 
-This unit will have two labels, one pre-existing (using the "id" and "warehouseProjectId" fields), and one new.
-The issuance is pre-existing.
+- Please note that when creating a new record using existing records, the request must include:
+  - The data for new child record _**without**_ a `id` and `warehouseProjectId`
+    - See the first label in the below example  
+  - The complete data for the existing child record _**including**_ its `id` and `warehouseProjectId`
+    - See the issuance and second label in the below example
+- The result of this query will be a staged new unit record using an existing issuance and label, in addition to the
+creation of a new label record
 
-```json
-
-// Request
-curl --location -g --request POST 'localhost:31310/v1/units' \
+Request
+```shell
+curl --location -g --request PUT 'localhost:31310/v1/units' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "projectLocationId": "USA-M",
@@ -1288,44 +1418,72 @@ curl --location -g --request POST 'localhost:31310/v1/units' \
         }
     ]
 }'
-
-// Response
-{"message":"Unit staged successfully"}
+```
+Response
+```json
+{
+  "message":"Unit staged successfully",
+  "success": true
+}
 ```
 
 ---
 
 #### Split units in four
 
-[todo: This command isn't working yet. See [CW issue 387](https://github.com/Chia-Network/cadt/issues/387) for more info.]
-
-```json
-// Request
+Response
+```shell
 curl --location -g --request POST 'localhost:31310/units/split' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "warehouseUnitId": "9a5def49-7af6-428a-9958-a1e88d74bf58",
-    "records": [
-        {
-            "unitCount": 10,
-            "unitOwner": "New Owner 1"
-        },
-        {
-            "unitCount": 5,
-            "unitOwner": "New Owner 2"
-        },
-        {
-            "unitCount": 22,
-            "unitOwner": "New Owner 3"
-        },
-        {
-            "unitCount": 13,
-            "unitOwner": "New Owner 4"
-        }
-    ]
+  "warehouseUnitId": "5c3a952b-108e-4245-9e02-8fd8e3023a13",
+  "records": [
+    {
+      "unitCount": 10,
+      "unitBlockStart": "A001",
+      "unitBlockEnd": "A010",
+      "unitOwner": "New Owner 1",
+      "unitStatus": "active",
+      "countryJurisdictionOfOwner": "Bhutan",
+      "inCountryJurisdictionOfOwner": "Bhutan",
+      "marketplace": null,
+      "marketplaceIdentifier": null
+    },
+    {
+      "unitCount": 5,
+      "unitBlockStart": "B001",
+      "unitBlockEnd": "B005",
+      "unitStatus": "Held",
+      "countryJurisdictionOfOwner": "Canada",
+      "inCountryJurisdictionOfOwner": null,
+      "marketplace": null,
+      "marketplaceIdentifier": null
+    },
+    {
+      "unitCount": 22,
+      "unitBlockStart": "C001",
+      "unitBlockEnd": "C022",
+      "unitOwner": "New Owner 2",
+      "unitStatus": "Pending Export",
+    },
+    {
+      "unitCount": 13,
+      "unitBlockStart": "D001",
+      "unitBlockEnd": "D013",
+      "unitOwner": "New Owner 4",
+      "unitStatus": "Retired",
+      "countryJurisdictionOfOwner": "Germany",
+      "inCountryJurisdictionOfOwner": "Austria",
+    }
+  ]
 }'
-
-// Response
+```
+Response
+```json
+{
+  "message": "Unit split successful",
+  "success": true
+}
 ```
 
 ---
@@ -1334,10 +1492,10 @@ curl --location -g --request POST 'localhost:31310/units/split' \
 
 #### Update a pre-existing unit using only the required parameters
 
-- Note that `warehouseUnitId` must already exist
+- Note that a unit record with the provided `warehouseUnitId` must already exist
 
-```json
-// Request
+Request
+```shell
 curl --location -g --request PUT 'localhost:31310/v1/units' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -1354,26 +1512,31 @@ curl --location -g --request PUT 'localhost:31310/v1/units' \
     "correspondingAdjustmentDeclaration": "Unknown",
     "correspondingAdjustmentStatus": "Not Started"
 }'
-
-// Response
-{"message":"Unit update added to staging"}
-
+```
+Response
+```json
+{
+  "message": "Unit update added to staging",
+  "success": true
+}
 ```
 
 ---
 
 #### Update a pre-existing unit using an xlsx file
 
-- Note that it's possible to construct an xlsx file for this purpose using [this example](#list-all-units-and-save-the-results-to-an-xlsx-file 'List all units and save the results to an xlsx file')
+- Note that it's possible to construct an xlsx file for this purpose using [this example](#list-all-units-and-save-the-results-to-an-xlsx-file)
 
+Request
+```shell
+curl --location -g --request PUT 'http://localhost:31310/v1/units/xlsx' --form 'xlsx=@"./cw_query.xlsx"'
+```
+Response
 ```json
-// Request
-curl --location -g --request PUT 'localhost:31310/v1/units/xlsx' \
---form 'xlsx=@"cw_units.xlsx"'
-
-// Response
-{"message":"Updates from xlsx added to staging"}
-
+{
+  "message": "Updates from xlsx added to staging",
+  "success": true
+}
 ```
 
 ---
@@ -1382,17 +1545,25 @@ curl --location -g --request PUT 'localhost:31310/v1/units/xlsx' \
 
 #### Delete a unit
 
-```json
-// Request
+Request
+```shell
 curl --location -g --request DELETE 'localhost:31310/v1/units' \
      --header 'Content-Type: application/json' \
      --data-raw '{
        "warehouseUnitId": "104b082c-b112-4c39-9249-a52c6c53282b"
-}'
-
-// Response
-{"message":"Unit deleted successfully"}
+      }'
 ```
+Response
+```json
+{
+  "message": "Unit deletion staged successfully",
+  "success": true
+}
+```
+---
+
+### Additional Units Resources
+* POST `units/batch` - create multiple new unit records at once. see [the projects example](#stage-a-new-project-from-a-csv-file)
 
 ---
 
@@ -1406,24 +1577,28 @@ Options: None
 
 #### List all issuances from subscribed projects
 
-```json
-// Request
+Request
+```shell
 curl --location --request GET 'localhost:31310/v1/issuances' --header 'Content-Type: application/json'
+```
 
-// Response
-[{
-  "id":"d9f58b08-af25-461c-88eb-403bb02b135e",
-  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-  "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "startDate":"2022-01-02T00:00:00.000Z",
-  "endDate":"2022-02-11T00:00:00.000Z",
-  "verificationApproach":"Sample Approach",
-  "verificationReportDate":"2022-03-16T00:00:00.000Z",
-  "verificationBody":"Sample Body",
-  "timeStaged":null,
-  "createdAt":"2022-03-12T08:58:43.271Z",
-  "updatedAt":"2022-03-12T08:58:43.271Z"
-}]
+Response
+```json
+[
+  {
+    "id":"d9f58b08-af25-461c-88eb-403bb02b135e",
+    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+    "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+    "startDate":"2022-01-02T00:00:00.000Z",
+    "endDate":"2022-02-11T00:00:00.000Z",
+    "verificationApproach":"Sample Approach",
+    "verificationReportDate":"2022-03-16T00:00:00.000Z",
+    "verificationBody":"Sample Body",
+    "timeStaged":null,
+    "createdAt":"2022-03-12T08:58:43.271Z",
+    "updatedAt":"2022-03-12T08:58:43.271Z"
+  }
+]
 ```
 
 ---
@@ -1438,27 +1613,29 @@ Options: None
 
 #### List all labels from subscribed projects
 
-```json
-// Request
+```shell
 curl --location --request GET 'localhost:31310/v1/labels' --header 'Content-Type: application/json'
+```
 
-// Response
-[{
-  "id":"dcacd68e-1cfb-4f06-9798-efa0aacda42c",
-  "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-  "label":"Sample Label",
-  "labelType":"Certification",
-  "creditingPeriodStartDate":"2014-03-29T00:00:00.000Z",
-  "creditingPeriodEndDate":"2022-03-30T00:00:00.000Z",
-  "validityPeriodStartDate":"2017-03-08T00:00:00.000Z",
-  "validityPeriodEndDate":"2025-03-19T00:00:00.000Z",
-  "unitQuantity":40,
-  "labelLink":"http://samplelabel.net",
-  "timeStaged":null,
-  "createdAt":"2022-03-12T08:58:43.270Z",
-  "updatedAt":"2022-03-12T08:58:43.270Z"
-}]
+```json
+[
+  {
+    "id":"dcacd68e-1cfb-4f06-9798-efa0aacda42c",
+    "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+    "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+    "label":"Sample Label",
+    "labelType":"Certification",
+    "creditingPeriodStartDate":"2014-03-29T00:00:00.000Z",
+    "creditingPeriodEndDate":"2022-03-30T00:00:00.000Z",
+    "validityPeriodStartDate":"2017-03-08T00:00:00.000Z",
+    "validityPeriodEndDate":"2025-03-19T00:00:00.000Z",
+    "unitQuantity":40,
+    "labelLink":"http://samplelabel.net",
+    "timeStaged":null,
+    "createdAt":"2022-03-12T08:58:43.270Z",
+    "updatedAt":"2022-03-12T08:58:43.270Z"
+  }
+]
 ```
 
 ---
