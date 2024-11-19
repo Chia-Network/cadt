@@ -7,6 +7,7 @@ import { AuditMirror } from './audit.model.mirror';
 import ModelTypes from './audit.modeltypes.cjs';
 import findDuplicateIssuancesSql from './sql/find-duplicate-issuances.sql.js';
 import { Organization } from '../organizations/index.js';
+import { waitForSyncRegistries } from '../../utils/model-utils.js';
 
 class Audit extends Model {
   static async create(values, options) {
@@ -105,6 +106,10 @@ Audit.init(ModelTypes, {
   timestamps: true,
   createdAt: true,
   updatedAt: true,
+});
+
+Audit.addHook('beforeFind', async () => {
+  await waitForSyncRegistries();
 });
 
 export { Audit };
