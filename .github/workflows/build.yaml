@@ -47,10 +47,10 @@ jobs:
         uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node 20.x
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20.16'
 
@@ -198,7 +198,7 @@ jobs:
             platform: arm64
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v3
