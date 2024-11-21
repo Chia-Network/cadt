@@ -61,12 +61,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Update a pre-existing unit using an xlsx file](#update-a-pre-existing-unit-using-an-xlsx-file)
   - [DELETE Examples](#delete-examples-1)
     - [Delete a unit](#delete-a-unit)
-- [`issuances`](#issuances)
-  - [GET Examples](#get-examples-3)
-    - [List all issuances from subscribed projects](#list-all-issuances-from-subscribed-projects)
-- [`labels`](#labels)
-  - [GET Examples](#get-examples-4)
-    - [List all labels from subscribed projects](#list-all-labels-from-subscribed-projects)
+  - [Additional Units Resources](#additional-units-resources)
 - [`staging`](#staging)
   - [GET Examples](#get-examples-5)
     - [List all projects and units in STAGING](#list-all-projects-and-units-in-staging)
@@ -78,11 +73,33 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Delete all projects and units in STAGING](#delete-all-projects-and-units-in-staging)
     - [Delete a specific project in STAGING](#delete-a-specific-project-in-staging)
     - [Delete a specific unit in STAGING](#delete-a-specific-unit-in-staging)
-  - [Additional Units Resources](#additional-units-resources)
+- [`issuances`](#issuances)
+  - [GET Examples](#get-examples-3)
+    - [List all issuances from subscribed projects](#list-all-issuances-from-subscribed-projects)
+- [`labels`](#labels)
+  - [GET Examples](#get-examples-4)
+    - [List all labels from subscribed projects](#list-all-labels-from-subscribed-projects)
 - [`audit`](#audit)
   - [GET Examples](#get-examples-6)
-    - [Show the complete history of an organization](#show-the-complete-history-of-an-organization)
-
+    - [Show the complete history of an organization](#show-the-complete-history-of-an-organization)\
+- [`offer`](#offer)
+  - [Get Examples](#get-examples-7)
+    - [Generate and download a datalayer offer file](#generate-and-download-a-datalayer-offer-file)
+    - [Get the details of the currently uploaded offer file](#get-the-details-of-the-currently-uploaded-offer-file)
+  - [Post Examples](#post-examples-4)
+    - [Upload an offer file](#upload-an-offer-file)
+  - [Delete Examples](#delete-examples-4)
+    - [Cancel the currently active offer](#cancel-the-currently-active-offer)
+    - [Reject the currently imported transfer offer file](#reject-the-currently-imported-transfer-offer-file)
+  - [Additonal offer resources](#additional-offer-resources)
+- [`governance`](#governance)
+  - [Get Examples](#get-examples-8)
+    - [Get the UID's of all organizations registered in governance data](#get-the-uids-of-all-organizations-registered-in-governance-data)
+  - [Post Examples](#post-examples-6)
+    - [Set the governance organization list](#set-the-governance-organization-list)
+  - [Additional Governance Resources](#additional-governance-resources)
+- [`filestore`](#filestore)
+  - [Resources](#resources)
 ---
 
 ## Reference
@@ -1567,6 +1584,326 @@ Response
 
 ---
 
+## `staging`
+
+Functionality: List, modify, confirm, and cancel projects and units in the `STAGING` state
+
+Options:
+
+|      Key       |    Type     |                                              Description                                               |
+|:--------------:|:-----------:|:------------------------------------------------------------------------------------------------------:|
+| None (default) |     N/A     |                     Display all projects and units that are currently in `STAGING`                     |
+|      type      |   String    |                                     Must be `projects` or `units`                                      |
+|     limit      |   Number    | Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|      page      |   Number    |       Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)       |
+|     table      |   String    |           Specifies which type of staged changes should be committed; `Projects` or `Units`            | 
+|      ids       | String List |                    Query param list of strings containing staging UUID's to commit                     | 
+|     author     |   String    |                                    Specify the author of the commit                                    | 
+|    comment     |   String    |                                    Specify a comment for the commit                                    |
+
+### GET Examples
+
+#### List all projects and units in `STAGING`
+
+- For this example, there is one project with a `DELETE` action, one project with an `INSERT` action, and one unit with an `INSERT` action:
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v1/staging' --header 'Content-Type: application/json'
+```
+Response
+```json
+[
+  {
+    "id": 38,
+    "uuid":"cbc966cd-f4a9-4f7b-9c57-8186fea8b54c",
+    "table":"Projects",
+    "action":"DELETE",
+    "commited":false,
+    "failedCommit":false,
+    "createdAt":"2022-03-13T03:08:15.156Z",
+    "updatedAt":"2022-03-13T03:08:15.156Z",
+    "diff":{
+      "original":{
+        "warehouseProjectId":"cbc966cd-f4a9-4f7b-9c57-8186fea8b54c",
+        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+        "currentRegistry":"123",
+        "projectId":"Abcde-12345",
+        "originProjectId":null,
+        "registryOfOrigin":"500",
+        "program":"",
+        "projectName":"Example",
+        "projectLink":"https://exampleurl",
+        "projectDeveloper":"Example Developer",
+        "sector":"Viva",
+        "projectType":"",
+        "projectTags":null,
+        "coveredByNDC":"NO",
+        "ndcInformation":"Outside NDC",
+        "projectStatus":"Registered",
+        "projectStatusDate":"2022-03-09T16:00:00.000Z",
+        "unitMetric":"tCO2e",
+        "methodology":"Quatz",
+        "validationBody":null,
+        "validationDate":null,
+        "timeStaged":null,
+        "createdAt":"2022-03-13T03:04:53.168Z",
+        "updatedAt":"2022-03-13T03:04:53.168Z",
+        "projectLocations":[],
+        "labels":[],
+        "issuances":[],
+        "coBenefits":[],
+        "relatedProjects":[],
+        "projectRatings":[],
+        "estimations":[]
+      },
+      "change":{}
+    }
+  },
+  {
+    "id":39,
+    "uuid":"2120ab85-4622-454c-be29-c97071286df1",
+    "table":"Projects",
+    "action":"INSERT",
+    "commited":false,
+    "failedCommit":false,
+    "createdAt":"2022-03-13T03:09:10.194Z",
+    "updatedAt":"2022-03-13T03:09:10.194Z",
+    "diff": {
+      "original":{},
+      "change":[{
+        "currentRegistry":"123",
+        "projectId":"Abcde-12345",
+        "registryOfOrigin":"500",
+        "program":"",
+        "projectName":"Example",
+        "projectLink":"https://exampleurl",
+        "projectDeveloper":"Example Developer",
+        "sector":"Viva",
+        "projectType":"",
+        "coveredByNDC":"NO",
+        "ndcInformation":"Outside NDC",
+        "projectStatus":"Registered",
+        "projectStatusDate":"3/10/2022",
+        "unitMetric":"tCO2e",
+        "methodology":"Quatz",
+        "warehouseProjectId":"2120ab85-4622-454c-be29-c97071286df1",
+        "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+      }]
+    }
+  },
+  {
+    "id":40,
+    "uuid":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+    "table":"Units",
+    "action":"INSERT",
+    "commited":false,
+    "failedCommit":false,
+    "createdAt":"2022-03-13T03:17:51.752Z",
+    "updatedAt":"2022-03-13T03:17:51.752Z",
+    "diff":{
+      "original": {},
+      "change": [
+        {
+          "projectLocationId":"789",
+          "unitOwner":"Sample Owner",
+          "countryJurisdictionOfOwner":"Belize",
+          "serialNumberBlock":"A345-B567",
+          "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+          "vintageYear":2014,
+          "unitRegistryLink":"sampleurl.com",
+          "unitType":"Reduction - technical",
+          "unitStatus":"Buffer",
+          "correspondingAdjustmentDeclaration":"Unknown",
+          "correspondingAdjustmentStatus":"Pending",
+          "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+          "timeStaged":1647141471,
+          "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+        }
+      ]
+    }
+  }
+]
+```
+
+---
+
+#### List all units in `STAGING`, with paging
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v1/staging?page=1&limit=5&type=units' --header 'Content-Type: application/json'
+```
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 1,
+  "data": [
+    {
+      "id":40,
+      "uuid":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "table":"Units",
+      "action":"INSERT",
+      "commited":false,
+      "failedCommit":false,
+      "createdAt":"2022-03-13T03:17:51.752Z",
+      "updatedAt":"2022-03-13T03:17:51.752Z",
+      "diff":{
+        "original": {},
+        "change": [
+          {
+            "projectLocationId":"789",
+            "unitOwner":"Sample Owner",
+            "countryJurisdictionOfOwner":"Belize",
+            "serialNumberBlock":"A345-B567",
+            "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+            "vintageYear":2014,
+            "unitRegistryLink":"sampleurl.com",
+            "unitType":"Reduction - technical",
+            "unitStatus":"Buffer",
+            "correspondingAdjustmentDeclaration":"Unknown",
+            "correspondingAdjustmentStatus":"Pending",
+            "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+            "timeStaged":1647141471,
+            "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+---
+
+### POST Examples
+
+#### Commit all projects and units in `STAGING`
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v1/staging/commit' --header 'Content-Type: application/json' 
+```
+Response
+```json
+{
+  "message":"Staging Table committed to full node"
+}
+```
+
+#### Commit all projects in `STAGING`
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v1/staging/commit?table=Projects' --header 'Content-Type: application/json' 
+```
+Response
+```json
+{
+  "message":"Staging Table committed to full node"
+}
+```
+
+#### Commit specific `STAGING` records from either the Units or Projects staging table by UUID
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v1/staging/commit?ids=9a29f826-ea60-489f-a290-c734e8fd57f1&ids=5b29e846-a2c1-589a-d180-b832e7fd67ef' \
+--header 'Content-Type: application/json' 
+```
+Response
+```json
+{
+  "message": "Staging Table committed to full node",
+  "success": true
+}
+```
+
+---
+
+#### Retry committing a single project, using its `uuid`:
+
+Request
+```shell
+curl --location -g --request POST 'localhost:31310/v1/staging/retry' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "uuid": "86c1cd01-0c07-4f02-9a29-490be967ca6c"
+}'
+```
+Response
+```json
+{
+  "message": "Staging record re-staged.",
+  "success": true
+}
+```
+
+---
+
+### DELETE Examples
+
+#### Delete all projects and units in `STAGING`:
+
+Request
+```shell
+curl --location -g --request DELETE 'localhost:31310/v1/staging/clean' \
+     --header 'Content-Type: application/json'
+```
+Response
+```json
+{
+  "message":"Staging Data Cleaned",
+  "success": true
+}
+```
+
+---
+
+#### Delete a specific project in `STAGING`:
+
+Request
+```shell
+curl --location -g --request DELETE 'localhost:31310/v1/staging' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "uuid": "1647855c-c1fa-4f5b-ae8e-bd9d544442ea"
+}'
+```
+Response
+```json
+{ 
+  "message":"Deleted from staging",
+  "success": true
+}
+```
+
+---
+
+#### Delete a specific unit in `STAGING`:
+
+Request
+```shell
+curl --location -g --request DELETE 'localhost:31310/v1/staging' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "uuid": "1936260d-632c-4d63-8cba-0014e7c84c0c"
+}'
+```
+Response
+```json
+{
+  "message":"Deleted from staging",
+  "success": true
+}
+```
+
+### Additional Staging Resources
+* GET `staging/hasPendingCommits` - can be used to determine if there are pending commits in staging
+
+---
+
 ## `issuances`
 
 Functionality: List all issuances from subscribed projects
@@ -1640,297 +1977,348 @@ curl --location --request GET 'localhost:31310/v1/labels' --header 'Content-Type
 
 ---
 
-## `staging`
-
-Functionality: List, modify, confirm, and cancel projects and units in the `STAGING` state
-
-Options:
-
-|      Key       |  Type  | Description                                                                                            |
-| :------------: | :----: | :----------------------------------------------------------------------------------------------------- |
-| None (default) |  N/A   | Display all projects and units that are currently in `STAGING`                                         |
-|      type      | String | Must be `projects` or `units`                                                                          |
-|     limit      | Number | Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
-|      page      | Number | Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
-
-### GET Examples
-
-#### List all projects and units in `STAGING`
-
-- For this example, there is one project with a `DELETE` action, one project with an `INSERT` action, and one unit with an `INSERT` action:
-
-```json
-// Request
-curl --location --request GET 'localhost:31310/v1/staging' --header 'Content-Type: application/json'
-
-// Response
-[{
-  "id":38,
-  "uuid":"cbc966cd-f4a9-4f7b-9c57-8186fea8b54c",
-  "table":"Projects",
-  "action":"DELETE",
-  "commited":false,
-  "failedCommit":false,
-  "createdAt":"2022-03-13T03:08:15.156Z",
-  "updatedAt":"2022-03-13T03:08:15.156Z",
-  "diff":{
-    "original":{
-      "warehouseProjectId":"cbc966cd-f4a9-4f7b-9c57-8186fea8b54c",
-      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-      "currentRegistry":"123",
-      "projectId":"Abcde-12345",
-      "originProjectId":null,
-      "registryOfOrigin":"500",
-      "program":"",
-      "projectName":"Example",
-      "projectLink":"https://exampleurl",
-      "projectDeveloper":"Example Developer",
-      "sector":"Viva",
-      "projectType":"",
-      "projectTags":null,
-      "coveredByNDC":"NO",
-      "ndcInformation":"Outside NDC",
-      "projectStatus":"Registered",
-      "projectStatusDate":"2022-03-09T16:00:00.000Z",
-      "unitMetric":"tCO2e",
-      "methodology":"Quatz",
-      "validationBody":null,
-      "validationDate":null,
-      "timeStaged":null,
-      "createdAt":"2022-03-13T03:04:53.168Z",
-      "updatedAt":"2022-03-13T03:04:53.168Z",
-      "projectLocations":[],
-      "labels":[],
-      "issuances":[],
-      "coBenefits":[],
-      "relatedProjects":[],
-      "projectRatings":[],
-      "estimations":[]
-    },
-    "change":{}
-  }
-},{
-  "id":39,
-  "uuid":"2120ab85-4622-454c-be29-c97071286df1",
-  "table":"Projects",
-  "action":"INSERT",
-  "commited":false,
-  "failedCommit":false,
-  "createdAt":"2022-03-13T03:09:10.194Z",
-  "updatedAt":"2022-03-13T03:09:10.194Z",
-  "diff":{
-    "original":{},
-    "change":[{
-      "currentRegistry":"123",
-      "projectId":"Abcde-12345",
-      "registryOfOrigin":"500",
-      "program":"",
-      "projectName":"Example",
-      "projectLink":"https://exampleurl",
-      "projectDeveloper":"Example Developer",
-      "sector":"Viva",
-      "projectType":"",
-      "coveredByNDC":"NO",
-      "ndcInformation":"Outside NDC",
-      "projectStatus":"Registered",
-      "projectStatusDate":"3/10/2022",
-      "unitMetric":"tCO2e",
-      "methodology":"Quatz",
-      "warehouseProjectId":"2120ab85-4622-454c-be29-c97071286df1",
-      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
-    }]
-  }
-},{
-  "id":40,
-  "uuid":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
-  "table":"Units",
-  "action":"INSERT",
-  "commited":false,
-  "failedCommit":false,
-  "createdAt":"2022-03-13T03:17:51.752Z",
-  "updatedAt":"2022-03-13T03:17:51.752Z",
-  "diff":{
-    "original":{},
-    "change":[{
-      "projectLocationId":"789",
-      "unitOwner":"Sample Owner",
-      "countryJurisdictionOfOwner":"Belize",
-      "serialNumberBlock":"A345-B567",
-      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
-      "vintageYear":2014,
-      "unitRegistryLink":"sampleurl.com",
-      "unitType":"Reduction - technical",
-      "unitStatus":"Buffer",
-      "correspondingAdjustmentDeclaration":"Unknown",
-      "correspondingAdjustmentStatus":"Pending",
-      "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
-      "timeStaged":1647141471,
-      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
-    }]
-  }
-}]
-```
-
----
-
-#### List all units in `STAGING`, with paging
-
-[todo: This call doesn't work yet. see [CW issue 389](https://github.com/Chia-Network/cadt/issues/389) for more info.]
-
-```json
-// Request
-curl --location --request GET 'localhost:31310/v1/staging?page=1&limit=5&type=units' \
-     --header 'Content-Type: application/json'
-
-// Response
-```
-
----
-
-### POST Examples
-
-#### Commit all projects and units in `STAGING`
-
-- Note that it is not possible to commit projects or units individually.
-  If you need to commit a single project or unit,
-  then stage and commit it before staging anything new.
-
-```json
-// Request
-curl --location --request POST \
-    --header 'Content-Type: application/json' \
-     'localhost:31310/v1/staging/commit'
-
-// Response
-{"message":"Staging Table committed to full node"}
-```
-
----
-
-#### Retry committing a single project, using its `uuid`:
-
-```json
-// Request
-curl --location -g --request POST 'localhost:31310/v1/staging/retry' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "uuid": "86c1cd01-0c07-4f02-9a29-490be967ca6c"
-}'
-
-// Response
-{"message":"Staging record re-staged."}
-```
-
----
-
-### DELETE Examples
-
-#### Delete all projects and units in `STAGING`:
-
-```json
-// Request
-curl --location -g --request DELETE 'localhost:31310/v1/staging/clean' \
-     --header 'Content-Type: application/json'
-// Response
-{"message":"Staging Data Cleaned"}
-```
-
----
-
-#### Delete a specific project in `STAGING`:
-
-```json
-// Request
-curl --location -g --request DELETE 'localhost:31310/v1/staging' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "uuid": "1647855c-c1fa-4f5b-ae8e-bd9d544442ea"
-}'
-// Response
-{"message":"Deleted from stage"}
-```
-
----
-
-#### Delete a specific unit in `STAGING`:
-
-```json
-// Request
-curl --location -g --request DELETE 'localhost:31310/v1/staging' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "uuid": "1936260d-632c-4d63-8cba-0014e7c84c0c"
-}'
-// Response
-{"message":"Deleted from stage"}
-```
-
----
-
 ## `audit`
 
 Functionality: Show the complete history of an organization
 
 Options:
 
-|  Key   |  Type  | Description                                                 |
-| :----: | :----: | :---------------------------------------------------------- |
-| orgUid | String | (Required) Display subscribed projects matching this orgUid |
+|    Key    |       Type        |                                              Description                                               |
+|:---------:|:-----------------:|:------------------------------------------------------------------------------------------------------:|
+|  orgUid   | (Required) String |                            Display subscribed projects matching this orgUid                            |
+|   order   |      String       |            Sort the audit records by `ASC` or `DESC` order based on confirmation timestamp             |
+|   limit   | (Required) Number | Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|   page    | (Required) Number |       Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)       |
+
 
 ### GET Examples
 
 #### Show the complete history of an organization
 
-```json
-// Request
-curl --location --request GET 'localhost:31310/v1/audit?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9' --header 'Content-Type: application/json'
+- Pagination is required when requesting audit history records
 
-// Response
-[{
-  "id":2,
-  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-  "registryId":"9508ff7a1851ead7702b28f37f36145a0b389e374e2b82504b6ceb977ea41ada",
-  "rootHash":"0x0000000000000000000000000000000000000000000000000000000000000000",
-  "type":"CREATE REGISTRY",
-  "change":null,
-  "table":null,
-  "onchainConfirmationTimeStamp":0,
-  "createdAt":"2022-03-09T05:22:53.217Z",
-  "updatedAt":"2022-03-09T05:22:53.217Z"
-},{
-  "id":3,
-  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-  "registryId":"9508ff7a1851ead7702b28f37f36145a0b389e374e2b82504b6ceb977ea41ada",
-  "rootHash":"0x4e25dd858553085c246546085f7d79140c2f78db8fc3ff8e34e73c849f3844df",
-  "type":"INSERT",
-  "change":"{
-    \"currentRegistry\":\"Gold Standard\",
-    \"registryOfOrigin\":\"Gold Standard\",
-    \"originProjectId\":\"555\",
-    \"projectId\":\"555\",
-    \"projectName\":\"Stop Deforestation\",
-    \"projectLink\":\"http://testurl.com\",
-    \"projectDeveloper\":\"Example Developer\",
-    \"sector\":\"Agriculture Forestry and Other Land Use (AFOLU)\",
-    \"projectType\":\"Soil Enrichment\",
-    \"coveredByNDC\":\"Unknown\",
-    \"projectStatus\":\"Listed\",
-    \"unitMetric\":\"tCO2e\",
-    \"methodology\":\"Decomposition of fluoroform (HFC-23) waste streams --- Version 6.0.0\",
-    \"projectStatusDate\":\"2022-03-02T00:00:00.000Z\",
-    \"warehouseProjectId\":\"51ca9638-22b0-4e14-ae7a-c09d23b37b58\",
-    \"timeStaged\":1646803417,
-    \"orgUid\":\"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9\"
-  }",
-  "table":"project",
-  "onchainConfirmationTimeStamp":1646803574,
-  "createdAt":"2022-03-09T05:27:23.266Z",
-  "updatedAt":"2022-03-09T05:27:23.266Z"
-},{"id":4,
-  ...
-  abbreviated (output continues in order of ID)
-  ...
+```shell
+curl --location --request GET 'localhost:31310/v1/audit?orgUid=9659b237d3316e0c5481148f6fbc6257e94736bf160854e7c6734366e312829a&page=1&limit=10' \
+--header 'Content-Type: application/json'
+```
+
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "id": 1340232,
+      "orgUid": "9659b237d3316e0c5481148f6fbc6257e94736bf160854e7c6734366e312829a",
+      "registryId": "62531b9ad830f1e2654f324bb12572f69a8d298e8019901ba5e603fe947e479e",
+      "rootHash": "0xf7774bdf95d72aa865e0e153e36c8c2212a2c5be5e389ed333e37fc259730c1e",
+      "type": "INSERT",
+      NOTE! the change field value is a full stringified change record
+      "change": "{\"projectLocationId\":\"ID_USA\",\"unitOwner\":\"Chia\", ... !change record json string example truncated! ... }",
+      "table": "unit",
+      "onchainConfirmationTimeStamp": "1732131042",
+      "author": "",
+      "comment": "",
+      "createdAt": "2024-11-20T19:31:51.960Z",
+      "updatedAt": "2024-11-20T19:31:51.960Z",
+      "generation": 4
+    },
+    {
+      "id": 560617,
+      "orgUid": "9659b237d3316e0c5481148f6fbc6257e94736bf160854e7c6734366e312829a",
+      "registryId": "62531b9ad830f1e2654f324bb12572f69a8d298e8019901ba5e603fe947e479e",
+      "rootHash": "0x9caef12440fd98bf7edc8820fbc4633ce513df7da4ee70d7af0d68a7b7427361",
+      "type": "INSERT",
+      NOTE! the change field value is a full stringified change record
+      "change": "{\"id\":\"c92cf2f0-77c9-4695-b61c-0647a5505f79\", ... !change record json string example truncated! ... }",
+      "table": "label_units",
+      "onchainConfirmationTimeStamp": "1727796408",
+      "author": "",
+      "comment": "",
+      "createdAt": "2024-10-01T15:28:32.435Z",
+      "updatedAt": "2024-10-01T15:28:32.435Z",
+      "generation": 3
+    },
+    {
+      "id": 560618,
+      "orgUid": "9659b237d3316e0c5481148f6fbc6257e94736bf160854e7c6734366e312829a",
+      "registryId": "62531b9ad830f1e2654f324bb12572f69a8d298e8019901ba5e603fe947e479e",
+      "rootHash": "0x9caef12440fd98bf7edc8820fbc4633ce513df7da4ee70d7af0d68a7b7427361",
+      "type": "INSERT",
+      NOTE! the change field value is a full stringified change record 
+      "change": "{\"id\":\"3a4e6897-985e-48d2-b90b-6ddcaf9cc32e\", ... !change record json string example truncated! ... }",
+      "table": "labels",
+      "onchainConfirmationTimeStamp": "1727796408",
+      "author": "",
+      "comment": "",
+      "createdAt": "2024-10-01T15:28:32.437Z",
+      "updatedAt": "2024-10-01T15:28:32.437Z",
+      "generation": 3
+    },
+    {
+      "id": 560619,
+      "orgUid": "9659b237d3316e0c5481148f6fbc6257e94736bf160854e7c6734366e312829a",
+      "registryId": "62531b9ad830f1e2654f324bb12572f69a8d298e8019901ba5e603fe947e479e",
+      "rootHash": "0x9caef12440fd98bf7edc8820fbc4633ce513df7da4ee70d7af0d68a7b7427361",
+      "type": "INSERT",
+      NOTE! the change field value is a full stringified change record
+      "change": "{\"id\":\"699ba1c8-118e-4eeb-9b57-657226c5bab5\", ... !change record json string example truncated! ... }",
+      "table": "issuances",
+      "onchainConfirmationTimeStamp": "1727796408",
+      "author": "",
+      "comment": "",
+      "createdAt": "2024-10-01T15:28:32.439Z",
+      "updatedAt": "2024-10-01T15:28:32.439Z",
+      "generation": 3
+    },
+    {
+      "id": 560620,
+      "orgUid": "9659b237d3316e0c5481148f6fbc6257e94736bf160854e7c6734366e312829a",
+      "registryId": "62531b9ad830f1e2654f324bb12572f69a8d298e8019901ba5e603fe947e479e",
+      "rootHash": "0x9caef12440fd98bf7edc8820fbc4633ce513df7da4ee70d7af0d68a7b7427361",
+      "type": "INSERT",
+      NOTE! the change field value is a full stringified change record
+      "change": "{\"warehouseUnitId\":\"5c3a952b-108e-4245-9e02-8fd8e3023a13\", ... !change record json string example truncated! ... }",
+      "table": "unit",
+      "onchainConfirmationTimeStamp": "1727796408",
+      "author": "",
+      "comment": "",
+      "createdAt": "2024-10-01T15:28:32.523Z",
+      "updatedAt": "2024-10-01T15:28:32.523Z",
+      "generation": 3
+    }
+  ]
 }
 ```
 
 ---
+
+## `offer`
+
+Functionality: generate, view, import, accept, datalayer offers for data transfers to other organizations
+
+#### A Note On CADT Offers
+ - Terms: 
+   - *Offer Maker*: the party requesting that data be transferred from a 3rd party organization into their own organization registry
+   - *Offer Taker*: the party accepting an offer to transfer ownership of a climate project record form their organization registry into
+   the offer maker's organization registry
+ - Transfer Workflow Overview: 
+   - the offer maker stages the transfer of a project from another registry into their own
+   - the offer maker creates an offer file which details the ownership transfer of the project record from its current
+   registry into the offer makers registry
+   - the offer taker uploads the offer file into CADT and reviews the records changes that have been purposed
+   - the offer taker accepts the offer to transfer ownership of the project record and the project record is removed
+   from their organization registry and added to the offer makers organization registry
+
+Options:
+
+|      Key       |      Type       |                                            Description                                            |
+|:--------------:|:---------------:|:-------------------------------------------------------------------------------------------------:|
+| None (default) |       N/A       | Generate and download a datalayer offer file for a transfer in staging or cancel the active offer |
+|      file      | File Form Field |         A datalayer offer file detailing a transfer of date out of the uploading registry         |
+
+
+
+### GET Examples
+
+#### Generate and download a datalayer offer file
+
+- Used by the offer maker
+- For additional information please see [A Note On CADT Offers](#a-note-on-cadt-offers)
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v1/offer/' --header 'Content-Type: application/json' > project-offer.txt
+```
+
+Response
+
+Download stream to download the project transfer offer file.
+Using the above `curl` will save the results to a file in the current directory called `project-offer.txt`.
+
+
+#### Get the details of the currently uploaded offer file
+
+- Only fetches purposed changes, makes no changes
+- Used by the offer taker
+- For additional information please see [A Note On CADT Offers](#a-note-on-cadt-offers)
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v1/offer/accept' --header 'Content-Type: application/json' > project-offer.txt
+```
+
+Response
+
+```json
+TODO
+```
+
+
+### POST Examples
+
+#### Upload an offer file
+
+- Upload and parse an offer file named `offer-file.txt` in the current directory
+- Used by the offer maker
+- For additional information please see [A Note On CADT Offers](#a-note-on-cadt-offers)
+
+```shell
+curl --location --request POST 'localhost:31310/accept/import' --header 'Content-Type: multipart/form-data' \
+--form 'file=./offer-file.txt'
+```
+
+Response
+
+```json
+TODO
+```
+
+### DELETE Examples
+
+#### Cancel the currently active offer
+
+- Used by the offer maker
+- For additional information please see [A Note On CADT Offers](#a-note-on-cadt-offers)
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v1/offer/accept/cancel' --header 'Content-Type: application/json'
+```
+
+Response
+
+```json
+{
+  "message": "Active offer has been canceled",
+  "success": true
+}
+```
+
+#### Reject the currently imported transfer offer file
+
+- Used by the offer taker
+- For additional information please see [A Note On CADT Offers](#a-note-on-cadt-offers)
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v1/offer/accept/cancel' --header 'Content-Type: application/json'
+```
+
+Response
+
+```json
+{
+  "message": "Offer Cancelled",
+  "success": true
+}
+```
+
+### Additional offer resources
+
+* POST `offer/accept/commit` - (offer maker) accept and commit the currently uploaded offer file
+
+
+## `governance`
+
+Functionality: create a governance node and manage governance data
+
+### GET Examples
+
+#### Get the UID's of all organizations registered in governance data
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v1/governance/meta/orgList' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+[
+  {
+    "orgUid": "a9d374baa8ced8b7a4add2a23f35f430fd7a3c99d1480d762e0b40572db4b024"
+  },
+  {
+    "orgUid": "fa47700cb693529602c3eab47a5d681ffe0145dabeee6c69cabdd7869537b917"
+  },
+  {
+    "orgUid": "6cde6a6e4e997952ca01500d830904a084267e2390008d2ae5ca46ed549373ef"
+  },
+  {
+    "orgUid": "5fe508f320f32f51cc53c337d4d1bab5b7a87f8aaeb53fdbdaa87f57eef74b5b"
+  },
+  {
+    "orgUid": "e3a5854f359a6dece0bd822a0f79342be4552da0d6ab21b89085599f3ca0fa45"
+  },
+  {
+    "orgUid": "b3d4e71d806e86ff1f8712b6854d65e2c178e873ee22b2f7d0da937dacbaa985"
+  },
+  {
+    "orgUid": "aca536f31e0d9e9b25c311fa452763282e7ee21d2be684483a293923ca9ab012"
+  }
+]
+```
+
+### POST Examples
+
+#### Set the governance organization list
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v1/governance/meta/glossary' --header 'Content-Type: application/json' \
+--data-raw '[
+  {
+    "orgUid": "a9d374baa8ced8b7a4add2a23f35f430fd7a3c99d1480d762e0b40572db4b024"
+  },
+  {
+    "orgUid": "fa47700cb693529602c3eab47a5d681ffe0145dabeee6c69cabdd7869537b917"
+  },
+  {
+    "orgUid": "6cde6a6e4e997952ca01500d830904a084267e2390008d2ae5ca46ed549373ef"
+  },
+  {
+    "orgUid": "5fe508f320f32f51cc53c337d4d1bab5b7a87f8aaeb53fdbdaa87f57eef74b5b"
+  },
+  {
+    "orgUid": "e3a5854f359a6dece0bd822a0f79342be4552da0d6ab21b89085599f3ca0fa45"
+  },
+  {
+    "orgUid": "b3d4e71d806e86ff1f8712b6854d65e2c178e873ee22b2f7d0da937dacbaa985"
+  },
+  {
+    "orgUid": "aca536f31e0d9e9b25c311fa452763282e7ee21d2be684483a293923ca9ab012"
+  }
+]'
+```
+
+Response
+```json
+{
+  "message": "Committed this new organization list to the datalayer",
+  "success": true
+}
+```
+
+### POST Examples
+
+### Additional Governance Resources
+
+* GET `/governance/exists` - determine if the instance is a governance body
+* GET `/governance` - get all governance data. picklist orgList, pickList, and glossary data stringified in the metaValue attribute
+* GET `/governance/sync` - sync governance data from other governance bodies
+* GET `/governance/meta/picklist` - get governance picklist data
+* GET `/governance/meta/glossary` - get governance glossary data
+* POST `/governance` - create a governance body on the current node
+* POST `/governance/meta/picklist` - set the governance picklist data returned by GET `/governance/meta/picklist`
+* POST `/governance/meta/glossary` - set the governance glossary data returned by GET `/governance/meta/glossary`
+
+## `filestore`
+
+### Resources
+
+* GET `filestore/get_file` - get a file from the file store by fileId
+* GET `filestore/get_file_list` - get a list of files in the file store
+* POST `filestore/add_file` - commit a file to the file store
+* POST `filestore/subscribe` - subscribe to a file store
+* POST `filestore/unsubscribe` - subscribe to a file store
+* DELETE `filestore/delete_file` - delete a file from the file store by fileId

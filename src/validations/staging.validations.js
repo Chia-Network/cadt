@@ -12,6 +12,7 @@ export const commitStagingSchema = Joi.object({
   author: Joi.string().optional(),
   comment: Joi.string().optional(),
   ids: Joi.array().items(Joi.string()).optional(),
+  table: Joi.string().valid('Projects', 'Units').optional(),
 });
 
 export const stagingEditSchema = Joi.object({
