@@ -139,9 +139,7 @@ const processJob = async () => {
   }
 };
 
-async function updateAuditTransaction(callback, afterCommitCallbacks) {
-  let result = null;
-
+async function createAndProcessTransaction(callback, afterCommitCallbacks) {
   let transaction;
   let mirrorTransaction;
 
@@ -158,7 +156,7 @@ async function updateAuditTransaction(callback, afterCommitCallbacks) {
     }
 
     // Execute the provided callback with the transaction
-    result = await callback(transaction, mirrorTransaction);
+    await callback(transaction, mirrorTransaction);
 
     // Commit the transaction if the callback completes without errors
     await transaction.commit();
@@ -173,7 +171,7 @@ async function updateAuditTransaction(callback, afterCommitCallbacks) {
 
     logger.info('Commited sequelize transaction');
 
-    return result;
+    return true;
   } catch (error) {
     // Roll back the transaction if an error occurs
     if (transaction) {
@@ -181,6 +179,7 @@ async function updateAuditTransaction(callback, afterCommitCallbacks) {
         `encountered error syncing organization audit. Rolling back transaction. Error: ${error}`,
       );
       await transaction.rollback();
+      return false;
     }
   } finally {
     releaseTransactionMutex();
@@ -486,10 +485,7 @@ const syncOrganizationAudit = async (organization) => {
     // by not processing the DELETE for that record.
     const optimizedKvDiff = optimizeAndSortKvDiff(kvDiff);
 
-    const createAndProcessTransaction = async (
-      transaction,
-      mirrorTransaction,
-    ) => {
+    const updateAuditTransaction = async (transaction, mirrorTransaction) => {
       logger.info(
         `Syncing ${organization.name} generation ${toBeProcessedDatalayerGenerationIndex} (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
       );
