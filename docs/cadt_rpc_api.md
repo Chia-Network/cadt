@@ -2,6 +2,21 @@
 
 This page lists commands and examples from the Climate Warehouse RPC API.
 
+When using this guide, it is important to understand the workflow CADT employs for managing climate data updates via RPCs. 
+The CADT paradigm ensures that all updates first go into local "staging", which is private and not shared with 
+the rest of the world. This staging process serves as an intermediate step where climate data records changes remain
+isolated from the data committed to the blockchain datalayer until explicitly committed.
+
+When editing or adding climate data records users should first use POST changes to the appropriate `projects` or `units` 
+resources. These POST requests populate the local staging table, allowing for updates to be collected and reviewed 
+in a controlled, private environment. Once reviewed users can then use `staging` RPCs to commit or deleted the staged record 
+changes. Commiting the data in staging using the CADT RPC's commits the data to the blockchain, making it publicly visible.
+
+It is essential to remember that the staging process is distinct from the commit phase. The initial use of `projects`, 
+`units`, or similar RPCs prepares the data, while `staging` RPCs finalize the transition to the blockchain. This workflow 
+ensures a clear separation between temporary updates and permanent, public changes, maintaining both data integrity and 
+transparency.
+
 Please also see the following related documents:
 
 - [CADT installation/configuration guide](/README.md)
@@ -22,7 +37,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
   - [PUT Examples](#put-examples)
     - [Import a home organization](#import-a-home-organization-that-datalayer-is-subscribed-to)
   - [DELETE Examples](#delete-examples)
-    - [Reset a home organization](#reset-home-organization)
+    - [Delete a home organization](#reset-home-organization)
   - [Additional organizations resources](#additional-organizations-resources)
 - [`projects`](#projects)
   - [GET Examples](#get-examples-1)
@@ -94,6 +109,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
   - [Additonal offer resources](#additional-offer-resources)
 - [`governance`](#governance)
   - [Get Examples](#get-examples-8)
+    - [Get picklist data](#get-picklist-data)
     - [Get the UID's of all organizations registered in governance data](#get-the-uids-of-all-organizations-registered-in-governance-data)
   - [Post Examples](#post-examples-6)
     - [Set the governance organization list](#set-the-governance-organization-list)
@@ -165,6 +181,11 @@ POST Options:
 
 #### Create an organization
 
+- Please note that creating and organization takes approximately 30 minutes.
+- The request will not resolve until the organization creation is complete
+- The request can be closed before it resolves and the status of the organization creation can be tracked via a GET
+request to `organizations` and searching for the PENDING orgUid.
+
 Request
 ```sh
 curl --location -g --request POST 'localhost:31310/v1/organizations/create' \
@@ -175,11 +196,12 @@ curl --location -g --request POST 'localhost:31310/v1/organizations/create' \
 }'
 ```
 
-Response (after up 30 minutes)
+Response
 ```json
 {
   "message":"New organization created successfully.",
-  "orgUid":"d84ab5fa679726e988b31ecc8ecff0ba8d001e9d65f1529d794fa39d32a5455e"
+  "orgUid":"d84ab5fa679726e988b31ecc8ecff0ba8d001e9d65f1529d794fa39d32a5455e",
+  "success": true
 }
 ```
 
@@ -194,6 +216,9 @@ PUT Options:
 ### PUT Examples
 
 #### Import a home organization that datalayer is subscribed to
+
+- This is typically used when an organization currently using CADT is installing a new instance and wants to use the same
+home organization and the current instance(s).
 
 Request
 ```sh
@@ -214,7 +239,7 @@ DELETE Options: None
 
 ### DELETE Examples
 
-#### Reset home organization
+#### Delete home organization
 
 Request
 ```sh
@@ -2221,9 +2246,156 @@ Response
 
 ## `governance`
 
-Functionality: create a governance node and manage governance data
+- Functionality for most users: read and sync governance values 
+- Functionality for climate project development: create and manage governance data
 
 ### GET Examples
+
+#### Get picklist data
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v1/governance/meta/pickList' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "registries": [
+    "American Carbon Registry (ACR)",
+    "Article 6.4 Mechanism Registry",
+    "Biocarbon Registry S.A.S",
+    "Carbon Assets Trading System (CATS)",
+    ... abbreviated picklist ...
+    "Switzerland National Registry",
+    "UNFCCC",
+    "Verra"
+  ],
+  "projectSector": [
+    "Accommodation and food service activities",
+    "Activities of extraterritorial organizations and bodies",
+    "Activities of households as employers; undifferentiated goods- and services-producing activities of households for own use",
+    ... abbreviated picklist ...
+    "Wholesale and retail trade; repair of motor vehicles and motorcycles",
+    "Not elsewhere classified"
+  ],
+  "projectType": [
+    "Afforestation",
+    "Avoided Conversion",
+    ... abbreviated picklist ...
+    "Reforestation",
+    "Soil Enrichment",
+    "Technical Removal"
+  ],
+  "coveredByNDC": [
+    "Inside NDC",
+    "Outside NDC",
+    "Unknown"
+  ],
+  "projectStatusValues": [
+    "Listed",
+    "Validated",
+    "Registered",
+    "Approved",
+    "Authorized",
+    "Completed",
+    "Inactive",
+    "Withdrawn",
+    "Rejected",
+    "De-registered"
+  ],
+  "unitMetric": [
+    "tCO2e"
+  ],
+  "methodology": [
+    "ACR - Truck Stop Electrification",
+    "ACR - Advanced Refrigeration Systems",
+    "ACR - Certified Reclaimed HFC Refrigerants, Propellants, and Fire Suppressants",
+    "ACR - Destruction of Ozone Depleting Substances and High-GWP Foam",
+    ... abbreviated picklist ...
+    "VCS - VM0043",
+    "VCS - VMR000",
+    "VCS - VMR006"
+  ],
+  "validationBody": [
+    "350 Solutions",
+    "4K Earth Science Private Limited",
+    ... abbreviated picklist ...
+    "Versa Expertos en Certificación",
+    "VKU Certification Private Limited"
+  ],
+  "countries": [
+    "Afghanistan",
+    "Albania",
+    "Algeria",
+    ... abbreviated picklist ...
+    "Zimbabwe",
+    "Not Specified"
+  ],
+  "ratingType": [
+    "CDP",
+    "CCQI"
+  ],
+  "unitType": [
+    "Avoidance",
+    "Reduction - nature",
+    "Reduction - technical",
+    "Removal - nature",
+    "Removal - technical",
+    "Not Determined"
+  ],
+  "unitStatus": [
+    "Held",
+    "Retired",
+    "Cancelled",
+    "Expired",
+    "Inactive",
+    "Buffer",
+    "Exported",
+    "Rejected",
+    "Pending Export"
+  ],
+  "correspondingAdjustmentDeclaration": [
+    "Committed",
+    "Not Required",
+    "Unknown"
+  ],
+  "correspondingAdjustmentStatus": [
+    "Not Applicable",
+    "Not Started",
+    "Pending",
+    "Completed"
+  ],
+  "labelType": [
+    "Endorsement",
+    "Letter of Qualification",
+    "Certification"
+  ],
+  "verificationBody": [
+    "350 Solutions",
+    "4K Earth Science Private Limited",
+    "AENOR International S.A.U.",
+    ... abbreviated picklist ...
+    "Verifit",
+    "Versa Expertos en Certificación",
+    "VKU Certification Private Limited"
+  ],
+  "projectTags": [
+    " "
+  ],
+  "unitTags": [
+    " "
+  ],
+  "coBenefits": [
+    "SDG 1 - No poverty",
+    "SDG 2 - Zero hunger",
+    "SDG 3 - Good health and well-being",
+    ... abbreviated picklist ...
+    "SDG 16 - Peace and justice strong institutions",
+    "SDG 17 - Partnerships for the goals"
+  ]
+}
+```
 
 #### Get the UID's of all organizations registered in governance data
 
