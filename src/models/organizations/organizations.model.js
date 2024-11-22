@@ -441,7 +441,6 @@ class Organization extends Model {
 
   static async editOrgMeta({ name, icon, prefix }) {
     const myOrganization = await Organization.getHomeOrg();
-
     const payload = {};
 
     if (name) {

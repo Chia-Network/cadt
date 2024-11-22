@@ -1,7 +1,6 @@
 import _ from 'lodash';
 
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Mutex } from 'async-mutex';
 import { Organization, Audit, ModelKeys, Staging, Meta } from '../models';
 import datalayer from '../datalayer';
 import {
@@ -22,14 +21,17 @@ import {
   migrateToNewSync,
   generateGenerationIndex,
 } from '../utils/sync-migration-utils';
+import {
+  processingSyncRegistriesTransactionMutex,
+  syncRegistriesTaskMutex,
+} from '../utils/model-utils.js';
 
 dotenv.config();
-const mutex = new Mutex();
 
 const task = new Task('sync-registries', async () => {
-  logger.debug('running sync registries task');
-  if (!mutex.isLocked()) {
-    const releaseMutex = await mutex.acquire();
+  logger.debug('sync registries task invoked');
+  if (!syncRegistriesTaskMutex.isLocked()) {
+    const releaseSyncTaskMutex = await syncRegistriesTaskMutex.acquire();
     try {
       const hasMigratedToNewSyncMethod = await Meta.findOne({
         where: { metaKey: 'migratedToNewSync' },
@@ -60,7 +62,7 @@ const task = new Task('sync-registries', async () => {
         );
       }
     } finally {
-      releaseMutex();
+      releaseSyncTaskMutex();
     }
   }
 });
@@ -87,18 +89,65 @@ const processJob = async () => {
   });
 
   for (const organization of organizations) {
-    await syncOrganizationAudit(organization);
+    if (CONFIG().CADT.USE_SIMULATOR || process.env.NODE_ENV === 'test') {
+      await syncOrganizationAudit(organization);
+    } else {
+      const mostRecentOrgAuditRecord = await Audit.findOne({
+        where: {
+          orgUid: organization.orgUid,
+        },
+        order: [['createdAt', 'DESC']],
+        limit: 1,
+        raw: true,
+      });
+
+      // verify that the latest organization root hash is up to date with the audit records. attempt correction.
+      if (mostRecentOrgAuditRecord.rootHash !== organization.registryHash) {
+        logger.warn(
+          `latest root hash in org table for organization ${organization.name} (orgUid ${organization.orgUid}) does not match the audit records. attempting to correct`,
+        );
+        try {
+          const result = await Organization.update(
+            { registryHash: mostRecentOrgAuditRecord.rootHash },
+            {
+              where: { orgUid: organization.orgUid },
+            },
+          );
+
+          if (result?.length) {
+            logger.info(
+              `registry hash record corrected for ${organization.name} (orgUid ${organization.orgUid}). proceeding with audit sync`,
+            );
+            const correctedOrganizationRecord = await Organization.findOne({
+              where: { orgUid: organization.orgUid },
+            });
+
+            await syncOrganizationAudit(correctedOrganizationRecord);
+          } else {
+            throw new Error('organizations update query affected 0 records');
+          }
+        } catch (error) {
+          logger.error(
+            `failed to update organization table record for ${organization.name} (orgUid ${organization.orgUid}) with correct root hash. Something is wrong. Skipping audit sync and trying again shortly. Error: ${error}`,
+          );
+        }
+      } else {
+        // normal state, proceed with audit sync
+        await syncOrganizationAudit(organization);
+      }
+    }
   }
 };
 
-async function createTransaction(callback, afterCommitCallbacks) {
-  let result = null;
-
+async function createAndProcessTransaction(callback, afterCommitCallbacks) {
   let transaction;
   let mirrorTransaction;
 
+  logger.info('Starting sequelize transaction and acquiring transaction mutex');
+  const releaseTransactionMutex =
+    await processingSyncRegistriesTransactionMutex.acquire();
+
   try {
-    logger.info('Starting sequelize transaction');
     // Start a transaction
     transaction = await sequelize.transaction();
 
@@ -107,7 +156,7 @@ async function createTransaction(callback, afterCommitCallbacks) {
     }
 
     // Execute the provided callback with the transaction
-    result = await callback(transaction, mirrorTransaction);
+    await callback(transaction, mirrorTransaction);
 
     // Commit the transaction if the callback completes without errors
     await transaction.commit();
@@ -122,13 +171,18 @@ async function createTransaction(callback, afterCommitCallbacks) {
 
     logger.info('Commited sequelize transaction');
 
-    return result;
-  } catch {
+    return true;
+  } catch (error) {
     // Roll back the transaction if an error occurs
     if (transaction) {
-      logger.error('Rolling back transaction');
+      logger.error(
+        `encountered error syncing organization audit. Rolling back transaction. Error: ${error}`,
+      );
       await transaction.rollback();
     }
+    return false;
+  } finally {
+    releaseTransactionMutex();
   }
 }
 
@@ -431,7 +485,7 @@ const syncOrganizationAudit = async (organization) => {
     // by not processing the DELETE for that record.
     const optimizedKvDiff = optimizeAndSortKvDiff(kvDiff);
 
-    const updateTransaction = async (transaction, mirrorTransaction) => {
+    const updateAuditTransaction = async (transaction, mirrorTransaction) => {
       logger.info(
         `Syncing ${organization.name} generation ${toBeProcessedDatalayerGenerationIndex} (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
       );
@@ -528,18 +582,8 @@ const syncOrganizationAudit = async (organization) => {
           }
 
           // Create the Audit record
-          logger.debug(
-            `creating audit model entry for ${organization.name} transacton`,
-          );
+          logger.debug(`creating audit model transaction entry`);
           await Audit.create(auditData, { transaction, mirrorTransaction });
-          await Organization.update(
-            { registryHash: rootToBeProcessed.root_hash },
-            {
-              where: { orgUid: organization.orgUid },
-              transaction,
-              mirrorTransaction,
-            },
-          );
         }
       }
     };
@@ -548,7 +592,27 @@ const syncOrganizationAudit = async (organization) => {
       afterCommitCallbacks.push(truncateStaging);
     }
 
-    await createTransaction(updateTransaction, afterCommitCallbacks);
+    const transactionSucceeded = await createAndProcessTransaction(
+      updateAuditTransaction,
+      afterCommitCallbacks,
+    );
+
+    if (transactionSucceeded) {
+      logger.debug(
+        `updateAuditTransaction successfully completed and committed audit updates for ${organization.name} (orgUid: ${organization.orgUid}, registryId: ${organization.registryId}) generation index ${toBeProcessedDatalayerGenerationIndex}. updating registry hash to ${rootToBeProcessed.root_hash}`,
+      );
+
+      await Organization.update(
+        { registryHash: rootToBeProcessed.root_hash },
+        {
+          where: { orgUid: organization.orgUid },
+        },
+      );
+    } else {
+      logger.debug(
+        `updateAuditTransaction failed to complete and commit audit updates for ${organization.name} (orgUid: ${organization.orgUid}, registryId: ${organization.registryId}) generation index ${toBeProcessedDatalayerGenerationIndex}`,
+      );
+    }
   } catch (error) {
     logger.error('Error syncing org audit', error);
   }
