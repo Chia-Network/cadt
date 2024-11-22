@@ -3,10 +3,11 @@ import Sequelize from 'sequelize';
 
 import { Mutex } from 'async-mutex';
 
-export async function waitForSyncRegistries() {
-  if (processingUpdateTransactionMutex.isLocked()) {
+export async function waitForSyncRegistriesTransaction() {
+  if (processingSyncRegistriesTransactionMutex.isLocked()) {
     // when the mutex is acquired, the current sync transaction has completed
-    const releaseMutex = await processingUpdateTransactionMutex.acquire();
+    const releaseMutex =
+      await processingSyncRegistriesTransactionMutex.acquire();
     await releaseMutex();
   }
 }
@@ -24,7 +25,7 @@ export const syncRegistriesTaskMutex = new Mutex();
  * audit model update transactions are large and lock the DB for long periods.
  * @type {Mutex}
  */
-export const processingUpdateTransactionMutex = new Mutex();
+export const processingSyncRegistriesTransactionMutex = new Mutex();
 
 export function formatModelAssociationName(model) {
   if (model == null || model.model == null) return '';
