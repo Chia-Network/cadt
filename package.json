@@ -73,7 +73,7 @@
     "@babel/register": "^7.25.9",
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
-    "@eslint/eslintrc": "^3.1.0",
+    "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.14.0",
     "@yao-pkg/pkg": "^6.1.1",
     "babel-plugin-module-resolver": "^5.0.2",
