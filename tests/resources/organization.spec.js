@@ -5,6 +5,7 @@ import { expect } from 'chai';
 import { prepareDb } from '../../src/database';
 import datalayer from '../../src/datalayer';
 import { pullPickListValues } from '../../src/utils/data-loaders';
+
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 import * as testFixtures from '../test-fixtures';
 
@@ -74,7 +75,7 @@ describe('Orgainzation Resource CRUD', function () {
         });
 
       expect(response.body.message).to.equal(
-        'Resyncing organization completed',
+        'Resyncing organization process initiated',
       );
     }).timeout(TEST_WAIT_TIME * 10);
   });
