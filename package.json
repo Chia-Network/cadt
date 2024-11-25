@@ -61,7 +61,7 @@
     "superagent": "^8.1.2",
     "toad-scheduler": "^3.0.1",
     "uuidv4": "^6.2.13",
-    "winston": "^3.15.0",
+    "winston": "^3.17.0",
     "winston-daily-rotate-file": "^4.7.1"
   },
   "devDependencies": {
