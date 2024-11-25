@@ -46,7 +46,7 @@ StagingRouter.post(
 StagingRouter.delete('/clean', StagingController.clean);
 
 StagingRouter.get('/hasPendingTransactions', (req, res) => {
-  return StagingController.hasPendingTransactions(req, res);
+  return StagingController.hasPendingCommits(req, res);
 });
 
 export { StagingRouter };
