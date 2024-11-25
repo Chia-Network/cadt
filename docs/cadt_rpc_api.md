@@ -88,6 +88,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Delete all projects and units in STAGING](#delete-all-projects-and-units-in-staging)
     - [Delete a specific project in STAGING](#delete-a-specific-project-in-staging)
     - [Delete a specific unit in STAGING](#delete-a-specific-unit-in-staging)
+  - [Additional staging resources](#additional-staging-resources)
 - [`issuances`](#issuances)
   - [GET Examples](#get-examples-3)
     - [List all issuances from subscribed projects](#list-all-issuances-from-subscribed-projects)
