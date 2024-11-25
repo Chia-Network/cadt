@@ -374,7 +374,7 @@ export const resyncOrganization = async (req, res) => {
     await transaction.commit();
 
     return res.json({
-      message: 'Resyncing organization completed',
+      message: 'Resyncing organization process initiated',
       success: true,
     });
   } catch (error) {
@@ -469,7 +469,7 @@ export const removeMirror = async (req, res) => {
       message: `Mirror removed for ${req.body.storeId}.`,
       success: true,
     });
-  } catch (error) {
+  } catch {
     res.status(400).json({
       message: 'Error removing mirror for organization',
       success: false,

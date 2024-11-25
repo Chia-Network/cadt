@@ -7,7 +7,7 @@ import multer from 'multer';
 import { OrganizationController } from '../../../controllers';
 import {
   importOrganizationSchema,
-  newOrganizationSchema,
+  newOrganizationWithIconSchema,
   resyncOrganizationSchema,
   subscribeOrganizationSchema,
   unsubscribeOrganizationSchema,
@@ -25,15 +25,15 @@ OrganizationRouter.get('/', (req, res) => {
   return OrganizationController.findAll(req, res);
 });
 
-OrganizationRouter.get(
-  '/organizations',
+OrganizationRouter.post(
+  '/remove-mirror',
   validator.body(removeMirrorSchema),
   (req, res) => {
     return OrganizationController.removeMirror(req, res);
   },
 );
 
-OrganizationRouter.get('/sync', (req, res) => {
+OrganizationRouter.post('/sync', (req, res) => {
   return OrganizationController.sync(req, res);
 });
 
@@ -43,7 +43,7 @@ OrganizationRouter.delete('/', (req, res) => {
 
 OrganizationRouter.post(
   '/',
-  validator.body(newOrganizationSchema),
+  validator.body(newOrganizationWithIconSchema),
   (req, res) => {
     return OrganizationController.create(req, res);
   },

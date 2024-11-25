@@ -48,7 +48,7 @@ export const deleteProject = async (warehouseProjectId) => {
     .delete('/v1/projects')
     .send({ warehouseProjectId });
   expect(result.body).to.deep.equal({
-    message: 'Project deleted successfully',
+    message: 'Project deletion staged successfully',
     success: true,
   });
   expect(result.statusCode).to.equal(200);
