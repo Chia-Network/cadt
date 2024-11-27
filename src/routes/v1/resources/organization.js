@@ -11,7 +11,6 @@ import {
   resyncOrganizationSchema,
   subscribeOrganizationSchema,
   unsubscribeOrganizationSchema,
-  importHomeOrganizationSchema,
   removeMirrorSchema,
   addMirrorSchema,
   getMetaDataSchema,
@@ -59,17 +58,9 @@ OrganizationRouter.put('/edit', upload.single('file'), (req, res) => {
 
 OrganizationRouter.put(
   '/',
-  validator.body(importHomeOrganizationSchema),
-  (req, res) => {
-    return OrganizationController.importHomeOrg(req, res);
-  },
-);
-
-OrganizationRouter.put(
-  '/import',
   validator.body(importOrganizationSchema),
   (req, res) => {
-    return OrganizationController.importOrg(req, res);
+    return OrganizationController.importOrganization(req, res);
   },
 );
 

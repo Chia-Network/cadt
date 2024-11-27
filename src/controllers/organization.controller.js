@@ -193,45 +193,19 @@ export const resetHomeOrg = async (req, res) => {
   }
 };
 
-export const importOrg = async (req, res) => {
+export const importOrganization = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
 
-    const { orgUid } = req.body;
+    await Organization.importOrganization(req.body.orgUid, req.body?.orgUid);
 
-    res.json({
+    res.status(200).json({
       message:
-        'Importing and subscribing organization this can take a few mins.',
-      success: true,
-    });
-
-    return Organization.importOrganization(orgUid);
-  } catch (error) {
-    console.trace(error);
-    res.status(400).json({
-      message: 'Error importing organization',
-      error: error.message,
-      success: false,
-    });
-  }
-};
-
-export const importHomeOrg = async (req, res) => {
-  try {
-    await assertIfReadOnlyMode();
-    await assertWalletIsSynced();
-
-    const { orgUid } = req.body;
-
-    await Organization.importHomeOrg(orgUid);
-
-    res.json({
-      message: 'Importing home organization.',
+        "Successfully imported organization. cadt will begin syncing the organization's data from datalayer",
       success: true,
     });
   } catch (error) {
-    console.trace(error);
     res.status(400).json({
       message: 'Error importing organization',
       error: error.message,
@@ -246,10 +220,13 @@ export const subscribeToOrganization = async (req, res) => {
     await assertWalletIsSynced();
     await assertHomeOrgExists();
 
-    await Organization.subscribeToOrganization(req.body.orgUid);
+    const resultMessage = await Organization.subscribeToOrganization(
+      req.body.orgUid,
+      req.body.registryId,
+    );
 
     return res.json({
-      message: 'Subscribed to organization',
+      message: resultMessage,
       success: true,
     });
   } catch (error) {

@@ -19,6 +19,11 @@ import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
 import ModelTypes from './organizations.modeltypes.cjs';
+import {
+  getOwnedStores,
+  getSubscriptions,
+} from '../../datalayer/persistance.js';
+import { subscribeToStoreOnDataLayer } from '../../datalayer/simulator.js';
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -225,83 +230,83 @@ class Organization extends Model {
     await datalayer.addMirror(storeId, url, force);
   }
 
-  static async importHomeOrg(orgUid) {
-    const orgData = await datalayer.getLocalStoreData(orgUid);
-
-    if (!orgData) {
-      throw new Error('Your node does not have write access to this orgUid');
-    }
-
-    const orgDataObj = orgData.reduce((obj, curr) => {
-      obj[curr.key] = curr.value;
-      return obj;
-    }, {});
-
-    const registryData = await datalayer.getLocalStoreData(
-      orgDataObj.registryId,
-    );
-
-    const registryDataObj = registryData.reduce((obj, curr) => {
-      obj[curr.key] = curr.value;
-      return obj;
-    }, {});
-
-    const dataModelVersion = getDataModelVersion();
-
-    if (!registryDataObj[dataModelVersion]) {
-      registryDataObj[dataModelVersion] = await Organization.appendNewRegistry(
-        orgDataObj.registryId,
-        dataModelVersion,
-      );
-    }
-
-    await Organization.upsert({
-      orgUid,
-      name: orgDataObj.name,
-      icon: orgDataObj.icon,
-      registryId: registryDataObj[dataModelVersion],
-      subscribed: true,
-      isHome: true,
-    });
-  }
-
-  static async importOrganization(orgUid) {
+  static async importOrganization(orgUid, isHome) {
     try {
-      logger.info('Importing organization ' + orgUid);
-      const orgData = await datalayer.getSubscribedStoreData(orgUid);
-
-      if (!orgData.registryId) {
-        logger.error(
-          'Corrupted organization, no registryId on the datalayer, can not import',
+      const homeOrgExists = Organization.getHomeOrg();
+      if (isHome && homeOrgExists) {
+        throw new Error(
+          'cannot import home organization. home organization already exists on this instance',
         );
-        return;
       }
 
-      logger.info(`IMPORTING REGISTRY: ${orgData.registryId}`);
-
-      const registryData = await datalayer.getSubscribedStoreData(
-        orgData.registryId,
+      logger.info(`Importing ${isHome ? 'home' : ''} organization ${orgUid}`);
+      logger.debug(
+        isHome
+          ? `checking that datalayer owns org store ${orgUid}`
+          : `checking that datalayer is subscribed to org store ${orgUid}`,
       );
+
+      const datalayerStoresResult = isHome
+        ? await getOwnedStores()
+        : await getSubscriptions();
+
+      if (!datalayerStoresResult.success) {
+        throw new Error(
+          isHome
+            ? 'failed to retrieve owned stores from datalayer'
+            : 'failed to retrieve store subscriptions from datalayer',
+        );
+      }
+
+      if (!datalayerStoresResult?.storeIds.includes(orgUid)) {
+        throw new Error(
+          isHome
+            ? `your chia instance does not own store ${orgUid}. cannot import as home organization.`
+            : `datalayer is not subscribed to store ${orgUid}. please subscribe to this store before importing the organization`,
+        );
+      }
+
+      logger.info(`found orgUid store. attempting to import registry store`);
+
+      const orgData = await datalayer.getCurrentStoreData(orgUid);
+      const registryId = orgData?.registryId;
+
+      if (!registryId) {
+        throw new Error(
+          `store ${orgUid} does not contain a valid registry storeId, can not import`,
+        );
+      }
+
+      if (!datalayerStoresResult?.storeIds.includes(registryId)) {
+        throw new Error(
+          isHome
+            ? `your chia instance does not own store ${registryId} belonging to organization store ${orgUid}. cannot import as home organization.`
+            : `datalayer is NOT subscribed to registry store ${registryId} belonging to organization store ${orgUid}. please subscribe to this registry store before importing the organization`,
+        );
+      }
+
+      logger.debug(`getting registry data from registry store ${registryId}`);
+      const registryData = await datalayer.getCurrentStoreData(orgUid);
 
       const dataModelVersion = getDataModelVersion();
 
       if (!registryData[dataModelVersion]) {
         throw new Error(
-          `Organization has no registry for the ${dataModelVersion} datamodel, can not import`,
+          `organization ${orgUid} has no registry for the ${dataModelVersion} datamodel, can not import`,
         );
       }
 
-      logger.info(`IMPORTING REGISTRY ${dataModelVersion}: `, registryData.v1);
+      logger.info(
+        `importing registry data from store ${registryId} (datamodel version ${dataModelVersion}) for organization ${orgUid}`,
+      );
 
-      await datalayer.subscribeToStoreOnDataLayer(registryData.v1);
-
-      logger.info({
+      logger.debug('upserting the following imported organization data', {
         orgUid,
         name: orgData.name,
         icon: orgData.icon,
         registryId: registryData[dataModelVersion],
         subscribed: true,
-        isHome: false,
+        isHome,
       });
 
       await Organization.upsert({
@@ -310,24 +315,75 @@ class Organization extends Model {
         icon: orgData.icon,
         registryId: registryData[dataModelVersion],
         subscribed: true,
-        isHome: false,
+        isHome,
       });
 
-      if (AUTO_SUBSCRIBE_FILESTORE) {
+      if (AUTO_SUBSCRIBE_FILESTORE && !isHome) {
         await FileStore.subscribeToFileStore(orgUid);
       }
     } catch (error) {
-      logger.info(error.message);
+      // catch for logging purposes. need to re-throw to controller
+      logger.error(`cannot import organization. Error: ${error.message}`);
+      throw error;
     }
   }
 
-  static async subscribeToOrganization(orgUid) {
+  static async subscribeToOrganization(orgUid, registryId) {
+    const subscribedStores = await getSubscriptions();
+    if (!subscribedStores.success) {
+      throw new Error('failed to contact datalayer');
+    }
+
+    const subscribedToOrgStore = subscribedStores.storeIds.includes(orgUid);
+    const subscribedToRegistryStore =
+      subscribedStores.storeIds.includes(registryId);
+
+    if (!subscribedToOrgStore) {
+      logger.info(
+        `datalayer is not subscribed to orgUid store ${orgUid}, subscribing ...`,
+      );
+
+      const result = await subscribeToStoreOnDataLayer(orgUid, true);
+      if (result) {
+        logger.info(`subscribed to store ${orgUid}`);
+      } else {
+        const error = `failed to subscribe to store ${orgUid}`;
+        logger.error(error);
+        throw new Error(error);
+      }
+
+      // wait 5 secs to give RPC a break
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+
+    if (!subscribedToRegistryStore) {
+      logger.info(
+        `datalayer is not subscribed to registryId store ${registryId}, subscribing ...`,
+      );
+
+      const result = await subscribeToStoreOnDataLayer(registryId, true);
+      if (result) {
+        logger.info(`subscribed to store ${registryId}`);
+      } else {
+        const error = `failed to subscribe to store ${registryId}`;
+        logger.error(error);
+        throw new Error(error);
+      }
+
+      // wait 5 secs to give RPC a break
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+
     const exists = await Organization.findOne({ where: { orgUid } });
     if (exists) {
       await Organization.update({ subscribed: true }, { where: { orgUid } });
+      return `successfully subscribed to organization ${orgUid} and its registry store ${registryId}`;
     } else {
-      throw new Error(
-        'Can not subscribe, please import this organization first',
+      return (
+        `successfully subscribed to organization store ${orgUid} the associated registry store ${registryId}. ` +
+        `this organization does not exist in your cadt instance database. you will need to import the organization for ` +
+        `cadt to begin syncing the organization's data. please allow a few minutes for datalayer to sync the store data ` +
+        `before attempting to import.`
       );
     }
   }
