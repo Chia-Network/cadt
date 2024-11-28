@@ -9,3 +9,4 @@ export * as GovernanceController from './governance.controller';
 export * as FileStoreController from './fileStore.controller';
 export * as OfferController from './offer.controller';
 export * as StatisticsController from './statistics.controller';
+export * as AddressBookController from './addressBook.controller';
