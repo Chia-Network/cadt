@@ -36,6 +36,7 @@ import OrgSyncRemaining from './20231020214357-OrgSyncRemainingCount';
 import UnitOwnerNotRequired from './20231016190739-UnitOwnerNotRequired';
 import AddGenerationIndexToAudit from './20231207142225-AddGenerationIndexToAudit';
 import CreateStatisticsCache from './20240607005647-create-statistics-cache.js';
+import CreateAddress from './20241127214244-create-address.js';
 
 export const migrations = [
   {
@@ -193,5 +194,9 @@ export const migrations = [
   {
     migration: CreateStatisticsCache,
     name: '20240607005647-create-statistics-cache',
+  },
+  {
+    migration: CreateAddress,
+    name: '20241127214244-create-address.js',
   },
 ];
