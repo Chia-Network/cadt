@@ -8,6 +8,7 @@ import { logger } from '../logger.js';
 import { CONFIG } from '../user-config';
 
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 const task = new Task('sync-default-organizations', async () => {
@@ -15,7 +16,7 @@ const task = new Task('sync-default-organizations', async () => {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
     if (!CONFIG().CADT.USE_SIMULATOR) {
-      Organization.subscribeToDefaultOrganizations();
+      await Organization.subscribeToDefaultOrganizations();
     }
   } catch (error) {
     logger.error(
