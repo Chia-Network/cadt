@@ -16,7 +16,7 @@ const task = new Task('sync-default-organizations', async () => {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
     if (!CONFIG.USE_SIMULATOR) {
-      Organization.subscribeToDefaultOrganizations();
+      await Organization.subscribeToDefaultOrganizations();
     }
   } catch (error) {
     logger.error(

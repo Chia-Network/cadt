@@ -17,7 +17,7 @@ const task = new Task('sync-organization-meta', async () => {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
     if (!CONFIG.USE_SIMULATOR) {
-      Organization.syncOrganizationMeta();
+      await Organization.syncOrganizationMeta();
     }
   } catch (error) {
     logger.error(

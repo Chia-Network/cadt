@@ -343,69 +343,66 @@ class Organization extends Model {
     try {
       const allSubscribedOrganizations = await Organization.findAll({
         where: { subscribed: true },
+        raw: true,
       });
 
-      await Promise.all(
-        allSubscribedOrganizations.map(async (organization) => {
-          const processData = (data, keyFilter) =>
-            data
-              .filter(({ key }) => keyFilter(key))
-              .reduce(
-                (update, { key, value }) => ({ ...update, [key]: value }),
-                {},
-              );
+      for (const organization of allSubscribedOrganizations) {
+        const processData = (data, keyFilter) =>
+          data
+            .filter(({ key }) => keyFilter(key))
+            .reduce(
+              (update, { key, value }) => ({ ...update, [key]: value }),
+              {},
+            );
 
-          const onFail = (message) => {
-            logger.info(`Unable to sync metadata from ${organization.orgUid}`);
-            logger.error(`ORGANIZATION DATA SYNC ERROR: ${message}`);
-            Organization.update(
-              { orgHash: '0' },
+        const onFail = async (message) => {
+          logger.info(`Unable to sync metadata from ${organization.orgUid}`);
+          logger.error(`ORGANIZATION DATA SYNC ERROR: ${message}`);
+          await Organization.update(
+            { orgHash: '0' },
+            { where: { orgUid: organization.orgUid } },
+          );
+        };
+
+        const onResult = async (updateHash, data) => {
+          try {
+            const updateData = processData(
+              data,
+              (key) => !key.includes('meta_'),
+            );
+            const metadata = processData(data, (key) => key.includes('meta_'));
+
+            await Organization.update(
+              {
+                ..._.omit(updateData, ['registryId']),
+                prefix: updateData.prefix || '0',
+                metadata: JSON.stringify(metadata),
+              },
               { where: { orgUid: organization.orgUid } },
             );
-          };
 
-          const onResult = async (updateHash, data) => {
-            try {
-              const updateData = processData(
-                data,
-                (key) => !key.includes('meta_'),
-              );
-              const metadata = processData(data, (key) =>
-                key.includes('meta_'),
-              );
+            logger.debug(
+              `Updating orgUid ${organization.orgUid} with hash ${updateHash}`,
+            );
+            await Organization.update(
+              { orgHash: updateHash },
+              { where: { orgUid: organization.orgUid } },
+            );
+          } catch (error) {
+            logger.info(error.message);
+            onFail(error.message);
+          }
+        };
 
-              await Organization.update(
-                {
-                  ..._.omit(updateData, ['registryId']),
-                  prefix: updateData.prefix || '0',
-                  metadata: JSON.stringify(metadata),
-                },
-                { where: { orgUid: organization.orgUid } },
-              );
-
-              logger.debug(
-                `Updating orgUid ${organization.orgUid} with hash ${updateHash}`,
-              );
-              await Organization.update(
-                { orgHash: updateHash },
-                { where: { orgUid: organization.orgUid } },
-              );
-            } catch (error) {
-              logger.info(error.message);
-              onFail(error.message);
-            }
-          };
-
-          datalayer.getStoreIfUpdated(
-            organization.orgUid,
-            organization.orgHash,
-            onResult,
-            onFail,
-          );
-        }),
-      );
+        await datalayer.getStoreIfUpdated(
+          organization.orgUid,
+          organization.orgHash,
+          onResult,
+          onFail,
+        );
+      }
     } catch (error) {
-      logger.info(error.message);
+      logger.error(error.message);
     }
   }
 
