@@ -102,7 +102,7 @@ const processJob = async () => {
       });
 
       // verify that the latest organization root hash is up to date with the audit records. attempt correction.
-      if (mostRecentOrgAuditRecord.rootHash !== organization.registryHash) {
+      if (mostRecentOrgAuditRecord?.rootHash !== organization?.registryHash) {
         logger.warn(
           `latest root hash in org table for organization ${organization.name} (orgUid ${organization.orgUid}) does not match the audit records. attempting to correct`,
         );
