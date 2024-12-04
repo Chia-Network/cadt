@@ -1,3 +1,25 @@
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+### Bug Fixes
+
+* adjust test expected messages for clarified RPC responses ([13cd876](https://github.com/Chia-Network/cadt/commit/13cd87692693cb3061cc0ed9a3f2da95af7f2ea7))
+* failing tests ([debad53](https://github.com/Chia-Network/cadt/commit/debad53293b5c79cf592451144d89c031c4d4b90))
+* organization meta sync task hanging ([b735808](https://github.com/Chia-Network/cadt/commit/b735808285dab4eb98d36fe348d57f22fb2c61ad))
+* restrictive json parser limit. increased to 5mb ([bd583db](https://github.com/Chia-Network/cadt/commit/bd583dba8e70aec12db35e08f282e78e256c18e1))
+
+
+### Features
+
+* mirror check adds governance mirrors if non-governance instance ([7270d3b](https://github.com/Chia-Network/cadt/commit/7270d3b5a6c5d7c43d24fba9309668d86cd39cd8))
+* mirror check adds governance mirrors if non-governance instance ([7fac2c7](https://github.com/Chia-Network/cadt/commit/7fac2c786c4037cedbd7997c088ebcca898d9487))
+* mirror check adds governance mirrors if non-governance instance ([7213449](https://github.com/Chia-Network/cadt/commit/721344924c121a05e5dbf6d84facbb8dfb006197))
+* mirror check task automatically adds missing governance mirrors ([80986ab](https://github.com/Chia-Network/cadt/commit/80986abe52b205c16b1fa63b0bdf48f581c3f002))
+* sqlite db locking mitigation via organizations.model.js and audit.model.js accessing mutex ([b489859](https://github.com/Chia-Network/cadt/commit/b48985967d911e7d1f0923808b374ecac3d75b19))
+* updated org model and sync registries to prevent locking organization table during audit sync ([a3f33f7](https://github.com/Chia-Network/cadt/commit/a3f33f791e470aed6fa707df6cf2ca483b4fab85))
+
+
+
 ## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
 
 
