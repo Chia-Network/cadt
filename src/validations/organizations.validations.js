@@ -7,10 +7,7 @@ export const newOrganizationWithIconSchema = Joi.object({
 
 export const importOrganizationSchema = Joi.object({
   orgUid: Joi.string().required(),
-});
-
-export const importHomeOrganizationSchema = Joi.object({
-  orgUid: Joi.string().required(),
+  isHome: Joi.bool().optional(),
 });
 
 export const unsubscribeOrganizationSchema = Joi.object({
@@ -19,6 +16,7 @@ export const unsubscribeOrganizationSchema = Joi.object({
 
 export const subscribeOrganizationSchema = Joi.object({
   orgUid: Joi.string().required(),
+  registryId: Joi.string().required(),
 });
 
 export const resyncOrganizationSchema = Joi.object({

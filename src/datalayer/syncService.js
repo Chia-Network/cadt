@@ -26,8 +26,13 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 };
 
+/** note that although this function will succeed in subscribing to the store, datalayer will not sync data fast enough
+ * for the data to be available to the calling function when this function returns
+ * @param storeId
+ * @returns {Promise<*>}
+ */
 const getSubscribedStoreData = async (storeId) => {
-  const { storeIds: subscriptions } = await dataLayer.getSubscriptions(storeId);
+  const { storeIds: subscriptions } = await dataLayer.getSubscriptions();
   const alreadySubscribed = subscriptions.includes(storeId);
 
   if (!alreadySubscribed) {
@@ -142,11 +147,16 @@ const getCurrentStoreData = async (storeId) => {
   }
 
   const encodedData = await dataLayer.getStoreData(storeId);
-  if (encodedData) {
-    return decodeDataLayerResponse(encodedData);
-  } else {
-    return [];
+
+  if (_.isEmpty(encodedData?.keys_values)) {
+    throw new Error(`No data found for store ${storeId}`);
   }
+
+  const decodedData = decodeDataLayerResponse(encodedData);
+  return decodedData.reduce((obj, current) => {
+    obj[current.key] = current.value;
+    return obj;
+  }, {});
 };
 
 /**
