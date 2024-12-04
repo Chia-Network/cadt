@@ -353,7 +353,7 @@ export const resyncOrganization = async (req, res) => {
 
     await Organization.update(
       { registryHash: '0' },
-      { where: { orgUid: req.body.orgUid } },
+      { where: { orgUid: req?.body?.orgUid } },
     );
 
     await Promise.all([
@@ -367,7 +367,7 @@ export const resyncOrganization = async (req, res) => {
     await transaction.commit();
 
     return res.json({
-      message: 'Resyncing organization completed',
+      message: 'Resyncing organization process initiated',
       success: true,
     });
   } catch (error) {

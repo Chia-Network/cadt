@@ -73,7 +73,7 @@ describe('Orgainzation Resource CRUD', function () {
         });
 
       expect(response.body.message).to.equal(
-        'Resyncing organization completed',
+        'Resyncing organization process initiated',
       );
     }).timeout(TEST_WAIT_TIME * 10);
   });

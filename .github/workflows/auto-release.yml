@@ -19,7 +19,7 @@ jobs:
         uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout current branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # Need PACKAGE_ADMIN_PAT token so when the tag is created, the tag automation runs
           token: ${{ secrets.PACKAGE_ADMIN_PAT }}
@@ -51,7 +51,7 @@ jobs:
           fi
 
       - name: Checkout develop branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # Need PACKAGE_ADMIN_PAT token so when the tag is created, the tag automation runs
           token: ${{ secrets.PACKAGE_ADMIN_PAT }}

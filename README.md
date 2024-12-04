@@ -78,7 +78,7 @@ sudo apt-get update
 sudo apt-get install chia-blockchain-cli cadt
 ```
 
-6.  Start Chia Wallet and Datalayer with [systemd](https://docs.chia.net/installation/#systemd)
+6.  Start Chia Wallet, Full Node, and Datalayer with [systemd](https://docs.chia.net/installation/#systemd)
 
 ```
 sudo systemctl start chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME>
@@ -110,7 +110,7 @@ If using the built-in HTTP server for datalayer, start it at boot with
 sudo systemctl enable chia-data-layer-http@<USERNAME>
 ```
 
-10.  View CADT logs to validate
+9.  View CADT logs to validate
 
 ```
 journalctl -u cadt@<USERNAME> -f
@@ -132,8 +132,8 @@ To install from source:
 ```
 git clone git@github.com:Chia-Network/cadt.git
 cd cadt
-nvm install 20.16
-nvm use 20.16
+nvm install
+nvm use
 npm run start
 ```
 
@@ -141,7 +141,7 @@ npm run start
 
 CADT relies on all participants publicly sharing their data over Chia Datalayer, which includes sharing the Chia-generated `.dat` files over HTTP.  The files are located in `~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>/` (where `<NETWORK>` is the Chia network, usually either "mainnet" or "testneta") and can be shared over any web-accessible HTTP endpoint, including
 
-* Using the built-in datalayer-http service (see [Installation](#installation) instructions below).  Datalayer-http runs on port 8575 by default which may need to be opened in your firewall configuration or forwarded by your router.  Additionally, a static IP address will be required, which is not offered by default on some hosting providers.  On AWS, assign an Elastic IP to the EC2 instance or use an Application Load Balancer to solve this.  
+* Using the built-in datalayer-http service (see [Installation](#installation) instructions below).  Datalayer-http runs on port 8575 by default which may need to be opened in your firewall configuration or forwarded by your router.  Additionally, a static IP address, or stable DNS record, will be required, which is not offered by default on some hosting providers.  On AWS, assign an Elastic IP to the EC2 instance or use an Application Load Balancer to solve this.  
 
 * Using Nginx, Apache, Caddy, or any other web server.  This also requires a static IP address, or dynamically assigned DNS record.  Another challenge is that the default location for the .dat files is in the user's home directory, which the web server software will not have read-access to.  One simple solution is 
   * `mv ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK> /var/www/` - move the datalayer file directory outside of the home directory
@@ -168,7 +168,7 @@ CADT relies on all participants publicly sharing their data over Chia Datalayer,
 
 * Use [S3](https://aws.amazon.com/s3/) or other object store.  Datalayer .dat files can be synced to any cloud file storage solution that can serve them publicly over HTTP.  One recommended solution using S3 is to [use this script and follow the installation and usage instructions in the README](https://github.com/TheLastCicada/Chia-Datalayer-S3-Sync).   
 
-
+Once the .dat files are publicly available, update `DATALAYER_FILE_SERVER_URL` in the [CADT configuration file](#configuration) with the URL or IP address (always include http:// or https://) and the port, then restart CADT.  CADT will begin to create mirrors at this URL for your data and all stores you are subscribed to.  
 
 ### Run CADT on a Testnet
 
@@ -192,20 +192,20 @@ CADT runs on a testnet called "testnetA" which is different than the main Chia t
 
      `sudo systemctl stop cadt@<USERNAME>`
 
- 4.  Update the `GOVERNANCE_BODY_ID` in `~/.chia/mainnet/cadt/v1/config.yaml` to be `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`
+ 5.  Update the `GOVERNANCE_BODY_ID` in `~/.chia/mainnet/cadt/v1/config.yaml` to be `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`
 
- 5.  If you already were running CADT on mainnet, delete the CADT database
+ 6.  If you already were running CADT on mainnet, delete the CADT database
 
      `rm ~/.chia/mainnet/cadt/v1/data.sqlite3*`
 
- 6.  Start CADT
+ 7.  Start CADT
      
      `sudo systemctl start cadt@<USERNAME>`
 
 
 ### Ports, Networking, and Security
 
-By default, the CADT API will listen on localhost only on port 31310. If running a node with `READ_ONLY` set to `false`, it is highly recommended that CADT is run on a private network or with access limited by IP address. To allow remote connections to CADT, set the `BIND_ADDRESS` (see the [Configuration](#configuration) section below) to the IP to listen on, or `0.0.0.0` to listen on all interfaces. The port for the CADT API can be set with the parameter `CW_PORT`.  The default port is 31310. In many cases, users will need to access the API from their workstations for either the [CADT UI](https://github.com/Chia-Network/climate-warehouse-ui) or to integrate with existing tools and scripts. To add authentication to the API, use the `CADT_API_KEY` parameter.  Alternatively, the API can be served behind an authentication proxy to restrict access and the `CADT_API_KEY` can be left blank. If running an observer node with `READ_ONLY` set to `true`, the CADT API will only share data from the public blockchain, and running without authentication is usually safe. If `READ_ONLY` is set to `false`, authentication must be used to prevent unauthorized writes to the blockchain. 
+By default, the CADT API will listen on localhost only on port 31310. If running a node with `READ_ONLY` set to `false`, it is highly recommended that CADT is run on a private network or with access limited by IP address. To allow remote connections to CADT, set the `BIND_ADDRESS` (see the [Configuration](#configuration) section below) to the IP to listen on, or `0.0.0.0` to listen on all interfaces. The port for the CADT API can be set with the parameter `CW_PORT`.  The default port is 31310. In many cases, users will need to access the API from their workstations for either the [CADT UI](https://github.com/Chia-Network/cadt-ui) or to integrate with existing tools and scripts. To add authentication to the API, use the `CADT_API_KEY` parameter.  Alternatively, the API can be served behind an authentication proxy to restrict access and the `CADT_API_KEY` can be left blank. If running an observer node with `READ_ONLY` set to `true`, the CADT API will only share data from the public blockchain, and running without authentication is usually safe. If `READ_ONLY` is set to `false`, authentication must be used to prevent unauthorized writes to the blockchain. 
 
 ### Adding Encryption to the CADT API
 

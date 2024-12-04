@@ -12,7 +12,7 @@ const upload = multer();
 import { FileStoreController } from '../../../controllers';
 import { getFileSchema, subscribedSchema } from '../../../validations';
 
-FileStoreRouter.post('/get_file', validator.body(getFileSchema), (req, res) => {
+FileStoreRouter.get('/get_file', validator.body(getFileSchema), (req, res) => {
   return FileStoreController.getFile(req, res);
 });
 
