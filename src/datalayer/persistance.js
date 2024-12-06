@@ -396,14 +396,19 @@ const getRoot = async (storeId, ignoreEmptyStore = false) => {
       .send({ id: storeId });
 
     const { confirmed, hash } = response.body;
+    logger.debug(
+      `the current root data for store ${storeId} is ${response.body}`,
+    );
 
-    if (confirmed && (!ignoreEmptyStore || !hash.includes('0x00000000000'))) {
+    if (confirmed && (ignoreEmptyStore || !hash.includes('0x00000000000'))) {
       return response.body;
     }
 
     return false;
   } catch (error) {
-    logger.error(error.message);
+    logger.error(
+      `failed to get root for store ${storeId}. error: ${error.message}`,
+    );
     return false;
   }
 };
@@ -539,7 +544,7 @@ const subscribeToStoreOnDataLayer = async (
     [(homeOrg.orgUid, homeOrg.registryId)].includes(storeId)
   ) {
     logger.info(`Cant subscribe to self: ${storeId}`);
-    return { success: true };
+    return false;
   }
 
   const { storeIds: subscriptions, success } = await getSubscriptions();
@@ -549,7 +554,7 @@ const subscribeToStoreOnDataLayer = async (
 
   if (subscriptions.includes(storeId)) {
     logger.info(`Already subscribed to: ${storeId}`);
-    return { success: true };
+    return true;
   }
 
   const url = `${CONFIG.DATALAYER_URL}/subscribe`;
@@ -577,7 +582,7 @@ const subscribeToStoreOnDataLayer = async (
 
       await addMirror(storeId, mirrorUrl, true);
 
-      return data;
+      return true;
     }
 
     return false;

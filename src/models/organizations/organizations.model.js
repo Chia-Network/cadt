@@ -295,14 +295,16 @@ class Organization extends Model {
 
       await datalayer.subscribeToStoreOnDataLayer(registryData.v1);
 
-      logger.info({
-        orgUid,
-        name: orgData.name,
-        icon: orgData.icon,
-        registryId: registryData[dataModelVersion],
-        subscribed: true,
-        isHome: false,
-      });
+      logger.info(
+        `adding and organization with the following info ${{
+          orgUid,
+          name: orgData.name,
+          icon: orgData.icon,
+          registryId: registryData[dataModelVersion],
+          subscribed: true,
+          isHome: false,
+        }}`,
+      );
 
       await Organization.upsert({
         orgUid,
@@ -322,13 +324,76 @@ class Organization extends Model {
   }
 
   static async subscribeToOrganization(orgUid) {
-    const exists = await Organization.findOne({ where: { orgUid } });
-    if (exists) {
-      await Organization.update({ subscribed: true }, { where: { orgUid } });
-    } else {
-      throw new Error(
-        'Can not subscribe, please import this organization first',
-      );
+    // we'll give datalayer 10 minutes to get data where it needs to be and complete this process
+    const timeout = Date.now() + 600000;
+    const reachedTimeout = () => {
+      return Date.now() > timeout;
+    };
+
+    let dataModelVersionStoreId = null;
+    while (!dataModelVersionStoreId) {
+      try {
+        const orgStoreData = await datalayer.getSubscribedStoreData(orgUid);
+        // here registryId is actually the data model version store that points to the registry store
+        dataModelVersionStoreId = orgStoreData?.registryId;
+        if (!dataModelVersionStoreId) {
+          throw new Error(
+            `cannot get required data from orgUid store ${orgUid}`,
+          );
+        }
+      } catch (error) {
+        if (reachedTimeout()) {
+          throw new Error(
+            `reached timeout before subscribing to all required stores. Failure at time out: ${error.message}`,
+          );
+        }
+      } finally {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
+
+    let registryStoreId = null;
+    while (!registryStoreId) {
+      try {
+        const dataModelStoreData = await datalayer.getSubscribedStoreData(
+          dataModelVersionStoreId,
+        );
+        // here v1 is actually the registry store id
+        registryStoreId = dataModelStoreData?.v1;
+        if (!registryStoreId) {
+          throw new Error(
+            `cannot get required data from datamodel version store ${dataModelVersionStoreId}`,
+          );
+        }
+      } catch (error) {
+        if (reachedTimeout()) {
+          throw new Error(
+            `reached timeout before subscribing to all required stores. Failure at time out: ${error.message}`,
+          );
+        }
+      } finally {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
+
+    let registryData = null;
+    while (!registryData) {
+      try {
+        registryData = await datalayer.getSubscribedStoreData(registryStoreId);
+        if (!registryData) {
+          throw new Error(
+            `cannot get data from registry store ${dataModelVersionStoreId}`,
+          );
+        }
+      } catch (error) {
+        if (reachedTimeout()) {
+          throw new Error(
+            `reached timeout before subscribing to all required stores. Failure at time out: ${error.message}`,
+          );
+        }
+      } finally {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
     }
   }
 

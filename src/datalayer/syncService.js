@@ -36,23 +36,26 @@ const getSubscribedStoreData = async (storeId) => {
 
   if (!alreadySubscribed) {
     logger.info(`No Subscription Found for ${storeId}, Subscribing...`);
-    const response = await subscribeToStoreOnDataLayer(storeId);
+    const response = await dataLayer.subscribeToStoreOnDataLayer(storeId, true);
 
-    if (!response || !response.success) {
+    if (!response) {
       throw new Error(`Failed to subscribe to ${storeId}`);
     }
   }
 
-  logger.info(`Subscription Found for ${storeId}.`);
+  logger.debug(`Subscription Found for ${storeId}.`);
 
   if (!USE_SIMULATOR) {
-    logger.info(`Getting confirmation for ${storeId}.`);
+    logger.debug(
+      `syncService getSubscribedData() checking that data is available for ${storeId}.`,
+    );
     const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
-    logger.info(`Store found in DataLayer: ${storeId}.`);
     if (!storeExistAndIsConfirmed) {
       throw new Error(`Store not found in DataLayer: ${storeId}.`);
     } else {
-      logger.debug(`Store is confirmed, proceeding to get data ${storeId}`);
+      logger.debug(
+        `store data is confirmed available, proceeding to get data ${storeId}`,
+      );
     }
   }
 
@@ -64,7 +67,9 @@ const getSubscribedStoreData = async (storeId) => {
   }
 
   if (_.isEmpty(encodedData?.keys_values)) {
-    throw new Error(`No data found for store ${storeId}`);
+    throw new Error(
+      `getSubscribedStoreData() found no data for store ${storeId}`,
+    );
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);

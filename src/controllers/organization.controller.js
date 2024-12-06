@@ -244,7 +244,6 @@ export const subscribeToOrganization = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
-    await assertHomeOrgExists();
 
     await Organization.subscribeToOrganization(req.body.orgUid);
 
