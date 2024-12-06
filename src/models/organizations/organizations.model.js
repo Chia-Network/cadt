@@ -295,14 +295,16 @@ class Organization extends Model {
 
       await datalayer.subscribeToStoreOnDataLayer(registryData.v1);
 
-      logger.info({
-        orgUid,
-        name: orgData.name,
-        icon: orgData.icon,
-        registryId: registryData[dataModelVersion],
-        subscribed: true,
-        isHome: false,
-      });
+      logger.info(
+        `setting the following organization information: ${{
+          orgUid,
+          name: orgData.name,
+          icon: orgData.icon,
+          registryId: registryData[dataModelVersion],
+          subscribed: true,
+          isHome: false,
+        }}`,
+      );
 
       await Organization.upsert({
         orgUid,
