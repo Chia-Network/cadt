@@ -1,3 +1,13 @@
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+### Bug Fixes
+
+* assorted bug fixes ([d32cc3a](https://github.com/Chia-Network/cadt/commit/d32cc3a32914b59ec7e75dbd1c93387e919cd174))
+* assorted bug fixes ([1054730](https://github.com/Chia-Network/cadt/commit/1054730d1d7dfec2fffca772c753cdea9073c2ea))
+
+
+
 ## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
 
 
