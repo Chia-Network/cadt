@@ -1,6 +1,6 @@
 {
   "name": "cadt",
-  "version": "1.7.19",
+  "version": "1.7.20",
   "_comment": "DONT CHANGE MAJOR UNLESS DATAMODEL CHANGES: The major version corresponds to the datamodel version your using, so 2.0.0 means it'll use datamodel v2",
   "private": true,
   "bin": "build/server.js",
@@ -52,7 +52,7 @@
     "log-update": "^4.0.0",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.3",
-    "node-xlsx": "^0.23.0",
+    "node-xlsx": "^0.24.0",
     "regenerator-runtime": "^0.13.11",
     "rxjs": "^7.8.1",
     "sequelize": "^6.37.5",
@@ -65,7 +65,7 @@
     "winston-daily-rotate-file": "^4.7.1"
   },
   "devDependencies": {
-    "@babel/cli": "^7.25.9",
+    "@babel/cli": "^7.26.4",
     "@babel/core": "^7.26.0",
     "@babel/eslint-parser": "^7.25.9",
     "@babel/plugin-syntax-import-attributes": "^7.26.0",
