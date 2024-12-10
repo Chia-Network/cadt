@@ -8,6 +8,7 @@ import {
   assertIfReadOnlyMode,
   assertCanDeleteOrg,
   assertNoPendingCommits,
+  assertOrgDoesNotExist,
 } from '../utils/data-assertions';
 
 import { getDataModelVersion } from '../utils/helpers';
@@ -181,12 +182,13 @@ export const resetHomeOrg = async (req, res) => {
     ]);
 
     res.json({
-      message: 'Your home organization was reset, please create a new one.',
+      message:
+        'Your home organization was deleted from this instance. (note that it still exists in datalayer)',
       success: true,
     });
   } catch (error) {
     res.status(400).json({
-      message: 'Error resetting your organization',
+      message: 'Error deleting your organization',
       error: error.message,
       success: false,
     });
@@ -199,14 +201,15 @@ export const importOrg = async (req, res) => {
     await assertWalletIsSynced();
 
     const { orgUid } = req.body;
+    await assertOrgDoesNotExist(orgUid);
 
-    res.json({
+    await Organization.importOrganization(orgUid);
+
+    res.status(200).json({
       message:
-        'Importing and subscribing organization this can take a few mins.',
+        'Successfully imported organization. CADT will begin syncing data from datalayer shortly',
       success: true,
     });
-
-    return Organization.importOrganization(orgUid);
   } catch (error) {
     console.trace(error);
     res.status(400).json({
@@ -223,17 +226,19 @@ export const importHomeOrg = async (req, res) => {
     await assertWalletIsSynced();
 
     const { orgUid } = req.body;
+    await assertOrgDoesNotExist(orgUid);
 
-    await Organization.importHomeOrg(orgUid);
+    // asserts home org stores are owned
+    await Organization.importOrganization(orgUid, true);
 
-    res.json({
-      message: 'Importing home organization.',
+    res.status(200).json({
+      message:
+        'Successfully imported home organization. CADT will begin syncing data from datalayer shortly',
       success: true,
     });
   } catch (error) {
-    console.trace(error);
     res.status(400).json({
-      message: 'Error importing organization',
+      message: 'Error importing home organization',
       error: error.message,
       success: false,
     });
@@ -244,7 +249,6 @@ export const subscribeToOrganization = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
-    await assertHomeOrgExists();
 
     await Organization.subscribeToOrganization(req.body.orgUid);
 
@@ -284,12 +288,12 @@ export const deleteImportedOrg = async (req, res) => {
 
     return res.json({
       message:
-        'UnSubscribed to organization, you will no longer receive updates.',
+        'Removed all organization records. cadt will not sync the organizations data from datalayer',
       success: true,
     });
   } catch (error) {
     res.status(400).json({
-      message: 'Error unsubscribing to organization',
+      message: 'Error deleting organization',
       error: error.message,
       success: false,
     });

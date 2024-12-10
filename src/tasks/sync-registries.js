@@ -249,8 +249,16 @@ const syncOrganizationAudit = async (organization) => {
       process.env.NODE_ENV !== 'test' &&
       rootHistory.length - 1 !== sync_status?.generation
     ) {
-      logger.warn(
-        `the root history length does not match the number of synced generations for ${organization.name} (registry store Id ${organization.registryId}). something is wrong and the sync for this organization will be paused until this is resolved. `,
+      logger.debug(
+        `the root history length does not match the number of synced generations for ${organization.name} (registry store Id ${organization.registryId}). pausing the sync for this organization until the root history length and number of synced generations match`,
+      );
+      return;
+    } else if (
+      process.env.NODE_ENV !== 'test' &&
+      rootHistory.length - 1 !== sync_status?.target_generation
+    ) {
+      logger.debug(
+        `the root history length does not match the target generation number for ${organization.name} (registry store Id ${organization.registryId}). something is wrong and the sync for this organization will be paused until this is resolved. `,
       );
       return;
     }

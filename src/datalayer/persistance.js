@@ -357,22 +357,21 @@ const getStoreData = async (storeId, rootHash) => {
       const data = response.body;
 
       if (data.success) {
-        if (!_.isEmpty(data.keys_values)) {
-          logger.info(`Downloaded Data, root hash: ${rootHash || 'latest'}`);
+        if (_.isEmpty(data.keys_values)) {
+          logger.warn(
+            `datalayer get_keys_values returned no data for store ${storeId} at root hash: ${rootHash || 'latest'}`,
+          );
         }
         return data;
+      } else {
+        throw new Error(JSON.stringify(data));
       }
-
-      logger.error(
-        `FAILED GETTING STORE DATA FOR ${storeId}: ${JSON.stringify(data)}`,
-      );
     } catch (error) {
-      logger.info(
-        `Unable to find store data for ${storeId} at root ${
+      logger.error(
+        `failed to get keys and values from datalayer for store ${storeId} at root ${
           rootHash || 'latest'
-        }`,
+        }. Error: ${error.message}`,
       );
-      logger.error(error.message);
       return false;
     }
   }
@@ -396,14 +395,19 @@ const getRoot = async (storeId, ignoreEmptyStore = false) => {
       .send({ id: storeId });
 
     const { confirmed, hash } = response.body;
+    logger.debug(
+      `the current root data for store ${storeId} is ${JSON.stringify(response.body)}`,
+    );
 
-    if (confirmed && (!ignoreEmptyStore || !hash.includes('0x00000000000'))) {
+    if (confirmed && (ignoreEmptyStore || !hash.includes('0x00000000000'))) {
       return response.body;
     }
 
     return false;
   } catch (error) {
-    logger.error(error.message);
+    logger.error(
+      `failed to get root for store ${storeId}. error: ${error.message}`,
+    );
     return false;
   }
 };
@@ -522,24 +526,10 @@ const createDataLayerStore = async () => {
   }
 };
 
-const subscribeToStoreOnDataLayer = async (
-  storeId,
-  restoreHomeOrgOverride = false,
-) => {
+const subscribeToStoreOnDataLayer = async (storeId) => {
   if (!storeId) {
     logger.info(`No storeId found to subscribe to: ${storeId}`);
     return false;
-  }
-
-  const homeOrg = await Organization.getHomeOrg();
-
-  if (
-    !restoreHomeOrgOverride &&
-    homeOrg &&
-    [(homeOrg.orgUid, homeOrg.registryId)].includes(storeId)
-  ) {
-    logger.info(`Cant subscribe to self: ${storeId}`);
-    return { success: true };
   }
 
   const { storeIds: subscriptions, success } = await getSubscriptions();
@@ -549,7 +539,7 @@ const subscribeToStoreOnDataLayer = async (
 
   if (subscriptions.includes(storeId)) {
     logger.info(`Already subscribed to: ${storeId}`);
-    return { success: true };
+    return true;
   }
 
   const url = `${CONFIG.DATALAYER_URL}/subscribe`;
@@ -577,7 +567,7 @@ const subscribeToStoreOnDataLayer = async (
 
       await addMirror(storeId, mirrorUrl, true);
 
-      return data;
+      return true;
     }
 
     return false;
