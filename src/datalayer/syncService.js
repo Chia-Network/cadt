@@ -26,6 +26,12 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 };
 
+/**
+ * gets and decodes data from a subscribed store.
+ * will subscribe to any store id for which there is no subscription.
+ * @param storeId to retrieve data from
+ * @returns {Promise<any>}
+ */
 const getSubscribedStoreData = async (storeId) => {
   const { storeIds: subscriptions, success } =
     await dataLayer.getSubscriptions();
@@ -36,7 +42,7 @@ const getSubscribedStoreData = async (storeId) => {
 
   if (!alreadySubscribed) {
     logger.info(`No Subscription Found for ${storeId}, Subscribing...`);
-    const response = await dataLayer.subscribeToStoreOnDataLayer(storeId, true);
+    const response = await dataLayer.subscribeToStoreOnDataLayer(storeId);
 
     if (!response) {
       throw new Error(`Failed to subscribe to ${storeId}`);
@@ -152,9 +158,13 @@ const getCurrentStoreData = async (storeId) => {
 
   const encodedData = await dataLayer.getStoreData(storeId);
   if (encodedData) {
-    return decodeDataLayerResponse(encodedData);
+    const decodedData = decodeDataLayerResponse(encodedData);
+    return decodedData.reduce((obj, current) => {
+      obj[current.key] = current.value;
+      return obj;
+    }, {});
   } else {
-    return [];
+    return undefined;
   }
 };
 

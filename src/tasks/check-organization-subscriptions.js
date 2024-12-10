@@ -94,7 +94,7 @@ const task = new Task('check-organization-subscriptions', async () => {
           `datalayer is not subscribed to orgUid store ${orgUid}, subscribing ...`,
         );
 
-        const result = await subscribeToStoreOnDataLayer(orgUid, true);
+        const result = await subscribeToStoreOnDataLayer(orgUid);
         if (result) {
           logger.info(`subscribed to store ${orgUid}`);
         } else {
@@ -129,7 +129,7 @@ const task = new Task('check-organization-subscriptions', async () => {
           `datalayer is not subscribed to registryId store ${registryId}, subscribing ...`,
         );
 
-        const result = await subscribeToStoreOnDataLayer(registryId, true);
+        const result = await subscribeToStoreOnDataLayer(registryId);
         if (result) {
           logger.info(`subscribed to store ${registryId}`);
         } else {

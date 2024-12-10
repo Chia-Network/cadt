@@ -19,6 +19,7 @@ import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
 import ModelTypes from './organizations.modeltypes.cjs';
+import { assertStoreIsOwned } from '../../utils/data-assertions.js';
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -205,7 +206,6 @@ class Organization extends Model {
 
       return newOrganizationId;
     } catch (error) {
-      console.trace(error);
       logger.error(error.message);
       logger.info('Reverting Failed Organization');
       await Organization.destroy({ where: { isHome: true } });
@@ -225,103 +225,134 @@ class Organization extends Model {
     await datalayer.addMirror(storeId, url, force);
   }
 
-  static async importHomeOrg(orgUid) {
-    const orgData = await datalayer.getLocalStoreData(orgUid);
-
-    if (!orgData) {
-      throw new Error('Your node does not have write access to this orgUid');
+  /**
+   * subscribes to and imports an organization.
+   *
+   * if importing as home, asserts all stores related to organization are owned.
+   *
+   * NOTE: assertions should be used at the controller level, but given that the data model version store id
+   * and registry store id need to be derived as part of this process, this function asserts their ownership status
+   * @param orgUid the orgUid of the organization to import
+   * @param isHome import the org as a home org
+   * @returns {Promise<void>}
+   */
+  static async importOrganization(orgUid, isHome = false) {
+    if (isHome) {
+      try {
+        await assertStoreIsOwned(orgUid);
+      } catch {
+        throw new Error(
+          `orgUid store ${orgUid} is not owned by this chia wallet. cannot import organization ${orgUid} as home`,
+        );
+      }
     }
 
-    const orgDataObj = orgData.reduce((obj, curr) => {
-      obj[curr.key] = curr.value;
-      return obj;
-    }, {});
-
-    const registryData = await datalayer.getLocalStoreData(
-      orgDataObj.registryId,
+    logger.info(`importing unowned (not home) organization ${orgUid}`);
+    logger.debug(
+      `running the organization model subscription process on ${orgUid}`,
     );
 
-    const registryDataObj = registryData.reduce((obj, curr) => {
-      obj[curr.key] = curr.value;
-      return obj;
-    }, {});
-
-    const dataModelVersion = getDataModelVersion();
-
-    if (!registryDataObj[dataModelVersion]) {
-      registryDataObj[dataModelVersion] = await Organization.appendNewRegistry(
-        orgDataObj.registryId,
-        dataModelVersion,
-      );
-    }
-
-    await Organization.upsert({
-      orgUid,
-      name: orgDataObj.name,
-      icon: orgDataObj.icon,
-      registryId: registryDataObj[dataModelVersion],
-      subscribed: true,
-      isHome: true,
-    });
-  }
-
-  static async importOrganization(orgUid) {
+    let storeIds = null;
     try {
-      logger.info('Importing organization ' + orgUid);
-      const orgData = await datalayer.getSubscribedStoreData(orgUid);
-
-      if (!orgData.registryId) {
-        logger.error(
-          'Corrupted organization, no registryId on the datalayer, can not import',
-        );
-        return;
-      }
-
-      logger.info(`IMPORTING REGISTRY: ${orgData.registryId}`);
-
-      const registryData = await datalayer.getSubscribedStoreData(
-        orgData.registryId,
-      );
-
-      const dataModelVersion = getDataModelVersion();
-
-      if (!registryData[dataModelVersion]) {
-        throw new Error(
-          `Organization has no registry for the ${dataModelVersion} datamodel, can not import`,
-        );
-      }
-
-      logger.info(`IMPORTING REGISTRY ${dataModelVersion}: `, registryData.v1);
-
-      await datalayer.subscribeToStoreOnDataLayer(registryData.v1);
-
-      logger.info(
-        `adding and organization with the following info ${{
-          orgUid,
-          name: orgData.name,
-          icon: orgData.icon,
-          registryId: registryData[dataModelVersion],
-          subscribed: true,
-          isHome: false,
-        }}`,
-      );
-
-      await Organization.upsert({
-        orgUid,
-        name: orgData.name,
-        icon: orgData.icon,
-        registryId: registryData[dataModelVersion],
-        subscribed: true,
-        isHome: false,
-      });
-
-      if (AUTO_SUBSCRIBE_FILESTORE) {
-        await FileStore.subscribeToFileStore(orgUid);
-      }
+      storeIds = await Organization.subscribeToOrganization(orgUid);
     } catch (error) {
-      logger.info(error.message);
+      logger.error(
+        `failure validating or adding subscriptions for org import. cannot import. Error: ${error.message}`,
+      );
+      throw new Error(
+        `failed to subscribe to, or validate subscribed store data for, organization ${orgUid}`,
+      );
     }
+
+    if (isHome) {
+      try {
+        await assertStoreIsOwned(storeIds.dataModelVersionStoreId);
+      } catch {
+        throw new Error(
+          `datamodel version store ${storeIds.dataModelVersionStoreId} is not owned by this chia wallet. cannot import organization ${orgUid} as home`,
+        );
+      }
+
+      try {
+        await assertStoreIsOwned(storeIds.registryStoreId);
+      } catch {
+        throw new Error(
+          `registry store ${storeIds.registryStoreId} is not owned by this chia wallet. cannot import organization ${orgUid} as home`,
+        );
+      }
+    }
+
+    const orgData = await datalayer.getCurrentStoreData(storeIds.orgUid);
+    if (!orgData) {
+      throw new Error(`failed to get organization data for ${orgUid}`);
+    }
+
+    const dataModelInfo = await datalayer.getCurrentStoreData(
+      storeIds.dataModelVersionStoreId,
+    );
+    if (!dataModelInfo) {
+      throw new Error(
+        `failed to determine datamodel version for organization ${orgUid}`,
+      );
+    }
+
+    const instanceDataModelVersion = getDataModelVersion();
+    if (!dataModelInfo[instanceDataModelVersion]) {
+      throw new Error(
+        `this cadt instance is using datamodel version ${instanceDataModelVersion}. organization ${orgUid} does not have data for this datamodel. cannot import`,
+      );
+    }
+
+    const organizationData = {
+      orgUid,
+      name: orgData.name,
+      icon: orgData.icon,
+      registryId: storeIds.registryStoreId,
+      fileStoreId: orgData?.fileStoreId,
+      subscribed: true,
+      isHome: false,
+    };
+
+    logger.info(
+      `adding and organization with the following info ${organizationData}`,
+    );
+
+    await Organization.create(organizationData);
   }
+
+  /**
+   * Subscribes to all 3 required stores for a CADT organization.
+   *
+   * CADT organization stores:
+   * <ul>
+   *   <li><strong>Organization Store</strong> (identified by `orgUid`):
+   *     <ul>
+   *       <li>Tracks the organization identifier (`orgUid`).</li>
+   *       <li>Contains metadata and the identifier for the associated data model version store.</li>
+   *     </ul>
+   *   </li>
+   *   <li><strong>Registry Data Model Version Store</strong>:
+   *     <ul>
+   *       <li>Identified using the `registryId` key from the organization store data.</li>
+   *       <li>Tracks the registry store identifiers for different data model versions (e.g., `v1`).</li>
+   *       <li>Note: Despite the misleading key name, this is NOT the registry store ID itself.</li>
+   *     </ul>
+   *   </li>
+   *   <li><strong>Registry Store</strong>:
+   *     <ul>
+   *       <li>Contains the organization’s climate data for a specific data model version.</li>
+   *       <li>Located at the version key (e.g., `v1`) in the data model version store.</li>
+   *     </ul>
+   *   </li>
+   * </ul>
+   *
+   * @param {string} orgUid - The unique identifier of the organization to subscribe to.
+   * @returns {Promise<{orgUid: string, dataModelVersionStoreId: string, registryStoreId: string}>}
+   *          Resolves to an object containing:
+   *          - `orgUid`: The unique identifier of the organization.
+   *          - `dataModelVersionStoreId`: The identifier of the data model version store.
+   *          - `registryStoreId`: The identifier of the registry store.
+   */
 
   static async subscribeToOrganization(orgUid) {
     // we'll give datalayer 10 minutes to get data where it needs to be and complete this process
@@ -329,7 +360,15 @@ class Organization extends Model {
     const reachedTimeout = () => {
       return Date.now() > timeout;
     };
+    const onTimeout = (error) => {
+      const message = `reached timeout before subscribing to all required stores. Failure at time out: ${error.message}`;
+      logger.error(message);
+      throw new Error(message);
+    };
 
+    logger.debug(
+      `determining datamodel version singleton id for org ${orgUid}`,
+    );
     let dataModelVersionStoreId = null;
     while (!dataModelVersionStoreId) {
       try {
@@ -338,63 +377,84 @@ class Organization extends Model {
         dataModelVersionStoreId = orgStoreData?.registryId;
         if (!dataModelVersionStoreId) {
           throw new Error(
-            `cannot get required data from orgUid store ${orgUid}`,
+            `failed to get registry datamodel version singleton id from orgUid store ${orgUid}. rpc function returned: ${orgStoreData}`,
           );
         }
+        logger.debug(
+          `the registry datamodel version pointer singleton id for organization ${orgUid} is ${dataModelVersionStoreId}`,
+        );
       } catch (error) {
         if (reachedTimeout()) {
-          throw new Error(
-            `reached timeout before subscribing to all required stores. Failure at time out: ${error.message}`,
-          );
+          onTimeout(error);
         }
+        logger.debug(`${error.message}. RETRYING`);
       } finally {
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
     }
 
+    logger.debug(`determining registry store singleton id for org ${orgUid}`);
     let registryStoreId = null;
     while (!registryStoreId) {
       try {
-        const dataModelStoreData = await datalayer.getSubscribedStoreData(
-          dataModelVersionStoreId,
-        );
+        const dataModelVersionStoreData =
+          await datalayer.getSubscribedStoreData(dataModelVersionStoreId);
         // here v1 is actually the registry store id
-        registryStoreId = dataModelStoreData?.v1;
+        registryStoreId = dataModelVersionStoreData?.v1;
         if (!registryStoreId) {
           throw new Error(
-            `cannot get required data from datamodel version store ${dataModelVersionStoreId}`,
+            `failed to get registry singleton id from datamodel version singleton store ${dataModelVersionStoreId}. rpc function returned: ${dataModelVersionStoreData}`,
           );
         }
+        logger.debug(
+          `the registry singleton id for organization ${orgUid} is ${dataModelVersionStoreId}`,
+        );
       } catch (error) {
         if (reachedTimeout()) {
-          throw new Error(
-            `reached timeout before subscribing to all required stores. Failure at time out: ${error.message}`,
-          );
+          onTimeout(error);
         }
+        logger.debug(`${error.message}. RETRYING`);
       } finally {
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
     }
 
+    logger.debug(`checking registry store singleton for org ${orgUid}`);
     let registryData = null;
     while (!registryData) {
       try {
         registryData = await datalayer.getSubscribedStoreData(registryStoreId);
         if (!registryData) {
           throw new Error(
-            `cannot get data from registry store ${dataModelVersionStoreId}`,
+            `failed to get data from registry store ${registryStoreId}`,
           );
         }
       } catch (error) {
         if (reachedTimeout()) {
-          throw new Error(
-            `reached timeout before subscribing to all required stores. Failure at time out: ${error.message}`,
-          );
+          onTimeout(error);
         }
+        logger.debug(`${error.message}. RETRYING`);
       } finally {
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
     }
+
+    if (AUTO_SUBSCRIBE_FILESTORE) {
+      logger.info(`subscribing to file store for organization ${orgUid}`);
+      try {
+        await FileStore.subscribeToFileStore(orgUid);
+      } catch (error) {
+        logger.warn(
+          `failed to subscribe to file store. Error: ${error.message}`,
+        );
+      }
+    }
+
+    return {
+      orgUid,
+      dataModelVersionStoreId,
+      registryStoreId,
+    };
   }
 
   static async unsubscribeToOrganization(orgUid) {

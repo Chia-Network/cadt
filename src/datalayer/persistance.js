@@ -358,21 +358,20 @@ const getStoreData = async (storeId, rootHash) => {
 
       if (data.success) {
         if (!_.isEmpty(data.keys_values)) {
-          logger.info(`Downloaded Data, root hash: ${rootHash || 'latest'}`);
+          logger.warn(
+            `datalayer get_keys_values returned no data for store ${storeId} at root hash: ${rootHash || 'latest'}`,
+          );
         }
         return data;
+      } else {
+        throw new Error(`${data}`);
       }
-
-      logger.error(
-        `FAILED GETTING STORE DATA FOR ${storeId}: ${JSON.stringify(data)}`,
-      );
     } catch (error) {
-      logger.info(
-        `Unable to find store data for ${storeId} at root ${
+      logger.error(
+        `failed to get keys and values from datalayer for store ${storeId} at root ${
           rootHash || 'latest'
-        }`,
+        }. Error: ${error.message}`,
       );
-      logger.error(error.message);
       return false;
     }
   }
@@ -527,23 +526,9 @@ const createDataLayerStore = async () => {
   }
 };
 
-const subscribeToStoreOnDataLayer = async (
-  storeId,
-  restoreHomeOrgOverride = false,
-) => {
+const subscribeToStoreOnDataLayer = async (storeId) => {
   if (!storeId) {
     logger.info(`No storeId found to subscribe to: ${storeId}`);
-    return false;
-  }
-
-  const homeOrg = await Organization.getHomeOrg();
-
-  if (
-    !restoreHomeOrgOverride &&
-    homeOrg &&
-    [(homeOrg.orgUid, homeOrg.registryId)].includes(storeId)
-  ) {
-    logger.info(`Cant subscribe to self: ${storeId}`);
     return false;
   }
 
