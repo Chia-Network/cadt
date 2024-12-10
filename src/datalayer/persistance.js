@@ -357,14 +357,14 @@ const getStoreData = async (storeId, rootHash) => {
       const data = response.body;
 
       if (data.success) {
-        if (!_.isEmpty(data.keys_values)) {
+        if (_.isEmpty(data.keys_values)) {
           logger.warn(
             `datalayer get_keys_values returned no data for store ${storeId} at root hash: ${rootHash || 'latest'}`,
           );
         }
         return data;
       } else {
-        throw new Error(`${data}`);
+        throw new Error(JSON.stringify(data));
       }
     } catch (error) {
       logger.error(
@@ -396,7 +396,7 @@ const getRoot = async (storeId, ignoreEmptyStore = false) => {
 
     const { confirmed, hash } = response.body;
     logger.debug(
-      `the current root data for store ${storeId} is ${response.body}`,
+      `the current root data for store ${storeId} is ${JSON.stringify(response.body)}`,
     );
 
     if (confirmed && (ignoreEmptyStore || !hash.includes('0x00000000000'))) {

@@ -250,7 +250,7 @@ const syncOrganizationAudit = async (organization) => {
       rootHistory.length - 1 !== sync_status?.generation
     ) {
       logger.debug(
-        `the root history length does not match the number of synced generations for ${organization.name} (registry store Id ${organization.registryId}). pausing the sync for this organization until the root history length and `,
+        `the root history length does not match the number of synced generations for ${organization.name} (registry store Id ${organization.registryId}). pausing the sync for this organization until the root history length and number of synced generations match`,
       );
       return;
     } else if (

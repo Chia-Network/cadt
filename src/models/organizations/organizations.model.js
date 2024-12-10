@@ -420,23 +420,12 @@ class Organization extends Model {
     }
 
     logger.debug(`checking registry store singleton for org ${orgUid}`);
-    let registryData = null;
-    while (!registryData) {
-      try {
-        registryData = await datalayer.getSubscribedStoreData(registryStoreId);
-        if (!registryData) {
-          throw new Error(
-            `failed to get data from registry store ${registryStoreId}`,
-          );
-        }
-      } catch (error) {
-        if (reachedTimeout()) {
-          onTimeout(error);
-        }
-        logger.debug(`${error.message}. RETRYING`);
-      } finally {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
+    const subscribedToRegistryStore =
+      await datalayer.subscribeToStoreOnDataLayer(registryStoreId);
+    if (!subscribedToRegistryStore) {
+      throw new Error(
+        `failed to subscribe to or validate subscription for registry store ${registryStoreId}`,
+      );
     }
 
     if (AUTO_SUBSCRIBE_FILESTORE) {
@@ -545,8 +534,14 @@ class Organization extends Model {
         const exists = await Organization.findOne({
           where: { orgUid: org.orgUid },
         });
+        logger.debug(
+          `sync dafault orgs task checking default org ${org.orgUid}`,
+        );
 
         if (!exists) {
+          logger.debug(
+            `default organization ${org.orgUid} was not found in the organizations table. running the import process to correct`,
+          );
           await Organization.importOrganization(org.orgUid);
         }
       }
