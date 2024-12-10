@@ -26,7 +26,7 @@ describe('Orgainzation Resource CRUD', function () {
       const response = await supertest(app).delete(`/v1/organizations`).send();
 
       expect(response.body.message).to.equal(
-        'Your home organization was reset, please create a new one.',
+        'Your home organization was deleted from this instance. (note that it still exists in datalayer)',
       );
 
       const stagingData = await testFixtures.getLastCreatedStagingRecord();
