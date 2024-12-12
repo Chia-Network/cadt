@@ -1,29 +1,48 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
-import { Organization } from '../models';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
-} from '../utils/data-assertions';
+} from '../utils/data-assertions.js';
+import { getDefaultOrganizationList } from '../utils/data-loaders.js';
+import { Organization } from '../models/index.js';
 import { logger } from '../config/logger.js';
-import { getConfig } from '../utils/config-loader';
-const CONFIG = getConfig().APP;
+import { getConfig } from '../utils/config-loader.js';
 
-import dotenv from 'dotenv';
-dotenv.config();
+const CONFIG = getConfig().APP;
 
 const task = new Task('sync-default-organizations', async () => {
   try {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
+
     if (!CONFIG.USE_SIMULATOR) {
-      await Organization.subscribeToDefaultOrganizations();
+      const defaultOrgRecords = await getDefaultOrganizationList();
+      if (!Array.isArray(defaultOrgRecords)) {
+        throw new Error(
+          'ERROR: Default Organization List Not found, This instance may be missing data from default orgs',
+        );
+      }
+
+      for (const { orgUid } in defaultOrgRecords) {
+        const organization = await Organization.findOne({
+          where: { orgUid },
+        });
+        logger.debug(
+          `sync dafault orgs task found the following organization data associated with default org ${orgUid}:\n${JSON.stringify(organization)}`,
+        );
+
+        if (!organization) {
+          logger.debug(
+            `default organization ${orgUid} was NOT found in the organizations table. running the import process to correct`,
+          );
+          await Organization.importOrganization(orgUid, organization.isHome);
+        }
+      }
     }
   } catch (error) {
     logger.error(
-      `Retrying in ${
-        CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30
-      } seconds`,
-      error,
+      `failed to validate default organization records and subscriptions. Error ${error.message}. ` +
+        `Retrying in ${CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30} seconds`,
     );
   }
 });

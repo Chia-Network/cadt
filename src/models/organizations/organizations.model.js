@@ -10,16 +10,13 @@ import { sequelize } from '../../database';
 import datalayer from '../../datalayer';
 import { logger } from '../../config/logger.js';
 import { FileStore, Staging } from '../';
-
-import { getDefaultOrganizationList } from '../../utils/data-loaders';
-
 import { getDataModelVersion } from '../../utils/helpers';
-
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
 import ModelTypes from './organizations.modeltypes.cjs';
 import { assertStoreIsOwned } from '../../utils/data-assertions.js';
+import { getRoot, getSyncStatus } from '../../datalayer/persistance.js';
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -212,17 +209,120 @@ class Organization extends Model {
     }
   }
 
-  static async appendNewRegistry(registryId, dataVersion) {
-    const registryVersionId = await datalayer.createDataLayerStore();
-    await datalayer.syncDataLayer(registryId, {
-      [dataVersion]: registryVersionId,
-    });
-
-    return registryVersionId;
-  }
-
   static async addMirror(storeId, url, force = false) {
     await datalayer.addMirror(storeId, url, force);
+  }
+
+  /**
+   * subscribes to an organization and reconciles the organization table store records against datalayer's store records
+   *
+   * if validating a home org, asserts all stores related to organization are owned.
+   *
+   * NOTE: assertions should be used at the controller level, but given that the data model version store id
+   * and registry store id need to be derived as part of this process, this function asserts their ownership status
+   * @param organization the organization table record of the organization to reconcile
+   * @returns {Promise<void>}
+   */
+  static async reconcileOrganization(organization) {
+    if (!organization) {
+      throw new Error('organization to reconcile must not be nil');
+    }
+
+    logger.debug(
+      `reconciling organization ${organization.orgUid} storeIds against datalayer. organization data from db:\n${JSON.stringify(organization)}`,
+    );
+    const { name, orgUid, registryId, dataModelVersionStoreId, isHome } =
+      organization;
+
+    if (isHome) {
+      try {
+        await assertStoreIsOwned(orgUid);
+      } catch {
+        throw new Error(
+          `orgUid store ${orgUid} is not owned by this chia wallet. CADT cannot correct this issue. please contact your administrator`,
+        );
+      }
+    }
+
+    logger.debug(
+      `running the organization model subscription process on ${orgUid}`,
+    );
+
+    let organizationStoreIdsFromDatalayer = null;
+    try {
+      organizationStoreIdsFromDatalayer =
+        await Organization.subscribeToOrganization(orgUid);
+    } catch (error) {
+      logger.error(
+        `failure validating or adding subscriptions for org import. cannot import. Error: ${error.message}`,
+      );
+      throw new Error(
+        `failed to subscribe to, or validate subscribed store data for, organization ${orgUid}`,
+      );
+    }
+
+    const {
+      dataModelVersionStoreId: datalayerDataModelVersionStoreId,
+      registryStoreId: datalayerRegistryStoreId,
+    } = organizationStoreIdsFromDatalayer;
+    if (isHome) {
+      try {
+        await assertStoreIsOwned(datalayerDataModelVersionStoreId);
+      } catch {
+        throw new Error(
+          `datamodel version store ${datalayerDataModelVersionStoreId} is not owned by this chia wallet. CADT cannot correct this issue. please contact your administrator`,
+        );
+      }
+
+      try {
+        await assertStoreIsOwned(datalayerRegistryStoreId);
+      } catch {
+        throw new Error(
+          `registry store ${datalayerRegistryStoreId} is not owned by this chia wallet. CADT cannot correct this issue. please contact your administrator`,
+        );
+      }
+    }
+
+    const updatedOrganizationData = {};
+
+    if (dataModelVersionStoreId !== datalayerDataModelVersionStoreId) {
+      const message =
+        `data layer reports that the data model version store id for ${name} (orgUid ${orgUid}) is ${datalayerDataModelVersionStoreId}, ` +
+        `but the organization table record shows the store id as ${dataModelVersionStoreId}. correcting organization table record`;
+      logger.warn(message);
+      updatedOrganizationData.dataModelVersionStoreId =
+        datalayerDataModelVersionStoreId;
+    }
+
+    if (registryId !== datalayerRegistryStoreId) {
+      const message =
+        `data layer reports that the registry store id for ${name} (orgUid ${orgUid}) ` +
+        `is ${organizationStoreIdsFromDatalayer.dataModelVersionStoreId}, but found ${dataModelVersionStoreId} in ` +
+        `organizaation table record. correcting organization table record`;
+      logger.warn(message);
+      updatedOrganizationData.dataModelVersionStoreId =
+        datalayerDataModelVersionStoreId;
+    }
+
+    const isSynced = (syncStatus) => {
+      return syncStatus.generation === syncStatus.target_generation;
+    };
+
+    // note that we only update the data model version store hash here because the other two store hashes are updated elsewhere
+    const dataModelVersionStoreSyncStatus = await getSyncStatus(
+      datalayerDataModelVersionStoreId,
+    );
+    if (isSynced(dataModelVersionStoreSyncStatus)) {
+      const { hash } = await getRoot(datalayerDataModelVersionStoreId);
+      if (hash !== organization.dataModelVersionStoreHash) {
+        logger.info(
+          `updating data model version store ${datalayerDataModelVersionStoreId} root hash to ${hash} from ${organization.dataModelVersionStoreHash}`,
+        );
+        updatedOrganizationData.dataModelVersionStoreHash = hash;
+      }
+    }
+
+    await Organization.update(updatedOrganizationData, { where: orgUid });
   }
 
   /**
@@ -247,7 +347,7 @@ class Organization extends Model {
       }
     }
 
-    logger.info(`importing unowned (not home) organization ${orgUid}`);
+    logger.info(`importing organization ${orgUid} ${isHome && 'as home'}`);
     logger.debug(
       `running the organization model subscription process on ${orgUid}`,
     );
@@ -308,6 +408,7 @@ class Organization extends Model {
       name: orgData.name,
       icon: orgData.icon,
       registryId: storeIds.registryStoreId,
+      dataModelVersionStoreId: storeIds.dataModelVersionStoreId,
       fileStoreId: orgData?.fileStoreId,
       subscribed: true,
       isHome: false,
@@ -321,7 +422,9 @@ class Organization extends Model {
   }
 
   /**
-   * Subscribes to all 3 required stores for a CADT organization.
+   * Subscribes to all 3 required stores for a CADT organization and returns the store id's from datalayer.
+   *
+   * This function CAN BE RUN even if the organization is fully subscribed.
    *
    * CADT organization stores:
    * <ul>
@@ -355,6 +458,10 @@ class Organization extends Model {
    */
 
   static async subscribeToOrganization(orgUid) {
+    logger.debug(
+      `running the organization subscription process on organization ${orgUid})`,
+    );
+
     // we'll give datalayer 10 minutes to get data where it needs to be and complete this process
     const timeout = Date.now() + 600000;
     const reachedTimeout = () => {
@@ -517,36 +624,6 @@ class Organization extends Model {
       }
     } catch (error) {
       logger.error(error.message);
-    }
-  }
-
-  static async subscribeToDefaultOrganizations() {
-    try {
-      const defaultOrgs = await getDefaultOrganizationList();
-      if (!Array.isArray(defaultOrgs)) {
-        throw new Error(
-          'ERROR: Default Organization List Not found, This instance may be missing data from default orgs',
-        );
-      }
-
-      for (let i = 0; i < defaultOrgs.length; i++) {
-        const org = defaultOrgs[i];
-        const exists = await Organization.findOne({
-          where: { orgUid: org.orgUid },
-        });
-        logger.debug(
-          `sync dafault orgs task checking default org ${org.orgUid}`,
-        );
-
-        if (!exists) {
-          logger.debug(
-            `default organization ${org.orgUid} was not found in the organizations table. running the import process to correct`,
-          );
-          await Organization.importOrganization(org.orgUid);
-        }
-      }
-    } catch (error) {
-      logger.info(error);
     }
   }
 
