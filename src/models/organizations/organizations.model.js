@@ -111,22 +111,31 @@ class Organization extends Model {
       await Organization.create({
         orgUid: 'PENDING',
         registryId: null,
+        modelVersionStoreId: null,
         isHome: true,
         subscribed: false,
         name: '',
         icon: '',
       });
 
+      logger.debug('createHomeOrg() is creating organization (orgUid) store');
       const newOrganizationId = USE_SIMULATOR
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
         : await datalayer.createDataLayerStore();
 
-      const newRegistryId = await datalayer.createDataLayerStore();
-      const registryVersionId = await datalayer.createDataLayerStore();
+      logger.debug('createHomeOrg() is creating registryId store');
+      const registryStoreId = await datalayer.createDataLayerStore();
+
+      logger.debug('createHomeOrg() is creating dataModelVersionId store');
+      const dataModelVersionStoreId = await datalayer.createDataLayerStore();
+
+      logger.debug('createHomeOrg() is creating file store');
       const fileStoreId = await datalayer.createDataLayerStore();
 
       const revertOrganizationIfFailed = async () => {
-        logger.info('Reverting Failed Organization');
+        logger.error(
+          'create organization process failed. removing failed home organization records. please try again',
+        );
         await Promise.all([
           Organization.destroy({ where: { orgUid: newOrganizationId } }),
           Organization.destroy({ where: { orgUid: 'PENDING' } }),
@@ -134,15 +143,25 @@ class Organization extends Model {
       };
 
       if (!USE_SIMULATOR) {
+        logger.info(
+          'create organization process is waiting for all store creations to confirm on the blockchain',
+        );
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
+      logger.debug(
+        `the blockchain reported new organization stores orgUid: ${newOrganizationId}, ` +
+          `dataModelVersionStore: ${dataModelVersionStoreId}, registryId: ${registryStoreId} have confirmed. `,
+      );
+      logger.info(
+        `commiting organization data to orgUid store ${newOrganizationId}`,
+      );
       // sync the organization store
       await datalayer.syncDataLayer(
         newOrganizationId,
         {
-          registryId: newRegistryId,
+          registryId: registryStoreId,
           fileStoreId,
           name,
           icon,
@@ -151,26 +170,35 @@ class Organization extends Model {
       );
 
       if (!USE_SIMULATOR) {
+        logger.info(
+          'create organization process is waiting for organization data commited to orgUid store to confirm on the blockchain',
+        );
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
-      //sync the registry store
+      logger.info(
+        `commiting registry data model version data to data model version store ${dataModelVersionStoreId}`,
+      );
       await datalayer.syncDataLayer(
-        newRegistryId,
+        registryStoreId,
         {
-          [dataVersion]: registryVersionId,
+          [dataVersion]: dataModelVersionStoreId,
         },
         revertOrganizationIfFailed,
       );
 
+      logger.info(
+        'create organization process is waiting for data model version to confirm on the blockchain',
+      );
       await new Promise((resolve) => setTimeout(() => resolve(), 30000));
       await datalayer.waitForAllTransactionsToConfirm();
 
+      logger.info('adding new home organization to CADT database');
       await Promise.all([
         Organization.create({
           orgUid: newOrganizationId,
-          registryId: registryVersionId,
+          registryId: dataModelVersionStoreId,
           isHome: true,
           subscribed: USE_SIMULATOR,
           fileStoreId,
@@ -193,7 +221,7 @@ class Organization extends Model {
       if (!USE_SIMULATOR) {
         logger.info('Waiting for New Organization to be confirmed');
         datalayer.getStoreData(
-          newRegistryId,
+          registryStoreId,
           onConfirm,
           revertOrganizationIfFailed,
         );
@@ -203,8 +231,9 @@ class Organization extends Model {
 
       return newOrganizationId;
     } catch (error) {
-      logger.error(error.message);
-      logger.info('Reverting Failed Organization');
+      logger.error(
+        `create organization process failed. removing failed home organization records. please try again. Error: ${error.message}`,
+      );
       await Organization.destroy({ where: { isHome: true } });
     }
   }
@@ -222,17 +251,27 @@ class Organization extends Model {
    * and registry store id need to be derived as part of this process, this function asserts their ownership status
    * @param organization the organization table record of the organization to reconcile
    * @returns {Promise<void>}
+   * @throws Error on failure. call in a try block
    */
   static async reconcileOrganization(organization) {
     if (!organization) {
       throw new Error('organization to reconcile must not be nil');
     }
 
+    const orgReduced = organization;
+    delete orgReduced.icon;
+    delete orgReduced.metadata;
     logger.debug(
-      `reconciling organization ${organization.orgUid} storeIds against datalayer. organization data from db:\n${JSON.stringify(organization)}`,
+      `reconciling organization ${orgReduced.orgUid} storeIds against datalayer. organization data from db (icon and metadata removed for compactness): ${JSON.stringify(orgReduced)}`,
     );
     const { name, orgUid, registryId, dataModelVersionStoreId, isHome } =
       organization;
+
+    if (!orgUid) {
+      throw new Error(
+        `organization record is missing orgUid. the organization is unusable in this state. organization record: ${JSON.stringify(organization)}`,
+      );
+    }
 
     if (isHome) {
       try {
@@ -283,7 +322,7 @@ class Organization extends Model {
       }
     }
 
-    const updatedOrganizationData = {};
+    const updatedOrganizationData = { subscribed: true };
 
     if (dataModelVersionStoreId !== datalayerDataModelVersionStoreId) {
       const message =
@@ -304,7 +343,7 @@ class Organization extends Model {
         datalayerDataModelVersionStoreId;
     }
 
-    const isSynced = (syncStatus) => {
+    const isDlSynced = (syncStatus) => {
       return syncStatus.generation === syncStatus.target_generation;
     };
 
@@ -312,7 +351,7 @@ class Organization extends Model {
     const dataModelVersionStoreSyncStatus = await getSyncStatus(
       datalayerDataModelVersionStoreId,
     );
-    if (isSynced(dataModelVersionStoreSyncStatus)) {
+    if (isDlSynced(dataModelVersionStoreSyncStatus)) {
       const { hash } = await getRoot(datalayerDataModelVersionStoreId);
       if (hash !== organization.dataModelVersionStoreHash) {
         logger.info(
@@ -322,7 +361,13 @@ class Organization extends Model {
       }
     }
 
-    await Organization.update(updatedOrganizationData, { where: orgUid });
+    try {
+      await Organization.update(updatedOrganizationData, { where: { orgUid } });
+    } catch {
+      throw new Error(
+        'failed to write updated organization data to organization table',
+      );
+    }
   }
 
   /**
@@ -413,7 +458,6 @@ class Organization extends Model {
       subscribed: true,
       isHome: false,
     };
-
     logger.info(
       `adding and organization with the following info ${organizationData}`,
     );

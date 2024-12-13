@@ -23,19 +23,24 @@ const task = new Task('sync-default-organizations', async () => {
         );
       }
 
-      for (const { orgUid } in defaultOrgRecords) {
+      for (const { orgUid } of defaultOrgRecords) {
         const organization = await Organization.findOne({
           where: { orgUid },
+          raw: true,
         });
-        logger.debug(
-          `sync dafault orgs task found the following organization data associated with default org ${orgUid}:\n${JSON.stringify(organization)}`,
-        );
 
         if (!organization) {
           logger.debug(
             `default organization ${orgUid} was NOT found in the organizations table. running the import process to correct`,
           );
-          await Organization.importOrganization(orgUid, organization.isHome);
+          await Organization.importOrganization(orgUid);
+        } else {
+          const orgReduced = organization;
+          delete orgReduced.icon;
+          delete orgReduced.metadata;
+          logger.debug(
+            `sync default orgs task found the following organization data associated with default org (icon and meta removed for compactness) ${orgUid}:\n${JSON.stringify(orgReduced)}`,
+          );
         }
       }
     }

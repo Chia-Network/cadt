@@ -23,7 +23,7 @@ const task = new Task('validate-organization-table', async () => {
         'validating organization table record store ids against datalayer store ids',
       );
 
-      for (const organization in organizations) {
+      for (const organization of organizations) {
         logger.debug(
           `running the organization reconciliation process for ${organization.name} (orgUid ${organization.orgUid})`,
         );
@@ -33,23 +33,23 @@ const task = new Task('validate-organization-table', async () => {
   } catch (error) {
     logger.error(
       `failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30} seconds`,
+        `Retrying in ${CONFIG?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 30} seconds`,
     );
   }
 });
 
 /**
- * checks that store ids from the organization records match the singleton structure in data layer,
+ * checks that store ids from the organization records match the singleton structure in data layer
  * and ensures that all organizations in the subscription table are subscribed to the required stores
  * @type {SimpleIntervalJob}
  */
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30,
+    seconds: CONFIG?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 30,
     runImmediately: true,
   },
   task,
-  { id: 'sync-default-organizations', preventOverrun: true },
+  { id: 'validate-organization-table', preventOverrun: true },
 );
 
 export default job;
