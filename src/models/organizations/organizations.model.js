@@ -258,6 +258,13 @@ class Organization extends Model {
       throw new Error('organization to reconcile must not be nil');
     }
 
+    if (organization.orgUid === 'PENDING') {
+      logger.info(
+        'skipping organization reconciliation for pending home organization',
+      );
+      return;
+    }
+
     const orgReduced = organization;
     delete orgReduced.icon;
     delete orgReduced.metadata;
@@ -502,6 +509,10 @@ class Organization extends Model {
    */
 
   static async subscribeToOrganization(orgUid) {
+    if (orgUid === 'PENDING') {
+      logger.info('cannot subscribe to a home organization while its pending.');
+    }
+
     logger.debug(
       `running the organization subscription process on organization ${orgUid})`,
     );
