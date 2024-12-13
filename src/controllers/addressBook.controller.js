@@ -5,13 +5,13 @@ export const create = async (req, res) => {
   try {
     const newRecord = _.cloneDeep(req.body);
 
-    let result = await AddressBook.create({
+    await AddressBook.create({
       name: newRecord.name,
       walletAddress: newRecord.walletAddress,
     });
 
     res.json({
-      data: result,
+      message: 'successfully created address book entry',
       success: true,
     });
   } catch (error) {
@@ -27,7 +27,7 @@ export const update = async (req, res) => {
     const data = _.cloneDeep(req.body);
     const id = data.id;
 
-    let result = await AddressBook.update(
+    await AddressBook.update(
       {
         ...data,
       },
@@ -39,7 +39,7 @@ export const update = async (req, res) => {
     );
 
     res.json({
-      data: result,
+      message: 'successfully updated address book entry',
       success: true,
     });
   } catch (error) {
