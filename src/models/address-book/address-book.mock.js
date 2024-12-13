@@ -1,4 +1,4 @@
-import stub from './address.stub.js';
+import stub from './address-book.stub.js';
 
 export const StatisticsMock = {
   findAll: () => stub,

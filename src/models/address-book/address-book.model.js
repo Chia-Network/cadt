@@ -1,10 +1,10 @@
 'use strict';
 
-import ModelTypes from './address.modeltypes.js';
+import ModelTypes from './address-book.modeltypes.js';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize, safeMirrorDbHandler } from '../../database/index.js';
-import { AddressBookMirror } from './address.model.mirror.js';
+import { AddressBookMirror } from './address-book.model.mirror.js';
 
 class AddressBook extends Model {
   static async create(values, options) {
