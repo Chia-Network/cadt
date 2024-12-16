@@ -32,7 +32,7 @@ const job = new SimpleIntervalJob(
     runImmediately: true,
   },
   task,
-  { id: 'clean-up failed-org', preventOverrun: true },
+  { id: 'clean-up-failed-org', preventOverrun: true },
 );
 
 export default job;

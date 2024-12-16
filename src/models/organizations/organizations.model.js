@@ -71,6 +71,8 @@ class Organization extends Model {
         'registryId',
         'registryHash',
         'sync_remaining',
+        'dataModelVersionStoreId',
+        'dataModelVersionStoreHash',
       ],
     });
 
@@ -118,18 +120,18 @@ class Organization extends Model {
         icon: '',
       });
 
-      logger.debug('createHomeOrg() is creating organization (orgUid) store');
+      logger.verbose('createHomeOrg() is creating organization (orgUid) store');
       const newOrganizationId = USE_SIMULATOR
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
         : await datalayer.createDataLayerStore();
 
-      logger.debug('createHomeOrg() is creating registryId store');
+      logger.verbose('createHomeOrg() is creating registryId store');
       const registryStoreId = await datalayer.createDataLayerStore();
 
-      logger.debug('createHomeOrg() is creating dataModelVersionId store');
+      logger.verbose('createHomeOrg() is creating dataModelVersionId store');
       const dataModelVersionStoreId = await datalayer.createDataLayerStore();
 
-      logger.debug('createHomeOrg() is creating file store');
+      logger.verbose('createHomeOrg() is creating file store');
       const fileStoreId = await datalayer.createDataLayerStore();
 
       const revertOrganizationIfFailed = async () => {
@@ -150,7 +152,7 @@ class Organization extends Model {
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
-      logger.debug(
+      logger.verbose(
         `the blockchain reported new organization stores orgUid: ${newOrganizationId}, ` +
           `dataModelVersionStore: ${dataModelVersionStoreId}, registryId: ${registryStoreId} have confirmed. `,
       );
@@ -161,7 +163,7 @@ class Organization extends Model {
       await datalayer.syncDataLayer(
         newOrganizationId,
         {
-          registryId: registryStoreId,
+          registryId: dataModelVersionStoreId, // registryId is the key named here, but this the DATA MODEL VERSION store id
           fileStoreId,
           name,
           icon,
@@ -181,9 +183,9 @@ class Organization extends Model {
         `commiting registry data model version data to data model version store ${dataModelVersionStoreId}`,
       );
       await datalayer.syncDataLayer(
-        registryStoreId,
+        dataModelVersionStoreId,
         {
-          [dataVersion]: dataModelVersionStoreId,
+          [dataVersion]: registryStoreId,
         },
         revertOrganizationIfFailed,
       );
@@ -220,8 +222,8 @@ class Organization extends Model {
 
       if (!USE_SIMULATOR) {
         logger.info('Waiting for New Organization to be confirmed');
-        datalayer.getStoreData(
-          registryStoreId,
+        await datalayer.getStoreData(
+          newOrganizationId,
           onConfirm,
           revertOrganizationIfFailed,
         );
@@ -329,7 +331,7 @@ class Organization extends Model {
       }
     }
 
-    const updatedOrganizationData = { subscribed: true };
+    const updatedOrganizationData = {};
 
     if (dataModelVersionStoreId !== datalayerDataModelVersionStoreId) {
       const message =
@@ -358,21 +360,44 @@ class Organization extends Model {
     const dataModelVersionStoreSyncStatus = await getSyncStatus(
       datalayerDataModelVersionStoreId,
     );
+
     if (isDlSynced(dataModelVersionStoreSyncStatus)) {
-      const { hash } = await getRoot(datalayerDataModelVersionStoreId);
-      if (hash !== organization.dataModelVersionStoreHash) {
+      const { confirmed, hash } = await getRoot(
+        datalayerDataModelVersionStoreId,
+      );
+      if (confirmed && hash !== organization.dataModelVersionStoreHash) {
         logger.info(
-          `updating data model version store ${datalayerDataModelVersionStoreId} root hash to ${hash} from ${organization.dataModelVersionStoreHash}`,
+          `data model version store ${datalayerDataModelVersionStoreId} root hash needs to be updated ${hash} ` +
+            `from ${organization.dataModelVersionStoreHash} to ${hash}`,
         );
         updatedOrganizationData.dataModelVersionStoreHash = hash;
+      } else if (!confirmed) {
+        logger.warn(
+          `data model version store ${datalayerDataModelVersionStoreId} has not been confirmed yet. cannot validate or update hash.`,
+        );
       }
     }
 
-    try {
-      await Organization.update(updatedOrganizationData, { where: { orgUid } });
-    } catch {
-      throw new Error(
-        'failed to write updated organization data to organization table',
+    if (!organization.subscribed) {
+      updatedOrganizationData.subscribed = true;
+    }
+
+    if (!_.isEmpty(updatedOrganizationData)) {
+      logger.info(
+        `reconcile organization task is updating organization ${organization.orgUid} with the following data ${JSON.stringify(updatedOrganizationData)}`,
+      );
+      try {
+        await Organization.update(updatedOrganizationData, {
+          where: { orgUid },
+        });
+      } catch {
+        throw new Error(
+          'failed to write updated organization data to organization table',
+        );
+      }
+    } else {
+      logger.info(
+        `reconcile organization task found organization ${organization.orgUid} required no updates or corrections`,
       );
     }
   }
@@ -650,7 +675,10 @@ class Organization extends Model {
 
             await Organization.update(
               {
-                ..._.omit(updateData, ['registryId']),
+                ..._.omit(updateData, [
+                  'registryId',
+                  'dataModelVersionStoreId',
+                ]),
                 prefix: updateData.prefix || '0',
                 metadata: JSON.stringify(metadata),
               },
