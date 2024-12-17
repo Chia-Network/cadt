@@ -350,14 +350,15 @@ export const resyncOrganization = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
-    await assertHomeOrgExists();
 
+    const orgUid = req.body.orgUid;
     transaction = await sequelize.transaction();
 
-    await Organization.update(
-      { registryHash: '0' },
-      { where: { orgUid: req?.body?.orgUid } },
-    );
+    const organization = await Organization.findOne({ where: { orgUid } });
+
+    await Organization.reconcileOrganization(organization);
+
+    await Organization.update({ registryHash: '0' }, { where: { orgUid } });
 
     await Promise.all([
       ...Object.keys(ModelKeys).map(
