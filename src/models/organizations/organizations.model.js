@@ -256,6 +256,10 @@ class Organization extends Model {
    * @throws Error on failure. call in a try block
    */
   static async reconcileOrganization(organization) {
+    if (USE_SIMULATOR) {
+      return;
+    }
+
     if (!organization) {
       throw new Error('organization to reconcile must not be nil');
     }
