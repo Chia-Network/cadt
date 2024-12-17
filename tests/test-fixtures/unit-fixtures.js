@@ -21,7 +21,7 @@ export const deleteUnit = async (warehouseUnitId) => {
     .delete('/v1/units')
     .send({ warehouseUnitId });
   expect(result.body).to.deep.equal({
-    message: 'Unit deleted successfully',
+    message: 'Unit deletion staged successfully',
     success: true,
   });
   expect(result.statusCode).to.equal(200);

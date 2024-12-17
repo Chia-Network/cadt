@@ -8,6 +8,7 @@ import {
 import { logger } from '../logger.js';
 
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 const task = new Task('sync-organization-meta', async () => {
@@ -17,7 +18,7 @@ const task = new Task('sync-organization-meta', async () => {
 
     if (!CONFIG().CADT.USE_SIMULATOR) {
       logger.task('Syncing subscribed organizations');
-      Organization.syncOrganizationMeta();
+      await Organization.syncOrganizationMeta();
     }
   } catch (error) {
     logger.error(

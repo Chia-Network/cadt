@@ -1,5 +1,30 @@
 import { columnsToInclude } from './helpers.js';
 import Sequelize from 'sequelize';
+import { Mutex } from 'async-mutex';
+
+export async function waitForSyncRegistriesTransaction() {
+  if (processingSyncRegistriesTransactionMutex.isLocked()) {
+    // when the mutex is acquired, the current sync transaction has completed
+    const releaseMutex =
+      await processingSyncRegistriesTransactionMutex.acquire();
+    await releaseMutex();
+  }
+}
+
+/**
+ * mutex which must be acquired to run the sync-registries task job.
+ * this mutex exists to prevent multiple registry sync tasks from running at the same time and overloading the chia
+ * RPC's or causing a SQLite locking error due to multiple task instances trying to commit large update transactions
+ * @type {Mutex}
+ */
+export const syncRegistriesTaskMutex = new Mutex();
+
+/**
+ * mutex which must be acquired when writing registry update information until the transaction has been committed
+ * audit model update transactions are large and lock the DB for long periods.
+ * @type {Mutex}
+ */
+export const processingSyncRegistriesTransactionMutex = new Mutex();
 
 export function formatModelAssociationName(model) {
   if (model == null || model.model == null) return '';
