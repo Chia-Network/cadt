@@ -295,14 +295,14 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
 
     const data = response.body;
 
-    if (Object.keys(data).includes('success') && data.success) {
-      logger.info(`Successfully UnSubscribed: ${storeId}`);
-      return data;
+    if (data.success) {
+      logger.info(`Successfully Unsubscribed from store: ${storeId}`);
+      return true;
     }
 
     return false;
   } catch (error) {
-    logger.info(`Error UnSubscribing: ${error}`);
+    logger.error(`Error Unsubscribing from store ${storeId}. Error: ${error}`);
     return false;
   }
 };
@@ -382,7 +382,7 @@ const getStoreData = async (storeId, rootHash) => {
   return false;
 };
 
-const getRoot = async (storeId, ignoreEmptyStore = false) => {
+const getRoot = async (storeId) => {
   const url = `${CONFIG.DATALAYER_URL}/get_root`;
   const { cert, key, timeout } = getBaseOptions();
 
@@ -394,21 +394,22 @@ const getRoot = async (storeId, ignoreEmptyStore = false) => {
       .timeout(timeout)
       .send({ id: storeId });
 
-    const { confirmed, hash } = response.body;
     logger.debug(
       `the current root data for store ${storeId} is ${JSON.stringify(response.body)}`,
     );
 
-    if (confirmed && (ignoreEmptyStore || !hash.includes('0x00000000000'))) {
-      return response.body;
+    const { success, error, traceback } = response.body;
+
+    if (!success || error || traceback) {
+      throw new Error(`${error}, ${traceback}`);
     }
 
-    return false;
+    return response.body;
   } catch (error) {
     logger.error(
-      `failed to get root for store ${storeId}. error: ${error.message}`,
+      `could not get root data for store ${storeId}. this could be due to the store being in the process of confirming. error: ${error.message}`,
     );
-    return false;
+    return {};
   }
 };
 
