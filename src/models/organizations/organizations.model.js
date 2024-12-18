@@ -9,7 +9,7 @@ import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
 import { logger } from '../../config/logger.js';
-import { FileStore, Staging } from '../';
+import { Audit, FileStore, ModelKeys, Staging } from '../';
 import { getDataModelVersion } from '../../utils/helpers';
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
@@ -694,6 +694,34 @@ class Organization extends Model {
       await Organization.update(
         { subscribed: false },
         { where: { orgUid: organizationStores.orgUid } },
+      );
+    }
+  }
+
+  /**
+   * removes all records of an organization from all models with an `orgUid` column
+   * @param orgUid
+   */
+  static async scrubOrganizationData(orgUid) {
+    const transaction = await sequelize.transaction();
+    try {
+      for (const model of ModelKeys) {
+        await model.destroy({ where: { orgUid }, transaction });
+      }
+
+      await Staging.truncate();
+      await Organization.destroy({ where: { orgUid }, transaction });
+      await FileStore.destroy({ where: { orgUid }, transaction });
+      await Audit.destroy({ where: { orgUid }, transaction });
+
+      await transaction.commit();
+    } catch (error) {
+      logger.error(
+        `failed to delete all db records for organization ${orgUid}, rolling back changes. Error: ${error.message}`,
+      );
+      await transaction.rollback();
+      throw new Error(
+        `an error occurred while deleting records corresponding to organization ${orgUid}. no changes have been made`,
       );
     }
   }

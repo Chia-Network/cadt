@@ -13,7 +13,6 @@ import { getDataModelVersion } from '../utils/helpers';
 
 import { ModelKeys, Audit, Organization, Staging } from '../models';
 import { getOwnedStores, getSubscriptions } from '../datalayer/persistance.js';
-import { scrubOrganizationData } from '../utils/model-utils.js';
 
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
@@ -222,7 +221,7 @@ export const deleteOrganization = async (req, res) => {
       );
     }
 
-    await scrubOrganizationData(orgUid);
+    await Organization.scrubOrganizationData(orgUid);
 
     if (organization.isHome) {
       return res.json({
