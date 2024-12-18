@@ -1,5 +1,34 @@
 import _ from 'lodash';
 import { AddressBook } from '../models';
+import {
+  paginationParams,
+  optionallyPaginatedResponse,
+} from '../utils/helpers';
+
+export const findAll = async (req, res) => {
+  try {
+    let { page, limit, orgUid, order } = req.query;
+
+    let pagination = paginationParams(page, limit);
+
+    const addressBookResults = await AddressBook.findAndCountAll({
+      where: { orgUid },
+      order: [['createdAt', order || 'DESC']],
+      ...pagination,
+    });
+
+    return res.json({
+      ...optionallyPaginatedResponse(addressBookResults, page, limit),
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Can not retrieve address book data',
+      error: error.message,
+      success: false,
+    });
+  }
+};
 
 export const create = async (req, res) => {
   try {
