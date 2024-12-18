@@ -271,21 +271,20 @@ export const subscribeToOrganization = async (req, res) => {
 export const deleteImportedOrg = async (req, res) => {
   let transaction;
   try {
+    const orgUid = req.body.orgUid;
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
-    await assertHomeOrgExists();
-    await assertCanDeleteOrg(req.body.orgUid);
+    await assertCanDeleteOrg(orgUid);
 
     transaction = await sequelize.transaction();
 
-    await Organization.destroy({ where: { orgUid: req.body.orgUid } });
+    await Organization.destroy({ where: { orgUid } });
 
     await Promise.all([
       ...Object.keys(ModelKeys).map(
-        async (key) =>
-          await ModelKeys[key].destroy({ where: { orgUid: req.body.orgUid } }),
+        async (key) => await ModelKeys[key].destroy({ where: { orgUid } }),
       ),
-      Audit.destroy({ where: { orgUid: req.body.orgUid } }),
+      Audit.destroy({ where: { orgUid } }),
     ]);
 
     await transaction.commit();
@@ -469,9 +468,10 @@ export const removeMirror = async (req, res) => {
       message: `Mirror removed for ${req.body.storeId}.`,
       success: true,
     });
-  } catch {
+  } catch (error) {
     res.status(400).json({
       message: 'Error removing mirror for organization',
+      error: error.message,
       success: false,
     });
   }

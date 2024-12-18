@@ -25,7 +25,11 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 };
 
 const getSubscribedStoreData = async (storeId) => {
-  const { storeIds: subscriptions } = await dataLayer.getSubscriptions(storeId);
+  const { storeIds: subscriptions, success } =
+    await dataLayer.getSubscriptions(storeId);
+  if (!success) {
+    throw new Error('failed to retrieve subscriptions from datalayer');
+  }
   const alreadySubscribed = subscriptions.includes(storeId);
 
   if (!alreadySubscribed) {
