@@ -2,8 +2,6 @@ name: Build Binaries
 
 on:
   push:
-    branches:
-      - stage
     tags:
       - '**'
   pull_request:
@@ -43,9 +41,6 @@ jobs:
             sqlite-path: .\node_modules\sqlite3\build\Release\
 
     steps:
-      - name: Clean workspace
-        uses: Chia-Network/actions/clean-workspace@main
-
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -60,6 +55,17 @@ jobs:
       - name: Ignore Husky where not compatible
         run: npm pkg delete scripts.prepare
         if: matrix.runs-on != 'windows-2019'
+
+      - name: Change the package.json version if an RC tag
+        shell: bash
+        if: startsWith(github.ref, 'refs/tags/') && contains( github.ref, '-rc')
+        run: |
+          echo "Github ref: $GITHUB_REF"
+          IFS='/' read -r base directory tag <<< "$GITHUB_REF"
+          echo "Extracted tag is $tag"
+
+          jq ".version = \"${tag}\"" package.json > package.tmp
+          mv package.tmp package.json
 
       - name: npm install
         run: |
@@ -112,7 +118,7 @@ jobs:
 
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && startsWith(github.ref, 'refs/tags/')
         uses: Apple-Actions/import-codesign-certs@v1
         with:
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
@@ -120,7 +126,7 @@ jobs:
           p12-password: ${{ secrets.APPLE_DEV_ID_INSTALLER_PASS }}
 
       - name: Import Apple Application signing certificate
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && startsWith(github.ref, 'refs/tags/')
         uses: Apple-Actions/import-codesign-certs@v1
         with:
           create-keychain: false # Created when importing the first cert
@@ -135,7 +141,7 @@ jobs:
           cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
 
       - name: Sign Mac binaries
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && startsWith(github.ref, 'refs/tags/')
         run: |
           echo "Signing the binaries"
           codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/build-scripts/macos/application/core-registry-cadt
@@ -153,7 +159,7 @@ jobs:
           cp ${{ github.workspace }}/build-scripts/macos/target/pkg/core-registry-cadt-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/core-registry-cadt-macos-installer-x64.pkg
 
       - name: Notarize Mac .pkg
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && startsWith(github.ref, 'refs/tags/')
         run: |
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
@@ -173,13 +179,13 @@ jobs:
 
       - name: Upload Mac Installer
         if: matrix.runs-on == 'macos-latest'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: core-registry-cadt-mac-installer
           path: ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ github.workspace }}/dist
@@ -201,7 +207,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download Linux artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.name }}
           path: ${{ matrix.name }}
@@ -212,6 +218,7 @@ jobs:
           echo "TAGNAME=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_OUTPUT
 
       - name: Build .deb
+        shell: bash
         env:
           CADT_VERSION: ${{ steps.tag-name.outputs.TAGNAME }}
           PLATFORM: ${{ matrix.platform }}
@@ -230,7 +237,7 @@ jobs:
           dpkg-deb --build --root-owner-group "deb/$CLI_DEB_BASE"
 
       - name: Upload deb
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-deb
           path: ${{ github.workspace }}/deb/*.deb
@@ -242,43 +249,43 @@ jobs:
       - debs
     steps:
       - name: Download Windows artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: core-registry-cadt-windows-x64
           path: core-registry-cadt-windows-x64
 
       - name: Download MacOS installer artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: core-registry-cadt-mac-installer
           path: core-registry-cadt-mac-installer
 
       - name: Download MacOS binary executable artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: core-registry-cadt-macos-x64
           path: core-registry-cadt-macos-x64
 
       - name: Download Linux x64 artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: core-registry-cadt-linux-x64
           path: core-registry-cadt-linux-x64
 
       - name: Download Linux ARM64 artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: core-registry-cadt-linux-arm64
           path: core-registry-cadt-linux-arm64
 
       - name: Download Linux x64 deb
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: core-registry-cadt-linux-x64-deb
           path: core-registry-cadt-linux-x64-deb
 
       - name: Download Linux arm64 deb
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: core-registry-cadt-linux-arm64-deb
           path: core-registry-cadt-linux-arm64-deb
@@ -296,9 +303,33 @@ jobs:
           zip -r core-registry-cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-linux-x64
           zip -r core-registry-cadt-macos-binary-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-macos-x64
 
+      # RC release should not be set as latest
+      - name: Decide if release should be set as latest
+        id: is_latest
+        shell: bash
+        run: |
+          unset IS_LATEST
+
+          echo "Github ref is $GITHUB_REF"
+
+          if [[ "$GITHUB_REF" =~ "-rc" ]]; then
+            echo "release candidate tag matched"
+            IS_LATEST='false'
+            IS_PRERELEASE='true'
+          else
+            echo "main branch release matched"
+            IS_LATEST='true'
+            IS_PRERELEASE='false'
+          fi
+
+          echo "IS_LATEST=${IS_LATEST}" >> "$GITHUB_OUTPUT"
+          echo "IS_PRERELEASE=${IS_PRERELEASE}" >> "$GITHUB_OUTPUT"
+
       - name: Release
-        uses: softprops/action-gh-release@v0.1.15
+        uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{steps.is_latest.outputs.IS_PRERELEASE}}
+          make_latest: "${{steps.is_latest.outputs.IS_LATEST}}"
           files: |
             core-registry-cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             core-registry-cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
@@ -314,6 +345,7 @@ jobs:
           echo "REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d "/" -f 2)" >>$GITHUB_OUTPUT
 
       - name: Trigger apt repo update
+        if: startsWith(github.ref, 'refs/tags/') && !contains( github.ref, '-rc')
         uses: Chia-Network/actions/github/glue@main
         with:
           json_data: '{"climate_tokenization_repo":"${{ steps.repo-name.outputs.REPO_NAME }}","application_name":"[\"core-registry-cadt\"]","release_version":"${{ steps.tag-name.outputs.TAGNAME }}","add_debian_version":"true","arm64":"available"}'
