@@ -261,13 +261,11 @@ Response
 - POST `/organizations/create` - create an organization without an icon 
 - POST `/organizations/edit` - update an organization name and/or icon 
 - PUT `/organizations/import` - subscribe and import an organization via OrgUid 
-- DELETE `organizations/import` - delete an organization's record from the CADT instance DB 
-- PUT `organizations/subscribe` - subscribe to an organization datalayer singleton 
-- DELETE `organizations/unsubscribe` - unsubscribe from an organization datalayer singleton and keep CADT data 
-- PUT `organizations/resync` - resync an organization from datalayer 
-- POST `organizations/mirror` - add a mirror for a datalayer store via the store ID 
-- GET `organizations/metadata` - get an organizations metadata using the OrgUid 
-- GET `organizations/status` - the sync status of an organization via the OrgUid
+- DELETE `/organizations/import` - delete an organization's record from the CADT instance DB
+- PUT `/organizations/resync` - resync an organization from datalayer 
+- POST `/organizations/mirror` - add a mirror for a datalayer store via the store ID 
+- GET `/organizations/metadata` - get an organizations metadata using the OrgUid 
+- GET `/organizations/status` - the sync status of an organization via the OrgUid
 
 ---
 

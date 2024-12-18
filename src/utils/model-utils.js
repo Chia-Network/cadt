@@ -2,6 +2,15 @@ import { columnsToInclude } from './helpers.js';
 import Sequelize from 'sequelize';
 
 import { Mutex } from 'async-mutex';
+import {
+  Audit,
+  FileStore,
+  ModelKeys,
+  Organization,
+  Staging,
+} from '../models/index.js';
+import { sequelize } from '../database/index.js';
+import { logger } from '../config/logger.js';
 
 export async function waitForSyncRegistriesTransaction() {
   if (processingSyncRegistriesTransactionMutex.isLocked()) {
@@ -31,6 +40,37 @@ export function formatModelAssociationName(model) {
   if (model == null || model.model == null) return '';
 
   return `${model.model.name}${model.pluralize ? 's' : ''}`;
+}
+
+/**
+ * removes all records of an organization from all models with an `orgUid` column
+ * @param orgUid
+ */
+export async function scrubOrganizationData(orgUid) {
+  logger.info(
+    `deleting all database entries corresponding to organization ${orgUid}`,
+  );
+  const transaction = await sequelize.transaction();
+  try {
+    for (const model of ModelKeys) {
+      await model.destroy({ where: { orgUid }, transaction });
+    }
+
+    await Staging.truncate();
+    await Organization.destroy({ where: { orgUid }, transaction });
+    await FileStore.destroy({ where: { orgUid }, transaction });
+    await Audit.destroy({ where: { orgUid }, transaction });
+
+    await transaction.commit();
+  } catch (error) {
+    logger.error(
+      `failed to delete all db records for organization ${orgUid}, rolling back changes. Error: ${error.message}`,
+    );
+    await transaction.rollback();
+    throw new Error(
+      `an error occurred while deleting records corresponding to organization ${orgUid}. no changes have been made`,
+    );
+  }
 }
 
 /**

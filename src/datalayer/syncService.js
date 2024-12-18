@@ -18,6 +18,29 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
   }
 };
 
+const unsubscribeFromDataLayerStoreWithRetry = async (
+  storeId,
+  maxRetries = 60,
+  retryWaitMs = 600,
+) => {
+  if (!USE_SIMULATOR) {
+    let success = false;
+    let retryCount = 0;
+
+    while (!success) {
+      success = await dataLayer.unsubscribeFromDataLayerStore(storeId);
+      if (!success) {
+        if (retryCount >= maxRetries) {
+          throw new Error(
+            `failed to unsubscribe from store ${storeId} after ${maxRetries} attempts`,
+          );
+        }
+        await new Promise((resolve) => setTimeout(() => resolve, retryWaitMs));
+      }
+    }
+  }
+};
+
 const subscribeToStoreOnDataLayer = async (storeId) => {
   if (USE_SIMULATOR) {
     return simulator.subscribeToStoreOnDataLayer(storeId);
@@ -228,5 +251,6 @@ export default {
   POLLING_INTERVAL,
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
+  unsubscribeFromDataLayerStoreWithRetry,
   waitForAllTransactionsToConfirm,
 };

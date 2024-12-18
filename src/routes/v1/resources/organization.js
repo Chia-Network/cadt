@@ -11,10 +11,10 @@ import {
   resyncOrganizationSchema,
   subscribeOrganizationSchema,
   unsubscribeOrganizationSchema,
-  importHomeOrganizationSchema,
   removeMirrorSchema,
   addMirrorSchema,
   getMetaDataSchema,
+  deleteOrganizationSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -37,9 +37,13 @@ OrganizationRouter.post('/sync', (req, res) => {
   return OrganizationController.sync(req, res);
 });
 
-OrganizationRouter.delete('/', (req, res) => {
-  return OrganizationController.resetHomeOrg(req, res);
-});
+OrganizationRouter.delete(
+  '/',
+  validator.query(deleteOrganizationSchema),
+  (req, res) => {
+    return OrganizationController.deleteOrganization(req, res);
+  },
+);
 
 OrganizationRouter.post(
   '/',
@@ -59,23 +63,11 @@ OrganizationRouter.put('/edit', upload.single('file'), (req, res) => {
 
 OrganizationRouter.put(
   '/',
-  validator.body(importHomeOrganizationSchema),
-  (req, res) => {
-    return OrganizationController.importHomeOrg(req, res);
-  },
-);
-
-OrganizationRouter.put(
-  '/import',
   validator.body(importOrganizationSchema),
   (req, res) => {
-    return OrganizationController.importOrg(req, res);
+    return OrganizationController.importOrganization(req, res);
   },
 );
-
-OrganizationRouter.delete('/import', (req, res) => {
-  return OrganizationController.deleteImportedOrg(req, res);
-});
 
 OrganizationRouter.put(
   '/subscribe',
@@ -89,7 +81,7 @@ OrganizationRouter.put(
   '/unsubscribe',
   validator.body(unsubscribeOrganizationSchema),
   (req, res) => {
-    return OrganizationController.unsubscribeToOrganization(req, res);
+    return OrganizationController.unsubscribeFromOrganization(req, res);
   },
 );
 

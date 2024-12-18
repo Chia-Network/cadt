@@ -306,10 +306,10 @@ class Organization extends Model {
         await Organization.subscribeToOrganization(orgUid);
     } catch (error) {
       logger.error(
-        `failure validating or adding subscriptions for org import. cannot import. Error: ${error.message}`,
+        `failed to subscribe to, or validate subscribed store data for organization ${orgUid}. Error: ${error.message}`,
       );
       throw new Error(
-        `failed to subscribe to, or validate subscribed store data for, organization ${orgUid}`,
+        `failed to subscribe to, or validate subscribed store data for organization ${orgUid}`,
       );
     }
 
@@ -536,7 +536,6 @@ class Organization extends Model {
    *          - `dataModelVersionStoreId`: The identifier of the data model version store.
    *          - `registryStoreId`: The identifier of the registry store.
    */
-
   static async subscribeToOrganization(orgUid) {
     if (orgUid === 'PENDING') {
       logger.info('cannot subscribe to a home organization while its pending.');
@@ -630,6 +629,15 @@ class Organization extends Model {
       }
     }
 
+    const organization = await Organization.findOne({
+      where: { orgUid },
+      raw: true,
+    });
+    if (organization) {
+      logger.info(`marking existing pro`);
+      await Organization.update({ subscribed: true }, { where: { orgUid } });
+    }
+
     return {
       orgUid,
       dataModelVersionStoreId,
@@ -637,8 +645,57 @@ class Organization extends Model {
     };
   }
 
-  static async unsubscribeToOrganization(orgUid) {
-    await Organization.update({ subscribed: false }, { orgUid });
+  /**
+   *
+   * @param {Organization | Object} organizationStores
+   * @param {string} organizationStores.orgUid
+   * @param {string} organizationStores.dataModelVersionStoreId
+   * @param {string} organizationStores.registryId
+   * @returns {Promise<void>}
+   */
+  static async unsubscribeFromOrganizationStores(organizationStores) {
+    const storesToUnsubscribe = [
+      organizationStores.orgUid,
+      organizationStores.dataModelVersionStoreId,
+      organizationStores.registryId,
+    ];
+    const failedUnsubscribes = [];
+
+    storesToUnsubscribe.forEach((storeId) => {
+      if (!storeId) {
+        const message = `organization stores cannot be nil. found nil store id associated with organization ${organizationStores.orgUid}`;
+        logger.error(message);
+        throw new Error(message);
+      }
+    });
+
+    for (const storeId of storesToUnsubscribe) {
+      try {
+        await datalayer.unsubscribeFromDataLayerStoreWithRetry(storeId);
+      } catch (error) {
+        logger.error(
+          `unsubscribeFromOrganization() encountered an error: ${error.message}`,
+        );
+        failedUnsubscribes.push(storeId);
+      }
+    }
+
+    if (failedUnsubscribes.length) {
+      const message = `failed to unsubscribe from the following organization stores: ${failedUnsubscribes}`;
+      logger.error(message);
+      throw new Error(message);
+    }
+
+    const orgExistsInDb = await Organization.findOne({
+      where: { orgUid: organizationStores.orgUid },
+      raw: true,
+    });
+    if (orgExistsInDb) {
+      await Organization.update(
+        { subscribed: false },
+        { where: { orgUid: organizationStores.orgUid } },
+      );
+    }
   }
 
   /**

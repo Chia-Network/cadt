@@ -1,4 +1,3 @@
-import { Sequelize } from 'sequelize';
 import { sequelize } from '../database';
 import datalayer from '../datalayer';
 
@@ -6,7 +5,6 @@ import {
   assertHomeOrgExists,
   assertWalletIsSynced,
   assertIfReadOnlyMode,
-  assertCanDeleteOrg,
   assertNoPendingCommits,
   assertOrgDoesNotExist,
 } from '../utils/data-assertions';
@@ -14,6 +12,8 @@ import {
 import { getDataModelVersion } from '../utils/helpers';
 
 import { ModelKeys, Audit, Organization, Staging } from '../models';
+import { getOwnedStores, getSubscriptions } from '../datalayer/persistance.js';
+import { scrubOrganizationData } from '../utils/model-utils.js';
 
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
@@ -164,81 +164,24 @@ export const create = async (req, res) => {
   }
 };
 
-export const resetHomeOrg = async (req, res) => {
+export const importOrganization = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
 
-    await Promise.all([
-      Organization.destroy({ where: { isHome: true } }),
-      Staging.destroy({
-        where: {
-          id: {
-            [Sequelize.Op.ne]: null,
-          },
-        },
-        truncate: true,
-      }),
-    ]);
-
-    res.json({
-      message:
-        'Your home organization was deleted from this instance. (note that it still exists in datalayer)',
-      success: true,
-    });
-  } catch (error) {
-    res.status(400).json({
-      message: 'Error deleting your organization',
-      error: error.message,
-      success: false,
-    });
-  }
-};
-
-export const importOrg = async (req, res) => {
-  try {
-    await assertIfReadOnlyMode();
-    await assertWalletIsSynced();
-
-    const { orgUid } = req.body;
+    const { orgUid, isHome } = req.body;
     await assertOrgDoesNotExist(orgUid);
 
-    await Organization.importOrganization(orgUid);
+    await Organization.importOrganization(orgUid, isHome);
 
     res.status(200).json({
-      message:
-        'Successfully imported organization. CADT will begin syncing data from datalayer shortly',
+      message: `Successfully imported ${isHome ? 'home' : ''} organization. CADT will begin syncing data from datalayer shortly`,
       success: true,
     });
   } catch (error) {
     console.trace(error);
     res.status(400).json({
       message: 'Error importing organization',
-      error: error.message,
-      success: false,
-    });
-  }
-};
-
-export const importHomeOrg = async (req, res) => {
-  try {
-    await assertIfReadOnlyMode();
-    await assertWalletIsSynced();
-
-    const { orgUid } = req.body;
-    await assertOrgDoesNotExist(orgUid);
-
-    // asserts home org stores are owned
-    await Organization.importOrganization(orgUid, true);
-
-    res.status(200).json({
-      message:
-        'Successfully imported home organization. CADT will begin syncing data from datalayer shortly',
-      success: true,
-    });
-  } catch (error) {
-    res.status(400).json({
-      message: 'Error importing home organization',
       error: error.message,
       success: false,
     });
@@ -265,30 +208,44 @@ export const subscribeToOrganization = async (req, res) => {
   }
 };
 
-export const deleteImportedOrg = async (req, res) => {
-  let transaction;
+export const deleteOrganization = async (req, res) => {
+  const { orgUid } = req.body;
+
   try {
-    const orgUid = req.body.orgUid;
-    await assertIfReadOnlyMode();
-    await assertWalletIsSynced();
-    await assertCanDeleteOrg(orgUid);
+    const organization = await Organization.findOne({
+      where: { orgUid },
+      raw: true,
+    });
+    if (!organization) {
+      throw new Error(
+        `organization with orgUid ${orgUid} does not exist on this instance`,
+      );
+    }
 
-    transaction = await sequelize.transaction();
+    await scrubOrganizationData(orgUid);
 
-    await Organization.destroy({ where: { orgUid } });
+    if (organization.isHome) {
+      return res.json({
+        message:
+          'Your home organization was deleted from this instance. cadt will no londer sync its data. (note that this org still exists in datalayer)',
+        success: true,
+      });
+    }
 
-    await Promise.all([
-      ...Object.keys(ModelKeys).map(
-        async (key) => await ModelKeys[key].destroy({ where: { orgUid } }),
-      ),
-      Audit.destroy({ where: { orgUid } }),
-    ]);
-
-    await transaction.commit();
+    try {
+      await Organization.unsubscribeFromOrganizationStores(organization);
+    } catch (error) {
+      return res.status(400).json({
+        message:
+          'Removed all organization records from cadt, but an error prevented unsubscribing from the organization on datalayer',
+        error: error.message,
+        success: false,
+      });
+    }
 
     return res.json({
       message:
-        'Removed all organization records. cadt will not sync the organizations data from datalayer',
+        'Removed all organization records and unsubscribed from organization datalayer stores. cadt will not sync the organizations data from datalayer',
       success: true,
     });
   } catch (error) {
@@ -297,44 +254,90 @@ export const deleteImportedOrg = async (req, res) => {
       error: error.message,
       success: false,
     });
-    if (transaction) {
-      await transaction.rollback();
-    }
   }
 };
 
-export const unsubscribeToOrganization = async (req, res) => {
+export const unsubscribeFromOrganization = async (req, res) => {
   let transaction;
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
-    await assertHomeOrgExists();
 
-    transaction = await sequelize.transaction();
+    const { orgUid } = req.body;
+    const organization = await Organization.findOne({
+      where: { orgUid },
+      raw: true,
+    });
 
-    await Organization.update(
-      { subscribed: false, registryHash: '0' },
-      { where: { orgUid: req.body.orgUid } },
-    );
+    if (organization?.isHome) {
+      throw new Error(
+        `you cannot unsubscribe from your home organization. orgUid: ${orgUid}`,
+      );
+    }
 
-    await Promise.all([
-      ...Object.keys(ModelKeys).map(
-        async (key) =>
-          await ModelKeys[key].destroy({ where: { orgUid: req.body.orgUid } }),
-      ),
-      Audit.destroy({ where: { orgUid: req.body.orgUid } }),
-    ]);
+    if (organization) {
+      await Organization.unsubscribeFromOrganizationStores(organization);
+    } else {
+      const { storeIds: ownedStores, success: successGettingOwnedStores } =
+        getOwnedStores();
+      if (!successGettingOwnedStores) {
+        throw new Error('failed to get owned stores from datalayer');
+      }
 
-    await transaction.commit();
+      if (ownedStores.includes(orgUid)) {
+        throw new Error(
+          `the chia wallet this instance is connected to owns store ${orgUid}. cannot unsubscribe.`,
+        );
+      }
+
+      const { storeIds: subscriptions, success: successGettingSubscriptions } =
+        getSubscriptions();
+      if (!successGettingSubscriptions) {
+        throw new Error('failed to get subscribed stores from datalayer');
+      }
+
+      if (!subscriptions.includes(orgUid)) {
+        return res.json({
+          message: `you are not subscribed to organization ${orgUid}`,
+          success: true,
+        });
+      }
+
+      const orgUidData = datalayer.getCurrentStoreData(orgUid);
+      // misleading "registryId" key name. this is the datamodel version store Id
+      const dataModelVersionStoreId = orgUidData?.registryId;
+      if (dataModelVersionStoreId) {
+        throw new Error(
+          `cannot get data model singleton id from store ${orgUid}. not an organization store or a datalayer error occurred`,
+        );
+      }
+
+      const instanceDataModelVersion = getDataModelVersion();
+      const dataModelStoreData = datalayer.getCurrentStoreData(
+        dataModelVersionStoreId,
+      );
+      const registryStoreId = dataModelStoreData[instanceDataModelVersion];
+      if (registryStoreId) {
+        throw new Error(
+          `cannot get registry singleton id from store ${dataModelVersionStoreId}. not an organization store or a datalayer error occurred`,
+        );
+      }
+
+      await Organization.unsubscribeFromOrganizationStores({
+        orgUid,
+        dataModelVersionStoreId,
+        registryId: registryStoreId,
+      });
+    }
 
     return res.json({
       message:
-        'UnSubscribed to organization, you will no longer receive updates.',
+        'Unsubscribed from organization datalayer stores. Datalayer and CADT will not sync any climate data',
       success: true,
     });
   } catch (error) {
     res.status(400).json({
-      message: 'Error unsubscribing to organization',
+      message: 'Error unsubscribing from organization datalayer stores',
       error: error.message,
       success: false,
     });
