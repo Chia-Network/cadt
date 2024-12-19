@@ -27,6 +27,12 @@ export const syncRegistriesTaskMutex = new Mutex();
  */
 export const processingSyncRegistriesTransactionMutex = new Mutex();
 
+/**
+ * mutex which should be acquired by any function what intends on deleting or adding rows to the organization table
+ * @type {Mutex}
+ */
+export const addOrDeleteOrganizationRecordMutex = new Mutex();
+
 export function formatModelAssociationName(model) {
   if (model == null || model.model == null) return '';
 

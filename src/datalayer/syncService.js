@@ -18,6 +18,29 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
   }
 };
 
+const unsubscribeFromDataLayerStoreWithRetry = async (
+  storeId,
+  maxRetries = 60,
+  retryWaitMs = 600,
+) => {
+  if (!USE_SIMULATOR) {
+    let success = false;
+    let retryCount = 0;
+
+    while (!success) {
+      success = await dataLayer.unsubscribeFromDataLayerStore(storeId);
+      if (!success) {
+        if (retryCount >= maxRetries) {
+          throw new Error(
+            `failed to unsubscribe from store ${storeId} after ${maxRetries} attempts`,
+          );
+        }
+        await new Promise((resolve) => setTimeout(() => resolve, retryWaitMs));
+      }
+    }
+  }
+};
+
 const subscribeToStoreOnDataLayer = async (storeId) => {
   if (USE_SIMULATOR) {
     return simulator.subscribeToStoreOnDataLayer(storeId);
@@ -55,8 +78,8 @@ const getSubscribedStoreData = async (storeId) => {
     logger.debug(
       `syncService getSubscribedData() checking that data is available for ${storeId}.`,
     );
-    const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
-    if (!storeExistAndIsConfirmed) {
+    const { confirmed } = await dataLayer.getRoot(storeId);
+    if (!confirmed) {
       throw new Error(`Store not found in DataLayer: ${storeId}.`);
     } else {
       logger.debug(
@@ -192,7 +215,9 @@ const getStoreIfUpdated = async (storeId, lastRootHash, callback, onFail) => {
       );
     }
   } catch (error) {
-    logger.error(error.message);
+    logger.error(
+      `getStoreIfUpdated() failed to get updated store data. Error: ${error.message}`,
+    );
     onFail(error.message);
   }
 };
@@ -226,5 +251,6 @@ export default {
   POLLING_INTERVAL,
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
+  unsubscribeFromDataLayerStoreWithRetry,
   waitForAllTransactionsToConfirm,
 };
