@@ -311,11 +311,17 @@ jobs:
           name: cadt-mac-installer
           path: cadt-mac-installer
 
-      - name: Download Linux artifacts
+      - name: Download x64 Linux artifacts
         uses: actions/download-artifact@v4
         with:
           name: cadt-linux-x64
           path: cadt-linux-x64
+
+      - name: Download arm64 Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: cadt-linux-arm64
+          path: cadt-linux-arm64
 
       - name: Download Linux x64 deb
         uses: actions/download-artifact@v4
