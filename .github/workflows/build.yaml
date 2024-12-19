@@ -119,7 +119,7 @@ jobs:
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
         if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && startsWith(github.ref, 'refs/tags/')
-        uses: Apple-Actions/import-codesign-certs@v1
+        uses: Apple-Actions/import-codesign-certs@v3
         with:
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
           p12-file-base64: ${{ secrets.APPLE_DEV_ID_INSTALLER }}
@@ -127,7 +127,7 @@ jobs:
 
       - name: Import Apple Application signing certificate
         if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && startsWith(github.ref, 'refs/tags/')
-        uses: Apple-Actions/import-codesign-certs@v1
+        uses: Apple-Actions/import-codesign-certs@v3
         with:
           create-keychain: false # Created when importing the first cert
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
