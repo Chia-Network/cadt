@@ -129,7 +129,7 @@ jobs:
 
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
         uses: Apple-Actions/import-codesign-certs@v3
         with:
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
@@ -137,7 +137,7 @@ jobs:
           p12-password: ${{ secrets.APPLE_DEV_ID_INSTALLER_PASS }}
 
       - name: Import Apple Application signing certificate
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
         uses: Apple-Actions/import-codesign-certs@v3
         with:
           create-keychain: false # Created when importing the first cert
@@ -152,7 +152,7 @@ jobs:
           cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
 
       - name: Sign Mac binaries
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
         run: |
           echo "Signing the binaries"
           codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/build-scripts/macos/application/cadt
@@ -169,7 +169,7 @@ jobs:
           cp ${{ github.workspace }}/build-scripts/macos/target/pkg/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/CADT-macos-installer-x64.pkg
 
       - name: Notarize Mac .pkg
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
         run: |
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
@@ -339,18 +339,45 @@ jobs:
           zip -r cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-windows-x64
           zip -r cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-mac-installer
           zip -r cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-x64
+          zip -r cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-arm64
+
+      # RC release should not be set as latest
+      - name: Decide if release should be set as latest
+        id: is_latest
+        shell: bash
+        run: |
+          unset IS_LATEST
+
+          echo "Github ref is $GITHUB_REF"
+
+          if [[ "$GITHUB_REF" =~ "-rc" ]]; then
+            echo "release candidate tag matched"
+            IS_LATEST='false'
+            IS_PRERELEASE='true'
+          else
+            echo "main branch release matched"
+            IS_LATEST='true'
+            IS_PRERELEASE='false'
+          fi
+
+          echo "IS_LATEST=${IS_LATEST}" >> "$GITHUB_OUTPUT"
+          echo "IS_PRERELEASE=${IS_PRERELEASE}" >> "$GITHUB_OUTPUT"
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{steps.is_latest.outputs.IS_PRERELEASE}}
+          make_latest: "${{steps.is_latest.outputs.IS_LATEST}}"
           files: |
             cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-x64-deb/*.deb
             cadt-linux-arm64-deb/*.deb
 
       - name: Trigger apt repo update
+        if: startsWith(github.ref, 'refs/tags/') && !contains( github.ref, '-rc')
         uses: Chia-Network/actions/github/glue@main
         with:
           json_data: '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}'
