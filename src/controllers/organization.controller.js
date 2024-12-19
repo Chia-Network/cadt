@@ -215,23 +215,25 @@ export const deleteOrganization = async (req, res) => {
       where: { orgUid },
       raw: true,
     });
+
     if (!organization) {
       throw new Error(
         `organization with orgUid ${orgUid} does not exist on this instance`,
       );
     }
 
-    await Organization.scrubOrganizationData(orgUid);
+    await Organization.deleteAllOrganizationData(orgUid);
 
     if (organization.isHome) {
       return res.json({
         message:
-          'Your home organization was deleted from this instance. cadt will no londer sync its data. (note that this org still exists in datalayer)',
+          'Your home organization was deleted from this instance. cadt will no longer sync its data. (note that this org still exists in datalayer)',
         success: true,
       });
     }
 
     try {
+      // need to call this here because the task that normally does it cannot if there's no record of the organization
       await Organization.unsubscribeFromOrganizationStores(organization);
     } catch (error) {
       return res.status(400).json({
@@ -257,7 +259,6 @@ export const deleteOrganization = async (req, res) => {
 };
 
 export const unsubscribeFromOrganization = async (req, res) => {
-  let transaction;
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
@@ -275,7 +276,12 @@ export const unsubscribeFromOrganization = async (req, res) => {
     }
 
     if (organization) {
-      await Organization.unsubscribeFromOrganizationStores(organization);
+      await Organization.update({ subscribed: false }, { where: { orgUid } });
+      res.json({
+        message:
+          'Organization has been marked as unsubscribed. CADT will remove the datalayer subscriptions shortly.',
+        success: true,
+      });
     } else {
       const { storeIds: ownedStores, success: successGettingOwnedStores } =
         getOwnedStores();
@@ -327,23 +333,18 @@ export const unsubscribeFromOrganization = async (req, res) => {
         dataModelVersionStoreId,
         registryId: registryStoreId,
       });
-    }
 
-    return res.json({
-      message:
-        'Unsubscribed from organization datalayer stores. Datalayer and CADT will not sync any climate data',
-      success: true,
-    });
+      res.json({
+        message: 'Unsubscribed from organization datalayer stores',
+        success: true,
+      });
+    }
   } catch (error) {
     res.status(400).json({
       message: 'Error unsubscribing from organization datalayer stores',
       error: error.message,
       success: false,
     });
-
-    if (transaction) {
-      await transaction.rollback();
-    }
   }
 };
 
@@ -357,6 +358,15 @@ export const resyncOrganization = async (req, res) => {
     transaction = await sequelize.transaction();
 
     const organization = await Organization.findOne({ where: { orgUid } });
+    if (!organization) {
+      throw new Error(`organization ${orgUid} does not exist on this instance`);
+    }
+
+    if (!organization.subscribed) {
+      throw new Error(
+        `you are not subscribed to this organization. please subscribed to resync`,
+      );
+    }
 
     await Organization.reconcileOrganization(organization);
 
