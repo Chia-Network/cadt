@@ -2,7 +2,7 @@ import Joi from 'joi';
 
 export const baseSchema = {
   name: Joi.string().required(),
-  wallerAddress: Joi.string().required(),
+  walletAddress: Joi.string().required(),
 };
 
 export const addressBookGetQuerySchema = Joi.object()

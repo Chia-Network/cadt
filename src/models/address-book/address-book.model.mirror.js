@@ -4,7 +4,7 @@ import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 
 import { sequelizeMirror, safeMirrorDbHandler } from '../../database';
-import ModelTypes from './address-book.modeltypes';
+import ModelTypes from './address-book.modeltypes.cjs';
 
 class AddressBookMirror extends Model {}
 

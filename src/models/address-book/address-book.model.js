@@ -1,6 +1,6 @@
 'use strict';
 
-import ModelTypes from './address-book.modeltypes.js';
+import ModelTypes from './address-book.modeltypes.cjs';
 import Sequelize from 'sequelize';
 const { Model } = Sequelize;
 import { sequelize, safeMirrorDbHandler } from '../../database/index.js';
