@@ -596,7 +596,7 @@ const getSubscriptions = async () => {
       .send({});
 
     const data = response.body;
-    logger.debug(`data returned from ${url}: ${data.store_ids}`);
+    logger.debug(`data returned from ${url}: ${JSON.stringify(data)}`);
 
     if (data.success) {
       return { success: true, storeIds: data.store_ids };

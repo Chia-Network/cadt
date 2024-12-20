@@ -26,7 +26,7 @@ const task = new Task('sync-default-organizations', async () => {
       const userDeletedOrgs = await Meta.getUserDeletedOrgUids();
 
       for (const { orgUid } of defaultOrgRecords) {
-        if (userDeletedOrgs.includes(orgUid)) {
+        if (userDeletedOrgs?.includes(orgUid)) {
           logger.verbose(
             `default organization ${orgUid} has been explicitly removed from this instance. not adding or checking that it exists`,
           );

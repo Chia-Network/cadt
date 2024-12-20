@@ -80,7 +80,9 @@ const getSubscribedStoreData = async (storeId) => {
     );
     const { confirmed } = await dataLayer.getRoot(storeId);
     if (!confirmed) {
-      throw new Error(`Store not found in DataLayer: ${storeId}.`);
+      throw new Error(
+        `${storeId} has not yet been confirmed. cannot get root.`,
+      );
     } else {
       logger.debug(
         `store data is confirmed available, proceeding to get data ${storeId}`,

@@ -26,7 +26,7 @@ const task = new Task('validate-organization-table', async () => {
       for (const organization of organizations) {
         // this is in the loop to prevent this task from trying to operate on an organization that was deleted while it was running
         const deletedOrganizations = await Meta.getUserDeletedOrgUids();
-        if (deletedOrganizations.includes(organization.orgUid)) {
+        if (deletedOrganizations?.includes(organization.orgUid)) {
           continue;
         }
 
@@ -46,7 +46,7 @@ const task = new Task('validate-organization-table', async () => {
   } catch (error) {
     logger.error(
       `failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 30} seconds`,
+        `Retrying in ${CONFIG?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 900} seconds`,
     );
   }
 });
@@ -61,7 +61,7 @@ const task = new Task('validate-organization-table', async () => {
  */
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 30,
+    seconds: CONFIG?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 900,
     runImmediately: true,
   },
   task,

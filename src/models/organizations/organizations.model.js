@@ -595,8 +595,7 @@ class Organization extends Model {
           onTimeout(error);
         }
         logger.debug(`${error.message}. RETRYING`);
-      } finally {
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 10000));
       }
     }
 
@@ -621,8 +620,7 @@ class Organization extends Model {
           onTimeout(error);
         }
         logger.debug(`${error.message}. RETRYING`);
-      } finally {
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
     }
 
