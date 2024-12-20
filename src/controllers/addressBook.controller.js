@@ -7,20 +7,18 @@ import {
 
 export const findAll = async (req, res) => {
   try {
-    let { page, limit, orgUid, order } = req.query;
+    let { page, limit, order } = req.query;
 
     let pagination = paginationParams(page, limit);
 
     const addressBookResults = await AddressBook.findAndCountAll({
-      where: { orgUid },
       order: [['createdAt', order || 'DESC']],
       ...pagination,
     });
 
-    return res.json({
-      ...optionallyPaginatedResponse(addressBookResults, page, limit),
-      success: true,
-    });
+    return res.json(
+      optionallyPaginatedResponse(addressBookResults, page, limit),
+    );
   } catch (error) {
     res.status(400).json({
       message: 'Can not retrieve address book data',
@@ -85,7 +83,9 @@ export const destroy = async (req, res) => {
     const id = data.id;
 
     const result = await AddressBook.destroy({
-      id,
+      where: {
+        id,
+      },
     });
     if (result)
       res.json({
