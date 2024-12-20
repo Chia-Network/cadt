@@ -10,10 +10,6 @@ export const importOrganizationSchema = Joi.object({
   isHome: Joi.bool().optional(),
 });
 
-export const deleteOrganizationSchema = Joi.object({
-  orgUid: Joi.string().required(),
-});
-
 export const unsubscribeOrganizationSchema = Joi.object({
   orgUid: Joi.string().required(),
 });

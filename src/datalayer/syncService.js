@@ -52,15 +52,29 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 /**
  * gets and decodes data from a subscribed store.
  * will subscribe to any store id for which there is no subscription.
- * @param storeId to retrieve data from
+ *
+ * providing a subscription list will prevent calling the datalayer `/subscriptions` RPC.
+ * good idea if calling in a loop
+ *
+ * @param storeId {string} to retrieve data from
+ * @param providedSubscriptions {[string] | undefined} optional list of subscriptions. providing prevents RPC call
  * @returns {Promise<any>}
  */
-const getSubscribedStoreData = async (storeId) => {
-  const { storeIds: subscriptions, success } =
-    await dataLayer.getSubscriptions();
-  if (!success) {
-    throw new Error('failed to retrieve subscriptions from datalayer');
+const getSubscribedStoreData = async (
+  storeId,
+  providedSubscriptions = undefined,
+) => {
+  let subscriptions = providedSubscriptions;
+  if (!subscriptions) {
+    const { storeIds: rpcSubscriptions, success } =
+      await dataLayer.getSubscriptions();
+    if (!success) {
+      throw new Error('failed to retrieve subscriptions from datalayer');
+    }
+
+    subscriptions = rpcSubscriptions;
   }
+
   const alreadySubscribed = subscriptions.includes(storeId);
 
   if (!alreadySubscribed) {

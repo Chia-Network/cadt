@@ -14,7 +14,6 @@ import {
   removeMirrorSchema,
   addMirrorSchema,
   getMetaDataSchema,
-  deleteOrganizationSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -37,13 +36,9 @@ OrganizationRouter.post('/sync', (req, res) => {
   return OrganizationController.sync(req, res);
 });
 
-OrganizationRouter.delete(
-  '/',
-  validator.query(deleteOrganizationSchema),
-  (req, res) => {
-    return OrganizationController.deleteOrganization(req, res);
-  },
-);
+OrganizationRouter.delete('/:orgUid', (req, res) => {
+  return OrganizationController.deleteOrganization(req, res);
+});
 
 OrganizationRouter.post(
   '/',

@@ -208,7 +208,7 @@ export const subscribeToOrganization = async (req, res) => {
 };
 
 export const deleteOrganization = async (req, res) => {
-  const { orgUid } = req.body;
+  const { orgUid } = req.params;
 
   try {
     const organization = await Organization.findOne({
@@ -233,20 +233,18 @@ export const deleteOrganization = async (req, res) => {
     }
 
     try {
-      // need to call this here because the task that normally does it cannot if there's no record of the organization
+      // need to call this here because the task that normally unsubscribes cannot if there's no record of the organization
       await Organization.unsubscribeFromOrganizationStores(organization);
     } catch (error) {
       return res.status(400).json({
-        message:
-          'Removed all organization records from cadt, but an error prevented unsubscribing from the organization on datalayer',
+        message: `Removed all organization records for organization ${orgUid} from cadt, but an error prevented unsubscribing from the organization on datalayer`,
         error: error.message,
         success: false,
       });
     }
 
     return res.json({
-      message:
-        'Removed all organization records and unsubscribed from organization datalayer stores. cadt will not sync the organizations data from datalayer',
+      message: `Removed all organization records for organization ${orgUid} and unsubscribed from organization datalayer stores. cadt will not sync the organizations data from datalayer`,
       success: true,
     });
   } catch (error) {
@@ -296,7 +294,7 @@ export const unsubscribeFromOrganization = async (req, res) => {
       }
 
       const { storeIds: subscriptions, success: successGettingSubscriptions } =
-        getSubscriptions();
+        await getSubscriptions();
       if (!successGettingSubscriptions) {
         throw new Error('failed to get subscribed stores from datalayer');
       }

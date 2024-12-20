@@ -65,6 +65,10 @@ const task = new Task('sync-registries', async () => {
     } finally {
       releaseSyncTaskMutex();
     }
+  } else {
+    logger.debug(
+      'could not acquire sync registries mutex. trying again shortly',
+    );
   }
 });
 

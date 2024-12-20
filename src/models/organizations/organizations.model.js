@@ -21,7 +21,10 @@ import {
   getSubscriptions,
   getSyncStatus,
 } from '../../datalayer/persistance.js';
-import { addOrDeleteOrganizationRecordMutex } from '../../utils/model-utils.js';
+import {
+  addOrDeleteOrganizationRecordMutex,
+  processingSyncRegistriesTransactionMutex,
+} from '../../utils/model-utils.js';
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -620,7 +623,7 @@ class Organization extends Model {
           onTimeout(error);
         }
         logger.debug(`${error.message}. RETRYING`);
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await new Promise((resolve) => setTimeout(resolve, 10000));
       }
     }
 
@@ -669,7 +672,7 @@ class Organization extends Model {
    * @returns {Promise<void>}
    */
   static async unsubscribeFromOrganizationStores(organizationStores) {
-    const { storeIds: subscriptionIds, success } = getSubscriptions();
+    const { storeIds: subscriptionIds, success } = await getSubscriptions();
     if (!success) {
       throw new Error('failed to get subscriptions from datalayer');
     }
@@ -729,17 +732,25 @@ class Organization extends Model {
    * @param orgUid
    */
   static async deleteAllOrganizationData(orgUid) {
-    logger.verbose('acquiring mutex to import organization');
-    const releaseMutex = await addOrDeleteOrganizationRecordMutex.acquire();
+    logger.verbose('acquiring add/delete org mutex to delete organization');
+    const releaseAddDeleteMutex =
+      await addOrDeleteOrganizationRecordMutex.acquire();
+
+    logger.verbose(
+      'acquiring processingSyncRegistriesTransaction mutex to delete organization',
+    );
+    const releaseAuditTransactionMutex =
+      await processingSyncRegistriesTransactionMutex.acquire();
 
     const transaction = await sequelize.transaction();
     try {
-      for (const model of ModelKeys) {
-        await model.destroy({ where: { orgUid }, transaction });
+      await Organization.destroy({ where: { orgUid }, transaction });
+
+      for (const modelKey of Object.keys(ModelKeys)) {
+        await ModelKeys[modelKey].destroy({ where: { orgUid }, transaction });
       }
 
-      await Staging.truncate();
-      await Organization.destroy({ where: { orgUid }, transaction });
+      await Staging.truncate({ transaction });
       await FileStore.destroy({ where: { orgUid }, transaction });
       await Audit.destroy({ where: { orgUid }, transaction });
 
@@ -755,7 +766,8 @@ class Organization extends Model {
         `an error occurred while deleting records corresponding to organization ${orgUid}. no changes have been made`,
       );
     } finally {
-      releaseMutex();
+      releaseAddDeleteMutex();
+      releaseAuditTransactionMutex();
     }
   }
 
