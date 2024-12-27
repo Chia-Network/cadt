@@ -37,7 +37,6 @@ import UnitOwnerNotRequired from './20231016190739-UnitOwnerNotRequired';
 import AddGenerationIndexToAudit from './20231207142225-AddGenerationIndexToAudit';
 import CreateStatisticsCache from './20240607005647-create-statistics-cache.js';
 import CreateAddressBook from './20241127214244-create-address-book.js';
-import ModifyAddressBookId from './20241220121758-modify-addressbook-id.js';
 
 export const migrations = [
   {
@@ -199,9 +198,5 @@ export const migrations = [
   {
     migration: CreateAddressBook,
     name: '20241127214244-create-address-book.js',
-  },
-  {
-    migration: ModifyAddressBookId,
-    name: '20241220121758-modify-addressbook-id.js',
   },
 ];
