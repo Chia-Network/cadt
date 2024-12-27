@@ -18,7 +18,9 @@ AddressBookRouter.get(
   '/',
   validator.query(addressBookGetQuerySchema),
   (req, res) => {
-    return AddressBookController.findAll(req, res);
+    return req.query.id
+      ? AddressBookController.findOne(req, res)
+      : AddressBookController.findAll(req, res);
   },
 );
 

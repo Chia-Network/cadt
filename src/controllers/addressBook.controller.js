@@ -4,6 +4,7 @@ import {
   paginationParams,
   optionallyPaginatedResponse,
 } from '../utils/helpers';
+import { genericSortColumnRegex } from '../utils/string-utils';
 
 export const findAll = async (req, res) => {
   try {
@@ -11,17 +12,41 @@ export const findAll = async (req, res) => {
 
     let pagination = paginationParams(page, limit);
 
-    const addressBookResults = await AddressBook.findAndCountAll({
-      order: [['createdAt', order || 'DESC']],
+    // default to DESC
+    let resultOrder = [['createdAt', 'DESC']];
+
+    if (order?.match(genericSortColumnRegex)) {
+      const matches = order.match(genericSortColumnRegex);
+      resultOrder = [[matches[1], matches[2]]];
+    }
+
+    let results;
+
+    results = await AddressBook.findAndCountAll({
+      order: resultOrder,
       ...pagination,
     });
 
-    return res.json(
-      optionallyPaginatedResponse(addressBookResults, page, limit),
-    );
+    return res.json(optionallyPaginatedResponse(results, page, limit));
   } catch (error) {
     res.status(400).json({
       message: 'Can not retrieve address book data',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
+export const findOne = async (req, res) => {
+  try {
+    const query = {
+      where: { id: req.query.id },
+    };
+
+    res.json(await AddressBook.findOne(query));
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error retrieving address',
       error: error.message,
       success: false,
     });
