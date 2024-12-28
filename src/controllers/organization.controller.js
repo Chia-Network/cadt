@@ -368,14 +368,20 @@ export const resyncOrganization = async (req, res) => {
 
     await Organization.reconcileOrganization(organization);
 
-    await Organization.update({ registryHash: '0' }, { where: { orgUid } });
+    await Organization.update(
+      { registryHash: '0' },
+      { where: { orgUid }, transaction },
+    );
 
     await Promise.all([
       ...Object.keys(ModelKeys).map(
         async (key) =>
-          await ModelKeys[key].destroy({ where: { orgUid: req.body.orgUid } }),
+          await ModelKeys[key].destroy({
+            where: { orgUid: req.body.orgUid },
+            transaction,
+          }),
       ),
-      Audit.destroy({ where: { orgUid: req.body.orgUid } }),
+      Audit.destroy({ where: { orgUid: req.body.orgUid }, transaction }),
     ]);
 
     await transaction.commit();

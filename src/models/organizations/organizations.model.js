@@ -429,7 +429,7 @@ class Organization extends Model {
     logger.verbose('acquiring mutex to import organization');
     const releaseMutex = await addOrDeleteOrganizationRecordMutex.acquire();
 
-    // any error caught is re-thrown. this is here because we need to release a mutex
+    // any error caught is re-thrown. this outer try is here because we need to release a mutex
     try {
       if (isHome) {
         try {
@@ -507,7 +507,7 @@ class Organization extends Model {
         dataModelVersionStoreId: storeIds.dataModelVersionStoreId,
         fileStoreId: orgData?.fileStoreId,
         subscribed: true,
-        isHome: false,
+        isHome,
       };
       logger.info(
         `adding and organization with the following info ${organizationData}`,
