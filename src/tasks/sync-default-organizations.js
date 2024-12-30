@@ -4,7 +4,7 @@ import {
   assertWalletIsSynced,
 } from '../utils/data-assertions.js';
 import { getDefaultOrganizationList } from '../utils/data-loaders.js';
-import { Organization } from '../models/index.js';
+import { Meta, Organization } from '../models/index.js';
 import { logger } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader.js';
 
@@ -23,7 +23,16 @@ const task = new Task('sync-default-organizations', async () => {
         );
       }
 
+      const userDeletedOrgs = await Meta.getUserDeletedOrgUids();
+
       for (const { orgUid } of defaultOrgRecords) {
+        if (userDeletedOrgs?.includes(orgUid)) {
+          logger.verbose(
+            `default organization ${orgUid} has been explicitly removed from this instance. not adding or checking that it exists`,
+          );
+          continue;
+        }
+
         const organization = await Organization.findOne({
           where: { orgUid },
           raw: true,
@@ -47,14 +56,14 @@ const task = new Task('sync-default-organizations', async () => {
   } catch (error) {
     logger.error(
       `failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30} seconds`,
+        `Retrying in ${CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300} seconds`,
     );
   }
 });
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 30,
+    seconds: CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300,
     runImmediately: true,
   },
   task,

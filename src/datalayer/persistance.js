@@ -295,14 +295,14 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
 
     const data = response.body;
 
-    if (Object.keys(data).includes('success') && data.success) {
-      logger.info(`Successfully UnSubscribed: ${storeId}`);
-      return data;
+    if (data.success) {
+      logger.info(`Successfully Unsubscribed from store: ${storeId}`);
+      return true;
     }
 
     return false;
   } catch (error) {
-    logger.info(`Error UnSubscribing: ${error}`);
+    logger.error(`Error Unsubscribing from store ${storeId}. Error: ${error}`);
     return false;
   }
 };
@@ -596,7 +596,7 @@ const getSubscriptions = async () => {
       .send({});
 
     const data = response.body;
-    logger.debug(`data returned from ${url}: ${data.store_ids}`);
+    logger.debug(`data returned from ${url}: ${JSON.stringify(data)}`);
 
     if (data.success) {
       return { success: true, storeIds: data.store_ids };

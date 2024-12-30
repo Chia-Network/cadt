@@ -60,7 +60,7 @@ describe('Project Resource CRUD', function () {
           page: 1,
           limit: 100,
         });
-        expect(projects.data.length).to.equal(12);
+        expect(projects.data.length).to.equal(10);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects filtered by orgUid', async function () {
@@ -262,16 +262,23 @@ describe('Project Resource CRUD', function () {
           icon: 'https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg',
         });
       }).timeout(TEST_WAIT_TIME * 10);
+
       it('errors if there is a current set of pending commits', function () {});
+
       it('errors if there if there is no connection to the datalayer', function () {});
+
       it('errors if the warehouseProjectId is not in the payload', function () {});
+
       it('errors if the warehouseProjectId is an existing record', function () {});
+
       it('errors if trying to update a child table that is not an existing record', function () {});
+
       it('errors if the orgUid of the project does not equal the home organization', function () {});
     });
 
     describe('success states', function () {
       it('updates a new project with no child tables', function () {});
+
       it('updates a new project with all child tables', function () {});
     });
   });
@@ -279,15 +286,21 @@ describe('Project Resource CRUD', function () {
   describe('DELETE Projects - Delete', function () {
     describe('error states', function () {
       it('errors if no home organization exists', function () {});
+
       it('errors if there is a current set of pending commits', function () {});
+
       it('errors if there if there is no connection to the datalayer', function () {});
+
       it('errors if the warehouseProjectId is not in the payload', function () {});
+
       it('errors if the warehouseProjectId is an existing record', function () {});
+
       it('errors if the orgUid of the project does not equal the home organization', function () {});
     });
 
     describe('success states', function () {
       it('updates a new project with no child tables', function () {});
+
       it('updates a new project with all child tables', function () {});
     });
   });

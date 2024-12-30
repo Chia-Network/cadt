@@ -85,10 +85,12 @@ const runMirrorCheck = async () => {
   const organizations = await Organization.getOrgsMap();
   const orgs = Object.keys(organizations);
   for (const org of orgs) {
-    const orgData = organizations[org];
-    await Organization.addMirror(orgData.orgUid, mirrorUrl, true);
-    await Organization.addMirror(orgData.dataModelVersionStoreId, true);
-    await Organization.addMirror(orgData.registryId, mirrorUrl, true);
+    if (org?.subscribed) {
+      const orgData = organizations[org];
+      await Organization.addMirror(orgData.orgUid, mirrorUrl, true);
+      await Organization.addMirror(orgData.dataModelVersionStoreId, true);
+      await Organization.addMirror(orgData.registryId, mirrorUrl, true);
+    }
   }
 };
 

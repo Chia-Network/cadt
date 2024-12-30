@@ -18,6 +18,29 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
   }
 };
 
+const unsubscribeFromDataLayerStoreWithRetry = async (
+  storeId,
+  maxRetries = 60,
+  retryWaitMs = 600,
+) => {
+  if (!USE_SIMULATOR) {
+    let success = false;
+    let retryCount = 0;
+
+    while (!success) {
+      success = await dataLayer.unsubscribeFromDataLayerStore(storeId);
+      if (!success) {
+        if (retryCount >= maxRetries) {
+          throw new Error(
+            `failed to unsubscribe from store ${storeId} after ${maxRetries} attempts`,
+          );
+        }
+        await new Promise((resolve) => setTimeout(() => resolve, retryWaitMs));
+      }
+    }
+  }
+};
+
 const subscribeToStoreOnDataLayer = async (storeId) => {
   if (USE_SIMULATOR) {
     return simulator.subscribeToStoreOnDataLayer(storeId);
@@ -29,15 +52,29 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 /**
  * gets and decodes data from a subscribed store.
  * will subscribe to any store id for which there is no subscription.
- * @param storeId to retrieve data from
+ *
+ * providing a subscription list will prevent calling the datalayer `/subscriptions` RPC.
+ * good idea if calling in a loop
+ *
+ * @param storeId {string} to retrieve data from
+ * @param providedSubscriptions {[string] | undefined} optional list of subscriptions. providing prevents RPC call
  * @returns {Promise<any>}
  */
-const getSubscribedStoreData = async (storeId) => {
-  const { storeIds: subscriptions, success } =
-    await dataLayer.getSubscriptions();
-  if (!success) {
-    throw new Error('failed to retrieve subscriptions from datalayer');
+const getSubscribedStoreData = async (
+  storeId,
+  providedSubscriptions = undefined,
+) => {
+  let subscriptions = providedSubscriptions;
+  if (!subscriptions) {
+    const { storeIds: rpcSubscriptions, success } =
+      await dataLayer.getSubscriptions();
+    if (!success) {
+      throw new Error('failed to retrieve subscriptions from datalayer');
+    }
+
+    subscriptions = rpcSubscriptions;
   }
+
   const alreadySubscribed = subscriptions.includes(storeId);
 
   if (!alreadySubscribed) {
@@ -57,7 +94,9 @@ const getSubscribedStoreData = async (storeId) => {
     );
     const { confirmed } = await dataLayer.getRoot(storeId);
     if (!confirmed) {
-      throw new Error(`Store not found in DataLayer: ${storeId}.`);
+      throw new Error(
+        `${storeId} has not yet been confirmed. cannot get root.`,
+      );
     } else {
       logger.debug(
         `store data is confirmed available, proceeding to get data ${storeId}`,
@@ -228,5 +267,6 @@ export default {
   POLLING_INTERVAL,
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
+  unsubscribeFromDataLayerStoreWithRetry,
   waitForAllTransactionsToConfirm,
 };
