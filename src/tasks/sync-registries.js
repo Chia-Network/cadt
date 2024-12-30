@@ -64,6 +64,10 @@ const task = new Task('sync-registries', async () => {
     } finally {
       releaseSyncTaskMutex();
     }
+  } else {
+    logger.debug(
+      'could not acquire sync registries mutex. trying again shortly',
+    );
   }
 });
 
@@ -250,7 +254,15 @@ const syncOrganizationAudit = async (organization) => {
       rootHistory.length - 1 !== sync_status?.generation
     ) {
       logger.warn(
-        `the root history length does not match the number of synced generations for ${organization.name} (registry store Id ${organization.registryId}). something is wrong and the sync for this organization will be paused until this is resolved. `,
+        `the root history length does not match the number of synced generations for ${organization.name} (registry store Id ${organization.registryId}). pausing the sync for this organization until the root history length and number of synced generations match`,
+      );
+      return;
+    } else if (
+      process.env.NODE_ENV !== 'test' &&
+      rootHistory.length - 1 !== sync_status?.target_generation
+    ) {
+      logger.debug(
+        `the root history length does not match the target generation number for ${organization.name} (registry store Id ${organization.registryId}). something is wrong and the sync for this organization will be paused until this is resolved. `,
       );
       return;
     }
@@ -552,7 +564,7 @@ const syncOrganizationAudit = async (organization) => {
               record[ModelKeys[modelKey].primaryKeyAttributes[0]];
 
             if (diff.type === 'INSERT') {
-              logger.info(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
+              logger.verbose(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
 
               // Remove updatedAt fields if they exist
               // This is because the db will update this field automatically and its not allowed to be null
@@ -564,9 +576,8 @@ const syncOrganizationAudit = async (organization) => {
                 delete record.createdAt;
               }
 
-              logger.debug(
-                `upserting diff record and transaction to ${modelKey} model`,
-              );
+              logger.debug(`upserting diff record to ${modelKey} model`);
+
               await ModelKeys[modelKey].upsert(record, {
                 transaction,
                 mirrorTransaction,
@@ -585,7 +596,7 @@ const syncOrganizationAudit = async (organization) => {
           }
 
           // Create the Audit record
-          logger.debug(`creating audit model transaction entry`);
+          logger.debug(`writing change record `);
           await Audit.create(auditData, { transaction, mirrorTransaction });
         }
       }

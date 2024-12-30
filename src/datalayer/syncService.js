@@ -16,6 +16,29 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
   }
 };
 
+const unsubscribeFromDataLayerStoreWithRetry = async (
+  storeId,
+  maxRetries = 60,
+  retryWaitMs = 600,
+) => {
+  if (!CONFIG().CADT.USE_SIMULATOR) {
+    let success = false;
+    let retryCount = 0;
+
+    while (!success) {
+      success = await dataLayer.unsubscribeFromDataLayerStore(storeId);
+      if (!success) {
+        if (retryCount >= maxRetries) {
+          throw new Error(
+            `failed to unsubscribe from store ${storeId} after ${maxRetries} attempts`,
+          );
+        }
+        await new Promise((resolve) => setTimeout(() => resolve, retryWaitMs));
+      }
+    }
+  }
+};
+
 const subscribeToStoreOnDataLayer = async (storeId) => {
   if (CONFIG().CADT.USE_SIMULATOR) {
     return simulator.subscribeToStoreOnDataLayer(storeId);
@@ -24,33 +47,58 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 };
 
-const getSubscribedStoreData = async (storeId) => {
-  const { storeIds: subscriptions, success } =
-    await dataLayer.getSubscriptions(storeId);
-  if (!success) {
-    throw new Error('failed to retrieve subscriptions from datalayer');
+/**
+ * gets and decodes data from a subscribed store.
+ * will subscribe to any store id for which there is no subscription.
+ *
+ * providing a subscription list will prevent calling the datalayer `/subscriptions` RPC.
+ * good idea if calling in a loop
+ *
+ * @param storeId {string} to retrieve data from
+ * @param providedSubscriptions {[string] | undefined} optional list of subscriptions. providing prevents RPC call
+ * @returns {Promise<any>}
+ */
+const getSubscribedStoreData = async (
+  storeId,
+  providedSubscriptions = undefined,
+) => {
+  let subscriptions = providedSubscriptions;
+  if (!subscriptions) {
+    const { storeIds: rpcSubscriptions, success } =
+      await dataLayer.getSubscriptions();
+    if (!success) {
+      throw new Error('failed to retrieve subscriptions from datalayer');
+    }
+
+    subscriptions = rpcSubscriptions;
   }
+
   const alreadySubscribed = subscriptions.includes(storeId);
 
   if (!alreadySubscribed) {
     logger.info(`No Subscription Found for ${storeId}, Subscribing...`);
-    const response = await subscribeToStoreOnDataLayer(storeId);
+    const response = await dataLayer.subscribeToStoreOnDataLayer(storeId);
 
-    if (!response || !response.success) {
+    if (!response) {
       throw new Error(`Failed to subscribe to ${storeId}`);
     }
   }
 
-  logger.info(`Subscription Found for ${storeId}.`);
+  logger.debug(`Subscription Found for ${storeId}.`);
 
   if (!CONFIG().CADT.USE_SIMULATOR) {
-    logger.info(`Getting confirmation for ${storeId}.`);
-    const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
-    logger.info(`Store found in DataLayer: ${storeId}.`);
-    if (!storeExistAndIsConfirmed) {
-      throw new Error(`Store not found in DataLayer: ${storeId}.`);
+    logger.debug(
+      `syncService getSubscribedData() checking that data is available for ${storeId}.`,
+    );
+    const { confirmed } = await dataLayer.getRoot(storeId);
+    if (!confirmed) {
+      throw new Error(
+        `${storeId} has not yet been confirmed. cannot get root.`,
+      );
     } else {
-      logger.debug(`Store is confirmed, proceeding to get data ${storeId}`);
+      logger.debug(
+        `store data is confirmed available, proceeding to get data ${storeId}`,
+      );
     }
   }
 
@@ -62,11 +110,12 @@ const getSubscribedStoreData = async (storeId) => {
   }
 
   if (_.isEmpty(encodedData?.keys_values)) {
-    throw new Error(`No data found for store ${storeId}`);
+    throw new Error(
+      `getSubscribedStoreData() found no data for store ${storeId}`,
+    );
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);
-
   return decodedData.reduce((obj, current) => {
     obj[current.key] = current.value;
     return obj;
@@ -157,9 +206,13 @@ const getCurrentStoreData = async (storeId) => {
 
   const encodedData = await dataLayer.getStoreData(storeId);
   if (encodedData) {
-    return decodeDataLayerResponse(encodedData);
+    const decodedData = decodeDataLayerResponse(encodedData);
+    return decodedData.reduce((obj, current) => {
+      obj[current.key] = current.value;
+      return obj;
+    }, {});
   } else {
-    return [];
+    return undefined;
   }
 };
 
@@ -187,7 +240,9 @@ const getStoreIfUpdated = async (storeId, lastRootHash, callback, onFail) => {
       );
     }
   } catch (error) {
-    logger.error(error.message);
+    logger.error(
+      `getStoreIfUpdated() failed to get updated store data. Error: ${error.message}`,
+    );
     onFail(error.message);
   }
 };
@@ -221,6 +276,7 @@ export default {
   POLLING_INTERVAL,
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
+  unsubscribeFromDataLayerStoreWithRetry,
   waitForAllTransactionsToConfirm,
   getSyncStatus,
 };

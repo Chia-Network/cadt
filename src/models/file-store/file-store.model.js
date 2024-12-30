@@ -6,6 +6,7 @@
 */
 
 import Sequelize from 'sequelize';
+
 const { Model } = Sequelize;
 import { sequelize } from '../../database';
 import { Organization } from '../';
@@ -28,8 +29,19 @@ class FileStore extends Model {
       );
     }
 
-    datalayer.subscribeToStoreOnDataLayer(organization.fileStoreId);
-    Organization.update({ fileStoreSubscribed: true });
+    await datalayer.subscribeToStoreOnDataLayer(organization.fileStoreId);
+    /* todo: this is code is now valid but it wasnt previously resulting in the records not updating and the filestore always
+              being marked as not subscribed. at the moment, not sure what the impact of marking them as subscribed would
+              be so leaving this commented out to revisit at a later date (today is 12/30/24)
+    await Organization.update(
+      { fileStoreSubscribed: true },
+      {
+        where: {
+          orgUid,
+        },
+      },
+    );
+     */
   }
 
   static async unsubscribeFromFileStore(orgUid) {

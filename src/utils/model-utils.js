@@ -33,6 +33,12 @@ export function formatModelAssociationName(model) {
 }
 
 /**
+ * mutex which should be acquired by any function what intends on deleting or adding rows to the organization table
+ * @type {Mutex}
+ */
+export const addOrDeleteOrganizationRecordMutex = new Mutex();
+
+/**
  * Finds the deleted sub-items (e.g. labels)
  * @param updatedItems {Array<Object>} - The projects updated by the user
  * @param primaryKeyMap {Object} - Object map containing the primary keys for all tables

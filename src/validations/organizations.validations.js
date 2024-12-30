@@ -8,6 +8,7 @@ export const newOrganizationWithIconSchema = Joi.object({
 
 export const importOrganizationSchema = Joi.object({
   orgUid: Joi.string().required(),
+  isHome: Joi.bool().optional(),
 });
 
 export const importHomeOrganizationSchema = Joi.object({

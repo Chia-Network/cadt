@@ -283,14 +283,14 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
 
     const data = response.body;
 
-    if (Object.keys(data).includes('success') && data.success) {
-      logger.info(`Successfully UnSubscribed: ${storeId}`);
-      return data;
+    if (data.success) {
+      logger.info(`Successfully Unsubscribed from store: ${storeId}`);
+      return true;
     }
 
     return false;
   } catch (error) {
-    logger.info(`Error UnSubscribing: ${error}`);
+    logger.error(`Error Unsubscribing from store ${storeId}. Error: ${error}`);
     return false;
   }
 };
@@ -349,22 +349,21 @@ const getStoreData = async (storeId, rootHash) => {
       const data = response.body;
 
       if (data.success) {
-        if (!_.isEmpty(data.keys_values)) {
-          logger.info(`Downloaded Data, root hash: ${rootHash || 'latest'}`);
+        if (_.isEmpty(data.keys_values)) {
+          logger.warn(
+            `datalayer get_keys_values returned no data for store ${storeId} at root hash: ${rootHash || 'latest'}`,
+          );
         }
         return data;
+      } else {
+        throw new Error(JSON.stringify(data));
       }
-
-      logger.error(
-        `FAILED GETTING STORE DATA FOR ${storeId}: ${JSON.stringify(data)}`,
-      );
     } catch (error) {
-      logger.info(
-        `Unable to find store data for ${storeId} at root ${
+      logger.error(
+        `failed to get keys and values from datalayer for store ${storeId} at root ${
           rootHash || 'latest'
-        }`,
+        }. Error: ${error.message}`,
       );
-      logger.error(error.message);
       return false;
     }
   }
@@ -379,10 +378,9 @@ const getStoreData = async (storeId, rootHash) => {
  * Fetches the root data for a specific store.
  *
  * @param {string} storeId - The ID of the store to fetch data for.
- * @param {boolean} ignoreEmptyStore - Whether to ignore empty stores.
- * @returns {Object|boolean} - Returns the data object or false if the fetch operation fails.
+ * @returns {Object} - Returns the data object. empty if the fetch operation fails.
  */
-const getRoot = async (storeId, ignoreEmptyStore = false) => {
+const getRoot = async (storeId) => {
   const { CHIA } = CONFIG();
   const url = `${CHIA.DATALAYER_HOST}/get_root`;
   const { cert, key, timeout } = getBaseOptions();
@@ -397,16 +395,22 @@ const getRoot = async (storeId, ignoreEmptyStore = false) => {
       .timeout(timeout)
       .send({ id: storeId });
 
-    const { confirmed, hash } = response.body;
+    logger.debug(
+      `the current root data for store ${storeId} is ${JSON.stringify(response.body)}`,
+    );
 
-    if (confirmed && (!ignoreEmptyStore || !hash.includes('0x00000000000'))) {
-      return response.body;
+    const { success, error, traceback } = response.body;
+
+    if (!success || error || traceback) {
+      throw new Error(`${error}, ${traceback}`);
     }
 
-    return false;
+    return response.body;
   } catch (error) {
-    logger.error(error);
-    return false;
+    logger.error(
+      `could not get root data for store ${storeId}. this could be due to the store being in the process of confirming. error: ${error.message}`,
+    );
+    return {};
   }
 };
 
@@ -578,7 +582,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
   if (subscriptions.includes(storeId)) {
     logger.info(`Already subscribed to: ${storeId}`);
-    return { success: true };
+    return true;
   }
 
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/subscribe`;
@@ -607,7 +611,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
 
       await addMirror(storeId, mirrorUrl, true);
 
-      return data;
+      return true;
     }
 
     return false;
@@ -636,7 +640,7 @@ const getSubscriptions = async () => {
       .send({});
 
     const data = response.body;
-    logger.debug(`data returned from ${url}: ${data.store_ids}`);
+    logger.debug(`data returned from ${url}: ${JSON.stringify(data)}`);
 
     if (data.success) {
       return { success: true, storeIds: data.store_ids };
