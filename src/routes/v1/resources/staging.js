@@ -33,7 +33,7 @@ StagingRouter.delete(
 );
 
 StagingRouter.post('/retry', validator.body(stagingRetrySchema), (req, res) => {
-  return StagingController.retryRecrod(req, res);
+  return StagingController.retryRecord(req, res);
 });
 
 StagingRouter.post(

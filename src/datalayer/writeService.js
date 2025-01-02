@@ -49,7 +49,7 @@ const waitForNewStoreToBeConfirmed = async (storeId, retry = 0) => {
     );
   }
 
-  const { confirmed } = await dataLayer.getRoot(storeId, true);
+  const { confirmed } = await dataLayer.getRoot(storeId);
 
   if (!confirmed) {
     logger.info(`Still waiting for ${storeId} to confirm`);
@@ -105,7 +105,12 @@ const upsertDataLayer = async (storeId, data) => {
   await pushChangesWhenStoreIsAvailable(storeId, finalChangeList);
 };
 
-const retry = (storeId, changeList, failedCallback, retryAttempts) => {
+const retryPushToStore = (
+  storeId,
+  changeList,
+  failedCallback,
+  retryAttempts,
+) => {
   logger.info(`Retrying pushing to store ${storeId}: ${retryAttempts}`);
   if (retryAttempts >= 60) {
     logger.info(
@@ -151,10 +156,10 @@ export const pushChangesWhenStoreIsAvailable = async (
         logger.error(
           `RPC failed when pushing to store ${storeId}, attempting retry.`,
         );
-        retry(storeId, changeList, failedCallback, retryAttempts);
+        retryPushToStore(storeId, changeList, failedCallback, retryAttempts);
       }
     } else {
-      retry(storeId, changeList, failedCallback, retryAttempts);
+      retryPushToStore(storeId, changeList, failedCallback, retryAttempts);
     }
   }
 };
