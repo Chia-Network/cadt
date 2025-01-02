@@ -3,7 +3,7 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
-import { logger } from '../config/logger';
+import { logger } from '../logger';
 
 import dotenv from 'dotenv';
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
@@ -30,12 +30,19 @@ const task = new Task('validate-organization-table', async () => {
         }
 
         if (organization.subscribed) {
-          logger.verbose(
+          logger.task(
             `running the organization reconciliation process for ${organization.name} (orgUid ${organization.orgUid})`,
           );
-          await Organization.reconcileOrganization(organization);
+
+          try {
+            await Organization.reconcileOrganization(organization);
+          } catch (error) {
+            logger.error(
+              `failed to reconcile organization record and subscriptions for organization ${organization.orgUid}. Error: ${error.message}. `,
+            );
+          }
         } else {
-          logger.info(
+          logger.task(
             `organization ${organization.orgUid} is marked as unsubscribed. ensuring all organization stores are unsubscribed`,
           );
           await Organization.unsubscribeFromOrganizationStores(organization);

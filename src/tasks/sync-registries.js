@@ -564,7 +564,7 @@ const syncOrganizationAudit = async (organization) => {
               record[ModelKeys[modelKey].primaryKeyAttributes[0]];
 
             if (diff.type === 'INSERT') {
-              logger.verbose(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
+              logger.task(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
 
               // Remove updatedAt fields if they exist
               // This is because the db will update this field automatically and its not allowed to be null

@@ -28,7 +28,7 @@ const task = new Task('sync-default-organizations', async () => {
 
       for (const { orgUid } of defaultOrgRecords) {
         if (userDeletedOrgs?.includes(orgUid)) {
-          logger.verbose(
+          logger.task(
             `default organization ${orgUid} has been explicitly removed from this instance. not adding or checking that it exists`,
           );
           continue;

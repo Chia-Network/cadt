@@ -132,18 +132,18 @@ class Organization extends Model {
         icon: '',
       });
 
-      logger.verbose('createHomeOrg() is creating organization (orgUid) store');
+      logger.info('createHomeOrg() is creating organization (orgUid) store');
       const newOrganizationId = CONFIG().CADT.USE_SIMULATOR
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
         : await datalayer.createDataLayerStore();
 
-      logger.verbose('createHomeOrg() is creating registryId store');
+      logger.info('createHomeOrg() is creating registryId store');
       const registryStoreId = await datalayer.createDataLayerStore();
 
-      logger.verbose('createHomeOrg() is creating dataModelVersionId store');
+      logger.info('createHomeOrg() is creating dataModelVersionId store');
       const dataModelVersionStoreId = await datalayer.createDataLayerStore();
 
-      logger.verbose('createHomeOrg() is creating file store');
+      logger.info('createHomeOrg() is creating file store');
       const fileStoreId = await datalayer.createDataLayerStore();
 
       const revertOrganizationIfFailed = async () => {
@@ -164,7 +164,7 @@ class Organization extends Model {
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
-      logger.verbose(
+      logger.info(
         `the blockchain reported new organization stores orgUid: ${newOrganizationId}, ` +
           `dataModelVersionStore: ${dataModelVersionStoreId}, registryId: ${registryStoreId} have confirmed. `,
       );
@@ -298,7 +298,7 @@ class Organization extends Model {
     const orgReduced = organization;
     delete orgReduced.icon;
     delete orgReduced.metadata;
-    logger.debug(
+    logger.task(
       `reconciling organization ${orgReduced.orgUid} storeIds against datalayer. organization data from db (icon and metadata removed for compactness): ${JSON.stringify(orgReduced)}`,
     );
     const { name, orgUid, registryId, dataModelVersionStoreId, isHome } =
@@ -442,7 +442,7 @@ class Organization extends Model {
    * @returns {Promise<void>}
    */
   static async importOrganization(orgUid, isHome = false) {
-    logger.verbose('acquiring mutex to import organization');
+    logger.debug('acquiring mutex to import organization');
     const releaseMutex = await addOrDeleteOrganizationRecordMutex.acquire();
 
     // any error caught is re-thrown. this outer try is here because we need to release a mutex
@@ -710,7 +710,7 @@ class Organization extends Model {
 
     for (const storeId of storesToUnsubscribe) {
       if (subscriptionIds.includes(storeId)) {
-        logger.verbose(
+        logger.info(
           `unsubscribing from store ${storeId} associated with organization ${organizationStores.orgUid}`,
         );
         try {
@@ -748,11 +748,11 @@ class Organization extends Model {
    * @param orgUid
    */
   static async deleteAllOrganizationData(orgUid) {
-    logger.verbose('acquiring add/delete org mutex to delete organization');
+    logger.debug('acquiring add/delete org mutex to delete organization');
     const releaseAddDeleteMutex =
       await addOrDeleteOrganizationRecordMutex.acquire();
 
-    logger.verbose(
+    logger.debug(
       'acquiring processingSyncRegistriesTransaction mutex to delete organization',
     );
     const releaseAuditTransactionMutex =
