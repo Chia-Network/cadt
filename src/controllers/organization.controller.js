@@ -289,7 +289,7 @@ export const unsubscribeFromOrganization = async (req, res) => {
       });
     } else {
       const { storeIds: ownedStores, success: successGettingOwnedStores } =
-        getOwnedStores();
+        await getOwnedStores();
       if (!successGettingOwnedStores) {
         throw new Error('failed to get owned stores from datalayer');
       }
@@ -313,21 +313,21 @@ export const unsubscribeFromOrganization = async (req, res) => {
         });
       }
 
-      const orgUidData = datalayer.getCurrentStoreData(orgUid);
+      const orgUidData = await datalayer.getCurrentStoreData(orgUid);
       // misleading "registryId" key name. this is the datamodel version store Id
       const dataModelVersionStoreId = orgUidData?.registryId;
-      if (dataModelVersionStoreId) {
+      if (!dataModelVersionStoreId) {
         throw new Error(
           `cannot get data model singleton id from store ${orgUid}. not an organization store or a datalayer error occurred`,
         );
       }
 
       const instanceDataModelVersion = getDataModelVersion();
-      const dataModelStoreData = datalayer.getCurrentStoreData(
+      const dataModelStoreData = await datalayer.getCurrentStoreData(
         dataModelVersionStoreId,
       );
       const registryStoreId = dataModelStoreData[instanceDataModelVersion];
-      if (registryStoreId) {
+      if (!registryStoreId) {
         throw new Error(
           `cannot get registry singleton id from store ${dataModelVersionStoreId}. not an organization store or a datalayer error occurred`,
         );
