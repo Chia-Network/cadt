@@ -568,13 +568,6 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
     return false;
   }
 
-  const homeOrg = await Organization.getHomeOrg();
-
-  if (homeOrg && [(homeOrg.orgUid, homeOrg.registryId)].includes(storeId)) {
-    logger.info(`Cant subscribe to self: ${storeId}`);
-    return { success: true };
-  }
-
   const { storeIds: subscriptions, success } = await getSubscriptions();
   if (!success) {
     return false;

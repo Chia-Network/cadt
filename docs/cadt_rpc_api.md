@@ -40,7 +40,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [POST Examples](#post-examples)
         - [Create an organization](#create-an-organization)
     - [PUT Examples](#put-examples)
-        - [Import a home organization](#import-a-home-organization-that-datalayer-is-subscribed-to)
+        - [Import a home organization](#import-an-organization-and-subscribe-to-its-stores-on-datalayer)
     - [DELETE Examples](#delete-examples)
         - [Delete a home organization](#reset-home-organization)
     - [Additional organizations resources](#additional-organizations-resources)
