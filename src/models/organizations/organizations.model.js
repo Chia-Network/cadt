@@ -2,9 +2,6 @@
 
 import Sequelize from 'sequelize';
 import _ from 'lodash';
-
-const { Model } = Sequelize;
-
 import { sequelize } from '../../database';
 import datalayer from '../../datalayer';
 import { logger } from '../../logger.js';
@@ -23,6 +20,8 @@ import {
   addOrDeleteOrganizationRecordMutex,
   processingSyncRegistriesTransactionMutex,
 } from '../../utils/model-utils.js';
+
+const { Model } = Sequelize;
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -214,7 +213,8 @@ class Organization extends Model {
       await Promise.all([
         Organization.create({
           orgUid: newOrganizationId,
-          registryId: dataModelVersionStoreId,
+          dataModelVersionStoreId,
+          registryId: registryStoreId,
           isHome: true,
           subscribed: CONFIG().CADT.USE_SIMULATOR,
           fileStoreId,

@@ -583,7 +583,7 @@ const syncOrganizationAudit = async (organization) => {
                 mirrorTransaction,
               });
             } else if (diff.type === 'DELETE') {
-              logger.info(`DELETING: ${modelKey} - ${primaryKeyValue}`);
+              logger.task(`DELETING: ${modelKey} - ${primaryKeyValue}`);
               await ModelKeys[modelKey].destroy({
                 where: {
                   [ModelKeys[modelKey].primaryKeyAttributes[0]]:
