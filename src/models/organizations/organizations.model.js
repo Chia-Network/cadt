@@ -582,18 +582,9 @@ class Organization extends Model {
     );
     let dataModelVersionStoreId = null;
     while (!dataModelVersionStoreId) {
+      let orgStoreData = null;
       try {
-        const orgStoreData = await datalayer.getSubscribedStoreData(orgUid);
-        // here registryId is actually the data model version store that points to the registry store
-        dataModelVersionStoreId = orgStoreData?.registryId;
-        if (!dataModelVersionStoreId) {
-          throw new Error(
-            `failed to get registry datamodel version singleton id from orgUid store ${orgUid}. rpc function returned: ${orgStoreData}`,
-          );
-        }
-        logger.debug(
-          `the registry datamodel version pointer singleton id for organization ${orgUid} is ${dataModelVersionStoreId}`,
-        );
+        orgStoreData = await datalayer.getSubscribedStoreData(orgUid);
       } catch (error) {
         if (reachedTimeout()) {
           onTimeout(error);
@@ -601,23 +592,26 @@ class Organization extends Model {
         logger.debug(`${error.message}. RETRYING`);
         await new Promise((resolve) => setTimeout(resolve, 10000));
       }
+
+      // here registryId is actually the data model version store that points to the registry store
+      dataModelVersionStoreId = orgStoreData?.registryId;
+      if (!dataModelVersionStoreId) {
+        throw new Error(
+          `failed to get registry datamodel version singleton id from orgUid store ${orgUid}. rpc function returned: ${orgStoreData}`,
+        );
+      }
+      logger.debug(
+        `the registry datamodel version pointer singleton id for organization ${orgUid} is ${dataModelVersionStoreId}`,
+      );
     }
 
     logger.debug(`determining registry store singleton id for org ${orgUid}`);
     let registryStoreId = null;
     while (!registryStoreId) {
+      let dataModelVersionStoreData = null;
       try {
-        const dataModelVersionStoreData =
-          await datalayer.getSubscribedStoreData(dataModelVersionStoreId);
-        // here v1 is actually the registry store id
-        registryStoreId = dataModelVersionStoreData?.v1;
-        if (!registryStoreId) {
-          throw new Error(
-            `failed to get registry singleton id from datamodel version singleton store ${dataModelVersionStoreId}. rpc function returned: ${dataModelVersionStoreData}`,
-          );
-        }
-        logger.debug(
-          `the registry singleton id for organization ${orgUid} is ${dataModelVersionStoreId}`,
+        dataModelVersionStoreData = await datalayer.getSubscribedStoreData(
+          dataModelVersionStoreId,
         );
       } catch (error) {
         if (reachedTimeout()) {
@@ -626,6 +620,17 @@ class Organization extends Model {
         logger.debug(`${error.message}. RETRYING`);
         await new Promise((resolve) => setTimeout(resolve, 10000));
       }
+
+      // here v1 is actually the registry store id
+      registryStoreId = dataModelVersionStoreData?.v1;
+      if (!registryStoreId) {
+        throw new Error(
+          `failed to get registry singleton id from datamodel version singleton store ${dataModelVersionStoreId}. rpc function returned: ${dataModelVersionStoreData}`,
+        );
+      }
+      logger.debug(
+        `the registry singleton id for organization ${orgUid} is ${dataModelVersionStoreId}`,
+      );
     }
 
     logger.debug(`checking registry store singleton for org ${orgUid}`);
