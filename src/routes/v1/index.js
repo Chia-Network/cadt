@@ -15,6 +15,7 @@ import {
   FileStoreRouter,
   OfferRouter,
   StatisticsRouter,
+  AddressBookRouter,
 } from './resources';
 
 V1Router.use('/projects', ProjectRouter);
@@ -28,5 +29,6 @@ V1Router.use('/governance', GovernanceRouter);
 V1Router.use('/filestore', FileStoreRouter);
 V1Router.use('/offer', OfferRouter);
 V1Router.use('/statistics', StatisticsRouter);
+V1Router.use('/addressBook', AddressBookRouter);
 
 export { V1Router };

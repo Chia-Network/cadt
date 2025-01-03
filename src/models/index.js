@@ -37,6 +37,7 @@ export * from './audit';
 export * from './governance';
 export * from './file-store';
 export * from './statistics';
+export * from './address-book';
 
 export const ModelKeys = {
   unit: Unit,

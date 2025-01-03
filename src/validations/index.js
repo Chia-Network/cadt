@@ -13,3 +13,4 @@ export * from './audit.validations';
 export * from './estimations.validations';
 export * from './governance.validations';
 export * from './filestore.validations';
+export * from './address-book-validations';
