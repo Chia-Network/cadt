@@ -24,29 +24,31 @@ const task = new Task('validate-organization-table', async () => {
       );
 
       for (const organization of organizations) {
-        // this is in the loop to prevent this task from trying to operate on an organization that was deleted while it was running
-        const deletedOrganizations = await Meta.getUserDeletedOrgUids();
-        if (deletedOrganizations?.includes(organization.orgUid)) {
-          continue;
-        }
-
-        if (organization.subscribed) {
-          logger.verbose(
-            `running the organization reconciliation process for ${organization.name} (orgUid ${organization.orgUid})`,
-          );
-
-          try {
-            await Organization.reconcileOrganization(organization);
-          } catch (error) {
-            logger.error(
-              `failed reconcile organization records and subscriptions for organization ${organization.orgUid}. Error: ${error.message}. `,
-            );
+        if (organization.orgUid !== 'PENDING') {
+          // this is in the loop to prevent this task from trying to operate on an organization that was deleted while it was running
+          const deletedOrganizations = await Meta.getUserDeletedOrgUids();
+          if (deletedOrganizations?.includes(organization.orgUid)) {
+            continue;
           }
-        } else {
-          logger.info(
-            `organization ${organization.orgUid} is marked as unsubscribed. ensuring all organization stores are unsubscribed`,
-          );
-          await Organization.unsubscribeFromOrganizationStores(organization);
+
+          if (organization.subscribed) {
+            logger.verbose(
+              `running the organization reconciliation process for ${organization.name} (orgUid ${organization.orgUid})`,
+            );
+
+            try {
+              await Organization.reconcileOrganization(organization);
+            } catch (error) {
+              logger.error(
+                `failed reconcile organization records and subscriptions for organization ${organization.orgUid}. Error: ${error.message}. `,
+              );
+            }
+          } else {
+            logger.info(
+              `organization ${organization.orgUid} is marked as unsubscribed. ensuring all organization stores are unsubscribed`,
+            );
+            await Organization.unsubscribeFromOrganizationStores(organization);
+          }
         }
       }
     }

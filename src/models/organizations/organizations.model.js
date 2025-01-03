@@ -208,7 +208,8 @@ class Organization extends Model {
       await Promise.all([
         Organization.create({
           orgUid: newOrganizationId,
-          registryId: dataModelVersionStoreId,
+          dataModelVersionStoreId,
+          registryId: registryStoreId,
           isHome: true,
           subscribed: USE_SIMULATOR,
           fileStoreId,
