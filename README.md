@@ -119,6 +119,26 @@ journalctl -u cadt@<USERNAME> -f
 (ctrl+c to exit)
 ```
 
+### Pre-release Versions
+
+Experimental code is released with a "release candidate" naming convention and can be found on the [releases](/releases) page with `-rc` in the version number. Not all of the release candidates will be stable and caution should be used.  
+
+Release candidates can be installed via `apt` using the instructions (above)[#debian-based-linux-distros-ubuntu-mint-etc] except replace step 3 with the following:
+
+```
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/climate-tokenization-test/debian/ stable main" | sudo tee /etc/apt/sources.list.d/climate-tokenization-test.list > /dev/null
+```
+
+If both the stable and release-candidate repos are added, `apt` can switch between versions installed using by appending `=<version-number>` to the install command:
+
+```
+apt install climate-tokenization-engine=1.3.22
+apt install climate-tokenization-engine=1.3.23-rc7
+apt install climate-tokenization-engine=1.2.1
+```
+
+Without specifying the version number, `apt` will install the latest release candidate if it exists, which might not always be desired. 
+
 ### Installation from Source
 
 You'll need:

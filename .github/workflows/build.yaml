@@ -304,7 +304,7 @@ jobs:
           zip -r core-registry-cadt-macos-binary-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip core-registry-cadt-macos-x64
 
       # RC release should not be set as latest
-      - name: Decide if release should be set as latest
+      - name: Decide if release should be set as latest and set glue project
         id: is_latest
         shell: bash
         run: |
@@ -316,14 +316,17 @@ jobs:
             echo "release candidate tag matched"
             IS_LATEST='false'
             IS_PRERELEASE='true'
+            GLUE_PROJECT='climate-tokenization-test'
           else
             echo "main branch release matched"
             IS_LATEST='true'
             IS_PRERELEASE='false'
+            GLUE_PROJECT='climate-tokenization'
           fi
 
           echo "IS_LATEST=${IS_LATEST}" >> "$GITHUB_OUTPUT"
           echo "IS_PRERELEASE=${IS_PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "GLUE_PROJECT=${GLUE_PROJECT}" >> "$GITHUB_OUTPUT"
 
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -350,5 +353,5 @@ jobs:
         with:
           json_data: '{"climate_tokenization_repo":"${{ steps.repo-name.outputs.REPO_NAME }}","application_name":"[\"core-registry-cadt\"]","release_version":"${{ steps.tag-name.outputs.TAGNAME }}","add_debian_version":"true","arm64":"available"}'
           glue_url: ${{ secrets.GLUE_API_URL }}
-          glue_project: "climate-tokenization"
+          glue_project: "${{steps.is_latest.outputs.GLUE_PROJECT}}"
           glue_path: "trigger"
