@@ -4,15 +4,15 @@ import datalayer from '../datalayer';
 
 import {
   assertHomeOrgExists,
-  assertWalletIsSynced,
   assertIfReadOnlyMode,
   assertNoPendingCommits,
   assertOrgDoesNotExist,
+  assertWalletIsSynced,
 } from '../utils/data-assertions';
 
 import { getDataModelVersion } from '../utils/helpers';
 
-import { ModelKeys, Audit, Staging } from '../models';
+import { Audit, ModelKeys, Staging } from '../models';
 import { getOwnedStores, getSubscriptions } from '../datalayer/persistance.js';
 
 export const findAll = async (req, res) => {
@@ -367,7 +367,7 @@ export const resyncOrganization = async (req, res) => {
       throw new Error(`organization ${orgUid} does not exist on this instance`);
     }
 
-    if (!organization.subscribed) {
+    if (!organization?.subscribed) {
       throw new Error(
         `you are not subscribed to this organization. please subscribed to resync`,
       );
