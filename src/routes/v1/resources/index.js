@@ -9,3 +9,4 @@ export * from './governance';
 export * from './filestore';
 export * from './offer';
 export * from './statistics';
+export * from './address-book';
