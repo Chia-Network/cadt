@@ -118,6 +118,9 @@ const getSubscribedStoreData = async (
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);
+  if (!decodedData) {
+    return {};
+  }
 
   return decodedData.reduce((obj, current) => {
     obj[current.key] = current.value;

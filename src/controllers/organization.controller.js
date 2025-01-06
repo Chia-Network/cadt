@@ -360,7 +360,7 @@ export const resyncOrganization = async (req, res) => {
       throw new Error(`organization ${orgUid} does not exist on this instance`);
     }
 
-    if (!organization.subscribed) {
+    if (!organization?.subscribed) {
       throw new Error(
         `you are not subscribed to this organization. please subscribed to resync`,
       );
