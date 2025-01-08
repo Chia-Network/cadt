@@ -1,7 +1,7 @@
 import Joi from 'joi';
 import { genericSortColumnRegex } from '../utils/string-utils';
 
-export const baseSchema = {
+export const addressBookBaseSchema = {
   name: Joi.string().required(),
   walletAddress: Joi.string().required(),
 };
@@ -17,12 +17,12 @@ export const addressBookGetQuerySchema = Joi.object()
   .with('limit', 'page');
 
 export const addressBookPostSchema = Joi.object({
-  ...baseSchema,
+  ...addressBookBaseSchema,
 });
 
 export const addressBookUpdateSchema = Joi.object({
   id: Joi.string().required(),
-  ...baseSchema,
+  ...addressBookBaseSchema,
 });
 
 export const addressBookDeleteSchema = Joi.object({

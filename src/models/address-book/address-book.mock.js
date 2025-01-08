@@ -1,5 +1,5 @@
 import stub from './address-book.stub.js';
 
-export const StatisticsMock = {
+export const AddressBookMock = {
   findAll: () => stub,
 };
