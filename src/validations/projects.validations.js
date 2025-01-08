@@ -1,12 +1,12 @@
 import Joi from 'joi';
 import {
   cobenefitSchema,
+  estimationSchema,
+  issuanceSchema,
+  labelSchema,
   locationSchema,
   ratingSchema,
   relatedProjectSchema,
-  labelSchema,
-  issuanceSchema,
-  estimationSchema,
 } from '../validations';
 
 import {
@@ -16,7 +16,7 @@ import {
 
 import { pickListValidation } from '../utils/validation-utils';
 
-export const baseSchema = {
+export const projectsBaseSchema = {
   // warehouseProjectId - derived upon creation
   // orgUid - derived upon creation
   currentRegistry: Joi.string().allow(null).optional(),
@@ -84,12 +84,12 @@ export const projectsGetQuerySchema = Joi.object()
   .with('limit', 'page');
 
 export const projectsPostSchema = Joi.object({
-  ...baseSchema,
+  ...projectsBaseSchema,
 });
 
 export const projectsUpdateSchema = Joi.object({
   warehouseProjectId: Joi.string().required(),
-  ...baseSchema,
+  ...projectsBaseSchema,
 });
 
 export const projectsDeleteSchema = Joi.object({
