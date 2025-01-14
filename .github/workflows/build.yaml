@@ -31,9 +31,13 @@ jobs:
             artifact-name: cadt-linux-arm64
             build-command: npm run create-linux-arm64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
-          - runs-on: macos-latest
+          - runs-on: macos-13
             artifact-name: cadt-macos-x64
             build-command: npm run create-mac-x64-dist
+            sqlite-path: ./node_modules/sqlite3/build/Release/
+          - runs-on: macos-latest
+            artifact-name: cadt-macos-arm64
+            build-command: npm run create-mac-arm64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
           - runs-on: windows-2019
             artifact-name: cadt-windows-x64
