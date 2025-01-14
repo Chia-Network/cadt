@@ -195,7 +195,7 @@ jobs:
         if: matrix.runs-on == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact-name }}
+          name: ${{ matrix.artifact-name }}-installer.pkg
           path: ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload
 
       - name: Upload artifacts
