@@ -312,14 +312,14 @@ jobs:
       - name: Download MacOS x64 artifacts
         uses: actions/download-artifact@v4
         with:
-          name: cadt-macos-x64
-          path: cadt-macos-x64
+          name: cadt-macos-x64-installer.pkg
+          path: cadt-macos-x64-installer.pkg
 
       - name: Download MacOS arm64 artifacts
         uses: actions/download-artifact@v4
         with:
-          name: cadt-macos-arm64
-          path: cadt-macos-arm64
+          name: cadt-macos-arm64-installer.pkg
+          path: cadt-macos-arm64-installer.pkg
 
       - name: Download x64 Linux artifacts
         uses: actions/download-artifact@v4
