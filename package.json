@@ -23,6 +23,7 @@
     "prepare-binary": "rm -rf dist && mkdir dist",
     "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-win-x64 --out-path dist",
     "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-macos-x64 --out-path dist",
+    "create-mac-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-macos-arm64 --out-path dist",
     "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-linux-x64 --out-path dist",
     "create-linux-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-linux-arm64 --out-path dist"
   },
