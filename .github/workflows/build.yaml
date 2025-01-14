@@ -170,7 +170,7 @@ jobs:
           bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh CADT
 
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload
-          cp ${{ github.workspace }}/build-scripts/macos/target/pkg/${{ matrix.artifact-name }}-installer.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/${{ matrix.artifact-name }}-installer.pkg
+          cp ${{ github.workspace }}/build-scripts/macos/target/pkg/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/${{ matrix.artifact-name }}-installer.pkg
 
       - name: Notarize Mac .pkg
         if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
