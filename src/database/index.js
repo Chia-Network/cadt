@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { Sequelize } from 'sequelize';
+import { QueryTypes, Sequelize } from 'sequelize';
 import config from '../config/config.js';
 import { logger } from '../logger.js';
 import mysql from 'mysql2/promise';
@@ -158,3 +158,17 @@ export const prepareDb = async () => {
 
   await checkForMigrations(sequelize);
 };
+
+// Function to set WAL mode
+async function setWALMode() {
+  try {
+    await sequelize.authenticate();
+
+    await sequelize.query('PRAGMA journal_mode=WAL;', { type: QueryTypes.RAW });
+    console.log('WAL mode set successfully.');
+  } catch (error) {
+    console.error('Unable to set WAL mode:', error);
+  }
+}
+
+setWALMode();
