@@ -178,7 +178,7 @@ jobs:
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
           echo "Signing the .pkg"
-          productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/${{ matrix.artifact-name }}-installer.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/${{ matrix.artifact-name }}-installer.pkg
+          productsign --sign "Developer ID Installer: Chia Network Inc." ${{ github.workspace }}/build-scripts/macos/target/pkg/${{ matrix.artifact-name }}-installer.pkg ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg
 
           echo "Notarizing the .pkg"
           xcrun notarytool submit \
@@ -186,10 +186,10 @@ jobs:
           --apple-id "${{ secrets.APPLE_NOTARIZE_USERNAME }}" \
           --password "${{ secrets.APPLE_NOTARIZE_PASSWORD }}" \
           --team-id "${{ secrets.APPLE_TEAM_ID }}" \
-          "${{ github.workspace }}/build-scripts/macos/target/pkg-signed/${{ matrix.artifact-name }}-installer.pkg"
+          "${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg"
 
           rm -f ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/*
-          mv ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/${{ matrix.artifact-name }}-installer.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/
+          mv ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/${{ matrix.artifact-name }}-installer.pkg
 
       - name: Upload Mac Installer
         if: startsWith(matrix.runs-on , 'macos')
