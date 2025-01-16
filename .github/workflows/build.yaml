@@ -358,8 +358,8 @@ jobs:
           zip -r cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-macos-arm64-installer.pkg
           zip -r cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-x64
           zip -r cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-arm64
-          mv cadt-macos-x64-installer.pkg.zip cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
-          mv cadt-macos-arm64-installer.pkg.zip cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
+          mv cadt-macos-x64-installer.pkg cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg
+          mv cadt-macos-arm64-installer.pkg cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg
 
       # RC release should not be set as latest
       - name: Decide if release should be set as latest
@@ -390,8 +390,8 @@ jobs:
           make_latest: "${{steps.is_latest.outputs.IS_LATEST}}"
           files: |
             cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
-            cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
-            cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
+            cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg
+            cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg
             cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-x64-deb/*.deb
