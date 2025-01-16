@@ -350,13 +350,16 @@ jobs:
         run: |
           echo "TAGNAME=$(echo $GITHUB_REF | cut -d / -f 3)" >>$GITHUB_OUTPUT
 
-      - name: Create zips
+      - name: Create zips and renname installers
         run: |
+          ls -lah
           zip -r cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-windows-x64
           zip -r cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-macos-x64-installer.pkg
           zip -r cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-macos-arm64-installer.pkg
           zip -r cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-x64
           zip -r cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-arm64
+          mv cadt-macos-x64-installer.pkg.zip cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
+          mv cadt-macos-arm64-installer.pkg.zip cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
 
       # RC release should not be set as latest
       - name: Decide if release should be set as latest
@@ -387,8 +390,8 @@ jobs:
           make_latest: "${{steps.is_latest.outputs.IS_LATEST}}"
           files: |
             cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
-            cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
-            cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
+            cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
             cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-x64-deb/*.deb
