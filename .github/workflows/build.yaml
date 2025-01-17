@@ -356,8 +356,8 @@ jobs:
           zip -r cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-windows-x64
           zip -r cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-x64
           zip -r cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-arm64
-          zip -r cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip cadt-macos-x64-mac-installer
-          zip -r cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip cadt-macos-arm64-mac-installer
+          zip -r cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-macos-x64-mac-installer
+          zip -r cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-macos-arm64-mac-installer
 
           echo ""
           ls -lah
@@ -391,8 +391,8 @@ jobs:
           make_latest: "${{steps.is_latest.outputs.IS_LATEST}}"
           files: |
             cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
-            cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
-            cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
+            cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-x64-deb/*.deb
