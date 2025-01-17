@@ -358,8 +358,11 @@ jobs:
           zip -r cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-macos-arm64-installer.pkg
           zip -r cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-x64
           zip -r cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-arm64
-          mv cadt-macos-x64-installer.pkg cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg
-          mv cadt-macos-arm64-installer.pkg cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg
+          mv -v cadt-macos-x64-installer.pkg cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg
+          mv -v cadt-macos-arm64-installer.pkg cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg
+
+          echo ""
+          ls -lah
 
       # RC release should not be set as latest
       - name: Decide if release should be set as latest
