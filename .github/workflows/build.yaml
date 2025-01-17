@@ -195,7 +195,7 @@ jobs:
         if: startsWith(matrix.runs-on , 'macos')
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact-name }}-installer.pkg
+          name: ${{ matrix.artifact-name }}-mac-installer
           path: ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload
 
       - name: Upload artifacts
@@ -312,14 +312,14 @@ jobs:
       - name: Download MacOS x64 artifacts
         uses: actions/download-artifact@v4
         with:
-          name: cadt-macos-x64-installer.pkg
-          path: cadt-macos-x64-installer.pkg
+          name: cadt-macos-x64-mac-installer
+          path: cadt-macos-x64-mac-installer
 
       - name: Download MacOS arm64 artifacts
         uses: actions/download-artifact@v4
         with:
-          name: cadt-macos-arm64-installer.pkg
-          path: cadt-macos-arm64-installer.pkg
+          name: cadt-macos-arm64-mac-installer
+          path: cadt-macos-arm64-mac-installer
 
       - name: Download x64 Linux artifacts
         uses: actions/download-artifact@v4
@@ -356,8 +356,8 @@ jobs:
           zip -r cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-windows-x64
           zip -r cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-x64
           zip -r cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-arm64
-          zip -r cadt-macos-x64-installer.pkg cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
-          zip -r cadt-macos-arm64-installer.pkg cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip
+          zip -r cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip cadt-macos-x64-mac-installer
+          zip -r cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.pkg.zip cadt-macos-arm64-mac-installer
 
           echo ""
           ls -lah
