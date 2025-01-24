@@ -111,11 +111,14 @@ class Governance extends Model {
       });
     }
 
+    logger.debug('upserting governance data from governance body store');
     await Promise.all(updates.map(async (update) => Governance.upsert(update)));
   }
 
   static async sync() {
     try {
+      logger.debug('running governance model sync()');
+
       if (!CONFIG().CADT.GOVERNANCE.GOVERNANCE_BODY_ID) {
         throw new Error('Missing information in env to sync Governance data');
       }
