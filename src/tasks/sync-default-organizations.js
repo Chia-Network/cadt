@@ -17,12 +17,6 @@ const task = new Task('sync-default-organizations', async () => {
 
     if (!CONFIG.USE_SIMULATOR) {
       const defaultOrgRecords = await getDefaultOrganizationList();
-      if (!Array.isArray(defaultOrgRecords)) {
-        throw new Error(
-          'ERROR: Default Organization List Not found, This instance may be missing data from default orgs',
-        );
-      }
-
       const userDeletedOrgs = await Meta.getUserDeletedOrgUids();
 
       for (const { orgUid } of defaultOrgRecords) {
