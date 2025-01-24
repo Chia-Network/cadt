@@ -31,22 +31,41 @@ export const pullPickListValues = async () => {
   }
 };
 
-export const getDefaultOrganizationList = async () => {
+export const getDefaultOrganizationList = async (retryCount = 0) => {
+  // need retry because on new install governance data may not have been synced yet
+  let maxRetry = 50;
+
   try {
     if (CONFIG().CADT.USE_SIMULATOR || CONFIG().CADT.USE_DEVELOPMENT_MODE) {
       return [];
     } else {
+      logger.debug(`getting default organization list from governance data`);
       const governanceData = await Governance.findOne({
         where: { metaKey: 'orgList' },
         raw: true,
       });
 
-      return JSON.parse(_.get(governanceData, 'metaValue', '[]'));
+      if (governanceData) {
+        const defaultOrgList = JSON.parse(
+          _.get(governanceData, 'metaValue', null),
+        );
+        if (defaultOrgList && _.isArray(defaultOrgList)) {
+          return defaultOrgList;
+        }
+      }
+
+      throw new Error(
+        'governance data does not contain a default organization list',
+      );
     }
   } catch (error) {
-    logger.error(error);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return getDefaultOrganizationList();
+    if (retryCount >= maxRetry) {
+      throw error;
+    }
+
+    logger.warn(`cannot get default org list. trying again Error: ${error}`);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    return getDefaultOrganizationList((retryCount += 1));
   }
 };
 

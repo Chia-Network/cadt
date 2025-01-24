@@ -6,7 +6,6 @@ import { sequelize } from '../../database';
 import datalayer from '../../datalayer';
 import { logger } from '../../logger.js';
 import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
-import { getDefaultOrganizationList } from '../../utils/data-loaders';
 import { getDataModelVersion } from '../../utils/helpers';
 import { CONFIG } from '../../user-config';
 import ModelTypes from './organizations.modeltypes.cjs';
@@ -860,30 +859,6 @@ class Organization extends Model {
       }
     } catch (error) {
       logger.error(error.message);
-    }
-  }
-
-  static async subscribeToDefaultOrganizations() {
-    try {
-      const defaultOrgs = await getDefaultOrganizationList();
-      if (!Array.isArray(defaultOrgs)) {
-        throw new Error(
-          'ERROR: Default Organization List Not found, This instance may be missing data from default orgs',
-        );
-      }
-
-      for (let i = 0; i < defaultOrgs.length; i++) {
-        const org = defaultOrgs[i];
-        const exists = await Organization.findOne({
-          where: { orgUid: org.orgUid },
-        });
-
-        if (!exists) {
-          await Organization.importOrganization(org.orgUid);
-        }
-      }
-    } catch (error) {
-      logger.info(error);
     }
   }
 
