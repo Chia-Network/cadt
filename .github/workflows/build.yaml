@@ -31,9 +31,13 @@ jobs:
             artifact-name: cadt-linux-arm64
             build-command: npm run create-linux-arm64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
-          - runs-on: macos-latest
+          - runs-on: macos-13
             artifact-name: cadt-macos-x64
             build-command: npm run create-mac-x64-dist
+            sqlite-path: ./node_modules/sqlite3/build/Release/
+          - runs-on: macos-latest
+            artifact-name: cadt-macos-arm64
+            build-command: npm run create-mac-arm64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
           - runs-on: windows-2019
             artifact-name: cadt-windows-x64
@@ -129,7 +133,7 @@ jobs:
 
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
+        if: startsWith(matrix.runs-on , 'macos') && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
         uses: Apple-Actions/import-codesign-certs@v3
         with:
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
@@ -137,7 +141,7 @@ jobs:
           p12-password: ${{ secrets.APPLE_DEV_ID_INSTALLER_PASS }}
 
       - name: Import Apple Application signing certificate
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
+        if: startsWith(matrix.runs-on , 'macos') && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
         uses: Apple-Actions/import-codesign-certs@v3
         with:
           create-keychain: false # Created when importing the first cert
@@ -146,30 +150,30 @@ jobs:
           p12-password: ${{ secrets.APPLE_DEV_ID_APP_PASS }}
 
       - name: Prep building Mac .pkg
-        if: matrix.runs-on == 'macos-latest'
+        if: startsWith(matrix.runs-on , 'macos')
         run: |
           rm -rf ${{ github.workspace }}/build-scripts/macos/darwin/application || true
           cp -r ${{ github.workspace }}/dist ${{ github.workspace }}/build-scripts/macos/application
 
       - name: Sign Mac binaries
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
+        if: startsWith(matrix.runs-on , 'macos') && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
         run: |
           echo "Signing the binaries"
           codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp --options=runtime --entitlements ${{ github.workspace }}/build-scripts/macos/entitlements.mac.plist ${{ github.workspace }}/build-scripts/macos/application/cadt
           codesign -f -s "Developer ID Application: Chia Network Inc." --timestamp ${{ github.workspace }}/build-scripts/macos/application/node_sqlite3.node
 
       - name: Build Mac .pkg
-        if: matrix.runs-on == 'macos-latest'
+        if: startsWith(matrix.runs-on , 'macos')
         run: |
           # Makes the .pkg in ./build-scripts/macos/target/pkg
           echo "Building the .pkg"
           bash ${{ github.workspace }}/build-scripts/macos/build-macos.sh CADT
 
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload
-          cp ${{ github.workspace }}/build-scripts/macos/target/pkg/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/CADT-macos-installer-x64.pkg
+          cp ${{ github.workspace }}/build-scripts/macos/target/pkg/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/${{ matrix.artifact-name }}-installer.pkg
 
       - name: Notarize Mac .pkg
-        if: matrix.runs-on == 'macos-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
+        if: startsWith(matrix.runs-on , 'macos') && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
         run: |
           mkdir -p ${{ github.workspace }}/build-scripts/macos/target/pkg-signed
 
@@ -185,13 +189,13 @@ jobs:
           "${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg"
 
           rm -f ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/*
-          mv ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/
+          mv ${{ github.workspace }}/build-scripts/macos/target/pkg-signed/CADT-macos-installer-x64.pkg ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload/${{ matrix.artifact-name }}-installer.pkg
 
       - name: Upload Mac Installer
-        if: matrix.runs-on == 'macos-latest'
+        if: startsWith(matrix.runs-on , 'macos')
         uses: actions/upload-artifact@v4
         with:
-          name: cadt-mac-installer
+          name: ${{ matrix.artifact-name }}-mac-installer
           path: ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload
 
       - name: Upload artifacts
@@ -305,11 +309,17 @@ jobs:
           name: cadt-windows-x64
           path: cadt-windows-x64
 
-      - name: Download MacOS artifacts
+      - name: Download MacOS x64 artifacts
         uses: actions/download-artifact@v4
         with:
-          name: cadt-mac-installer
-          path: cadt-mac-installer
+          name: cadt-macos-x64-mac-installer
+          path: cadt-macos-x64-mac-installer
+
+      - name: Download MacOS arm64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: cadt-macos-arm64-mac-installer
+          path: cadt-macos-arm64-mac-installer
 
       - name: Download x64 Linux artifacts
         uses: actions/download-artifact@v4
@@ -340,12 +350,17 @@ jobs:
         run: |
           echo "TAGNAME=$(echo $GITHUB_REF | cut -d / -f 3)" >>$GITHUB_OUTPUT
 
-      - name: Create zips
+      - name: Create zips and renname installers
         run: |
+          ls -lah
           zip -r cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-windows-x64
-          zip -r cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-mac-installer
           zip -r cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-x64
           zip -r cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-linux-arm64
+          zip -r cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-macos-x64-mac-installer
+          zip -r cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip cadt-macos-arm64-mac-installer
+
+          echo ""
+          ls -lah
 
       # RC release should not be set as latest
       - name: Decide if release should be set as latest
@@ -377,6 +392,7 @@ jobs:
           files: |
             cadt-windows-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-macos-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
+            cadt-macos-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-x64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-arm64-${{ steps.tag-name.outputs.TAGNAME }}.zip
             cadt-linux-x64-deb/*.deb
