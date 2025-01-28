@@ -1,0 +1,38 @@
+Metadata-Version: 2.1
+Name: j2cli
+Version: 0.3.10
+Summary: Command-line interface to Jinja2 for templating in shell scripts.
+Home-page: https://github.com/kolypto/j2cli
+Author: Mark Vartanyan
+Author-email: kolypto@gmail.com
+License: BSD
+Keywords: Jinja2,templating,command-line,CLI
+Platform: any
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 3
+Description-Content-Type: text/markdown
+Requires-Dist: jinja2 (>=2.7.2)
+Provides-Extra: yaml
+Requires-Dist: pyyaml (>=3.10) ; extra == 'yaml'
+
+j2cli - Jinja2 Command-Line Tool
+================================
+
+`j2cli` is a command-line tool for templating in shell-scripts,
+leveraging the [Jinja2](http://jinja.pocoo.org/docs/) library.
+
+Features:
+
+* Jinja2 templating
+* INI, YAML, JSON data sources supported
+* Allows the use of environment variables in templates! Hello [Docker](http://www.docker.com/) :)
+
+Inspired by [mattrobenolt/jinja2-cli](https://github.com/mattrobenolt/jinja2-cli)
+
+

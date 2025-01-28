@@ -1,0 +1,3 @@
+[console_scripts]
+j2 = j2cli:main
+
