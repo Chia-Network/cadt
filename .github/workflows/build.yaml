@@ -27,7 +27,7 @@ jobs:
             artifact-name: cadt-linux-x64
             build-command: npm run create-linux-x64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
-          - runs-on: [Linux, ARM64]
+          - runs-on: ubuntu-24.04-arm
             artifact-name: cadt-linux-arm64
             build-command: npm run create-linux-arm64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
