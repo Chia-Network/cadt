@@ -56,7 +56,7 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
  *
  * @param storeId {string} to retrieve data from
  * @param providedSubscriptions {[string] | undefined} optional list of subscriptions. providing prevents RPC call
- * @returns {Promise<any>}
+ * @returns {Promise<object>}
  */
 const getSubscribedStoreData = async (
   storeId,
@@ -77,9 +77,10 @@ const getSubscribedStoreData = async (
 
   if (!alreadySubscribed) {
     logger.info(`No Subscription Found for ${storeId}, Subscribing...`);
-    const response = await dataLayer.subscribeToStoreOnDataLayer(storeId);
+    const subscriptionSuccess =
+      await dataLayer.subscribeToStoreOnDataLayer(storeId);
 
-    if (!response) {
+    if (!subscriptionSuccess) {
       throw new Error(`Failed to subscribe to ${storeId}`);
     }
   }

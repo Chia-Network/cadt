@@ -31,7 +31,7 @@ const task = new Task('sync-governance-meta', async () => {
         _.get(myOrganization, 'orgUid', '') !==
         CONFIG().CADT.GOVERNANCE.GOVERNANCE_BODY_ID
       ) {
-        Governance.sync();
+        await Governance.sync();
       }
     }
   } catch (error) {

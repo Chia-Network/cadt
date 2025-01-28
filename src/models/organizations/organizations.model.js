@@ -525,7 +525,7 @@ class Organization extends Model {
         isHome,
       };
       logger.info(
-        `adding and organization with the following info ${organizationData}`,
+        `adding an organization with the following info ${organizationData.toString()}`,
       );
 
       await Organization.create(organizationData);
