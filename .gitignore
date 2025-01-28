@@ -14,7 +14,7 @@ testMirror.sqlite3
 # production
 /build
 /dist
-/venv
+#/venv
 
 # misc
 .DS_Store
