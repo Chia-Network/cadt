@@ -80,7 +80,7 @@
     "babel-plugin-module-resolver": "^5.0.2",
     "chai": "^5.1.2",
     "chai-http": "^5.1.1",
-    "eslint": "^9.16.0",
+    "eslint": "^9.19.0",
     "eslint-plugin-es": "^4.1.0",
     "eslint-plugin-mocha": "^10.5.0",
     "extensionless": "^1.9.9",
