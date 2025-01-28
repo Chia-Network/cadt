@@ -27,7 +27,7 @@ jobs:
             artifact-name: cadt-linux-x64
             build-command: npm run create-linux-x64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
-          - runs-on: [Linux, ARM64]
+          - runs-on: ubuntu-24.04-arm
             artifact-name: cadt-linux-arm64
             build-command: npm run create-linux-arm64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
@@ -278,13 +278,13 @@ jobs:
           CADT_VERSION: ${{ steps.tag-name.outputs.TAGNAME }}
           PLATFORM: ${{ matrix.platform }}
         run: |
-          pip install j2cli
+          pip install jinjanator
           CLI_DEB_BASE="cadt_${{ steps.tag-name.outputs.TAGNAME }}-1_${PLATFORM}"
           mkdir -p "deb/$CLI_DEB_BASE/opt/cadt"
           mkdir -p "deb/$CLI_DEB_BASE/usr/bin"
           mkdir -p "deb/$CLI_DEB_BASE/etc/systemd/system"
           mkdir -p "deb/$CLI_DEB_BASE/DEBIAN"
-          j2 -o "deb/$CLI_DEB_BASE/DEBIAN/control" build-scripts/deb/control.j2
+          jinjanate -o "deb/$CLI_DEB_BASE/DEBIAN/control" build-scripts/deb/control.j2
           cp -r ${{ matrix.name }}/* "deb/$CLI_DEB_BASE/opt/cadt/"
           cp build-scripts/deb/cadt@.service deb/$CLI_DEB_BASE/etc/systemd/system/cadt@.service
           chmod +x deb/$CLI_DEB_BASE/opt/cadt/cadt
