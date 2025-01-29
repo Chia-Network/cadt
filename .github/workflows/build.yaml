@@ -27,7 +27,7 @@ jobs:
             artifact-name: core-registry-cadt-linux-x64
             build-command: npm run create-linux-x64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
-          - runs-on: [ubuntu-22.04-arm]
+          - runs-on: ubuntu-22.04-arm
             artifact-name: core-registry-cadt-linux-arm64
             build-command: npm run create-linux-arm64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
