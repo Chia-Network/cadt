@@ -157,8 +157,11 @@ class Governance extends Model {
         return;
       }
 
-      const governanceData =
-        await datalayer.getSubscribedStoreData(governanceBodyId);
+      const governanceData = await datalayer.getSubscribedStoreData(
+        governanceBodyId,
+        undefined,
+        true,
+      );
 
       // Check if there is v1, v2, v3 ..... and if not, then we assume this is a legacy governance table that isnt versioned
       const shouldSyncLegacy = !Object.keys(governanceData).some((key) =>
@@ -184,6 +187,8 @@ class Governance extends Model {
         );
         const versionedGovernanceData = await datalayer.getSubscribedStoreData(
           versionedGovernanceStoreId,
+          undefined,
+          true,
         );
 
         await Governance.upsertGovernanceDownload(

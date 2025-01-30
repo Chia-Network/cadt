@@ -19,6 +19,7 @@ import {
   addOrDeleteOrganizationRecordMutex,
   processingSyncRegistriesTransactionMutex,
 } from '../../utils/model-utils.js';
+import { isDlStoreSynced } from '../../utils/datalayer-utils.js';
 
 const { Model } = Sequelize;
 
@@ -379,16 +380,12 @@ class Organization extends Model {
         datalayerDataModelVersionStoreId;
     }
 
-    const isDlSynced = (syncStatus) => {
-      return syncStatus.generation === syncStatus.target_generation;
-    };
-
     // note that we only update the data model version store hash here because the other two store hashes are updated elsewhere
     const dataModelVersionStoreSyncStatus = await getSyncStatus(
       datalayerDataModelVersionStoreId,
     );
 
-    if (isDlSynced(dataModelVersionStoreSyncStatus)) {
+    if (isDlStoreSynced(dataModelVersionStoreSyncStatus)) {
       const { confirmed, hash } = await getRoot(
         datalayerDataModelVersionStoreId,
       );
@@ -597,7 +594,11 @@ class Organization extends Model {
     let orgStoreData = null;
     while (!orgStoreData) {
       try {
-        orgStoreData = await datalayer.getSubscribedStoreData(orgUid);
+        orgStoreData = await datalayer.getSubscribedStoreData(
+          orgUid,
+          undefined,
+          true,
+        );
       } catch (error) {
         if (reachedTimeout()) {
           onTimeout(error);
@@ -624,6 +625,8 @@ class Organization extends Model {
       try {
         dataModelVersionStoreData = await datalayer.getSubscribedStoreData(
           dataModelVersionStoreId,
+          undefined,
+          true,
         );
       } catch (error) {
         if (reachedTimeout()) {

@@ -117,7 +117,11 @@ export const getMirrorUrl = async () => {
     logger.debug(`Resolved Mirror Url: ${finalUrl}`);
     return finalUrl;
   } catch (error) {
-    logger.error('Error getting mirror url: ${error}');
+    logger.error(`Error getting mirror url: ${error}`);
     return null;
   }
+};
+
+export const isDlStoreSynced = (syncStatus) => {
+  return syncStatus.generation === syncStatus.target_generation;
 };
