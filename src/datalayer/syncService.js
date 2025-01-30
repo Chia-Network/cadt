@@ -137,6 +137,12 @@ const getSubscribedStoreData = async (
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);
+  logger.trace(
+    `the data for subscribed store ${storeId} after conversion to js Object is:
+    
+    ${decodedData}`,
+  );
+
   if (!decodedData) {
     return {};
   }
