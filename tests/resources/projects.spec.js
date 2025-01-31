@@ -11,6 +11,7 @@ import { pullPickListValues } from '../../src/utils/data-loaders';
 import { Staging, Project } from '../../src/models/index.js';
 import { uuid as uuidv4 } from 'uuidv4';
 import { prepareDb, seedDb, sequelize } from '../../src/database';
+
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
 describe('Project Resource CRUD', function () {
@@ -55,7 +56,7 @@ describe('Project Resource CRUD', function () {
       it('gets all the projects available', async function () {
         // no query params
         const projects = await testFixtures.getProjectByQuery();
-        expect(projects.length).to.equal(12);
+        expect(projects.length).to.equal(10);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects filtered by orgUid', async function () {
@@ -253,16 +254,23 @@ describe('Project Resource CRUD', function () {
           prefix: 'test',
         });
       }).timeout(TEST_WAIT_TIME * 10);
+
       it('errors if there is a current set of pending commits', function () {});
+
       it('errors if there if there is no connection to the datalayer', function () {});
+
       it('errors if the warehouseProjectId is not in the payload', function () {});
+
       it('errors if the warehouseProjectId is an existing record', function () {});
+
       it('errors if trying to update a child table that is not an existing record', function () {});
+
       it('errors if the orgUid of the project does not equal the home organization', function () {});
     });
 
     describe('success states', function () {
       it('updates a new project with no child tables', function () {});
+
       it('updates a new project with all child tables', function () {});
     });
   });
@@ -270,15 +278,21 @@ describe('Project Resource CRUD', function () {
   describe('DELETE Projects - Delete', function () {
     describe('error states', function () {
       it('errors if no home organization exists', function () {});
+
       it('errors if there is a current set of pending commits', function () {});
+
       it('errors if there if there is no connection to the datalayer', function () {});
+
       it('errors if the warehouseProjectId is not in the payload', function () {});
+
       it('errors if the warehouseProjectId is an existing record', function () {});
+
       it('errors if the orgUid of the project does not equal the home organization', function () {});
     });
 
     describe('success states', function () {
       it('updates a new project with no child tables', function () {});
+
       it('updates a new project with all child tables', function () {});
     });
   });

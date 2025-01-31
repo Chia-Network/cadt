@@ -20,7 +20,7 @@ const createDataLayerStore = async () => {
     logger.info(
       `Created storeId: ${storeId}, waiting for this to be confirmed on the blockchain.`,
     );
-    await waitForStoreToBeConfirmed(storeId);
+    await waitForNewStoreToBeConfirmed(storeId);
     await wallet.waitForAllTransactionsToConfirm();
 
     // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
@@ -40,23 +40,23 @@ const addMirror = async (storeId, url, force = false) => {
   return dataLayer.addMirror(storeId, url, force);
 };
 
-const waitForStoreToBeConfirmed = async (storeId, retry = 0) => {
+const waitForNewStoreToBeConfirmed = async (storeId, retry = 0) => {
   if (retry > 120) {
     throw new Error(
       `Creating storeId: ${storeId} timed out. Its possible the transaction is stuck.`,
     );
   }
 
-  const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
+  const { confirmed } = await dataLayer.getRoot(storeId);
 
-  if (!storeExistAndIsConfirmed) {
+  if (!confirmed) {
     logger.info(`Still waiting for ${storeId} to confirm`);
     await new Promise((resolve) => {
       setTimeout(() => {
         resolve();
       }, 30000);
     });
-    return waitForStoreToBeConfirmed(storeId, retry + 1);
+    return waitForNewStoreToBeConfirmed(storeId, retry + 1);
   }
   logger.info(`StoreId: ${storeId} has been confirmed. Congrats!`);
 };
@@ -103,16 +103,20 @@ const upsertDataLayer = async (storeId, data) => {
   await pushChangesWhenStoreIsAvailable(storeId, finalChangeList);
 };
 
-const retry = (storeId, changeList, failedCallback, retryAttempts) => {
+const retryPushToStore = (
+  storeId,
+  changeList,
+  failedCallback,
+  retryAttempts,
+) => {
   logger.info(`Retrying pushing to store ${storeId}: ${retryAttempts}`);
   if (retryAttempts >= 60) {
     logger.info(
-      'Could not push changelist to datalayer after retrying 10 times',
+      'Could not push changelist to datalayer after retrying 60 times',
     );
     failedCallback();
     return;
   }
-
   setTimeout(async () => {
     await pushChangesWhenStoreIsAvailable(
       storeId,
@@ -135,9 +139,9 @@ export const pushChangesWhenStoreIsAvailable = async (
     const hasUnconfirmedTransactions =
       await wallet.hasUnconfirmedTransactions();
 
-    const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId);
+    const { confirmed } = await dataLayer.getRoot(storeId);
 
-    if (!hasUnconfirmedTransactions && storeExistAndIsConfirmed) {
+    if (!hasUnconfirmedTransactions && confirmed) {
       logger.info(`pushing to datalayer ${storeId}`);
 
       const success = await dataLayer.pushChangeListToDataLayer(
@@ -146,13 +150,13 @@ export const pushChangesWhenStoreIsAvailable = async (
       );
 
       if (!success) {
-        logger.info(
+        logger.error(
           `RPC failed when pushing to store ${storeId}, attempting retry.`,
         );
-        retry(storeId, changeList, failedCallback, retryAttempts);
+        retryPushToStore(storeId, changeList, failedCallback, retryAttempts);
       }
     } else {
-      retry(storeId, changeList, failedCallback, retryAttempts);
+      retryPushToStore(storeId, changeList, failedCallback, retryAttempts);
     }
   }
 };

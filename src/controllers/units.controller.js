@@ -249,11 +249,13 @@ export const findAll = async (req, res) => {
       }
 
       where.marketplaceIdentifier = {
-        [Sequelize.Op.not]: true,
+        [Sequelize.Op.not]: null,
       };
-      where.marketplace = {
-        [Sequelize.Op.eq]: 'Tokenized on Chia',
-      };
+
+      where.marketplace = Sequelize.where(
+        Sequelize.fn('LOWER', Sequelize.col('marketplace')),
+        'tokenized on chia',
+      );
     } else if (
       typeof onlyTokenizedUnits === 'boolean' &&
       onlyTokenizedUnits === false
@@ -265,7 +267,12 @@ export const findAll = async (req, res) => {
       where.marketplace = {
         [Sequelize.Op.or]: [
           { [Sequelize.Op.is]: null },
-          { [Sequelize.Op.not]: 'Tokenized on Chia' },
+          {
+            [Sequelize.Op.not]: Sequelize.where(
+              Sequelize.fn('LOWER', Sequelize.col('marketplace')),
+              'tokenized on chia',
+            ),
+          },
         ],
       };
     }

@@ -48,4 +48,10 @@ module.exports = {
   },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
+  dataModelVersionStoreId: {
+    type: Sequelize.STRING,
+  },
+  dataModelVersionStoreHash: {
+    type: Sequelize.STRING,
+  },
 };
