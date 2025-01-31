@@ -8,14 +8,14 @@ const { Model } = Sequelize;
 import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
-import { logger } from '../../config/logger.js';
+import { logger } from '../../config/logger';
 import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
 import { getDataModelVersion } from '../../utils/helpers';
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
 import ModelTypes from './organizations.modeltypes.cjs';
-import { assertStoreIsOwned } from '../../utils/data-assertions.js';
+import { assertStoreIsOwned } from '../../utils/data-assertions';
 import {
   getRoot,
   getSubscriptions,
@@ -24,7 +24,8 @@ import {
 import {
   addOrDeleteOrganizationRecordMutex,
   processingSyncRegistriesTransactionMutex,
-} from '../../utils/model-utils.js';
+  isDlStoreSynced,
+} from '../../utils/model-utils';
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -365,16 +366,12 @@ class Organization extends Model {
         datalayerDataModelVersionStoreId;
     }
 
-    const isDlSynced = (syncStatus) => {
-      return syncStatus.generation === syncStatus.target_generation;
-    };
-
     // note that we only update the data model version store hash here because the other two store hashes are updated elsewhere
     const dataModelVersionStoreSyncStatus = await getSyncStatus(
       datalayerDataModelVersionStoreId,
     );
 
-    if (isDlSynced(dataModelVersionStoreSyncStatus)) {
+    if (isDlStoreSynced(dataModelVersionStoreSyncStatus)) {
       const { confirmed, hash } = await getRoot(
         datalayerDataModelVersionStoreId,
       );
@@ -583,7 +580,11 @@ class Organization extends Model {
     let orgStoreData = null;
     while (!orgStoreData) {
       try {
-        orgStoreData = await datalayer.getSubscribedStoreData(orgUid);
+        orgStoreData = await datalayer.getSubscribedStoreData(
+          orgUid,
+          undefined,
+          true,
+        );
       } catch (error) {
         if (reachedTimeout()) {
           onTimeout(error);
@@ -610,6 +611,8 @@ class Organization extends Model {
       try {
         dataModelVersionStoreData = await datalayer.getSubscribedStoreData(
           dataModelVersionStoreId,
+          undefined,
+          true,
         );
       } catch (error) {
         if (reachedTimeout()) {

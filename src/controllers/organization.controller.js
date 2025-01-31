@@ -37,7 +37,7 @@ export const homeOrgSyncStatus = async (req, res) => {
         home_org_synced: Boolean(homeOrg?.synced),
         pending_commits: pendingCommitsCount,
         home_org_profile_synced:
-          sync_status.target_root_hash === homeOrg.orgHash,
+          sync_status.target_root_hash === homeOrg.orgHash?.split('0x')?.[1],
       },
       success: true,
     });

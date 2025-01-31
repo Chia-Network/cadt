@@ -362,6 +362,12 @@ const getStoreData = async (storeId, rootHash) => {
             `datalayer get_keys_values returned no data for store ${storeId} at root hash: ${rootHash || 'latest'}`,
           );
         }
+
+        logger.trace(
+          `raw keys and values from RPC for store ${storeId}
+          
+          ${JSON.stringify(data.keys_values)}`,
+        );
         return data;
       } else {
         throw new Error(JSON.stringify(data));

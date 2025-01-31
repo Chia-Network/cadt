@@ -1,6 +1,9 @@
 import _ from 'lodash';
 
-import { decodeDataLayerResponse } from '../utils/datalayer-utils';
+import {
+  decodeDataLayerResponse,
+  isDlStoreSynced,
+} from '../utils/datalayer-utils';
 import { Simulator } from '../models';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.js';
@@ -58,11 +61,13 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
  *
  * @param storeId {string} to retrieve data from
  * @param providedSubscriptions {[string] | undefined} optional list of subscriptions. providing prevents RPC call
- * @returns {Promise<any>}
+ * @param waitForSync {boolean} option to block returning data until the store is synced. could be time expensive.
+ * @returns {Promise<object>}
  */
 const getSubscribedStoreData = async (
   storeId,
   providedSubscriptions = undefined,
+  waitForSync = false,
 ) => {
   let subscriptions = providedSubscriptions;
   if (!subscriptions) {
@@ -83,6 +88,21 @@ const getSubscribedStoreData = async (
 
     if (!response) {
       throw new Error(`Failed to subscribe to ${storeId}`);
+    }
+  }
+
+  if (waitForSync) {
+    let synced = false;
+    while (!synced) {
+      const syncStatus = dataLayer.getSyncStatus(storeId);
+      synced = isDlStoreSynced(syncStatus);
+
+      if (!synced) {
+        logger.warn(
+          `datalayer has not fully synced subscribed store ${storeId}. waiting to return data until store is synced`,
+        );
+        await new Promise((resolve) => setTimeout(() => resolve, 10000));
+      }
     }
   }
 
@@ -118,6 +138,12 @@ const getSubscribedStoreData = async (
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);
+  logger.trace(
+    `the data for subscribed store ${storeId} after conversion to js Object is:
+    
+    ${JSON.stringify(decodedData)}`,
+  );
+
   if (!decodedData) {
     return {};
   }

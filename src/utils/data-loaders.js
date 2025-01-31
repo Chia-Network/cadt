@@ -80,3 +80,11 @@ export const serverAvailable = async (server, port) => {
     }
   }
 };
+
+export const isDlStoreSynced = (syncStatus) => {
+  if (syncStatus?.generation && syncStatus?.target_generation) {
+    return syncStatus.generation === syncStatus.target_generation;
+  }
+
+  return false;
+};
