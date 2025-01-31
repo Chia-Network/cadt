@@ -802,6 +802,20 @@ const cancelOffer = async (tradeId) => {
   }
 };
 
+/**
+ * @typedef {Object} SyncStatus
+ * @property {number} generation - The current generation of the Merkle tree.
+ * @property {string} root_hash - The root hash of the Merkle tree.
+ * @property {number} target_generation - The target generation of the Merkle tree.
+ * @property {string} target_root_hash - The target root hash of the Merkle tree.
+ */
+
+/**
+ * Fetches the synchronization status for a given store.
+ *
+ * @param {string} storeId - The identifier of the store.
+ * @returns {Promise<{sync_status: SyncStatus} | boolean>} - A promise that resolves to an object containing the sync status or `false` if the status cannot be retrieved.
+ */
 const getSyncStatus = async (storeId) => {
   const url = `${CONFIG().CHIA.DATALAYER_HOST}/get_sync_status`;
   const { cert, key, timeout } = getBaseOptions();
@@ -821,7 +835,7 @@ const getSyncStatus = async (storeId) => {
     const data = response.body;
 
     logger.trace(
-      `the /get_sync_status RPC response for store ${storeId} is ${JSON.parse(data)}`,
+      `the /get_sync_status RPC response for store ${storeId} is ${JSON.stringify(data)}`,
     );
 
     // We just care that we got some response, not what the response is
@@ -832,7 +846,7 @@ const getSyncStatus = async (storeId) => {
     return false;
   } catch (error) {
     logger.error(
-      `failed to get sync status for store ${storeId}. Error: ${error.message}`,
+      `failed to get sync status for store ${storeId}. Error: ${JSON.stringify(error.message)}`,
     );
     return false;
   }

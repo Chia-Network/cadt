@@ -92,8 +92,8 @@ const getSubscribedStoreData = async (
     if (waitForSync) {
       let synced = false;
       while (!synced) {
-        const syncStatus = dataLayer.getSyncStatus(storeId);
-        synced = isDlStoreSynced(syncStatus);
+        const syncStatus = await dataLayer.getSyncStatus(storeId);
+        synced = isDlStoreSynced(syncStatus?.sync_status);
 
         if (!synced) {
           logger.warn(
