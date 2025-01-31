@@ -358,7 +358,7 @@ const getStoreData = async (storeId, rootHash) => {
         logger.trace(
           `raw keys and values from RPC for store ${storeId}
           
-          ${data.keys_values}`,
+          ${JSON.stringify(data.keys_values)}`,
         );
         return data;
       } else {
@@ -819,6 +819,10 @@ const getSyncStatus = async (storeId) => {
       });
 
     const data = response.body;
+
+    logger.trace(
+      `the /get_sync_status RPC response for store ${storeId} is ${JSON.parse(data)}`,
+    );
 
     // We just care that we got some response, not what the response is
     if (Object.keys(data).includes('success')) {
