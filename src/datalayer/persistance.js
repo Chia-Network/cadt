@@ -831,7 +831,9 @@ const getSyncStatus = async (storeId) => {
 
     return false;
   } catch (error) {
-    logger.error(error);
+    logger.error(
+      `failed to get sync status for store ${storeId}. Error: ${error.message}`,
+    );
     return false;
   }
 };
