@@ -24,8 +24,8 @@ import {
 import {
   addOrDeleteOrganizationRecordMutex,
   processingSyncRegistriesTransactionMutex,
-  isDlStoreSynced,
 } from '../../utils/model-utils';
+import { isDlStoreSynced } from '../../utils/datalayer-utils';
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {

@@ -121,3 +121,11 @@ export const getMirrorUrl = async () => {
     return null;
   }
 };
+
+export const isDlStoreSynced = (syncStatus) => {
+  if (syncStatus?.generation && syncStatus?.target_generation) {
+    return syncStatus.generation === syncStatus.target_generation;
+  }
+
+  return false;
+};
