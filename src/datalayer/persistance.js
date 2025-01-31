@@ -358,7 +358,7 @@ const getStoreData = async (storeId, rootHash) => {
         logger.trace(
           `raw keys and values from RPC for store ${storeId}
           
-          ${data.keys_values}`,
+          ${JSON.stringify(data.keys_values)}`,
         );
         return data;
       } else {
