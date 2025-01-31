@@ -754,6 +754,20 @@ const cancelOffer = async (tradeId) => {
   }
 };
 
+/**
+ * @typedef {Object} SyncStatus
+ * @property {number} generation - The current generation of the Merkle tree.
+ * @property {string} root_hash - The root hash of the Merkle tree.
+ * @property {number} target_generation - The target generation of the Merkle tree.
+ * @property {string} target_root_hash - The target root hash of the Merkle tree.
+ */
+
+/**
+ * Fetches the synchronization status for a given store.
+ *
+ * @param {string} storeId - The identifier of the store.
+ * @returns {Promise<{sync_status: SyncStatus} | boolean>} - A promise that resolves to an object containing the sync status or `false` if the status cannot be retrieved.
+ */
 const getSyncStatus = async (storeId) => {
   if (CONFIG.USE_SIMULATOR) {
     return {

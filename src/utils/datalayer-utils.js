@@ -122,6 +122,10 @@ export const getMirrorUrl = async () => {
   }
 };
 
+/**
+ * @param syncStatus {SyncStatus}
+ * @returns {boolean}
+ */
 export const isDlStoreSynced = (syncStatus) => {
   if (syncStatus?.generation && syncStatus?.target_generation) {
     return syncStatus.generation === syncStatus.target_generation;
