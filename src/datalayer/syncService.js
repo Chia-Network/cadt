@@ -36,7 +36,9 @@ const unsubscribeFromDataLayerStoreWithRetry = async (
             `failed to unsubscribe from store ${storeId} after ${maxRetries} attempts`,
           );
         }
-        await new Promise((resolve) => setTimeout(() => resolve, retryWaitMs));
+        await new Promise((resolve) =>
+          setTimeout(() => resolve(), retryWaitMs),
+        );
       }
     }
   }
@@ -92,14 +94,14 @@ const getSubscribedStoreData = async (
     if (waitForSync) {
       let synced = false;
       while (!synced) {
-        const syncStatus = dataLayer.getSyncStatus(storeId);
-        synced = isDlStoreSynced(syncStatus);
+        const syncStatus = await dataLayer.getSyncStatus(storeId);
+        synced = isDlStoreSynced(syncStatus?.sync_status);
 
         if (!synced) {
           logger.warn(
             `datalayer has not fully synced subscribed store ${storeId}. waiting to return data until store is synced`,
           );
-          await new Promise((resolve) => setTimeout(() => resolve, 10000));
+          await new Promise((resolve) => setTimeout(() => resolve(), 10000));
         }
       }
     }
