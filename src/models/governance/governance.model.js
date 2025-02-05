@@ -194,7 +194,7 @@ class Governance extends Model {
         );
       }
     } catch (error) {
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(() => resolve(), 5000));
       const maxRetry = 50;
       if (retryCounter < maxRetry) {
         logger.error(

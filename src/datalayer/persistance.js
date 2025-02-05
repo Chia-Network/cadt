@@ -363,7 +363,7 @@ const getStoreData = async (storeId, rootHash) => {
           );
         }
 
-        logger.trace(
+        logger.silly(
           `raw keys and values from RPC for store ${storeId}
           
           ${JSON.stringify(data.keys_values)}`,

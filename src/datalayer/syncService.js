@@ -140,7 +140,7 @@ const getSubscribedStoreData = async (
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);
-  logger.trace(
+  logger.silly(
     `the data for subscribed store ${storeId} after conversion to js Object is:
     
     ${JSON.stringify(decodedData)}`,
