@@ -15,6 +15,7 @@ testMirror.sqlite3
 # production
 /build
 /dist
+/certs
 
 # misc
 .DS_Store
