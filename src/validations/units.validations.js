@@ -10,7 +10,7 @@ import {
 } from '../utils/string-utils';
 import { getConfig } from '../utils/config-loader.js';
 
-const { REQUEST_CONTENT_LIMITS } = getConfig();
+const { APP } = getConfig();
 
 const unitsBaseSchema = {
   // warehouseUnitId - derived upon unit creation
@@ -64,7 +64,7 @@ export const unitsGetQuerySchema = Joi.object({
   columns: Joi.array()
     .items(Joi.string())
     .single()
-    .max(REQUEST_CONTENT_LIMITS.UNITS.INCLUDE_COLUMNS_LEN),
+    .max(APP.REQUEST_CONTENT_LIMITS.UNITS.INCLUDE_COLUMNS_LEN),
   orgUid: Joi.string(),
   order: Joi.alternatives().try(
     Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC').optional(),
@@ -74,7 +74,7 @@ export const unitsGetQuerySchema = Joi.object({
   marketplaceIdentifiers: Joi.array()
     .items(Joi.string())
     .single()
-    .max(REQUEST_CONTENT_LIMITS.UNITS.MARKETPLACE_IDENTIFIERS_LEN),
+    .max(APP.REQUEST_CONTENT_LIMITS.UNITS.MARKETPLACE_IDENTIFIERS_LEN),
   hasMarketplaceIdentifier: Joi.boolean(),
   onlyTokenizedUnits: Joi.boolean(),
   includeProjectInfoInSearch: Joi.boolean(),

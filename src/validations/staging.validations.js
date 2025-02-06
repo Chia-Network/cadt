@@ -1,6 +1,6 @@
 import Joi from 'joi';
 import { getConfig } from '../utils/config-loader.js';
-const { REQUEST_CONTENT_LIMITS } = getConfig();
+const { APP } = getConfig();
 
 export const stagingDeleteSchema = Joi.object({
   uuid: Joi.string().required(),
@@ -22,7 +22,7 @@ export const stagingEditSchema = Joi.object({
   data: Joi.array()
     .items(Joi.object())
     .required()
-    .max(REQUEST_CONTENT_LIMITS.STAGING.EDIT_DATA_LEN),
+    .max(APP.REQUEST_CONTENT_LIMITS.STAGING.EDIT_DATA_LEN),
 });
 
 export const stagingGetQuerySchema = Joi.object()

@@ -17,7 +17,7 @@ import {
 import { pickListValidation } from '../utils/validation-utils';
 import { getConfig } from '../utils/config-loader.js';
 
-const { REQUEST_CONTENT_LIMITS } = getConfig();
+const { APP } = getConfig();
 
 export const baseSchema = {
   // warehouseProjectId - derived upon creation
@@ -71,7 +71,7 @@ export const projectsGetQuerySchema = Joi.object({
     .items(Joi.string())
     .single()
     .optional()
-    .max(REQUEST_CONTENT_LIMITS.PROJECTS.INCLUDE_COLUMNS_LEN),
+    .max(APP.REQUEST_CONTENT_LIMITS.PROJECTS.INCLUDE_COLUMNS_LEN),
   orgUid: Joi.string().optional(),
   warehouseProjectId: Joi.string().optional(),
   xls: Joi.boolean().optional(),
@@ -79,7 +79,7 @@ export const projectsGetQuerySchema = Joi.object({
     .items(Joi.string())
     .single()
     .optional()
-    .max(REQUEST_CONTENT_LIMITS.PROJECTS.PROJECT_IDS_LEN),
+    .max(APP.REQUEST_CONTENT_LIMITS.PROJECTS.PROJECT_IDS_LEN),
   order: Joi.string().regex(genericSortColumnRegex).optional(),
   filter: Joi.string().regex(genericFilterRegex).optional(),
   onlyMarketplaceProjects: Joi.boolean().optional(),
