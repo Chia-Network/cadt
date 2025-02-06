@@ -9,6 +9,7 @@ import {
   stagingGetQuerySchema,
   stagingRetrySchema,
   commitStagingSchema,
+  stagingEditSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -22,7 +23,7 @@ StagingRouter.get('/offer', (req, res) => {
   return StagingController.generateOfferFile(req, res);
 });
 
-StagingRouter.put('/', (req, res) => {
+StagingRouter.put('/', validator.body(stagingEditSchema), (req, res) => {
   return StagingController.editRecord(req, res);
 });
 
