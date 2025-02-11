@@ -8,4 +8,6 @@ WORKDIR /app
 
 RUN npm install && npm install -g @babel/cli @babel/preset-env
 
+RUN mkdir -p /root/.chia/mainnet/config/ssl && mkdir -p /root/.chia/mainnet/cadt/v1
+
 CMD [ "npm", "run", "start" ]
