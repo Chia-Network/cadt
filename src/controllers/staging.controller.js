@@ -189,7 +189,7 @@ export const editRecord = async (req, res) => {
   }
 };
 
-export const retryRecrod = async (req, res) => {
+export const retryRecord = async (req, res) => {
   try {
     await assertIfReadOnlyMode();
     await assertHomeOrgExists();

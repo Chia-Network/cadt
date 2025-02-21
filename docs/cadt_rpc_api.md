@@ -210,16 +210,14 @@ Response
 
 PUT Options: 
 
-|  Key   |  Type   |                     Description                      |
-|:------:|:-------:|:----------------------------------------------------:|
-| orgUid | String  | (Required) OrgUid of the home organization to import |
+|  Key   |  Type   |                                      Description                                      |
+|:------:|:-------:|:-------------------------------------------------------------------------------------:|
+| orgUid | String  |                 (Required) OrgUid of the home organization to import                  |
+| isHome | Boolean |  (Optional) Specify true if the specified orgUid should be imported as the home org   |
 
 ### PUT Examples
 
-#### Import a home organization that datalayer is subscribed to
-
-- This is typically used when an organization currently using CADT is installing a new instance and wants to use the same
-home organization and the current instance(s).
+#### Import an organization and subscribe to its stores on datalayer
 
 Request
 ```sh
@@ -232,7 +230,8 @@ curl --location -g --request PUT 'http://localhost:31310/v1/organizations/' \
 Response
 ```json
 {
-  "message":"Importing home organization."
+  "success": true,
+  "message": "Successfully imported organization. CADT will begin syncing data from datalayer shortly"
 }
 ```
 
@@ -240,16 +239,17 @@ DELETE Options: None
 
 ### DELETE Examples
 
-#### Delete home organization
+#### Delete organization
 
 Request
 ```sh
-curl --location --request DELETE 'http://localhost:31310/v1/organizations/'
+curl --location --request DELETE \
+'http://localhost:31310/v1/organizations/c9661d1ce77194c9e82311418aa4d370e25e10961d74d586636354746bc9ad65'
 ```
 Response
 ```json
 {
-  "message": "Your home organization was reset, please create a new one.",
+  "message": "Removed all organization records for organization ${orgUid} and unsubscribed from organization datalayer stores. cadt will not sync the organizations data from datalayer",
   "success": true
 
 }
@@ -259,15 +259,11 @@ Response
 - POST `/organizations/remove-mirror` - given a store ID and coin ID removes the mirror for a given store 
 - POST `/organizations/sync` - runs the process to sync all subscribed organization metadata with datalayer
 - POST `/organizations/create` - create an organization without an icon 
-- POST `/organizations/edit` - update an organization name and/or icon 
-- PUT `/organizations/import` - subscribe and import an organization via OrgUid 
-- DELETE `organizations/import` - delete an organization's record from the CADT instance DB 
-- PUT `organizations/subscribe` - subscribe to an organization datalayer singleton 
-- DELETE `organizations/unsubscribe` - unsubscribe from an organization datalayer singleton and keep CADT data 
-- PUT `organizations/resync` - resync an organization from datalayer 
-- POST `organizations/mirror` - add a mirror for a datalayer store via the store ID 
-- GET `organizations/metadata` - get an organizations metadata using the OrgUid 
-- GET `organizations/status` - the sync status of an organization via the OrgUid
+- POST `/organizations/edit` - update an organization name and/or icon
+- PUT `/organizations/resync` - resync an organization from datalayer 
+- POST `/organizations/mirror` - add a mirror for a datalayer store via the store ID 
+- GET `/organizations/metadata` - get an organizations metadata using the OrgUid 
+- GET `/organizations/status` - the sync status of an organization via the OrgUid
 
 ---
 

@@ -8,10 +8,8 @@ import { logger } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader';
 import { getMirrorUrl } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
-import datalayer from '../datalayer';
 
 const APP_CONFIG = getConfig().APP;
-const GOVERNANCE_CONFIG = getConfig().GOVERNANCE;
 dotenv.config();
 
 // This task checks if there are any mirrors that have not been properly mirrored and then mirrors them if not
@@ -82,30 +80,17 @@ const runMirrorCheck = async () => {
       mirrorUrl,
       true,
     );
-  } else if (GOVERNANCE_CONFIG?.GOVERNANCE_BODY_ID) {
-    const governanceStoreValue = await datalayer.getSubscribedStoreData(
-      GOVERNANCE_CONFIG.GOVERNANCE_BODY_ID,
-    );
-
-    if (governanceStoreValue?.v1) {
-      // add governance mirrors if non-governance instance
-      await Organization.addMirror(
-        GOVERNANCE_CONFIG.GOVERNANCE_BODY_ID,
-        mirrorUrl,
-        true,
-      );
-      await Organization.addMirror(governanceStoreValue.v1, mirrorUrl, true);
-    } else {
-      logger.warn('error adding governance mirrors');
-    }
   }
 
   const organizations = await Organization.getOrgsMap();
   const orgs = Object.keys(organizations);
   for (const org of orgs) {
-    const orgData = organizations[org];
-    await Organization.addMirror(orgData.orgUid, mirrorUrl, true);
-    await Organization.addMirror(orgData.registryId, mirrorUrl, true);
+    if (org?.subscribed) {
+      const orgData = organizations[org];
+      await Organization.addMirror(orgData.orgUid, mirrorUrl, true);
+      await Organization.addMirror(orgData.dataModelVersionStoreId, true);
+      await Organization.addMirror(orgData.registryId, mirrorUrl, true);
+    }
   }
 };
 

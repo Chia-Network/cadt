@@ -5,7 +5,8 @@ import _ from 'lodash';
 import { Organization, Unit, Project, Staging, Meta } from '../models';
 import datalayer from '../datalayer';
 import { formatModelAssociationName } from './model-utils.js';
-import { getConfig } from '../utils/config-loader';
+import { getConfig } from './config-loader';
+import { getOwnedStores } from '../datalayer/persistance.js';
 
 const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR, CHIA_NETWORK } =
   getConfig().APP;
@@ -112,13 +113,6 @@ export const assertRecordExistance = async (Model, pk) => {
   return record;
 };
 
-export const assertCanDeleteOrg = async (orgUid) => {
-  const homeOrg = await Organization.getHomeOrg();
-  if (homeOrg?.orgUid === orgUid) {
-    throw new Error(`Cant delete your own organization`);
-  }
-};
-
 export const assertHomeOrgExists = async () => {
   const homeOrg = await Organization.getHomeOrg();
   if (!homeOrg) {
@@ -129,7 +123,7 @@ export const assertHomeOrgExists = async () => {
 
   if (!homeOrg.subscribed) {
     throw new Error(
-      `Your Home organization is still confirming, please wait a little longer for it to finished.`,
+      `Your Home organization is still confirming, please wait a little longer for it to finish.`,
     );
   }
 
@@ -254,5 +248,25 @@ export const assertNoActiveOfferFile = async () => {
 
   if (activeOfferFile) {
     throw new Error(`There is an active offer pending`);
+  }
+};
+
+export const assertStoreIsOwned = async (storeId) => {
+  const { storeIds, success } = await getOwnedStores();
+  if (!success) {
+    throw new Error('failed to get owned stores list from datalayer');
+  }
+
+  if (!storeIds.includes(storeId)) {
+    throw new Error(`store id ${storeId} is not owned by this chia wallet`);
+  }
+};
+
+export const assertOrgDoesNotExist = async (orgUid) => {
+  const result = await Organization.findOne({ where: { orgUid }, raw: true });
+  if (result) {
+    throw new Error(
+      `organization ${orgUid} already exists in the CADT database`,
+    );
   }
 };

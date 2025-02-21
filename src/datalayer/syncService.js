@@ -1,6 +1,9 @@
 import _ from 'lodash';
 
-import { decodeDataLayerResponse } from '../utils/datalayer-utils';
+import {
+  decodeDataLayerResponse,
+  isDlStoreSynced,
+} from '../utils/datalayer-utils';
 import { Simulator } from '../models';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.js';
@@ -18,6 +21,31 @@ const unsubscribeFromDataLayerStore = async (storeId) => {
   }
 };
 
+const unsubscribeFromDataLayerStoreWithRetry = async (
+  storeId,
+  maxRetries = 60,
+  retryWaitMs = 600,
+) => {
+  if (!USE_SIMULATOR) {
+    let success = false;
+    let retryCount = 0;
+
+    while (!success) {
+      success = await dataLayer.unsubscribeFromDataLayerStore(storeId);
+      if (!success) {
+        if (retryCount >= maxRetries) {
+          throw new Error(
+            `failed to unsubscribe from store ${storeId} after ${maxRetries} attempts`,
+          );
+        }
+        await new Promise((resolve) =>
+          setTimeout(() => resolve(), retryWaitMs),
+        );
+      }
+    }
+  }
+};
+
 const subscribeToStoreOnDataLayer = async (storeId) => {
   if (USE_SIMULATOR) {
     return simulator.subscribeToStoreOnDataLayer(storeId);
@@ -26,33 +54,75 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
   }
 };
 
-const getSubscribedStoreData = async (storeId) => {
-  const { storeIds: subscriptions, success } =
-    await dataLayer.getSubscriptions();
-  if (!success) {
-    throw new Error('failed to retrieve subscriptions from datalayer');
+/**
+ * gets and decodes data from a subscribed store.
+ * will subscribe to any store id for which there is no subscription.
+ *
+ * providing a subscription list will prevent calling the datalayer `/subscriptions` RPC.
+ * good idea if calling in a loop
+ *
+ * @param storeId {string} to retrieve data from
+ * @param providedSubscriptions {[string] | undefined} optional list of subscriptions. providing prevents RPC call
+ * @param waitForSync {boolean} option to block returning data until the store is synced. could be time expensive.
+ * @returns {Promise<object>}
+ */
+const getSubscribedStoreData = async (
+  storeId,
+  providedSubscriptions = undefined,
+  waitForSync = false,
+) => {
+  let subscriptions = providedSubscriptions;
+  if (!subscriptions) {
+    const { storeIds: rpcSubscriptions, success } =
+      await dataLayer.getSubscriptions();
+    if (!success) {
+      throw new Error('failed to retrieve subscriptions from datalayer');
+    }
+
+    subscriptions = rpcSubscriptions;
   }
+
   const alreadySubscribed = subscriptions.includes(storeId);
 
   if (!alreadySubscribed) {
     logger.info(`No Subscription Found for ${storeId}, Subscribing...`);
-    const response = await subscribeToStoreOnDataLayer(storeId);
+    const response = await dataLayer.subscribeToStoreOnDataLayer(storeId);
 
-    if (!response || !response.success) {
+    if (!response) {
       throw new Error(`Failed to subscribe to ${storeId}`);
     }
   }
 
-  logger.info(`Subscription Found for ${storeId}.`);
+  if (waitForSync) {
+    let synced = false;
+    while (!synced) {
+      const syncStatus = await dataLayer.getSyncStatus(storeId);
+      synced = isDlStoreSynced(syncStatus?.sync_status);
+
+      if (!synced) {
+        logger.warn(
+          `datalayer has not fully synced subscribed store ${storeId}. waiting to return data until store is synced`,
+        );
+        await new Promise((resolve) => setTimeout(() => resolve(), 10000));
+      }
+    }
+  }
+
+  logger.debug(`Subscription Found for ${storeId}.`);
 
   if (!USE_SIMULATOR) {
-    logger.info(`Getting confirmation for ${storeId}.`);
-    const storeExistAndIsConfirmed = await dataLayer.getRoot(storeId, true);
-    logger.info(`Store found in DataLayer: ${storeId}.`);
-    if (!storeExistAndIsConfirmed) {
-      throw new Error(`Store not found in DataLayer: ${storeId}.`);
+    logger.debug(
+      `syncService getSubscribedData() checking that data is available for ${storeId}.`,
+    );
+    const { confirmed } = await dataLayer.getRoot(storeId);
+    if (!confirmed) {
+      throw new Error(
+        `${storeId} has not yet been confirmed. cannot get root.`,
+      );
     } else {
-      logger.debug(`Store is confirmed, proceeding to get data ${storeId}`);
+      logger.debug(
+        `store data is confirmed available, proceeding to get data ${storeId}`,
+      );
     }
   }
 
@@ -64,10 +134,21 @@ const getSubscribedStoreData = async (storeId) => {
   }
 
   if (_.isEmpty(encodedData?.keys_values)) {
-    throw new Error(`No data found for store ${storeId}`);
+    throw new Error(
+      `getSubscribedStoreData() found no data for store ${storeId}`,
+    );
   }
 
   const decodedData = decodeDataLayerResponse(encodedData);
+  logger.silly(
+    `the data for subscribed store ${storeId} after conversion to js Object is:
+    
+    ${JSON.stringify(decodedData)}`,
+  );
+
+  if (!decodedData) {
+    return {};
+  }
 
   return decodedData.reduce((obj, current) => {
     obj[current.key] = current.value;
@@ -147,9 +228,13 @@ const getCurrentStoreData = async (storeId) => {
 
   const encodedData = await dataLayer.getStoreData(storeId);
   if (encodedData) {
-    return decodeDataLayerResponse(encodedData);
+    const decodedData = decodeDataLayerResponse(encodedData);
+    return decodedData.reduce((obj, current) => {
+      obj[current.key] = current.value;
+      return obj;
+    }, {});
   } else {
-    return [];
+    return undefined;
   }
 };
 
@@ -177,7 +262,9 @@ const getStoreIfUpdated = async (storeId, lastRootHash, callback, onFail) => {
       );
     }
   } catch (error) {
-    logger.error(error.message);
+    logger.error(
+      `getStoreIfUpdated() failed to get updated store data. Error: ${error.message}`,
+    );
     onFail(error.message);
   }
 };
@@ -211,5 +298,6 @@ export default {
   POLLING_INTERVAL,
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
+  unsubscribeFromDataLayerStoreWithRetry,
   waitForAllTransactionsToConfirm,
 };

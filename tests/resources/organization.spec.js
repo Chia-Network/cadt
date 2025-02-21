@@ -7,6 +7,7 @@ import datalayer from '../../src/datalayer';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 import * as testFixtures from '../test-fixtures';
+import { getHomeOrgId } from '../test-fixtures';
 
 describe('Orgainzation Resource CRUD', function () {
   before(async function () {
@@ -23,10 +24,14 @@ describe('Orgainzation Resource CRUD', function () {
       // add a project to the staging table
       await testFixtures.createNewProject();
 
-      const response = await supertest(app).delete(`/v1/organizations`).send();
+      const homeOrgUid = await getHomeOrgId();
+      const response = await supertest(app)
+        .delete(`/v1/organizations/${homeOrgUid}`)
+        .send();
+      const body = response.body;
 
-      expect(response.body.message).to.equal(
-        'Your home organization was reset, please create a new one.',
+      expect(body.message).to.equal(
+        'Your home organization was deleted from this instance. cadt will no longer sync its data. (note that this org still exists in datalayer)',
       );
 
       const stagingData = await testFixtures.getLastCreatedStagingRecord();
@@ -66,10 +71,11 @@ describe('Orgainzation Resource CRUD', function () {
       // add a project to the staging table
       await testFixtures.createNewProject();
 
+      const homeOrgUid = await getHomeOrgId();
       const response = await supertest(app)
         .put(`/v1/organizations/resync`)
         .send({
-          orgUid: '1',
+          orgUid: homeOrgUid,
         });
 
       expect(response.body.message).to.equal(

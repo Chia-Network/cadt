@@ -1,0 +1,79 @@
+# Compares the version in package.json to tags on the repo. If the tag doesn't exist, a new tag is created, which
+# then triggers the normal "on tag" release automation in the build job
+name: Auto Tag RC
+
+on:
+  push:
+    branches:
+      - develop
+
+concurrency:
+  group: rc-release-check
+
+jobs:
+  release-dev:
+    name: Release rc version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v4
+        with:
+          # Need REPO_COMMIT token so when the tag is created, the tag automation runs
+          token: ${{ secrets.REPO_COMMIT }}
+          fetch-depth: 0
+
+      - name: Setup commit signing for ChiaAutomation
+        uses: Chia-Network/actions/commit-sign/gpg@main
+        with:
+          gpg_private_key: ${{ secrets.CHIA_AUTOMATION_PRIVATE_GPG_KEY }}
+          passphrase: ${{ secrets.CHIA_AUTOMATION_PRIVATE_GPG_PASSPHRASE }}
+
+      - name: Check for current version tag. Create if it doesn't exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          stable_version=$(gh release list --limit 1 --order desc --exclude-pre-releases --json tagName --jq ".[].tagName")
+          echo "Latest release is $stable_version"
+          rc_version=$(gh release list --json tagName --jq ".[] | select(.tagName | test(\"${version}-rc*\")) | .tagName")
+          echo "Latest release candidate is $rc_version"
+
+          if [[ -z ${rc_version} ]]; then
+            # Extract the major, minor, and patch versions
+            IFS='.' read -r major minor patch <<< "$stable_version"
+
+            # Increment the patch version
+            new_patch=$((patch + 1))
+
+            # Construct the new version string
+            version="$major.$minor.$new_patch-rc1"
+
+            echo "New version: $version"
+
+          else
+            # Extract the major, minor, patch, and rc parts
+            IFS='.-' read -r major minor patch rc <<< "$rc_version"
+
+            # Extract just the number of the rc
+            rc_number="${rc#rc}"
+
+            # Increment the rc number
+            rc_number=$((rc_number +1))
+
+            # Construct the new version string
+            version="$major.$minor.$patch-rc$rc_number"
+
+            echo "New version: $version"
+
+          fi
+
+          if [ $(git tag -l "$version") ]; then
+            echo "$version tag exists, deleting..."
+            git tag -d $version
+            git push --delete origin $version
+          fi
+          echo "Tag does not exist. Creating and pushing tag"
+          rm -f CHANGELOG.md
+          npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0
+          changes=$(npx conventional-changelog-cli -r 1 | tail -n +2)
+          git tag $version -m "Release $version  $changes"
+          git push origin $version

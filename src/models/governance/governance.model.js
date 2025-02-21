@@ -69,7 +69,16 @@ class Governance extends Model {
     return governanceVersionId;
   }
 
-  static async upsertGovernanceDownload(governanceData) {
+  static async upsertGovernanceDownload(
+    sourceGovernanceBodyId,
+    governanceData,
+  ) {
+    if (!governanceData) {
+      throw new Error(
+        'upsertGovernanceDownload() received a nil or falsy governance data value',
+      );
+    }
+
     const updates = [];
 
     if (governanceData.orgList) {
@@ -78,6 +87,10 @@ class Governance extends Model {
         metaValue: governanceData.orgList,
         confirmed: true,
       });
+    } else {
+      logger.warn(
+        `governance data in store ${sourceGovernanceBodyId} does not contain orgList values`,
+      );
     }
 
     if (governanceData.glossary) {
@@ -86,6 +99,10 @@ class Governance extends Model {
         metaValue: governanceData.glossary,
         confirmed: true,
       });
+    } else {
+      logger.warn(
+        `governance data in store ${sourceGovernanceBodyId} does not contain glossary values`,
+      );
     }
 
     if (governanceData.pickList) {
@@ -103,13 +120,20 @@ class Governance extends Model {
         metaValue: JSON.stringify(PickListStub),
         confirmed: true,
       });
+    } else {
+      logger.warn(
+        `governance data in store ${sourceGovernanceBodyId} does not contain picklist values`,
+      );
     }
 
+    logger.debug('upserting governance data from governance body store');
     await Promise.all(updates.map(async (update) => Governance.upsert(update)));
   }
 
-  static async sync() {
+  static async sync(retryCounter = 0) {
     try {
+      logger.debug('running governance model sync()');
+
       if (!GOVERNANCE_BODY_ID) {
         throw new Error('Missing information in env to sync Governance data');
       }
@@ -126,8 +150,11 @@ class Governance extends Model {
         return;
       }
 
-      const governanceData =
-        await datalayer.getSubscribedStoreData(GOVERNANCE_BODY_ID);
+      const governanceData = await datalayer.getSubscribedStoreData(
+        GOVERNANCE_BODY_ID,
+        undefined,
+        true,
+      );
 
       // Check if there is v1, v2, v3 ..... and if not, then we assume this is a legacy governance table that isnt versioned
       const shouldSyncLegacy = !Object.keys(governanceData).some((key) =>
@@ -135,24 +162,50 @@ class Governance extends Model {
       );
 
       if (shouldSyncLegacy) {
-        await Governance.upsertGovernanceDownload(governanceData);
+        logger.info(
+          `using legacy governance upsert method for governance store ${GOVERNANCE_BODY_ID}`,
+        );
+        await Governance.upsertGovernanceDownload(
+          GOVERNANCE_BODY_ID,
+          governanceData,
+        );
       }
 
       // Check if the governance data for this version exists
       const dataModelVersion = getDataModelVersion();
-      if (governanceData[dataModelVersion]) {
+      const versionedGovernanceStoreId = governanceData[dataModelVersion];
+      if (versionedGovernanceStoreId) {
+        logger.debug(
+          `getting ${dataModelVersion} governance data from store ${versionedGovernanceStoreId}`,
+        );
         const versionedGovernanceData = await datalayer.getSubscribedStoreData(
-          governanceData[dataModelVersion],
+          versionedGovernanceStoreId,
+          undefined,
+          true,
         );
 
-        await Governance.upsertGovernanceDownload(versionedGovernanceData);
+        await Governance.upsertGovernanceDownload(
+          GOVERNANCE_BODY_ID,
+          versionedGovernanceData,
+        );
       } else {
         throw new Error(
-          `Governance data is not available from this source for ${dataModelVersion} data model.`,
+          `Governance data is not available from store ${GOVERNANCE_BODY_ID} for ${dataModelVersion} data model.`,
         );
       }
     } catch (error) {
-      logger.error('Error Syncing Governance Data', error);
+      await new Promise((resolve) => setTimeout(() => resolve(), 5000));
+      const maxRetry = 50;
+      if (retryCounter < maxRetry) {
+        logger.error(
+          `Error Syncing Governance Data. Retry attempt #${retryCounter + 1}. Retrying. Error:, ${error}`,
+        );
+        await Governance.sync(retryCounter + 1);
+      } else {
+        logger.error(
+          `Error Syncing Governance Data. Retry attempts exceeded. This will not have the latest governance data and data sync may be impacted`,
+        );
+      }
     }
   }
 
