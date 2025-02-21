@@ -1,3 +1,142 @@
+## [1.7.21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc21...1.7.21) (2025-02-21)
+
+
+
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
+
+
+
+## [1.7.21-rc21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc20...1.7.21-rc21) (2025-02-21)
+
+
+
+## [1.7.21-rc20](https://github.com/Chia-Network/cadt/compare/1.7.21-rc19...1.7.21-rc20) (2025-02-05)
+
+
+### Bug Fixes
+
+* undefined function error ([3f834a9](https://github.com/Chia-Network/cadt/commit/3f834a98cd52be071d4a949b9a4bb56e58298c20))
+
+
+
+## [1.7.21-rc19](https://github.com/Chia-Network/cadt/compare/1.7.21-rc18...1.7.21-rc19) (2025-02-03)
+
+
+### Bug Fixes
+
+* bad promise resolve calls ([9a15ef6](https://github.com/Chia-Network/cadt/commit/9a15ef647c18dd596bc26c40b04b1a410d590370))
+
+
+
+## [1.7.21-rc18](https://github.com/Chia-Network/cadt/compare/1.7.21-rc17...1.7.21-rc18) (2025-01-31)
+
+
+### Bug Fixes
+
+* store sync status function ([ee10def](https://github.com/Chia-Network/cadt/commit/ee10def05c9859f1b5e90b7bfddbf511c17f957f))
+
+
+
+## [1.7.21-rc17](https://github.com/Chia-Network/cadt/compare/1.7.21-rc16...1.7.21-rc17) (2025-01-31)
+
+
+### Bug Fixes
+
+* bad imports ([f0d1666](https://github.com/Chia-Network/cadt/commit/f0d16668744f4ce32539f51ceb597b3123cfabbb))
+* default sync task ending before governance data available ([3da7b68](https://github.com/Chia-Network/cadt/commit/3da7b68ca2080d77380906f369f7635151a2da2e))
+* governance fails to sync on initial start ([f5feff5](https://github.com/Chia-Network/cadt/commit/f5feff52d7837b3ea1d06d1b5d5541e3c9a36660))
+
+
+
+## [1.7.21-rc8](https://github.com/Chia-Network/cadt/compare/1.7.21-rc7...1.7.21-rc8) (2025-01-14)
+
+
+### Bug Fixes
+
+* subscribe to org error logic ([6aef2f3](https://github.com/Chia-Network/cadt/commit/6aef2f35a2bb386853b2661a3584631436a58c24))
+
+
+### Features
+
+* add apple ARM package target ([f900b2c](https://github.com/Chia-Network/cadt/commit/f900b2c46aea35d142d975e1b535635979e9997c))
+
+
+
+## [1.7.21-rc7](https://github.com/Chia-Network/cadt/compare/1.7.21-rc6...1.7.21-rc7) (2025-01-06)
+
+
+### Bug Fixes
+
+* minor tweaks ([9852b5f](https://github.com/Chia-Network/cadt/commit/9852b5fbe2167c2f05901b8291f34fe04ae78207))
+* subscribe to organization ([b7d59dc](https://github.com/Chia-Network/cadt/commit/b7d59dc28f5088979bf00f6932432e3614c48033))
+
+
+
+## [1.7.21-rc6](https://github.com/Chia-Network/cadt/compare/1.7.21-rc5...1.7.21-rc6) (2025-01-03)
+
+
+### Bug Fixes
+
+* create org bugs ([ef6c829](https://github.com/Chia-Network/cadt/commit/ef6c829eb0e029aaad1210a30bb9eb1c7addc169))
+
+
+
+## [1.7.21-rc5](https://github.com/Chia-Network/cadt/compare/1.7.21-rc4...1.7.21-rc5) (2025-01-02)
+
+
+### Bug Fixes
+
+* bugs ([c42573a](https://github.com/Chia-Network/cadt/commit/c42573a638287428153e246679b2e7d0c97f6109))
+* bugs and improvements ([4c46054](https://github.com/Chia-Network/cadt/commit/4c46054bb19e55b0f61d7c64b214da1413c17f83))
+* circular imports ([8497173](https://github.com/Chia-Network/cadt/commit/8497173a5cfdaa1d9bdc771d4cf966f2147b08a4))
+* failing tests ([c393204](https://github.com/Chia-Network/cadt/commit/c3932041fda2ef699916b7b2f39d3ae3bddaff33))
+* prevent subscribe task overrun ([5315675](https://github.com/Chia-Network/cadt/commit/53156757d0a695e000fc100f7f1247d82ca6376c))
+* tasks resubscribing to stores while unsubscribe is executing ([c7d34ec](https://github.com/Chia-Network/cadt/commit/c7d34eca73a19194df5a968d83aec6f7ddfa67d0))
+
+
+### Features
+
+* add data model store id and hash to organization table hash ([7140f32](https://github.com/Chia-Network/cadt/commit/7140f320bca69d0401fce16d0dd875046930e0bd))
+* clean-up-failed-org start up task ([477bafa](https://github.com/Chia-Network/cadt/commit/477bafab8e5ce402e206009bf50f7deae3e45bdc))
+* create organization working ([273aac7](https://github.com/Chia-Network/cadt/commit/273aac7fc04018f407d29313b10f77f432433360))
+* delete organization working ([186b763](https://github.com/Chia-Network/cadt/commit/186b7635331f5d03f04c375a4b5b1e3c265ff6e4))
+* implemented unsubscribe from organization ([3df82e2](https://github.com/Chia-Network/cadt/commit/3df82e2dc2957824b4b2a71c93e83333df506f20))
+* update tests to reflect changed functionality ([49c6d50](https://github.com/Chia-Network/cadt/commit/49c6d507dc3f599a22f56593267f15d41f8c648b))
+
+
+
+## [1.7.21-rc1](https://github.com/Chia-Network/cadt/compare/1.7.20...1.7.21-rc1) (2024-12-19)
+
+
+### Bug Fixes
+
+* failing test ([e228d5a](https://github.com/Chia-Network/cadt/commit/e228d5a854d66d91bb48544c09f8823cfcb9c90e))
+
+
+### Features
+
+* check organization subsubscriptions improved ([71a1aa2](https://github.com/Chia-Network/cadt/commit/71a1aa2b76916a2cfd1374ba0322acdf093820eb))
+* importing organization with store subscriptions working ([4b51f80](https://github.com/Chia-Network/cadt/commit/4b51f808482f35a0772a3561342249cc6c7568dc))
+* subscribe to organizations.model.js subscribe to organization happy path working ([0df8cc6](https://github.com/Chia-Network/cadt/commit/0df8cc6cce3398ef2aad96ca81ad05844ce289f5))
+
+
+
 ## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
 
 
