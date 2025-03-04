@@ -56,7 +56,7 @@
     "node-xlsx": "^0.24.0",
     "regenerator-runtime": "^0.13.11",
     "rxjs": "^7.8.1",
-    "sequelize": "^6.37.5",
+    "sequelize": "^6.37.6",
     "socket.io": "^4.8.1",
     "sqlite3": "^5.1.7",
     "superagent": "^8.1.2",
