@@ -250,6 +250,7 @@ class Project extends Model {
       sql = `${sql} AND orgUid = :orgUid`;
     }
 
+    searchStr = sanitizeSqliteFtsQuery(searchStr);
     const replacements = { search: searchStr, orgUid };
 
     const count = (

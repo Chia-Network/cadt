@@ -122,3 +122,34 @@ export const updateNilVerificationBodyAsEmptyString = (stagedItem) => {
     return;
   }
 };
+
+/**
+ * merges the source into the target without altering the data already present in target
+ * @param target {object}
+ * @param source {object}
+ * @returns {void}
+ */
+export function mergeObjects(target, source) {
+  if (typeof source !== 'object' || source === null) {
+    return;
+  }
+
+  for (let key of Object.keys(source)) {
+    if (typeof source[key] === 'object' && source[key] !== null) {
+      if (
+        !(key in target) ||
+        typeof target[key] !== 'object' ||
+        target[key] === null
+      ) {
+        target[key] = {};
+      }
+      // Recursively merge the structure
+      mergeObjects(target[key], source[key]);
+    } else {
+      // If it's a primitive in source and doesn't exist in target, copy it
+      if (!(key in target)) {
+        target[key] = source[key];
+      }
+    }
+  }
+}

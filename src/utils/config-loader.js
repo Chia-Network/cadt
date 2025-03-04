@@ -3,7 +3,7 @@ import yaml from 'js-yaml';
 import fs from 'fs';
 import path from 'path';
 
-import { getDataModelVersion } from './helpers';
+import { getDataModelVersion, mergeObjects } from './helpers';
 import { defaultConfig } from './defaultConfig.js';
 import { getChiaRoot } from './chia-root.js';
 
@@ -43,6 +43,7 @@ export const getConfig = _.memoize(() => {
         console.log(`ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE`);
       }
 
+      mergeObjects(yml, defaultConfig);
       return yml;
     } catch (e) {
       console.error(`Config file not found at ${configFile}`, e);
