@@ -217,9 +217,17 @@ class Project extends Model {
   static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
     const { offset, limit } = pagination;
 
+    const allowedColumns = [
+      'warehouseProjectId', 'currentRegistry', 'registryOfOrigin', 'program',
+      'projectName', 'projectLink', 'projectDeveloper', 'sector', 'projectType',
+      'NDCLinkage', 'projectStatus', 'unitMetric', 'methodology', 'methodologyVersion',
+      'validationApproach', 'projectTag', 'estimatedAnnualAverageEmissionReduction',
+      'timeStaged', 'description'
+    ];
+
     let fields = '*';
     if (columns.length) {
-      fields = columns.join(', ');
+      fields = columns.filter(col => allowedColumns.includes(col)).join(', ');
     }
 
     let sql = `
@@ -243,7 +251,7 @@ class Project extends Model {
         estimatedAnnualAverageEmissionReduction,
         timeStaged,
         description
-    ) AGAINST ':search' 
+    ) AGAINST :search 
     `;
 
     if (orgUid) {
@@ -254,7 +262,7 @@ class Project extends Model {
     const replacements = { search: searchStr, orgUid };
 
     const count = (
-      await sequelize.query(sanitizeSqliteFtsQuery(sql), {
+      await sequelize.query(sql, {
         model: Project,
         mapToModel: true, // pass true here if you have any mapped fields
         replacements,
@@ -267,7 +275,7 @@ class Project extends Model {
 
     return {
       count,
-      rows: await sequelize.query(sanitizeSqliteFtsQuery(sql), {
+      rows: await sequelize.query(sql, {
         model: Project,
         replacements: { ...replacements, ...{ offset, limit } },
         mapToModel: true, // pass true here if you have any mapped fields
