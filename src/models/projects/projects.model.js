@@ -254,7 +254,7 @@ class Project extends Model {
     const replacements = { search: searchStr, orgUid };
 
     const count = (
-      await sequelize.query(sql, {
+      await sequelize.query(sanitizeSqliteFtsQuery(sql), {
         model: Project,
         mapToModel: true, // pass true here if you have any mapped fields
         replacements,
@@ -267,7 +267,7 @@ class Project extends Model {
 
     return {
       count,
-      rows: await sequelize.query(sql, {
+      rows: await sequelize.query(sanitizeSqliteFtsQuery(sql), {
         model: Project,
         replacements: { ...replacements, ...{ offset, limit } },
         mapToModel: true, // pass true here if you have any mapped fields
