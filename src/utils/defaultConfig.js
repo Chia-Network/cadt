@@ -28,6 +28,22 @@ export const defaultConfig = {
       MIRROR_CHECK_TASK_INTERVAL: 300,
       VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL: 1800,
     },
+    /**
+     * limits to prevent loop bound DOS attack
+     */
+    REQUEST_CONTENT_LIMITS: {
+      STAGING: {
+        EDIT_DATA_LEN: 200,
+      },
+      UNITS: {
+        INCLUDE_COLUMNS_LEN: 200,
+        MARKETPLACE_IDENTIFIERS_LEN: 200,
+      },
+      PROJECTS: {
+        INCLUDE_COLUMNS_LEN: 200,
+        PROJECT_IDS_LEN: 200,
+      },
+    },
     MIRROR_DB: {
       DB_USERNAME: null,
       DB_PASSWORD: null,

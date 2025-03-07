@@ -8,6 +8,9 @@ import {
   genericFilterRegex,
   genericSortColumnRegex,
 } from '../utils/string-utils';
+import { CONFIG } from '../user-config.js';
+
+const { CADT } = CONFIG();
 
 const unitsBaseSchema = {
   // warehouseUnitId - derived upon unit creation
@@ -56,14 +59,20 @@ export const unitsGetQuerySchema = Joi.object({
   limit: Joi.number().max(1000).min(1).required(),
   search: Joi.string().optional(),
   warehouseUnitId: Joi.string(),
-  columns: Joi.array().items(Joi.string()).single(),
+  columns: Joi.array()
+    .items(Joi.string())
+    .single()
+    .max(CADT.REQUEST_CONTENT_LIMITS.UNITS.INCLUDE_COLUMNS_LEN),
   orgUid: Joi.string(),
   order: Joi.alternatives().try(
-    Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC'),
-    Joi.string().regex(genericSortColumnRegex).min(1).max(100),
+    Joi.string().valid('SERIALNUMBER', 'ASC', 'DESC').optional(),
+    Joi.string().regex(genericSortColumnRegex).min(1).max(100).optional(),
   ),
   xls: Joi.boolean(),
-  marketplaceIdentifiers: Joi.array().items(Joi.string()).single(),
+  marketplaceIdentifiers: Joi.array()
+    .items(Joi.string())
+    .single()
+    .max(CADT.REQUEST_CONTENT_LIMITS.UNITS.MARKETPLACE_IDENTIFIERS_LEN),
   hasMarketplaceIdentifier: Joi.boolean(),
   onlyTokenizedUnits: Joi.boolean(),
   includeProjectInfoInSearch: Joi.boolean(),
