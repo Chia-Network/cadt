@@ -15,6 +15,31 @@ import {
 } from '../utils/string-utils';
 
 import { pickListValidation } from '../utils/validation-utils';
+import { CONFIG } from '../user-config.js';
+
+const { CADT } = CONFIG();
+
+const allowedColumns = [
+  'warehouseProjectId',
+  'currentRegistry',
+  'registryOfOrigin',
+  'program',
+  'projectName',
+  'projectLink',
+  'projectDeveloper',
+  'sector',
+  'projectType',
+  'NDCLinkage',
+  'projectStatus',
+  'unitMetric',
+  'methodology',
+  'methodologyVersion',
+  'validationApproach',
+  'projectTag',
+  'estimatedAnnualAverageEmissionReduction',
+  'timeStaged',
+  'description',
+];
 
 export const projectsBaseSchema = {
   // warehouseProjectId - derived upon creation
@@ -65,11 +90,19 @@ export const projectsGetQuerySchema = Joi.object()
     page: Joi.number().min(1),
     limit: Joi.number().max(1000).min(1),
     search: Joi.string(),
-    columns: Joi.array().items(Joi.string()).single(),
-    orgUid: Joi.string(),
-    warehouseProjectId: Joi.string(),
-    xls: Joi.boolean(),
-    projectIds: Joi.array().items(Joi.string()).single(),
+    columns: Joi.array()
+      .items(Joi.string().valid(...allowedColumns))
+      .single()
+      .optional()
+      .max(CADT.REQUEST_CONTENT_LIMITS.PROJECTS.INCLUDE_COLUMNS_LEN),
+    orgUid: Joi.string().optional(),
+    warehouseProjectId: Joi.string().optional(),
+    xls: Joi.boolean().optional(),
+    projectIds: Joi.array()
+      .items(Joi.string())
+      .single()
+      .optional()
+      .max(CADT.REQUEST_CONTENT_LIMITS.PROJECTS.PROJECT_IDS_LEN),
     order: Joi.string().regex(genericSortColumnRegex).max(100).min(1),
     filter: Joi.string().regex(genericFilterRegex).max(100).min(1),
     onlyMarketplaceProjects: Joi.boolean(),
