@@ -399,10 +399,9 @@ jobs:
             cadt-linux-arm64-deb/*.deb
 
       - name: Trigger apt repo update
-        if: startsWith(github.ref, 'refs/tags/') && !contains( github.ref, '-rc')
         uses: Chia-Network/actions/github/glue@main
         with:
           json_data: '{"cadt_repo":"cadt","release_version":"${{ steps.tag-name.outputs.TAGNAME }}"}'
           glue_url: ${{ secrets.GLUE_API_URL }}
-          glue_project: "cadt"
+          glue_project: "${{ steps.is_latest.outputs.IS_PRERELEASE == 'true' && 'cadt-test' || 'cadt' }}"
           glue_path: "trigger"
