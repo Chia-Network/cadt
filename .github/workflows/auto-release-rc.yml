@@ -31,21 +31,25 @@ jobs:
       - name: Check for current version tag. Create if it doesn't exist
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           stable_version=$(gh release list --limit 1 --order desc --exclude-pre-releases --json tagName --jq ".[].tagName")
           echo "Latest release is $stable_version"
-          rc_version=$(gh release list --json tagName --jq ".[] | select(.tagName | test(\"${version}-rc*\")) | .tagName")
+
+          # Extract the major, minor, and patch versions
+          IFS='.' read -r major minor patch <<< "$stable_version"
+
+          # Increment the patch version
+          new_patch=$((patch + 1))
+
+          new_version="$major.$minor.$new_patch"
+
+          rc_version=$(gh release list --json tagName --jq ".[] | select(.tagName | test(\"${new_version}-rc*\")) | .tagName")
           echo "Latest release candidate is $rc_version"
 
           if [[ -z ${rc_version} ]]; then
-            # Extract the major, minor, and patch versions
-            IFS='.' read -r major minor patch <<< "$stable_version"
-
-            # Increment the patch version
-            new_patch=$((patch + 1))
-
-            # Construct the new version string
-            version="$major.$minor.$new_patch-rc1"
+            # Construct the new version string using new_version
+            version="${new_version}-rc1"
 
             echo "New version: $version"
 
