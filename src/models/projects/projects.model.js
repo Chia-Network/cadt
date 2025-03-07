@@ -217,17 +217,9 @@ class Project extends Model {
   static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
     const { offset, limit } = pagination;
 
-    const allowedColumns = [
-      'warehouseProjectId', 'currentRegistry', 'registryOfOrigin', 'program',
-      'projectName', 'projectLink', 'projectDeveloper', 'sector', 'projectType',
-      'NDCLinkage', 'projectStatus', 'unitMetric', 'methodology', 'methodologyVersion',
-      'validationApproach', 'projectTag', 'estimatedAnnualAverageEmissionReduction',
-      'timeStaged', 'description'
-    ];
-
     let fields = '*';
     if (columns.length) {
-      fields = columns.filter(col => allowedColumns.includes(col)).join(', ');
+      fields = columns.join(', ');
     }
 
     let sql = `
@@ -251,7 +243,7 @@ class Project extends Model {
         estimatedAnnualAverageEmissionReduction,
         timeStaged,
         description
-    ) AGAINST :search 
+    ) AGAINST ':search' 
     `;
 
     if (orgUid) {

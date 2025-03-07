@@ -19,6 +19,28 @@ import { getConfig } from '../utils/config-loader.js';
 
 const { APP } = getConfig();
 
+const allowedColumns = [
+  'warehouseProjectId',
+  'currentRegistry',
+  'registryOfOrigin',
+  'program',
+  'projectName',
+  'projectLink',
+  'projectDeveloper',
+  'sector',
+  'projectType',
+  'NDCLinkage',
+  'projectStatus',
+  'unitMetric',
+  'methodology',
+  'methodologyVersion',
+  'validationApproach',
+  'projectTag',
+  'estimatedAnnualAverageEmissionReduction',
+  'timeStaged',
+  'description',
+];
+
 export const baseSchema = {
   // warehouseProjectId - derived upon creation
   // orgUid - derived upon creation
@@ -68,7 +90,7 @@ export const projectsGetQuerySchema = Joi.object({
   limit: Joi.number().max(1000).min(1).optional(),
   search: Joi.string().optional(),
   columns: Joi.array()
-    .items(Joi.string())
+    .items(Joi.string().valid(...allowedColumns)) // Restrict to allowed columns
     .single()
     .optional()
     .max(APP.REQUEST_CONTENT_LIMITS.PROJECTS.INCLUDE_COLUMNS_LEN),
