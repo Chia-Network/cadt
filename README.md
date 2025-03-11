@@ -117,7 +117,7 @@ journalctl -u cadt@<USERNAME> -f
 (ctrl+c to exit)
 ```
 
-### Installation from Source
+#### Installation from Source
 
 *Installation from source is only recommended for those contributing code to CADT and is not intended to be used in production.*
 
@@ -136,6 +136,25 @@ nvm install
 nvm use
 npm run start
 ```
+
+#### Pre-release Versions
+
+Experimental code is released with a "release candidate" naming convention and can be found on the [releases](/releases) page with `-rc` in the version number. Not all of the release candidates will be stable and caution should be used.  
+
+Release candidates can be installed via `apt` using the instructions (above)[#debian-based-linux-distros-ubuntu-mint-etc] except replace step 3 with the following:
+
+```
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/cadt-test/debian/ stable main" | sudo tee /etc/apt/sources.list.d/cadt-test.list > /dev/null
+```
+
+If both the stable and release-candidate repos are added, `apt` can switch between versions installed using by appending `=<version-number>` to the install command:
+
+```
+apt install cadt=1.7.19
+apt install cadt=1.7.21-rc7
+```
+
+Without specifying the version number, `apt` will install the latest release candidate if it exists, which might not always be desired. 
 
 ### Datalayer HTTP File Serving
 
