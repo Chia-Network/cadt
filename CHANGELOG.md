@@ -1,3 +1,47 @@
+## [1.7.22](https://github.com/Chia-Network/cadt/compare/1.7.22-rc3...1.7.22) (2025-03-11)
+
+
+
+## [1.7.21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc21...1.7.21) (2025-02-21)
+
+
+
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
+
+
+
+## [1.7.22-rc3](https://github.com/Chia-Network/cadt/compare/1.7.22-rc2...1.7.22-rc3) (2025-03-11)
+
+
+### Bug Fixes
+
+* loop bound attack vectors ([164c373](https://github.com/Chia-Network/cadt/commit/164c37392c3df8ee6044014286f1d2be3f33310f))
+* sql injection vectors ([373bcbe](https://github.com/Chia-Network/cadt/commit/373bcbe11f8214b6802c8f9665a780df03550b6e))
+* sql injection vectors via Joi validations ([5016367](https://github.com/Chia-Network/cadt/commit/5016367ca362db2ec565d87a93b29dc2c4c3c696))
+* undefined references ([e35dcf4](https://github.com/Chia-Network/cadt/commit/e35dcf47c8abca97593aece92216ab3b4afcfec7))
+
+
+
+## [1.7.21-rc22](https://github.com/Chia-Network/cadt/compare/1.7.21...1.7.21-rc22) (2025-02-21)
+
+
+
 ## [1.7.21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc21...1.7.21) (2025-02-21)
 
 
