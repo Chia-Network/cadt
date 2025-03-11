@@ -1,24 +1,24 @@
-name: Build and Publish Docker Container
+# name: Build Docker Images
 
-on:
-  push:
-    tags:
-      - '**'
-    branches:
-      - 'docker-again'
-  pull_request:
+# on:
+#   push:
+#     tags:
+#       - '**'
+#     branches:
+#       - 'docker-again'
+#   pull_request:
 
-concurrency:
-  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
-  cancel-in-progress: true
+# concurrency:
+#   group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
+#   cancel-in-progress: true
 
-permissions:
-  id-token: write
-  contents: write
-  packages: write
+# permissions:
+#   id-token: write
+#   contents: write
+#   packages: write
 
-jobs:
-  package:
-    uses: Chia-Network/actions/.github/workflows/docker-build.yaml@main
-    with:
-      push: ${{ github.event_name != 'pull_request' }}
+# jobs:
+#   package:
+#     uses: Chia-Network/actions/.github/workflows/docker-build.yaml@main
+#     with:
+#       push: ${{ github.event_name != 'pull_request' }}
