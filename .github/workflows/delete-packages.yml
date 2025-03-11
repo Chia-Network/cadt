@@ -1,7 +1,9 @@
 name: Delete All Container Packages
 
 on:
-  workflow_dispatch:  # Manual trigger only
+  push:
+    branches:
+      - 'docker-again'
 
 permissions:
   packages: write
