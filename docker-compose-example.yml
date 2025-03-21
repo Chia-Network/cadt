@@ -1,0 +1,46 @@
+version: '3.8'
+services:
+  cadt:
+    image: ghcr.io/chia-network/cadt:latest
+    ports:
+      - "31310:31310"
+    environment:
+      # MIRROR_DB settings
+      - DB_USERNAME=null
+      - DB_PASSWORD=null
+      - DB_NAME=null
+      - DB_HOST=null
+
+      # APP settings
+      - CW_PORT=31310
+      - BIND_ADDRESS=localhost
+      - DATALAYER_URL=https://localhost:8562
+      - WALLET_URL=https://localhost:9256
+      - USE_SIMULATOR=false
+      - READ_ONLY=false
+      - CADT_API_KEY=null
+      - CHIA_NETWORK=mainnet
+      - USE_DEVELOPMENT_MODE=false
+      - IS_GOVERNANCE_BODY=false
+      - DEFAULT_FEE=300000000
+      - DEFAULT_COIN_AMOUNT=300000000
+      - CERTIFICATE_FOLDER_PATH=null
+      - DATALAYER_FILE_SERVER_URL=null
+      - AUTO_SUBSCRIBE_FILESTORE=false
+      - AUTO_MIRROR_EXTERNAL_STORES=true
+      - LOG_LEVEL=info
+
+      # APP.TASKS settings
+      - GOVERNANCE_SYNC_TASK_INTERVAL=86400
+      - ORGANIZATION_META_SYNC_TASK_INTERVAL=300
+      - PICKLIST_SYNC_TASK_INTERVAL=60
+      - MIRROR_CHECK_TASK_INTERVAL=86460
+      - CHECK_ORG_TABLE_SUBSCRIPTIONS_TASK_INTERVAL=1800
+
+      # GOVERNANCE settings
+      - GOVERNANCE_BODY_ID=23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e
+
+    volumes:
+      # Mount Chia config directory to access certificates
+      - ~/.chia/mainnet/config/ssl:/root/.chia/mainnet/config/ssl
+    restart: unless-stopped
