@@ -10,131 +10,29 @@ image:
   repository: ghcr.io/chia-network/cadt
   tag: latest
 
-# sharedEmptyDirs will be shared between the main application container, sidecars, and initContainers
-sharedEmptyDirs: []
-#  - name: example-shared
-#    mountPath: /var/shared
-
-initContainers: []
-#  - name: init-myservice
-#    image: busybox:1.28
-#    imagePullPolicy: IfNotPresent
-#    command: ['sh', '-c', "until nslookup myservice.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done"]
-#    args: ['args', 'moreargs']
-#  - name: init-mydb
-#    image: busybox:1.28
-#    imagePullPolicy: IfNotPresent
-
-sidecars: []
-#  - name: example-sidecar
-#    image:
-#      repository: nginx
-#      pullPolicy: IfNotPresent
-#      tag: latest
-#    environment: {}
-
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-shortnameOverride: ""
-instanceOverride: ""
-
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: true
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
-  clusterRoleRules: []
-
-# Specifies whether to recreate Pods on a redeploy if nothing else about the underlying Pods changed.
-# This is useful for Deployments that deploy an unchanging image tag like :latest,
-# but still want the Pods to recreate to use the image pullPolicy to re-pull the image.
-# This creates an annotation on the Pods with the current helm release number.
-recreatePodsOnUpgrade: false
-
-podAnnotations: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
-
 deployment:
-  containerPort: 80
+  containerPort: 31310
   containerPortName: http
-  command: [] # Optional, Equivalent of ENTRYPOINT
-  args: [] # Optional, Equivalent of CMD
-  additionalPorts: []
-#    - name: metrics
-#      containerPort: 9101
-#      protocol: TCP
-  # Environment variables to add directly to the deployment configuration (as opposed to via the secret or configmap)
-  environment: {}
-  #  MY_KEY: "My Value"
-  livenessProbe: {}
-#    httpGet:
-#      path: /
-#      port: http
-  readinessProbe: {}
-#    httpGet:
-#      path: /
-#      port: http
-  startupProbe: {}
-#    httpGet:
-#      path: /
-#      port: http
-#    initialDelaySeconds: 0  # No delay before starting to check
-#    periodSeconds: 10       # Check every 10 seconds
-#    failureThreshold: 60    # Allows up to 60 consecutive failures (10 minutes)
   strategy:
-    maxSurge: 25%
-    maxUnavailable: 25%
-    type: RollingUpdate
+    type: Recreate
   lifecycle: {}
 
 service:
-  enabled: false
-  type: ClusterIP
-  additionalLabels: {}
-    # application: my-application
-    # prometheus: application-metrics
-  annotations: {}
-    # external-dns.alpha.kubernetes.io/hostname: testing.example.com
+  enabled: true
   port: 80
-  additionalPorts: []
-  #    - port: 9101
-  #      targetPort: 9101
-  #      protocol: TCP
-  #      name: metrics
 
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
+  enabled: true
+  className: "cadt-testing-governance"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
   hosts:
     - host: chart-example.local
       paths:
         - path: /
           pathType: Prefix
   tlsEnabled: true
-  # Uncomment the following to use a pre-generated TLS Secret
-  # tlsSecretName: ""
-
-  # Set to false if TLS is enabled, but you're using an ingress class that doesn't support TLS cert secrets
-  tlsSecretEnabled: true
-  # Switch between different Ingress rule styles. Can be one of "rules", or "defaultBackend"
-  ruleType: "rules"
 
 networkPolicy:
   enabled: false
@@ -158,23 +56,6 @@ networkPolicy:
 #        - protocol: TCP
 #          port: 8555
 
-serviceMonitor:
-  enabled: false
-  # Changes the servicemonitor's spec.endpoints[0].port
-  # Can be a port number or name
-  endpointPort: metrics
-  ## The label to use to retrieve the job name from.
-  ## jobLabel: "app.kubernetes.io/name"
-  additionalLabels: {}
-  annotations: {}
-  namespaceSelector: {}
-  ## Default: scrape .Release.Namespace or namespaceOverride only
-  ## To scrape all, use the following:
-  ## namespaceSelector:
-  ##   any: true
-  targetLabels: []
-  relabelings: []
-  metricRelabelings: []
 
 # Creates a secret with the following values, and mounts as env into the main deployment container
 secretEnvironment: {}
@@ -206,11 +87,11 @@ secretFiles: []
 
 
 # Creates a configmap with the following values, and mounts as env into the main deployment container
-configmapEnvironment: {}
+configmapEnvironment:
   LOG_LEVEL: "debug"
   BIND_ADDRESS: "0.0.0.0"
-  WALLET_URL: "https://chia-testneta-governance-datalayer-rpc:9256"
-  DATALAYER_URL: "https://chia-testneta-governance-datalayer-rpc:8562"
+  WALLET_URL: "https://tdb:9256"
+  DATALAYER_URL: "https://tbd:8562"
   CHIA_NETWORK: "testnet"
   IS_GOVERNANCE_BODY: "true"
   AUTO_MIRROR_EXTERNAL_STORES: "false"
