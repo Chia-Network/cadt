@@ -33,3 +33,4 @@ yarn-error.log*
 
 build-scripts/macos/application
 build-scripts/macos/target
+k8s/values.yaml
