@@ -11,7 +11,7 @@ COPY src /app/src/
 COPY tests /app/tests/
 WORKDIR /app
 
-RUN npm install && npm install -g @babel/cli @babel/preset-env yaml
+RUN npm install && npm install yaml
 
 RUN mkdir -p /root/.chia/mainnet/config/ssl && mkdir -p /root/.chia/mainnet/cadt/v1
 
