@@ -42,5 +42,5 @@ services:
 
     volumes:
       # Mount Chia config directory to access certificates
-      - ~/.chia:/root/.chia
+      - ~/.chia/mainnet/config/ssl:/root/.chia/mainnet/config/ssl
     restart: unless-stopped
