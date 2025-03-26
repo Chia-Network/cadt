@@ -8,7 +8,11 @@ update_yaml_if_env_exists() {
     local yaml_path=$2
 
     if [ ! -z "${!env_var}" ]; then
-        yq -i "$yaml_path = ${!env_var}" $CONFIG_PATH
+        if [[ "${!env_var}" == "true" || "${!env_var}" == "false" ]]; then
+            yq eval "$yaml_path |= ${!env_var}" -i $CONFIG_PATH
+        else
+            yq eval "$yaml_path |= \"${!env_var}\"" -i $CONFIG_PATH
+        fi
     fi
 }
 
@@ -18,11 +22,13 @@ mkdir -p /root/.chia/mainnet/cadt/v1
 # If config doesn't exist, create it with default values from defaultConfig.js
 if [ ! -f $CONFIG_PATH ]; then
     # Use Node to convert defaultConfig.js to YAML
-    node -e '
+    CONFIG_PATH=$CONFIG_PATH node -e '
         const yaml = require("yaml");
-        const { defaultConfig } = require("/app/src/utils/defaultConfig.js");
         const fs = require("fs");
-        fs.writeFileSync(process.env.CONFIG_PATH, yaml.stringify(defaultConfig));
+        (async () => {
+            const { defaultConfig } = await import("/app/src/utils/defaultConfig.js");
+            fs.writeFileSync(process.env.CONFIG_PATH, yaml.stringify(defaultConfig));
+        })();
     '
 fi
 
