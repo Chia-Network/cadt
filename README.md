@@ -253,12 +253,13 @@ This project mostly adheres to semantic versioning.  The version specified in `p
 The [`update-ip.sh`](tools/update-ip.sh) script in the `tools` directory helps manage the `DATALAYER_FILE_SERVER_URL` configuration when your server's IP address changes. This is particularly useful for servers with dynamic IP addresses. Note that this script must be run as root (using sudo).
 
 ```bash
-sudo ./tools/update-ip.sh [--dry-run] --chia-user=<username> [--port=<port>]
+sudo ./tools/update-ip.sh --chia-user=<username> [--port=<port>] [--https] [--dry-run]
 ```
 
 - `--chia-user=<username>`: (Required) The username of the Chia user whose configuration will be updated
 - `--dry-run`: (Optional) Run in dry-run mode to see what changes would be made without actually making them
 - `--port=<port>`: (Optional) Specify a custom port for the DATALAYER_FILE_SERVER_URL. If not provided, the script will use the port from your Chia config file.
+- `--https`: (Optional) Use HTTPS instead of HTTP for the DATALAYER_FILE_SERVER_URL. If not provided, HTTP will be used.
 
 This script does the following:
 

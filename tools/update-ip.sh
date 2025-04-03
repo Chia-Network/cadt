@@ -11,15 +11,16 @@
 # Author: Zach Brown <z.brown@chia.net>, Chia Networks Inc
 #
 # Usage:
-#   sudo ./tools/update-ip.sh [--dry-run] --chia-user=<username> [--port=<port>]
+#   sudo ./tools/update-ip.sh --chia-user=<username> [--port=<port>] [--https] [--dry-run]
 #
 #   --chia-user=<username>  (Required) The username of the Chia user whose configuration will be updated
 #   --dry-run              (Optional) Run in dry-run mode to see what changes would be made without actually making them
 #   --port=<port>          (Optional) Specify a custom port for the DATALAYER_FILE_SERVER_URL. If not provided, the script will use the port from your Chia config file.
+#   --https                (Optional) Use HTTPS instead of HTTP for the DATALAYER_FILE_SERVER_URL. If not provided, HTTP will be used.
 #
 # Example:
 #   sudo ./tools/update-ip.sh --chia-user=ubuntu
-#   sudo ./tools/update-ip.sh --dry-run --chia-user=ubuntu --port=31310
+#   sudo ./tools/update-ip.sh --chia-user=ubuntu --port=31310 --https --dry-run
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
@@ -31,6 +32,7 @@ fi
 CHIA_USER=""
 DRY_RUN=false
 PORT=""  # Will be set from config file or command line
+USE_HTTPS=false
 
 for arg in "$@"; do
     case $arg in
@@ -46,13 +48,17 @@ for arg in "$@"; do
             PORT="${arg#*=}"
             shift
             ;;
+        --https)
+            USE_HTTPS=true
+            shift
+            ;;
     esac
 done
 
 # Check if chia-user was provided
 if [ -z "$CHIA_USER" ]; then
     echo "Error: --chia-user parameter is required"
-    echo "Usage: $0 [--dry-run] --chia-user=<username> [--port=<port>]"
+    echo "Usage: $0 --chia-user=<username> [--port=<port>] [--https] [--dry-run]"
     exit 1
 fi
 
@@ -111,7 +117,11 @@ if [ -z "$CURRENT_IP" ]; then
 fi
 
 # Construct the new DATALAYER_FILE_SERVER_URL
-NEW_URL="https://${CURRENT_IP}:${PORT}"
+if [ "$USE_HTTPS" = true ]; then
+    NEW_URL="https://${CURRENT_IP}:${PORT}"
+else
+    NEW_URL="http://${CURRENT_IP}:${PORT}"
+fi
 
 # Path to config file - Updated for Core-Registry-CADT
 CONFIG_FILE="$CHIA_HOME/.chia/mainnet/core-registry/config.yaml"
