@@ -272,7 +272,7 @@ Note that the CADT application will need to be restarted after any changes to th
 
 ### update-ip.sh
 
-The `update-ip.sh` script in the `tools` directory helps manage the `DATALAYER_FILE_SERVER_URL` configuration when your server's IP address changes. This is particularly useful for servers with dynamic IP addresses. Note that this script must be run as root.
+The [`update-ip.sh`](tools/update-ip.sh) script in the `tools` directory helps manage the `DATALAYER_FILE_SERVER_URL` configuration when your server's IP address changes. This is particularly useful for servers with dynamic IP addresses. Note that this script must be run as root (using sudo).
 
 ```bash
 sudo ./tools/update-ip.sh [--dry-run] --chia-user=<username> [--port=<port>]
