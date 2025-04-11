@@ -92,7 +92,7 @@
     "sinon": "^19.0.2",
     "socket.io-client": "^4.8.1",
     "standard-version": "^9.5.0",
-    "supertest": "^7.0.0"
+    "supertest": "^7.1.0"
   },
   "standard-version": {
     "skip": {
