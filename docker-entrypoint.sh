@@ -7,9 +7,12 @@ update_yaml_if_env_exists() {
     local env_var=$1
     local yaml_path=$2
 
-    if [ ! -z "${!env_var}" ]; then
+    # Check if the environment variable is set (even if empty)
+    if [ -n "${!env_var+x}" ]; then
         if [[ "${!env_var}" == "true" || "${!env_var}" == "false" ]]; then
             yq eval "$yaml_path |= ${!env_var}" -i $CONFIG_PATH
+        elif [ -z "${!env_var}" ]; then
+            yq eval "$yaml_path |= null" -i $CONFIG_PATH
         else
             yq eval "$yaml_path |= \"${!env_var}\"" -i $CONFIG_PATH
         fi
@@ -66,6 +69,13 @@ update_yaml_if_env_exists "CHECK_ORG_TABLE_SUBSCRIPTIONS_TASK_INTERVAL" '.APP.TA
 
 # GOVERNANCE section
 update_yaml_if_env_exists "GOVERNANCE_BODY_ID" '.GOVERNANCE.GOVERNANCE_BODY_ID'
+
+# Print config file contents if DOCKER_DEBUG is true
+if [ "${DOCKER_DEBUG}" = "true" ]; then
+    echo "=== CADT Config File Contents ==="
+    cat $CONFIG_PATH
+    echo "================================"
+fi
 
 # Execute the command passed to docker run
 exec "$@"
