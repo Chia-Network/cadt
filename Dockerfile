@@ -5,6 +5,10 @@ FROM node:20.18-bookworm
 # Copy yq from the yq image
 COPY --from=yq /usr/bin/yq /usr/local/bin/yq
 
+RUN apt-get update && apt-get install -y \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package.json /app/
 COPY package-lock.json /app/
 COPY src /app/src/
