@@ -195,7 +195,7 @@ const getRootDiff = (storeId, root1, root2) => {
  */
 const getStoreData = async (storeId, callback, onFail, rootHash, retry = 0) => {
   const MAX_RETRIES = 18;
-  const RETRY_DELAY = 30000;
+  const RETRY_DELAY = 30000; // milliseconds
 
   try {
     logger.info(`Getting store data, retry: ${retry}`);
