@@ -194,8 +194,8 @@ const getRootDiff = (storeId, root1, root2) => {
  * @param {number} retry - Number of retry attempts.
  */
 const getStoreData = async (storeId, callback, onFail, rootHash, retry = 0) => {
-  const MAX_RETRIES = 18;
-  const RETRY_DELAY = 20000;
+  const MAX_RETRIES = 30;
+  const RETRY_DELAY = 10000;
 
   try {
     logger.info(`Getting store data, retry: ${retry}`);
