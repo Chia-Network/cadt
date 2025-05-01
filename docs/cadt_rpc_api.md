@@ -2,19 +2,19 @@
 
 This page lists commands and examples from the Climate Warehouse RPC API.
 
-When using this guide, it is important to understand the workflow CADT employs for managing climate data updates via RPCs. 
-The CADT paradigm ensures that all updates first go into local "staging", which is private and not shared with 
+When using this guide, it is important to understand the workflow CADT employs for managing climate data updates via RPCs.
+The CADT paradigm ensures that all updates first go into local "staging", which is private and not shared with
 the rest of the world. This staging process serves as an intermediate step where climate data records changes remain
 isolated from the data committed to the blockchain datalayer until explicitly committed.
 
-When editing or adding climate data records users should first use POST changes to the appropriate `projects` or `units` 
-resources. These POST requests populate the local staging table, allowing for updates to be collected and reviewed 
-in a controlled, private environment. Once reviewed users can then use `staging` RPCs to commit or deleted the staged record 
+When editing or adding climate data records users should first use POST changes to the appropriate `projects` or `units`
+resources. These POST requests populate the local staging table, allowing for updates to be collected and reviewed
+in a controlled, private environment. Once reviewed users can then use `staging` RPCs to commit or deleted the staged record
 changes. Commiting the data in staging using the CADT RPC's commits the data to the blockchain, making it publicly visible.
 
-It is essential to remember that the staging process is distinct from the commit phase. The initial use of `projects`, 
-`units`, or similar RPCs prepares the data, while `staging` RPCs finalize the transition to the blockchain. This workflow 
-ensures a clear separation between temporary updates and permanent, public changes, maintaining both data integrity and 
+It is essential to remember that the staging process is distinct from the commit phase. The initial use of `projects`,
+`units`, or similar RPCs prepares the data, while `staging` RPCs finalize the transition to the blockchain. This workflow
+ensures a clear separation between temporary updates and permanent, public changes, maintaining both data integrity and
 transparency.
 
 Please also see the following related documents:
@@ -183,8 +183,8 @@ POST Options:
 #### Create an organization
 
 - Please note that creating and organization takes approximately 30 minutes.
-- The request will not resolve until the organization creation is complete
-- The request can be closed before it resolves and the status of the organization creation can be tracked via a GET
+- The request will resolve and the organization will complete in the background.
+- The status of the organization creation can be tracked via a GET
 request to `organizations` and searching for the PENDING orgUid.
 
 Request
@@ -200,15 +200,14 @@ curl --location -g --request POST 'localhost:31310/v1/organizations/create' \
 Response
 ```json
 {
-  "message":"New organization created successfully.",
-  "orgUid":"d84ab5fa679726e988b31ecc8ecff0ba8d001e9d65f1529d794fa39d32a5455e",
-  "success": true
+    "message": "New organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.",
+    "success": true
 }
 ```
 
 ---
 
-PUT Options: 
+PUT Options:
 
 |  Key   |  Type   |                                      Description                                      |
 |:------:|:-------:|:-------------------------------------------------------------------------------------:|
@@ -256,13 +255,13 @@ Response
 ```
 
 ### Additional Organizations Resources
-- POST `/organizations/remove-mirror` - given a store ID and coin ID removes the mirror for a given store 
+- POST `/organizations/remove-mirror` - given a store ID and coin ID removes the mirror for a given store
 - POST `/organizations/sync` - runs the process to sync all subscribed organization metadata with datalayer
-- POST `/organizations/create` - create an organization without an icon 
+- POST `/organizations/create` - create an organization without an icon
 - POST `/organizations/edit` - update an organization name and/or icon
-- PUT `/organizations/resync` - resync an organization from datalayer 
-- POST `/organizations/mirror` - add a mirror for a datalayer store via the store ID 
-- GET `/organizations/metadata` - get an organizations metadata using the OrgUid 
+- PUT `/organizations/resync` - resync an organization from datalayer
+- POST `/organizations/mirror` - add a mirror for a datalayer store via the store ID
+- GET `/organizations/metadata` - get an organizations metadata using the OrgUid
 - GET `/organizations/status` - the sync status of an organization via the OrgUid
 
 ---
@@ -447,7 +446,7 @@ Response
     }
   ]
 }
-  
+
 ```
 
 ---
@@ -578,7 +577,7 @@ Request
 ```sh
 curl --location --request GET 'localhost:31310/v1/projects?xls=true' --header 'Content-Type: application/json' > projects.xlsx
 ```
-Response: 
+Response:
 
 Download stream to download the XLS file of project records.
 Using the above `curl` will save the results to a file in the current directory called `projects.xlsx`.
@@ -1240,7 +1239,7 @@ Response
 
 #### List units by `orgUid`
 
-- Pagination is required when requesting unit records by OrgUid 
+- Pagination is required when requesting unit records by OrgUid
 
 Request
 ```shell
@@ -1395,7 +1394,7 @@ curl --location -g --request POST 'localhost:31310/v1/units' \
 
 - Please note that when creating a new record using existing records, the request must include:
   - The data for new child record _**without**_ a `id` and `warehouseProjectId`
-    - See the first label in the below example  
+    - See the first label in the below example
   - The complete data for the existing child record _**including**_ its `id` and `warehouseProjectId`
     - See the issuance and second label in the below example
 - The result of this query will be a staged new unit record using an existing issuance and label, in addition to the
@@ -1618,9 +1617,9 @@ Options:
 |      type      |   String    |                                     Must be `projects` or `units`                                      |
 |     limit      |   Number    | Limit the number of subscribed projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
 |      page      |   Number    |       Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)       |
-|     table      |   String    |           Specifies which type of staged changes should be committed; `Projects` or `Units`            | 
-|      ids       | String List |                    Query param list of strings containing staging UUID's to commit                     | 
-|     author     |   String    |                                    Specify the author of the commit                                    | 
+|     table      |   String    |           Specifies which type of staged changes should be committed; `Projects` or `Units`            |
+|      ids       | String List |                    Query param list of strings containing staging UUID's to commit                     |
+|     author     |   String    |                                    Specify the author of the commit                                    |
 |    comment     |   String    |                                    Specify a comment for the commit                                    |
 
 ### GET Examples
@@ -1805,7 +1804,7 @@ Response
 
 Request
 ```shell
-curl --location --request POST 'localhost:31310/v1/staging/commit' --header 'Content-Type: application/json' 
+curl --location --request POST 'localhost:31310/v1/staging/commit' --header 'Content-Type: application/json'
 ```
 Response
 ```json
@@ -1818,7 +1817,7 @@ Response
 
 Request
 ```shell
-curl --location --request POST 'localhost:31310/v1/staging/commit?table=Projects' --header 'Content-Type: application/json' 
+curl --location --request POST 'localhost:31310/v1/staging/commit?table=Projects' --header 'Content-Type: application/json'
 ```
 Response
 ```json
@@ -1832,7 +1831,7 @@ Response
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v1/staging/commit?ids=9a29f826-ea60-489f-a290-c734e8fd57f1&ids=5b29e846-a2c1-589a-d180-b832e7fd67ef' \
---header 'Content-Type: application/json' 
+--header 'Content-Type: application/json'
 ```
 Response
 ```json
@@ -1895,7 +1894,7 @@ curl --location -g --request DELETE 'localhost:31310/v1/staging' \
 ```
 Response
 ```json
-{ 
+{
   "message":"Deleted from staging",
   "success": true
 }
@@ -2067,7 +2066,7 @@ curl --location --request GET 'localhost:31310/v1/audit?orgUid=9659b237d3316e0c5
       "registryId": "62531b9ad830f1e2654f324bb12572f69a8d298e8019901ba5e603fe947e479e",
       "rootHash": "0x9caef12440fd98bf7edc8820fbc4633ce513df7da4ee70d7af0d68a7b7427361",
       "type": "INSERT",
-      NOTE! the change field value is a full stringified change record 
+      NOTE! the change field value is a full stringified change record
       "change": "{\"id\":\"3a4e6897-985e-48d2-b90b-6ddcaf9cc32e\", ... !change record json string example truncated! ... }",
       "table": "labels",
       "onchainConfirmationTimeStamp": "1727796408",
@@ -2120,11 +2119,11 @@ curl --location --request GET 'localhost:31310/v1/audit?orgUid=9659b237d3316e0c5
 Functionality: generate, view, import, accept, datalayer offers for data transfers to other organizations
 
 #### A Note On CADT Offers
- - Terms: 
+ - Terms:
    - *Offer Maker*: the party requesting that data be transferred from a 3rd party organization into their own organization registry
    - *Offer Taker*: the party accepting an offer to transfer ownership of a climate project record form their organization registry into
    the offer maker's organization registry
- - Transfer Workflow Overview: 
+ - Transfer Workflow Overview:
    - the offer maker stages the transfer of a project from another registry into their own
    - the offer maker creates an offer file which details the ownership transfer of the project record from its current
    registry into the offer makers registry
@@ -2243,8 +2242,10 @@ Response
 
 ## `governance`
 
-- Functionality for most users: read and sync governance values 
+- Functionality for most users: read and sync governance values
 - Functionality for climate project development: create and manage governance data
+
+Most users will never use these endpoints.
 
 ### GET Examples
 
@@ -2398,7 +2399,7 @@ Response
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v1/governance/meta/orgList' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v1/governance/meta/orglist' --header 'Content-Type: application/json'
 ```
 
 Response
@@ -2434,7 +2435,7 @@ Response
 
 Request
 ```shell
-curl --location --request POST 'localhost:31310/v1/governance/meta/glossary' --header 'Content-Type: application/json' \
+curl --location --request POST 'localhost:31310/v1/governance/meta/orglist' --header 'Content-Type: application/json' \
 --data-raw '[
   {
     "orgUid": "a9d374baa8ced8b7a4add2a23f35f430fd7a3c99d1480d762e0b40572db4b024"
@@ -2477,9 +2478,11 @@ Response
 * GET `/governance/sync` - sync governance data from other governance bodies
 * GET `/governance/meta/picklist` - get governance picklist data
 * GET `/governance/meta/glossary` - get governance glossary data
+* GET `/governance/meta/orglist` - get governance organization data
 * POST `/governance` - create a governance body on the current node
 * POST `/governance/meta/picklist` - set the governance picklist data returned by GET `/governance/meta/picklist`
 * POST `/governance/meta/glossary` - set the governance glossary data returned by GET `/governance/meta/glossary`
+* POST `/governance/meta/orglist` - set the governance organization list data returned by GET `/governance/meta/orglist`
 
 ## `filestore`
 
