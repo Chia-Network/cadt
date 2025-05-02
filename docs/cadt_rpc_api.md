@@ -1547,7 +1547,7 @@ curl --location -g --request PUT 'localhost:31310/v1/units' \
     "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
     "vintageYear": 2002,
     "unitType": "Removal - technical",
-    "unitStatus": "For Sale",
+    "unitStatus": "Exported",
     "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
     "correspondingAdjustmentDeclaration": "Unknown",
     "correspondingAdjustmentStatus": "Not Started"
