@@ -786,15 +786,17 @@ curl --location -g --request PUT 'localhost:31310/v1/projects' \
     "projectStatusDate": "2022-03-19",
     "unitMetric": "tCO2e",
     "methodology": "Baseline methodology for water pumping efficiency improvements --- Version 2.0"
-    "issuance": {
-        "id":"d9f58b08-af25-461c-88eb-403bb02b135e",
-        "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
-        "startDate":"2022-01-02T00:00:00.000Z",
-        "endDate":"2022-02-11T00:00:00.000Z",
-        "verificationApproach":"Sample Approach",
-        "verificationReportDate":"2022-03-16T00:00:00.000Z",
-        "verificationBody":"Sample Body"
-    },
+    "issuances": [
+        {
+            "id":"d9f58b08-af25-461c-88eb-403bb02b135e",
+            "warehouseProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+            "startDate":"2022-01-02T00:00:00.000Z",
+            "endDate":"2022-02-11T00:00:00.000Z",
+            "verificationApproach":"Sample Approach",
+            "verificationReportDate":"2022-03-16T00:00:00.000Z",
+            "verificationBody":"Sample Body"
+        }
+    ]
     "labels": [
         {
             "label":"Sample Label",
