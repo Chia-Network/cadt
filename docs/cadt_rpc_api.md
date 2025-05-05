@@ -693,6 +693,103 @@ Response
 }
 ```
 
+#### Stage a new project with all possible fields
+
+Request
+```sh
+curl --location --request POST 'http://localhost:31310/v1/projects' \
+--header 'Content-Type: application/json' \
+--data '{
+        "projectId": "c9d147e2-bc07-4e68-a76d-43424fa8cd4e",
+        "originProjectId": "12345-123-123-12345",
+        "registryOfOrigin": "UNFCCC",
+        "projectName": "Automated Testing Project",
+        "projectLink": "http://automated-testing-x7k9p2m4.com",
+        "projectDeveloper": "Automated Testing Developer",
+        "sector": "Manufacturing industries",
+        "projectType": "Afforestation",
+        "coveredByNDC": "Inside NDC",
+        "projectStatus": "Registered",
+        "projectStatusDate": "2022-03-12",
+        "ndcInformation": "Automated Testing NDC Info",
+        "unitMetric": "tCO2e",
+        "methodology": "ACR - Truck Stop Electrification",
+        "currentRegistry": "American Carbon Registry (ACR)",
+        "program": "Automated Testing Program",
+        "projectTags": "automated-test,integration-test,regression-test",
+        "methodology2": "Automated Testing Secondary Methodology",
+        "validationBody": "350 Solutions",
+        "validationDate": "2022-03-12",
+        "description": "Automated Testing Project Description",
+        "projectLocations": [
+          {
+            "country": "United States of America",
+            "inCountryRegion": "California",
+            "geographicIdentifier": "CA-123"
+          }
+        ],
+        "labels": [
+          {
+            "label": "Automated Testing Label",
+            "labelType": "Certification",
+            "creditingPeriodStartDate": "2014-03-29",
+            "creditingPeriodEndDate": "2022-03-30",
+            "validityPeriodStartDate": "2017-03-08",
+            "validityPeriodEndDate": "2025-03-19",
+            "unitQuantity": 40,
+            "labelLink": "http://automated-testing-r3tds89.net"
+          }
+        ],
+        "issuances": [
+          {
+            "startDate": "2022-01-02",
+            "endDate": "2022-02-11",
+            "verificationApproach": "Automated Testing Approach",
+            "verificationReportDate": "2022-03-16",
+            "verificationBody": "350 Solutions"
+          }
+        ],
+        "coBenefits": [
+          {
+            "cobenefit": "SDG 1 - No poverty"
+          }
+        ],
+        "relatedProjects": [
+          {
+            "relatedProjectId": "333",
+            "relationshipType": "Automated Testing Relationship",
+            "registry": "American Carbon Registry (ACR)"
+          }
+        ],
+        "projectRatings": [
+          {
+            "ratingType": "CCQI",
+            "ratingRangeHighest": "100",
+            "ratingRangeLowest": "0",
+            "rating": "97",
+            "ratingLink": "http://automated-testing-ratings-j5k8m2p4.com"
+          }
+        ],
+        "estimations": [
+          {
+            "creditingPeriodStart": "2022-02-04",
+            "creditingPeriodEnd": "2022-03-04",
+            "unitCount": 100
+          }
+        ]
+      }'
+```
+Response
+```json
+{
+  "message": "Project staged successfully",
+  "uuid": "9a29f826-ea60-489f-a290-c734e8fd57f1",
+  "success": true
+}
+```
+
+
+
 ---
 
 #### Stage a new project from a csv file
@@ -910,8 +1007,8 @@ Response
   "pageCount": 3134,
   "data": [
       {
-      "unitBlockStart":"A345",
-      "unitBlockEnd":"B567",
+      "unitBlockStart":"1000",
+      "unitBlockEnd":"1221",
       "unitCount":222,
       "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
       "issuanceId":null,
@@ -920,8 +1017,7 @@ Response
       "unitOwner":"Sample Owner",
       "countryJurisdictionOfOwner":"Belize",
       "inCountryJurisdictionOfOwner":null,
-      "serialNumberBlock":"A345-B567",
-      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+      "serialNumberBlock":"1000-1221",
       "vintageYear":2014,
       "unitType":"Reduction - technical",
       "marketplace":null,
@@ -952,8 +1048,8 @@ Response
       }
     },
     {
-      "unitBlockStart":"abc123",
-      "unitBlockEnd":"abd124",
+      "unitBlockStart":"2000",
+      "unitBlockEnd":"2000",
       "unitCount":1,
       "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
       "issuanceId":null,
@@ -962,8 +1058,7 @@ Response
       "unitOwner":"44",
       "countryJurisdictionOfOwner":"United States of America",
       "inCountryJurisdictionOfOwner":null,
-      "serialNumberBlock":"abc123-abd124",
-      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+      "serialNumberBlock":"2000-2000",
       "vintageYear":2022,
       "unitType":"Reduction - nature",
       "marketplace":null,
@@ -1003,8 +1098,8 @@ Response
   "pageCount": 3134,
   "data": [
     {
-      "unitBlockStart":"A345",
-      "unitBlockEnd":"B567",
+      "unitBlockStart":"1000",
+      "unitBlockEnd":"1221",
       "unitCount":222,
       "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
       "issuanceId":null,
@@ -1013,8 +1108,7 @@ Response
       "unitOwner":"Sample Owner",
       "countryJurisdictionOfOwner":"Belize",
       "inCountryJurisdictionOfOwner":null,
-      "serialNumberBlock":"A345-B567",
-      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+      "serialNumberBlock":"1000-1221",
       "vintageYear":2014,
       "unitType":"Reduction - technical",
       "marketplace":null,
@@ -1045,8 +1139,8 @@ Response
       }
     },
     {
-      "unitBlockStart":"abc123",
-      "unitBlockEnd":"abd124",
+      "unitBlockStart":"2000",
+      "unitBlockEnd":"2000",
       "unitCount":1,
       "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
       "issuanceId":null,
@@ -1055,8 +1149,7 @@ Response
       "unitOwner":"44",
       "countryJurisdictionOfOwner":"United States of America",
       "inCountryJurisdictionOfOwner":null,
-      "serialNumberBlock":"abc123-abd124",
-      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+      "serialNumberBlock":"2000-2000",
       "vintageYear":2022,
       "unitType":"Reduction - nature",
       "marketplace":null,
@@ -1094,8 +1187,8 @@ Response
   "pageCount": 3134,
   "data": [
     {
-      "unitBlockStart":"A345",
-      "unitBlockEnd":"B567",
+      "unitBlockStart":"1000",
+      "unitBlockEnd":"1221",
       "unitCount":222,
       "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
       "issuanceId":null,
@@ -1104,8 +1197,7 @@ Response
       "unitOwner":"Sample Owner",
       "countryJurisdictionOfOwner":"Belize",
       "inCountryJurisdictionOfOwner":null,
-      "serialNumberBlock":"A345-B567",
-      "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+      "serialNumberBlock":"1000-1221",
       "vintageYear":2014,
       "unitType":"Reduction - technical",
       "marketplace":null,
@@ -1256,8 +1348,8 @@ Response
   "pageCount": 7,
   "data": [
     {
-      "unitBlockStart":"A345",
-      "unitBlockEnd":"B567",0
+      "unitBlockStart":"1000",
+      "unitBlockEnd":"1221",
       "unitCount":222,
       "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
       ...
@@ -1265,8 +1357,8 @@ Response
       ...
     },
     {
-      "unitBlockStart":"abc123",
-      "unitBlockEnd":"abd124",
+      "unitBlockStart":"2000",
+      "unitBlockEnd":"2000",
       "unitCount":1,
       "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
       ...
@@ -1309,8 +1401,8 @@ Request
   "pageCount": 7,
   "data": [
     {
-      "unitBlockStart":"A345",
-      "unitBlockEnd":"B567",
+      "unitBlockStart":"1000",
+      "unitBlockEnd":"1221",
       "unitCount":222,
       "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
       ...
@@ -1318,8 +1410,8 @@ Request
       ...
     },
     {
-      "unitBlockStart":"abc123",
-      "unitBlockEnd":"abd124",
+      "unitBlockStart":"2000",
+      "unitBlockEnd":"2000",
       "unitCount":1,
       "warehouseUnitId":"68fcf0b2-f1b9-4bb4-b91a-e4fe6f07a2d6",
       ...
@@ -1350,7 +1442,7 @@ Response
   "data":[{
     "countryJurisdictionOfOwner":"Belize",
     "inCountryJurisdictionOfOwner":null,
-    "serialNumberBlock":"A345-B567",
+    "serialNumberBlock":"1000-1221",
     "unitType":"Reduction - technical",
     "marketplace":null
   }]
@@ -1411,8 +1503,9 @@ curl --location -g --request PUT 'localhost:31310/v1/units' \
     "unitOwner": "Chia",
     "countryJurisdictionOfOwner": "Venezuela",
     "inCountryJurisdictionOfOwner": "Venezuela",
-    "serialNumberBlock": "QWERTY9800-ASDFGH9850",
-    "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+    "unitBlockStart": "A50",
+    "unitBlockEnd": "A100",
+    "unitCount": 51,
     "vintageYear": 1998,
     "unitType": "Removal - nature",
     "marketplace": "MP Test",
@@ -1543,8 +1636,9 @@ curl --location -g --request PUT 'localhost:31310/v1/units' \
     "projectLocationId": "Brand New Location",
     "unitOwner": "New Owner",
     "countryJurisdictionOfOwner": "Vanuatu",
-    "serialNumberBlock": "QWERTY9800-ASDFGH9850",
-    "serialNumberPattern": "[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+    "unitBlockStart": "B100",
+    "unitBlockEnd": "B150",
+    "unitCount": 51,
     "vintageYear": 2002,
     "unitType": "Removal - technical",
     "unitStatus": "Exported",
@@ -1731,17 +1825,16 @@ Response
           "projectLocationId":"789",
           "unitOwner":"Sample Owner",
           "countryJurisdictionOfOwner":"Belize",
-          "serialNumberBlock":"A345-B567",
-          "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+          "unitBlockStart":"1000",
+          "unitBlockEnd":"1221",
+          "unitCount":222,
           "vintageYear":2014,
           "unitRegistryLink":"sampleurl.com",
           "unitType":"Reduction - technical",
           "unitStatus":"Buffer",
           "correspondingAdjustmentDeclaration":"Unknown",
           "correspondingAdjustmentStatus":"Pending",
-          "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
-          "timeStaged":1647141471,
-          "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+          "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3"
         }
       ]
     }
@@ -1779,17 +1872,16 @@ Response
             "projectLocationId":"789",
             "unitOwner":"Sample Owner",
             "countryJurisdictionOfOwner":"Belize",
-            "serialNumberBlock":"A345-B567",
-            "serialNumberPattern":"[.*\\D]+([0-9]+)+[-][.*\\D]+([0-9]+)$",
+            "unitBlockStart":"1000",
+            "unitBlockEnd":"1221",
+            "unitCount":222,
             "vintageYear":2014,
             "unitRegistryLink":"sampleurl.com",
             "unitType":"Reduction - technical",
             "unitStatus":"Buffer",
             "correspondingAdjustmentDeclaration":"Unknown",
             "correspondingAdjustmentStatus":"Pending",
-            "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
-            "timeStaged":1647141471,
-            "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+            "warehouseUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3"
           }
         ]
       }
