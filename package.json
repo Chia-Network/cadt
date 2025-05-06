@@ -59,7 +59,7 @@
     "sequelize": "^6.37.5",
     "socket.io": "^4.8.1",
     "sqlite3": "^5.1.7",
-    "superagent": "^8.1.2",
+    "superagent": "^10.2.1",
     "toad-scheduler": "^3.0.1",
     "uuidv4": "^6.2.13",
     "winston": "^3.17.0",
