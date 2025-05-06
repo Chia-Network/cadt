@@ -184,7 +184,7 @@ class Unit extends Model {
         cooresponingAdjustmentDeclaration,
         correspondingAdjustmentStatus,
         timeStaged
-    ) AGAINST ':search' 
+    ) AGAINST ':search'
     `;
 
     if (orgUid) {
@@ -246,11 +246,11 @@ class Unit extends Model {
     }
 
     let sql = `
-    SELECT ${fields} 
+    SELECT ${fields}
       FROM units_fts
       WHERE units_fts MATCH :search
     UNION
-    SELECT ${fields} 
+    SELECT ${fields}
       FROM units_fts
       WHERE units_fts MATCH :search2
     `;

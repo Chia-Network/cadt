@@ -1466,7 +1466,7 @@ curl --location -g --request POST 'localhost:31310/v1/units' \
        "unitType": "Removal - technical",
        "unitStatus": "Held",
        "unitBlockStart": "abc123",
-       "unitBlockEnd": "bcd456",
+       "unitBlockEnd": "abc323",
        "unitCount": 200,
        "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
        "correspondingAdjustmentDeclaration": "Unknown",
