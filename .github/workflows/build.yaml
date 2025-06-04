@@ -39,7 +39,7 @@ jobs:
             artifact-name: cadt-macos-arm64
             build-command: npm run create-mac-arm64-dist
             sqlite-path: ./node_modules/sqlite3/build/Release/
-          - runs-on: windows-2019
+          - runs-on: windows-latest
             artifact-name: cadt-windows-x64
             build-command: npm run create-win-x64-dist
             sqlite-path: .\node_modules\sqlite3\build\Release\
@@ -58,7 +58,7 @@ jobs:
 
       - name: Ignore Husky where not compatible
         run: npm pkg delete scripts.prepare
-        if: matrix.runs-on != 'windows-2019'
+        if: matrix.runs-on != 'windows-latest'
 
       # RC release should not be set as latest
       - name: Decide if release should be set as latest
@@ -122,7 +122,7 @@ jobs:
 
       # Windows Code Signing
       - name: Sign windows artifacts
-        if: matrix.runs-on == 'windows-2019' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
+        if: matrix.runs-on == 'windows-latest' && steps.check_secrets.outputs.HAS_SIGNING_SECRET
         uses: chia-network/actions/digicert/windows-sign@main
         with:
           sm_certkey_alias: ${{ secrets.SM_CERTKEY_ALIAS }}
