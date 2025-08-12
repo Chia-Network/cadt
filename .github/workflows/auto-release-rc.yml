@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout current branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Need REPO_COMMIT token so when the tag is created, the tag automation runs
           token: ${{ secrets.REPO_COMMIT }}
