@@ -264,7 +264,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ matrix.name }}
           path: ${{ matrix.name }}
@@ -305,43 +305,43 @@ jobs:
       - debs
     steps:
       - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: cadt-windows-x64
           path: cadt-windows-x64
 
       - name: Download MacOS x64 artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: cadt-macos-x64-mac-installer
           path: cadt-macos-x64-mac-installer
 
       - name: Download MacOS arm64 artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: cadt-macos-arm64-mac-installer
           path: cadt-macos-arm64-mac-installer
 
       - name: Download x64 Linux artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: cadt-linux-x64
           path: cadt-linux-x64
 
       - name: Download arm64 Linux artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: cadt-linux-arm64
           path: cadt-linux-arm64
 
       - name: Download Linux x64 deb
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: cadt-linux-x64-deb
           path: cadt-linux-x64-deb
 
       - name: Download Linux arm64 deb
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: cadt-linux-arm64-deb
           path: cadt-linux-arm64-deb
