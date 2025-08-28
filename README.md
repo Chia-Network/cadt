@@ -408,3 +408,8 @@ More info: https://www.sqlite.org/fts5.html
    1. Once subscribed, emit either emit ...['subscribe', 'units'] or ['subscribe', 'projects']. You can emit both on the same connection
 2. You will receive frames that look like ...[change:units, {orgUid: '123'}], letting you know that there has been an update to a record
    Coll
+
+## Attribution
+
+* [Document Object Model](https://www.w3.org/TR/DOM-Requirements/) by [W3C](https://www.w3.org/) licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/)
+* [caniuselite](https://github.com/browserslist/caniuse-lite) by [Browserlist](https://browsersl.ist/) licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/)
