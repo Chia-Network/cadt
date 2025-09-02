@@ -90,7 +90,7 @@
     "mocha": "^11.1.0",
     "prettier": "^3.3.3",
     "semver": "^7.7.1",
-    "sinon": "^19.0.2",
+    "sinon": "^21.0.0",
     "socket.io-client": "^4.8.1",
     "standard-version": "^9.5.0",
     "supertest": "^7.1.4"
