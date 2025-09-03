@@ -88,7 +88,7 @@
     "globals": "^16.0.0",
     "husky": "^9.1.7",
     "mocha": "^11.1.0",
-    "prettier": "^3.3.3",
+    "prettier": "^3.6.2",
     "semver": "^7.7.1",
     "sinon": "^19.0.2",
     "socket.io-client": "^4.8.1",
