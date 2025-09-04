@@ -1,0 +1,107 @@
+# Default values for generic.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+# This is considered the primary container in the deployment
+# Ingress/Service will point here
+image:
+  repository: ghcr.io/chia-network/cadt
+  tag: latest
+
+deployment:
+  containerPort: 31310
+  containerPortName: http
+  strategy:
+    type: Recreate
+  lifecycle: {}
+
+service:
+  enabled: true
+  port: 80
+
+ingress:
+  enabled: true
+  className: "cadt-testing-governance"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tlsEnabled: true
+
+networkPolicy:
+  enabled: false
+  policyTypes: []
+#    - Egress
+#    - Ingress
+  egressRules: []
+#    - to:
+#        - namespaceSelector:
+#            matchLabels:
+#              kubernetes.io/metadata.name: chia-blockchain
+#      ports:
+#        - protocol: TCP
+#          port: 8555
+  ingressRules: []
+#    - from:
+#        - namespaceSelector:
+#            matchLabels:
+#              kubernetes.io/metadata.name: chia-blockchain
+#      ports:
+#        - protocol: TCP
+#          port: 8555
+
+
+# Creates a secret with the following values, and mounts as env into the main deployment container
+secretEnvironment: {}
+#  MY_KEY: "My Value"
+
+# These are secrets that already exist in the cluster, that still need to be added to the container environment
+externalSecretEnvironment: []
+#  - name: "secret-name"
+
+# Creates a secret with the following values, and mounts as a file into the main deployment container
+secretFile:
+  mountPath: "/etc/secrets"
+  values: {}
+  stringValues: {}
+  # filename: "file content"
+  # Certain cases only need a single file mounted, and its beneficial to not shadow the directory it's mounted on top of
+  # subPath: "file.ext"
+
+# This is the newer alternative to secretFile that mounts each file in the secret as a single file
+# rather than overtaking the whole mountPath directory and deleting any files that may have existed there prior
+# This also allows the flexibility of mounting many files to different mountpaths, since the mountpath is controlled
+# per file
+secretFiles: []
+#  - mountPath: /etc/config
+#    filename: .env
+#    content: |
+#      file=content
+#      goes=here
+
+
+# Creates a configmap with the following values, and mounts as env into the main deployment container
+configmapEnvironment:
+  LOG_LEVEL: "debug"
+  BIND_ADDRESS: "0.0.0.0"
+  WALLET_URL: "https://tdb:9256"
+  DATALAYER_URL: "https://tbd:8562"
+  CHIA_NETWORK: "testnet"
+  IS_GOVERNANCE_BODY: "true"
+  AUTO_MIRROR_EXTERNAL_STORES: "false"
+  GOVERNANCE_BODY_ID: ""
+
+volumes:
+  - name: cadt-data
+    mountPath: /root/.chia/mainnet/cadt/
+    readOnly: false
+    size: 8Gi
+    storageClassName: ceph-nvme
+
+

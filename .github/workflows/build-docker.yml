@@ -1,0 +1,22 @@
+name: Build Docker Images
+
+on:
+  push:
+    tags:
+      - '**'
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: write
+  packages: write
+
+jobs:
+  package:
+    uses: Chia-Network/actions/.github/workflows/docker-build.yaml@main
+    with:
+      push: ${{ github.event_name != 'pull_request' }}
+      docker-platforms: linux/amd64

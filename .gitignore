@@ -15,6 +15,7 @@ testMirror.sqlite3
 # production
 /build
 /dist
+/certs
 
 # misc
 .DS_Store
@@ -32,3 +33,4 @@ yarn-error.log*
 
 build-scripts/macos/application
 build-scripts/macos/target
+k8s/values.yaml
