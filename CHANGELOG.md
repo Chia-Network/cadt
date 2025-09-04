@@ -1,3 +1,56 @@
+## [1.7.23](https://github.com/Chia-Network/cadt/compare/1.7.23-rc20...1.7.23) (2025-09-04)
+
+
+
+## [1.7.22](https://github.com/Chia-Network/cadt/compare/1.7.22-rc3...1.7.22) (2025-03-11)
+
+
+
+## [1.7.21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc21...1.7.21) (2025-02-21)
+
+
+
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
+
+
+### Bug Fixes
+
+* adjust retries and delay again to account for governance creation ([405bf80](https://github.com/Chia-Network/cadt/commit/405bf8010700c2c9d4c8a560ecf4dcce919b8bbd))
+* fine tuning retry count ([1b7f775](https://github.com/Chia-Network/cadt/commit/1b7f7758b4c144ce0447cbbe6604193450134751))
+* install prettier directly, adjust retries to give governance creation more time ([bfb694b](https://github.com/Chia-Network/cadt/commit/bfb694be09d4628335663075af4eeb487b4acff3))
+* support http and https on ip update script ([572c397](https://github.com/Chia-Network/cadt/commit/572c3976c17713449298c7555aa5ef73d61b33cf))
+
+
+
+## [1.7.23-rc5](https://github.com/Chia-Network/cadt/compare/1.7.23-rc4...1.7.23-rc5) (2025-04-03)
+
+
+### Features
+
+* add script to update datalayer URL and reset mirrors ([084f3a0](https://github.com/Chia-Network/cadt/commit/084f3a0d9c5c0ed4aaf404d743de2e54dd321bfb))
+
+
+
+## [1.7.22-rc4](https://github.com/Chia-Network/cadt/compare/1.7.22...1.7.22-rc4) (2025-03-11)
+
+
+
 ## [1.7.22](https://github.com/Chia-Network/cadt/compare/1.7.22-rc3...1.7.22) (2025-03-11)
 
 
