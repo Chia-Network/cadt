@@ -4,9 +4,6 @@ on:
   push:
     tags:
       - '**'
-    branches:
-      - 'docker-again'
-  pull_request:
 
 concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
