@@ -2,7 +2,6 @@ import { uuid as uuidv4 } from 'uuidv4';
 import { Simulator, Organization } from '../models';
 import { Sequelize } from 'sequelize';
 import { createHash } from 'crypto';
-import logUpdate from 'log-update';
 
 const Op = Sequelize.Op;
 
@@ -61,7 +60,6 @@ export const getStoreData = async (storeId) => {
   return new Error('Error getting datalayer store data');
 };
 
-// eslint-disable-next-line
 export const getRoot = async (storeId) => {
   const simulatorTable = await Simulator.findAll({ raw: true });
 
@@ -71,6 +69,7 @@ export const getRoot = async (storeId) => {
   });
 
   if (!myOrganization) {
+    const logUpdate = (await import('log-update')).default;
     logUpdate(
       `Cant get root, Home org does not yet exist ${
         frames[Math.floor(Math.random() * 3)]
@@ -86,7 +85,9 @@ export const getRoot = async (storeId) => {
   let hash = 0;
 
   if (myOrganization.registryId === storeId) {
-    createHash('md5').update(JSON.stringify(simulatorTable)).digest('hex');
+    hash = createHash('md5')
+      .update(JSON.stringify(simulatorTable))
+      .digest('hex');
   }
 
   return Promise.resolve({
@@ -104,6 +105,7 @@ export const getRoots = async (storeIds) => {
   });
 
   if (!myOrganization) {
+    const logUpdate = (await import('log-update')).default;
     logUpdate(
       `Cant get root, Home org does not yet exist ${
         frames[Math.floor(Math.random() * 3)]
