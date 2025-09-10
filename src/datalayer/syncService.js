@@ -28,7 +28,7 @@ const unsubscribeFromDataLayerStoreWithRetry = async (
 ) => {
   if (!USE_SIMULATOR) {
     let success = false;
-    let retryCount = 0;
+    const retryCount = 0;
 
     while (!success) {
       success = await dataLayer.unsubscribeFromDataLayerStore(storeId);
