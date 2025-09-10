@@ -47,7 +47,7 @@
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "express-joi-validation": "^6.1.0",
-    "joi": "^17.13.3",
+    "joi": "^18.0.1",
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
     "log-update": "^6.1.0",
