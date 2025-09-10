@@ -28,7 +28,7 @@ const unsubscribeFromDataLayerStoreWithRetry = async (
 ) => {
   if (!USE_SIMULATOR) {
     let success = false;
-    const retryCount = 0;
+    let retryCount = 0;
 
     while (!success) {
       success = await dataLayer.unsubscribeFromDataLayerStore(storeId);
@@ -38,6 +38,7 @@ const unsubscribeFromDataLayerStoreWithRetry = async (
             `failed to unsubscribe from store ${storeId} after ${maxRetries} attempts`,
           );
         }
+        retryCount += 1; // Fix: Actually increment the retry counter
         await new Promise((resolve) =>
           setTimeout(() => resolve(), retryWaitMs),
         );
