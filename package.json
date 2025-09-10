@@ -44,7 +44,7 @@
     "cli-spinner": "^0.2.10",
     "cors": "^2.8.5",
     "csvtojson": "^2.0.10",
-    "dotenv": "^16.4.7",
+    "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "express-joi-validation": "^6.1.0",
     "joi": "^17.13.3",
