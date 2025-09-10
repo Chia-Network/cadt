@@ -82,10 +82,12 @@ export const getRoot = async (storeId) => {
     });
   }
 
-  const hash = 0;
+  let hash = 0;
 
   if (myOrganization.registryId === storeId) {
-    createHash('md5').update(JSON.stringify(simulatorTable)).digest('hex');
+    hash = createHash('md5')
+      .update(JSON.stringify(simulatorTable))
+      .digest('hex');
   }
 
   return Promise.resolve({
