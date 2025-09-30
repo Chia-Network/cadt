@@ -47,3 +47,87 @@ jobs:
 
       - name: npm tests
         run: npm run test
+
+  functional-tests:
+    name: Functional Tests
+    runs-on: ubuntu-latest
+    container:
+      image: node:20.16
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v5
+
+      - name: Install Chia and chia-tools
+        shell: bash
+        run: |
+          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+          apt-get update
+
+          apt-get install -y chia-blockchain-cli chia-tools
+
+      - name: Install pm2
+        run: npm install pm2@latest -g
+
+      - name: Install yq
+        run: apt install -y yq
+
+      - name: npm install
+        run: npm install
+
+      - name: Configure Chia
+        shell: bash
+        run: |
+          chia init
+          chia keys generate -l "functional_tests"
+          chia-tools network switch testneta
+          chia-tools config add-trusted-peer -y testneta-node-fmt.chia.net 58444
+          chia configure -log-level INFO
+
+      - name: Configure CADT
+        shell: bash
+        run: |
+          # Run cadt momentarily to create config file
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 10
+          pm2 logs cadt --nostream
+          pm2 stop cadt
+
+          # Remove cadt database to reset system
+          echo "Removing cadt database to reset system..."
+          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
+
+          # Configure CADT to most verbose logs
+          echo "Configuring CADT config.yaml..."
+          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/v1/config.yaml
+          yq -yi '.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/v1/config.yaml
+          yq -yi '.APP.DATALAYER_URL = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/v1/config.yaml
+          yq -yi '.APP.WALLET_URL = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/v1/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/v1/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = "true"' ~/.chia/mainnet/cadt/v1/config.yaml
+
+          # Show the config file
+          echo "Showing the config file after configuration ... (this is the final config file)"
+          cat ~/.chia/mainnet/cadt/v1/config.yaml
+
+          # Clean up any existing PM2 processes with the same name
+          pm2 delete cadt 2>/dev/null || true
+
+      - name: Run tests
+        run: bash tests/functional-tests.sh
+        env:
+          TXCH_MNEMONIC: ${{ secrets.TXCH_MNEMONIC }}
+          LOG_LEVEL: TRACE
+
+      - name: Upload logs as artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: functional-test-logs
+          path: |
+            cadt.log
+            ~/.chia/mainnet/log/debug.log
+          retention-days: 30
