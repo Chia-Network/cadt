@@ -1776,9 +1776,19 @@ get_txch_from_faucet() {
             continue
         fi
 
+        # Debug: Show the full RPC response
+        if [[ "$DEBUG" == "true" ]]; then
+            echo "[DEBUG] RPC Balance response:"
+            echo "$balance_response" | jq '.'
+            echo "[DEBUG] Available balance fields:"
+            echo "confirmed_wallet_balance: $(echo "$balance_response" | jq -r '.wallet_balance.confirmed_wallet_balance')"
+            echo "spendable_balance: $(echo "$balance_response" | jq -r '.wallet_balance.spendable_balance')"
+            echo "unconfirmed_wallet_balance: $(echo "$balance_response" | jq -r '.wallet_balance.unconfirmed_wallet_balance')"
+        fi
+
         # Extract the confirmed wallet balance
         local new_balance
-        new_balance=$(echo "$balance_response" | jq -r '.confirmed_wallet_balance')
+        new_balance=$(echo "$balance_response" | jq -r '.wallet_balance.confirmed_wallet_balance')
         if [[ $? -ne 0 ]]; then
             echo "Failed to parse wallet balance, will retry..."
             sleep "$CHECK_INTERVAL"
