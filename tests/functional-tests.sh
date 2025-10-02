@@ -1385,6 +1385,56 @@ test_read_projects_success () {
     track_test_result "Projects Read Success" "PASS"
 }
 
+# Test 2: Verify API key authentication is required
+test_api_key_authentication () {
+    echo -e "\n${BLUE}=========================================="
+    echo -e "Test 2: API Key Authentication"
+    echo -e "==========================================${NC}"
+
+    if [[ "$DEBUG" == "true" ]]; then
+        echo "[DEBUG] Testing API key authentication..."
+    fi
+
+    # Make a request to create an organization without API key
+    local response
+    response=$(curl -s --location -g --request POST 'http://localhost:31310/v1/organizations/create' \
+        --header 'Content-Type: application/json' \
+        --data-raw '{
+            "name": "Test Org Without API Key",
+            "icon": "https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg"
+        }')
+
+    if [[ $? -ne 0 ]]; then
+        track_test_result "API Key Authentication" "FAIL"
+        fail_test "Failed to make API call for API key authentication test"
+        return
+    fi
+
+    if [[ "$TRACE" == "true" ]]; then
+        echo "[DEBUG] API key authentication test response:"
+        echo "$response"
+    fi
+
+    # Check if we got the expected error message
+    if echo "$response" | jq -e '.message == "CADT API key not found"' > /dev/null; then
+        echo -e "\n${GREEN}=========================================="
+        echo -e "✓ API key authentication working correctly - TEST PASSED"
+        echo -e "✓ Request without API key properly rejected"
+        echo -e "==========================================${NC}"
+        track_test_result "API Key Authentication" "PASS"
+    else
+        echo -e "\n${RED}=========================================="
+        echo -e "✗ API key authentication test failed"
+        echo -e "Expected: {\"message\":\"CADT API key not found\"}"
+        echo -e "Actual response:"
+        echo "$response" | jq '.'
+        echo -e "==========================================${NC}"
+        track_test_result "API Key Authentication" "FAIL"
+        fail_test "API key authentication test failed - expected rejection but got different response"
+        return
+    fi
+}
+
 # Test 8: Delete home organization
 test_delete_home_org () {
     # First verify wallet is synced
@@ -1869,25 +1919,28 @@ pm2 start npm --no-autorestart --name "cadt" -- start
 # Test 1: Verify that we are subscribed to all required DataLayer stores
 test_subscriptions
 
-# Test 2: Create a home organization
+# Test 2: Verify API key authentication is required
+test_api_key_authentication
+
+# Test 3: Create a home organization
 test_create_home_org
 
-# Test 3: Create and verify a project
+# Test 4: Create and verify a project
 test_create_project
 
-# Test 4: Add a Project
+# Test 5: Add a Project
 test_add_project
 
-# Test 5: Add a Unit
+# Test 6: Add a Unit
 test_add_unit
 
-# Test 6: Read Organizations and Validate Specific Org
+# Test 7: Read Organizations and Validate Specific Org
 test_read_orgs
 
-# Test 7: Read Projects - Success Tests
+# Test 8: Read Projects - Success Tests
 test_read_projects_success
 
-# Test 8: Delete home organization (do this last)
+# Test 9: Delete home organization (do this last)
 test_delete_home_org
 
 # If we got here with no failures, run cleanup and exit successfully
