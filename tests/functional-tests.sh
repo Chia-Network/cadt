@@ -1741,10 +1741,10 @@ get_txch_from_faucet() {
     curl -X POST \
         --location 'https://testneta-faucet.chia.net/api/request' \
         --header "Content-Type: application/json" \
-        --data '{
-            "address": "${wallet_address}",
-            "amount": ${request_amount}
-        }'
+        --data "{
+            \"address\": \"$wallet_address\",
+            \"amount\": $request_amount
+        }"
 
     # Wait for the funds to show up in the wallet
     local TIMEOUT_SECONDS=1800  # 30 minutes
