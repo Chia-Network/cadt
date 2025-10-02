@@ -1512,11 +1512,11 @@ split_coins() {
         return
     fi
 
-    echo "Splitting largest coin into 30 coins of 0.000035 TXCH each..."
+    echo "Splitting largest coin into 15 coins of 0.0003 TXCH each..."
 
     # Run the chia-tools split command
     local split_result
-    split_result=$(chia-tools coins split-largest -m 0 -n 30 -a 0.0003)
+    split_result=$(chia-tools coins split-largest -m 0 -n 15 -a 0.0003)
     if [[ $? -ne 0 ]]; then
         track_test_result "Coin Split" "FAIL"
         fail_test "Failed to split coins: $split_result"
