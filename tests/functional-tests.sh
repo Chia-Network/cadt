@@ -1710,6 +1710,11 @@ get_txch_from_faucet() {
         return 1
     fi
 
+    # Handle null balance (set to 0)
+    if [[ "$current_balance" == "null" || -z "$current_balance" ]]; then
+        current_balance=0
+    fi
+
     echo "Current wallet balance: $current_balance mojos"
 
     # Get the current wallet address
@@ -1724,7 +1729,7 @@ get_txch_from_faucet() {
     echo "Current wallet address: $wallet_address"
 
     echo "Getting TXCH from faucet"
-    curl -X POST -H "Content-Type: application/json" -d "{\"address\":\"$wallet_address\",\"amount\":\"$request_amount\"}" https://testneta-faucet.chia.net/api/request
+    curl -X POST -H "Content-Type: application/json" -d "{\"address\":\"$wallet_address\",\"amount\":$request_amount}" https://testneta-faucet.chia.net/api/request
 
     # Wait for the funds to show up in the wallet
     local TIMEOUT_SECONDS=600  # 10 minutes
@@ -1733,7 +1738,7 @@ get_txch_from_faucet() {
     local request_amount_mojos
 
     # Convert request amount from TXCH to mojos (1 TXCH = 1 trillion mojos)
-    request_amount_mojos=$(echo "$request_amount * 1000000000000" | bc)
+    request_amount_mojos=$(awk "BEGIN {printf \"%.0f\", $request_amount * 1000000000000}")
     local expected_balance=$((current_balance + request_amount_mojos))
 
     echo "Waiting for funds to appear in wallet (up to $TIMEOUT_SECONDS seconds)..."
