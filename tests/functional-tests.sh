@@ -1684,6 +1684,110 @@ transfer_funds_to_test_wallet() {
     track_test_result "Funds Transfer" "PASS"
 }
 
+get_txch_from_faucet() {
+
+    request_amount=0.005
+    # Checking wallet balance before faucet request
+    echo "Getting current wallet balance..."
+
+    local balance_response
+    balance_response=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}')
+    if [[ $? -ne 0 ]]; then
+        echo "Failed to get wallet balance"
+        return 1
+    fi
+
+    if [[ "$TRACE" == "true" ]]; then
+        echo "[DEBUG] Balance response:"
+        echo "$balance_response"
+    fi
+
+    # Extract the confirmed wallet balance in mojos
+    local current_balance
+    current_balance=$(echo "$balance_response" | jq -r '.confirmed_wallet_balance')
+    if [[ $? -ne 0 ]]; then
+        echo "Failed to parse wallet balance"
+        return 1
+    fi
+
+    echo "Current wallet balance: $current_balance mojos"
+
+    # Get the current wallet address
+    echo "Getting current wallet address..."
+    local wallet_address
+    wallet_address=$(chia wallet get_address)
+    if [[ $? -ne 0 ]]; then
+        echo "Failed to get wallet address"
+        return 1
+    fi
+
+    echo "Current wallet address: $wallet_address"
+
+    echo "Getting TXCH from faucet"
+    curl -X POST -H "Content-Type: application/json" -d "{\"address\":\"$wallet_address\",\"amount\":\"$request_amount\"}" https://testneta-faucet.chia.net/api/request
+
+    # Wait for the funds to show up in the wallet
+    local TIMEOUT_SECONDS=600  # 10 minutes
+    local CHECK_INTERVAL=15    # 15 seconds
+    local MAX_ATTEMPTS=$((TIMEOUT_SECONDS / CHECK_INTERVAL))
+    local request_amount_mojos
+
+    # Convert request amount from TXCH to mojos (1 TXCH = 1 trillion mojos)
+    request_amount_mojos=$(echo "$request_amount * 1000000000000" | bc)
+    local expected_balance=$((current_balance + request_amount_mojos))
+
+    echo "Waiting for funds to appear in wallet (up to $TIMEOUT_SECONDS seconds)..."
+    echo "Expected balance increase: $request_amount_mojos mojos"
+    echo "Expected final balance: $expected_balance mojos"
+
+    local i=0
+    while true; do
+        if [[ "$DEBUG" == "true" ]]; then
+            echo "[DEBUG] Balance check attempt $((i+1)) of $MAX_ATTEMPTS"
+        fi
+
+        # Get current wallet balance
+        balance_response=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}')
+        if [[ $? -ne 0 ]]; then
+            echo "Failed to get wallet balance, will retry..."
+            sleep "$CHECK_INTERVAL"
+            ((i++))
+            continue
+        fi
+
+        # Extract the confirmed wallet balance
+        local new_balance
+        new_balance=$(echo "$balance_response" | jq -r '.confirmed_wallet_balance')
+        if [[ $? -ne 0 ]]; then
+            echo "Failed to parse wallet balance, will retry..."
+            sleep "$CHECK_INTERVAL"
+            ((i++))
+            continue
+        fi
+
+        echo "Current balance: $new_balance mojos (started with: $current_balance mojos)"
+
+        # Check if balance has increased by at least the request amount
+        if (( new_balance >= expected_balance )); then
+            local actual_increase=$((new_balance - current_balance))
+            echo -e "${GREEN}●${NC} Funds received! Balance increased by $actual_increase mojos"
+            echo "Final wallet balance: $new_balance mojos"
+            return 0
+        fi
+
+        if (( i >= MAX_ATTEMPTS )); then
+            echo -e "${RED}●${NC} Timeout waiting for funds from faucet after $TIMEOUT_SECONDS seconds"
+            echo "Final balance: $new_balance mojos (expected at least: $expected_balance mojos)"
+            return 1
+        fi
+
+        echo -e "${RED}●${NC} Funds not yet received - checking again in $CHECK_INTERVAL seconds"
+        sleep "$CHECK_INTERVAL"
+        ((i++))
+    done
+}
+
+
 #~~~              ~~~ #
 #~~~ Main Program ~~~ #
 #~~~              ~~~ #
@@ -1697,7 +1801,8 @@ is_wallet_synced
 chia wallet show
 
 # Transfer funds to test wallet
-transfer_funds_to_test_wallet
+#transfer_funds_to_test_wallet
+get_txch_from_faucet
 
 # Split coins
 split_coins
