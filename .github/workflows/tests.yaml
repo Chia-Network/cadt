@@ -111,8 +111,8 @@ jobs:
           yq -yi '.APP.WALLET_URL = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/v1/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/v1/config.yaml
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/v1/config.yaml
-          yq -yi '.APP.CHIA_NETWORK = testnet' ~/.chia/mainnet/cadt/v1/config.yaml
-          yq -yi '.APP.CADT_API_KEY = abc123' ~/.chia/mainnet/cadt/v1/config.yaml
+          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/v1/config.yaml
+          yq -yi '.APP.CADT_API_KEY = "abc123"' ~/.chia/mainnet/cadt/v1/config.yaml
 
           # Show the config file
           echo "Showing the config file after configuration ... (this is the final config file)"
