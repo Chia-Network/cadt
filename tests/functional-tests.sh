@@ -5,6 +5,9 @@ set -u
 
 ### Variables
 
+# CADT API key
+CADT_API_KEY="abc123"
+
 # Color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -273,7 +276,12 @@ check_health_endpoint () {
             if [[ "$DEBUG" == "true" ]]; then
                 echo "[DEBUG] Checking cadt health endpoint..."
             fi
-            local health_response=$(curl -s http://127.0.0.1:31310/health 2>/dev/null)
+            local health_response
+            if [[ -n "$CADT_API_KEY" ]]; then
+                health_response=$(curl -s --header "x-api-key: $CADT_API_KEY" http://127.0.0.1:31310/health 2>/dev/null)
+            else
+                health_response=$(curl -s http://127.0.0.1:31310/health 2>/dev/null)
+            fi
 
             if [[ $? -eq 0 ]] && echo "$health_response" | jq -e '.message == "OK"' > /dev/null 2>&1; then
                 if [[ "$DEBUG" == "true" ]]; then
@@ -1478,7 +1486,12 @@ make_api_call() {
     local response
 
     while true; do
-        response=$(eval "$1")
+        # Add API key header to curl commands if CADT_API_KEY is set
+        local cmd="$1"
+        if [[ -n "$CADT_API_KEY" ]]; then
+            cmd=$(echo "$cmd" | sed "s/--header 'Content-Type: application\/json'/--header 'Content-Type: application\/json' --header 'x-api-key: $CADT_API_KEY'/")
+        fi
+        response=$(eval "$cmd")
 
         # First check if we got a response with the wallet error message
         if echo "$response" | grep -q "Your wallet is not available"; then
