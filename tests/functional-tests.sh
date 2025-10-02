@@ -177,6 +177,11 @@ check_wallet_balance() {
             continue
         fi
 
+        # Handle null balance (set to 0)
+        if [[ "$confirmed_balance" == "null" || -z "$confirmed_balance" ]]; then
+            confirmed_balance=0
+        fi
+
         echo "Wallet $wallet_id confirmed balance: $confirmed_balance mojos"
 
         # Check if balance is sufficient
@@ -1768,6 +1773,11 @@ get_txch_from_faucet() {
             sleep "$CHECK_INTERVAL"
             ((i++))
             continue
+        fi
+
+        # Handle null balance (set to 0)
+        if [[ "$new_balance" == "null" || -z "$new_balance" ]]; then
+            new_balance=0
         fi
 
         echo "Current balance: $new_balance mojos (started with: $current_balance mojos)"
