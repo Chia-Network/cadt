@@ -1692,8 +1692,12 @@ transfer_funds_to_test_wallet() {
 get_txch_from_faucet() {
 
     request_amount=0.005
+
+    echo "Current wallet state:"
+    chia wallet show
+
     # Checking wallet balance before faucet request
-    echo "Getting current wallet balance..."
+    echo "Getting current wallet balance from RPC..."
 
     local balance_response
     balance_response=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}')
@@ -1734,8 +1738,13 @@ get_txch_from_faucet() {
     echo "Current wallet address: $wallet_address"
 
     echo "Getting TXCH from faucet"
-    echo "Executing: curl -X POST -H \"Content-Type: application/json\" -d \"{\\\"address\\\":\\\"$wallet_address\\\",\\\"amount\\\":$request_amount}\" https://testneta-faucet.chia.net/api/request"
-    curl -X POST -H "Content-Type: application/json" -d "{\"address\":\"$wallet_address\",\"amount\":$request_amount}" https://testneta-faucet.chia.net/api/request
+    curl -X POST \
+        --location 'https://testneta-faucet.chia.net/api/request' \
+        --header "Content-Type: application/json" \
+        --data '{
+            "address": "${wallet_address}",
+            "amount": ${request_amount}
+        }'
 
     # Wait for the funds to show up in the wallet
     local TIMEOUT_SECONDS=1800  # 30 minutes
@@ -1755,6 +1764,7 @@ get_txch_from_faucet() {
     while true; do
         if [[ "$DEBUG" == "true" ]]; then
             echo "[DEBUG] Balance check attempt $((i+1)) of $MAX_ATTEMPTS"
+            chia wallet show
         fi
 
         # Get current wallet balance
