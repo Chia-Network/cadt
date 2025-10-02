@@ -1734,10 +1734,11 @@ get_txch_from_faucet() {
     echo "Current wallet address: $wallet_address"
 
     echo "Getting TXCH from faucet"
+    echo "Executing: curl -X POST -H \"Content-Type: application/json\" -d \"{\\\"address\\\":\\\"$wallet_address\\\",\\\"amount\\\":$request_amount}\" https://testneta-faucet.chia.net/api/request"
     curl -X POST -H "Content-Type: application/json" -d "{\"address\":\"$wallet_address\",\"amount\":$request_amount}" https://testneta-faucet.chia.net/api/request
 
     # Wait for the funds to show up in the wallet
-    local TIMEOUT_SECONDS=600  # 10 minutes
+    local TIMEOUT_SECONDS=1800  # 30 minutes
     local CHECK_INTERVAL=15    # 15 seconds
     local MAX_ATTEMPTS=$((TIMEOUT_SECONDS / CHECK_INTERVAL))
     local request_amount_mojos
@@ -1793,6 +1794,7 @@ get_txch_from_faucet() {
         if (( i >= MAX_ATTEMPTS )); then
             echo -e "${RED}●${NC} Timeout waiting for funds from faucet after $TIMEOUT_SECONDS seconds"
             echo "Final balance: $new_balance mojos (expected at least: $expected_balance mojos)"
+            fail_test "Timeout waiting for funds from faucet after $TIMEOUT_SECONDS seconds"
             return 1
         fi
 
