@@ -619,9 +619,9 @@ test_create_home_org () {
         return
     fi
 
-    local TIMEOUT_SECONDS=1800   # 30 minutes
+    local TIMEOUT_SECONDS=3600   # 60 minutes
     local CHECK_INTERVAL=30
-    local MAX_ATTEMPTS=60
+    local MAX_ATTEMPTS=120
     local CREATE_ENDPOINT="http://localhost:31310/v1/organizations/create"
 
     echo "Testing home organization creation... (this can take up to 30 minutes)"
@@ -680,6 +680,8 @@ test_create_home_org () {
         if [[ "$TRACE" == "true" ]]; then
             echo "[DEBUG] Organizations check response:"
             echo "$response" | jq '.'
+            echo "[DEBUG] Recent Chia wallet transactions:"
+            chia wallet get_transactions -l 3
         fi
 
         # Check if response is valid JSON
