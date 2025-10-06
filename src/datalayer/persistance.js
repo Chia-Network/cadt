@@ -170,7 +170,9 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     `[MIRROR_DEBUG] Checking for existing mirror with launcher_id: ${storeId} and url: ${url}`,
   );
   const mirror = mirrors.find(
-    (mirror) => mirror.launcher_id === storeId && mirror.urls.includes(url),
+    (mirror) =>
+      mirror.launcher_id.replace('0x', '') === storeId &&
+      mirror.urls.includes(url),
   );
 
   if (mirror) {
