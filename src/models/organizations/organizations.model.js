@@ -67,6 +67,10 @@ class Organization extends Model {
   }
 
   static async getOrgsMap() {
+    logger.debug(
+      '[MIRROR_DEBUG] Starting getOrgsMap() - querying organizations from database',
+    );
+
     const organizations = await Organization.findAll({
       attributes: [
         'orgUid',
@@ -84,6 +88,10 @@ class Organization extends Model {
         'dataModelVersionStoreHash',
       ],
     });
+
+    logger.debug(
+      `[MIRROR_DEBUG] Found ${organizations.length} organizations in database`,
+    );
 
     for (let i = 0; i < organizations.length; i++) {
       if (organizations[i].dataValues.isHome) {
@@ -103,11 +111,18 @@ class Organization extends Model {
       }
     }
 
-    return organizations.reduce((map, current) => {
+    const orgsMap = organizations.reduce((map, current) => {
       map[current.orgUid] = current.dataValues;
-
+      logger.debug(
+        `[MIRROR_DEBUG] Added to map - orgUid: ${current.orgUid}, name: ${current.dataValues.name}, subscribed: ${current.dataValues.subscribed}`,
+      );
       return map;
     }, {});
+
+    logger.debug(
+      `[MIRROR_DEBUG] Returning organizations map with ${Object.keys(orgsMap).length} entries`,
+    );
+    return orgsMap;
   }
 
   static async createHomeOrganization(name, icon, dataVersion = 'v1') {

@@ -61,8 +61,12 @@ const getValue = async (storeId, storeKey) => {
 };
 
 const getMirrors = async (storeId) => {
+  logger.debug(`[MIRROR_DEBUG] Starting getMirrors for storeId: ${storeId}`);
+
   const url = `${CONFIG.DATALAYER_URL}/get_mirrors`;
   const { cert, key, timeout } = getBaseOptions();
+
+  logger.debug(`[MIRROR_DEBUG] Making RPC call to: ${url}`);
 
   try {
     const response = await superagent
@@ -73,15 +77,25 @@ const getMirrors = async (storeId) => {
       .send({ id: storeId });
 
     const data = response.body;
+    logger.debug(
+      `[MIRROR_DEBUG] getMirrors RPC response: ${JSON.stringify(data)}`,
+    );
 
     if (data.success) {
+      logger.debug(
+        `[MIRROR_DEBUG] Successfully retrieved ${data.mirrors ? data.mirrors.length : 0} mirrors for storeId: ${storeId}`,
+      );
       return data.mirrors;
     }
 
     logger.error(`FAILED GETTING MIRRORS FOR ${storeId}`);
+    logger.debug(
+      `[MIRROR_DEBUG] getMirrors failed - response: ${JSON.stringify(data)}`,
+    );
     return [];
   } catch (error) {
     logger.error(error);
+    logger.debug(`[MIRROR_DEBUG] getMirrors error: ${error.message}`);
     return [];
   }
 };
@@ -113,8 +127,17 @@ const clearPendingRoots = async (storeId) => {
 };
 
 const addMirror = async (storeId, url, forceAddMirror = false) => {
+  logger.debug(
+    `[MIRROR_DEBUG] Starting addMirror for storeId: ${storeId}, url: ${url}, force: ${forceAddMirror}`,
+  );
+
   await wallet.waitForAllTransactionsToConfirm();
+  logger.debug('[MIRROR_DEBUG] Wallet transactions confirmed');
+
   const homeOrg = await Organization.getHomeOrg();
+  logger.debug(
+    `[MIRROR_DEBUG] Home org retrieved: ${homeOrg ? 'found' : 'not found'}`,
+  );
 
   logger.info(
     `Checking mirrors for storeID is ${storeId} with mirror URL ${url}`,
@@ -124,25 +147,41 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     logger.info(
       `No DATALAYER_FILE_SERVER_URL specified so skipping mirror for ${storeId}`,
     );
+    logger.debug('[MIRROR_DEBUG] Exiting addMirror - no URL provided');
     return false;
   }
 
   if (!homeOrg && !forceAddMirror) {
     logger.info(`No home org detected so skipping mirror for ${storeId}`);
+    logger.debug(
+      '[MIRROR_DEBUG] Exiting addMirror - no home org and force=false',
+    );
     return false;
   }
 
+  logger.debug(
+    `[MIRROR_DEBUG] Getting existing mirrors for storeId: ${storeId}`,
+  );
   const mirrors = await getMirrors(storeId);
+  logger.debug(`[MIRROR_DEBUG] Retrieved ${mirrors.length} existing mirrors`);
 
   // Dont add the mirror if it already exists.
+  logger.debug(
+    `[MIRROR_DEBUG] Checking for existing mirror with launcher_id: ${storeId} and url: ${url}`,
+  );
   const mirror = mirrors.find(
     (mirror) => mirror.launcher_id === storeId && mirror.urls.includes(url),
   );
 
   if (mirror) {
     logger.info(`Mirror already available for ${storeId} at ${url}`);
+    logger.debug('[MIRROR_DEBUG] Mirror already exists, returning true');
     return true;
   }
+
+  logger.debug(
+    '[MIRROR_DEBUG] No existing mirror found, proceeding to create new mirror',
+  );
 
   try {
     const options = {
@@ -152,7 +191,11 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     };
 
+    logger.debug(`[MIRROR_DEBUG] Mirror options: ${JSON.stringify(options)}`);
     const { cert, key, timeout } = getBaseOptions();
+    logger.debug(
+      `[MIRROR_DEBUG] Making RPC call to ${CONFIG.DATALAYER_URL}/add_mirror`,
+    );
 
     const response = await superagent
       .post(`${CONFIG.DATALAYER_URL}/add_mirror`)
@@ -162,16 +205,22 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       .timeout(timeout);
 
     const data = response.body;
+    logger.debug(`[MIRROR_DEBUG] RPC response: ${JSON.stringify(data)}`);
 
     if (data.success) {
       logger.info(`Adding mirror ${storeId} at ${url}`);
+      logger.debug('[MIRROR_DEBUG] Mirror added successfully');
       return true;
     }
 
     logger.error(`FAILED ADDING MIRROR FOR ${storeId}`);
+    logger.debug(
+      `[MIRROR_DEBUG] Mirror addition failed - response: ${JSON.stringify(data)}`,
+    );
     return false;
   } catch (error) {
     logger.error('ADD_MIRROR', error);
+    logger.debug(`[MIRROR_DEBUG] Mirror addition error: ${error.message}`);
     console.trace(error);
     return false;
   }
@@ -365,7 +414,7 @@ const getStoreData = async (storeId, rootHash) => {
 
         logger.silly(
           `raw keys and values from RPC for store ${storeId}
-          
+
           ${JSON.stringify(data.keys_values)}`,
         );
         return data;

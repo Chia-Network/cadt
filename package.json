@@ -8,9 +8,6 @@
   "engines": {
     "node": ">=20.16"
   },
-  "lint-staged": {
-    "*.+(js|ts|tsx)": "npm run lint:prettier-eslint"
-  },
   "scripts": {
     "start": "npx cross-env NODE_ENV=local node --import=extensionless/register --no-warnings ./src/server.js",
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/**/*.spec.js --reporter spec --exit --timeout 300000",
