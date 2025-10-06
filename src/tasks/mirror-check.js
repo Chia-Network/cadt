@@ -139,7 +139,7 @@ const runMirrorCheck = async () => {
       })}`,
     );
 
-    if (org?.subscribed) {
+    if (orgData.subscribed) {
       logger.debug(
         `[MIRROR_DEBUG] Organization ${org} is subscribed, adding mirrors`,
       );
