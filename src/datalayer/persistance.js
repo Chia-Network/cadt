@@ -61,12 +61,12 @@ const getValue = async (storeId, storeKey) => {
 };
 
 const getMirrors = async (storeId) => {
-  logger.debug(`[MIRROR_DEBUG] Starting getMirrors for storeId: ${storeId}`);
+  logger.silly(`[MIRROR_DEBUG] Starting getMirrors for storeId: ${storeId}`);
 
   const url = `${CONFIG.DATALAYER_URL}/get_mirrors`;
   const { cert, key, timeout } = getBaseOptions();
 
-  logger.debug(`[MIRROR_DEBUG] Making RPC call to: ${url}`);
+  logger.silly(`[MIRROR_DEBUG] Making RPC call to: ${url}`);
 
   try {
     const response = await superagent
@@ -95,7 +95,7 @@ const getMirrors = async (storeId) => {
     return [];
   } catch (error) {
     logger.error(error);
-    logger.debug(`[MIRROR_DEBUG] getMirrors error: ${error.message}`);
+    logger.silly(`[MIRROR_DEBUG] getMirrors error: ${error.message}`);
     return [];
   }
 };
@@ -127,7 +127,7 @@ const clearPendingRoots = async (storeId) => {
 };
 
 const addMirror = async (storeId, url, forceAddMirror = false) => {
-  logger.debug(
+  logger.silly(
     `[MIRROR_DEBUG] Starting addMirror for storeId: ${storeId}, url: ${url}, force: ${forceAddMirror}`,
   );
 
@@ -139,7 +139,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
   }
 
   await wallet.waitForAllTransactionsToConfirm();
-  logger.debug('[MIRROR_DEBUG] Wallet transactions confirmed');
+  logger.silly('[MIRROR_DEBUG] Wallet transactions confirmed');
 
   const homeOrg = await Organization.getHomeOrg();
   logger.debug(
@@ -154,7 +154,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     logger.info(
       `No DATALAYER_FILE_SERVER_URL specified so skipping mirror for ${storeId}`,
     );
-    logger.debug('[MIRROR_DEBUG] Exiting addMirror - no URL provided');
+    logger.silly('[MIRROR_DEBUG] Exiting addMirror - no URL provided');
     return false;
   }
 
@@ -170,7 +170,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     `[MIRROR_DEBUG] Getting existing mirrors for storeId: ${storeId}`,
   );
   const mirrors = await getMirrors(storeId);
-  logger.debug(`[MIRROR_DEBUG] Retrieved ${mirrors.length} existing mirrors`);
+  logger.silly(`[MIRROR_DEBUG] Retrieved ${mirrors.length} existing mirrors`);
 
   // Dont add the mirror if it already exists.
   logger.debug(
@@ -184,7 +184,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
 
   if (mirror) {
     logger.info(`Mirror already available for ${storeId} at ${url}`);
-    logger.debug('[MIRROR_DEBUG] Mirror already exists, returning true');
+    logger.silly('[MIRROR_DEBUG] Mirror already exists, returning true');
     return true;
   }
 
@@ -200,7 +200,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
     };
 
-    logger.debug(`[MIRROR_DEBUG] Mirror options: ${JSON.stringify(options)}`);
+    logger.silly(`[MIRROR_DEBUG] Mirror options: ${JSON.stringify(options)}`);
     const { cert, key, timeout } = getBaseOptions();
     logger.debug(
       `[MIRROR_DEBUG] Making RPC call to ${CONFIG.DATALAYER_URL}/add_mirror`,
@@ -214,11 +214,11 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       .timeout(timeout);
 
     const data = response.body;
-    logger.debug(`[MIRROR_DEBUG] RPC response: ${JSON.stringify(data)}`);
+    logger.silly(`[MIRROR_DEBUG] RPC response: ${JSON.stringify(data)}`);
 
     if (data.success) {
       logger.info(`Adding mirror ${storeId} at ${url}`);
-      logger.debug('[MIRROR_DEBUG] Mirror added successfully');
+      logger.silly('[MIRROR_DEBUG] Mirror added successfully');
       return true;
     }
 
@@ -229,7 +229,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     return false;
   } catch (error) {
     logger.error('ADD_MIRROR', error);
-    logger.debug(`[MIRROR_DEBUG] Mirror addition error: ${error.message}`);
+    logger.silly(`[MIRROR_DEBUG] Mirror addition error: ${error.message}`);
     console.trace(error);
     return false;
   }

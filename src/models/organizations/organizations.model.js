@@ -67,7 +67,7 @@ class Organization extends Model {
   }
 
   static async getOrgsMap() {
-    logger.debug(
+    logger.silly(
       '[MIRROR_DEBUG] Starting getOrgsMap() - querying organizations from database',
     );
 
