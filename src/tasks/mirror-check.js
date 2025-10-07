@@ -154,29 +154,41 @@ const runMirrorCheck = async () => {
         );
       }
 
-      try {
-        await Organization.addMirror(
-          orgData.dataModelVersionStoreId,
-          mirrorUrl,
-          true,
-        );
+      if (orgData.dataModelVersionStoreId) {
+        try {
+          await Organization.addMirror(
+            orgData.dataModelVersionStoreId,
+            mirrorUrl,
+            true,
+          );
+          logger.debug(
+            `[MIRROR_DEBUG] Added mirror for dataModelVersionStoreId: ${orgData.dataModelVersionStoreId}`,
+          );
+        } catch (error) {
+          logger.error(
+            `[MIRROR_DEBUG] Failed to add mirror for dataModelVersionStoreId ${orgData.dataModelVersionStoreId}: ${error.message}`,
+          );
+        }
+      } else {
         logger.debug(
-          `[MIRROR_DEBUG] Added mirror for dataModelVersionStoreId: ${orgData.dataModelVersionStoreId}`,
-        );
-      } catch (error) {
-        logger.error(
-          `[MIRROR_DEBUG] Failed to add mirror for dataModelVersionStoreId ${orgData.dataModelVersionStoreId}: ${error.message}`,
+          `[MIRROR_DEBUG] Skipping dataModelVersionStoreId mirror - value is null/undefined`,
         );
       }
 
-      try {
-        await Organization.addMirror(orgData.registryId, mirrorUrl, true);
+      if (orgData.registryId) {
+        try {
+          await Organization.addMirror(orgData.registryId, mirrorUrl, true);
+          logger.debug(
+            `[MIRROR_DEBUG] Added mirror for registryId: ${orgData.registryId}`,
+          );
+        } catch (error) {
+          logger.error(
+            `[MIRROR_DEBUG] Failed to add mirror for registryId ${orgData.registryId}: ${error.message}`,
+          );
+        }
+      } else {
         logger.debug(
-          `[MIRROR_DEBUG] Added mirror for registryId: ${orgData.registryId}`,
-        );
-      } catch (error) {
-        logger.error(
-          `[MIRROR_DEBUG] Failed to add mirror for registryId ${orgData.registryId}: ${error.message}`,
+          `[MIRROR_DEBUG] Skipping registryId mirror - value is null/undefined`,
         );
       }
     } else {

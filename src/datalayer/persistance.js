@@ -131,6 +131,13 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     `[MIRROR_DEBUG] Starting addMirror for storeId: ${storeId}, url: ${url}, force: ${forceAddMirror}`,
   );
 
+  if (!storeId) {
+    logger.warn(
+      `[MIRROR_DEBUG] StoreId is null/undefined, skipping mirror creation`,
+    );
+    return false;
+  }
+
   await wallet.waitForAllTransactionsToConfirm();
   logger.debug('[MIRROR_DEBUG] Wallet transactions confirmed');
 
