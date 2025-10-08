@@ -1,7 +1,6 @@
 'use strict';
 
-import Sequelize from 'sequelize';
-const { Model } = Sequelize;
+import { Sequelize, Model } from 'sequelize';
 import { sequelize } from '../../database';
 import { Meta } from '../../models';
 import datalayer from '../../datalayer';

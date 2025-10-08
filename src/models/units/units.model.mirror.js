@@ -1,6 +1,5 @@
 'use strict';
-import Sequelize from 'sequelize';
-const { Model } = Sequelize;
+import { Model } from 'sequelize';
 
 import { sequelizeMirror, safeMirrorDbHandler } from '../../database';
 import ModelTypes from './units.modeltypes.cjs';

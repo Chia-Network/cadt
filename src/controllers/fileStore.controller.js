@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { FileStore } from '../models';
+import { logger } from '../config/logger';
 
 export const subscribeToFileStore = (req, res) => {
   try {
@@ -114,7 +115,7 @@ export const addFileToFileStore = async (req, res) => {
       fileId: SHA256,
     });
   } catch (error) {
-    console.trace(error);
+    logger.error('Error adding file to file store:', error);
     res.status(400).json({
       message: 'Can not add file to file store',
       error: error.message,

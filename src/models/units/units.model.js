@@ -1,7 +1,7 @@
 'use strict';
 
 import _ from 'lodash';
-import Sequelize from 'sequelize';
+import { Model } from 'sequelize';
 import * as rxjs from 'rxjs';
 import {
   sequelize,
@@ -20,8 +20,6 @@ import { encodeHex, keyValueToChangeList } from '../../utils/datalayer-utils';
 import { unitsUpdateSchema } from '../../validations/index.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import dataLayer from '../../datalayer';
-
-const { Model } = Sequelize;
 
 class Unit extends Model {
   static stagingTableName = 'Units';

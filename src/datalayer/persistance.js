@@ -61,8 +61,12 @@ const getValue = async (storeId, storeKey) => {
 };
 
 const getMirrors = async (storeId) => {
+  logger.silly(`[MIRROR_DEBUG] Starting getMirrors for storeId: ${storeId}`);
+
   const url = `${CONFIG.DATALAYER_URL}/get_mirrors`;
   const { cert, key, timeout } = getBaseOptions();
+
+  logger.silly(`[MIRROR_DEBUG] Making RPC call to: ${url}`);
 
   try {
     const response = await superagent
@@ -73,15 +77,25 @@ const getMirrors = async (storeId) => {
       .send({ id: storeId });
 
     const data = response.body;
+    logger.debug(
+      `[MIRROR_DEBUG] getMirrors RPC response: ${JSON.stringify(data)}`,
+    );
 
     if (data.success) {
+      logger.debug(
+        `[MIRROR_DEBUG] Successfully retrieved ${data.mirrors ? data.mirrors.length : 0} mirrors for storeId: ${storeId}`,
+      );
       return data.mirrors;
     }
 
     logger.error(`FAILED GETTING MIRRORS FOR ${storeId}`);
+    logger.debug(
+      `[MIRROR_DEBUG] getMirrors failed - response: ${JSON.stringify(data)}`,
+    );
     return [];
   } catch (error) {
     logger.error(error);
+    logger.silly(`[MIRROR_DEBUG] getMirrors error: ${error.message}`);
     return [];
   }
 };
@@ -112,9 +126,70 @@ const clearPendingRoots = async (storeId) => {
   }
 };
 
+const checkWalletBalanceForMirror = async (coinAmount, fee) => {
+  try {
+    const balanceXCH = await wallet.getWalletBalance();
+    if (balanceXCH === false) {
+      logger.warn(
+        'Failed to retrieve wallet balance, proceeding with default fee',
+      );
+      return { sufficient: true, fee: fee, balanceXCH: 'unknown' };
+    }
+
+    // Convert XCH balance to mojos for comparison
+    // Handle both string (simulator) and number (real wallet) formats
+    const balanceXCHNum =
+      typeof balanceXCH === 'string' ? parseFloat(balanceXCH) : balanceXCH;
+    const balanceMojos = Math.floor(balanceXCHNum * 1000000000000);
+    const totalRequired = coinAmount + fee;
+
+    logger.info(`Wallet balance: ${balanceXCH} XCH (${balanceMojos} mojos)`);
+    logger.info(
+      `Required for mirror: ${coinAmount} mojos + ${fee} mojos = ${totalRequired} mojos`,
+    );
+
+    if (balanceMojos >= totalRequired) {
+      logger.info(
+        `Sufficient funds available for mirror creation with fee (balance: ${balanceXCH} XCH, ${balanceMojos} mojos, need: ${totalRequired} mojos)`,
+      );
+      return { sufficient: true, fee: fee, balanceXCH: balanceXCH };
+    } else if (balanceMojos >= coinAmount) {
+      logger.warn(
+        `Insufficient funds for fee, proceeding with zero fee (balance: ${balanceXCH} XCH, ${balanceMojos} mojos, need: ${totalRequired} mojos)`,
+      );
+      return { sufficient: true, fee: 0, balanceXCH: balanceXCH };
+    } else {
+      logger.error(
+        `Insufficient funds: need ${coinAmount} mojos, have ${balanceMojos} mojos (balance: ${balanceXCH} XCH)`,
+      );
+      return { sufficient: false, fee: 0, balanceXCH: balanceXCH };
+    }
+  } catch (error) {
+    logger.error('Error checking wallet balance:', error);
+    logger.warn('Proceeding with default fee due to balance check error');
+    return { sufficient: true, fee: fee, balanceXCH: 'unknown' };
+  }
+};
+
 const addMirror = async (storeId, url, forceAddMirror = false) => {
+  logger.silly(
+    `[MIRROR_DEBUG] Starting addMirror for storeId: ${storeId}, url: ${url}, force: ${forceAddMirror}`,
+  );
+
+  if (!storeId) {
+    logger.warn(
+      `[MIRROR_DEBUG] StoreId is null/undefined, skipping mirror creation`,
+    );
+    return false;
+  }
+
   await wallet.waitForAllTransactionsToConfirm();
+  logger.silly('[MIRROR_DEBUG] Wallet transactions confirmed');
+
   const homeOrg = await Organization.getHomeOrg();
+  logger.debug(
+    `[MIRROR_DEBUG] Home org retrieved: ${homeOrg ? 'found' : 'not found'}`,
+  );
 
   logger.info(
     `Checking mirrors for storeID is ${storeId} with mirror URL ${url}`,
@@ -124,35 +199,75 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     logger.info(
       `No DATALAYER_FILE_SERVER_URL specified so skipping mirror for ${storeId}`,
     );
+    logger.silly('[MIRROR_DEBUG] Exiting addMirror - no URL provided');
     return false;
   }
 
   if (!homeOrg && !forceAddMirror) {
     logger.info(`No home org detected so skipping mirror for ${storeId}`);
+    logger.debug(
+      '[MIRROR_DEBUG] Exiting addMirror - no home org and force=false',
+    );
     return false;
   }
 
+  logger.debug(
+    `[MIRROR_DEBUG] Getting existing mirrors for storeId: ${storeId}`,
+  );
   const mirrors = await getMirrors(storeId);
+  logger.silly(`[MIRROR_DEBUG] Retrieved ${mirrors.length} existing mirrors`);
 
   // Dont add the mirror if it already exists.
+  logger.debug(
+    `[MIRROR_DEBUG] Checking for existing mirror with launcher_id: ${storeId} and url: ${url}`,
+  );
   const mirror = mirrors.find(
-    (mirror) => mirror.launcher_id === storeId && mirror.urls.includes(url),
+    (mirror) =>
+      mirror.launcher_id.replace('0x', '') === storeId &&
+      mirror.urls.includes(url),
   );
 
   if (mirror) {
     logger.info(`Mirror already available for ${storeId} at ${url}`);
+    logger.silly('[MIRROR_DEBUG] Mirror already exists, returning true');
     return true;
   }
 
+  logger.debug(
+    '[MIRROR_DEBUG] No existing mirror found, proceeding to create new mirror',
+  );
+
   try {
+    const coinAmount = _.get(CONFIG, 'DEFAULT_COIN_AMOUNT', 300000000);
+    const defaultFee = _.get(CONFIG, 'DEFAULT_FEE', 300000000);
+
+    // Check wallet balance before creating mirror
+    const balanceCheck = await checkWalletBalanceForMirror(
+      coinAmount,
+      defaultFee,
+    );
+
+    if (!balanceCheck.sufficient) {
+      logger.error(`Cannot create mirror for ${storeId}: insufficient funds`);
+      return false;
+    }
+
     const options = {
       id: storeId,
       urls: [url],
-      amount: _.get(CONFIG, 'DEFAULT_COIN_AMOUNT', 300000000),
-      fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+      amount: coinAmount,
+      fee: balanceCheck.fee,
     };
 
+    logger.silly(`[MIRROR_DEBUG] Mirror options: ${JSON.stringify(options)}`);
+    logger.info(
+      `Creating mirror with fee: ${balanceCheck.fee} mojos (balance: ${balanceCheck.balanceXCH} XCH)`,
+    );
+
     const { cert, key, timeout } = getBaseOptions();
+    logger.debug(
+      `[MIRROR_DEBUG] Making RPC call to ${CONFIG.DATALAYER_URL}/add_mirror`,
+    );
 
     const response = await superagent
       .post(`${CONFIG.DATALAYER_URL}/add_mirror`)
@@ -162,17 +277,23 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
       .timeout(timeout);
 
     const data = response.body;
+    logger.silly(`[MIRROR_DEBUG] RPC response: ${JSON.stringify(data)}`);
 
     if (data.success) {
       logger.info(`Adding mirror ${storeId} at ${url}`);
+      logger.silly('[MIRROR_DEBUG] Mirror added successfully');
       return true;
     }
 
     logger.error(`FAILED ADDING MIRROR FOR ${storeId}`);
+    logger.debug(
+      `[MIRROR_DEBUG] Mirror addition failed - response: ${JSON.stringify(data)}`,
+    );
     return false;
   } catch (error) {
     logger.error('ADD_MIRROR', error);
-    console.trace(error);
+    logger.silly(`[MIRROR_DEBUG] Mirror addition error: ${error.message}`);
+    logger.debug('Mirror addition stack trace:', error.stack);
     return false;
   }
 };
@@ -365,7 +486,7 @@ const getStoreData = async (storeId, rootHash) => {
 
         logger.silly(
           `raw keys and values from RPC for store ${storeId}
-          
+
           ${JSON.stringify(data.keys_values)}`,
         );
         return data;
@@ -467,7 +588,7 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
         });
 
       const data = response.body;
-      console.log(data);
+      logger.debug('DataLayer response:', data);
 
       if (data.success) {
         logger.info(
@@ -700,7 +821,7 @@ const takeOffer = async (offer) => {
 };
 
 const verifyOffer = async (offer) => {
-  console.log(offer);
+  logger.debug('Verifying offer:', offer);
   const url = `${CONFIG.DATALAYER_URL}/verify_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
@@ -831,4 +952,5 @@ export {
   clearPendingRoots,
   getValue,
   getSyncStatus,
+  checkWalletBalanceForMirror,
 };

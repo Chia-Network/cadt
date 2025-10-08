@@ -1,8 +1,7 @@
 'use strict';
 
 import _ from 'lodash';
-import Sequelize from 'sequelize';
-const { Model } = Sequelize;
+import { Model } from 'sequelize';
 import { sequelize } from '../../database';
 import { encodeHex } from '../../utils/datalayer-utils';
 import { ModelKeys, Staging } from '../index';
