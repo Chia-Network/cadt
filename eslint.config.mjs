@@ -61,6 +61,13 @@ export default [
     {
         // Test-specific configuration
         files: ["tests/**/*.js", "**/*.spec.js", "**/*.test.js"],
+        languageOptions: {
+            globals: {
+                ...globals.commonjs,
+                ...globals.node,
+                ...globals.mocha,
+            },
+        },
         rules: {
             // More lenient rules for test files
             "no-console": "off",                     // Allow console.log in tests
