@@ -2,10 +2,11 @@
 
 import _ from 'lodash';
 import { uuid as uuidv4 } from 'uuidv4';
-import Sequelize from 'sequelize';
+import { Sequelize, Model } from 'sequelize';
 const Op = Sequelize.Op;
 
-const { Model } = Sequelize;
+import { logger } from '../../config/logger';
+
 import { Project, Unit, Organization, Issuance, Meta } from '../../models';
 import { encodeHex, generateOffer } from '../../utils/datalayer-utils';
 
@@ -287,7 +288,7 @@ class Staging extends Model {
 
       return _.omit(offerResponse, ['success']);
     } catch (error) {
-      console.trace(error);
+      logger.error('Error in staging operation:', error);
       throw new Error(error.message);
     }
   };

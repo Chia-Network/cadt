@@ -1,6 +1,7 @@
 import _ from 'lodash';
 
 import { Governance, Meta } from '../models';
+import { logger } from '../config/logger';
 
 import {
   assertIsActiveGovernanceBody,
@@ -147,7 +148,7 @@ export const setDefaultOrgList = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    console.trace(error);
+    logger.error('Error updating default orgs:', error);
     res.status(400).json({
       message: 'Cant update default orgs',
       error: error.message,

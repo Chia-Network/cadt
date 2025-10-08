@@ -1,6 +1,5 @@
 'use strict';
-import Sequelize from 'sequelize';
-const { Model } = Sequelize;
+import { Model } from 'sequelize';
 
 import { EstimationMirror } from './estimations.model.mirror';
 import { sequelize, safeMirrorDbHandler } from '../../database';

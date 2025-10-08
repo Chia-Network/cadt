@@ -1,15 +1,16 @@
 'use strict';
 
 import _ from 'lodash';
-import Sequelize from 'sequelize';
+import { Model } from 'sequelize';
 import * as rxjs from 'rxjs';
-const { Model } = Sequelize;
 
 import {
   sequelize,
   safeMirrorDbHandler,
   sanitizeSqliteFtsQuery,
 } from '../../database';
+
+import { logger } from '../../config/logger';
 
 import {
   RelatedProject,
@@ -186,7 +187,7 @@ class Project extends Model {
       return results.map((row) => row.warehouseProjectId);
     } catch (error) {
       // Handle errors
-      console.error(error);
+      logger.error('Error in getProjectIds:', error);
       throw error;
     }
   }
@@ -217,10 +218,7 @@ class Project extends Model {
   static async findAllMySQLFts(searchStr, orgUid, pagination, columns = []) {
     const { offset, limit } = pagination;
 
-    let fields = '*';
-    if (columns.length) {
-      fields = columns.join(', ');
-    }
+    const fields = columns.length ? columns.join(', ') : '*';
 
     let sql = `
     SELECT ${fields} FROM projects WHERE MATCH (
@@ -243,7 +241,7 @@ class Project extends Model {
         estimatedAnnualAverageEmissionReduction,
         timeStaged,
         description
-    ) AGAINST ':search' 
+    ) AGAINST ':search'
     `;
 
     if (orgUid) {
@@ -280,7 +278,7 @@ class Project extends Model {
   static async findAllSqliteFts(searchStr, orgUid, pagination) {
     const { offset, limit } = pagination;
 
-    let fields = '*';
+    const fields = '*';
 
     searchStr = sanitizeSqliteFtsQuery(searchStr);
 

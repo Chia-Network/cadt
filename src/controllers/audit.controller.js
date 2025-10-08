@@ -8,9 +8,9 @@ import { assertIfReadOnlyMode } from '../utils/data-assertions.js';
 
 export const findAll = async (req, res) => {
   try {
-    let { page, limit, orgUid, order } = req.query;
+    const { page, limit, orgUid, order } = req.query;
 
-    let pagination = paginationParams(page, limit);
+    const pagination = paginationParams(page, limit);
 
     const auditResults = await Audit.findAndCountAll({
       where: { orgUid },
