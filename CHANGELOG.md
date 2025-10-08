@@ -1,4 +1,8 @@
-## [1.7.24](https://github.com/Chia-Network/cadt/compare/1.7.24-rc1...1.7.24) (2025-09-10)
+## [1.7.25](https://github.com/Chia-Network/cadt/compare/1.7.25-rc1...1.7.25) (2025-10-08)
+
+
+
+## [1.7.24](https://github.com/Chia-Network/cadt/compare/1.7.23-rc20...1.7.24) (2025-09-10)
 
 
 
@@ -35,9 +39,64 @@
 
 ### Bug Fixes
 
+* add a bunch of mirroring debugging output, fix eslint ([fabc8e0](https://github.com/Chia-Network/cadt/commit/fabc8e07e9500a0b6116bbf91d886e68d03d9b60))
+* handle null cases in mirror creation ([133df86](https://github.com/Chia-Network/cadt/commit/133df866191561039e21519e172355cdbfcbc323))
+* issues surfaced by the linter ([6f8f44b](https://github.com/Chia-Network/cadt/commit/6f8f44b3a97ce2800d197767df28eb05c1323599))
+* mirror subscription check in the right orgUid variable ([2cdd7c9](https://github.com/Chia-Network/cadt/commit/2cdd7c9eae1a42136377350046317ef23651721e))
+* move extra mirror debugging messages to the silly log level ([bf36af1](https://github.com/Chia-Network/cadt/commit/bf36af10c5291259dd26d38b5247a5fe0c81700a))
+* remove 0x from store ID when looking for existing mirrors ([9381005](https://github.com/Chia-Network/cadt/commit/9381005123300036a5d22c187284a7cdc71b2766))
+
+
+### Features
+
+* check wallet balance before adding mirror ([ff420f6](https://github.com/Chia-Network/cadt/commit/ff420f6f3a44cf126f8af735818a00c89d10f7ba))
+
+
+
+## [1.7.24-rc1](https://github.com/Chia-Network/cadt/compare/1.7.24...1.7.24-rc1) (2025-09-10)
+
+
+
+## [1.7.24](https://github.com/Chia-Network/cadt/compare/1.7.23-rc20...1.7.24) (2025-09-10)
+
+
+### Bug Fixes
+
 * hash var logic ([21c5a38](https://github.com/Chia-Network/cadt/commit/21c5a388ca3a79c08a163dcef13b6ca40306adf0))
 * log-update dependency issue - load on demand ([33fc935](https://github.com/Chia-Network/cadt/commit/33fc9354970fe4b8a79d428a65aeca1d51f5e252))
 * unsub retry logic ([46314a3](https://github.com/Chia-Network/cadt/commit/46314a324d760247830c036db416cb58beb853bf))
+
+
+
+## [1.7.23](https://github.com/Chia-Network/cadt/compare/1.7.23-rc19...1.7.23) (2025-09-04)
+
+
+
+## [1.7.22](https://github.com/Chia-Network/cadt/compare/1.7.22-rc3...1.7.22) (2025-03-11)
+
+
+
+## [1.7.21](https://github.com/Chia-Network/cadt/compare/1.7.21-rc21...1.7.21) (2025-02-21)
+
+
+
+## [1.7.20](https://github.com/Chia-Network/cadt/compare/1.7.19...1.7.20) (2024-12-09)
+
+
+
+## [1.7.19](https://github.com/Chia-Network/cadt/compare/1.7.18...1.7.19) (2024-12-04)
+
+
+
+## [1.7.18](https://github.com/Chia-Network/cadt/compare/1.7.17...1.7.18) (2024-10-18)
+
+
+
+## [1.7.17](https://github.com/Chia-Network/cadt/compare/1.7.16...1.7.17) (2024-08-16)
+
+
+
+## [1.7.16](https://github.com/Chia-Network/cadt/compare/1.7.15...1.7.16) (2024-05-31)
 
 
 
