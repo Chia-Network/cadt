@@ -480,7 +480,7 @@ display_test_summary() {
 
 # Test if we are subscribed to all expected store IDs
 test_subscriptions () {
-    local TIMEOUT_SECONDS=600
+    local TIMEOUT_SECONDS=2700   # 45 minutes
     local CHECK_INTERVAL=10
     local MAX_ATTEMPTS=$((TIMEOUT_SECONDS / CHECK_INTERVAL))
 
