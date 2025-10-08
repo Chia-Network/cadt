@@ -1,9 +1,7 @@
 'use strict';
 
-import Sequelize from 'sequelize';
+import { Model } from 'sequelize';
 import _ from 'lodash';
-
-const { Model } = Sequelize;
 
 import { sequelize } from '../../database';
 

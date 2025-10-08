@@ -5,8 +5,7 @@
   this prevents duplicate files from being uploaded to the same store.
 */
 
-import Sequelize from 'sequelize';
-const { Model } = Sequelize;
+import { Model } from 'sequelize';
 import { sequelize } from '../../database';
 import { Organization } from '../';
 
@@ -65,7 +64,7 @@ class FileStore extends Model {
       throw new Error('No homeorg detected');
     }
 
-    let fileStoreId = myOrganization.fileStoreId;
+    const fileStoreId = myOrganization.fileStoreId;
 
     if (myOrganization && !fileStoreId) {
       datalayer.createDataLayerStore().then((fileStoreId) => {
@@ -105,7 +104,7 @@ class FileStore extends Model {
 
   static async getFileStoreList() {
     const myOrganization = await Organization.getHomeOrg();
-    let fileStoreId = myOrganization?.fileStoreId;
+    const fileStoreId = myOrganization?.fileStoreId;
 
     if (myOrganization && !fileStoreId) {
       datalayer.createDataLayerStore().then((fileStoreId) => {
@@ -150,7 +149,7 @@ class FileStore extends Model {
 
   static async deleteFileStoreItem(SHA256) {
     const myOrganization = await Organization.getHomeOrg();
-    let fileStoreId = myOrganization.fileStoreId;
+    const fileStoreId = myOrganization.fileStoreId;
 
     if (!fileStoreId) {
       datalayer.createDataLayerStore().then((fileStoreId) => {
