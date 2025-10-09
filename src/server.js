@@ -26,6 +26,7 @@ server.listen(port, bindAddress, () => {
 
 const io = new Server(server);
 io.of('/v1/ws').on('connection', connection);
+io.of('/v2/ws').on('connection', connection);
 
 function onError(error) {
   if (error.syscall !== 'listen') {
