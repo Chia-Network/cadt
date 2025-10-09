@@ -7,11 +7,51 @@ import { getDataModelVersion, mergeObjects } from './helpers';
 import { defaultConfig } from './defaultConfig.js';
 import { getChiaRoot } from './chia-root.js';
 
+// Function to ensure both v1 and v2 directories exist and have config files
+const ensureVersionDirectoriesExist = (chiaRoot) => {
+  const versions = ['v1', 'v2'];
+
+  versions.forEach((version) => {
+    const versionFolder = `${chiaRoot}/cadt/${version}`;
+    const configFile = path.resolve(`${versionFolder}/config.yaml`);
+
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(versionFolder)) {
+      try {
+        fs.mkdirSync(versionFolder, { recursive: true });
+        console.log(`Created CADT directory: ${versionFolder}`);
+      } catch (error) {
+        console.warn(
+          `Could not create directory ${versionFolder}:`,
+          error.message,
+        );
+        return; // Skip config file creation if directory creation failed
+      }
+    }
+
+    // Create config file if it doesn't exist
+    if (!fs.existsSync(configFile)) {
+      try {
+        fs.writeFileSync(configFile, yaml.dump(defaultConfig), 'utf8');
+        console.log(`Created config file: ${configFile}`);
+      } catch (error) {
+        console.warn(
+          `Could not create config file ${configFile}:`,
+          error.message,
+        );
+      }
+    }
+  });
+};
+
 export const getConfig = _.memoize(() => {
   const chiaRoot = getChiaRoot();
   const dataModelVersion = getDataModelVersion();
   const persistanceFolder = `${chiaRoot}/cadt/${dataModelVersion}`;
   const configFile = path.resolve(`${persistanceFolder}/config.yaml`);
+
+  // Ensure both v1 and v2 directories exist
+  ensureVersionDirectoriesExist(chiaRoot);
 
   try {
     if (!fs.existsSync(configFile)) {

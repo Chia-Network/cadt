@@ -5,6 +5,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { V1Router } from './routes/v1';
+import { V2Router } from './routes/v2';
 import { getConfig } from './utils/config-loader';
 import {
   assertChiaNetworkMatchInConfiguration,
@@ -185,6 +186,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/v1', V1Router);
+app.use('/v2', V2Router);
 
 app.use((err, req, res, next) => {
   if (err) {
