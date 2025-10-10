@@ -3,7 +3,7 @@ import yaml from 'js-yaml';
 import fs from 'fs';
 import path from 'path';
 
-import { getDataModelVersion, mergeObjects } from './helpers';
+import { getDataModelVersion, mergeObjects } from './helpers.js';
 import { defaultConfig } from './defaultConfig.js';
 import { getChiaRoot } from './chia-root.js';
 

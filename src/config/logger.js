@@ -45,7 +45,7 @@ const logFormat = format.printf(
 );
 
 const logger = createLogger({
-  level: getConfig().APP.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || 'info',
   format: format.combine(
     logFormat,
     format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),

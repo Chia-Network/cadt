@@ -36,3 +36,4 @@ build-scripts/macos/application
 build-scripts/macos/target
 k8s/values.yaml
 
+v2-sql.dat
