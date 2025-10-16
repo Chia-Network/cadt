@@ -6,7 +6,9 @@ export { GovernanceV2 } from './governance-v2.model.js';
 export { SimulatorV2 } from './simulator-v2.model.js';
 
 // Data Models (with mirror)
+export { ProjectV2 } from './project-v2.model.js';
 export { ProjectV2Mirror } from './project-v2.model.mirror.js';
+export { ValidationV2 } from './validation-v2.model.js';
 export { ValidationV2Mirror } from './validation-v2.model.mirror.js';
 export { VerificationV2 } from './verification-v2.model.js';
 export { VerificationV2Mirror } from './verification-v2.model.mirror.js';
