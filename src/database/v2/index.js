@@ -133,6 +133,10 @@ export const prepareV2Db = async () => {
   try {
     const db = getSequelizeV2();
     await checkForV2Migrations(db);
+
+    // Initialize models and associations
+    await initializeV2Models();
+
     logger.info('V2 Database prepared successfully');
   } catch (error) {
     logger.error('Error preparing V2 database', error);
@@ -151,5 +155,105 @@ async function setV2WALMode() {
   }
 }
 
+// Initialize V2 models and associations
+const initializeV2Models = async () => {
+  try {
+    // Import all V2 models - this will trigger their initialization
+    await import('../../models/v2/index.js');
+
+    // Wait a bit for models to be fully initialized
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Now import the models again to get the initialized instances
+    const {
+      StagingV2,
+      OrganizationsV2,
+      MetaV2,
+      GovernanceV2,
+      SimulatorV2,
+      AuditV2,
+      ProjectV2Mirror,
+      ValidationV2Mirror,
+      VerificationV2,
+      MethodologyV2,
+      LocationV2,
+      IssuanceV2Mirror,
+      UnitV2Mirror
+    } = await import('../../models/v2/index.js');
+
+    // Set up model associations only if models are properly initialized
+    if (ProjectV2Mirror && ProjectV2Mirror.sequelize) {
+      // Project has many validations
+      if (ValidationV2Mirror && ValidationV2Mirror.sequelize) {
+        ProjectV2Mirror.hasMany(ValidationV2Mirror, {
+          foreignKey: 'cadTrustProjectId',
+          as: 'validations'
+        });
+
+        ValidationV2Mirror.belongsTo(ProjectV2Mirror, {
+          foreignKey: 'cadTrustProjectId',
+          as: 'project'
+        });
+      }
+
+      // Project has many verifications
+      if (VerificationV2 && VerificationV2.sequelize) {
+        ProjectV2Mirror.hasMany(VerificationV2, {
+          foreignKey: 'cadTrustProjectId',
+          as: 'verifications'
+        });
+
+        VerificationV2.belongsTo(ProjectV2Mirror, {
+          foreignKey: 'cadTrustProjectId',
+          as: 'project'
+        });
+      }
+
+      // Project has many locations
+      if (LocationV2 && LocationV2.sequelize) {
+        ProjectV2Mirror.hasMany(LocationV2, {
+          foreignKey: 'cadTrustProjectId',
+          as: 'locations'
+        });
+
+        LocationV2.belongsTo(ProjectV2Mirror, {
+          foreignKey: 'cadTrustProjectId',
+          as: 'project'
+        });
+      }
+
+      // Project has many issuances
+      if (IssuanceV2Mirror && IssuanceV2Mirror.sequelize) {
+        ProjectV2Mirror.hasMany(IssuanceV2Mirror, {
+          foreignKey: 'cadTrustProjectId',
+          as: 'issuances'
+        });
+
+        IssuanceV2Mirror.belongsTo(ProjectV2Mirror, {
+          foreignKey: 'cadTrustProjectId',
+          as: 'project'
+        });
+      }
+    }
+
+    // Unit belongs to issuance
+    if (UnitV2Mirror && UnitV2Mirror.sequelize && IssuanceV2Mirror && IssuanceV2Mirror.sequelize) {
+      UnitV2Mirror.belongsTo(IssuanceV2Mirror, {
+        foreignKey: 'cadTrustIssuanceId',
+        as: 'issuance'
+      });
+
+      IssuanceV2Mirror.hasMany(UnitV2Mirror, {
+        foreignKey: 'cadTrustIssuanceId',
+        as: 'units'
+      });
+    }
+
+    logger.info('V2 models initialized with associations');
+  } catch (error) {
+    logger.error('Error initializing V2 models:', error);
+  }
+};
+
 // Export the getter functions for external use
-export { getSequelizeV2 as sequelizeV2, getSequelizeV2Mirror as sequelizeV2Mirror };
+export { getSequelizeV2 as sequelizeV2, getSequelizeV2Mirror as sequelizeV2Mirror, initializeV2Models };

@@ -6,9 +6,8 @@ export default {
       'project',
       {
         cad_trust_project_id: {
-          type: Sequelize.INTEGER,
+          type: Sequelize.STRING,
           primaryKey: true,
-          autoIncrement: true,
           allowNull: false,
         },
         project_registry_name: {

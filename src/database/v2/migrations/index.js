@@ -19,6 +19,12 @@ import CreateAefT2AuthorizationsV2 from './20250109120017-create-aef-t2-authoriz
 import CreateAefT3ActionsV2 from './20250109120018-create-aef-t3-actions-v2.js';
 import CreateAefT4HoldingsV2 from './20250109120019-create-aef-t4-holdings-v2.js';
 import CreateAefT5AuthorizedEntitiesV2 from './20250109120020-create-aef-t5-authorized-entities-v2.js';
+import CreateStagingV2 from './20250110120000-create-staging-v2.js';
+import CreateAuditV2 from './20250110120001-create-audit-v2.js';
+import CreateOrganizationsV2 from './20250110120002-create-organizations-v2.js';
+import CreateMetaV2 from './20250110120003-create-meta-v2.js';
+import CreateGovernanceV2 from './20250110120004-create-governance-v2.js';
+import CreateSimulatorV2 from './20250110120005-create-simulator-v2.js';
 
 export const migrations = [
   {
@@ -104,5 +110,29 @@ export const migrations = [
   {
     migration: CreateAefT5AuthorizedEntitiesV2,
     name: '20250109120020-create-aef-t5-authorized-entities-v2.js',
+  },
+  {
+    migration: CreateStagingV2,
+    name: '20250110120000-create-staging-v2.js',
+  },
+  {
+    migration: CreateAuditV2,
+    name: '20250110120001-create-audit-v2.js',
+  },
+  {
+    migration: CreateOrganizationsV2,
+    name: '20250110120002-create-organizations-v2.js',
+  },
+  {
+    migration: CreateMetaV2,
+    name: '20250110120003-create-meta-v2.js',
+  },
+  {
+    migration: CreateGovernanceV2,
+    name: '20250110120004-create-governance-v2.js',
+  },
+  {
+    migration: CreateSimulatorV2,
+    name: '20250110120005-create-simulator-v2.js',
   },
 ];

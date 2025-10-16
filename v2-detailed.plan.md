@@ -7,90 +7,342 @@
 
 Implement complete REST API endpoints for V2 database tables following V1 patterns and coding conventions. All V2 tables will be in the v2 database (completely separate from v1), but will share similar controller logic where functionality is identical.
 
-## Phase 1: Add System Tables to V2 Database
+## Operational Notes
 
-### Create V2 System Table Migrations
+### Server Management
+- **Port**: V2 API runs on port 31310 (same as V1)
+- **Kill Server**: Use comprehensive process cleanup commands (see Process Management section below)
+- **Start Server**: Use `npm start` from project root
+- **Testing**: Server must be running to test V2 endpoints at `http://localhost:31310/v2/`
+
+### Process Management & Cleanup
+
+#### Comprehensive Process Cleanup Commands
+To ensure all CADT processes are properly tracked and terminated, run these commands in sequence:
+
+**1. Check Current Processes (Pre-Cleanup Audit):**
+```bash
+# Check what's currently running (excluding Cursor and other important processes)
+ps aux | grep -E "(node|npm).*cadt" | grep -v -E "(grep|Cursor|cursor)" | grep -v grep
+lsof -i:31310
+```
+
+**2. Kill Processes by Port:**
+```bash
+# Kill processes using port 31310 (only CADT server processes)
+lsof -ti:31310 | xargs kill -9
+```
+
+**3. Kill Processes by Name Patterns (Safe - Excludes Cursor):**
+```bash
+# Kill Node.js server processes (exclude Cursor)
+pkill -f "node.*server.js"
+pkill -f "npm.*start"
+# Only kill processes with "cadt" in the command line, not in file paths
+ps aux | grep -E "node.*cadt" | grep -v -E "(Cursor|cursor)" | grep -v grep | awk '{print $2}' | xargs kill -9
+```
+
+**4. Kill Process Trees (More Aggressive - Excludes Cursor):**
+```bash
+# Kill all processes containing "cadt" in command line, but exclude Cursor
+ps aux | grep -E "(node|npm).*cadt" | grep -v -E "(grep|Cursor|cursor)" | awk '{print $2}' | xargs kill -9
+```
+
+**5. Kill Node Processes in Project Directory (Safe - Excludes Cursor):**
+```bash
+# Kill any remaining node processes in current project directory, but exclude Cursor
+ps aux | grep "$(pwd)" | grep node | grep -v -E "(Cursor|cursor)" | awk '{print $2}' | xargs kill -9
+```
+
+**6. Verify Cleanup:**
+```bash
+# Check if port is free
+lsof -i:31310
+
+# Check for any remaining CADT processes (excluding Cursor)
+ps aux | grep -E "(node|npm).*cadt" | grep -v -E "(grep|Cursor|cursor)" | grep -v grep
+```
+
+**7. Troubleshooting Stubborn Processes:**
+If processes won't die, escalate with these commands:
+```bash
+# Find specific process details (excluding Cursor)
+ps aux | grep -E "(node|npm).*cadt" | grep -v -E "(grep|Cursor|cursor)" | grep -v grep
+
+# Kill with specific PID (replace <PID> with actual process ID)
+kill -9 <PID>
+
+# Nuclear option (use with caution - kills ALL node processes - AVOID if Cursor is running)
+sudo pkill -9 -f "node"
+sudo pkill -9 -f "npm"
+```
+
+#### Development Workflow Commands
+```bash
+# Start server
+npm start &
+
+# Run tests
+npm test
+
+# Cleanup after tests (run all cleanup commands above - SAFE for Cursor)
+lsof -ti:31310 | xargs kill -9
+pkill -f "node.*server.js"
+pkill -f "npm.*start"
+ps aux | grep -E "node.*cadt" | grep -v -E "(Cursor|cursor)" | grep -v grep | awk '{print $2}' | xargs kill -9
+
+# Verify cleanup
+lsof -i:31310
+```
+
+### Development Workflow
+- Always kill existing server before restarting to avoid port conflicts
+- V2 database migrations run automatically on startup
+- Model associations are initialized after migrations complete
+- Chia Datalayer connection errors are expected in development (no Chia node required for basic API testing)
+
+## Progress Tracking Methodology
+
+### Overview
+This plan uses a systematic approach to track implementation progress across all phases, ensuring clear visibility into what's been completed and what remains to be done.
+
+### Progress Tracking Methods
+
+#### 1. **Real-time Todo Management**
+- **Tool**: AI Assistant todo system
+- **Updates**: Immediate status changes when tasks are completed
+- **States**: `pending` → `in_progress` → `completed` → `cancelled`
+- **Granularity**: Break large tasks into trackable subtasks
+- **Example**:
+  ```javascript
+  // When completing a task
+  todo_write({
+    merge: true,
+    todos: [{
+      id: 'phase2-models',
+      status: 'completed',
+      content: 'Phase 2: Create V2 Models - All 27 models created ✅'
+    }]
+  })
+  ```
+
+#### 2. **Plan Document Status Indicators**
+- **Visual Markers**:
+  - ✅ COMPLETED - Phase/task fully finished
+  - 🔄 IN PROGRESS (X/Y completed) - Partial completion with counts
+  - ❌ NOT STARTED - Not yet begun
+  - ⚠️ BLOCKED - Waiting on dependencies
+- **Updates**: Modify plan sections with status indicators
+- **Example**:
+  ```markdown
+  ## Phase 2: Create V2 Models 🔄 IN PROGRESS (10/27 completed)
+
+  ### Create Model Types (*.modeltypes.cjs) ✅ COMPLETED
+
+  Create in `src/models/v2/`:
+  - `staging-v2.modeltypes.cjs` ✅
+  - `audit-v2.modeltypes.cjs` ✅
+  - `organizations-v2.modeltypes.cjs` ✅
+  - `meta-v2.modeltypes.cjs` ✅
+  - `governance-v2.modeltypes.cjs` ✅
+  - `simulator-v2.modeltypes.cjs` ✅
+  - All 21 data table model types 🔄 IN PROGRESS (6/21 completed)
+  ```
+
+#### 3. **Code Verification Checks**
+- **Tool**: `codebase_search` and file system inspection
+- **Purpose**: Verify actual file existence and completeness
+- **Frequency**: After each major phase completion
+- **Example**:
+  ```javascript
+  // Verify all V2 models exist
+  codebase_search("What V2 models have been created?", ["src/models/v2"])
+
+  // Check specific file contents
+  read_file("src/models/v2/index.js")
+  ```
+
+#### 4. **Progress Reporting**
+- **Format**: Structured status updates with:
+  - ✅ Completed items with counts
+  - 🔄 In-progress items with specific progress
+  - ❌ Blocked items with reasons
+  - 📋 Next priority actions
+- **Frequency**: After each work session
+- **Example**:
+  ```
+  ## Progress Report - [Date]
+
+  ### ✅ Completed This Session
+  - Created 5 missing V2 data table models (issuance, unit, project-methodology, stakeholder, stakeholder-projects)
+  - Updated V2 models index.js with all exports
+
+  ### 🔄 In Progress
+  - Phase 2: V2 Models (15/27 completed) - 12 remaining
+  - Phase 3: V2 Validations (1/25 completed) - 24 remaining
+
+  ### ❌ Blocked
+  - Phase 5: Controllers - Waiting on Phase 2 completion
+
+  ### 📋 Next Priority
+  1. Complete remaining 12 V2 data table models
+  2. Create V2 validation schemas
+  3. Build generic controller factory
+  ```
+
+### Progress Tracking Workflow
+
+#### Daily Progress Cycle
+1. **Start Session**: Review current todo status and plan document
+2. **Work**: Complete tasks, updating todos in real-time
+3. **Verify**: Use codebase search to confirm completion
+4. **Update Plan**: Add status indicators to plan document
+5. **Report**: Provide progress summary with next actions
+
+#### Phase Completion Checklist
+For each phase completion:
+- [ ] All todo items marked as `completed`
+- [ ] Plan document updated with ✅ COMPLETED status
+- [ ] Code verification confirms all files exist and are properly configured
+- [ ] Progress report generated with next phase priorities
+- [ ] Dependencies for next phase identified and unblocked
+
+#### Blocked Task Management
+When tasks are blocked:
+- [ ] Mark todo as `blocked` with reason
+- [ ] Update plan document with ⚠️ BLOCKED status
+- [ ] Identify dependency requirements
+- [ ] Create subtasks to resolve blockers
+- [ ] Prioritize unblocking tasks
+
+### Progress Metrics
+
+#### Completion Tracking
+- **Phase Level**: X/Y phases completed
+- **Task Level**: X/Y tasks completed within phase
+- **File Level**: X/Y files created/updated
+- **Code Level**: Lines of code, functions, endpoints implemented
+
+#### Quality Metrics
+- **Test Coverage**: X/Y endpoints tested
+- **Validation Coverage**: X/Y validation schemas created
+- **Documentation**: X/Y API endpoints documented
+- **Error Handling**: X/Y error scenarios covered
+
+### Progress Communication
+
+#### Status Updates Format
+```
+## V2 Implementation Progress - [Date]
+
+### Overall Status: 🔄 IN PROGRESS (Phase 2 of 12)
+
+### Phase Breakdown:
+- Phase 1: System Tables ✅ COMPLETED (6/6 migrations)
+- Phase 2: V2 Models 🔄 IN PROGRESS (10/27 models)
+- Phase 3: V2 Validations 🔄 IN PROGRESS (1/25 validations)
+- Phase 4: V2 Utilities ❌ NOT STARTED
+- Phase 5: Controllers 🔄 IN PROGRESS (3/25 controllers)
+- Phase 12: Offer System ❌ NOT STARTED
+
+### This Session Accomplishments:
+- [Specific items completed]
+
+### Next Session Priorities:
+1. [Highest priority task]
+2. [Second priority task]
+3. [Third priority task]
+
+### Blockers/Issues:
+- [Any blocking issues with resolution plan]
+```
+
+This systematic approach ensures clear visibility into implementation progress, maintains momentum, and provides clear direction for next steps.
+
+## Phase 1: Add System Tables to V2 Database ✅ COMPLETED
+
+### Create V2 System Table Migrations ✅ COMPLETED
 
 Create migrations for 6 required system tables in `src/database/v2/migrations/`:
 
-1. **staging** (`20250110120000-create-staging-v2.js`)
+1. **staging** (`20250110120000-create-staging-v2.js`) ✅
 
 - Fields: id, uuid, table, action, data, commited, failedCommit, isTransfer, createdAt, updatedAt
 
-2. **audit** (`20250110120001-create-audit-v2.js`)
+2. **audit** (`20250110120001-create-audit-v2.js`) ✅
 
 - Fields: id, orgUid, registryId, rootHash, type, change, table, onchainConfirmationTimeStamp, author, comment, generation, createdAt, updatedAt
 
-3. **organizations** (`20250110120002-create-organizations-v2.js`)
+3. **organizations** (`20250110120002-create-organizations-v2.js`) ✅
 
 - Fields: orgUid (PK), name, icon, registryId, registryHash, subscribed, synced, fileStoreSubscribed, sync_remaining, balance, pendingBalance, isHome, createdAt, updatedAt
 
-4. **meta** (`20250110120003-create-meta-v2.js`)
+4. **meta** (`20250110120003-create-meta-v2.js`) ✅
 
 - Fields: metaKey (PK), metaValue, createdAt, updatedAt
 
-5. **governance** (`20250110120004-create-governance-v2.js`)
+5. **governance** (`20250110120004-create-governance-v2.js`) ✅
 
 - Fields: metaKey (PK), metaValue, createdAt, updatedAt
 
-6. **simulator** (`20250110120005-create-simulator-v2.js`)
+6. **simulator** (`20250110120005-create-simulator-v2.js`) ✅
 
 - Fields: id (PK), key, value, createdAt, updatedAt
 
 Update `src/database/v2/migrations/index.js` to include these new migrations.
 
-## Phase 2: Create V2 Models
+## Phase 2: Create V2 Models ✅ COMPLETED (27/27 models)
 
-### Create Model Types (*.modeltypes.cjs)
+### Create Model Types (*.modeltypes.cjs) ✅ COMPLETED
 
 Create in `src/models/v2/`:
 
-- `staging-v2.modeltypes.cjs`
-- `audit-v2.modeltypes.cjs`
-- `organizations-v2.modeltypes.cjs`
-- `meta-v2.modeltypes.cjs`
-- `governance-v2.modeltypes.cjs`
-- `simulator-v2.modeltypes.cjs`
-- All 21 data table model types (project, validation, verification, issuance, unit, methodology, project-methodology, location, stakeholder, stakeholder-projects, label, unit-label, co-benefit, estimation, rating, activity, aef-t1-submission, aef-t2-authorizations, aef-t3-actions, aef-t4-holdings, aef-t5-authorized-entities)
+- `staging-v2.modeltypes.cjs` ✅
+- `audit-v2.modeltypes.cjs` ✅
+- `organizations-v2.modeltypes.cjs` ✅
+- `meta-v2.modeltypes.cjs` ✅
+- `governance-v2.modeltypes.cjs` ✅
+- `simulator-v2.modeltypes.cjs` ✅
+- All 21 data table model types ✅ COMPLETED (21/21 completed)
 
-### Create Sequelize Models
+### Create Sequelize Models ✅ COMPLETED
 
 Create regular models (*.model.js) for ALL tables and mirror models (*.model.mirror.js) ONLY for data tables.
 
 **Data Tables - Create BOTH .model.js AND .model.mirror.js (22 tables):**
 
-1. project (already created)
-2. validation (already created)
-3. verification
-4. issuance (already created)
-5. unit (already created)
-6. methodology
-7. project-methodology
-8. location
-9. stakeholder
-10. stakeholder-projects
-11. label
-12. unit-label
-13. co-benefit
-14. estimation
-15. rating
-16. activity
-17. aef-t1-submission
-18. aef-t2-authorizations
-19. aef-t3-actions
-20. aef-t4-holdings
-21. aef-t5-authorized-entities
-22. audit (system table but IS mirrored like v1)
+1. project ✅
+2. validation ✅
+3. verification ✅
+4. issuance ✅
+5. unit ✅
+6. methodology ✅
+7. project-methodology ✅
+8. location ✅
+9. stakeholder ✅
+10. stakeholder-projects ✅
+11. label ✅
+12. unit-label ✅
+13. co-benefit ✅
+14. estimation ✅
+15. rating ✅
+16. activity ✅
+17. aef-t1-submission ✅
+18. aef-t2-authorizations ✅
+19. aef-t3-actions ✅
+20. aef-t4-holdings ✅
+21. aef-t5-authorized-entities ✅
+22. audit (system table but IS mirrored like v1) ✅
 
 **System Tables - Create ONLY .model.js, NO mirror models (5 tables):**
 
-1. staging (no mirror)
-2. organizations (no mirror)
-3. meta (no mirror)
-4. governance (no mirror)
-5. simulator (no mirror)
+1. staging (no mirror) ✅
+2. organizations (no mirror) ✅
+3. meta (no mirror) ✅
+4. governance (no mirror) ✅
+5. simulator (no mirror) ✅
 
-Update `src/models/v2/index.js` to export all models.
+Update `src/models/v2/index.js` to export all models. ✅ COMPLETED
 
 ## Phase 3: Create V2 Validations
 
