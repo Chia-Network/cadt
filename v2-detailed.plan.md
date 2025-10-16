@@ -344,7 +344,7 @@ Create regular models (*.model.js) for ALL tables and mirror models (*.model.mir
 
 Update `src/models/v2/index.js` to export all models. ✅ COMPLETED
 
-## Phase 3: Create V2 Validations
+## Phase 3: Create V2 Validations ✅ COMPLETED (25/25 validation files)
 
 Create validation schemas in `src/validations/v2/`:
 
@@ -400,58 +400,58 @@ locationCountry: Joi.string()
 **V2 Fields Requiring Picklist Validation (from v2-sql.dat):**
 
 1. **project table:**
-   - `project_sector` → `pickListValidation('projectSector')`
-   - `project_type` → `pickListValidation('projectType')`
-   - `project_status` → `pickListValidation('projectStatusValues', 'projectStatus')`
-   - `project_unit_metric` → `pickListValidation('unitMetric')`
+   - `project_sector` → `pickListValidation('projectSector')` ✅
+   - `project_type` → `pickListValidation('projectType')` ✅
+   - `project_status` → `pickListValidation('projectStatusValues', 'projectStatus')` ✅
+   - `project_unit_metric` → `pickListValidation('unitMetric')` ✅
 
 2. **validation table:**
-   - `validation_type` → `pickListValidation('validationType')`
-   - `validation_body` → `pickListValidation('validationBody')`
+   - `validation_type` → `pickListValidation('validationType')` ✅
+   - `validation_body` → `pickListValidation('validationBody')` ✅
 
 3. **verification table:**
-   - `verification_body` → `pickListValidation('verificationBody')`
+   - `verification_body` → `pickListValidation('verificationBody')` ✅
 
 4. **unit table:**
-   - `unit_type` → `pickListValidation('unitType')`
-   - `unit_status` → `pickListValidation('unitStatus')`
-   - `unit_metric` → `pickListValidation('unitMetric')`
+   - `unit_type` → `pickListValidation('unitType')` ✅
+   - `unit_status` → `pickListValidation('unitStatus')` ✅
+   - `unit_metric` → `pickListValidation('unitMetric')` ✅
 
 5. **methodology table:**
-   - `methodology_type` → `pickListValidation('methodologyType')`
+   - `methodology_type` → `pickListValidation('methodologyType')` ✅
 
 6. **location table:**
-   - `location_country` → `pickListValidation('countries', 'locationCountry')`
+   - `location_country` → `pickListValidation('countries', 'locationCountry')` ✅
 
 7. **stakeholder table:**
-   - `stakeholder_type` → `pickListValidation('stakeholderType')`
+   - `stakeholder_type` → `pickListValidation('stakeholderType')` ✅
 
 8. **label table:**
-   - `label_type` → `pickListValidation('labelType')`
+   - `label_type` → `pickListValidation('labelType')` ✅
 
 9. **co_benefit table:**
-   - `co_benefit_id` → `pickListValidation('coBenefits', 'coBenefitId')`
+   - `co_benefit_id` → `pickListValidation('coBenefits', 'coBenefitId')` ✅
 
 10. **rating table:**
-    - `rating_type` → `pickListValidation('ratingType')`
+    - `rating_type` → `pickListValidation('ratingType')` ✅
 
 11. **aef_t2_authorizations table:**
-    - `aef_t2_authorizations_metric` → `pickListValidation('unitMetric')`
-    - `aef_t2_authorizations_sector` → `pickListValidation('projectSector')`
-    - `aef_t2_authorizations_activity_type` → `pickListValidation('activityType')`
-    - `aef_t2_authorizations_purposes_for_authorization` → `pickListValidation('authorizationPurpose')`
+    - `aef_t2_authorizations_metric` → `pickListValidation('unitMetric')` ✅
+    - `aef_t2_authorizations_sector` → `pickListValidation('projectSector')` ✅
+    - `aef_t2_authorizations_activity_type` → `pickListValidation('activityType')` ✅
+    - `aef_t2_authorizations_purposes_for_authorization` → `pickListValidation('authorizationPurpose')` ✅
 
 12. **aef_t3_actions table:**
-    - `aef_t3_actions_type` → `pickListValidation('actionType')`
-    - `aef_t3_actions_metric` → `pickListValidation('unitMetric')`
-    - `aef_t3_actions_mitigation_type` → `pickListValidation('mitigationType')`
+    - `aef_t3_actions_type` → `pickListValidation('actionType')` ✅
+    - `aef_t3_actions_metric` → `pickListValidation('unitMetric')` ✅
+    - `aef_t3_actions_mitigation_type` → `pickListValidation('mitigationType')` ✅
 
 13. **aef_t4_holdings table:**
-    - `aef_t4_holdings_metric` → `pickListValidation('unitMetric')`
-    - `aef_t4_holdings_mitigation_type` → `pickListValidation('mitigationType')`
+    - `aef_t4_holdings_metric` → `pickListValidation('unitMetric')` ✅
+    - `aef_t4_holdings_mitigation_type` → `pickListValidation('mitigationType')` ✅
 
 14. **aef_t5_authorized_entities table:**
-    - `aef_t5_authorized_entities_incorporation_country` → `pickListValidation('countries')`
+    - `aef_t5_authorized_entities_incorporation_country` → `pickListValidation('countries')` ✅
 
 **Picklist values are sourced from:**
 
@@ -471,31 +471,31 @@ locationCountry: Joi.string()
 
 Validation files needed:
 
-- `project-v2.validations.js`
-- `validation-v2.validations.js`
-- `verification-v2.validations.js`
-- `issuance-v2.validations.js`
-- `unit-v2.validations.js`
-- `methodology-v2.validations.js`
-- `project-methodology-v2.validations.js`
-- `location-v2.validations.js`
-- `stakeholder-v2.validations.js`
-- `stakeholder-projects-v2.validations.js`
-- `label-v2.validations.js`
-- `unit-label-v2.validations.js`
-- `co-benefit-v2.validations.js`
-- `estimation-v2.validations.js`
-- `rating-v2.validations.js`
-- `activity-v2.validations.js`
-- `aef-t1-submission-v2.validations.js`
-- `aef-t2-authorizations-v2.validations.js`
-- `aef-t3-actions-v2.validations.js`
-- `aef-t4-holdings-v2.validations.js`
-- `aef-t5-authorized-entities-v2.validations.js`
-- `staging-v2.validations.js`
-- `audit-v2.validations.js`
+- `project-v2.validations.js` ✅
+- `validation-v2.validations.js` ✅
+- `verification-v2.validations.js` ✅
+- `issuance-v2.validations.js` ✅
+- `unit-v2.validations.js` ✅
+- `methodology-v2.validations.js` ✅
+- `project-methodology-v2.validations.js` ✅
+- `location-v2.validations.js` ✅
+- `stakeholder-v2.validations.js` ✅
+- `stakeholder-projects-v2.validations.js` ✅
+- `label-v2.validations.js` ✅
+- `unit-label-v2.validations.js` ✅
+- `co-benefit-v2.validations.js` ✅
+- `estimation-v2.validations.js` ✅
+- `rating-v2.validations.js` ✅
+- `activity-v2.validations.js` ✅
+- `aef-t1-submission-v2.validations.js` ✅
+- `aef-t2-authorizations-v2.validations.js` ✅
+- `aef-t3-actions-v2.validations.js` ✅
+- `aef-t4-holdings-v2.validations.js` ✅
+- `aef-t5-authorized-entities-v2.validations.js` ✅
+- `staging-v2.validations.js` ✅
+- `audit-v2.validations.js` ✅
 
-Update `src/validations/v2/index.js` to export all schemas.
+Update `src/validations/v2/index.js` to export all schemas. ✅ COMPLETED
 
 ## Phase 4: Create V2 Utilities
 
