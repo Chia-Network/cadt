@@ -35,7 +35,11 @@ class SimulatorV2 extends Model {
 SimulatorV2.init(ModelTypes, {
   sequelize: getSequelizeV2(),
   modelName: 'simulator',
+  tableName: 'simulator',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  underscored: true,
   timezone: '+00:00',
   useHooks: true,
   define: {

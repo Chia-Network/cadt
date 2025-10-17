@@ -263,7 +263,11 @@ class OrganizationsV2 extends Model {
 OrganizationsV2.init(ModelTypes, {
   sequelize: getSequelizeV2(),
   modelName: 'organizations',
+  tableName: 'organizations',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  underscored: true,
   timezone: '+00:00',
   useHooks: true,
   define: {

@@ -34,8 +34,12 @@ class ProjectMethodologyV2 extends Model {
 
 ProjectMethodologyV2.init(ModelTypes, {
   sequelize: getSequelizeV2(),
-  modelName: 'project_methodology',
+  modelName: 'project-methodology',
+  tableName: 'project_methodology',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  underscored: true,
   timezone: '+00:00',
   useHooks: true,
   define: {

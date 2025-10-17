@@ -28,4 +28,7 @@ V2Router.use('/aef-t3-actions', ResourceRouters.AefT3ActionsV2Router);
 V2Router.use('/aef-t4-holdings', ResourceRouters.AefT4HoldingsV2Router);
 V2Router.use('/aef-t5-authorized-entities', ResourceRouters.AefT5AuthorizedEntitiesV2Router);
 
+// Mount offer routes
+V2Router.use('/offer', ResourceRouters.OfferV2Router);
+
 export { V2Router };

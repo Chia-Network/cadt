@@ -34,6 +34,17 @@ export const createResourceController = ({
         const uuid = uuidv4();
         newRecord[primaryKey] = uuid;
 
+        // Reject timestamp fields in API requests (V2 requirement)
+        const timestampFields = ['createdAt', 'updatedAt', 'created_at', 'updated_at'];
+        const providedTimestampFields = timestampFields.filter(field => newRecord.hasOwnProperty(field));
+        if (providedTimestampFields.length > 0) {
+          return res.status(400).json({
+            message: `Error creating new ${tableName}`,
+            error: `Timestamp fields are not allowed in API requests: ${providedTimestampFields.join(', ')}`,
+            success: false,
+          });
+        }
+
         // Validate input
         const { error, value } = validationSchema.validate(newRecord);
         if (error) {
@@ -129,6 +140,17 @@ export const createResourceController = ({
         const { id } = req.params;
         const updateData = req.body;
 
+        // Reject timestamp fields in API requests (V2 requirement)
+        const timestampFields = ['createdAt', 'updatedAt', 'created_at', 'updated_at'];
+        const providedTimestampFields = timestampFields.filter(field => updateData.hasOwnProperty(field));
+        if (providedTimestampFields.length > 0) {
+          return res.status(400).json({
+            message: `Error updating ${tableName}`,
+            error: `Timestamp fields are not allowed in API requests: ${providedTimestampFields.join(', ')}`,
+            success: false,
+          });
+        }
+
         // Validate input
         const { error, value } = validationSchema.validate(updateData, { allowUnknown: true });
         if (error) {
@@ -200,4 +222,5 @@ export const createResourceController = ({
     },
   };
 };
+
 

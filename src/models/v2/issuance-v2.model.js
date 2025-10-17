@@ -35,7 +35,11 @@ class IssuanceV2 extends Model {
 IssuanceV2.init(ModelTypes, {
   sequelize: getSequelizeV2(),
   modelName: 'issuance',
+  tableName: 'issuance',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  underscored: true,
   timezone: '+00:00',
   useHooks: true,
   define: {

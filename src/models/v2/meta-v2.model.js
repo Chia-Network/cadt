@@ -35,7 +35,11 @@ class MetaV2 extends Model {
 MetaV2.init(ModelTypes, {
   sequelize: getSequelizeV2(),
   modelName: 'meta',
+  tableName: 'meta',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  underscored: true,
   timezone: '+00:00',
   useHooks: true,
   define: {

@@ -35,7 +35,11 @@ class UnitV2 extends Model {
 UnitV2.init(ModelTypes, {
   sequelize: getSequelizeV2(),
   modelName: 'unit',
+  tableName: 'unit',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  underscored: true,
   timezone: '+00:00',
   useHooks: true,
   define: {

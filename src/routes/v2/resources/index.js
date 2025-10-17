@@ -21,3 +21,4 @@ export { AefT2AuthorizationsV2Router } from './aef-t2-authorizations-v2.js';
 export { AefT3ActionsV2Router } from './aef-t3-actions-v2.js';
 export { AefT4HoldingsV2Router } from './aef-t4-holdings-v2.js';
 export { AefT5AuthorizedEntitiesV2Router } from './aef-t5-authorized-entities-v2.js';
+export { OfferV2Router } from './offer-v2.js';

@@ -101,6 +101,32 @@ lsof -i:31310
 - Model associations are initialized after migrations complete
 - Chia Datalayer connection errors are expected in development (no Chia node required for basic API testing)
 
+### File System Structure
+
+**Chia Root Directory:**
+- **Location**: `~/.chia/mainnet/`
+- **CADT Directory**: `~/.chia/mainnet/cadt/`
+- **V2 Database**: `~/.chia/mainnet/cadt/v2/data.sqlite3`
+- **V1 Database**: `~/.chia/mainnet/cadt/[version]/data.sqlite3`
+
+**Directory Structure:**
+```
+~/.chia/mainnet/
+├── cadt/
+│   ├── v2/
+│   │   └── data.sqlite3          # V2 database
+│   └── [version]/                 # V1 database (version-specific)
+│       └── data.sqlite3
+└── [other chia files]
+```
+
+**Important Notes:**
+- V2 database is completely isolated from V1 databases
+- Each CADT version maintains its own directory under `~/.chia/mainnet/cadt/`
+- V2 uses a fixed `v2` directory name (not version-specific)
+- Database files are created automatically when the server starts
+- All CADT data persists in the Chia root directory structure
+
 ## Progress Tracking Methodology
 
 ### Overview
@@ -376,6 +402,56 @@ projectDescription: {
 projectDescription: Joi.string().optional(),  // OPTIONAL
 ```
 
+**Timestamp Field Handling (CRITICAL):**
+
+`created_at` and `updated_at` fields are automatically managed by Sequelize and MUST NOT be included in API validation schemas for POST/PUT requests. These fields will be returned in GET responses but cannot be modified via API requests.
+
+**V2 Timestamp Configuration:**
+
+All V2 models are configured with:
+```javascript
+timestamps: true,
+createdAt: 'created_at',
+updatedAt: 'updated_at',
+underscored: true,
+```
+
+This ensures:
+- ✅ **Automatic timestamp generation** - Sequelize automatically sets `created_at` on INSERT and `updated_at` on UPDATE
+- ✅ **Database column mapping** - Maps Sequelize's default `createdAt`/`updatedAt` to snake_case `created_at`/`updated_at` columns
+- ✅ **Consistent field naming** - All model attributes use snake_case to match database schema
+- ✅ **Same behavior as V1** - Timestamps work identically to V1, just with different column names
+
+**V1 vs V2 Timestamp Differences:**
+
+| Aspect | V1 | V2 |
+|--------|----|----|
+| **Database Columns** | `createdAt`, `updatedAt` (camelCase) | `created_at`, `updated_at` (snake_case) |
+| **Model Config** | `timestamps: true` (defaults) | `timestamps: true, createdAt: 'created_at', updatedAt: 'updated_at'` |
+| **Automatic Generation** | ✅ Yes | ✅ Yes |
+| **API Rejection** | ✅ Yes | ✅ Yes |
+| **Behavior** | Identical | Identical |
+
+**API Request Rejection:**
+
+The generic controller factory rejects POST and PUT requests containing timestamp fields:
+```javascript
+// ❌ WRONG - Don't include timestamp fields in validation schemas
+export const projectV2Schema = Joi.object({
+  cadTrustProjectId: Joi.string().required(),
+  projectRegistryName: Joi.string().required(),
+  createdAt: Joi.date().optional(),  // ❌ REMOVE THIS
+  updatedAt: Joi.date().optional(),  // ❌ REMOVE THIS
+});
+
+// ✅ CORRECT - Exclude timestamp fields from validation
+export const projectV2Schema = Joi.object({
+  cadTrustProjectId: Joi.string().required(),
+  projectRegistryName: Joi.string().required(),
+  // createdAt and updatedAt are automatically managed by Sequelize
+});
+```
+
 **Picklist Validation (CRITICAL):**
 
 All fields marked as `picklist` in v2-sql.dat MUST use `.custom(pickListValidation())`:
@@ -497,6 +573,20 @@ Validation files needed:
 
 Update `src/validations/v2/index.js` to export all schemas. ✅ COMPLETED
 
+**⚠️ IMPORTANT: Remove Timestamp Fields from Existing V2 Validation Schemas**
+
+All existing V2 validation schemas must be updated to remove `createdAt` and `updatedAt` fields:
+
+```javascript
+// ❌ REMOVE these lines from all V2 validation schemas:
+createdAt: Joi.date().optional(),
+updatedAt: Joi.date().optional(),
+```
+
+**Files that need updating:**
+- All 25 validation files in `src/validations/v2/` (remove timestamp fields)
+- Ensure no validation schema includes `createdAt` or `updatedAt`
+
 ## Phase 4: Create V2 Utilities
 
 Create `src/utils/v2-data-assertions.js` with enhanced foreign key validation that checks both main table and staging.
@@ -573,6 +663,28 @@ export const createResourceController = ({
         await assertHomeOrgExists();
 
         const newRecord = req.body;
+
+        // Validate input - reject unknown fields including timestamp fields
+        const { error, value } = validationSchema.validate(newRecord, {
+          allowUnknown: false,
+          stripUnknown: false
+        });
+        if (error) {
+          return res.status(400).json({
+            message: `Error creating new ${tableName}`,
+            error: error.details[0].message,
+            success: false,
+          });
+        }
+
+        // Explicitly reject timestamp fields in POST requests
+        if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
+          return res.status(400).json({
+            message: `Error creating new ${tableName}`,
+            error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
+            success: false,
+          });
+        }
 
         // Generate UUID for primary key
         const uuid = uuidv4();
@@ -656,6 +768,28 @@ export const createResourceController = ({
 
         const { id } = req.params;
         const updateData = req.body;
+
+        // Validate input - reject unknown fields including timestamp fields
+        const { error, value } = validationSchema.validate(updateData, {
+          allowUnknown: false,
+          stripUnknown: false
+        });
+        if (error) {
+          return res.status(400).json({
+            message: `Error updating ${tableName}`,
+            error: error.details[0].message,
+            success: false,
+          });
+        }
+
+        // Explicitly reject timestamp fields in PUT requests
+        if (updateData.hasOwnProperty('createdAt') || updateData.hasOwnProperty('updatedAt')) {
+          return res.status(400).json({
+            message: `Error updating ${tableName}`,
+            error: 'createdAt and updatedAt fields are automatically managed and cannot be updated via API',
+            success: false,
+          });
+        }
 
         // Verify record exists
         await assertRecordExistance(Model, id);
@@ -1282,6 +1416,8 @@ const V2_PRIMARY_KEY_MAP = {
 - [ ] Create 6 system table migrations (staging, audit, organizations, meta, governance, simulator) in src/database/v2/migrations/
 - [ ] Create all v2 model types and Sequelize models (27 tables total: 21 data + 6 system)
 - [ ] Create validation schemas for all v2 endpoints with snake_case to camelCase mapping
+- [ ] **Remove createdAt and updatedAt fields from all V2 validation schemas** (25 files)
+- [ ] **Update generic controller factory to reject timestamp fields in API requests**
 - [ ] Create shared generic controller architecture for 80% code reuse
 - [ ] Create V2 controller instances using generic controller factory
 - [ ] Create Express routes for all v2 endpoints matching table names

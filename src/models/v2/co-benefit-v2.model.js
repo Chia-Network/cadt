@@ -35,7 +35,11 @@ class CoBenefitV2 extends Model {
 CoBenefitV2.init(ModelTypes, {
   sequelize: getSequelizeV2(),
   modelName: 'co_benefit',
+  tableName: 'co_benefit',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  underscored: true,
   timezone: '+00:00',
   useHooks: true,
   define: {

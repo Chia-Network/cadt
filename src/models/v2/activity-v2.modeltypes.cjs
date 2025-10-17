@@ -1,38 +1,38 @@
 const Sequelize = require('sequelize');
 
 module.exports = {
-  cadTrustActivityId: {
+  cad_trust_activity_id: {
     type: Sequelize.INTEGER,
     primaryKey: true,
     autoIncrement: true,
     allowNull: false,
   },
-  activityProgramName: {
+  activity_program_name: {
     type: Sequelize.STRING,
     allowNull: false,
   },
-  activityRegistry: {
+  activity_registry: {
     type: Sequelize.STRING,
     allowNull: false,
   },
-  activityRegistryActivityId: {
+  activity_registry_activity_id: {
     type: Sequelize.STRING,
     allowNull: false,
   },
-  activityRegistryProgramId: {
+  activity_registry_program_id: {
     type: Sequelize.STRING,
     allowNull: true,
   },
-  activityDescription: {
+  activity_description: {
     type: Sequelize.TEXT,
     allowNull: true,
   },
-  createdAt: {
+  created_at: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
     allowNull: false,
   },
-  updatedAt: {
+  updated_at: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
     allowNull: false,

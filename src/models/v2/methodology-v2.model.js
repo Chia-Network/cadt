@@ -35,7 +35,11 @@ class MethodologyV2 extends Model {
 MethodologyV2.init(ModelTypes, {
   sequelize: getSequelizeV2(),
   modelName: 'methodology',
+  tableName: 'methodology',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  underscored: true,
   timezone: '+00:00',
   useHooks: true,
   define: {

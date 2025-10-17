@@ -9,7 +9,11 @@ safeMirrorDbHandler(() => {
   IssuanceV2Mirror.init(ModelTypes, {
     sequelize: sequelizeV2Mirror,
     modelName: 'issuance',
+  tableName: 'issuance',
     timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  underscored: true,
     timezone: '+00:00',
     define: {
       charset: 'utf8mb4',

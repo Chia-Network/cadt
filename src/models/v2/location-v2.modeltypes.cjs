@@ -2,13 +2,10 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   cad_trust_location_id: {
-    type: Sequelize.STRING,
+    type: Sequelize.INTEGER,
     primaryKey: true,
+    autoIncrement: true,
     allowNull: false,
-  },
-  location_name: {
-    type: Sequelize.STRING,
-    allowNull: true,
   },
   location_country: {
     type: Sequelize.STRING,
@@ -18,29 +15,30 @@ module.exports = {
     type: Sequelize.STRING,
     allowNull: true,
   },
-  location_coordinates: {
-    type: Sequelize.STRING,
-    allowNull: true,
-  },
-  location_comment: {
+  location_gis: {
     type: Sequelize.TEXT,
     allowNull: true,
   },
-  cad_trust_project_id: {
-    type: Sequelize.STRING,
-    allowNull: false,
+  location_map_type: {
+    type: Sequelize.TEXT,
+    allowNull: true,
   },
-  org_uid: {
-    type: Sequelize.STRING,
-    allowNull: false,
+  location_map_file_link: {
+    type: Sequelize.TEXT,
+    allowNull: true,
   },
   created_at: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
+    allowNull: false,
   },
   updated_at: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
+    allowNull: false,
+  },
+  cad_trust_project_id: {
+    type: Sequelize.INTEGER,
+    allowNull: false,
   },
 };
-

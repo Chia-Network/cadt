@@ -2,8 +2,9 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   cad_trust_methodology_id: {
-    type: Sequelize.STRING,
+    type: Sequelize.INTEGER,
     primaryKey: true,
+    autoIncrement: true,
     allowNull: false,
   },
   methodology_code: {
@@ -12,35 +13,32 @@ module.exports = {
   },
   methodology_name: {
     type: Sequelize.STRING,
+    allowNull: false,
+  },
+  methodology_version: {
+    type: Sequelize.STRING,
+    allowNull: true,
+  },
+  methodology_date: {
+    type: Sequelize.DATE,
+    allowNull: true,
+  },
+  methodology_link: {
+    type: Sequelize.TEXT,
     allowNull: true,
   },
   methodology_type: {
     type: Sequelize.STRING,
     allowNull: true,
   },
-  methodology_version: {
-    type: Sequelize.STRING,
-    allowNull: true,
-  },
-  methodology_scope: {
-    type: Sequelize.TEXT,
-    allowNull: true,
-  },
-  methodology_comment: {
-    type: Sequelize.TEXT,
-    allowNull: true,
-  },
-  org_uid: {
-    type: Sequelize.STRING,
-    allowNull: false,
-  },
   created_at: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
+    allowNull: false,
   },
   updated_at: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
+    allowNull: false,
   },
 };
-

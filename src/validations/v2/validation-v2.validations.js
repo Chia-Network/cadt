@@ -13,7 +13,5 @@ export const validationV2Schema = Joi.object({
   validationDate: Joi.date().optional(),
   validationCreditPeriodStartDate: Joi.date().optional(),
   validationCreditPeriodEndDate: Joi.date().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
   cadTrustProjectId: Joi.number().required(),
 });

@@ -35,7 +35,11 @@ class ActivityV2 extends Model {
 ActivityV2.init(ModelTypes, {
   sequelize: getSequelizeV2(),
   modelName: 'activity',
+  tableName: 'activity',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  underscored: true,
   timezone: '+00:00',
   useHooks: true,
   define: {
