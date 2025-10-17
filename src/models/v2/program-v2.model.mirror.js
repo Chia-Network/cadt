@@ -1,15 +1,15 @@
 import { Model } from 'sequelize';
 
 import { sequelizeV2Mirror, safeMirrorDbHandler } from '../../database/v2';
-import ModelTypes from './activity-v2.modeltypes.cjs';
+import ModelTypes from './program-v2.modeltypes.cjs';
 
-class ActivityV2Mirror extends Model {}
+class ProgramV2Mirror extends Model {}
 
 safeMirrorDbHandler(() => {
-  ActivityV2Mirror.init(ModelTypes, {
+  ProgramV2Mirror.init(ModelTypes, {
     sequelize: sequelizeV2Mirror,
-    modelName: 'activity',
-  tableName: 'activity',
+    modelName: 'program',
+  tableName: 'program',
     timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
@@ -27,4 +27,4 @@ safeMirrorDbHandler(() => {
   });
 });
 
-export { ActivityV2Mirror };
+export { ProgramV2Mirror };

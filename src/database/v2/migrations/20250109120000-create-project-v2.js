@@ -72,7 +72,7 @@ export default {
           type: Sequelize.STRING,
           allowNull: true,
         },
-        cad_trust_activity_id: {
+        cad_trust_program_id: {
           type: Sequelize.INTEGER,
           allowNull: true,
         },

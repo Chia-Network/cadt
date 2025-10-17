@@ -26,7 +26,7 @@ import {
   CoBenefitV2,
   EstimationV2,
   RatingV2,
-  ActivityV2,
+  ProgramV2,
   MetaV2
 } from './index.js';
 
@@ -233,7 +233,7 @@ class StagingV2 extends Model {
         co_benefit: 'cad_trust_co_benefit_id',
         estimation: 'cad_trust_estimation_id',
         rating: 'cad_trust_rating_id',
-        activity: 'cad_trust_activity_id',
+        program: 'cad_trust_program_id',
         aef_t1_submission: 'cad_trust_aef_t1_submission_id',
         aef_t2_authorizations: 'cad_trust_aef_t2_authorizations_id',
         aef_t3_actions: 'cad_trust_aef_t3_actions_id',

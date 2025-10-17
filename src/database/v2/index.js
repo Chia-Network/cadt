@@ -190,7 +190,7 @@ const initializeV2Models = async () => {
       CoBenefitV2,
       EstimationV2,
       RatingV2,
-      ActivityV2,
+      ProgramV2,
       AefT1SubmissionV2,
       AefT2AuthorizationsV2,
       AefT3ActionsV2,
@@ -213,7 +213,7 @@ const initializeV2Models = async () => {
       CoBenefitV2Mirror,
       EstimationV2Mirror,
       RatingV2Mirror,
-      ActivityV2Mirror,
+      ProgramV2Mirror,
       AefT1SubmissionV2Mirror,
       AefT2AuthorizationsV2Mirror,
       AefT3ActionsV2Mirror,
@@ -311,7 +311,7 @@ const initializeV2Models = async () => {
         });
       }
 
-      // Activity is a standalone table - no direct association with Project
+      // Program is a standalone table - no direct association with Project
     }
 
     // Issuance has many units
@@ -532,7 +532,7 @@ const initializeV2Models = async () => {
         });
       }
 
-      // Activity is a standalone table - no direct association with Project (mirror)
+      // Program is a standalone table - no direct association with Project (mirror)
     }
 
     // Issuance has many units (mirror)

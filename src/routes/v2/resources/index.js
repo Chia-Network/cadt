@@ -15,7 +15,7 @@ export { UnitLabelV2Router } from './unit-label-v2.js';
 export { CoBenefitV2Router } from './co-benefit-v2.js';
 export { EstimationV2Router } from './estimation-v2.js';
 export { RatingV2Router } from './rating-v2.js';
-export { ActivityV2Router } from './activity-v2.js';
+export { ProgramV2Router } from './program-v2.js';
 export { AefT1SubmissionV2Router } from './aef-t1-submission-v2.js';
 export { AefT2AuthorizationsV2Router } from './aef-t2-authorizations-v2.js';
 export { AefT3ActionsV2Router } from './aef-t3-actions-v2.js';

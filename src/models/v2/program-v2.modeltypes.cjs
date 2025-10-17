@@ -1,29 +1,29 @@
 const Sequelize = require('sequelize');
 
 module.exports = {
-  cad_trust_activity_id: {
+  cad_trust_program_id: {
     type: Sequelize.INTEGER,
     primaryKey: true,
     autoIncrement: true,
     allowNull: false,
   },
-  activity_program_name: {
+  program_name: {
     type: Sequelize.STRING,
     allowNull: false,
   },
-  activity_registry: {
+  program_registry: {
     type: Sequelize.STRING,
     allowNull: false,
   },
-  activity_registry_activity_id: {
+  program_registry_program_id: {
     type: Sequelize.STRING,
     allowNull: false,
   },
-  activity_registry_program_id: {
+  program_registry_activity_id: {
     type: Sequelize.STRING,
     allowNull: true,
   },
-  activity_description: {
+  program_description: {
     type: Sequelize.TEXT,
     allowNull: true,
   },

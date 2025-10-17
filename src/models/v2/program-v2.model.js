@@ -3,9 +3,9 @@
 import { Sequelize, Model } from 'sequelize';
 import * as rxjs from 'rxjs';
 import { sequelizeV2 as getSequelizeV2 } from '../../database/v2/index.js';
-import ModelTypes from './activity-v2.modeltypes.cjs';
+import ModelTypes from './program-v2.modeltypes.cjs';
 
-class ActivityV2 extends Model {
+class ProgramV2 extends Model {
   static changes = new rxjs.Subject();
   static defaultColumns = Object.keys(ModelTypes);
 
@@ -32,10 +32,10 @@ class ActivityV2 extends Model {
   }
 }
 
-ActivityV2.init(ModelTypes, {
+ProgramV2.init(ModelTypes, {
   sequelize: getSequelizeV2(),
-  modelName: 'activity',
-  tableName: 'activity',
+  modelName: 'program',
+  tableName: 'program',
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
@@ -53,4 +53,4 @@ ActivityV2.init(ModelTypes, {
   },
 });
 
-export { ActivityV2 };
+export { ProgramV2 };

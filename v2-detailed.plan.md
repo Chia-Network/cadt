@@ -352,7 +352,7 @@ Create regular models (*.model.js) for ALL tables and mirror models (*.model.mir
 13. co-benefit ✅
 14. estimation ✅
 15. rating ✅
-16. activity ✅
+16. program ✅
 17. aef-t1-submission ✅
 18. aef-t2-authorizations ✅
 19. aef-t3-actions ✅
@@ -562,7 +562,7 @@ Validation files needed:
 - `co-benefit-v2.validations.js` ✅
 - `estimation-v2.validations.js` ✅
 - `rating-v2.validations.js` ✅
-- `activity-v2.validations.js` ✅
+- `program-v2.validations.js` ✅
 - `aef-t1-submission-v2.validations.js` ✅
 - `aef-t2-authorizations-v2.validations.js` ✅
 - `aef-t3-actions-v2.validations.js` ✅
@@ -1065,7 +1065,7 @@ static async generateOfferFile() {
     co_benefit: 'cadTrustCoBenefitId',
     estimation: 'cadTrustEstimationId',
     rating: 'cadTrustRatingId',
-    activity: 'cadTrustActivityId',
+    program: 'cadTrustProgramId',
     aef_t1_submission: 'cadTrustAefT1SubmissionId',
     aef_t2_authorizations: 'cadTrustAefT2AuthorizationsId',
     aef_t3_actions: 'cadTrustAefT3ActionsId',
@@ -1314,6 +1314,24 @@ Test scenarios for V2 offers:
 
 ## Key Implementation Notes
 
+### Table Naming Change: Activity → Program
+
+**IMPORTANT**: The `activity` table has been renamed to `program` in V2 to better reflect its purpose. This affects:
+
+- **Table name**: `activity` → `program`
+- **Primary key**: `cad_trust_activity_id` → `cad_trust_program_id`
+- **Field names**: All `activity_*` prefixes → `program_*` prefixes
+- **Model names**: `ActivityV2` → `ProgramV2`
+- **Controller names**: `ActivityV2Controller` → `ProgramV2Controller`
+- **Route names**: `/activity` → `/program`
+
+**Updated field mappings:**
+- `activity_program_name` → `program_name`
+- `activity_registry` → `program_registry`
+- `activity_registry_activity_id` → `program_registry_program_id`
+- `activity_registry_program_id` → `program_registry_activity_id`
+- `activity_description` → `program_description`
+
 ### Primary Key ID Generation (UUID v4, NOT Auto-Increment)
 
 **CRITICAL: V2 uses UUIDs like V1, NOT auto-increment integers**
@@ -1370,7 +1388,7 @@ const V2_PRIMARY_KEY_MAP = {
   co_benefit: 'cadTrustCoBenefitId',
   estimation: 'cadTrustEstimationId',
   rating: 'cadTrustRatingId',
-  activity: 'cadTrustActivityId',
+  program: 'cadTrustProgramId',
   aef_t1_submission: 'cadTrustAefT1SubmissionId',
   aef_t2_authorizations: 'cadTrustAefT2AuthorizationsId',
   aef_t3_actions: 'cadTrustAefT3ActionsId',

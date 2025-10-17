@@ -156,13 +156,13 @@ export const RatingV2Controller = createResourceController({
   assertRecordExistance: assertRecordExistanceOrStaged,
 });
 
-// Activity Controller
-export const ActivityV2Controller = createResourceController({
-  Model: V2Models.ActivityV2,
+// Program Controller
+export const ProgramV2Controller = createResourceController({
+  Model: V2Models.ProgramV2,
   StagingModel: V2Models.StagingV2,
-  validationSchema: V2Validations.activityV2Schema,
-  primaryKey: 'cadTrustActivityId',
-  tableName: 'activity',
+  validationSchema: V2Validations.programV2Schema,
+  primaryKey: 'cadTrustProgramId',
+  tableName: 'program',
   assertRecordExistance: assertRecordExistanceOrStaged,
 });
 

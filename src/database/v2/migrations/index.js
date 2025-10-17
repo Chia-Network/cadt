@@ -13,7 +13,7 @@ import CreateUnitLabelV2 from './20250109120011-create-unit-label-v2.js';
 import CreateCoBenefitV2 from './20250109120012-create-co-benefit-v2.js';
 import CreateEstimationV2 from './20250109120013-create-estimation-v2.js';
 import CreateRatingV2 from './20250109120014-create-rating-v2.js';
-import CreateActivityV2 from './20250109120015-create-activity-v2.js';
+import CreateProgramV2 from './20250109120015-create-program-v2.js';
 import CreateAefT1SubmissionV2 from './20250109120016-create-aef-t1-submission-v2.js';
 import CreateAefT2AuthorizationsV2 from './20250109120017-create-aef-t2-authorizations-v2.js';
 import CreateAefT3ActionsV2 from './20250109120018-create-aef-t3-actions-v2.js';
@@ -88,8 +88,8 @@ export const migrations = [
     name: '20250109120014-create-rating-v2.js',
   },
   {
-    migration: CreateActivityV2,
-    name: '20250109120015-create-activity-v2.js',
+    migration: CreateProgramV2,
+    name: '20250109120015-create-program-v2.js',
   },
   {
     migration: CreateAefT1SubmissionV2,
