@@ -2,9 +2,8 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   cadTrustAefT1SubmissionId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     primaryKey: true,
-    autoIncrement: true,
     allowNull: false,
   },
   aefT1SubmissionParty: {

@@ -2,12 +2,12 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   cadTrustProjectId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: false,
     primaryKey: true,
   },
   cadTrustMethodologyId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: false,
     primaryKey: true,
   },

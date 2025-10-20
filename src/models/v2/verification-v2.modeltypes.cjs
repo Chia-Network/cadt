@@ -2,9 +2,8 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   cad_trust_verification_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     primaryKey: true,
-    autoIncrement: true,
     allowNull: false,
   },
   verification_id: {
@@ -34,11 +33,11 @@ module.exports = {
     allowNull: false,
   },
   cad_trust_project_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: false,
   },
   cad_trust_validation_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: true,
   },
 };

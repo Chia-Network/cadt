@@ -2,9 +2,8 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   cad_trust_unit_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     primaryKey: true,
-    autoIncrement: true,
     allowNull: false,
   },
   unit_serial_id: {
@@ -82,7 +81,7 @@ module.exports = {
     allowNull: false,
   },
   cad_trust_issuance_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: false,
   },
 };

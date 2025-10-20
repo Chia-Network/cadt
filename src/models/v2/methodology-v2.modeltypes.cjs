@@ -2,9 +2,8 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   cad_trust_methodology_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     primaryKey: true,
-    autoIncrement: true,
     allowNull: false,
   },
   methodology_code: {

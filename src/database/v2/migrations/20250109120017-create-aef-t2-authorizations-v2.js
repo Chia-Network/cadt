@@ -1,15 +1,17 @@
 'use strict';
 
+import { uuid as uuidv4 } from 'uuidv4';
+
 export default {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable(
       'aef_t2_authorizations',
       {
         cad_trust_aef_t2_authorizations_id: {
-          type: Sequelize.INTEGER,
+          type: Sequelize.STRING,
           primaryKey: true,
-          autoIncrement: true,
           allowNull: false,
+          defaultValue: () => uuidv4(),
         },
         aef_t2_authorizations_id: {
           type: Sequelize.STRING,

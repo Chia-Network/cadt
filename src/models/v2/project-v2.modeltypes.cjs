@@ -69,7 +69,7 @@ module.exports = {
     allowNull: true,
   },
   cad_trust_program_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: true,
   },
 };

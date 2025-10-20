@@ -2,9 +2,8 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   cadTrustCoBenefitId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     primaryKey: true,
-    autoIncrement: true,
     allowNull: false,
   },
   coBenefitId: {
@@ -22,7 +21,7 @@ module.exports = {
     allowNull: false,
   },
   cadTrustProjectId: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: false,
   },
 };

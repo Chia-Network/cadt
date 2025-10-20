@@ -1,15 +1,17 @@
 'use strict';
 
+import { uuid as uuidv4 } from 'uuidv4';
+
 export default {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable(
       'issuance',
       {
         cad_trust_issuance_id: {
-          type: Sequelize.INTEGER,
+          type: Sequelize.STRING,
           primaryKey: true,
-          autoIncrement: true,
           allowNull: false,
+          defaultValue: () => uuidv4(),
         },
         issuance_id: {
           type: Sequelize.STRING,
@@ -30,7 +32,7 @@ export default {
           allowNull: false,
         },
         cad_trust_verification_id: {
-          type: Sequelize.INTEGER,
+          type: Sequelize.STRING,
           allowNull: false,
           references: {
             model: 'verification',
@@ -38,7 +40,7 @@ export default {
           },
         },
         cad_trust_methodology_id: {
-          type: Sequelize.INTEGER,
+          type: Sequelize.STRING,
           allowNull: false,
           references: {
             model: 'methodology',
@@ -46,7 +48,7 @@ export default {
           },
         },
         cad_trust_location_id: {
-          type: Sequelize.INTEGER,
+          type: Sequelize.STRING,
           allowNull: true,
           references: {
             model: 'location',

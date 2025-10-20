@@ -2,9 +2,8 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   cad_trust_aef_t3_actions_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     primaryKey: true,
-    autoIncrement: true,
     allowNull: false,
   },
   aef_t3_actions_date: {
@@ -126,19 +125,19 @@ module.exports = {
     allowNull: false,
   },
   cad_trust_aef_t1_submission_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: true,
   },
   cad_trust_unit_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: true,
   },
   cad_trust_project_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: true,
   },
   cad_trust_aef_t2_authorizations_id: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: true,
   },
 };

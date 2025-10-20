@@ -1,15 +1,17 @@
 'use strict';
 
+import { uuid as uuidv4 } from 'uuidv4';
+
 export default {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable(
       'estimation',
       {
         cad_trust_estimation_id: {
-          type: Sequelize.INTEGER,
+          type: Sequelize.STRING,
           primaryKey: true,
-          autoIncrement: true,
           allowNull: false,
+          defaultValue: () => uuidv4(),
         },
         estimation_start_date: {
           type: Sequelize.DATE,
@@ -38,7 +40,7 @@ export default {
           allowNull: false,
         },
         cad_trust_project_id: {
-          type: Sequelize.INTEGER,
+          type: Sequelize.STRING,
           allowNull: false,
           references: {
             model: 'project',
