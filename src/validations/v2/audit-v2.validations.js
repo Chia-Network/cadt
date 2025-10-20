@@ -12,6 +12,4 @@ export const auditV2Schema = Joi.object({
   author: Joi.string().optional(),
   comment: Joi.string().optional(),
   generation: Joi.number().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
 });

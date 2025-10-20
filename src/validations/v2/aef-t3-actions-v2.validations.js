@@ -13,6 +13,4 @@ export const aefT3ActionsV2Schema = Joi.object({
   aefT3ActionsMitigationType: Joi.string()
     .custom(pickListValidation('mitigationType'))
     .optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
 });

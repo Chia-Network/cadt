@@ -7,6 +7,4 @@ export const aefT5AuthorizedEntitiesV2Schema = Joi.object({
   aefT5AuthorizedEntitiesIncorporationCountry: Joi.string()
     .custom(pickListValidation('countries'))
     .optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
 });

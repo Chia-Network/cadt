@@ -9,8 +9,6 @@ export const verificationV2Schema = Joi.object({
   verificationBody: Joi.string()
     .custom(pickListValidation('verificationBody'))
     .optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
   cadTrustProjectId: Joi.number().required(),
   cadTrustValidationId: Joi.number().optional(),
 });

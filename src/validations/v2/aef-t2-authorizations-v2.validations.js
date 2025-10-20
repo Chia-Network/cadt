@@ -30,8 +30,6 @@ export const aefT2AuthorizationsV2Schema = Joi.object({
   aefT2AuthorizationsAuthorizationDocumentation: Joi.string().optional(),
   aefT2AuthorizationsFirstTransferDefinitionOimp: Joi.string().optional(),
   aefT2AuthorizationsAdditionalInformation: Joi.string().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
   cadTrustAefT1SubmissionId: Joi.number().optional(),
   cadTrustUnitId: Joi.number().optional(),
   cadTrustProjectId: Joi.number().optional(),

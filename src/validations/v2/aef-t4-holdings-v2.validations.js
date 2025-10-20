@@ -10,6 +10,4 @@ export const aefT4HoldingsV2Schema = Joi.object({
   aefT4HoldingsMitigationType: Joi.string()
     .custom(pickListValidation('mitigationType'))
     .optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
 });

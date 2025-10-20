@@ -11,6 +11,4 @@ export const methodologyV2Schema = Joi.object({
   methodologyType: Joi.string()
     .custom(pickListValidation('methodologyType'))
     .optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
 });

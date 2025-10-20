@@ -8,6 +8,4 @@ export const stakeholderV2Schema = Joi.object({
     .custom(pickListValidation('stakeholderType'))
     .optional(),
   stakeholderLink: Joi.string().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
 });

@@ -11,6 +11,4 @@ export const aefT1SubmissionV2Schema = Joi.object({
   aefT1SubmissionNdcFirstYear: Joi.number().optional(),
   aefT1SubmissionNdcLastYear: Joi.number().optional(),
   aefT1SubmissionReferenceReviewReport: Joi.string().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
 });

@@ -10,7 +10,5 @@ export const locationV2Schema = Joi.object({
   locationGis: Joi.string().optional(),
   locationMapType: Joi.string().optional(),
   locationMapFileLink: Joi.string().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
   cadTrustProjectId: Joi.number().required(),
 });

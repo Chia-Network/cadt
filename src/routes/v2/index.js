@@ -22,6 +22,8 @@ V2Router.use('/co-benefit', ResourceRouters.CoBenefitV2Router);
 V2Router.use('/estimation', ResourceRouters.EstimationV2Router);
 V2Router.use('/rating', ResourceRouters.RatingV2Router);
 V2Router.use('/program', ResourceRouters.ProgramV2Router);
+V2Router.use('/staging', ResourceRouters.StagingV2Router);
+V2Router.use('/audit', ResourceRouters.AuditV2Router);
 V2Router.use('/aef-t1-submission', ResourceRouters.AefT1SubmissionV2Router);
 V2Router.use('/aef-t2-authorizations', ResourceRouters.AefT2AuthorizationsV2Router);
 V2Router.use('/aef-t3-actions', ResourceRouters.AefT3ActionsV2Router);

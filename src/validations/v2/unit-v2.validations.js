@@ -25,7 +25,5 @@ export const unitV2Schema = Joi.object({
     .optional(),
   unitCurrentOwner: Joi.string().optional(),
   unitItmosReferenceId: Joi.string().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
   cadTrustIssuanceId: Joi.number().required(),
 });

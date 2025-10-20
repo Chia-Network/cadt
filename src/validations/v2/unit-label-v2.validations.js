@@ -5,6 +5,4 @@ export const unitLabelV2Schema = Joi.object({
   cadTrustUnitId: Joi.number().required(),
   labelUnitDate: Joi.date().optional(),
   labelUnitDescription: Joi.string().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
 });

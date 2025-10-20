@@ -5,6 +5,8 @@ import { assertRecordExistance } from '../../utils/data-assertions.js';
 import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
 import { OrganizationsV2Controller } from './organizations-v2.controller.js';
 import { GovernanceV2Controller } from './governance-v2.controller.js';
+import { StagingV2Controller } from './staging-v2.controller.js';
+import { AuditV2Controller } from './audit-v2.controller.js';
 
 // Project Controller
 export const ProjectV2Controller = createResourceController({
@@ -221,5 +223,11 @@ export { OrganizationsV2Controller };
 
 // Governance Controller (special handling)
 export { GovernanceV2Controller };
+
+// Staging Controller (special handling)
+export { StagingV2Controller };
+
+// Audit Controller (special handling)
+export { AuditV2Controller };
 
 // Note: More controllers will be added as we create the remaining models and validations

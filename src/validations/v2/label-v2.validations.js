@@ -9,6 +9,4 @@ export const labelV2Schema = Joi.object({
     .optional(),
   labelLink: Joi.string().optional(),
   labelDate: Joi.date().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
 });

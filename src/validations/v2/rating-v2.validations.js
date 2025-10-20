@@ -8,7 +8,5 @@ export const ratingV2Schema = Joi.object({
     .optional(),
   ratingValue: Joi.string().required(),
   ratingLink: Joi.string().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
   cadTrustProjectId: Joi.number().required(),
 });

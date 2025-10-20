@@ -33,8 +33,6 @@ export const projectV2Schema = Joi.object({
   projectQuantityUnit: Joi.string().optional(),
   projectQuantityUnitOther: Joi.string().optional(),
   orgUid: Joi.string().required(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
   projectRegistryId: Joi.string().optional(),
   projectRegistryUrl: Joi.string().optional(),
   projectQuantityIssued: Joi.number().optional(),

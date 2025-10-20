@@ -9,6 +9,4 @@ export const stagingV2Schema = Joi.object({
   commited: Joi.boolean().optional(),
   failedCommit: Joi.boolean().optional(),
   isTransfer: Joi.boolean().optional(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
 });

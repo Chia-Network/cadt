@@ -6,7 +6,5 @@ export const coBenefitV2Schema = Joi.object({
   coBenefitId: Joi.string()
     .custom(pickListValidation('coBenefits', 'coBenefitId'))
     .required(),
-  createdAt: Joi.date().optional(),
-  updatedAt: Joi.date().optional(),
   cadTrustProjectId: Joi.number().required(),
 });
