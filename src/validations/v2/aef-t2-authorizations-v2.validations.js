@@ -2,7 +2,7 @@ import Joi from 'joi';
 import { pickListValidation } from '../../utils/validation-utils.js';
 
 export const aefT2AuthorizationsV2Schema = Joi.object({
-  cadTrustAefT2AuthorizationsId: Joi.number().optional(),
+  cadTrustAefT2AuthorizationsId: Joi.string().optional(),
   aefT2AuthorizationsId: Joi.string().required(),
   aefT2AuthorizationsDate: Joi.date().required(),
   aefT2AuthorizationsCooperativeApproachId: Joi.string().required(),
@@ -30,8 +30,8 @@ export const aefT2AuthorizationsV2Schema = Joi.object({
   aefT2AuthorizationsAuthorizationDocumentation: Joi.string().optional(),
   aefT2AuthorizationsFirstTransferDefinitionOimp: Joi.string().optional(),
   aefT2AuthorizationsAdditionalInformation: Joi.string().optional(),
-  cadTrustAefT1SubmissionId: Joi.number().optional(),
-  cadTrustUnitId: Joi.number().optional(),
-  cadTrustProjectId: Joi.number().optional(),
-  cadTrustAefT5AuthorizedEntitiesId: Joi.number().optional(),
+  cadTrustAefT1SubmissionId: Joi.string().optional(),
+  cadTrustUnitId: Joi.string().optional(),
+  cadTrustProjectId: Joi.string().optional(),
+  cadTrustAefT5AuthorizedEntitiesId: Joi.string().optional(),
 });

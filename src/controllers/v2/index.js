@@ -2,7 +2,7 @@ import { createResourceController } from '../generic/resource.controller.js';
 import * as V2Models from '../../models/v2/index.js';
 import * as V2Validations from '../../validations/v2/index.js';
 import { assertRecordExistance } from '../../utils/data-assertions.js';
-import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
+import { assertRecordExistanceOrStaged, assertV2HomeOrgExists } from '../../utils/v2-data-assertions.js';
 import { OrganizationsV2Controller } from './organizations-v2.controller.js';
 import { GovernanceV2Controller } from './governance-v2.controller.js';
 import { StagingV2Controller } from './staging-v2.controller.js';
@@ -16,6 +16,7 @@ export const ProjectV2Controller = createResourceController({
   primaryKey: 'cadTrustProjectId',
   tableName: 'project',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Validation Controller
@@ -26,6 +27,7 @@ export const ValidationV2Controller = createResourceController({
   primaryKey: 'cadTrustValidationId',
   tableName: 'validation',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Verification Controller
@@ -36,6 +38,7 @@ export const VerificationV2Controller = createResourceController({
   primaryKey: 'cadTrustVerificationId',
   tableName: 'verification',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Methodology Controller
@@ -46,6 +49,7 @@ export const MethodologyV2Controller = createResourceController({
   primaryKey: 'cadTrustMethodologyId',
   tableName: 'methodology',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Location Controller
@@ -56,6 +60,7 @@ export const LocationV2Controller = createResourceController({
   primaryKey: 'cadTrustLocationId',
   tableName: 'location',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Issuance Controller
@@ -66,6 +71,7 @@ export const IssuanceV2Controller = createResourceController({
   primaryKey: 'cadTrustIssuanceId',
   tableName: 'issuance',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Unit Controller
@@ -76,6 +82,7 @@ export const UnitV2Controller = createResourceController({
   primaryKey: 'cadTrustUnitId',
   tableName: 'unit',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Project-Methodology Controller
@@ -86,6 +93,7 @@ export const ProjectMethodologyV2Controller = createResourceController({
   primaryKey: 'id',
   tableName: 'project_methodology',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Stakeholder Controller
@@ -96,6 +104,7 @@ export const StakeholderV2Controller = createResourceController({
   primaryKey: 'cadTrustStakeholderId',
   tableName: 'stakeholder',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Stakeholder-Projects Controller
@@ -106,6 +115,7 @@ export const StakeholderProjectsV2Controller = createResourceController({
   primaryKey: 'cadTrustStakeholderProjectId',
   tableName: 'stakeholder_projects',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Label Controller
@@ -116,6 +126,7 @@ export const LabelV2Controller = createResourceController({
   primaryKey: 'cadTrustLabelId',
   tableName: 'label',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Unit-Label Controller
@@ -126,6 +137,7 @@ export const UnitLabelV2Controller = createResourceController({
   primaryKey: 'id',
   tableName: 'unit_label',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Co-Benefit Controller
@@ -136,6 +148,7 @@ export const CoBenefitV2Controller = createResourceController({
   primaryKey: 'cadTrustCoBenefitId',
   tableName: 'co_benefit',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Estimation Controller
@@ -146,6 +159,7 @@ export const EstimationV2Controller = createResourceController({
   primaryKey: 'cadTrustEstimationId',
   tableName: 'estimation',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Rating Controller
@@ -156,6 +170,7 @@ export const RatingV2Controller = createResourceController({
   primaryKey: 'cadTrustRatingId',
   tableName: 'rating',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Program Controller
@@ -166,6 +181,7 @@ export const ProgramV2Controller = createResourceController({
   primaryKey: 'cadTrustProgramId',
   tableName: 'program',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // AEF T1 Submission Controller
@@ -176,6 +192,7 @@ export const AefT1SubmissionV2Controller = createResourceController({
   primaryKey: 'cadTrustAefT1SubmissionId',
   tableName: 'aef_t1_submission',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // AEF T2 Authorizations Controller
@@ -186,6 +203,7 @@ export const AefT2AuthorizationsV2Controller = createResourceController({
   primaryKey: 'cadTrustAefT2AuthorizationsId',
   tableName: 'aef_t2_authorizations',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // AEF T3 Actions Controller
@@ -196,6 +214,7 @@ export const AefT3ActionsV2Controller = createResourceController({
   primaryKey: 'cadTrustAefT3ActionsId',
   tableName: 'aef_t3_actions',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // AEF T4 Holdings Controller
@@ -206,6 +225,7 @@ export const AefT4HoldingsV2Controller = createResourceController({
   primaryKey: 'cadTrustAefT4HoldingsId',
   tableName: 'aef_t4_holdings',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // AEF T5 Authorized Entities Controller
@@ -216,6 +236,7 @@ export const AefT5AuthorizedEntitiesV2Controller = createResourceController({
   primaryKey: 'cadTrustAefT5AuthorizedEntitiesId',
   tableName: 'aef_t5_authorized_entities',
   assertRecordExistance: assertRecordExistanceOrStaged,
+  assertHomeOrgExists: assertV2HomeOrgExists,
 });
 
 // Organizations Controller (special handling)

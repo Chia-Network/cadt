@@ -22,6 +22,18 @@ const getSequelizeV2 = () => {
   return sequelizeV2;
 };
 
+// Reset database connection for tests
+export const resetV2DatabaseConnection = () => {
+  if (sequelizeV2) {
+    sequelizeV2.close();
+    sequelizeV2 = null;
+  }
+  if (sequelizeV2Mirror) {
+    sequelizeV2Mirror.close();
+    sequelizeV2Mirror = null;
+  }
+};
+
 const getSequelizeV2Mirror = () => {
   if (!sequelizeV2Mirror) {
     const mirrorConfig = (process.env.NODE_ENV || 'local') === 'local' ? 'v2Mirror' : 'v2MirrorTest';
@@ -49,11 +61,17 @@ const logDebounce = _.debounce(() => {
 
 export const checkForV2Migrations = async (db) => {
   try {
+    console.log('🔍 DEBUG: Starting V2 migrations check...');
+    console.log('🔍 DEBUG: Database config:', db.config);
+    console.log('🔍 DEBUG: Total migrations available:', migrations.length);
+
     const queryInterface = db.getQueryInterface();
 
+    console.log('🔍 DEBUG: Creating SequelizeMeta table...');
     await queryInterface.createTable('SequelizeMeta', {
       name: Sequelize.STRING,
     });
+    console.log('🔍 DEBUG: SequelizeMeta table created successfully');
 
     const completedMigrations = await db.query(
       'SELECT * FROM `SequelizeMeta`',
@@ -62,32 +80,51 @@ export const checkForV2Migrations = async (db) => {
       },
     );
 
+    console.log('🔍 DEBUG: Completed migrations:', completedMigrations.length);
+    console.log('🔍 DEBUG: Completed migration names:', completedMigrations.map(m => m.name));
+
     const notCompletedMigrations = migrations.filter((migration) => {
       return !completedMigrations
         .map((complete) => complete.name)
         .includes(migration.name);
     });
 
+    console.log('🔍 DEBUG: Pending migrations:', notCompletedMigrations.length);
+    console.log('🔍 DEBUG: Pending migration names:', notCompletedMigrations.map(m => m.name));
+
     for (let i = 0; i < notCompletedMigrations.length; i++) {
       try {
         const notCompleted = notCompletedMigrations[i];
+        console.log(`🔍 DEBUG: Running migration ${i + 1}/${notCompletedMigrations.length}: ${notCompleted.name}`);
         logger.info(`V2 MIGRATING: ${notCompleted.name}`);
+
         await notCompleted.migration.up(db.queryInterface, Sequelize);
+        console.log(`🔍 DEBUG: Migration ${notCompleted.name} completed successfully`);
+
         await db.query('INSERT INTO `SequelizeMeta` VALUES(:name)', {
           type: Sequelize.QueryTypes.INSERT,
           replacements: { name: notCompleted.name },
         });
+        console.log(`🔍 DEBUG: Migration ${notCompleted.name} recorded in SequelizeMeta`);
       } catch (e) {
+        console.error(`🔍 DEBUG: Migration ${notCompletedMigrations[i].name} failed:`, e);
         logger.error('V2 Migration not completed', e);
       }
     }
+
+    console.log('🔍 DEBUG: All migrations processed');
   } catch (error) {
+    console.error('🔍 DEBUG: Error in checkForV2Migrations:', error);
     logger.error('Error checking for V2 migrations', error);
   }
 };
 
 export const prepareV2Db = async () => {
+  console.log('🔍 DEBUG: prepareV2Db called');
+  console.log('🔍 DEBUG: NODE_ENV:', process.env.NODE_ENV);
+
   const mirrorConfig = (process.env.NODE_ENV || 'local') === 'local' ? 'v2Mirror' : 'v2MirrorTest';
+  console.log('🔍 DEBUG: Mirror config:', mirrorConfig);
 
   // Check for collision prevention
   if (mirrorConfig === 'v2Mirror') {
@@ -112,6 +149,7 @@ export const prepareV2Db = async () => {
     getV2Config().MIRROR_DB.DB_HOST &&
     getV2Config().MIRROR_DB.DB_HOST !== ''
   ) {
+    console.log('🔍 DEBUG: Setting up MySQL mirror database');
     const connection = await mysql.createConnection({
       host: getV2Config().MIRROR_DB.DB_HOST,
       port: 3306,
@@ -127,18 +165,26 @@ export const prepareV2Db = async () => {
 
     await checkForV2Migrations(db);
   } else if (mirrorConfig === 'v2MirrorTest') {
+    console.log('🔍 DEBUG: Setting up V2 mirror test database');
     await checkForV2Migrations(getSequelizeV2Mirror());
   }
 
   try {
+    console.log('🔍 DEBUG: Setting up main V2 database');
     const db = getSequelizeV2();
+    console.log('🔍 DEBUG: Main V2 database instance:', db.config);
+
     await checkForV2Migrations(db);
 
     // Initialize models and associations
+    console.log('🔍 DEBUG: Initializing V2 models...');
     await initializeV2Models();
+    console.log('🔍 DEBUG: V2 models initialized successfully');
 
     logger.info('V2 Database prepared successfully');
+    console.log('🔍 DEBUG: V2 Database preparation completed');
   } catch (error) {
+    console.error('🔍 DEBUG: Error in prepareV2Db:', error);
     logger.error('Error preparing V2 database', error);
   }
 };
@@ -224,6 +270,11 @@ const initializeV2Models = async () => {
 
     // Set up model associations for MAIN models
     if (ProjectV2 && ProjectV2.sequelize) {
+      // Check if associations are already set up to avoid duplicates
+      if (ProjectV2.associations && Object.keys(ProjectV2.associations).length > 0) {
+        logger.info('V2 model associations already initialized, skipping...');
+        return;
+      }
       // Project has many validations
       if (ValidationV2 && ValidationV2.sequelize) {
         ProjectV2.hasMany(ValidationV2, {

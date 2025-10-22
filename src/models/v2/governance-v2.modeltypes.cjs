@@ -11,11 +11,13 @@ module.exports = {
     unique: true,
     required: true,
     allowNull: false,
+    field: 'meta_key',
   },
   metaValue: {
     type: Sequelize.TEXT,
     required: true,
     allowNull: false,
+    field: 'meta_value',
   },
   confirmed: {
     type: Sequelize.BOOLEAN,
@@ -24,10 +26,12 @@ module.exports = {
   createdAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
+    field: 'created_at',
   },
   updatedAt: {
     type: Sequelize.DATE,
     defaultValue: Sequelize.NOW,
+    field: 'updated_at',
   },
 };
 

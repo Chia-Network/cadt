@@ -2,7 +2,7 @@ import Joi from 'joi';
 import { pickListValidation } from '../../utils/validation-utils.js';
 
 export const methodologyV2Schema = Joi.object({
-  cadTrustMethodologyId: Joi.number().optional(),
+  cadTrustMethodologyId: Joi.string().optional(),
   methodologyCode: Joi.string().required(),
   methodologyName: Joi.string().required(),
   methodologyVersion: Joi.string().optional(),

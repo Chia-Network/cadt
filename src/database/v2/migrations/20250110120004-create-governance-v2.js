@@ -10,12 +10,12 @@ export default {
           primaryKey: true,
           autoIncrement: true,
         },
-        metaKey: {
+        meta_key: {
           type: Sequelize.STRING,
           unique: true,
           allowNull: false,
         },
-        metaValue: {
+        meta_value: {
           type: Sequelize.TEXT,
           allowNull: false,
         },
@@ -23,11 +23,11 @@ export default {
           type: Sequelize.BOOLEAN,
           defaultValue: false,
         },
-        createdAt: {
+        created_at: {
           type: Sequelize.DATE,
           defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         },
-        updatedAt: {
+        updated_at: {
           type: Sequelize.DATE,
           defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         },

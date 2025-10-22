@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { ProjectV2, ValidationV2, VerificationV2, IssuanceV2, UnitV2 } from '../../../src/models/v2/index.js';
 import { StagingV2 } from '../../../src/models/v2/index.js';
+import { Op } from 'sequelize';
 
 // V2 project-specific fixtures
 export const createV2TestProject = async (projectData) => {
@@ -185,7 +186,7 @@ export const searchV2Projects = async (searchCriteria) => {
   const where = {};
 
   if (searchCriteria.projectName) {
-    where.projectName = { [require('sequelize').Op.like]: `%${searchCriteria.projectName}%` };
+    where.projectName = { [Op.like]: `%${searchCriteria.projectName}%` };
   }
 
   if (searchCriteria.projectSector) {

@@ -2,6 +2,9 @@ import { expect } from 'chai';
 import { StagingV2, AuditV2, OrganizationsV2, MetaV2, GovernanceV2 } from '../../../src/models/v2/index.js';
 import datalayer from '../../../src/datalayer';
 import { getV2Config } from '../../../src/utils/v2-config-loader';
+import { Op } from 'sequelize';
+import supertest from 'supertest';
+import app from '../../../src/server';
 
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
@@ -36,31 +39,21 @@ export const getLastV2StagingRecord = async () => {
 
 // V2 organization utilities
 export const createV2TestHomeOrg = async () => {
-  const orgData = {
-    orgUid: 'v2-test-org-001',
+  const response = await supertest(app).post(`/v2/organizations`).send({
     name: 'V2 Test Organization',
     icon: 'v2-icon',
-    registryId: 'v2-registry-001',
-    registryHash: 'v2-hash-001',
-    subscribed: true,
-    synced: true,
-    fileStoreSubscribed: true,
-    sync_remaining: 0,
-    balance: 1000,
-    pendingBalance: 0,
-    isHome: true,
-  };
+  });
 
-  await OrganizationsV2.upsert(orgData);
-  return orgData.orgUid;
+  console.log('Creating V2 home org', response.body);
+
+  return response.body.orgUid;
 };
 
 export const getV2HomeOrgId = async () => {
-  const homeOrg = await OrganizationsV2.findOne({
-    where: { isHome: true },
-    raw: true,
-  });
-  return homeOrg?.orgUid;
+  const organizationResults = await supertest(app).get('/v2/organizations');
+  return Object.keys(organizationResults.body).find(
+    (key) => organizationResults.body[key].isHome,
+  );
 };
 
 // V2 audit utilities
@@ -171,7 +164,7 @@ export const cleanupV2TestData = async () => {
   await resetV2StagingTable();
   await AuditV2.destroy({ where: {}, truncate: true });
   await OrganizationsV2.destroy({ where: { orgUid: 'v2-test-org-001' } });
-  await MetaV2.destroy({ where: { metaKey: { [require('sequelize').Op.like]: 'v2-test-%' } } });
+  await MetaV2.destroy({ where: { metaKey: { [Op.like]: 'v2-test-%' } } });
 };
 
 // V2 simulator mode detection

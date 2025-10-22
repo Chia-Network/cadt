@@ -1,0 +1,298 @@
+
+> cadt@1.7.25 test:v2:integration
+> npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/*.spec.js --reporter spec --exit --timeout 300000
+
+
+> cadt@1.7.25 resetTestDb
+> rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3 && rm -f ./testV2.sqlite3 && rm -f ./testV2Mirror.sqlite3
+
+ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE
+ENV FILE OVERRIDE: RUNNING IN SIMULATOR MODE
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: CADT:server 
+
+
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: Listening on port 31310 
+Server listening at http://localhost:31310
+  V2 Integration Tests
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: Connected to database 
+2025-10-20 15:05:49 [1.7.25] [[31merror[39m]: mirror_error:Cannot read properties of undefined (reading 'Sequelize') 
+WAL mode set successfully.
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120000-create-project-v2.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201195550-create-project.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120001-create-validation-v2.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120002-create-verification-v2.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194541-create-issuance.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194652-create-unit.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120003-create-methodology-v2.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194416-create-label.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120004-create-location-v2.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194449-create-related-project.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120005-create-issuance-v2.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194803-create-project-rating.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120006-create-unit-v2.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120007-create-project-methodology-v2.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194914-create-co-benefit.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201195016-create-project-location.js 
+2025-10-20 15:05:49 [1.7.25] [[32minfo[39m]: MIGRATING: 20211212200953-fulltext-search.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120008-create-stakeholder-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20211215213314-label-units-junction.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120009-create-stakeholder-projects-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20211215213314-label-units-junction.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20220122141750-create-simulator-table.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120010-create-label-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20220122164836-create-organization-table.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120011-create-unit-label-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20220127190529-create-estimation-table.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20220222204323-create-audit-table.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20220119211024-create-meta-table.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120012-create-co-benefit-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120013-create-estimation-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201195016-create-project-location.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120014-create-rating-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20211219182106-sqlite-triggers-projects.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120015-create-program-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120016-create-aef-t1-submission-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20211219184405-sqlite-triggers-units.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120017-create-aef-t2-authorizations-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120018-create-aef-t3-actions-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20220115134849-add-orgUid-index.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120019-create-aef-t4-holdings-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20220315134151-create-governance-table 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120020-create-aef-t5-authorized-entities-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20220428144558-add-comment-column-to-all-datamodels 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120000-create-staging-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120001-create-audit-v2.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: MIGRATING: 20220504180739-add-serial-number-fields.js 
+2025-10-20 15:05:50 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120002-create-organizations-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120003-create-meta-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120004-create-governance-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120005-create-simulator-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: MIGRATING: 20220509125335-add-description-field-to-projects 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120000-create-project-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120001-create-validation-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: MIGRATING: 20220515223227-re-populate-virtual-tables 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: MIGRATING: 20220708210357-adding-author-column-to-audit-table 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120002-create-verification-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: MIGRATING: 20220724212553-create-file-store 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120003-create-methodology-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120004-create-location-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: MIGRATING: 20220721212845-add-optional-methodology2-field-to-project 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120005-create-issuance-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: MIGRATING: 20220724161782-add-file-store-subscribed-column-to-project 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120006-create-unit-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120007-create-project-methodology-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: MIGRATING: 20220808192709-populate-units-fts 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120008-create-stakeholder-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: MIGRATING: 20220816155101-reset-db-for-new-singletons 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120009-create-stakeholder-projects-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120010-create-label-v2.js 
+2025-10-20 15:05:51 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120011-create-unit-label-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120012-create-co-benefit-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120013-create-estimation-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120014-create-rating-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120015-create-program-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120016-create-aef-t1-submission-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20220825124702-add-isTransfer-column 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120017-create-aef-t2-authorizations-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20220831023546-add-org-metadata 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20231020201652-OrgSyncStatus 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120018-create-aef-t3-actions-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120019-create-aef-t4-holdings-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20231020214357-OrgSyncRemainingCount 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250109120020-create-aef-t5-authorized-entities-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20231207142225-AddGenerationIndexToAudit 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120000-create-staging-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20241211153456-add-data-model-version-store-to-organization-table 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120001-create-audit-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120002-create-organizations-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201195550-create-project.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194541-create-issuance.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120003-create-meta-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194652-create-unit.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194416-create-label.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194449-create-related-project.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120004-create-governance-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194803-create-project-rating.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201194914-create-co-benefit.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201195016-create-project-location.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: V2 MIGRATING: 20250110120005-create-simulator-v2.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20211212200953-fulltext-search.js 
+2025-10-20 15:05:52 [1.7.25] [[32minfo[39m]: MIGRATING: 20211215213314-label-units-junction.js 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20211215213314-label-units-junction.js 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220122141750-create-simulator-table.js 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220122164836-create-organization-table.js 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220127190529-create-estimation-table.js 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220222204323-create-audit-table.js 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220119211024-create-meta-table.js 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20211201195016-create-project-location.js 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: V2 models initialized with complete associations (main and mirror) 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: V2 Database prepared successfully 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20211219182106-sqlite-triggers-projects.js 
+Creating V2 home org {
+  name: 'SequelizeDatabaseError',
+  parent: {
+    errno: 1,
+    code: 'SQLITE_ERROR',
+    sql: 'SELECT `orgUid`, `orgHash`, `name`, `icon`, `isHome`, `subscribed`, `synced`, `fileStoreSubscribed`, `registryId`, `registryHash`, `sync_remaining`, `dataModelVersionStoreId`, `dataModelVersionStoreHash` FROM `organizations` AS `organization`;'
+  },
+  original: {
+    errno: 1,
+    code: 'SQLITE_ERROR',
+    sql: 'SELECT `orgUid`, `orgHash`, `name`, `icon`, `isHome`, `subscribed`, `synced`, `fileStoreSubscribed`, `registryId`, `registryHash`, `sync_remaining`, `dataModelVersionStoreId`, `dataModelVersionStoreHash` FROM `organizations` AS `organization`;'
+  },
+  sql: 'SELECT `orgUid`, `orgHash`, `name`, `icon`, `isHome`, `subscribed`, `synced`, `fileStoreSubscribed`, `registryId`, `registryHash`, `sync_remaining`, `dataModelVersionStoreId`, `dataModelVersionStoreHash` FROM `organizations` AS `organization`;',
+  parameters: {}
+}
+    End-to-End Project Workflow
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20211219184405-sqlite-triggers-units.js 
+      1) creates, updates, and deletes a project end-to-end
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220115134849-add-orgUid-index.js 
+    Staging Workflow Integration
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220315134151-create-governance-table 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220428144558-add-comment-column-to-all-datamodels 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220504180739-add-serial-number-fields.js 
+      2) handles complete staging workflow with commit and retry
+    Cross-Resource Relationships
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220509125335-add-description-field-to-projects 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220515223227-re-populate-virtual-tables 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220708210357-adding-author-column-to-audit-table 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220724212553-create-file-store 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220721212845-add-optional-methodology2-field-to-project 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220724161782-add-file-store-subscribed-column-to-project 
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220808192709-populate-units-fts 
+      3) maintains referential integrity across related resources
+    Error Handling Integration
+2025-10-20 15:05:53 [1.7.25] [[32minfo[39m]: MIGRATING: 20220816155101-reset-db-for-new-singletons 
+      4) handles cascading errors gracefully
+    Performance Integration
+      5) handles bulk operations efficiently
+    Data Consistency Integration
+2025-10-20 15:05:54 [1.7.25] [[32minfo[39m]: MIGRATING: 20220825124702-add-isTransfer-column 
+2025-10-20 15:05:54 [1.7.25] [[32minfo[39m]: MIGRATING: 20220831023546-add-org-metadata 
+2025-10-20 15:05:54 [1.7.25] [[32minfo[39m]: MIGRATING: 20231020201652-OrgSyncStatus 
+2025-10-20 15:05:54 [1.7.25] [[32minfo[39m]: MIGRATING: 20231020214357-OrgSyncRemainingCount 
+2025-10-20 15:05:54 [1.7.25] [[32minfo[39m]: MIGRATING: 20231207142225-AddGenerationIndexToAudit 
+2025-10-20 15:05:54 [1.7.25] [[32minfo[39m]: MIGRATING: 20241211153456-add-data-model-version-store-to-organization-table 
+      6) maintains data consistency across operations
+    Concurrent Operations Integration
+2025-10-20 15:05:54 [1.7.25] [[31merror[39m]: Error creating program: No V2 Home organization found, please create an organization to write data {"stack":"Error: No V2 Home organization found, please create an organization to write data\n    at assertV2HomeOrgExists (file:///home/zachary/Chia/Projects/cadt/src/utils/v2-data-assertions.js:54:11)\n    at async Object.create (file:///home/zachary/Chia/Projects/cadt/src/controllers/generic/resource.controller.js:31:9)"}
+2025-10-20 15:05:54 [1.7.25] [[31merror[39m]: Error creating project: No V2 Home organization found, please create an organization to write data {"stack":"Error: No V2 Home organization found, please create an organization to write data\n    at assertV2HomeOrgExists (file:///home/zachary/Chia/Projects/cadt/src/utils/v2-data-assertions.js:54:11)\n    at async Object.create (file:///home/zachary/Chia/Projects/cadt/src/controllers/generic/resource.controller.js:31:9)"}
+2025-10-20 15:05:54 [1.7.25] [[31merror[39m]: Error creating project: No V2 Home organization found, please create an organization to write data {"stack":"Error: No V2 Home organization found, please create an organization to write data\n    at assertV2HomeOrgExists (file:///home/zachary/Chia/Projects/cadt/src/utils/v2-data-assertions.js:54:11)\n    at async Object.create (file:///home/zachary/Chia/Projects/cadt/src/controllers/generic/resource.controller.js:31:9)"}
+2025-10-20 15:05:54 [1.7.25] [[31merror[39m]: Error creating project: No V2 Home organization found, please create an organization to write data {"stack":"Error: No V2 Home organization found, please create an organization to write data\n    at assertV2HomeOrgExists (file:///home/zachary/Chia/Projects/cadt/src/utils/v2-data-assertions.js:54:11)\n    at async Object.create (file:///home/zachary/Chia/Projects/cadt/src/controllers/generic/resource.controller.js:31:9)"}
+2025-10-20 15:05:54 [1.7.25] [[31merror[39m]: Error updating program: No V2 Home organization found, please create an organization to write data {"stack":"Error: No V2 Home organization found, please create an organization to write data\n    at assertV2HomeOrgExists (file:///home/zachary/Chia/Projects/cadt/src/utils/v2-data-assertions.js:54:11)\n    at async Object.update (file:///home/zachary/Chia/Projects/cadt/src/controllers/generic/resource.controller.js:139:9)"}
+      7) handles concurrent operations safely
+    8) "after all" hook in "V2 Integration Tests"
+
+
+  0 passing (5s)
+  8 failing
+
+  1) V2 Integration Tests
+       End-to-End Project Workflow
+         creates, updates, and deletes a project end-to-end:
+
+      AssertionError: expected 400 to equal 200
+      + expected - actual
+
+      -400
+      +200
+      
+      at Context.<anonymous> (file:///home/zachary/Chia/Projects/cadt/tests/v2/integration/v2-integration.spec.js:61:41)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+  2) V2 Integration Tests
+       Staging Workflow Integration
+         handles complete staging workflow with commit and retry:
+
+      AssertionError: expected 400 to equal 200
+      + expected - actual
+
+      -400
+      +200
+      
+      at Context.<anonymous> (file:///home/zachary/Chia/Projects/cadt/tests/v2/integration/v2-integration.spec.js:144:41)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+  3) V2 Integration Tests
+       Cross-Resource Relationships
+         maintains referential integrity across related resources:
+
+      AssertionError: expected 400 to equal 200
+      + expected - actual
+
+      -400
+      +200
+      
+      at Context.<anonymous> (file:///home/zachary/Chia/Projects/cadt/tests/v2/integration/v2-integration.spec.js:246:41)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+  4) V2 Integration Tests
+       Error Handling Integration
+         handles cascading errors gracefully:
+
+      AssertionError: expected 400 to equal 200
+      + expected - actual
+
+      -400
+      +200
+      
+      at Context.<anonymous> (file:///home/zachary/Chia/Projects/cadt/tests/v2/integration/v2-integration.spec.js:297:41)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+  5) V2 Integration Tests
+       Performance Integration
+         handles bulk operations efficiently:
+
+      AssertionError: expected 400 to equal 200
+      + expected - actual
+
+      -400
+      +200
+      
+      at Context.<anonymous> (file:///home/zachary/Chia/Projects/cadt/tests/v2/integration/v2-integration.spec.js:326:41)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+  6) V2 Integration Tests
+       Data Consistency Integration
+         maintains data consistency across operations:
+
+      AssertionError: expected 400 to equal 200
+      + expected - actual
+
+      -400
+      +200
+      
+      at Context.<anonymous> (file:///home/zachary/Chia/Projects/cadt/tests/v2/integration/v2-integration.spec.js:366:40)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+  7) V2 Integration Tests
+       Concurrent Operations Integration
+         handles concurrent operations safely:
+
+      AssertionError: expected 400 to equal 200
+      + expected - actual
+
+      -400
+      +200
+      
+      at file:///home/zachary/Chia/Projects/cadt/tests/v2/integration/v2-integration.spec.js:432:34
+      at Array.forEach (<anonymous>)
+      at Context.<anonymous> (file:///home/zachary/Chia/Projects/cadt/tests/v2/integration/v2-integration.spec.js:431:15)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+  8) V2 Integration Tests
+       "after all" hook in "V2 Integration Tests":
+     SQLITE_ERROR: no such column: orgUid
+  Error
+      at Database.<anonymous> (node_modules/sequelize/lib/dialects/sqlite/query.js:185:27)
+      at /home/zachary/Chia/Projects/cadt/node_modules/sequelize/lib/dialects/sqlite/query.js:183:50
+      at new Promise (<anonymous>)
+      at Query.run (node_modules/sequelize/lib/dialects/sqlite/query.js:183:12)
+      at /home/zachary/Chia/Projects/cadt/node_modules/sequelize/lib/sequelize.js:315:28
+      at async SQLiteQueryInterface.bulkDelete (node_modules/sequelize/lib/dialects/abstract/query-interface.js:403:12)
+      at async organizations.destroy (node_modules/sequelize/lib/model.js:1838:16)
+      at async cleanupV2TestData (file:///home/zachary/Chia/Projects/cadt/tests/v2/test-fixtures/v2-common-fixtures.js:166:3)
+      at async Context.<anonymous> (file:///home/zachary/Chia/Projects/cadt/tests/v2/integration/v2-integration.spec.js:51:5)
+
+
+

@@ -15,5 +15,5 @@ export default {
   unitMetric: 'tCO2e',
   unitCurrentOwner: 'V2 Test Organization',
   unitItmosReferenceId: 'V2-ITMO-001',
-  cadTrustIssuanceId: 1, // Will be set dynamically in tests
+  cadTrustIssuanceId: 'test-issuance-uuid', // Will be set dynamically in tests
 };

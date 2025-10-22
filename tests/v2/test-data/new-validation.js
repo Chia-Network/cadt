@@ -5,5 +5,5 @@ export default {
   validationDate: '2025-01-01T00:00:00.000Z',
   validationCreditPeriodStartDate: '2025-01-01T00:00:00.000Z',
   validationCreditPeriodEndDate: '2025-12-31T23:59:59.000Z',
-  cadTrustProjectId: 1, // Will be set dynamically in tests
+  cadTrustProjectId: 'test-project-uuid', // Will be set dynamically in tests
 };

@@ -2,7 +2,7 @@ import Joi from 'joi';
 import { pickListValidation } from '../../utils/validation-utils.js';
 
 export const unitV2Schema = Joi.object({
-  cadTrustUnitId: Joi.number().optional(),
+  cadTrustUnitId: Joi.string().optional(),
   unitSerialId: Joi.string().required(),
   unitStartBlock: Joi.string().required(),
   unitEndBlock: Joi.string().required(),
@@ -25,5 +25,5 @@ export const unitV2Schema = Joi.object({
     .optional(),
   unitCurrentOwner: Joi.string().optional(),
   unitItmosReferenceId: Joi.string().optional(),
-  cadTrustIssuanceId: Joi.number().required(),
+  cadTrustIssuanceId: Joi.string().required(),
 });

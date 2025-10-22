@@ -2,7 +2,7 @@ import Joi from 'joi';
 import { pickListValidation } from '../../utils/validation-utils.js';
 
 export const aefT4HoldingsV2Schema = Joi.object({
-  cadTrustAefT4HoldingsId: Joi.number().optional(),
+  cadTrustAefT4HoldingsId: Joi.string().optional(),
   aefT4HoldingsId: Joi.string().required(),
   aefT4HoldingsMetric: Joi.string()
     .custom(pickListValidation('unitMetric'))

@@ -11,5 +11,5 @@ export default {
   projectStatus: 'Registered',
   projectStatusDate: '2025-01-01T00:00:00.000Z',
   projectUnitMetric: 'tCO2e',
-  cadTrustProgramId: 1, // Will be set dynamically in tests
+  cadTrustProgramId: 'test-program-uuid', // Will be set dynamically in tests
 };

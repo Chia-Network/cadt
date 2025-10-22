@@ -12,6 +12,7 @@ import { logger } from '../../config/logger.js';
  * @param {string} config.primaryKey - Primary key field name
  * @param {string} config.tableName - Table name for staging
  * @param {Function} config.assertRecordExistance - FK validation function
+ * @param {Function} config.assertHomeOrgExists - Home org assertion function (optional, defaults to V1)
  * @returns {Object} Controller with CRUD methods
  */
 export const createResourceController = ({
@@ -21,12 +22,13 @@ export const createResourceController = ({
   primaryKey,
   tableName,
   assertRecordExistance,
+  assertHomeOrgExists: customAssertHomeOrgExists = assertHomeOrgExists,
 }) => {
   return {
     async create(req, res) {
       try {
         await assertIfReadOnlyMode();
-        await assertHomeOrgExists();
+        await customAssertHomeOrgExists();
 
         const newRecord = req.body;
 
@@ -134,7 +136,7 @@ export const createResourceController = ({
     async update(req, res) {
       try {
         await assertIfReadOnlyMode();
-        await assertHomeOrgExists();
+        await customAssertHomeOrgExists();
         await assertNoPendingCommits();
 
         const { id } = req.params;
@@ -190,7 +192,7 @@ export const createResourceController = ({
     async destroy(req, res) {
       try {
         await assertIfReadOnlyMode();
-        await assertHomeOrgExists();
+        await customAssertHomeOrgExists();
         await assertNoPendingCommits();
 
         const { id } = req.params;

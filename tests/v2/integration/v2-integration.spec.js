@@ -4,6 +4,9 @@ import app from '../../../src/server';
 import newProgram from '../test-data/new-program.js';
 import newProject from '../test-data/new-project.js';
 import newUnit from '../test-data/new-unit.js';
+import newIssuance from '../test-data/new-issuance.js';
+import { prepareV2Db } from '../../../src/database/v2/index.js';
+import { pullPickListValues } from '../../../src/utils/data-loaders';
 import {
   resetV2StagingTable,
   createV2TestHomeOrg,
@@ -14,6 +17,7 @@ import {
   getV2TestTimeout,
   waitForV2DataLayerSync,
 } from '../test-fixtures';
+import { OrganizationsV2 } from '../../../src/models/v2/index.js';
 import {
   createV2StagingRecord,
   validateV2StagingRecord,
@@ -34,6 +38,8 @@ describe('V2 Integration Tests', function () {
   let homeOrgUid;
 
   before(async function () {
+    await pullPickListValues();
+    await prepareV2Db();
     homeOrgUid = await createV2TestHomeOrg();
   });
 
@@ -53,6 +59,9 @@ describe('V2 Integration Tests', function () {
         .send(newProgram);
 
       expect(programResponse.status).to.equal(200);
+      if (programResponse.status !== 200) {
+        console.log('Program creation failed:', programResponse.body);
+      }
       const programId = programResponse.body.uuid;
 
       // Step 2: Create a project referencing the program
@@ -218,7 +227,7 @@ describe('V2 Integration Tests', function () {
       const issuanceResponse = await supertest(app)
         .post('/v2/issuance')
         .send({
-          ...require('../test-data/new-issuance.js').default,
+          ...newIssuance,
           cadTrustProjectId: projectId,
         });
       const issuanceId = issuanceResponse.body.uuid;

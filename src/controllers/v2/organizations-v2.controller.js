@@ -1,7 +1,8 @@
 import { OrganizationsV2 } from '../../models/v2/index.js';
 import { V2DatalayerService } from '../../services/v2-datalayer.service.js';
 import { logger } from '../../config/logger.js';
-import { assertIfReadOnlyMode, assertHomeOrgExists } from '../../utils/data-assertions.js';
+import { assertIfReadOnlyMode } from '../../utils/data-assertions.js';
+import { assertV2HomeOrgExists } from '../../utils/v2-data-assertions.js';
 
 export const OrganizationsV2Controller = {
   async create(req, res) {
@@ -63,7 +64,7 @@ export const OrganizationsV2Controller = {
   async subscribe(req, res) {
     try {
       await assertIfReadOnlyMode();
-      await assertHomeOrgExists();
+      await assertV2HomeOrgExists();
 
       const { orgUid } = req.params;
 
@@ -138,7 +139,7 @@ export const OrganizationsV2Controller = {
   async update(req, res) {
     try {
       await assertIfReadOnlyMode();
-      await assertHomeOrgExists();
+      await assertV2HomeOrgExists();
 
       const { orgUid } = req.params;
       const updateData = req.body;

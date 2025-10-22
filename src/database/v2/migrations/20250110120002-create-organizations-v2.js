@@ -10,12 +10,12 @@ export default {
           primaryKey: true,
           autoIncrement: true,
         },
-        orgUid: {
+        org_uid: {
           type: Sequelize.STRING,
           unique: true,
           allowNull: false,
         },
-        orgHash: {
+        org_hash: {
           type: Sequelize.STRING,
           allowNull: true,
         },
@@ -27,19 +27,19 @@ export default {
           type: Sequelize.STRING,
           allowNull: true,
         },
-        registryId: {
+        registry_id: {
           type: Sequelize.STRING,
           allowNull: true,
         },
-        registryHash: {
+        registry_hash: {
           type: Sequelize.STRING,
           allowNull: true,
         },
-        fileStoreId: {
+        file_store_id: {
           type: Sequelize.STRING,
           allowNull: true,
         },
-        fileStoreSubscribed: {
+        file_store_subscribed: {
           type: Sequelize.BOOLEAN,
           defaultValue: false,
         },
@@ -47,7 +47,7 @@ export default {
           type: Sequelize.BOOLEAN,
           defaultValue: false,
         },
-        isHome: {
+        is_home: {
           type: Sequelize.BOOLEAN,
           defaultValue: false,
         },
@@ -64,27 +64,27 @@ export default {
           type: Sequelize.INTEGER,
           defaultValue: 0,
         },
-        dataModelVersionStoreId: {
+        data_model_version_store_id: {
           type: Sequelize.STRING,
           allowNull: true,
         },
-        dataModelVersionStoreHash: {
+        data_model_version_store_hash: {
           type: Sequelize.STRING,
           allowNull: true,
         },
-        v2RegistryId: {
+        v2_registry_id: {
           type: Sequelize.STRING,
           allowNull: true,
         },
-        v2RegistryHash: {
+        v2_registry_hash: {
           type: Sequelize.STRING,
           allowNull: true,
         },
-        createdAt: {
+        created_at: {
           type: Sequelize.DATE,
           defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         },
-        updatedAt: {
+        updated_at: {
           type: Sequelize.DATE,
           defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         },
@@ -100,4 +100,3 @@ export default {
     await queryInterface.dropTable('organizations');
   },
 };
-

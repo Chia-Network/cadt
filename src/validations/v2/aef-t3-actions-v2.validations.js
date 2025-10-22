@@ -2,7 +2,7 @@ import Joi from 'joi';
 import { pickListValidation } from '../../utils/validation-utils.js';
 
 export const aefT3ActionsV2Schema = Joi.object({
-  cadTrustAefT3ActionsId: Joi.number().optional(),
+  cadTrustAefT3ActionsId: Joi.string().optional(),
   aefT3ActionsId: Joi.string().required(),
   aefT3ActionsType: Joi.string()
     .custom(pickListValidation('actionType'))

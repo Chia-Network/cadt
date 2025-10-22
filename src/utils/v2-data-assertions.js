@@ -1,4 +1,5 @@
 import { logger } from '../config/logger.js';
+import { OrganizationsV2 } from '../models/v2/index.js';
 
 /**
  * Enhanced foreign key validation that checks both main table and staging table
@@ -40,6 +41,31 @@ export const assertRecordExistanceOrStaged = async (Model, id, StagingModel, pri
 };
 
 /**
+ * V2-specific home organization assertion
+ * @returns {Promise<void>}
+ */
+export const assertV2HomeOrgExists = async () => {
+  const homeOrg = await OrganizationsV2.findOne({
+    where: { isHome: true },
+    raw: true,
+  });
+
+  if (!homeOrg) {
+    throw new Error(
+      `No V2 Home organization found, please create an organization to write data`,
+    );
+  }
+
+  if (!homeOrg.subscribed || homeOrg.subscribed === 0) {
+    throw new Error(
+      `Your V2 Home organization is still confirming, please wait a little longer for it to finish.`,
+    );
+  }
+
+  return homeOrg;
+};
+
+/**
  * Check if staging table is empty
  * @param {Model} StagingModel - Staging model
  * @returns {Promise<void>}
@@ -47,7 +73,7 @@ export const assertRecordExistanceOrStaged = async (Model, id, StagingModel, pri
 export const assertStagingTableIsEmpty = async (StagingModel) => {
   const count = await StagingModel.count();
   if (count > 0) {
-    throw new Error('Staging table is not empty. Please commit or clean staging first.');
+    throw new Error('V2 Staging table is not empty. Please commit or clean staging first.');
   }
 };
 
@@ -59,7 +85,7 @@ export const assertStagingTableIsEmpty = async (StagingModel) => {
 export const assertStagingTableNotEmpty = async (StagingModel) => {
   const count = await StagingModel.count();
   if (count === 0) {
-    throw new Error('Staging table is empty. Please stage some records first.');
+    throw new Error('V2 Staging table is empty. Please stage some records first.');
   }
 };
 

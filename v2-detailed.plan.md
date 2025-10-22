@@ -3,6 +3,25 @@
 
 # V2 API Implementation Plan
 
+## CRITICAL DESIGN PRINCIPLES ⚠️
+
+### 1. Database vs API Naming Convention
+- **Database**: ALL column names MUST use snake_case (e.g., `cad_trust_project_id`, `org_uid`, `created_at`)
+  - This applies to ALL V2 tables (both system tables and data tables)
+  - System tables: `organizations`, `staging`, `meta`, `governance`, `simulator`, `audit`
+  - Data tables: `project`, `unit`, `validation`, etc.
+- **API**: ALL field names MUST use camelCase (e.g., `cadTrustProjectId`, `orgUid`, `createdAt`)
+- **Model Attributes**: Use snake_case in model types to match database columns directly (no field mappings needed)
+  - Example: `org_uid` in model types → `org_uid` in database → returned as `org_uid` in API (controllers handle conversion if needed)
+- **Implementation**: V2 data table models already use snake_case attributes directly without field mappings
+
+### 2. V1 Pattern Consistency
+- **ALWAYS reference V1 tests and code as the primary guide**
+- V2 tests MUST work as similarly to V1 as possible
+- When implementing V2 features, first check how V1 handles the same functionality
+- Only deviate from V1 patterns when absolutely necessary for V2-specific requirements
+- Maintain consistency in test structure, naming conventions, and implementation patterns
+
 ## Overview
 
 Implement complete REST API endpoints for V2 database tables following V1 patterns and coding conventions. All V2 tables will be in the v2 database (completely separate from v1), but will share similar controller logic where functionality is identical.

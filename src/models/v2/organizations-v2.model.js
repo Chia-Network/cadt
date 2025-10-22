@@ -12,7 +12,11 @@ import { getV2Config } from '../../utils/v2-config-loader.js';
 
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
-import ModelTypes from './organizations-v2.modeltypes.cjs';
+import ModelTypes from './organizations-v2.modeltypes.js';
+
+console.log('OrganizationsV2 ModelTypes keys:', Object.keys(ModelTypes));
+console.log('Sample field mapping:', ModelTypes.orgUid);
+
 import { assertStoreIsOwned } from '../../utils/data-assertions.js';
 import {
   getRoot,
@@ -267,7 +271,6 @@ OrganizationsV2.init(ModelTypes, {
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
-  underscored: true,
   timezone: '+00:00',
   useHooks: true,
   define: {
@@ -280,5 +283,8 @@ OrganizationsV2.init(ModelTypes, {
     typeCast: true,
   },
 });
+
+console.log('OrganizationsV2 rawAttributes after init:', Object.keys(OrganizationsV2.rawAttributes));
+console.log('orgUid field mapping:', OrganizationsV2.rawAttributes.orgUid?.field);
 
 export { OrganizationsV2 };

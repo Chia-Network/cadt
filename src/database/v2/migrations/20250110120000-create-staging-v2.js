@@ -28,21 +28,21 @@ export default {
           allowNull: false,
           defaultValue: false,
         },
-        failedCommit: {
+        failed_commit: {
           type: Sequelize.BOOLEAN,
           allowNull: false,
           defaultValue: false,
         },
-        isTransfer: {
+        is_transfer: {
           type: Sequelize.BOOLEAN,
           allowNull: false,
           defaultValue: false,
         },
-        createdAt: {
+        created_at: {
           type: Sequelize.DATE,
           defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         },
-        updatedAt: {
+        updated_at: {
           type: Sequelize.DATE,
           defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
           allowNull: false,

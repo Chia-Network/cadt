@@ -7,17 +7,11 @@ import { Server } from 'socket.io';
 import { connection } from './websocket';
 import { getConfig } from './utils/config-loader';
 import { logger } from './config/logger.js';
-import { prepareV2Db } from './database/v2/index.js';
 
 import dotenv from 'dotenv';
 
 dotenv.config();
 logger.info('CADT:server');
-
-// Initialize V2 database
-prepareV2Db().catch((error) => {
-  logger.error('Failed to initialize V2 database:', error);
-});
 
 const port = getConfig().APP.CW_PORT || 3030;
 const bindAddress = getConfig().APP.BIND_ADDRESS || 'localhost';

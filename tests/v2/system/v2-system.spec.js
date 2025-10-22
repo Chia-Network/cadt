@@ -1,6 +1,8 @@
 import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server';
+import { prepareV2Db } from '../../../src/database/v2/index.js';
+import { pullPickListValues } from '../../../src/utils/data-loaders';
 import {
   resetV2StagingTable,
   createV2TestHomeOrg,
@@ -17,6 +19,8 @@ describe('V2 System Table Tests', function () {
   let homeOrgUid;
 
   before(async function () {
+    await pullPickListValues();
+    await prepareV2Db();
     homeOrgUid = await createV2TestHomeOrg();
   });
 
