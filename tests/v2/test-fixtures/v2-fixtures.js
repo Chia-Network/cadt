@@ -10,7 +10,7 @@ import {
 // V2 Organization fixtures
 export const createV2TestOrganization = async (overrides = {}) => {
   const { OrganizationsV2 } = await import('../../../src/models/v2/index.js');
-  const { uuid: uuidv4 } = await import('uuidv4');
+  const { v4: uuidv4 } = await import('uuid');
 
   const defaultOrg = {
     org_uid: uuidv4(),
@@ -37,7 +37,7 @@ export const createV2TestOrganization = async (overrides = {}) => {
 // V2 Staging fixtures
 export const createV2StagingRecord = async (data) => {
   const { StagingV2 } = await import('../../../src/models/v2/index.js');
-  const { uuid: uuidv4 } = await import('uuidv4');
+  const { v4: uuidv4 } = await import('uuid');
 
   return await StagingV2.create({
     uuid: uuidv4(),

@@ -58,7 +58,7 @@ export const cleanupV2TestEnvironment = async () => {
 // V2 Test Data Generators
 export const generateV2TestData = {
   uuid: () => {
-    const { uuid: uuidv4 } = require('uuidv4');
+    const { v4: uuidv4 } = require('uuid');
     return uuidv4();
   },
 

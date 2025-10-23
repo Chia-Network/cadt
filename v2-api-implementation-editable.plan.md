@@ -6,15 +6,29 @@
 - ✅ **Phase 1**: Infrastructure Setup (Database, Models, Testing)
 - ✅ **Phase 2**: Core System Models (All system tables implemented)
 - ✅ **Phase 3**: Methodology Endpoint (Complete with validations and tests)
+- ✅ **Phase 4**: Program Endpoint (Complete with validations and tests)
+- ✅ **Phase 5**: Project Endpoint (Complete with validations and tests)
+- ✅ **Phase 6**: Validation Endpoint (Complete with validations and tests)
+- ✅ **Phase 7**: Verification Endpoint (Complete with validations and tests)
+- ✅ **Phase 8**: Issuance Endpoint (Complete with validations and tests)
 
-**CURRENT STATUS:** Ready for Phase 4 (Program Endpoint) or testing existing methodology endpoint
+**CURRENT STATUS:** Ready for Phase 9 (Unit Endpoint) or testing existing endpoints
 
 **KEY ACHIEVEMENTS:**
 - V2-only smoke test created and passing (14/14 tests)
 - All system models implemented and working
-- Methodology endpoint fully implemented with CRUD operations and validations
+- Methodology endpoint fully implemented with CRUD operations and validations (16/16 tests)
+- Program endpoint fully implemented with CRUD operations and validations (15/15 tests)
+- Project endpoint fully implemented with CRUD operations, validations, and foreign key validation (27/27 tests)
+- Validation endpoint fully implemented with CRUD operations, validations, and foreign key validation (21/21 tests)
+- Verification endpoint fully implemented with CRUD operations, validations, and dual foreign key validation (22/22 tests)
+- **Issuance endpoint fully implemented with CRUD operations, validations, and dual foreign key validation (16/16 tests)**
 - V1/V2 isolation maintained
 - Snake_case database naming convention enforced
+- **Real picklist values integrated** from governance CSV data
+- **Comprehensive test utilities** for picklist validation
+- **UUID deprecation warnings fixed for V2**
+- **Foreign key validation working** (checks both main table and staging)
 
 ## Development Philosophy
 
@@ -312,34 +326,34 @@ Program table is independent (no FK dependencies from other data tables).
 
 ### 4.1 Program Schema & Migration
 
-- [ ] Review program fields in `v2-schema.dat`
-- [ ] Create program migration
-- [ ] Run migration
+- [x] Review program fields in `v2-schema.dat`
+- [x] Create program migration
+- [x] Run migration
 
 **STOP - User verifies program table created**
 
 ### 4.2 Program Model
 
-- [ ] Create model types
-- [ ] Create model and mirror
-- [ ] Update exports
+- [x] Create model types
+- [x] Create model and mirror
+- [x] Update exports
 
 **STOP - User verifies model loads**
 
 ### 4.3 Program Endpoint + Tests
 
-- [ ] Create minimal validation
-- [ ] Create controller/routes
-- [ ] Write basic CRUD tests
-- [ ] Verify tests pass
+- [x] Create minimal validation
+- [x] Create controller/routes
+- [x] Write basic CRUD tests
+- [x] Verify tests pass
 
 **STOP - User verifies CRUD tests pass**
 
 ### 4.4 Program Validations + Tests
 
-- [ ] Add required fields
-- [ ] Add validation tests
-- [ ] Verify all tests pass
+- [x] Add required fields
+- [x] Add validation tests
+- [x] Verify all tests pass
 
 **STOP - User verifies validation tests pass**
 
@@ -349,42 +363,164 @@ Project is central to the schema. Build it before dependent tables.
 
 ### 5.1 Project Schema & Migration
 
-- [ ] Review project fields in `v2-schema.dat`
-- [ ] Note FK to program table
-- [ ] Create project migration
-- [ ] Run migration
+- [x] Review project fields in `v2-schema.dat`
+- [x] Note FK to program table
+- [x] Create project migration
+- [x] Run migration
 
 **STOP - User verifies project table created**
 
 ### 5.2 Project Model
 
-- [ ] Create model types
-- [ ] Create model and mirror
-- [ ] Set up associations (belongsTo Program)
-- [ ] Update exports
+- [x] Create model types
+- [x] Create model and mirror
+- [x] Set up associations (belongsTo Program)
+- [x] Update exports
 
 **STOP - User verifies model loads with associations**
 
 ### 5.3 Project Endpoint + Tests
 
-- [ ] Create minimal validation
-- [ ] Create controller/routes
-- [ ] Write basic CRUD tests (with valid program FK)
-- [ ] Test FK validation (invalid program should fail)
-- [ ] Verify tests pass
+- [x] Create minimal validation
+- [x] Create controller/routes
+- [x] Write basic CRUD tests (with valid program FK)
+- [x] Test FK validation (invalid program should fail)
+- [x] Verify tests pass
 
 **STOP - User verifies CRUD and FK tests pass**
 
 ### 5.4 Project Validations + Tests
 
-- [ ] Add required fields validation
-- [ ] Add picklist validations (sector, type, status, unit_metric)
-- [ ] Add validation tests
-- [ ] Verify all tests pass
+- [x] Add required fields validation
+- [x] Add picklist validations (sector, type, status, unit_metric)
+- [x] Add validation tests
+- [x] Verify all tests pass
 
 **STOP - User verifies validation tests pass**
 
-## Remaining Endpoints (Phases 6-25)
+## Phase 6: Fourth Endpoint - Validation (Depends on Project)
+
+Validation depends on Project and has picklist validations.
+
+### 6.1 Validation Schema & Migration
+
+- [x] Review validation fields in `v2-schema.dat`
+- [x] Note FK to project table
+- [x] Create validation migration
+- [x] Run migration
+
+**STOP - User verifies validation table created**
+
+### 6.2 Validation Model
+
+- [x] Create model types
+- [x] Create model and mirror
+- [x] Set up associations (belongsTo Project)
+- [x] Update exports
+
+**STOP - User verifies model loads with associations**
+
+### 6.3 Validation Endpoint + Tests
+
+- [x] Create minimal validation
+- [x] Create controller/routes
+- [x] Write basic CRUD tests (with valid project FK)
+- [x] Test FK validation (invalid project should fail)
+- [x] Verify tests pass
+
+**STOP - User verifies CRUD and FK tests pass**
+
+### 6.4 Validation Validations + Tests
+
+- [x] Add required fields validation
+- [x] Add picklist validations (type, body)
+- [x] Add validation tests
+- [x] Verify all tests pass
+
+**STOP - User verifies validation tests pass**
+
+## Phase 7: Fifth Endpoint - Verification (Depends on Project and Validation)
+
+Verification depends on both Project and Validation and has picklist validations.
+
+### 7.1 Verification Schema & Migration
+
+- [x] Review verification fields in `v2-schema.dat`
+- [x] Note FK to project and validation tables
+- [x] Create verification migration
+- [x] Run migration
+
+**STOP - User verifies verification table created**
+
+### 7.2 Verification Model
+
+- [x] Create model types
+- [x] Create model and mirror
+- [x] Set up associations (belongsTo Project and Validation)
+- [x] Update exports
+
+**STOP - User verifies model loads with associations**
+
+### 7.3 Verification Endpoint + Tests
+
+- [x] Create minimal validation
+- [x] Create controller/routes
+- [x] Write basic CRUD tests (with valid project and validation FKs)
+- [x] Test FK validation (invalid project/validation should fail)
+- [x] Verify tests pass
+
+**STOP - User verifies CRUD and FK tests pass**
+
+### 7.4 Verification Validations + Tests
+
+- [x] Add required fields validation
+- [x] Add picklist validations (body)
+- [x] Add validation tests
+- [x] Verify all tests pass
+
+**STOP - User verifies validation tests pass**
+
+## Phase 8: Sixth Endpoint - Issuance (Depends on Verification, Methodology, and Location)
+
+Issuance depends on Verification, Methodology, and Location and has multiple foreign key validations.
+
+### 8.1 Issuance Schema & Migration
+
+- [x] Review issuance fields in `v2-schema.dat`
+- [x] Note FK to verification, methodology, and location tables
+- [x] Create issuance migration
+- [x] Run migration
+
+**STOP - User verifies issuance table created**
+
+### 8.2 Issuance Model
+
+- [x] Create model types
+- [x] Create model and mirror
+- [x] Set up associations (belongsTo Verification and Methodology)
+- [x] Update exports
+
+**STOP - User verifies model loads with associations**
+
+### 8.3 Issuance Endpoint + Tests
+
+- [x] Create minimal validation
+- [x] Create controller/routes
+- [x] Write basic CRUD tests (with valid verification and methodology FKs)
+- [x] Test FK validation (invalid verification/methodology should fail)
+- [x] Verify tests pass
+
+**STOP - User verifies CRUD and FK tests pass**
+
+### 8.4 Issuance Validations + Tests
+
+- [x] Add required fields validation
+- [x] Add validation tests
+- [x] Verify all tests pass
+
+**STOP - User verifies validation tests pass**
+
+## Remaining Endpoints (Phases 9-25)
 
 Follow the same pattern for each remaining endpoint with STOP points after each checkpoint.
 
@@ -441,6 +577,30 @@ npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/exten
 
 # Tests: database connection, system tables, models loading, CRUD operations, snake_case validation, V1/V2 isolation
 # Should see: "14 passing" - all V2 infrastructure tests pass
+```
+
+### V2 Picklist Integration
+
+**Real Picklist Values**: V2 now uses actual picklist values from governance CSV data instead of test stubs.
+
+**Files Updated:**
+- `src/models/governance/governance-v2-real-picklists.js` - Real picklist values parsed from CSV
+- `src/utils/v2-data-loaders.js` - Updated to use real picklists in simulator mode
+- `tests/v2/utils/v2-picklist-test-helpers.js` - Test utilities for picklist validation
+
+**Available Picklist Fields:**
+- `projectSector`, `projectType`, `projectStatus`, `projectUnitMetric`
+- `methodologyType`, `validationType`, `validationBody`, `verificationBody`
+- `unitType`, `unitStatus`, `unitMetric`
+- `locationCountry`, `locationMapType`
+- `stakeholderType`, `labelType`, `coBenefitId`, `ratingType`
+- `aefT2AuthorizationsMetric`, `aefT2AuthorizationsPurposesForAuthorization`
+- `aefT3ActionsType`, `aefT3ActionsMitigationType`
+
+**Testing with Picklists:**
+```bash
+# All tests now use real picklist values
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/methodology-v2.spec.js --reporter spec --exit --timeout 300000
 ```
 
 ### Individual V2 Test Files

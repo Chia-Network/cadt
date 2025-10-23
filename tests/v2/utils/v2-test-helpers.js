@@ -54,7 +54,7 @@ export const getV2HomeOrgId = async () => {
 
 // V2 test data generators
 export const createV2TestProject = async () => {
-  const { uuid: uuidv4 } = await import('uuidv4');
+  const { v4: uuidv4 } = await import('uuid');
 
   return {
     cad_trust_project_id: uuidv4(),

@@ -34,7 +34,7 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
             methodologyVersion: '1.0',
             methodologyDate: '2024-01-01',
             methodologyLink: 'https://example.com/methodology',
-            methodologyType: 'V2 Forestry',
+            methodologyType: 'Avoidance - nature',
           };
 
           const response = await supertest(app)
@@ -162,7 +162,7 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
           const validData = {
             methodologyCode: 'VALID-TYPE',
             methodologyName: 'Valid Type',
-            methodologyType: 'V2 Forestry',
+            methodologyType: 'Avoidance - nature',
           };
 
           const response = await supertest(app)

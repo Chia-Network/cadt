@@ -39,7 +39,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
       );
 
       const tableNames = tables.map(t => t.name);
-      const expectedTables = ['staging', 'audit', 'organizations', 'meta', 'governance', 'simulator', 'methodology'];
+      const expectedTables = ['staging', 'audit', 'organizations', 'meta', 'governance', 'simulator', 'methodology', 'program', 'project', 'validation', 'verification', 'issuance'];
 
       for (const expectedTable of expectedTables) {
         expect(tableNames).to.include(expectedTable);
@@ -103,11 +103,21 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
       expect(V2Models.AuditV2).to.exist;
     });
 
-    it('should load V2 methodology model', async function () {
+    it('should load V2 methodology, program, project, validation, verification, and issuance models', async function () {
       const V2Models = await import('../../src/models/v2/index.js');
 
       expect(V2Models.MethodologyV2).to.exist;
       expect(V2Models.MethodologyV2Mirror).to.exist;
+      expect(V2Models.ProgramV2).to.exist;
+      expect(V2Models.ProgramV2Mirror).to.exist;
+      expect(V2Models.ProjectV2).to.exist;
+      expect(V2Models.ProjectV2Mirror).to.exist;
+      expect(V2Models.ValidationV2).to.exist;
+      expect(V2Models.ValidationV2Mirror).to.exist;
+      expect(V2Models.VerificationV2).to.exist;
+      expect(V2Models.VerificationV2Mirror).to.exist;
+      expect(V2Models.IssuanceV2).to.exist;
+      expect(V2Models.IssuanceV2Mirror).to.exist;
     });
   });
 

@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import superagent from 'superagent';
 import { GovernanceV2 } from '../models/v2/index.js';
-import PickListV2Stub from '../models/governance/governance-v2.stub.js';
+import PickListV2Real from '../models/governance/governance-v2-real-picklists.js';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.js';
 
@@ -12,7 +12,7 @@ export const getPicklistValuesV2 = () => downloadedPickListV2;
 
 export const pullPickListValuesV2 = async () => {
   if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
-    downloadedPickListV2 = PickListV2Stub;
+    downloadedPickListV2 = PickListV2Real;
   } else {
     const governanceData = await GovernanceV2.findOne({
       where: { metaKey: 'pickList' },

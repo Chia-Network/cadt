@@ -4,7 +4,7 @@ import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
 
-import { StagingV2, MethodologyV2, OrganizationsV2 } from '../../models/v2/index.js';
+import { StagingV2, IssuanceV2, VerificationV2, MethodologyV2, OrganizationsV2 } from '../../models/v2/index.js';
 
 import {
   optionallyPaginatedResponse,
@@ -18,10 +18,11 @@ import {
 
 import {
   assertNoPendingCommitsExcludingTransfers,
+  assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 
 import { logger } from '../../config/logger.js';
-import { methodologyV2Schema } from '../../validations/v2/methodology-v2.validations.js';
+import { issuanceV2Schema } from '../../validations/v2/issuance-v2.validations.js';
 
 export const create = async (req, res) => {
   try {
@@ -32,14 +33,14 @@ export const create = async (req, res) => {
     const newRecord = _.cloneDeep(req.body);
 
     // Validate the request data
-    const { error } = methodologyV2Schema.validate(newRecord, {
+    const { error } = issuanceV2Schema.validate(newRecord, {
       allowUnknown: false,
       stripUnknown: false,
     });
 
     if (error) {
       return res.status(400).json({
-        message: 'Error creating new methodology',
+        message: 'Error creating new issuance',
         error: error.details[0].message,
         success: false,
       });
@@ -48,31 +49,37 @@ export const create = async (req, res) => {
     // Check for forbidden fields
     if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
       return res.status(400).json({
-        message: 'Error creating new methodology',
+        message: 'Error creating new issuance',
         error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
         success: false,
       });
     }
 
-    // Generate UUID for primary key
+    // Validate foreign keys
+    await assertRecordExistanceOrStaged(VerificationV2, newRecord.cadTrustVerificationId);
+    await assertRecordExistanceOrStaged(MethodologyV2, newRecord.cadTrustMethodologyId);
+
+    if (newRecord.cadTrustLocationId) {
+      // Note: LocationV2 validation will be added when Location endpoint is implemented
+      // await assertRecordExistanceOrStaged(LocationV2, newRecord.cadTrustLocationId);
+    }
+
+    // Generate UUID for staging
     const uuid = uuidv4();
-    newRecord.cadTrustMethodologyId = uuid;
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
-      cad_trust_methodology_id: uuid,
-      methodology_code: newRecord.methodologyCode,
-      methodology_name: newRecord.methodologyName,
-      methodology_version: newRecord.methodologyVersion,
-      methodology_date: newRecord.methodologyDate,
-      methodology_link: newRecord.methodologyLink,
-      methodology_type: newRecord.methodologyType,
+      issuance_id: newRecord.issuanceId,
+      issuance_date: newRecord.issuanceDate,
+      cad_trust_verification_id: newRecord.cadTrustVerificationId,
+      cad_trust_methodology_id: newRecord.cadTrustMethodologyId,
+      cad_trust_location_id: newRecord.cadTrustLocationId,
     };
 
     // Stage the record
     await StagingV2.create({
       uuid,
-      table: 'methodology',
+      table: 'issuance',
       action: 'INSERT',
       data: JSON.stringify([dbRecord]),
       commited: false,
@@ -81,14 +88,14 @@ export const create = async (req, res) => {
     });
 
     res.json({
-      message: 'Methodology staged successfully',
+      message: 'Issuance staged successfully',
       uuid,
       success: true,
     });
   } catch (err) {
-    logger.error('Error creating methodology:', err);
+    logger.error('Error creating issuance:', err);
     res.status(400).json({
-      message: 'Error creating new methodology',
+      message: 'Error creating new issuance',
       error: err.message,
       success: false,
     });
@@ -100,15 +107,28 @@ export const findAll = async (req, res) => {
     const { page, limit } = req.query;
     const pagination = paginationParams(page, limit);
 
-    const records = await MethodologyV2.findAndCountAll({
+    const records = await IssuanceV2.findAndCountAll({
       ...pagination,
+      include: [
+        {
+          model: VerificationV2,
+          as: 'verification',
+          required: false,
+        },
+        {
+          model: MethodologyV2,
+          as: 'methodology',
+          required: false,
+        },
+        // Note: LocationV2 include will be added when Location endpoint is implemented
+      ],
     });
 
     res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
-    logger.error('Error retrieving methodologies:', err);
+    logger.error('Error retrieving issuances:', err);
     res.status(400).json({
-      message: 'Error retrieving methodologies',
+      message: 'Error retrieving issuances',
       error: err.message,
       success: false,
     });
@@ -118,20 +138,34 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await MethodologyV2.findByPk(id);
+    const record = await IssuanceV2.findByPk(id, {
+      include: [
+        {
+          model: VerificationV2,
+          as: 'verification',
+          required: false,
+        },
+        {
+          model: MethodologyV2,
+          as: 'methodology',
+          required: false,
+        },
+        // Note: LocationV2 include will be added when Location endpoint is implemented
+      ],
+    });
 
     if (!record) {
       return res.status(404).json({
-        message: 'Methodology not found',
+        message: 'Issuance not found',
         success: false,
       });
     }
 
     res.json(record);
   } catch (err) {
-    logger.error('Error retrieving methodology:', err);
+    logger.error('Error retrieving issuance:', err);
     res.status(400).json({
-      message: 'Error retrieving methodology',
+      message: 'Error retrieving issuance',
       error: err.message,
       success: false,
     });
@@ -148,23 +182,23 @@ export const update = async (req, res) => {
     const updateData = _.cloneDeep(req.body);
 
     // Verify record exists first (before validation)
-    const existingRecord = await MethodologyV2.findByPk(id);
+    const existingRecord = await IssuanceV2.findByPk(id);
     if (!existingRecord) {
       return res.status(404).json({
-        message: 'Methodology not found',
+        message: 'Issuance not found',
         success: false,
       });
     }
 
     // Validate the request data
-    const { error } = methodologyV2Schema.validate(updateData, {
+    const { error } = issuanceV2Schema.validate(updateData, {
       allowUnknown: false,
       stripUnknown: false,
     });
 
     if (error) {
       return res.status(400).json({
-        message: 'Error updating methodology',
+        message: 'Error updating issuance',
         error: error.details[0].message,
         success: false,
       });
@@ -173,28 +207,36 @@ export const update = async (req, res) => {
     // Check for forbidden fields
     if (updateData.hasOwnProperty('createdAt') || updateData.hasOwnProperty('updatedAt')) {
       return res.status(400).json({
-        message: 'Error updating methodology',
+        message: 'Error updating issuance',
         error: 'createdAt and updatedAt fields are automatically managed and cannot be updated via API',
         success: false,
       });
     }
 
+    // Validate foreign keys
+    await assertRecordExistanceOrStaged(VerificationV2, updateData.cadTrustVerificationId);
+    await assertRecordExistanceOrStaged(MethodologyV2, updateData.cadTrustMethodologyId);
+
+    if (updateData.cadTrustLocationId) {
+      // Note: LocationV2 validation will be added when Location endpoint is implemented
+      // await assertRecordExistanceOrStaged(LocationV2, updateData.cadTrustLocationId);
+    }
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
-      cad_trust_methodology_id: id,
+      cad_trust_issuance_id: parseInt(id),
     };
 
-    if (updateData.methodologyCode !== undefined) dbUpdateData.methodology_code = updateData.methodologyCode;
-    if (updateData.methodologyName !== undefined) dbUpdateData.methodology_name = updateData.methodologyName;
-    if (updateData.methodologyVersion !== undefined) dbUpdateData.methodology_version = updateData.methodologyVersion;
-    if (updateData.methodologyDate !== undefined) dbUpdateData.methodology_date = updateData.methodologyDate;
-    if (updateData.methodologyLink !== undefined) dbUpdateData.methodology_link = updateData.methodologyLink;
-    if (updateData.methodologyType !== undefined) dbUpdateData.methodology_type = updateData.methodologyType;
+    if (updateData.issuanceId !== undefined) dbUpdateData.issuance_id = updateData.issuanceId;
+    if (updateData.issuanceDate !== undefined) dbUpdateData.issuance_date = updateData.issuanceDate;
+    if (updateData.cadTrustVerificationId !== undefined) dbUpdateData.cad_trust_verification_id = updateData.cadTrustVerificationId;
+    if (updateData.cadTrustMethodologyId !== undefined) dbUpdateData.cad_trust_methodology_id = updateData.cadTrustMethodologyId;
+    if (updateData.cadTrustLocationId !== undefined) dbUpdateData.cad_trust_location_id = updateData.cadTrustLocationId;
 
     // Stage the update
     await StagingV2.create({
       uuid: uuidv4(),
-      table: 'methodology',
+      table: 'issuance',
       action: 'UPDATE',
       data: JSON.stringify([dbUpdateData]),
       commited: false,
@@ -203,13 +245,13 @@ export const update = async (req, res) => {
     });
 
     res.json({
-      message: 'Methodology update staged successfully',
+      message: 'Issuance update staged successfully',
       success: true,
     });
   } catch (err) {
-    logger.error('Error updating methodology:', err);
+    logger.error('Error updating issuance:', err);
     res.status(400).json({
-      message: 'Error updating methodology',
+      message: 'Error updating issuance',
       error: err.message,
       success: false,
     });
@@ -225,10 +267,10 @@ export const destroy = async (req, res) => {
     const { id } = req.params;
 
     // Verify record exists
-    const existingRecord = await MethodologyV2.findByPk(id);
+    const existingRecord = await IssuanceV2.findByPk(id);
     if (!existingRecord) {
       return res.status(404).json({
-        message: 'Methodology not found',
+        message: 'Issuance not found',
         success: false,
       });
     }
@@ -236,22 +278,22 @@ export const destroy = async (req, res) => {
     // Stage the delete
     await StagingV2.create({
       uuid: uuidv4(),
-      table: 'methodology',
+      table: 'issuance',
       action: 'DELETE',
-      data: JSON.stringify([{ cad_trust_methodology_id: id }]),
+      data: JSON.stringify([{ cad_trust_issuance_id: parseInt(id) }]),
       commited: false,
       failed_commit: false,
       is_transfer: false,
     });
 
     res.json({
-      message: 'Methodology delete staged successfully',
+      message: 'Issuance delete staged successfully',
       success: true,
     });
   } catch (err) {
-    logger.error('Error deleting methodology:', err);
+    logger.error('Error deleting issuance:', err);
     res.status(400).json({
-      message: 'Error deleting methodology',
+      message: 'Error deleting issuance',
       error: err.message,
       success: false,
     });
