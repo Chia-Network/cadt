@@ -6,6 +6,7 @@ import { createHash } from 'crypto';
 
 const chiaRoot = getChiaRoot();
 const persistanceFolder = `${chiaRoot}/cadt/${getDataModelVersion()}`;
+const v2PersistanceFolder = `${chiaRoot}/cadt/v2`;
 
 const localQueryLogger = (query) => {
   const queryString = query.split(/:\s(.+)/)[1];
@@ -51,6 +52,38 @@ export default {
     username: getConfig().MIRROR_DB.DB_USERNAME || '',
     password: getConfig().MIRROR_DB.DB_PASSWORD || '',
     database: getConfig().MIRROR_DB.DB_NAME || '',
+    host: getConfig().MIRROR_DB.DB_HOST || '',
+    dialect: 'mysql',
+    logging: mirrorLogging,
+  },
+  // V2 Database Configurations
+  v2Local: {
+    dialect: 'sqlite',
+    storage: `${v2PersistanceFolder}/data.sqlite3`,
+    logging: localLogging,
+    dialectOptions: {
+      busyTimeout: 10000,
+    },
+  },
+  v2Simulator: {
+    dialect: 'sqlite',
+    storage: `${v2PersistanceFolder}/simulator.sqlite3`,
+    logging: false,
+  },
+  v2Test: {
+    dialect: 'sqlite',
+    storage: './test-v2.sqlite3',
+    logging: false,
+  },
+  v2MirrorTest: {
+    dialect: 'sqlite',
+    storage: './testMirror-v2.sqlite3',
+    logging: false,
+  },
+  v2Mirror: {
+    username: getConfig().MIRROR_DB.DB_USERNAME || '',
+    password: getConfig().MIRROR_DB.DB_PASSWORD || '',
+    database: getConfig().MIRROR_DB.DB_NAME ? `${getConfig().MIRROR_DB.DB_NAME}_v2` : '',
     host: getConfig().MIRROR_DB.DB_HOST || '',
     dialect: 'mysql',
     logging: mirrorLogging,

@@ -3,6 +3,11 @@ data.sqlite3
 test.sqlite3
 test.sqlite3*
 testMirror.sqlite3
+test-v2*.sqlite3
+test-v2*.sqlite3*
+*.sql
+*.sql.gz
+
 
 # dependencies
 /node_modules

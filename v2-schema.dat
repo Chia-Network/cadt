@@ -1,0 +1,378 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+// CAD Trust V2.0
+
+Table project {
+cad_trust_project_id integer [primary key, unique, note: 'generated']
+project_registry_name varchar [not null]
+project_id varchar [not null]
+project_crediting_program varchar
+project_name varchar [not null]
+project_link html [note: 'this is used as the html reference back to the registry']
+project_description text
+project_sector picklist [note: 'picklist from sector type']
+project_type picklist [note: 'picklist from project type']
+project_subtype varchar
+project_status picklist [note: 'picklist from project status']
+project_status_date date
+project_unit_metric picklist [note: 'picklist from unit metric type']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_reference_project_id varchar [note: 'generated, format project_registry_name+project_id+cad_trust_project_id [last 4 digits]']
+cad_trust_program_id integer [primary key, unique, note: 'generated']
+}
+
+Table validation {
+cad_trust_validation_id integer [primary key, unique, note: 'generated']
+validation_id varchar [not null, note: 'registry provided unique id']
+validation_type picklist [note: 'picklist from validation type']
+validation_body picklist [note: 'picklist from VVB']
+validation_date date
+validation_credit_period_start_date date
+validation_credit_period_end_date date
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_project_id integer [not null]
+}
+
+
+Table verification {
+cad_trust_verification_id integer [primary key, unique, note: 'generated']
+verification_id varchar [not null, note: 'registry provided unique id']
+verification_start_date date
+verification_end_date date
+verification_body picklist [note: 'picklist from VVB']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_project_id integer [not null]
+cad_trust_validation_id integer
+}
+
+Table issuance {
+cad_trust_issuance_id integer [primary key, unique, note: 'generated']
+issuance_id varchar [not null, note: 'registry provide unique id']
+issuance_date date
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_verification_id integer [not null]
+cad_trust_methodology_id integer [not null]
+cad_trust_location_id integer
+}
+
+Table unit {
+cad_trust_unit_id integer [primary key, unique, note: 'generated']
+unit_serial_id varchar [not null, note: 'registry provide unique id']
+unit_start_block varchar [not null]
+unit_end_block varchar [not null]
+unit_count decimal
+unit_type picklist [note: 'picklist from unit type']
+unit_vintage_year year [not null]
+unit_status pickist [note: 'picklist from unit status']
+unit_status_reason text
+unit_status_date date
+unit_retirement_detail text
+unit_retirement_beneficiary varchar
+unit_retirement_beneficiary_id varchar
+unit_link html
+unit_metric picklist [note: 'picklist from metric']
+unit_current_owner varchar
+unit_itmos_reference_id varchar [note: 'for ITMOs tracking']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_issuance_id integer [not null]
+}
+
+Table methodology {
+cad_trust_methodology_id integer [primary key, unique, note: 'generated']
+methodology_code varchar [not null]
+methodology_name varchar [not null]
+methodology_version varchar
+methodology_date date [note: 'methodology in force date']
+methodology_link html
+methodology_type picklist [note: 'optional, picklist from type']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table project_methodolgy {
+cad_trust_project_id integer
+cad_trust_methodology_id integer
+project_methodology_date date
+project_methodology_description text
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+
+indexes {
+// composite primary key
+(cad_trust_project_id, cad_trust_methodology_id) [pk]
+}
+}
+
+Table location {
+cad_trust_location_id integer [primary key, unique, note: 'generated']
+location_country picklist [note: 'picklist from country']
+location_region varchar
+location_gis text [note: 'GIS data including lat/long']
+location_map_type text [note: 'type of map file ie. geojson etc.']
+location_map_file_link html [note: 'datafile link']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_project_id integer [not null]
+}
+
+Table stakeholder {
+cad_trust_stakeholder_id integer [primary key, unique, note: 'generated']
+stakeholder_name varchar [not null]
+stakeholder_type picklist [note: 'picklist from type']
+stakeholder_link html
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table stakeholder_projects{
+cad_trust_stakeholder_project_id integer [primary key, unique, note: 'generated']
+cad_trust_stakeholder_id integer [not null]
+cad_trust_project_id integer [not null]
+}
+
+Table label {
+cad_trust_label_id integer [primary key, unique, note: 'generated']
+label_name varchar [not null]
+label_type picklist [note: 'picklist from type']
+label_link html
+label_date date
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table unit_label {
+cad_trust_label_id integer
+cad_trust_unit_id integer
+label_unit_date date
+label_unit_description text
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+
+indexes {
+// composite primary key
+(cad_trust_label_id, cad_trust_unit_id) [pk]
+}
+}
+
+Table co_benefit {
+cad_trust_co_benefit_id integer [primary key, unique, note: 'generated']
+co_benefit_id picklist [not null]
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_project_id integer [not null]
+}
+
+Table estimation {
+cad_trust_estimation_id integer [primary key, unique, note: 'generated']
+estimation_start_date date [not null]
+esitmation_end_date date [not null]
+estimation_unit_count decimal
+estimation_reference_no varchar
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_project_id integer [not null]
+}
+
+Table rating {
+cad_trust_rating_id integer [primary key, unique, note: 'generated']
+rating_type picklist [note: 'picklist from type']
+rating_value varchar [not null]
+rating_link html
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_project_id integer [not null]
+}
+
+Table program {
+cad_trust_program_id integer [primary key, unique, note: 'generated']
+program_name varchar [not null]
+program_registry varchar [not null]
+program_registry_activity_id varchar [not null]
+program_registry_program_id varchar
+program_description text
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table aef_t1_submission {
+cad_trust_aef_t1_submission_id integer [primary key, unique, note: 'generated']
+aef_t1_submission_party varchar [not null]
+aef_t1_submission_version varchar [not null]
+aef_t1_submission_report_year year [not null]
+aef_t1_submission_submission_date date [not null]
+aef_t1_submission_review_status text
+aef_t1_submission_result_check text
+aef_t1_submission_ndc_first_year year
+aef_t1_submission_ndc_last_year year
+aef_t1_submission_reference_review_report URL
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table aef_t2_authorizations {
+cad_trust_aef_t2_authorizations_id integer [primary key, unique, note:'generated']
+aef_t2_authorizations_id varchar [not null]
+aef_t2_authorizations_date date [not null]
+aef_t2_authorizations_cooperative_approach_id varchar [not null]
+aef_t2_authorizations_version varchar
+aef_t2_authorizations_quantity decimal
+aef_t2_authorizations_metric picklist [note: 'picklist from metric']
+aef_t2_authorizations_gwp_value varchar
+aef_t2_authorizations_applicable_non_ghg_metric varchar
+aef_t2_authorizations_sector picklist [note: 'picklist from sector']
+aef_t2_authorizations_activity_type picklist [note: 'picklist from type']
+aef_t2_authorizations_purposes_for_authorization picklist [note: 'picklist from purpose']
+aef_t2_authorizations_authorized_party_id varchar [not null, note:'inferred']
+aef_t2_authorizations_authozied_entity_id varchar [note:'inferred']
+aef_t2_authorizations_oimp_authorized_party varchar
+aef_t2_authorizations_authorized_timeframe varchar
+aef_t2_authorizations_authorization_terms varchar
+aef_t2_authorizations_authorization_documentation html
+aef_t2_authorizations_first_transfer_definition_oimp text
+aef_t2_authorizations_additional_information text
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_aef_t1_submission_id integer
+cad_trust_unit_id integer
+cad_trust_project_id integer
+cad_trust_aef_t5_authorized_entities_id integer
+}
+
+Table aef_t3_actions {
+cad_trust_aef_t3_actions_id integer [primary key, unique, note: 'generated']
+aef_t3_actions_date date [not null]
+aef_t3_actions_type picklist [note: 'picklist from type']
+aef_t3_actions_subtype varchar
+aef_t3_actions_coopoerative_approach_id varchar [not null]
+aef_t3_actions_authorization_id varchar [not null, note:'inferred']
+aef_t3_actions_first_transferring_party_id varchar [not null]
+aef_t3_actions_party_itmo_registry_id varchar [not null]
+aef_t3_actions_itmo_first_id varchar [not null]
+aef_t3_actions_itmo_last_id varchar [not null]
+aef_t3_actions_unit_registry_id varchar [not null]
+aef_t3_actions_unit_first_id varchar [not null, note:'inferred']
+aef_t3_actions_unit_last_id varchar [not null, note:'inferred']
+aef_t3_actions_metric picklist [note: 'picklist from metric']
+aef_t3_actions_gwp_value varchar
+aef_t3_actions_applicable_non_ghg_metric varchar
+aef_t3_actions_quantity_t_co2 decimal [not null, note:'inferred']
+aef_t3_actions_quantity_non_ghg varchar
+aef_t3_actions_mitigation_type picklist [note: 'picklist from type, inferred']
+aef_t3_actions_vintage_year year [not null, note:'inferred']
+aef_t3_actions_transferring_party_id varchar [not null]
+aef_t3_actions_acquiring_party_id varchar [not null]
+aef_t3_actions_purpose_of_use_oimp varchar
+aef_t3_actions_using_participating_party_id varchar
+aef_t3_actions_using_authorized_entity_id varchar
+aef_t3_actions_itmo_used_year year
+aef_t3_actions_consistency_check_result varchar
+aef_t3_actions_additional_information varchar
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_aef_t1_submission_id integer
+cad_trust_unit_id integer
+cad_trust_project_id integer
+cad_trust_aef_t2_authorizations_id integer
+}
+
+Table aef_t4_holdings {
+cad_trust_aef_t4_holdings_id integer [primary key, unique, note:'generated']
+aef_t4_holdings_coopoerative_approach_id varchar [not null]
+aef_t4_holdings_authorization_id varchar [not null, note:'inferred']
+aef_t4_holdings_first_transferring_party_id varchar [not null]
+aef_t4_holdings_party_itmo_registry_id varchar [not null]
+aef_t4_holdings_itmo_first_id varchar [not null]
+aef_t4_holdings_itmo_last_id varchar [not null]
+aef_t4_holdings_unit_registry_id varchar [not null]
+aef_t4_holdings_unit_first_id varchar [not null, note:'inferred']
+aef_t4_holdings_unit_last_id varchar [not null, note:'inferred']
+aef_t4_holdings_metric picklist [note: 'picklist from metric']
+aef_t4_holdings_gwp_value varchar
+aef_t4_holdings_applicable_non_ghg_metric varchar
+aef_t4_holdings_quantity_t_co2 decimal [not null, note:'inferred']
+aef_t4_holdings_quantity_non_ghg varchar
+aef_t4_holdings_mitigation_type picklist [note: 'inferred, picklist from type']
+aef_t4_holdings_vintage_year year [not null, note:'inferred']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_aef_t1_submission_id integer
+cad_trust_unit_id integer
+cad_trust_project_id integer
+cad_trust_aef_t2_authorizations_id integer
+}
+
+Table aef_t5_authorized_entities {
+cad_trust_aef_t5_authorized_entities_id integer [primary key, unique, note:'generated']
+aef_t5_authorized_entities_authorization_date date [not null]
+aef_t5_authorized_entities_name varchar [not null]
+aef_t5_authorized_entities_incorporation_country picklist [note: 'picklist from country']
+aef_t5_authorized_entities_Id varchar [not null]
+aef_t5_authorized_entities_cooperative_approach_Id varchar [not null]
+aef_t5_authorized_entities_conditions text
+aef_t5_authorized_entities_change_conditions text
+aef_t5_authorized_entities_additional_information text
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+cad_trust_aef_t1_submission_id integer
+cad_trust_unit_id integer
+cad_trust_project_id integer
+cad_trust_aef_t2_authorizations_id integer
+}
+
+// project references
+Ref: project.cad_trust_project_id < validation.cad_trust_project_id
+Ref: project.cad_trust_project_id < verification.cad_trust_project_id
+Ref: project.cad_trust_project_id < location.cad_trust_project_id
+Ref: project.cad_trust_project_id < stakeholder_projects.cad_trust_project_id
+Ref: stakeholder.cad_trust_stakeholder_id < stakeholder_projects.cad_trust_stakeholder_id
+Ref: project.cad_trust_project_id < co_benefit.cad_trust_project_id
+Ref: project.cad_trust_project_id < estimation.cad_trust_project_id
+Ref: project.cad_trust_project_id < rating.cad_trust_project_id
+
+
+Ref: program.cad_trust_program_id < project.cad_trust_program_id
+
+Ref: validation.cad_trust_validation_id < verification.cad_trust_validation_id
+Ref: verification.cad_trust_verification_id < issuance.cad_trust_verification_id
+
+Ref: methodology.cad_trust_methodology_id <> issuance.cad_trust_methodology_id
+
+Ref: issuance.cad_trust_issuance_id < unit.cad_trust_issuance_id
+
+Ref: location.cad_trust_location_id < issuance.cad_trust_location_id
+
+// project methodology mapping
+Ref: project_methodolgy.cad_trust_project_id < project.cad_trust_project_id
+Ref: project_methodolgy.cad_trust_methodology_id < methodology.cad_trust_methodology_id
+
+// label mapping
+Ref: label.cad_trust_label_id < unit_label.cad_trust_label_id
+Ref: unit.cad_trust_unit_id < unit_label.cad_trust_unit_id
+
+// AEF mapping
+Ref: project.cad_trust_project_id < aef_t2_authorizations.cad_trust_project_id
+Ref: project.cad_trust_project_id < aef_t3_actions.cad_trust_project_id
+Ref: project.cad_trust_project_id < aef_t4_holdings.cad_trust_project_id
+Ref: project.cad_trust_project_id < aef_t5_authorized_entities.cad_trust_project_id
+
+Ref: unit.cad_trust_unit_id < aef_t2_authorizations.cad_trust_unit_id
+Ref: unit.cad_trust_unit_id < aef_t3_actions.cad_trust_unit_id
+Ref: unit.cad_trust_unit_id < aef_t4_holdings.cad_trust_unit_id
+Ref: unit.cad_trust_unit_id < aef_t5_authorized_entities.cad_trust_unit_id
+
+Ref: aef_t2_authorizations.cad_trust_aef_t2_authorizations_id < aef_t3_actions.cad_trust_aef_t2_authorizations_id
+Ref: aef_t2_authorizations.cad_trust_aef_t2_authorizations_id < aef_t4_holdings.cad_trust_aef_t2_authorizations_id
+Ref: aef_t2_authorizations.cad_trust_aef_t2_authorizations_id < aef_t5_authorized_entities.cad_trust_aef_t2_authorizations_id
+
+Ref: aef_t5_authorized_entities.cad_trust_aef_t5_authorized_entities_id < aef_t2_authorizations.cad_trust_aef_t5_authorized_entities_id
+
+
+Ref: aef_t1_submission.cad_trust_aef_t1_submission_id < aef_t2_authorizations.cad_trust_aef_t1_submission_id
+Ref: aef_t1_submission.cad_trust_aef_t1_submission_id < aef_t3_actions.cad_trust_aef_t1_submission_id
+Ref: aef_t1_submission.cad_trust_aef_t1_submission_id < aef_t4_holdings.cad_trust_aef_t1_submission_id
+Ref: aef_t1_submission.cad_trust_aef_t1_submission_id < aef_t5_authorized_entities.cad_trust_aef_t1_submission_id
