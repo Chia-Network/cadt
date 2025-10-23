@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+---
+- These rules apply only to work on the v2 version of the code and API.
+- The file v2-schema.dat (DBML format) is a reference for what the sqlite v2 database should be
+- The development plan is in the file v2-api-implementation-editable.plan.md
+- If you come across the word "STOP" in the plan, stop work and wait for user feedback
+- All v2 database columns use snake_case
+- All API fields use camelCase. API camelCase fields correspond directly to database snake_case fields.  Example:  orgUid -> org_uid, metaKey -> meta_key
+- When testing, stop/kill processes when finished
+- CHIA_ROOT directory is ~/.chia/mainnet/ and directory for cadt config and database for v2 will be ~/.chia/mainnet/cadt/v2/
+
+# Primary Keys
+- Data tables: UUID v4 (varchar(36))
+- System tables: INTEGER AUTO_INCREMENT
+
+# Foreign Keys
+- Application-level validation (no DB constraints)
+- Check both main table AND staging table for references
+- Enables staging multiple related records before commit
+
+# Timestamps
+- Automatically managed by Sequelize (`created_at`, `updated_at`)
+- Rejected if provided in POST/PUT requests
+
+# API Request Patterns (CRITICAL - Follows V1)
+- Update Requests: MUST include ALL fields, not just the ones being updated
+- Create Requests: Include all required fields
+- Validation: Same validation schema used for both CREATE and UPDATE operations
+
+# Testing
+- Always run v2 tests individually to avoid v1 test interference
+- Work iteratively and write and run tests when any API endpoint is created or modified

@@ -1,5 +1,21 @@
 # V2 API Iterative Development Plan
 
+## Current Progress Status ✅
+
+**COMPLETED PHASES:**
+- ✅ **Phase 1**: Infrastructure Setup (Database, Models, Testing)
+- ✅ **Phase 2**: Core System Models (All system tables implemented)
+- ✅ **Phase 3**: Methodology Endpoint (Complete with validations and tests)
+
+**CURRENT STATUS:** Ready for Phase 4 (Program Endpoint) or testing existing methodology endpoint
+
+**KEY ACHIEVEMENTS:**
+- V2-only smoke test created and passing (14/14 tests)
+- All system models implemented and working
+- Methodology endpoint fully implemented with CRUD operations and validations
+- V1/V2 isolation maintained
+- Snake_case database naming convention enforced
+
 ## Development Philosophy
 
 Build incrementally with continuous validation. For each endpoint:
@@ -14,7 +30,7 @@ Build incrementally with continuous validation. For each endpoint:
 
 **Critical**: At every checkpoint or validation step, STOP and wait for user confirmation that tests pass before proceeding to the next task.
 
-## Reference Documents
+## Reference Documentsv
 
 - **Schema**: `v2-schema.dat` (DBML format) - authoritative database schema
 - **Reference Implementation**: `v2-plan.md` - detailed technical specifications
@@ -129,23 +145,32 @@ ls -la tests/v2/
 
 ### 1.4 Testing Infrastructure
 
-- [ ] Set up V2 test configuration (mimic V1)
-- [ ] Create test utilities and helpers
-- [ ] Create test fixtures for system tables
-- [ ] Create a minimal smoke test
+- [x] Set up V2 test configuration (mimic V1)
+- [x] Create test utilities and helpers
+- [x] Create test fixtures for system tables
+- [x] Create a minimal smoke test
+- [x] Create isolated V2-only smoke test (avoids V1/V2 conflicts)
 
-**Checkpoint 1.4**: Run smoke test
+**Checkpoint 1.4**: Run V2-only smoke test
 
+```bash
+# Run the isolated V2-only smoke test (no server needed, no V1 conflicts)
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/smoke-v2-only.spec.js --reporter spec --exit --timeout 300000
+
+# Should see: "14 passing" - all V2 infrastructure tests pass
+# Tests include: database connection, system tables, models loading, CRUD operations, snake_case validation, V1/V2 isolation
+```
+
+**Alternative**: Run original smoke test (requires server, may have V1 conflicts)
 ```bash
 # Start server
 npm start
-# Run the smoke test (should pass even if empty)
+# Run the original smoke test (may conflict with V1 tests)
 npm test -- tests/v2/smoke.spec.js
-# Should see: "V2 Infrastructure - smoke test passes"
 # Kill server
 ```
 
-**STOP HERE - User verifies smoke test passes**
+**STOP HERE - User verifies V2-only smoke test passes**
 
 ## Phase 2: Core System Models
 
@@ -153,36 +178,36 @@ Build models for system tables (needed by all endpoints):
 
 ### 2.1 System Table Models
 
-- [ ] `staging-v2.modeltypes.cjs` + `staging-v2.model.js`
-- [ ] `organizations-v2.modeltypes.cjs` + `organizations-v2.model.js`
-- [ ] `meta-v2.modeltypes.cjs` + `meta-v2.model.js`
-- [ ] `governance-v2.modeltypes.cjs` + `governance-v2.model.js`
-- [ ] `audit-v2.modeltypes.cjs` + `audit-v2.model.js` + mirror
-- [ ] `simulator-v2.modeltypes.cjs` + `simulator-v2.model.js`
-- [ ] Export all from `src/models/v2/index.js`
+- [x] `staging-v2.modeltypes.cjs` + `staging-v2.model.js`
+- [x] `organizations-v2.modeltypes.cjs` + `organizations-v2.model.js`
+- [x] `meta-v2.modeltypes.cjs` + `meta-v2.model.js`
+- [x] `governance-v2.modeltypes.cjs` + `governance-v2.model.js`
+- [x] `audit-v2.modeltypes.cjs` + `audit-v2.model.js` + mirror
+- [x] `simulator-v2.modeltypes.cjs` + `simulator-v2.model.js`
+- [x] Export all from `src/models/v2/index.js`
 
 **Checkpoint 2.1**: Verify models load
 
 ```bash
-# Start server - should load without errors
-npm start
-# Check server logs for model initialization
-# Kill server
+# Run V2-only smoke test to verify models load correctly
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/smoke-v2-only.spec.js --reporter spec --exit --timeout 300000
+
+# Should see "V2 Models Loading" tests pass - confirms all system models load without errors
 ```
 
 **STOP HERE - User verifies models initialize without errors**
 
 ### 2.2 Utility Functions
 
-- [ ] Create `src/utils/v2-data-assertions.js`
-- [ ] Implement `assertRecordExistanceOrStaged()` for FK validation
-- [ ] Test utility functions
+- [x] Create `src/utils/v2-data-assertions.js`
+- [x] Implement `assertRecordExistanceOrStaged()` for FK validation
+- [x] Test utility functions
 
 **Checkpoint 2.2**: Test utility functions
 
 ```bash
 # Run utility tests
-npm test -- tests/v2/utils/v2-data-assertions.spec.js
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/v2-data-assertions.spec.js --reporter spec --exit --timeout 300000
 ```
 
 **STOP HERE - User verifies utility tests pass**
@@ -193,85 +218,90 @@ Methodology has no foreign key dependencies and simple structure - ideal first e
 
 ### 3.1 Methodology Schema & Migration
 
-- [ ] Review methodology fields in `v2-schema.dat`
-- [ ] Create methodology migration
-- [ ] Run migration, verify table created
+- [x] Review methodology fields in `v2-schema.dat`
+- [x] Create methodology migration
+- [x] Run migration, verify table created
 
 **Checkpoint 3.1**: Verify methodology table
 
 ```bash
-# Start server to run migration
-npm start
-sqlite3 ~/.chia/mainnet/cadt/v2/data.sqlite3 ".schema methodology"
-# Kill server
+# Run V2-only smoke test to verify methodology table exists
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/smoke-v2-only.spec.js --reporter spec --exit --timeout 300000
+
+# Should see methodology table in "V2 System Tables" test
 ```
 
 **STOP HERE - User verifies methodology table created correctly**
 
 ### 3.2 Methodology Model
 
-- [ ] Create `methodology-v2.modeltypes.cjs`
-- [ ] Create `methodology-v2.model.js`
-- [ ] Create `methodology-v2.model.mirror.js`
-- [ ] Update model index exports
+- [x] Create `methodology-v2.modeltypes.cjs`
+- [x] Create `methodology-v2.model.js`
+- [x] Create `methodology-v2.model.mirror.js`
+- [x] Update model index exports
 
 **Checkpoint 3.2**: Verify model loads
 
 ```bash
-npm start
-# Check logs for methodology model initialization
-# Kill server
+# Run V2-only smoke test to verify methodology model loads
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/smoke-v2-only.spec.js --reporter spec --exit --timeout 300000
+
+# Should see "should load V2 methodology model" test pass
 ```
 
 **STOP HERE - User verifies model loads without errors**
 
 ### 3.3 Minimal Methodology Endpoint (No Validations)
 
-- [ ] Create basic validation schema (all fields optional)
-- [ ] Create methodology controller (or use generic factory)
-- [ ] Create methodology routes
-- [ ] Mount routes in V2 router
+- [x] Create basic validation schema (all fields optional)
+- [x] Create methodology controller (or use generic factory)
+- [x] Create methodology routes
+- [x] Mount routes in V2 router
 
 **Checkpoint 3.3**: Test endpoint exists
 
 ```bash
-npm start
-curl http://localhost:31310/v2/methodology
-# Should return empty array or error (not 404)
-# Kill server
+# Test methodology endpoint directly
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/methodology-v2.spec.js --reporter spec --exit --timeout 300000
+
+# Should see basic CRUD tests pass (POST, GET, PUT, DELETE)
 ```
 
 **STOP HERE - User verifies endpoint responds**
 
 ### 3.4 Basic Methodology Tests
 
-- [ ] Test POST /v2/methodology (create)
-- [ ] Test GET /v2/methodology (list)
-- [ ] Test GET /v2/methodology/:id (get one)
-- [ ] Test PUT /v2/methodology/:id (update)
-- [ ] Test DELETE /v2/methodology/:id (delete)
+- [x] Test POST /v2/methodology (create)
+- [x] Test GET /v2/methodology (list)
+- [x] Test GET /v2/methodology/:id (get one)
+- [x] Test PUT /v2/methodology/:id (update)
+- [x] Test DELETE /v2/methodology/:id (delete)
 
 **Checkpoint 3.4**: Run CRUD tests
 
 ```bash
 # Run ONLY V2 methodology tests (not all V1 tests)
 npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/methodology-v2.spec.js --reporter spec --exit --timeout 300000
+
+# Should see all basic CRUD tests pass
 ```
 
 **STOP HERE - User verifies all basic CRUD tests pass**
 
 ### 3.5 Add Methodology Validations
 
-- [ ] Add required field validations
-- [ ] Add picklist validation for `methodology_type`
-- [ ] Add field type validations
-- [ ] Test validation errors
+- [x] Add required field validations
+- [x] Add picklist validation for `methodology_type`
+- [x] Add field type validations
+- [x] Test validation errors
 
 **Checkpoint 3.5**: Run validation tests
 
 ```bash
 # Run ONLY V2 methodology tests (not all V1 tests)
 npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/methodology-v2.spec.js --reporter spec --exit --timeout 300000
+
+# Should see all validation tests pass (required fields, picklist validation, field types)
 ```
 
 **STOP HERE - User verifies all validation tests pass**
@@ -399,12 +429,21 @@ Follow the same pattern for each remaining endpoint with STOP points after each 
 - Each checkpoint requires user verification before continuing
 - Stop immediately if tests fail - don't accumulate issues
 - Update plan as we discover better approaches
-- Reference `v2-plan.md` for detailed specifications
 
 ## Testing Commands
 
 **IMPORTANT**: Always run V2 tests individually to avoid V1 test interference:
 
+### V2-Only Smoke Test (Recommended)
+```bash
+# Run isolated V2-only smoke test (no server needed, no V1 conflicts)
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/smoke-v2-only.spec.js --reporter spec --exit --timeout 300000
+
+# Tests: database connection, system tables, models loading, CRUD operations, snake_case validation, V1/V2 isolation
+# Should see: "14 passing" - all V2 infrastructure tests pass
+```
+
+### Individual V2 Test Files
 ```bash
 # Run specific V2 test file
 npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/methodology-v2.spec.js --reporter spec --exit --timeout 300000

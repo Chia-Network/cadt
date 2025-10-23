@@ -2,6 +2,94 @@
 // Docs: https://dbml.dbdiagram.io/docs
 // CAD Trust V2.0
 
+// =============================================================================
+// SYSTEM TABLES
+// =============================================================================
+
+Table staging {
+id integer [primary key, unique, note: 'generated']
+uuid varchar [unique, note: 'UUID for staging operations']
+table varchar [note: 'target table name']
+action varchar [note: 'CRUD operation type']
+data text [note: 'JSON data to be staged']
+commited boolean [not null, default: false, note: 'commit status']
+failed_commit boolean [not null, default: false, note: 'commit failure status']
+is_transfer boolean [not null, default: false, note: 'transfer operation flag']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table audit {
+id integer [primary key, unique, note: 'generated']
+org_uid varchar [not null, note: 'organization identifier']
+registry_id varchar [not null, note: 'registry identifier']
+root_hash varchar [not null, note: 'blockchain root hash']
+type varchar [not null, note: 'audit event type']
+change text [note: 'change description']
+table varchar [note: 'affected table name']
+onchain_confirmation_time_stamp varchar [not null, note: 'blockchain timestamp']
+author varchar [note: 'change author']
+comment varchar [note: 'audit comment']
+generation integer [note: 'generation number']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table organizations {
+id integer [primary key, unique, note: 'generated']
+org_uid varchar [unique, note: 'organization unique identifier']
+org_hash varchar [note: 'organization hash']
+name varchar [note: 'organization name']
+icon varchar [note: 'organization icon']
+registry_id varchar [note: 'registry identifier']
+registry_hash varchar [note: 'registry hash']
+subscribed boolean [default: false, note: 'subscription status']
+synced boolean [not null, default: false, note: 'sync status']
+file_store_subscribed varchar [note: 'file store subscription']
+sync_remaining integer [default: false, note: 'remaining sync count']
+balance varchar [note: 'organization balance']
+pending_balance varchar [note: 'pending balance']
+is_home boolean [default: false, note: 'home organization flag']
+metadata varchar [default: '{}', note: 'organization metadata']
+data_model_version_store_id varchar [note: 'data model version store ID']
+data_model_version_store_hash varchar [note: 'data model version store hash']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table meta {
+id integer [primary key, unique, note: 'generated']
+meta_key varchar [unique, note: 'metadata key']
+meta_value varchar [note: 'metadata value']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table governance {
+id integer [primary key, unique, note: 'generated']
+meta_key varchar [unique, note: 'governance metadata key']
+meta_value varchar [note: 'governance metadata value']
+confirmed boolean [default: false, note: 'confirmation status']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table simulator {
+id integer [primary key, unique, note: 'generated']
+key varchar [unique, note: 'simulator key']
+value varchar [note: 'simulator value']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
+}
+
+Table SequelizeMetaV2 {
+name varchar [primary key, note: 'migration name tracking']
+}
+
+// =============================================================================
+// DATA TABLES
+// =============================================================================
+
 Table project {
 cad_trust_project_id integer [primary key, unique, note: 'generated']
 project_registry_name varchar [not null]
@@ -55,7 +143,7 @@ issuance_date date
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_verification_id integer [not null]
-cad_trust_methodology_id integer [not null]
+cad_trust_methodology_id varchar [not null, note: 'references methodology UUID']
 cad_trust_location_id integer
 }
 
@@ -83,20 +171,20 @@ cad_trust_issuance_id integer [not null]
 }
 
 Table methodology {
-cad_trust_methodology_id integer [primary key, unique, note: 'generated']
+cad_trust_methodology_id varchar [primary key, unique, note: 'generated UUID']
 methodology_code varchar [not null]
 methodology_name varchar [not null]
 methodology_version varchar
 methodology_date date [note: 'methodology in force date']
-methodology_link html
-methodology_type picklist [note: 'optional, picklist from type']
+methodology_link text
+methodology_type varchar [note: 'optional, picklist from type']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 }
 
 Table project_methodolgy {
 cad_trust_project_id integer
-cad_trust_methodology_id integer
+cad_trust_methodology_id varchar [note: 'references methodology UUID']
 project_methodology_date date
 project_methodology_description text
 created_at timestamp [note: 'generated']
@@ -340,7 +428,7 @@ Ref: program.cad_trust_program_id < project.cad_trust_program_id
 Ref: validation.cad_trust_validation_id < verification.cad_trust_validation_id
 Ref: verification.cad_trust_verification_id < issuance.cad_trust_verification_id
 
-Ref: methodology.cad_trust_methodology_id <> issuance.cad_trust_methodology_id
+Ref: methodology.cad_trust_methodology_id < issuance.cad_trust_methodology_id
 
 Ref: issuance.cad_trust_issuance_id < unit.cad_trust_issuance_id
 
