@@ -19,12 +19,11 @@ class LocationV2 extends Model {
 LocationV2.init(
   {
     cadTrustLocationId: {
-      type: Sequelize.STRING(36),
+      type: Sequelize.UUID,
       primaryKey: true,
       allowNull: false,
       unique: true,
       field: 'cad_trust_location_id',
-      defaultValue: Sequelize.UUIDV4,
     },
     locationCountry: {
       type: Sequelize.STRING,

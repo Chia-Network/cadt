@@ -32,12 +32,11 @@ class IssuanceV2 extends Model {
 IssuanceV2.init(
   {
     cadTrustIssuanceId: {
-      type: Sequelize.STRING(36),
+      type: Sequelize.UUID,
       primaryKey: true,
       allowNull: false,
       unique: true,
       field: 'cad_trust_issuance_id',
-      defaultValue: Sequelize.UUIDV4,
     },
     issuanceId: {
       type: Sequelize.STRING,

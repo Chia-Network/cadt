@@ -6,7 +6,7 @@ export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('unit', {
       cad_trust_unit_id: {
-        type: Sequelize.STRING(36),
+        type: Sequelize.UUID,
         primaryKey: true,
         allowNull: false,
         unique: true,

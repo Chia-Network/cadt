@@ -12,10 +12,10 @@ class ValidationV2Mirror extends Model {
 ValidationV2Mirror.init(
   {
     cadTrustValidationId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.UUID,
       primaryKey: true,
-      autoIncrement: true,
       allowNull: false,
+      unique: true,
       field: 'cad_trust_validation_id',
     },
     validationId: {

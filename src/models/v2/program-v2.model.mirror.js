@@ -12,10 +12,10 @@ class ProgramV2Mirror extends Model {
 ProgramV2Mirror.init(
   {
     cadTrustProgramId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.UUID,
       primaryKey: true,
-      autoIncrement: true,
       allowNull: false,
+      unique: true,
       field: 'cad_trust_program_id',
     },
     programName: {

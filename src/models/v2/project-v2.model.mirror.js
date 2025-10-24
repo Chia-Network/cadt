@@ -12,10 +12,10 @@ class ProjectV2Mirror extends Model {
 ProjectV2Mirror.init(
   {
     cadTrustProjectId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.UUID,
       primaryKey: true,
-      autoIncrement: true,
       allowNull: false,
+      unique: true,
       field: 'cad_trust_project_id',
     },
     projectRegistryName: {

@@ -6,10 +6,11 @@ export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('methodology', {
       cad_trust_methodology_id: {
-        type: Sequelize.STRING,
+        type: Sequelize.UUID,
         primaryKey: true,
         allowNull: false,
-        defaultValue: () => uuidv4(),
+        unique: true,
+        comment: 'generated UUID'
       },
       methodology_code: {
         type: Sequelize.STRING,

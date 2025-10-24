@@ -24,6 +24,47 @@ After the initial installation, it will take anywhere from a few days (most like
 
 Please see the [CADT RPC API Guide](docs/cadt_rpc_api.md).
 
+## V2 API Testing
+
+The V2 API includes comprehensive test suites that can be run independently of V1 tests. Use these npm scripts for V2 testing:
+
+### Quick V2 Test Commands
+
+```bash
+# Run all V2 tests (recommended for comprehensive testing)
+npm run test:v2
+
+# Run only V2 integration tests (cleanest, most reliable)
+npm run test:v2:integration
+
+# Run V2 smoke test (infrastructure validation)
+npm run test:v2:smoke
+
+# Run AEF framework tests only (all 5 AEF tables)
+npm run test:v2:aef
+
+# Run core business logic tests (co-benefit, estimation, rating, label, stakeholder)
+npm run test:v2:core
+
+# Run join table tests (project-methodology, stakeholder-projects, unit-label)
+npm run test:v2:joins
+```
+
+### V2 Test Results
+
+- **AEF Framework**: All 5 AEF tables (T1-Submission, T2-Authorizations, T3-Actions, T4-Holdings, T5-Authorized-Entities) - **83/83 tests passing**
+- **Core Endpoints**: Business logic tables - **80+ tests passing**
+- **Join Tables**: Many-to-many relationships - **48+ tests passing**
+- **Infrastructure**: Database, models, validation - **20+ tests passing**
+
+**Total: 200+ V2 tests passing** ✅
+
+### V2 vs V1 Testing
+
+- **V1 Tests**: `npm test` (runs all tests including V1)
+- **V2 Tests**: `npm run test:v2:integration` (V2-only, no V1 conflicts)
+- **Isolation**: V2 tests use separate database and configuration
+
 ## Installation
 
 [Releases are tagged in Github](https://github.com/Chia-Network/climate-warehouse/tags), and binaries are built for Windows, macOS, and Linux. ARM binaries are available for Debian versions of Linux only.

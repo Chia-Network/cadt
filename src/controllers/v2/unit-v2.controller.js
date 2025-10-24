@@ -64,6 +64,15 @@ export const create = async (req, res) => {
       });
     }
 
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustUnitId')) {
+      return res.status(400).json({
+        message: 'Error creating new unit',
+        error: 'cadTrustUnitId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Validate foreign keys
     await assertRecordExistanceOrStaged(IssuanceV2, newRecord.cadTrustIssuanceId);
 

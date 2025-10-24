@@ -39,7 +39,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
       );
 
       const tableNames = tables.map(t => t.name);
-      const expectedTables = ['staging', 'audit', 'organizations', 'meta', 'governance', 'simulator', 'methodology', 'program', 'project', 'validation', 'verification', 'issuance'];
+      const expectedTables = ['staging', 'audit', 'organizations', 'meta', 'governance', 'simulator', 'methodology', 'program', 'project', 'validation', 'verification', 'issuance', 'unit', 'location', 'estimation', 'rating', 'co_benefit', 'project_methodolgy', 'stakeholder', 'stakeholder_projects', 'label', 'unit_label', 'aef_t1_submission', 'aef_t5_authorized_entities', 'aef_t2_authorizations', 'aef_t3_actions', 'aef_t4_holdings'];
 
       for (const expectedTable of expectedTables) {
         expect(tableNames).to.include(expectedTable);
@@ -103,7 +103,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
       expect(V2Models.AuditV2).to.exist;
     });
 
-    it('should load V2 methodology, program, project, validation, verification, issuance, and unit models', async function () {
+    it('should load V2 methodology, program, project, validation, verification, issuance, unit, location, estimation, rating, co-benefit, project-methodology, stakeholder, stakeholder-projects, label, unit-label, aef-t1-submission, aef-t5-authorized-entities, aef-t2-authorizations, aef-t3-actions, and aef-t4-holdings models', async function () {
       const V2Models = await import('../../src/models/v2/index.js');
 
       expect(V2Models.MethodologyV2).to.exist;
@@ -120,6 +120,34 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
       expect(V2Models.IssuanceV2Mirror).to.exist;
       expect(V2Models.UnitV2).to.exist;
       expect(V2Models.UnitV2Mirror).to.exist;
+      expect(V2Models.LocationV2).to.exist;
+      expect(V2Models.LocationV2Mirror).to.exist;
+      expect(V2Models.EstimationV2).to.exist;
+      expect(V2Models.EstimationV2Mirror).to.exist;
+      expect(V2Models.RatingV2).to.exist;
+      expect(V2Models.RatingV2Mirror).to.exist;
+      expect(V2Models.CoBenefitV2).to.exist;
+      expect(V2Models.CoBenefitV2Mirror).to.exist;
+      expect(V2Models.ProjectMethodologyV2).to.exist;
+      expect(V2Models.ProjectMethodologyV2Mirror).to.exist;
+      expect(V2Models.StakeholderV2).to.exist;
+      expect(V2Models.StakeholderV2Mirror).to.exist;
+      expect(V2Models.StakeholderProjectV2).to.exist;
+      expect(V2Models.StakeholderProjectV2Mirror).to.exist;
+      expect(V2Models.LabelV2).to.exist;
+      expect(V2Models.LabelV2Mirror).to.exist;
+      expect(V2Models.UnitLabelV2).to.exist;
+      expect(V2Models.UnitLabelV2Mirror).to.exist;
+      expect(V2Models.AefT1SubmissionV2).to.exist;
+      expect(V2Models.AefT1SubmissionV2Mirror).to.exist;
+      expect(V2Models.AefT5AuthorizedEntitiesV2).to.exist;
+      expect(V2Models.AefT5AuthorizedEntitiesV2Mirror).to.exist;
+      expect(V2Models.AefT2AuthorizationsV2).to.exist;
+      expect(V2Models.AefT2AuthorizationsV2Mirror).to.exist;
+      expect(V2Models.AefT3ActionsV2).to.exist;
+      expect(V2Models.AefT3ActionsV2Mirror).to.exist;
+      expect(V2Models.AefT4HoldingsV2).to.exist;
+      expect(V2Models.AefT4HoldingsV2Mirror).to.exist;
     });
   });
 

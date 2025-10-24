@@ -114,10 +114,12 @@ describe('V2 Program API - Basic CRUD Tests', function () {
       expect(response.body.error).to.include('programRegistry');
     });
 
-    it('should reject program without required programRegistryActivityId', async function () {
+    it('should reject requests with cadTrustProgramId in create', async function () {
       const invalidData = {
-        programName: 'Missing Activity Program',
-        programRegistry: 'MISSING-ACTIVITY',
+        programName: 'Test Program',
+        programRegistry: 'Test Registry',
+        programRegistryActivityId: 'ACT-001',
+        cadTrustProgramId: '123e4567-e89b-12d3-a456-426614174000', // User-provided UUID
       };
 
       const response = await supertest(app)
@@ -126,7 +128,32 @@ describe('V2 Program API - Basic CRUD Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('programRegistryActivityId');
+      expect(response.body.error).to.include('cadTrustProgramId is auto-generated and cannot be set via API');
+    });
+
+    it('should generate valid UUID for new programs', async function () {
+      const programData = {
+        programName: 'UUID Test Program',
+        programRegistry: 'UUID Test Registry',
+        programRegistryActivityId: 'UUID-ACT-001',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/program')
+        .send(programData)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+
+      // Verify staged data contains valid UUID
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].cad_trust_program_id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      expect(stagedData[0].cad_trust_program_id).to.have.length(36);
     });
 
     it('should reject program with forbidden createdAt field', async function () {

@@ -29,12 +29,11 @@ class ProjectV2 extends Model {
 ProjectV2.init(
   {
     cadTrustProjectId: {
-      type: Sequelize.STRING(36),
+      type: Sequelize.UUID,
       primaryKey: true,
       allowNull: false,
       unique: true,
       field: 'cad_trust_project_id',
-      defaultValue: Sequelize.UUIDV4,
     },
     projectRegistryName: {
       type: Sequelize.STRING,

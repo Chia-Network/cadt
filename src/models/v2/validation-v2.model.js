@@ -19,12 +19,11 @@ class ValidationV2 extends Model {
 ValidationV2.init(
   {
     cadTrustValidationId: {
-      type: Sequelize.STRING(36),
+      type: Sequelize.UUID,
       primaryKey: true,
       allowNull: false,
       unique: true,
       field: 'cad_trust_validation_id',
-      defaultValue: Sequelize.UUIDV4,
     },
     validationId: {
       type: Sequelize.STRING,

@@ -2,10 +2,9 @@ const Sequelize = require('sequelize');
 
 module.exports = {
   cadTrustMethodologyId: {
-    type: Sequelize.STRING,
+    type: Sequelize.UUID,
     primaryKey: true,
     allowNull: false,
-    defaultValue: Sequelize.UUIDV4,
   },
   methodologyCode: {
     type: Sequelize.STRING,

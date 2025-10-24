@@ -64,6 +64,15 @@ export const create = async (req, res) => {
       });
     }
 
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustIssuanceId')) {
+      return res.status(400).json({
+        message: 'Error creating new issuance',
+        error: 'cadTrustIssuanceId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Validate foreign keys
     await assertRecordExistanceOrStaged(VerificationV2, newRecord.cadTrustVerificationId);
     await assertRecordExistanceOrStaged(MethodologyV2, newRecord.cadTrustMethodologyId);

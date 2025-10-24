@@ -12,10 +12,10 @@ class IssuanceV2Mirror extends Model {
 IssuanceV2Mirror.init(
   {
     cadTrustIssuanceId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.UUID,
       primaryKey: true,
-      autoIncrement: true,
       allowNull: false,
+      unique: true,
       field: 'cad_trust_issuance_id',
     },
     issuanceId: {

@@ -11,20 +11,22 @@ class UnitV2 extends Model {
       as: 'issuance',
     });
 
-    // Note: Other associations will be added when those models are implemented
-    // - Unit belongs to many UnitLabels (when UnitLabel endpoint is implemented)
+    // Unit has many UnitLabels (many-to-many with Label)
+    UnitV2.hasMany(models.UnitLabelV2, {
+      foreignKey: 'cadTrustUnitId',
+      as: 'unitLabels',
+    });
   }
 }
 
 UnitV2.init(
   {
     cadTrustUnitId: {
-      type: Sequelize.STRING(36),
+      type: Sequelize.UUID,
       primaryKey: true,
       allowNull: false,
       unique: true,
       field: 'cad_trust_unit_id',
-      defaultValue: Sequelize.UUIDV4,
     },
     unitSerialId: {
       type: Sequelize.STRING,

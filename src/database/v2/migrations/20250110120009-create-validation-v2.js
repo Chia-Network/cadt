@@ -6,7 +6,7 @@ export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('validation', {
       cad_trust_validation_id: {
-        type: Sequelize.STRING(36),
+        type: Sequelize.UUID,
         primaryKey: true,
         allowNull: false,
         unique: true,

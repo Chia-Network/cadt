@@ -12,10 +12,10 @@ class UnitV2Mirror extends Model {
 UnitV2Mirror.init(
   {
     cadTrustUnitId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.UUID,
       primaryKey: true,
-      autoIncrement: true,
       allowNull: false,
+      unique: true,
       field: 'cad_trust_unit_id',
     },
     unitSerialId: {

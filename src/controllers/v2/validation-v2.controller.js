@@ -64,6 +64,15 @@ export const create = async (req, res) => {
       });
     }
 
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustValidationId')) {
+      return res.status(400).json({
+        message: 'Error creating new validation',
+        error: 'cadTrustValidationId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Validate foreign key
     await assertRecordExistanceOrStaged(ProjectV2, newRecord.cadTrustProjectId);
 
