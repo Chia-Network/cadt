@@ -54,11 +54,21 @@ export const create = async (req, res) => {
       });
     }
 
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustProgramId')) {
+      return res.status(400).json({
+        message: 'Error creating new program',
+        error: 'cadTrustProgramId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Generate UUID for staging
     const uuid = uuidv4();
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
+      cad_trust_program_id: uuidv4(), // Generate UUID for primary key
       program_name: newRecord.programName,
       program_registry: newRecord.programRegistry,
       program_registry_activity_id: newRecord.programRegistryActivityId,
@@ -178,7 +188,7 @@ export const update = async (req, res) => {
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
-      cad_trust_program_id: parseInt(id),
+      cad_trust_program_id: id, // Use UUID string directly
     };
 
     if (updateData.programName !== undefined) dbUpdateData.program_name = updateData.programName;
@@ -234,7 +244,7 @@ export const destroy = async (req, res) => {
       uuid: uuidv4(),
       table: 'program',
       action: 'DELETE',
-      data: JSON.stringify([{ cad_trust_program_id: parseInt(id) }]),
+      data: JSON.stringify([{ cad_trust_program_id: id }]), // Use UUID string directly
       commited: false,
       failed_commit: false,
       is_transfer: false,

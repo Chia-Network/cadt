@@ -11,10 +11,15 @@ class ProjectV2 extends Model {
       as: 'program',
     });
 
+    // Project has many Locations
+    ProjectV2.hasMany(models.LocationV2, {
+      foreignKey: 'cadTrustProjectId',
+      as: 'locations',
+    });
+
     // Note: Other associations will be added when those models are implemented
     // - Project has many Validations
     // - Project has many Verifications
-    // - Project has many Locations
     // - Project has many Estimations
     // - Project has many Ratings
     // - Project has many CoBenefits
@@ -24,11 +29,12 @@ class ProjectV2 extends Model {
 ProjectV2.init(
   {
     cadTrustProjectId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING(36),
       primaryKey: true,
-      autoIncrement: true,
       allowNull: false,
+      unique: true,
       field: 'cad_trust_project_id',
+      defaultValue: Sequelize.UUIDV4,
     },
     projectRegistryName: {
       type: Sequelize.STRING,
@@ -96,7 +102,7 @@ ProjectV2.init(
       field: 'cad_trust_reference_project_id',
     },
     cadTrustProgramId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING(36),
       allowNull: true,
       field: 'cad_trust_program_id',
     },

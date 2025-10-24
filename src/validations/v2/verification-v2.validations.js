@@ -10,8 +10,8 @@ export const verificationV2Schema = Joi.object({
   verificationBody: Joi.string()
     .custom(pickListValidationV2('verificationBody'))
     .optional(),
-  cadTrustProjectId: Joi.number().integer().required(),
-  cadTrustValidationId: Joi.number().integer().optional(),
+  cadTrustProjectId: Joi.string().uuid().required(),
+  cadTrustValidationId: Joi.string().uuid().optional(),
   // Note: createdAt and updatedAt are automatically managed by Sequelize
-  // Note: cadTrustVerificationId is auto-generated INTEGER
+  // Note: cadTrustVerificationId is auto-generated UUID
 });

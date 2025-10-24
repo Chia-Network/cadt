@@ -6,9 +6,9 @@ import { pickListValidationV2 } from '../../utils/v2-validation-utils.js';
 export const issuanceV2Schema = Joi.object({
   issuanceId: Joi.string().required(),
   issuanceDate: Joi.date().optional(),
-  cadTrustVerificationId: Joi.number().integer().required(),
+  cadTrustVerificationId: Joi.string().uuid().required(),
   cadTrustMethodologyId: Joi.string().required(),
-  cadTrustLocationId: Joi.number().integer().optional(),
+  cadTrustLocationId: Joi.string().uuid().optional(),
   // Note: createdAt and updatedAt are automatically managed by Sequelize
-  // Note: cadTrustIssuanceId is auto-generated INTEGER
+  // Note: cadTrustIssuanceId is auto-generated UUID
 });

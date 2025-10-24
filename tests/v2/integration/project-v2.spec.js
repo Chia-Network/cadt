@@ -5,6 +5,7 @@ import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StagingV2, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import {
   resetV2StagingTable,
+  resetV2DataTables,
   waitForV2DataLayerSync,
 } from '../utils/v2-test-helpers.js';
 
@@ -31,8 +32,15 @@ describe('V2 Project API - Basic CRUD Tests', function () {
   });
 
   beforeEach(async function () {
-    // Clean staging table before each test
     await resetV2StagingTable();
+    await resetV2DataTables();
+
+    // Recreate test program after cleanup
+    testProgram = await ProgramV2.create({
+      programName: 'Test Program for Project',
+      programRegistry: 'Test Registry',
+      programRegistryActivityId: 'TEST-ACT-001',
+    });
   });
 
   describe('POST /v2/project (Create)', function () {
@@ -320,7 +328,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-FK',
         projectId: 'INVALID-FK-001',
         projectName: 'Invalid FK Project',
-        cadTrustProgramId: 999999,
+        cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent
       };
 
       const response = await supertest(app)
@@ -385,9 +393,6 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
   describe('GET /v2/project (List)', function () {
     it('should return empty array when no projects exist', async function () {
-      // Clean up any existing data
-      await ProjectV2.destroy({ where: {} });
-
       const response = await supertest(app)
         .get('/v2/project')
         .expect(200);

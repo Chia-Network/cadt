@@ -20,13 +20,19 @@ import { VerificationV2 } from './verification-v2.model.js';
 import { VerificationV2Mirror } from './verification-v2.model.mirror.js';
 import { IssuanceV2 } from './issuance-v2.model.js';
 import { IssuanceV2Mirror } from './issuance-v2.model.mirror.js';
+import { UnitV2 } from './unit-v2.model.js';
+import { UnitV2Mirror } from './unit-v2.model.mirror.js';
+import { LocationV2 } from './location-v2.model.js';
+import { LocationV2Mirror } from './location-v2.model.mirror.js';
 
 // Set up model associations
 ProgramV2.associate({ ProgramV2, ProjectV2 });
-ProjectV2.associate({ ProgramV2, ProjectV2, ValidationV2 });
+ProjectV2.associate({ ProgramV2, ProjectV2, ValidationV2, LocationV2 });
 ValidationV2.associate({ ProjectV2, ValidationV2 });
 VerificationV2.associate({ ProjectV2, ValidationV2, VerificationV2 });
-IssuanceV2.associate({ VerificationV2, MethodologyV2, IssuanceV2 });
+IssuanceV2.associate({ VerificationV2, MethodologyV2, LocationV2, IssuanceV2 });
+UnitV2.associate({ IssuanceV2, UnitV2 });
+LocationV2.associate({ ProjectV2, LocationV2 });
 
 // Export all V2 models
 export {
@@ -49,6 +55,10 @@ export {
   VerificationV2Mirror,
   IssuanceV2,
   IssuanceV2Mirror,
+  UnitV2,
+  UnitV2Mirror,
+  LocationV2,
+  LocationV2Mirror,
 };
 
 // Default export for convenience
@@ -72,4 +82,8 @@ export default {
   VerificationV2Mirror,
   IssuanceV2,
   IssuanceV2Mirror,
+  UnitV2,
+  UnitV2Mirror,
+  LocationV2,
+  LocationV2Mirror,
 };

@@ -6,10 +6,11 @@ export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('issuance', {
       cad_trust_issuance_id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING(36),
         primaryKey: true,
-        autoIncrement: true,
         allowNull: false,
+        unique: true,
+        comment: 'generated UUID'
       },
       issuance_id: {
         type: Sequelize.STRING,
@@ -20,29 +21,19 @@ export default {
         allowNull: true,
       },
       cad_trust_verification_id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING(36),
         allowNull: false,
-        references: {
-          model: 'verification',
-          key: 'cad_trust_verification_id',
-        },
+        comment: 'Foreign key to verification table'
       },
       cad_trust_methodology_id: {
         type: Sequelize.STRING,
         allowNull: false,
-        references: {
-          model: 'methodology',
-          key: 'cad_trust_methodology_id',
-        },
+        comment: 'references methodology UUID'
       },
       cad_trust_location_id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING(36),
         allowNull: true,
-        // Note: Foreign key reference will be added when Location endpoint is implemented
-        // references: {
-        //   model: 'location',
-        //   key: 'cad_trust_location_id',
-        // },
+        comment: 'Foreign key to location table'
       },
       created_at: {
         type: Sequelize.DATE,

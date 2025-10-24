@@ -5,6 +5,7 @@ import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StagingV2, MethodologyV2 } from '../../../src/models/v2/index.js';
 import {
   resetV2StagingTable,
+  resetV2DataTables,
   waitForV2DataLayerSync,
 } from '../utils/v2-test-helpers.js';
 
@@ -22,8 +23,8 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
   });
 
   beforeEach(async function () {
-    // Clean staging table before each test
     await resetV2StagingTable();
+    await resetV2DataTables();
   });
 
   describe('POST /v2/methodology (Create)', function () {
@@ -177,9 +178,6 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
 
   describe('GET /v2/methodology (List)', function () {
     it('should return empty array when no methodologies exist', async function () {
-      // Clean up any existing data
-      await MethodologyV2.destroy({ where: {} });
-
       const response = await supertest(app)
         .get('/v2/methodology')
         .expect(200);

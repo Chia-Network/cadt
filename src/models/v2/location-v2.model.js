@@ -3,58 +3,53 @@
 import { Sequelize, Model } from 'sequelize';
 import { sequelizeV2 } from '../../database/v2/index.js';
 
-class ValidationV2 extends Model {
+class LocationV2 extends Model {
   static associate(models) {
-    // Validation belongs to Project
-    ValidationV2.belongsTo(models.ProjectV2, {
+    // Location belongs to Project
+    LocationV2.belongsTo(models.ProjectV2, {
       foreignKey: 'cadTrustProjectId',
       as: 'project',
     });
 
     // Note: Other associations will be added when those models are implemented
-    // - Validation has many Verifications
+    // - Location has many Issuances (when Issuance endpoint references location)
   }
 }
 
-ValidationV2.init(
+LocationV2.init(
   {
-    cadTrustValidationId: {
+    cadTrustLocationId: {
       type: Sequelize.STRING(36),
       primaryKey: true,
       allowNull: false,
       unique: true,
-      field: 'cad_trust_validation_id',
+      field: 'cad_trust_location_id',
       defaultValue: Sequelize.UUIDV4,
     },
-    validationId: {
-      type: Sequelize.STRING,
-      allowNull: false,
-      field: 'validation_id',
-    },
-    validationType: {
+    locationCountry: {
       type: Sequelize.STRING,
       allowNull: true,
-      field: 'validation_type',
+      field: 'location_country',
     },
-    validationBody: {
+    locationRegion: {
       type: Sequelize.STRING,
       allowNull: true,
-      field: 'validation_body',
+      field: 'location_region',
     },
-    validationDate: {
-      type: Sequelize.DATEONLY,
+    locationGis: {
+      type: Sequelize.TEXT,
       allowNull: true,
-      field: 'validation_date',
+      field: 'location_gis',
     },
-    validationCreditPeriodStartDate: {
-      type: Sequelize.DATEONLY,
+    locationMapType: {
+      type: Sequelize.TEXT,
       allowNull: true,
-      field: 'validation_credit_period_start_date',
+      field: 'location_map_type',
     },
-    validationCreditPeriodEndDate: {
-      type: Sequelize.DATEONLY,
+    locationMapFileLink: {
+      type: Sequelize.TEXT,
       allowNull: true,
-      field: 'validation_credit_period_end_date',
+      field: 'location_map_file_link',
     },
     cadTrustProjectId: {
       type: Sequelize.STRING(36),
@@ -64,8 +59,8 @@ ValidationV2.init(
   },
   {
     sequelize: sequelizeV2,
-    modelName: 'ValidationV2',
-    tableName: 'validation',
+    modelName: 'LocationV2',
+    tableName: 'location',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
@@ -73,4 +68,4 @@ ValidationV2.init(
   }
 );
 
-export { ValidationV2 };
+export { LocationV2 };

@@ -4,70 +4,82 @@ import { v4 as uuidv4 } from 'uuid';
 
 export default {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('project', {
-      cad_trust_project_id: {
+    await queryInterface.createTable('unit', {
+      cad_trust_unit_id: {
         type: Sequelize.STRING(36),
         primaryKey: true,
         allowNull: false,
         unique: true,
         comment: 'generated UUID'
       },
-      project_registry_name: {
+      unit_serial_id: {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      project_id: {
+      unit_start_block: {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      project_crediting_program: {
+      unit_end_block: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+      unit_count: {
+        type: Sequelize.DECIMAL,
+        allowNull: true,
+      },
+      unit_type: {
         type: Sequelize.STRING,
         allowNull: true,
       },
-      project_name: {
-        type: Sequelize.STRING,
+      unit_vintage_year: {
+        type: Sequelize.INTEGER,
         allowNull: false,
       },
-      project_link: {
+      unit_status: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      unit_status_reason: {
         type: Sequelize.TEXT,
         allowNull: true,
       },
-      project_description: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      },
-      project_sector: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      project_type: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      project_subtype: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      project_status: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      project_status_date: {
+      unit_status_date: {
         type: Sequelize.DATEONLY,
         allowNull: true,
       },
-      project_unit_metric: {
+      unit_retirement_detail: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      unit_retirement_beneficiary: {
         type: Sequelize.STRING,
         allowNull: true,
       },
-      cad_trust_reference_project_id: {
+      unit_retirement_beneficiary_id: {
         type: Sequelize.STRING,
         allowNull: true,
       },
-      cad_trust_program_id: {
+      unit_link: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      unit_metric: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      unit_current_owner: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      unit_itmos_reference_id: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      cad_trust_issuance_id: {
         type: Sequelize.STRING(36),
-        allowNull: true,
-        comment: 'Foreign key to program table'
+        allowNull: false,
+        comment: 'Foreign key to issuance table'
       },
       created_at: {
         type: Sequelize.DATE,
@@ -82,16 +94,13 @@ export default {
     });
 
     // Add indexes for better performance
-    await queryInterface.addIndex('project', ['project_registry_name']);
-    await queryInterface.addIndex('project', ['project_id']);
-    await queryInterface.addIndex('project', ['project_name']);
-    await queryInterface.addIndex('project', ['project_sector']);
-    await queryInterface.addIndex('project', ['project_type']);
-    await queryInterface.addIndex('project', ['project_status']);
-    await queryInterface.addIndex('project', ['cad_trust_program_id']);
+    await queryInterface.addIndex('unit', ['unit_serial_id']);
+    await queryInterface.addIndex('unit', ['unit_vintage_year']);
+    await queryInterface.addIndex('unit', ['unit_status']);
+    await queryInterface.addIndex('unit', ['cad_trust_issuance_id']);
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('project');
+    await queryInterface.dropTable('unit');
   },
 };

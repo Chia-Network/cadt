@@ -14,7 +14,7 @@ export const validationV2Schema = Joi.object({
   validationDate: Joi.date().optional(),
   validationCreditPeriodStartDate: Joi.date().optional(),
   validationCreditPeriodEndDate: Joi.date().optional(),
-  cadTrustProjectId: Joi.number().integer().required(),
+  cadTrustProjectId: Joi.string().uuid().required(),
   // Note: createdAt and updatedAt are automatically managed by Sequelize
-  // Note: cadTrustValidationId is auto-generated INTEGER
+  // Note: cadTrustValidationId is auto-generated UUID
 });

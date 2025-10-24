@@ -16,11 +16,12 @@ class ProgramV2 extends Model {
 ProgramV2.init(
   {
     cadTrustProgramId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING(36),
       primaryKey: true,
-      autoIncrement: true,
       allowNull: false,
+      unique: true,
       field: 'cad_trust_program_id',
+      defaultValue: Sequelize.UUIDV4,
     },
     programName: {
       type: Sequelize.STRING,

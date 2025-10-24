@@ -19,6 +19,21 @@ export const resetV2StagingTable = async () => {
   await StagingV2.destroy({ where: {} });
 };
 
+// V2 data table utilities
+export const resetV2DataTables = async () => {
+  const { UnitV2, IssuanceV2, VerificationV2, ValidationV2, ProjectV2, ProgramV2, MethodologyV2, LocationV2 } = await import('../../../src/models/v2/index.js');
+
+  // Delete in reverse dependency order
+  await UnitV2.destroy({ where: {} });
+  await IssuanceV2.destroy({ where: {} });
+  await VerificationV2.destroy({ where: {} });
+  await ValidationV2.destroy({ where: {} });
+  await LocationV2.destroy({ where: {} });
+  await ProjectV2.destroy({ where: {} });
+  await ProgramV2.destroy({ where: {} });
+  await MethodologyV2.destroy({ where: {} });
+};
+
 // V2 organization utilities
 export const createV2TestHomeOrg = async () => {
   const { OrganizationsV2 } = await import('../../../src/models/v2/index.js');

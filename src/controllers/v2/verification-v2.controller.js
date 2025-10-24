@@ -55,6 +55,15 @@ export const create = async (req, res) => {
       });
     }
 
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustVerificationId')) {
+      return res.status(400).json({
+        message: 'Error creating new verification',
+        error: 'cadTrustVerificationId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Validate foreign keys
     await assertRecordExistanceOrStaged(ProjectV2, newRecord.cadTrustProjectId);
 
@@ -67,6 +76,7 @@ export const create = async (req, res) => {
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
+      cad_trust_verification_id: uuidv4(), // Generate UUID for primary key
       verification_id: newRecord.verificationId,
       verification_start_date: newRecord.verificationStartDate,
       verification_end_date: newRecord.verificationEndDate,
@@ -219,7 +229,7 @@ export const update = async (req, res) => {
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
-      cad_trust_verification_id: parseInt(id),
+      cad_trust_verification_id: id, // Use UUID string directly
     };
 
     if (updateData.verificationId !== undefined) dbUpdateData.verification_id = updateData.verificationId;
@@ -276,7 +286,7 @@ export const destroy = async (req, res) => {
       uuid: uuidv4(),
       table: 'verification',
       action: 'DELETE',
-      data: JSON.stringify([{ cad_trust_verification_id: parseInt(id) }]),
+      data: JSON.stringify([{ cad_trust_verification_id: id }]), // Use UUID string directly
       commited: false,
       failed_commit: false,
       is_transfer: false,

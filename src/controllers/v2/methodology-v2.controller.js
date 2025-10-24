@@ -54,6 +54,15 @@ export const create = async (req, res) => {
       });
     }
 
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustMethodologyId')) {
+      return res.status(400).json({
+        message: 'Error creating new methodology',
+        error: 'cadTrustMethodologyId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Generate UUID for primary key
     const uuid = uuidv4();
     newRecord.cadTrustMethodologyId = uuid;

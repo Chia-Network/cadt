@@ -6,10 +6,11 @@ export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('verification', {
       cad_trust_verification_id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING(36),
         primaryKey: true,
-        autoIncrement: true,
         allowNull: false,
+        unique: true,
+        comment: 'generated UUID'
       },
       verification_id: {
         type: Sequelize.STRING,
@@ -28,20 +29,14 @@ export default {
         allowNull: true,
       },
       cad_trust_project_id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING(36),
         allowNull: false,
-        references: {
-          model: 'project',
-          key: 'cad_trust_project_id',
-        },
+        comment: 'Foreign key to project table'
       },
       cad_trust_validation_id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING(36),
         allowNull: true,
-        references: {
-          model: 'validation',
-          key: 'cad_trust_validation_id',
-        },
+        comment: 'Foreign key to validation table'
       },
       created_at: {
         type: Sequelize.DATE,

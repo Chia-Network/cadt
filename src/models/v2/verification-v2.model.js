@@ -25,11 +25,12 @@ class VerificationV2 extends Model {
 VerificationV2.init(
   {
     cadTrustVerificationId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING(36),
       primaryKey: true,
-      autoIncrement: true,
       allowNull: false,
+      unique: true,
       field: 'cad_trust_verification_id',
+      defaultValue: Sequelize.UUIDV4,
     },
     verificationId: {
       type: Sequelize.STRING,
@@ -52,12 +53,12 @@ VerificationV2.init(
       field: 'verification_body',
     },
     cadTrustProjectId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING(36),
       allowNull: false,
       field: 'cad_trust_project_id',
     },
     cadTrustValidationId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING(36),
       allowNull: true,
       field: 'cad_trust_validation_id',
     },

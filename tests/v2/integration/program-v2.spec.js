@@ -5,6 +5,7 @@ import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StagingV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import {
   resetV2StagingTable,
+  resetV2DataTables,
   waitForV2DataLayerSync,
 } from '../utils/v2-test-helpers.js';
 
@@ -22,8 +23,8 @@ describe('V2 Program API - Basic CRUD Tests', function () {
   });
 
   beforeEach(async function () {
-    // Clean staging table before each test
     await resetV2StagingTable();
+    await resetV2DataTables();
   });
 
   describe('POST /v2/program (Create)', function () {
@@ -165,9 +166,6 @@ describe('V2 Program API - Basic CRUD Tests', function () {
 
   describe('GET /v2/program (List)', function () {
     it('should return empty array when no programs exist', async function () {
-      // Clean up any existing data
-      await ProgramV2.destroy({ where: {} });
-
       const response = await supertest(app)
         .get('/v2/program')
         .expect(200);
@@ -179,6 +177,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
     it('should return programs from database', async function () {
       // Create a program directly in database
       const program = await ProgramV2.create({
+        cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440001', // Provide explicit UUID
         programName: 'Database Program',
         programRegistry: 'DB Registry',
         programRegistryActivityId: 'DB-ACT-001',
@@ -210,6 +209,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
     it('should return program by ID', async function () {
       // Create a program directly in database
       const program = await ProgramV2.create({
+        cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440002', // Provide explicit UUID
         programName: 'Get Test Program',
         programRegistry: 'GET Registry',
         programRegistryActivityId: 'GET-ACT-001',
@@ -245,6 +245,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
     it('should stage program update', async function () {
       // Create a program directly in database
       const program = await ProgramV2.create({
+        cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440003', // Provide explicit UUID
         programName: 'Original Name',
         programRegistry: 'Original Registry',
         programRegistryActivityId: 'ORIGINAL-001',
@@ -301,6 +302,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
     it('should stage program deletion', async function () {
       // Create a program directly in database
       const program = await ProgramV2.create({
+        cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440004', // Provide explicit UUID
         programName: 'To Be Deleted',
         programRegistry: 'DELETE Registry',
         programRegistryActivityId: 'DELETE-001',

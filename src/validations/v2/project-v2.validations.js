@@ -25,7 +25,7 @@ export const projectV2Schema = Joi.object({
     .custom(pickListValidationV2('projectUnitMetric'))
     .optional(),
   cadTrustReferenceProjectId: Joi.string().optional(),
-  cadTrustProgramId: Joi.number().integer().optional(),
+  cadTrustProgramId: Joi.string().uuid().optional(),
   // Note: createdAt and updatedAt are automatically managed by Sequelize
-  // Note: cadTrustProjectId is auto-generated INTEGER
+  // Note: cadTrustProjectId is auto-generated UUID
 });

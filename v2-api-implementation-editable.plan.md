@@ -11,8 +11,10 @@
 - ✅ **Phase 6**: Validation Endpoint (Complete with validations and tests)
 - ✅ **Phase 7**: Verification Endpoint (Complete with validations and tests)
 - ✅ **Phase 8**: Issuance Endpoint (Complete with validations and tests)
+- ✅ **Phase 9**: Unit Endpoint (Complete with validations and tests)
+- ✅ **Phase 10**: Location Endpoint (Complete with validations and tests)
 
-**CURRENT STATUS:** Ready for Phase 9 (Unit Endpoint) or testing existing endpoints
+**CURRENT STATUS:** ✅ Phase 10 (Location Endpoint) COMPLETED - Ready for Phase 11 (Next Endpoint)
 
 **KEY ACHIEVEMENTS:**
 - V2-only smoke test created and passing (14/14 tests)
@@ -23,6 +25,8 @@
 - Validation endpoint fully implemented with CRUD operations, validations, and foreign key validation (21/21 tests)
 - Verification endpoint fully implemented with CRUD operations, validations, and dual foreign key validation (22/22 tests)
 - **Issuance endpoint fully implemented with CRUD operations, validations, and dual foreign key validation (16/16 tests)**
+- **Unit endpoint fully implemented with CRUD operations, validations, and foreign key validation (28/28 tests)**
+- **Location endpoint fully implemented with CRUD operations, validations, and foreign key validation (23/23 tests)**
 - V1/V2 isolation maintained
 - Snake_case database naming convention enforced
 - **Real picklist values integrated** from governance CSV data
@@ -520,7 +524,45 @@ Issuance depends on Verification, Methodology, and Location and has multiple for
 
 **STOP - User verifies validation tests pass**
 
-## Remaining Endpoints (Phases 9-25)
+## Phase 10: Seventh Endpoint - Location (Depends on Project)
+
+Location depends on Project and has geographic data fields.
+
+### 10.1 Location Schema & Migration
+
+- [x] Review location fields in `v2-schema.dat`
+- [x] Note FK to project table
+- [x] Create location migration
+- [x] Run migration
+
+**STOP - User verifies location table created**
+
+### 10.2 Location Model
+
+- [x] Create model types
+- [x] Create model and mirror
+- [x] Set up associations (belongsTo Project)
+- [x] Update exports
+
+**STOP - User verifies model loads with associations**
+
+### 10.3 Location Endpoint + Tests
+
+- [x] Create minimal validation
+- [x] Create controller/routes
+- [x] Write basic CRUD tests (with valid project FK)
+- [x] Test FK validation (invalid project should fail)
+- [x] Verify tests pass
+
+**STOP - User verifies CRUD and FK tests pass**
+
+### 10.4 Location Validations + Tests
+
+- [x] Add required fields validation
+- [x] Add validation tests
+- [x] Verify all tests pass
+
+**STOP - User verifies validation tests pass**
 
 Follow the same pattern for each remaining endpoint with STOP points after each checkpoint.
 

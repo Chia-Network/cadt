@@ -32,11 +32,12 @@ class IssuanceV2 extends Model {
 IssuanceV2.init(
   {
     cadTrustIssuanceId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING(36),
       primaryKey: true,
-      autoIncrement: true,
       allowNull: false,
+      unique: true,
       field: 'cad_trust_issuance_id',
+      defaultValue: Sequelize.UUIDV4,
     },
     issuanceId: {
       type: Sequelize.STRING,
@@ -49,7 +50,7 @@ IssuanceV2.init(
       field: 'issuance_date',
     },
     cadTrustVerificationId: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING(36),
       allowNull: false,
       field: 'cad_trust_verification_id',
     },
@@ -58,12 +59,11 @@ IssuanceV2.init(
       allowNull: false,
       field: 'cad_trust_methodology_id',
     },
-    // Note: cadTrustLocationId field will be added when Location endpoint is implemented
-    // cadTrustLocationId: {
-    //   type: Sequelize.INTEGER,
-    //   allowNull: true,
-    //   field: 'cad_trust_location_id',
-    // },
+    cadTrustLocationId: {
+      type: Sequelize.STRING(36),
+      allowNull: true,
+      field: 'cad_trust_location_id',
+    },
   },
   {
     sequelize: sequelizeV2,

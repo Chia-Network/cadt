@@ -55,6 +55,15 @@ export const create = async (req, res) => {
       });
     }
 
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustProjectId')) {
+      return res.status(400).json({
+        message: 'Error creating new project',
+        error: 'cadTrustProjectId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Validate foreign key if provided
     if (newRecord.cadTrustProgramId) {
       await assertRecordExistanceOrStaged(ProgramV2, newRecord.cadTrustProgramId);
@@ -65,6 +74,7 @@ export const create = async (req, res) => {
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
+      cad_trust_project_id: uuidv4(), // Generate UUID for primary key
       project_registry_name: newRecord.projectRegistryName,
       project_id: newRecord.projectId,
       project_crediting_program: newRecord.projectCreditingProgram,
@@ -213,7 +223,7 @@ export const update = async (req, res) => {
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
-      cad_trust_project_id: parseInt(id),
+      cad_trust_project_id: id, // Use UUID string directly
     };
 
     if (updateData.projectRegistryName !== undefined) dbUpdateData.project_registry_name = updateData.projectRegistryName;
@@ -278,7 +288,7 @@ export const destroy = async (req, res) => {
       uuid: uuidv4(),
       table: 'project',
       action: 'DELETE',
-      data: JSON.stringify([{ cad_trust_project_id: parseInt(id) }]),
+      data: JSON.stringify([{ cad_trust_project_id: id }]), // Use UUID string directly
       commited: false,
       failed_commit: false,
       is_transfer: false,

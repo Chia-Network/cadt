@@ -5,6 +5,7 @@ import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StagingV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import {
   resetV2StagingTable,
+  resetV2DataTables,
   waitForV2DataLayerSync,
 } from '../utils/v2-test-helpers.js';
 
@@ -60,8 +61,43 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
   });
 
   beforeEach(async function () {
-    // Clean staging table before each test
     await resetV2StagingTable();
+    await resetV2DataTables();
+
+    // Recreate test data after cleanup
+    const testProgram = await ProgramV2.create({
+      programName: 'Test Program for Issuance',
+      programRegistry: 'Test Registry',
+      programRegistryActivityId: 'TEST-ACT-001',
+    });
+
+    const testProject = await ProjectV2.create({
+      projectRegistryName: 'Test Registry',
+      projectId: 'TEST-PROJECT-001',
+      projectName: 'Test Project for Issuance',
+      projectSector: 'Agriculture',
+      cadTrustProgramId: testProgram.cadTrustProgramId,
+    });
+
+    const testValidation = await ValidationV2.create({
+      validationId: 'TEST-VALIDATION-001',
+      validationType: 'Validation of Project Design Document',
+      validationBody: 'AENOR International S.A.U.',
+      cadTrustProjectId: testProject.cadTrustProjectId,
+    });
+
+    testVerification = await VerificationV2.create({
+      verificationId: 'TEST-VERIFICATION-001',
+      verificationBody: 'AENOR International S.A.U.',
+      cadTrustProjectId: testProject.cadTrustProjectId,
+      cadTrustValidationId: testValidation.cadTrustValidationId,
+    });
+
+    testMethodology = await MethodologyV2.create({
+      methodologyCode: 'TEST-METHODOLOGY-001',
+      methodologyName: 'Test Methodology for Issuance',
+      methodologyType: 'Methodology for Afforestation and Reforestation',
+    });
   });
 
   describe('POST /v2/issuance (Create)', function () {
@@ -187,7 +223,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
     it('should reject issuance with invalid cadTrustVerificationId', async function () {
       const invalidData = {
         issuanceId: 'INVALID-VERIFICATION-FK',
-        cadTrustVerificationId: 999999,
+        cadTrustVerificationId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent
         cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
       };
 

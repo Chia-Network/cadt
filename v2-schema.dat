@@ -91,7 +91,7 @@ name varchar [primary key, note: 'migration name tracking']
 // =============================================================================
 
 Table project {
-cad_trust_project_id integer [primary key, unique, note: 'generated']
+cad_trust_project_id varchar [primary key, unique, note: 'generated UUID']
 project_registry_name varchar [not null]
 project_id varchar [not null]
 project_crediting_program varchar
@@ -107,11 +107,11 @@ project_unit_metric picklist [note: 'picklist from unit metric type']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_reference_project_id varchar [note: 'generated, format project_registry_name+project_id+cad_trust_project_id [last 4 digits]']
-cad_trust_program_id integer [primary key, unique, note: 'generated']
+cad_trust_program_id varchar [note: 'Foreign key to program table']
 }
 
 Table validation {
-cad_trust_validation_id integer [primary key, unique, note: 'generated']
+cad_trust_validation_id varchar [primary key, unique, note: 'generated UUID']
 validation_id varchar [not null, note: 'registry provided unique id']
 validation_type picklist [note: 'picklist from validation type']
 validation_body picklist [note: 'picklist from VVB']
@@ -120,42 +120,42 @@ validation_credit_period_start_date date
 validation_credit_period_end_date date
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_project_id integer [not null]
+cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
 }
 
 
 Table verification {
-cad_trust_verification_id integer [primary key, unique, note: 'generated']
+cad_trust_verification_id varchar [primary key, unique, note: 'generated UUID']
 verification_id varchar [not null, note: 'registry provided unique id']
 verification_start_date date
 verification_end_date date
 verification_body picklist [note: 'picklist from VVB']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_project_id integer [not null]
-cad_trust_validation_id integer
+cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
+cad_trust_validation_id varchar [note: 'Foreign key to validation table']
 }
 
 Table issuance {
-cad_trust_issuance_id integer [primary key, unique, note: 'generated']
+cad_trust_issuance_id varchar [primary key, unique, note: 'generated UUID']
 issuance_id varchar [not null, note: 'registry provide unique id']
 issuance_date date
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_verification_id integer [not null]
+cad_trust_verification_id varchar [not null, note: 'Foreign key to verification table']
 cad_trust_methodology_id varchar [not null, note: 'references methodology UUID']
-cad_trust_location_id integer
+cad_trust_location_id varchar [note: 'Foreign key to location table']
 }
 
 Table unit {
-cad_trust_unit_id integer [primary key, unique, note: 'generated']
+cad_trust_unit_id varchar [primary key, unique, note: 'generated UUID']
 unit_serial_id varchar [not null, note: 'registry provide unique id']
 unit_start_block varchar [not null]
 unit_end_block varchar [not null]
 unit_count decimal
 unit_type picklist [note: 'picklist from unit type']
 unit_vintage_year year [not null]
-unit_status pickist [note: 'picklist from unit status']
+unit_status picklist [note: 'picklist from unit status']
 unit_status_reason text
 unit_status_date date
 unit_retirement_detail text
@@ -167,7 +167,7 @@ unit_current_owner varchar
 unit_itmos_reference_id varchar [note: 'for ITMOs tracking']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_issuance_id integer [not null]
+cad_trust_issuance_id varchar [not null, note: 'Foreign key to issuance table']
 }
 
 Table methodology {
@@ -183,7 +183,7 @@ updated_at timestamp [note: 'generated']
 }
 
 Table project_methodolgy {
-cad_trust_project_id integer
+cad_trust_project_id varchar [note: 'Foreign key to project table']
 cad_trust_methodology_id varchar [note: 'references methodology UUID']
 project_methodology_date date
 project_methodology_description text
@@ -197,7 +197,7 @@ indexes {
 }
 
 Table location {
-cad_trust_location_id integer [primary key, unique, note: 'generated']
+cad_trust_location_id varchar [primary key, unique, note: 'generated UUID']
 location_country picklist [note: 'picklist from country']
 location_region varchar
 location_gis text [note: 'GIS data including lat/long']
@@ -205,11 +205,11 @@ location_map_type text [note: 'type of map file ie. geojson etc.']
 location_map_file_link html [note: 'datafile link']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_project_id integer [not null]
+cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
 }
 
 Table stakeholder {
-cad_trust_stakeholder_id integer [primary key, unique, note: 'generated']
+cad_trust_stakeholder_id varchar [primary key, unique, note: 'generated UUID']
 stakeholder_name varchar [not null]
 stakeholder_type picklist [note: 'picklist from type']
 stakeholder_link html
@@ -218,13 +218,13 @@ updated_at timestamp [note: 'generated']
 }
 
 Table stakeholder_projects{
-cad_trust_stakeholder_project_id integer [primary key, unique, note: 'generated']
-cad_trust_stakeholder_id integer [not null]
-cad_trust_project_id integer [not null]
+cad_trust_stakeholder_project_id varchar [primary key, unique, note: 'generated UUID']
+cad_trust_stakeholder_id varchar [not null, note: 'Foreign key to stakeholder table']
+cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
 }
 
 Table label {
-cad_trust_label_id integer [primary key, unique, note: 'generated']
+cad_trust_label_id varchar [primary key, unique, note: 'generated UUID']
 label_name varchar [not null]
 label_type picklist [note: 'picklist from type']
 label_link html
@@ -234,8 +234,8 @@ updated_at timestamp [note: 'generated']
 }
 
 Table unit_label {
-cad_trust_label_id integer
-cad_trust_unit_id integer
+cad_trust_label_id varchar [note: 'Foreign key to label table']
+cad_trust_unit_id varchar [note: 'Foreign key to unit table']
 label_unit_date date
 label_unit_description text
 created_at timestamp [note: 'generated']
@@ -248,36 +248,36 @@ indexes {
 }
 
 Table co_benefit {
-cad_trust_co_benefit_id integer [primary key, unique, note: 'generated']
+cad_trust_co_benefit_id varchar [primary key, unique, note: 'generated UUID']
 co_benefit_id picklist [not null]
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_project_id integer [not null]
+cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
 }
 
 Table estimation {
-cad_trust_estimation_id integer [primary key, unique, note: 'generated']
+cad_trust_estimation_id varchar [primary key, unique, note: 'generated UUID']
 estimation_start_date date [not null]
 esitmation_end_date date [not null]
 estimation_unit_count decimal
 estimation_reference_no varchar
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_project_id integer [not null]
+cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
 }
 
 Table rating {
-cad_trust_rating_id integer [primary key, unique, note: 'generated']
+cad_trust_rating_id varchar [primary key, unique, note: 'generated UUID']
 rating_type picklist [note: 'picklist from type']
 rating_value varchar [not null]
 rating_link html
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_project_id integer [not null]
+cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
 }
 
 Table program {
-cad_trust_program_id integer [primary key, unique, note: 'generated']
+cad_trust_program_id varchar [primary key, unique, note: 'generated UUID']
 program_name varchar [not null]
 program_registry varchar [not null]
 program_registry_activity_id varchar [not null]
@@ -288,7 +288,7 @@ updated_at timestamp [note: 'generated']
 }
 
 Table aef_t1_submission {
-cad_trust_aef_t1_submission_id integer [primary key, unique, note: 'generated']
+cad_trust_aef_t1_submission_id varchar [primary key, unique, note: 'generated UUID']
 aef_t1_submission_party varchar [not null]
 aef_t1_submission_version varchar [not null]
 aef_t1_submission_report_year year [not null]
@@ -303,7 +303,7 @@ updated_at timestamp [note: 'generated']
 }
 
 Table aef_t2_authorizations {
-cad_trust_aef_t2_authorizations_id integer [primary key, unique, note:'generated']
+cad_trust_aef_t2_authorizations_id varchar [primary key, unique, note:'generated UUID']
 aef_t2_authorizations_id varchar [not null]
 aef_t2_authorizations_date date [not null]
 aef_t2_authorizations_cooperative_approach_id varchar [not null]
@@ -325,14 +325,14 @@ aef_t2_authorizations_first_transfer_definition_oimp text
 aef_t2_authorizations_additional_information text
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_aef_t1_submission_id integer
-cad_trust_unit_id integer
-cad_trust_project_id integer
-cad_trust_aef_t5_authorized_entities_id integer
+cad_trust_aef_t1_submission_id varchar
+cad_trust_unit_id varchar
+cad_trust_project_id varchar
+cad_trust_aef_t5_authorized_entities_id varchar
 }
 
 Table aef_t3_actions {
-cad_trust_aef_t3_actions_id integer [primary key, unique, note: 'generated']
+cad_trust_aef_t3_actions_id varchar [primary key, unique, note: 'generated UUID']
 aef_t3_actions_date date [not null]
 aef_t3_actions_type picklist [note: 'picklist from type']
 aef_t3_actions_subtype varchar
@@ -362,14 +362,14 @@ aef_t3_actions_consistency_check_result varchar
 aef_t3_actions_additional_information varchar
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_aef_t1_submission_id integer
-cad_trust_unit_id integer
-cad_trust_project_id integer
-cad_trust_aef_t2_authorizations_id integer
+cad_trust_aef_t1_submission_id varchar
+cad_trust_unit_id varchar
+cad_trust_project_id varchar
+cad_trust_aef_t2_authorizations_id varchar
 }
 
 Table aef_t4_holdings {
-cad_trust_aef_t4_holdings_id integer [primary key, unique, note:'generated']
+cad_trust_aef_t4_holdings_id varchar [primary key, unique, note:'generated UUID']
 aef_t4_holdings_coopoerative_approach_id varchar [not null]
 aef_t4_holdings_authorization_id varchar [not null, note:'inferred']
 aef_t4_holdings_first_transferring_party_id varchar [not null]
@@ -388,14 +388,14 @@ aef_t4_holdings_mitigation_type picklist [note: 'inferred, picklist from type']
 aef_t4_holdings_vintage_year year [not null, note:'inferred']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_aef_t1_submission_id integer
-cad_trust_unit_id integer
-cad_trust_project_id integer
-cad_trust_aef_t2_authorizations_id integer
+cad_trust_aef_t1_submission_id varchar
+cad_trust_unit_id varchar
+cad_trust_project_id varchar
+cad_trust_aef_t2_authorizations_id varchar
 }
 
 Table aef_t5_authorized_entities {
-cad_trust_aef_t5_authorized_entities_id integer [primary key, unique, note:'generated']
+cad_trust_aef_t5_authorized_entities_id varchar [primary key, unique, note:'generated UUID']
 aef_t5_authorized_entities_authorization_date date [not null]
 aef_t5_authorized_entities_name varchar [not null]
 aef_t5_authorized_entities_incorporation_country picklist [note: 'picklist from country']
@@ -406,10 +406,10 @@ aef_t5_authorized_entities_change_conditions text
 aef_t5_authorized_entities_additional_information text
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-cad_trust_aef_t1_submission_id integer
-cad_trust_unit_id integer
-cad_trust_project_id integer
-cad_trust_aef_t2_authorizations_id integer
+cad_trust_aef_t1_submission_id varchar
+cad_trust_unit_id varchar
+cad_trust_project_id varchar
+cad_trust_aef_t2_authorizations_id varchar
 }
 
 // project references

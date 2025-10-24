@@ -13,6 +13,8 @@ import CreateProjectV2 from './20250110120008-create-project-v2.js';
 import CreateValidationV2 from './20250110120009-create-validation-v2.js';
 import CreateVerificationV2 from './20250110120010-create-verification-v2.js';
 import CreateIssuanceV2 from './20250110120011-create-issuance-v2.js';
+import CreateUnitV2 from './20250110120012-create-unit-v2.js';
+import CreateLocationV2 from './20250110120013-create-location-v2.js';
 
 export const migrations = [
   {
@@ -62,5 +64,13 @@ export const migrations = [
   {
     migration: CreateIssuanceV2,
     name: '20250110120011-create-issuance-v2',
+  },
+  {
+    migration: CreateUnitV2,
+    name: '20250110120012-create-unit-v2',
+  },
+  {
+    migration: CreateLocationV2,
+    name: '20250110120013-create-location-v2',
   },
 ];

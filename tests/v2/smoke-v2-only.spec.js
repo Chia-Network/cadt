@@ -103,7 +103,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
       expect(V2Models.AuditV2).to.exist;
     });
 
-    it('should load V2 methodology, program, project, validation, verification, and issuance models', async function () {
+    it('should load V2 methodology, program, project, validation, verification, issuance, and unit models', async function () {
       const V2Models = await import('../../src/models/v2/index.js');
 
       expect(V2Models.MethodologyV2).to.exist;
@@ -118,6 +118,8 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
       expect(V2Models.VerificationV2Mirror).to.exist;
       expect(V2Models.IssuanceV2).to.exist;
       expect(V2Models.IssuanceV2Mirror).to.exist;
+      expect(V2Models.UnitV2).to.exist;
+      expect(V2Models.UnitV2Mirror).to.exist;
     });
   });
 
