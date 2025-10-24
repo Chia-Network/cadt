@@ -12,11 +12,8 @@ import {
 } from '../../utils/helpers';
 
 import {
-  assertIfReadOnlyMode,
-  assertHomeOrgExists,
-} from '../../utils/data-assertions.js';
-
-import {
+  assertV2IfReadOnlyMode,
+  assertV2HomeOrgExists,
   assertNoPendingCommitsExcludingTransfers,
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
@@ -26,8 +23,8 @@ import { validationV2Schema } from '../../validations/v2/validation-v2.validatio
 
 export const create = async (req, res) => {
   try {
-    await assertIfReadOnlyMode();
-    await assertHomeOrgExists();
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const newRecord = _.cloneDeep(req.body);
@@ -177,8 +174,8 @@ export const findOne = async (req, res) => {
 
 export const update = async (req, res) => {
   try {
-    await assertIfReadOnlyMode();
-    await assertHomeOrgExists();
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const { id } = req.params;
@@ -259,8 +256,8 @@ export const update = async (req, res) => {
 
 export const destroy = async (req, res) => {
   try {
-    await assertIfReadOnlyMode();
-    await assertHomeOrgExists();
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
     const { id } = req.params;

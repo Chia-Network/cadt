@@ -6,6 +6,7 @@ import { StagingV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import {
   resetV2StagingTable,
   resetV2DataTables,
+  createV2TestHomeOrg,
   waitForV2DataLayerSync,
 } from '../utils/v2-test-helpers.js';
 
@@ -15,6 +16,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
   before(async function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
+    await createV2TestHomeOrg();
   });
 
   after(async function () {

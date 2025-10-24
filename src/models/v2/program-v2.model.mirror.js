@@ -17,6 +17,7 @@ ProgramV2Mirror.init(
       allowNull: false,
       unique: true,
       field: 'cad_trust_program_id',
+      defaultValue: Sequelize.UUIDV4,
     },
     programName: {
       type: Sequelize.STRING,

@@ -2,7 +2,21 @@
 
 import _ from 'lodash';
 
-import { StagingV2 } from '../models/v2/index.js';
+import { StagingV2, OrganizationsV2 } from '../models/v2/index.js';
+import { getConfig } from './config-loader.js';
+
+const { READ_ONLY } = getConfig().APP;
+
+/**
+ * V2-specific assertion that the system is not in read-only mode
+ *
+ * @throws {Error} If system is in read-only mode
+ */
+export const assertV2IfReadOnlyMode = async () => {
+  if (READ_ONLY) {
+    throw new Error('You can not use this API in read-only mode');
+  }
+};
 
 /**
  * Enhanced foreign key validation for V2 that checks both main table and staging table
@@ -172,5 +186,95 @@ export const assertNoPendingCommitsExcludingTransfers = async () => {
 
   if (pendingCommits > 0) {
     throw new Error('There are pending commits in staging table');
+  }
+};
+
+/**
+ * V2-specific assertion that a home organization exists
+ * Checks the V2 organizations table for a home organization
+ *
+ * @throws {Error} If no home organization is found or not subscribed
+ * @returns {Object} The home organization record
+ */
+export const assertV2HomeOrgExists = async () => {
+  const homeOrg = await OrganizationsV2.findOne({
+    where: { is_home: true },
+    raw: true,
+  });
+
+  if (!homeOrg) {
+    throw new Error(
+      `No Home organization found, please create an organization to write data`,
+    );
+  }
+
+  if (!homeOrg.subscribed) {
+    throw new Error(
+      `Your Home organization is still confirming, please wait a little longer for it to finish.`,
+    );
+  }
+
+  return homeOrg;
+};
+
+/**
+ * V2-specific assertion that an organization UID is valid
+ * Checks the V2 organizations table for the given orgUid
+ *
+ * @param {string} orgUid - The organization UID to validate
+ * @param {string} fieldName - The field name for error messages
+ * @throws {Error} If orgUid is not found in V2 organizations
+ * @returns {Object} The organization map
+ */
+export const assertV2OrgUidIsValid = async (orgUid, fieldName) => {
+  const organizations = await OrganizationsV2.findAll({
+    attributes: [
+      'org_uid',
+      'org_hash',
+      'name',
+      'icon',
+      'is_home',
+      'subscribed',
+      'synced',
+      'file_store_subscribed',
+      'registry_id',
+      'registry_hash',
+      'sync_remaining',
+      'data_model_version_store_id',
+      'data_model_version_store_hash',
+    ],
+  });
+
+  const orgsMap = organizations.reduce((map, current) => {
+    map[current.org_uid] = current.dataValues;
+    return map;
+  }, {});
+
+  if (!orgsMap[orgUid]) {
+    throw new Error(
+      `The orgUid: ${orgUid}, provided for '${fieldName}' is not in the list of subscribed organizations, either remove it or add it to your organizations and try again`,
+    );
+  }
+
+  return orgsMap;
+};
+
+/**
+ * V2-specific assertion that the organization is the home organization
+ * Checks the V2 organizations table
+ *
+ * @param {string} orgUid - The organization UID to check
+ * @throws {Error} If orgUid is not the home organization
+ */
+export const assertV2OrgIsHomeOrg = async (orgUid) => {
+  const homeOrg = await OrganizationsV2.findOne({
+    where: { is_home: true },
+    raw: true,
+  });
+
+  if (!homeOrg || homeOrg.org_uid !== orgUid) {
+    throw new Error(
+      `Restricted data: can not modify this record with orgUid ${orgUid}`,
+    );
   }
 };
