@@ -15,6 +15,8 @@ export const sequelizeV2 = new Sequelize(config[process.env.NODE_ENV ? `v2${proc
 const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'v2Mirror' : 'v2MirrorTest';
 
+export const sequelizeV2Mirror = new Sequelize(config[mirrorConfig]);
+
 export const mirrorDBEnabledV2 = () => {
   const CONFIG = getConfig();
   if (
@@ -37,7 +39,7 @@ export const safeMirrorDbHandlerV2 = (callback) => {
 
   return new Promise((resolve) => {
     try {
-      sequelizeV2
+      sequelizeV2Mirror
         .authenticate()
         .then(async () => {
           try {
@@ -133,11 +135,10 @@ export const prepareV2Db = async () => {
       `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}_v2\`;`,
     );
 
-    const db = new Sequelize(config[mirrorConfig]);
-
-    await checkForV2Migrations(db);
+    // Use the exported sequelizeV2Mirror instance instead of creating a new one
+    await checkForV2Migrations(sequelizeV2Mirror);
   } else if (mirrorConfig == 'v2MirrorTest') {
-    await checkForV2Migrations(sequelizeV2);
+    await checkForV2Migrations(sequelizeV2Mirror);
   }
 
   await checkForV2Migrations(sequelizeV2);
