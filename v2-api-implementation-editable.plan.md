@@ -604,12 +604,363 @@ Follow the same pattern for each remaining endpoint with STOP points after each 
 - [ ] AEF-T3-Actions (depends on: t1, unit, project, t2)
 - [ ] AEF-T4-Holdings (depends on: t1, unit, project, t2)
 
+## Phase 14: Governance Endpoint (System Table - Post-Data-Endpoints)
+
+Governance manages picklists, org lists, and glossary data. V2 needs its own governance functionality that works independently of V1.
+
+### Critical Version Detection Issue
+
+**PROBLEM**: Both V1 and V2 code use `getDataModelVersion()` which reads from `package.json.version`. When V1 and V2 run simultaneously, this returns the wrong version (whichever matches package.json).
+
+**SOLUTION**:
+- **V1 code must hardcode `'v1'`** instead of calling `getDataModelVersion()`
+- **V2 code must hardcode `'v2'`** instead of calling `getDataModelVersion()`
+- Both versions should NEVER use `getDataModelVersion()` for business logic or version-specific operations
+
+### 14.0 Update V1 Code to Hardcode 'v1' (PREREQUISITE)
+
+Before implementing V2 governance, we must update V1 code to hardcode 'v1' to prevent version conflicts.
+
+**Files to Update**:
+
+1. **`src/models/governance/governance.model.js`** (2 places):
+   - Line 27: Change `getDataModelVersion()` to `'v1'`
+   - Line 174: Change `getDataModelVersion()` to `'v1'`
+
+2. **`src/models/organizations/organizations.model.js`** (1 place):
+   - Line 506: Change `getDataModelVersion()` to `'v1'`
+
+3. **`src/controllers/organization.controller.js`** (3 places):
+   - Line 110: Change `getDataModelVersion()` to `'v1'`
+   - Line 145: Change `getDataModelVersion()` to `'v1'`
+   - Line 318: Change `getDataModelVersion()` to `'v1'`
+
+4. **`src/config/config.js`** (1 place):
+   - Line 8: Change `getDataModelVersion()` to `'v1'` for V1 persistence folder
+
+5. **`src/config/logger.js`** (1 place):
+   - Line 32: Change `getDataModelVersion()` to `'v1'` for V1 log directory
+
+6. **`src/utils/config-loader.js`** (1 place):
+   - Line 49: Change `getDataModelVersion()` to `'v1'` for V1 config file path
+
+**Note**: `getDataModelVersion()` function may be kept in helpers.js for backward compatibility or removed if no longer needed, but should not be used for version-specific logic.
+
+**Checkpoint 14.0**: Verify V1 tests still pass after changes
+
+```bash
+# Run V1 tests to ensure nothing broke
+npm test -- tests/integration/governance.spec.js
+npm test -- tests/integration/organization.spec.js
+```
+
+**STOP HERE - User verifies V1 tests pass before proceeding**
+
+### 14.1 V2-Specific Assertions
+
+Create V2 versions of governance assertions in `src/utils/v2-data-assertions.js`:
+
+- `assertCanBeGovernanceBodyV2()`: Check IS_GOVERNANCE_BODY config
+- `assertIsActiveGovernanceBodyV2()`: Check MetaV2 for 'governanceBodyId'
+
+**CRITICAL**: Use MetaV2 model, not Meta
+
+**Checkpoint 14.1**: Test assertions work
+
+```bash
+# Test assertions can be imported and called
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/v2-data-assertions.spec.js --reporter spec --exit --timeout 300000 --grep "governance"
+```
+
+**STOP HERE - User verifies assertions work**
+
+### 14.2 Basic Model Method: upsertGovernanceDownload
+
+**Reference**: V1 governance model is in `src/models/governance/governance.model.js`
+
+Add `upsertGovernanceDownload()` method to `src/models/v2/governance-v2.model.js`:
+
+- Parse governanceData for orgList, glossary, pickList
+- Upsert records into GovernanceV2 with confirmed=true
+- Handle simulator/dev mode fallback (use stub picklist if needed)
+- **CRITICAL**: Use GovernanceV2 model, not Governance
+
+**Checkpoint 14.2**: Test upsertGovernanceDownload method
+
+```bash
+# Write and run tests for upsertGovernanceDownload
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000 --grep "upsertGovernanceDownload"
+```
+
+**STOP HERE - User verifies upsertGovernanceDownload works**
+
+### 14.3 Basic Controller: Read Endpoints
+
+Create `src/controllers/v2/governance-v2.controller.js` with basic read methods:
+
+1. **`findAll`**: Get all GovernanceV2 records
+2. **`isCreated`**: Check if governance body exists (query MetaV2 for 'governanceBodyId')
+3. **`findOrgList`**: Get orgList from GovernanceV2, parse JSON
+4. **`findGlossary`**: Get glossary from GovernanceV2, parse JSON (use stub in dev mode)
+5. **`findPickList`**: Get pickList from GovernanceV2, parse JSON (use stub in dev mode)
+
+**CRITICAL**: All methods must use V2 models (GovernanceV2, MetaV2)
+
+**Checkpoint 14.3**: Test read endpoints
+
+```bash
+# Write and run tests for read endpoints
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000 --grep "GET|findAll|isCreated|findOrgList|findGlossary|findPickList"
+```
+
+**STOP HERE - User verifies read endpoints work**
+
+### 14.4 Basic Routes: Read Endpoints
+
+Create `src/routes/v2/resources/governance-v2.js` with read routes:
+
+- `GET /v2/governance` - findAll
+- `GET /v2/governance/exists` - isCreated
+- `GET /v2/governance/meta/orgList` - findOrgList
+- `GET /v2/governance/meta/pickList` - findPickList
+- `GET /v2/governance/meta/glossary` - findGlossary
+
+Mount in `src/routes/v2/index.js`:
+```javascript
+import { GovernanceV2Router } from './resources/governance-v2.js';
+V2Router.use('/governance', GovernanceV2Router);
+```
+
+**Checkpoint 14.4**: Test routes respond
+
+```bash
+# Test routes via HTTP (start server, make requests, or use integration tests)
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000 --grep "route|GET"
+```
+
+**STOP HERE - User verifies routes work**
+
+### 14.5 Model Method: createGoveranceBody
+
+Add `createGoveranceBody()` method to `src/models/v2/governance-v2.model.js`:
+
+- Check if GOVERNANCE_BODY_ID is set (throw error if already listening to another governance body)
+- **Check if this node is already a V1 governance body** (check Meta for 'mainGoveranceBodyId'):
+  - **If YES**: Call `addV2ToExistingGovernanceBody()` instead (see Phase 14.5a) and return
+  - **If NO**: Proceed with creating new governance body from scratch below
+- Create two datalayer stores: main governance body and version-specific store
+- **CRITICAL**: Use hardcoded `'v2'` as the version key (NOT `getDataModelVersion()`)
+- Sync datalayer with version mapping: `{ v2: governanceVersionId }`
+- Store IDs in MetaV2 (meta_key: 'governanceBodyId' and 'mainGoveranceBodyId')
+- Handle simulator mode (skip confirmation wait)
+- **CRITICAL**: Use MetaV2 model, not Meta
+
+**Checkpoint 14.5**: Test createGoveranceBody method
+
+```bash
+# Write and run tests for createGoveranceBody
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000 --grep "createGoveranceBody"
+```
+
+**STOP HERE - User verifies createGoveranceBody works**
+
+### 14.5a Model Method: addV2ToExistingGovernanceBody (NEW)
+
+Add `addV2ToExistingGovernanceBody()` method to `src/models/v2/governance-v2.model.js`:
+
+This method allows an existing V1 governance node to add V2 support without creating a new governance body.
+
+- Get existing main governance body ID from Meta (meta_key: 'mainGoveranceBodyId')
+  - **CRITICAL**: Use Meta model (V1), not MetaV2, since this is the shared main governance body
+- Get current version mapping from main governance body store via `datalayer.getSubscribedStoreData()`
+- Verify V2 doesn't already exist in mapping (throw error if it does)
+- Create new V2-specific governance store via `datalayer.createDataLayerStore()`
+- Update main governance body store's version mapping to add V2:
+  - Use `datalayer.upsertDataLayer()` or `pushDataLayerChangeList()` to update the mapping
+  - Add `v2: governanceVersionId` to existing mapping (preserve existing v1 entry)
+  - Result: `{ v1: existingStoreId, v2: newV2StoreId }`
+- Store V2 governanceBodyId in MetaV2 (meta_key: 'governanceBodyId')
+- **CRITICAL**: Preserve existing V1 governance functionality - this only adds V2
+- Handle simulator mode (skip confirmation wait)
+- **CRITICAL**: Use hardcoded `'v2'` string, not `getDataModelVersion()`
+
+**Reference**: Look at `datalayer.upsertDataLayer()` in `src/datalayer/writeService.js` for pattern on updating store data
+
+**Checkpoint 14.5a**: Test addV2ToExistingGovernanceBody method
+
+```bash
+# Write and run tests for addV2ToExistingGovernanceBody
+# Test scenarios:
+# 1. Successfully add V2 to existing V1 governance body
+# 2. Error if V2 already exists
+# 3. Error if no existing governance body found
+# 4. Verify V1 mapping is preserved
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000 --grep "addV2ToExistingGovernanceBody"
+```
+
+**STOP HERE - User verifies addV2ToExistingGovernanceBody works**
+
+### 14.6 Controller: createGoveranceBody Endpoint
+
+Add `createGoveranceBody` method to `src/controllers/v2/governance-v2.controller.js`:
+
+- Call GovernanceV2.createGoveranceBody()
+- Use V2 assertions (`assertCanBeGovernanceBodyV2`, etc.)
+
+Add route: `POST /v2/governance` - createGoveranceBody
+
+**Checkpoint 14.6**: Test createGoveranceBody endpoint
+
+```bash
+# Test createGoveranceBody endpoint
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000 --grep "POST.*createGoveranceBody|create governance"
+```
+
+**STOP HERE - User verifies createGoveranceBody endpoint works**
+
+### 14.7 Model Method: updateGoveranceBodyData
+
+Add `updateGoveranceBodyData(keyValueArray)` method to `src/models/v2/governance-v2.model.js`:
+
+- Find governanceBodyId from MetaV2 (meta_key: 'governanceBodyId')
+- Get existing GovernanceV2 records
+- Create changelist using `keyValueToChangeList()` utility
+- Upsert records with confirmed=false
+- Push changelist to datalayer
+- Set up onConfirm callback to mark records as confirmed=true
+- Set up rollback callback to restore previous records
+- **CRITICAL**: Use MetaV2 and GovernanceV2 models, not Meta and Governance
+
+**Checkpoint 14.7**: Test updateGoveranceBodyData method
+
+```bash
+# Write and run tests for updateGoveranceBodyData
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000 --grep "updateGoveranceBodyData"
+```
+
+**STOP HERE - User verifies updateGoveranceBodyData works**
+
+### 14.8 Controller: Update Endpoints
+
+Add update methods to `src/controllers/v2/governance-v2.controller.js`:
+
+- **`setDefaultOrgList`**: Update orgList via GovernanceV2.updateGoveranceBodyData()
+- **`setPickList`**: Update pickList via GovernanceV2.updateGoveranceBodyData()
+- **`setGlossary`**: Update glossary via GovernanceV2.updateGoveranceBodyData()
+
+Add routes:
+- `POST /v2/governance/meta/orgList` - setDefaultOrgList (with validation)
+- `POST /v2/governance/meta/pickList` - setPickList (with validation)
+- `POST /v2/governance/meta/glossary` - setGlossary
+
+**Checkpoint 14.8**: Test update endpoints
+
+```bash
+# Test update endpoints
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000 --grep "setDefaultOrgList|setPickList|setGlossary|POST.*meta"
+```
+
+**STOP HERE - User verifies update endpoints work**
+
+### 14.9 Model Method: sync
+
+Add `sync(retryCounter = 0)` method to `src/models/v2/governance-v2.model.js`:
+
+- Get GOVERNANCE_BODY_ID from config
+- Handle simulator/dev mode (use stub picklist and return early)
+- Get governance data from datalayer via `datalayer.getSubscribedStoreData()`
+- Check for legacy (non-versioned) governance data
+- **CRITICAL**: Hardcode `'v2'` when checking `governanceData['v2']` (NOT `getDataModelVersion()`)
+- Call `upsertGovernanceDownload()` with version-specific data
+- Implement retry logic (max 50 retries with 5 second delays)
+
+**Checkpoint 14.9**: Test sync method
+
+```bash
+# Write and run tests for sync method
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000 --grep "sync"
+```
+
+**STOP HERE - User verifies sync works**
+
+### 14.10 Controller: sync Endpoint
+
+Add `sync` method to `src/controllers/v2/governance-v2.controller.js`:
+
+- Call GovernanceV2.sync()
+
+Add route: `GET /v2/governance/sync` - sync
+
+**Checkpoint 14.10**: Test sync endpoint
+
+```bash
+# Test sync endpoint
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000 --grep "sync.*endpoint|GET.*sync"
+```
+
+**STOP HERE - User verifies sync endpoint works**
+
+### 14.11 Integration Tests and Validation
+
+Complete `tests/v2/integration/governance-v2.spec.js` with comprehensive tests:
+
+1. **Version isolation**: Verify V2 governance doesn't interfere with V1
+2. **Version detection**: Verify hardcoded 'v2' is used (not getDataModelVersion())
+3. **End-to-end flows**: Test complete workflows (create → update → sync)
+4. **Error handling**: Test error cases and edge cases
+5. **Datalayer integration**: Test datalayer operations (if not fully tested above)
+
+**Checkpoint 14.11**: Run all governance tests
+
+```bash
+# Run all governance tests
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all governance tests pass**
+
+### 14.12 Key Implementation Notes
+
+**Version Detection (CRITICAL)**:
+- V2 code MUST hardcode `'v2'` string
+- NEVER call `getDataModelVersion()` in V2 code
+- Example: `const dataModelVersion = 'v2';` NOT `const dataModelVersion = getDataModelVersion();`
+
+**Model Usage (CRITICAL)**:
+- Use `GovernanceV2` model (not `Governance`)
+- Use `MetaV2` model (not `Meta`)
+- Use `sequelizeV2` database connection
+
+**Database Fields**:
+- V2 uses snake_case: `meta_key`, `meta_value`, `created_at`, `updated_at`
+- V1 uses camelCase: `metaKey`, `metaValue` (no timestamps in V1 governance table)
+
+**V1 Compatibility**:
+- After Phase 14.0, V1 code will also hardcode `'v1'` instead of using `getDataModelVersion()`
+- This ensures V1 and V2 can run simultaneously without version conflicts
+
+**Datalayer Integration**:
+- Governance stores are versioned in datalayer
+- Main governance body store contains version mappings: `{ v1: storeId1, v2: storeId2 }`
+- V2 syncs from the `v2` key in the version mapping
+
+**Intentionally Omitted Features**:
+- **`subscribeToGovernanceBody` endpoint** (`POST /v2/governance/subscribe`): This route exists in V1 routes but has no controller implementation in V1 code. Since V1 is frozen and this feature was never implemented, it is intentionally omitted from V2 governance implementation. If this functionality is needed in the future, it would need to be designed and implemented from scratch.
+
+**Upgrading Existing V1 Governance Nodes**:
+- **Phase 14.5a** implements `addV2ToExistingGovernanceBody()` which allows an existing V1 governance node to add V2 support
+- When an existing V1 governance node calls `POST /v2/governance` to create a governance body, the system will detect the existing V1 governance body and automatically call `addV2ToExistingGovernanceBody()` instead
+- This updates the main governance body store's version mapping from `{ v1: storeId }` to `{ v1: storeId1, v2: storeId2 }`
+- After upgrade, the node functions as both a V1 and V2 governance node, managing both versions' governance data independently
+
 ## Notes
 
 - **V1 is frozen** - bugfixes only, no feature development
 - Each checkpoint requires user verification before continuing
 - Stop immediately if tests fail - don't accumulate issues
 - Update plan as we discover better approaches
+- **CRITICAL**: V2 code must never use `getDataModelVersion()` - always hardcode `'v2'` when version is needed
+- **CRITICAL**: V1 code must also never use `getDataModelVersion()` - always hardcode `'v1'` when version is needed (see Phase 14.0)
 
 ## Testing Commands
 
