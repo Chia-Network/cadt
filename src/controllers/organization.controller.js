@@ -9,7 +9,6 @@ import {
   assertOrgDoesNotExist,
 } from '../utils/data-assertions';
 
-import { getDataModelVersion } from '../utils/helpers';
 
 import { ModelKeys, Audit, Organization, Staging } from '../models';
 import { getOwnedStores, getSubscriptions } from '../datalayer/persistance.js';
@@ -107,7 +106,7 @@ export const createV2 = async (req, res) => {
         icon = '';
       }
 
-      const dataModelVersion = getDataModelVersion();
+      const dataModelVersion = 'v1';
 
       Organization.createHomeOrganization(name, icon, dataModelVersion);
 
@@ -142,7 +141,7 @@ export const create = async (req, res) => {
       });
     } else {
       const { name, icon } = req.body;
-      const dataModelVersion = getDataModelVersion();
+      const dataModelVersion = 'v1';
 
       return res.json({
         message: 'New organization created successfully.',
@@ -315,7 +314,7 @@ export const unsubscribeFromOrganization = async (req, res) => {
         );
       }
 
-      const instanceDataModelVersion = getDataModelVersion();
+      const instanceDataModelVersion = 'v1';
       const dataModelStoreData = await datalayer.getCurrentStoreData(
         dataModelVersionStoreId,
       );

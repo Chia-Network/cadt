@@ -3,7 +3,7 @@ import yaml from 'js-yaml';
 import fs from 'fs';
 import path from 'path';
 
-import { getDataModelVersion, mergeObjects } from './helpers';
+import { mergeObjects } from './helpers';
 import { defaultConfig } from './defaultConfig.js';
 import { getChiaRoot } from './chia-root.js';
 
@@ -46,7 +46,7 @@ const ensureVersionDirectoriesExist = (chiaRoot) => {
 
 export const getConfig = _.memoize(() => {
   const chiaRoot = getChiaRoot();
-  const dataModelVersion = getDataModelVersion();
+  const dataModelVersion = 'v1';
   const persistanceFolder = `${chiaRoot}/cadt/${dataModelVersion}`;
   const configFile = path.resolve(`${persistanceFolder}/config.yaml`);
 

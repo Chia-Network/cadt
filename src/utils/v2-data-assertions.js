@@ -2,10 +2,8 @@
 
 import _ from 'lodash';
 
-import { StagingV2, OrganizationsV2 } from '../models/v2/index.js';
+import { StagingV2, OrganizationsV2, MetaV2 } from '../models/v2/index.js';
 import { getConfig } from './config-loader.js';
-
-const { READ_ONLY } = getConfig().APP;
 
 /**
  * V2-specific assertion that the system is not in read-only mode
@@ -13,6 +11,7 @@ const { READ_ONLY } = getConfig().APP;
  * @throws {Error} If system is in read-only mode
  */
 export const assertV2IfReadOnlyMode = async () => {
+  const { READ_ONLY } = getConfig().APP;
   if (READ_ONLY) {
     throw new Error('You can not use this API in read-only mode');
   }
@@ -275,6 +274,39 @@ export const assertV2OrgIsHomeOrg = async (orgUid) => {
   if (!homeOrg || homeOrg.org_uid !== orgUid) {
     throw new Error(
       `Restricted data: can not modify this record with orgUid ${orgUid}`,
+    );
+  }
+};
+
+/**
+ * V2-specific assertion that the instance can be a governance body
+ * Checks if IS_GOVERNANCE_BODY is set in config
+ *
+ * @throws {Error} If IS_GOVERNANCE_BODY is not set
+ */
+export const assertCanBeGovernanceBodyV2 = async () => {
+  const { IS_GOVERNANCE_BODY } = getConfig().APP;
+  if (!IS_GOVERNANCE_BODY) {
+    throw new Error(
+      'You are not an governance body and can not use this functionality',
+    );
+  }
+};
+
+/**
+ * V2-specific assertion that the instance is an active governance body
+ * Checks MetaV2 for 'governanceBodyId' to verify governance body is set up
+ *
+ * @throws {Error} If governance body is not set up
+ */
+export const assertIsActiveGovernanceBodyV2 = async () => {
+  const governanceBodyIsSetUp = await MetaV2.findOne({
+    where: { meta_key: 'governanceBodyId' },
+  });
+
+  if (!governanceBodyIsSetUp) {
+    throw new Error(
+      'You are not an governance body and can not use this functionality',
     );
   }
 };

@@ -7,8 +7,11 @@ import {
   getStagedRecords,
   assertStagingTableNotEmpty,
   assertStagingTableIsEmpty,
-  assertNoPendingCommitsExcludingTransfers
+  assertNoPendingCommitsExcludingTransfers,
+  assertCanBeGovernanceBodyV2,
+  assertIsActiveGovernanceBodyV2,
 } from '../../../src/utils/v2-data-assertions.js';
+import { withConfigOverride } from '../utils/v2-test-helpers.js';
 
 describe('V2 Data Assertions - Utility Functions Test', function () {
   this.timeout(10000);
@@ -246,6 +249,61 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
 
       // Should not throw because transfers are excluded
       await assertNoPendingCommitsExcludingTransfers();
+    });
+  });
+
+  describe('governance assertions', function () {
+    describe('assertCanBeGovernanceBodyV2', function () {
+      it('should throw error when IS_GOVERNANCE_BODY is false in config (default)', async function () {
+        // Default config has IS_GOVERNANCE_BODY: false
+        // This test verifies the assertion correctly throws when config is false
+        try {
+          await assertCanBeGovernanceBodyV2();
+          expect.fail('Should have thrown an error when IS_GOVERNANCE_BODY is false');
+        } catch (error) {
+          expect(error.message).to.include('You are not an governance body');
+        }
+      });
+
+      it('should pass when IS_GOVERNANCE_BODY is true in config', async function () {
+        // Use config override helper to temporarily set IS_GOVERNANCE_BODY to true
+        await withConfigOverride(
+          async () => {
+            // Should not throw when IS_GOVERNANCE_BODY is true
+            await assertCanBeGovernanceBodyV2();
+            expect(true).to.be.true; // If we get here, assertion passed
+          },
+          { APP: { IS_GOVERNANCE_BODY: true } }
+        );
+      });
+    });
+
+    describe('assertIsActiveGovernanceBodyV2', function () {
+      it('should pass when governanceBodyId exists in MetaV2', async function () {
+        // Create governanceBodyId in MetaV2
+        await MetaV2.create({
+          meta_key: 'governanceBodyId',
+          meta_value: 'test-governance-body-id-123',
+        });
+
+        // Should not throw
+        await assertIsActiveGovernanceBodyV2();
+
+        // Clean up
+        await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
+      });
+
+      it('should throw error when governanceBodyId does not exist in MetaV2', async function () {
+        // Ensure governanceBodyId doesn't exist
+        await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
+
+        try {
+          await assertIsActiveGovernanceBodyV2();
+          expect.fail('Should have thrown an error');
+        } catch (error) {
+          expect(error.message).to.include('You are not an governance body');
+        }
+      });
     });
   });
 });

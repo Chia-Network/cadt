@@ -1,11 +1,10 @@
 import { getConfig } from '../utils/config-loader';
-import { getDataModelVersion } from '../utils/helpers';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { logger } from './logger.js';
 import { createHash } from 'crypto';
 
 const chiaRoot = getChiaRoot();
-const persistanceFolder = `${chiaRoot}/cadt/${getDataModelVersion()}`;
+const persistanceFolder = `${chiaRoot}/cadt/v1`;
 const v2PersistanceFolder = `${chiaRoot}/cadt/v2`;
 
 const localQueryLogger = (query) => {

@@ -23,13 +23,7 @@ const getChiaRoot = () => {
 
 const chiaRoot = getChiaRoot();
 
-const getDataModelVersion = () => {
-  const version = packageJson.version;
-  const majorVersion = version.split('.')[0];
-  return `v${majorVersion}`;
-};
-
-const logDir = `${chiaRoot}/cadt/${getDataModelVersion()}/logs`;
+const logDir = `${chiaRoot}/cadt/v1/logs`;
 
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });

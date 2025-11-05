@@ -8,7 +8,6 @@ import { sequelize } from '../../database';
 import datalayer from '../../datalayer';
 import { logger } from '../../config/logger';
 import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
-import { getDataModelVersion } from '../../utils/helpers';
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
@@ -503,7 +502,7 @@ class Organization extends Model {
         );
       }
 
-      const instanceDataModelVersion = getDataModelVersion();
+      const instanceDataModelVersion = 'v1';
       if (!dataModelInfo[instanceDataModelVersion]) {
         throw new Error(
           `this cadt instance is using datamodel version ${instanceDataModelVersion}. organization ${orgUid} does not have data for this datamodel. cannot import`,

@@ -1,6 +1,11 @@
 import { expect } from 'chai';
+import fs from 'fs';
+import path from 'path';
+import yaml from 'js-yaml';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import datalayer from '../../../src/datalayer/index.js';
+import { getConfig } from '../../../src/utils/config-loader.js';
+import { getChiaRoot } from '../../../src/utils/chia-root.js';
 
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
@@ -135,4 +140,68 @@ export const getV2TableSchema = async (tableName) => {
     { type: sequelizeV2.QueryTypes.SELECT }
   );
   return result;
+};
+
+/**
+ * Helper to temporarily override config values for testing
+ * Clears the memoize cache, modifies config file, runs test, then restores
+ *
+ * @param {Function} testFn - The test function to run with overridden config
+ * @param {Object} configOverrides - Config values to override (e.g., { APP: { IS_GOVERNANCE_BODY: true } })
+ * @returns {Promise} Result of testFn
+ */
+export const withConfigOverride = async (testFn, configOverrides) => {
+  const chiaRoot = getChiaRoot();
+  const dataModelVersion = 'v1';
+  const persistanceFolder = `${chiaRoot}/cadt/${dataModelVersion}`;
+  const configFile = path.resolve(`${persistanceFolder}/config.yaml`);
+
+  // Read current config
+  let originalConfig = null;
+  if (fs.existsSync(configFile)) {
+    originalConfig = yaml.load(fs.readFileSync(configFile, 'utf8'));
+  }
+
+  try {
+    // Clear memoize cache
+    if (getConfig.cache) {
+      getConfig.cache.clear();
+    }
+
+    // Load current config
+    const currentConfig = getConfig();
+
+    // Merge overrides
+    const mergedConfig = JSON.parse(JSON.stringify(currentConfig)); // Deep clone
+    Object.keys(configOverrides).forEach(key => {
+      if (!mergedConfig[key]) {
+        mergedConfig[key] = {};
+      }
+      Object.assign(mergedConfig[key], configOverrides[key]);
+    });
+
+    // Write modified config
+    fs.writeFileSync(configFile, yaml.dump(mergedConfig), 'utf8');
+
+    // Clear cache again to force reload
+    if (getConfig.cache) {
+      getConfig.cache.clear();
+    }
+
+    // Run the test
+    return await testFn();
+  } finally {
+    // Restore original config
+    if (originalConfig) {
+      fs.writeFileSync(configFile, yaml.dump(originalConfig), 'utf8');
+    } else if (fs.existsSync(configFile)) {
+      // If there was no original, remove the test config
+      fs.unlinkSync(configFile);
+    }
+
+    // Clear cache to reload original config
+    if (getConfig.cache) {
+      getConfig.cache.clear();
+    }
+  }
 };
