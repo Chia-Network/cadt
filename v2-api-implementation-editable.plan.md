@@ -19,7 +19,17 @@
 - ✅ **Phase 14**: Governance Endpoint (System table with full CRUD operations)
 - ✅ **Phase 15**: Datalayer Sync Integration (Complete with staging operations, changelist generation, commit functionality, and performance monitoring)
 
-**CURRENT STATUS:** ✅ ALL API ENDPOINTS COMPLETED - V2 API is fully implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer.
+**CURRENT STATUS:** ✅ CORE API ENDPOINTS COMPLETED - V2 API core functionality is implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer.
+
+**PENDING PHASES:**
+- ⏳ **Phase 16.21**: V2 API Documentation
+- ⏳ **Phase 17**: Audit Endpoints (4 endpoints)
+- ⏳ **Phase 18**: Offer/Transfer Endpoints (6 endpoints)
+- ⏳ **Phase 19**: Filestore Endpoints (6 endpoints)
+- ⏳ **Phase 20**: Projects Advanced Features (transfer, xlsx, batch, advanced query params)
+- ⏳ **Phase 21**: Units Advanced Features (split, xlsx, batch, advanced query params)
+- ⏳ **Phase 22**: Staging Advanced Features (offer file generation)
+- ⏳ **Phase 23**: Governance Advanced Features (subscribe endpoint)
 
 **COMPLETED ENDPOINTS (22 total):**
 - Core: Methodology, Program, Project, Validation, Verification, Issuance, Unit, Location (8 endpoints)
@@ -2809,6 +2819,932 @@ npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/exten
 ```
 
 **STOP HERE - User verifies all organization tests pass**
+
+### 16.21 V2 API Documentation
+
+Create comprehensive API documentation for ALL V2 API endpoints following the V1 documentation structure and style.
+
+**File Location**: `/docs/cadt_rpc_api_v2.md`
+
+**Documentation Requirements**:
+
+1. **Structure and Format**:
+   - Follow the exact formatting, style, and structure of `/docs/cadt_rpc_api.md`
+   - Use same markdown structure (headers, code blocks, tables)
+   - Maintain same level of detail as V1 documentation
+   - Can be slightly more thorough where helpful, but not significantly more detailed
+   - Include same table of contents structure with links to all sections
+
+2. **Content Sections**:
+   - **Introduction**: Update to reference V2 API (`/v2` instead of `/v1`)
+   - **Workflow Description**: Update staging workflow description for V2 (same concept, V2-specific details)
+   - **All Endpoint Sections**: Document all V2 endpoints organized by resource type
+   - Use same example data from V1 where applicable
+   - Create new example data for V2-specific endpoints and data models
+
+3. **All V2 Endpoints to Document** (organized by section - document ALL actual endpoints):
+
+   **Organizations** (15 endpoints):
+   - `GET /v2/organizations` - List all organizations
+   - `GET /v2/organizations/status` - Get home org sync status
+   - `GET /v2/organizations/metadata` - Get metadata (with orgUid query param)
+   - `POST /v2/organizations` - Create V2 home org (new users) - supports both JSON body and file upload
+   - `POST /v2/organizations/upgrade` - Upgrade from V1 to V2 (existing users)
+   - `POST /v2/organizations/metadata` - Add metadata to home organization
+   - `POST /v2/organizations/sync` - Sync organization metadata
+   - `POST /v2/organizations/mirror` - Add mirror for a store
+   - `POST /v2/organizations/remove-mirror` - Remove mirror for a store
+   - `PUT /v2/organizations/edit` - Edit home organization (name and/or icon) - supports file upload
+   - `PUT /v2/organizations` - Import organization from datalayer
+   - `PUT /v2/organizations/subscribe` - Subscribe to organization
+   - `PUT /v2/organizations/unsubscribe` - Unsubscribe from organization
+   - `PUT /v2/organizations/resync` - Resync organization
+   - `DELETE /v2/organizations/:orgUid` - Delete organization
+
+   **Core Data Endpoints** (8 resource types, 5 CRUD operations each = 40 endpoints):
+   - `methodology`:
+     - `POST /v2/methodology` - Create methodology
+     - `GET /v2/methodology` - List all methodologies
+     - `GET /v2/methodology/:id` - Get single methodology
+     - `PUT /v2/methodology/:id` - Update methodology
+     - `DELETE /v2/methodology/:id` - Delete methodology
+   - `program`:
+     - `POST /v2/program` - Create program
+     - `GET /v2/program` - List all programs
+     - `GET /v2/program/:id` - Get single program
+     - `PUT /v2/program/:id` - Update program
+     - `DELETE /v2/program/:id` - Delete program
+   - `project`:
+     - `POST /v2/project` - Create project
+     - `GET /v2/project` - List all projects
+     - `GET /v2/project/:id` - Get single project
+     - `PUT /v2/project/:id` - Update project
+     - `DELETE /v2/project/:id` - Delete project
+   - `validation`:
+     - `POST /v2/validation` - Create validation
+     - `GET /v2/validation` - List all validations
+     - `GET /v2/validation/:id` - Get single validation
+     - `PUT /v2/validation/:id` - Update validation
+     - `DELETE /v2/validation/:id` - Delete validation
+   - `verification`:
+     - `POST /v2/verification` - Create verification
+     - `GET /v2/verification` - List all verifications
+     - `GET /v2/verification/:id` - Get single verification
+     - `PUT /v2/verification/:id` - Update verification
+     - `DELETE /v2/verification/:id` - Delete verification
+   - `issuance`:
+     - `POST /v2/issuance` - Create issuance
+     - `GET /v2/issuance` - List all issuances
+     - `GET /v2/issuance/:id` - Get single issuance
+     - `PUT /v2/issuance/:id` - Update issuance
+     - `DELETE /v2/issuance/:id` - Delete issuance
+   - `unit`:
+     - `POST /v2/unit` - Create unit
+     - `GET /v2/unit` - List all units
+     - `GET /v2/unit/:id` - Get single unit
+     - `PUT /v2/unit/:id` - Update unit
+     - `DELETE /v2/unit/:id` - Delete unit
+   - `location`:
+     - `POST /v2/location` - Create location
+     - `GET /v2/location` - List all locations
+     - `GET /v2/location/:id` - Get single location
+     - `PUT /v2/location/:id` - Update location
+     - `DELETE /v2/location/:id` - Delete location
+
+   **Tier 1 Dependencies** (3 resource types, 5 CRUD operations each = 15 endpoints):
+   - `estimation`:
+     - `POST /v2/estimation` - Create estimation
+     - `GET /v2/estimation` - List all estimations
+     - `GET /v2/estimation/:id` - Get single estimation
+     - `PUT /v2/estimation/:id` - Update estimation
+     - `DELETE /v2/estimation/:id` - Delete estimation
+   - `rating`:
+     - `POST /v2/rating` - Create rating
+     - `GET /v2/rating` - List all ratings
+     - `GET /v2/rating/:id` - Get single rating
+     - `PUT /v2/rating/:id` - Update rating
+     - `DELETE /v2/rating/:id` - Delete rating
+   - `co-benefit`:
+     - `POST /v2/co-benefit` - Create co-benefit
+     - `GET /v2/co-benefit` - List all co-benefits
+     - `GET /v2/co-benefit/:id` - Get single co-benefit
+     - `PUT /v2/co-benefit/:id` - Update co-benefit
+     - `DELETE /v2/co-benefit/:id` - Delete co-benefit
+
+   **Tier 4 Join Tables** (5 resource types with varying route patterns):
+   - `project-methodology`:
+     - `POST /v2/project-methodology` - Create project-methodology relationship
+     - `GET /v2/project-methodology` - List all project-methodology relationships
+     - `GET /v2/project-methodology/project/:projectId/methodology/:methodologyId` - Get single relationship
+     - `PUT /v2/project-methodology/project/:projectId/methodology/:methodologyId` - Update relationship
+     - `DELETE /v2/project-methodology/project/:projectId/methodology/:methodologyId` - Delete relationship
+   - `stakeholder`:
+     - `POST /v2/stakeholder` - Create stakeholder
+     - `GET /v2/stakeholder` - List all stakeholders
+     - `GET /v2/stakeholder/:id` - Get single stakeholder
+     - `PUT /v2/stakeholder/:id` - Update stakeholder
+     - `DELETE /v2/stakeholder/:id` - Delete stakeholder
+   - `stakeholder-projects`:
+     - `POST /v2/stakeholder-projects` - Create stakeholder-project relationship
+     - `GET /v2/stakeholder-projects` - List all stakeholder-project relationships
+     - `GET /v2/stakeholder-projects/:id` - Get single relationship
+     - `PUT /v2/stakeholder-projects/:id` - Update relationship
+     - `DELETE /v2/stakeholder-projects/:id` - Delete relationship
+   - `label`:
+     - `POST /v2/label` - Create label
+     - `GET /v2/label` - List all labels
+     - `GET /v2/label/:id` - Get single label
+     - `PUT /v2/label/:id` - Update label
+     - `DELETE /v2/label/:id` - Delete label
+   - `unit-label`:
+     - `POST /v2/unit-label` - Create unit-label relationship
+     - `GET /v2/unit-label` - List all unit-label relationships
+     - `GET /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId` - Get single relationship (composite key)
+     - `PUT /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId` - Update relationship
+     - `DELETE /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId` - Delete relationship
+
+   **Tier 5 AEF Tables** (5 resource types, 5 CRUD operations each = 25 endpoints):
+   - `aef-t1-submission`:
+     - `POST /v2/aef-t1-submission` - Create AEF-T1-Submission
+     - `GET /v2/aef-t1-submission` - List all AEF-T1-Submissions
+     - `GET /v2/aef-t1-submission/:cadTrustAefT1SubmissionId` - Get single submission
+     - `PUT /v2/aef-t1-submission/:cadTrustAefT1SubmissionId` - Update submission
+     - `DELETE /v2/aef-t1-submission/:cadTrustAefT1SubmissionId` - Delete submission
+   - `aef-t5-authorized-entities`:
+     - `POST /v2/aef-t5-authorized-entities` - Create AEF-T5-Authorized-Entities
+     - `GET /v2/aef-t5-authorized-entities` - List all AEF-T5-Authorized-Entities
+     - `GET /v2/aef-t5-authorized-entities/:cadTrustAefT5AuthorizedEntitiesId` - Get single entity
+     - `PUT /v2/aef-t5-authorized-entities/:cadTrustAefT5AuthorizedEntitiesId` - Update entity
+     - `DELETE /v2/aef-t5-authorized-entities/:cadTrustAefT5AuthorizedEntitiesId` - Delete entity
+   - `aef-t2-authorizations`:
+     - `POST /v2/aef-t2-authorizations` - Create AEF-T2-Authorizations
+     - `GET /v2/aef-t2-authorizations` - List all AEF-T2-Authorizations
+     - `GET /v2/aef-t2-authorizations/:cadTrustAefT2AuthorizationsId` - Get single authorization
+     - `PUT /v2/aef-t2-authorizations/:cadTrustAefT2AuthorizationsId` - Update authorization
+     - `DELETE /v2/aef-t2-authorizations/:cadTrustAefT2AuthorizationsId` - Delete authorization
+   - `aef-t3-actions`:
+     - `POST /v2/aef-t3-actions` - Create AEF-T3-Actions
+     - `GET /v2/aef-t3-actions` - List all AEF-T3-Actions
+     - `GET /v2/aef-t3-actions/:cadTrustAefT3ActionsId` - Get single action
+     - `PUT /v2/aef-t3-actions/:cadTrustAefT3ActionsId` - Update action
+     - `DELETE /v2/aef-t3-actions/:cadTrustAefT3ActionsId` - Delete action
+   - `aef-t4-holdings`:
+     - `POST /v2/aef-t4-holdings` - Create AEF-T4-Holdings
+     - `GET /v2/aef-t4-holdings` - List all AEF-T4-Holdings
+     - `GET /v2/aef-t4-holdings/:cadTrustAefT4HoldingsId` - Get single holding
+     - `PUT /v2/aef-t4-holdings/:cadTrustAefT4HoldingsId` - Update holding
+     - `DELETE /v2/aef-t4-holdings/:cadTrustAefT4HoldingsId` - Delete holding
+
+   **System Endpoints**:
+   - `governance` (10 endpoints):
+     - `GET /v2/governance` - Get all governance data
+     - `GET /v2/governance/exists` - Check if governance body exists
+     - `GET /v2/governance/sync` - Sync governance data
+     - `GET /v2/governance/meta/orgList` - Get organization list
+     - `GET /v2/governance/meta/pickList` - Get picklist data
+     - `GET /v2/governance/meta/glossary` - Get glossary data
+     - `POST /v2/governance` - Create governance body
+     - `POST /v2/governance/meta/orgList` - Set organization list
+     - `POST /v2/governance/meta/pickList` - Set picklist data
+     - `POST /v2/governance/meta/glossary` - Set glossary data
+   - `staging` (7 endpoints):
+     - `GET /v2/staging` - List staged records (with query params: page, limit, type, table)
+     - `GET /v2/staging/pending` - Check for pending commits
+     - `POST /v2/staging/commit` - Commit staged records
+     - `POST /v2/staging/retry` - Retry failed commit
+     - `PUT /v2/staging` - Edit staged record
+     - `DELETE /v2/staging` - Delete specific staged record
+     - `DELETE /v2/staging/clean` - Clean all staging records
+
+   **Health Check**:
+   - `GET /v2/health` - Health check endpoint
+
+4. **Documentation Format for Each Endpoint**:
+   - **Functionality**: Brief description
+   - **Options/Parameters**: Table format (same as V1) - document query params, body params, etc.
+   - **Examples**: Request and Response with curl commands
+   - **Notes**: Any important warnings, timing information, or V2-specific behaviors
+
+5. **Example Data Guidelines**:
+   - Reuse V1 example data where possible (orgUids, projectIds, unitIds, etc.)
+   - For V2-specific endpoints (upgrade, new data models), create new example data
+   - Ensure example data is consistent throughout the documentation
+   - Use realistic but clearly example data (not production values)
+   - Maintain consistency in UUIDs, names, and other identifiers across examples
+
+6. **Key Differences from V1 to Highlight**:
+   - V2 uses `/v2` prefix instead of `/v1`
+   - V2 field names use camelCase in API (matching database snake_case)
+   - V2 organizations: `POST /organizations` supports both JSON body and file upload
+   - V2 organizations: Has `/upgrade` endpoint for V1→V2 migration
+   - V2 organizations: Edit endpoint is `PUT /organizations/edit` (not `PUT /organizations`)
+   - V2 staging: Uses V2-specific staging table and commit process
+   - V2 data models: All use UUID v4 primary keys (not auto-increment integers)
+   - V2 data models: Foreign key validation checks both main table and staging table
+
+7. **Section Organization** (organize by actual V2 endpoint structure, not V1 structure):
+   - Commands table of contents (with links to all sections)
+   - Organizations section (detailed - all 15 endpoints)
+   - Staging section (V2-specific staging operations - all 7 endpoints)
+   - Governance section (all 10 endpoints)
+   - Core data model sections (Methodology, Program, Project, Validation, Verification, Issuance, Unit, Location - 5 CRUD operations each)
+   - Tier 1 Dependencies sections (Estimation, Rating, Co-Benefit - 5 CRUD operations each)
+   - Tier 4 Join Tables sections (Project-Methodology, Stakeholder, Stakeholder-Projects, Label, Unit-Label - note composite key routes where applicable)
+   - Tier 5 AEF Tables sections (AEF-T1-Submission, AEF-T5-Authorized-Entities, AEF-T2-Authorizations, AEF-T3-Actions, AEF-T4-Holdings - 5 CRUD operations each)
+   - Health Check section
+   - Additional resources sections for each endpoint group (match V1 format)
+
+8. **V2-Specific Documentation Notes**:
+   - Document staging workflow for V2 (same concept as V1 but V2-specific)
+   - Document V1/V2 isolation (V2 operations don't affect V1 data)
+   - Document upgrade path from V1 to V2
+   - Document any V2-specific validation rules or behaviors
+   - Document camelCase field naming convention
+
+**Reference**: V1 documentation at `/docs/cadt_rpc_api.md` (entire file)
+
+**Checkpoint 16.21**: Review documentation for completeness and accuracy
+
+```bash
+# Review the generated documentation
+cat docs/cadt_rpc_api_v2.md
+```
+
+**STOP HERE - User reviews and approves V2 API documentation**
+
+---
+
+## Phase 17: Audit Endpoints
+
+Implement V2 audit functionality for tracking data history and managing conflicts.
+
+### 17.1 AuditV2 Model: Core Methods
+
+Create model methods for audit operations.
+
+**File**: `src/models/v2/audit-v2.model.js`
+
+**Methods to Implement**:
+1. `findAll(orgUid, order, limit, page)` - Get audit history with pagination
+2. `findConflicts(orgUid)` - Find conflicts in audit history
+3. `resetToGeneration(orgUid, generation)` - Reset organization to specific generation
+4. `resetToDate(orgUid, date)` - Reset organization to specific date
+
+**Implementation Notes**:
+- Follow V1 audit model structure
+- Use V2 database schema (snake_case)
+- Ensure V1/V2 isolation
+- Support pagination for findAll
+- Validate orgUid exists in V2 organizations
+
+**Checkpoint 17.1**: Verify model methods work correctly
+
+```bash
+# Test model methods
+node -e "import('./src/models/v2/audit-v2.model.js').then(m => console.log('AuditV2 model loaded'))"
+```
+
+### 17.2 AuditV2 Controller: Read Endpoints
+
+Create controller endpoints for audit read operations.
+
+**File**: `src/controllers/v2/audit-v2.controller.js`
+
+**Endpoints to Implement**:
+1. `findAll(req, res)` - GET /v2/audit (with query params: orgUid, order, limit, page)
+2. `findConflicts(req, res)` - GET /v2/audit/findConflicts (with query param: orgUid)
+
+**Implementation Notes**:
+- Validate query parameters
+- Use pagination helpers
+- Return proper error responses
+- Follow V1 response format
+
+**Checkpoint 17.2**: Verify controller endpoints work correctly
+
+### 17.3 AuditV2 Controller: Reset Endpoints
+
+Create controller endpoints for audit reset operations.
+
+**File**: `src/controllers/v2/audit-v2.controller.js`
+
+**Endpoints to Implement**:
+1. `resetToGeneration(req, res)` - POST /v2/audit/resetToGeneration
+2. `resetToDate(req, res)` - POST /v2/audit/resetToDate
+
+**Implementation Notes**:
+- Validate request body (orgUid, generation/date)
+- Add assertions for V2 read-only mode and home org existence
+- Implement reset logic following V1 patterns
+- Return proper success/error responses
+
+**Checkpoint 17.3**: Verify reset endpoints work correctly
+
+### 17.4 AuditV2 Routes
+
+Create routes for audit endpoints.
+
+**File**: `src/routes/v2/resources/audit-v2.js`
+
+**Routes to Implement**:
+- GET `/v2/audit` - findAll
+- GET `/v2/audit/findConflicts` - findConflicts
+- POST `/v2/audit/resetToGeneration` - resetToGeneration
+- POST `/v2/audit/resetToDate` - resetToDate
+
+**Implementation Notes**:
+- Add routes to V2 router in `src/routes/v2/index.js`
+- Use validation middleware for query/body params
+- Follow V1 route structure
+
+**Checkpoint 17.4**: Verify routes are registered correctly
+
+### 17.5 AuditV2 Integration Tests
+
+Create comprehensive integration tests for audit endpoints.
+
+**File**: `tests/v2/integration/audit-v2.spec.js`
+
+**Test Cases**:
+1. GET /v2/audit - Get audit history with pagination
+2. GET /v2/audit - Get audit history filtered by orgUid
+3. GET /v2/audit - Get audit history with ordering
+4. GET /v2/audit/findConflicts - Find conflicts
+5. POST /v2/audit/resetToGeneration - Reset to generation
+6. POST /v2/audit/resetToDate - Reset to date
+7. Error handling - Invalid orgUid
+8. Error handling - Missing required parameters
+9. V1/V2 isolation - Verify V2 audit doesn't affect V1
+
+**Checkpoint 17.5**: Run tests and verify all pass
+
+```bash
+# Run audit tests
+NODE_ENV=test USE_SIMULATOR=true npx mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/audit-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all audit tests pass**
+
+---
+
+## Phase 18: Offer/Transfer Endpoints
+
+Implement V2 offer functionality for project transfers between organizations.
+
+### 18.1 OfferV2 Model: Core Methods
+
+Create model methods for offer operations.
+
+**File**: `src/models/v2/offer-v2.model.js`
+
+**Methods to Implement**:
+1. `generateOfferFile()` - Generate offer file from staging
+2. `getCurrentOfferInfo()` - Get details of currently uploaded offer
+3. `importOfferFile(file)` - Import and parse offer file
+4. `commitImportedOffer()` - Commit imported offer file
+5. `cancelActiveOffer()` - Cancel active offer
+6. `cancelImportedOffer()` - Reject imported offer file
+
+**Implementation Notes**:
+- Follow V1 offer model structure
+- Use V2 staging table
+- Ensure V1/V2 isolation
+- Handle file uploads (multer)
+- Validate offer file format
+
+**Checkpoint 18.1**: Verify model methods work correctly
+
+### 18.2 OfferV2 Controller: All Endpoints
+
+Create controller endpoints for all offer operations.
+
+**File**: `src/controllers/v2/offer-v2.controller.js`
+
+**Endpoints to Implement**:
+1. `generateOfferFile(req, res)` - GET /v2/offer
+2. `getCurrentOfferInfo(req, res)` - GET /v2/offer/accept
+3. `importOfferFile(req, res)` - POST /v2/offer/accept/import (with file upload)
+4. `commitImportedOffer(req, res)` - POST /v2/offer/accept/commit
+5. `cancelActiveOffer(req, res)` - DELETE /v2/offer
+6. `cancelImportedOffer(req, res)` - DELETE /v2/offer/accept/cancel
+
+**Implementation Notes**:
+- Add assertions for V2 read-only mode and home org existence
+- Handle file uploads with multer
+- Validate offer file format
+- Follow V1 response format
+- Return proper error responses
+
+**Checkpoint 18.2**: Verify controller endpoints work correctly
+
+### 18.3 OfferV2 Routes
+
+Create routes for offer endpoints.
+
+**File**: `src/routes/v2/resources/offer-v2.js`
+
+**Routes to Implement**:
+- GET `/v2/offer` - generateOfferFile
+- GET `/v2/offer/accept` - getCurrentOfferInfo
+- POST `/v2/offer/accept/import` - importOfferFile (with multer)
+- POST `/v2/offer/accept/commit` - commitImportedOffer
+- DELETE `/v2/offer` - cancelActiveOffer
+- DELETE `/v2/offer/accept/cancel` - cancelImportedOffer
+
+**Implementation Notes**:
+- Add routes to V2 router in `src/routes/v2/index.js`
+- Configure multer for file uploads
+- Follow V1 route structure
+
+**Checkpoint 18.3**: Verify routes are registered correctly
+
+### 18.4 OfferV2 Integration Tests
+
+Create comprehensive integration tests for offer endpoints.
+
+**File**: `tests/v2/integration/offer-v2.spec.js`
+
+**Test Cases**:
+1. GET /v2/offer - Generate offer file
+2. GET /v2/offer/accept - Get current offer info (no offer)
+3. POST /v2/offer/accept/import - Import offer file
+4. GET /v2/offer/accept - Get current offer info (with offer)
+5. POST /v2/offer/accept/commit - Commit imported offer
+6. DELETE /v2/offer - Cancel active offer
+7. DELETE /v2/offer/accept/cancel - Reject imported offer
+8. Error handling - Invalid offer file format
+9. Error handling - Missing required parameters
+10. V1/V2 isolation - Verify V2 offers don't affect V1
+
+**Checkpoint 18.4**: Run tests and verify all pass
+
+```bash
+# Run offer tests
+NODE_ENV=test USE_SIMULATOR=true npx mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/offer-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all offer tests pass**
+
+---
+
+## Phase 19: Filestore Endpoints
+
+Implement V2 filestore functionality for file storage and management.
+
+### 19.1 FilestoreV2 Model: Core Methods
+
+Create model methods for filestore operations.
+
+**File**: `src/models/v2/filestore-v2.model.js`
+
+**Methods to Implement**:
+1. `getFile(fileId)` - Get file by ID
+2. `getFileList()` - List all files in filestore
+3. `addFile(file, metadata)` - Add file to filestore
+4. `subscribeToFileStore(storeId)` - Subscribe to filestore
+5. `unsubscribeFromFileStore(storeId)` - Unsubscribe from filestore
+6. `deleteFile(fileId)` - Delete file from filestore
+
+**Implementation Notes**:
+- Follow V1 filestore model structure
+- Use V2 datalayer integration
+- Ensure V1/V2 isolation
+- Handle file uploads
+- Validate file IDs and store IDs
+
+**Checkpoint 19.1**: Verify model methods work correctly
+
+### 19.2 FilestoreV2 Controller: All Endpoints
+
+Create controller endpoints for all filestore operations.
+
+**File**: `src/controllers/v2/filestore-v2.controller.js`
+
+**Endpoints to Implement**:
+1. `getFile(req, res)` - GET /v2/filestore/get_file
+2. `getFileList(req, res)` - GET /v2/filestore/get_file_list
+3. `addFile(req, res)` - POST /v2/filestore/add_file (with file upload)
+4. `subscribeToFileStore(req, res)` - POST /v2/filestore/subscribe
+5. `unsubscribeFromFileStore(req, res)` - POST /v2/filestore/unsubscribe
+6. `deleteFile(req, res)` - DELETE /v2/filestore/delete_file
+
+**Implementation Notes**:
+- Add assertions for V2 read-only mode and home org existence
+- Handle file uploads with multer
+- Validate file IDs and store IDs
+- Follow V1 response format
+- Return proper error responses
+
+**Checkpoint 19.2**: Verify controller endpoints work correctly
+
+### 19.3 FilestoreV2 Routes
+
+Create routes for filestore endpoints.
+
+**File**: `src/routes/v2/resources/filestore-v2.js`
+
+**Routes to Implement**:
+- GET `/v2/filestore/get_file` - getFile
+- GET `/v2/filestore/get_file_list` - getFileList
+- POST `/v2/filestore/add_file` - addFile (with multer)
+- POST `/v2/filestore/subscribe` - subscribeToFileStore
+- POST `/v2/filestore/unsubscribe` - unsubscribeFromFileStore
+- DELETE `/v2/filestore/delete_file` - deleteFile
+
+**Implementation Notes**:
+- Add routes to V2 router in `src/routes/v2/index.js`
+- Configure multer for file uploads
+- Follow V1 route structure
+
+**Checkpoint 19.3**: Verify routes are registered correctly
+
+### 19.4 FilestoreV2 Integration Tests
+
+Create comprehensive integration tests for filestore endpoints.
+
+**File**: `tests/v2/integration/filestore-v2.spec.js`
+
+**Test Cases**:
+1. GET /v2/filestore/get_file - Get file by ID
+2. GET /v2/filestore/get_file_list - List files
+3. POST /v2/filestore/add_file - Add file to filestore
+4. POST /v2/filestore/subscribe - Subscribe to filestore
+5. POST /v2/filestore/unsubscribe - Unsubscribe from filestore
+6. DELETE /v2/filestore/delete_file - Delete file
+7. Error handling - Invalid file ID
+8. Error handling - Missing required parameters
+9. V1/V2 isolation - Verify V2 filestore doesn't affect V1
+
+**Checkpoint 19.4**: Run tests and verify all pass
+
+```bash
+# Run filestore tests
+NODE_ENV=test USE_SIMULATOR=true npx mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/filestore-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all filestore tests pass**
+
+---
+
+## Phase 20: Projects Advanced Features
+
+Implement advanced features for Projects endpoint: transfer, XLSX import, batch upload, and advanced query parameters.
+
+### 20.1 ProjectV2 Model: Advanced Methods
+
+Add advanced methods to ProjectV2 model.
+
+**File**: `src/models/v2/project-v2.model.js`
+
+**Methods to Implement**:
+1. `transfer(projectId, targetOrgUid)` - Transfer project between organizations
+2. `updateFromXLS(file)` - Update projects from XLSX file
+3. `batchUpload(csvData)` - Batch upload from CSV
+
+**Implementation Notes**:
+- Follow V1 project transfer logic
+- Use V2 staging table for transfers
+- Validate target organization exists
+- Handle XLSX/CSV parsing
+- Support bulk operations
+
+**Checkpoint 20.1**: Verify model methods work correctly
+
+### 20.2 ProjectV2 Controller: Advanced Endpoints
+
+Add advanced endpoints to ProjectV2 controller.
+
+**File**: `src/controllers/v2/project-v2.controller.js`
+
+**Endpoints to Implement**:
+1. `transfer(req, res)` - PUT /v2/project/transfer
+2. `updateFromXLS(req, res)` - PUT /v2/project/xlsx (with file upload)
+3. `batchUpload(req, res)` - POST /v2/project/batch (with CSV file upload)
+
+**Implementation Notes**:
+- Add assertions for V2 read-only mode and home org existence
+- Handle file uploads with multer
+- Validate request data
+- Follow V1 response format
+
+**Checkpoint 20.2**: Verify controller endpoints work correctly
+
+### 20.3 ProjectV2 Controller: Advanced Query Features
+
+Enhance findAll method with advanced query parameters.
+
+**File**: `src/controllers/v2/project-v2.controller.js`
+
+**Query Parameters to Add**:
+- `search` - Full-text search
+- `orgUid` - Filter by organization
+- `columns` - Select specific columns
+- `xls` - Export to Excel
+- `onlyMarketplaceProjects` - Filter marketplace projects
+- `projectIds` - Filter by project IDs
+- `filter` - Generic filter (e.g., `filter=field:value:eq`)
+- `order` - Sort order (e.g., `order=field:DESC`)
+
+**Implementation Notes**:
+- Enhance existing findAll method
+- Add full-text search support (FTS)
+- Implement column selection
+- Add Excel export functionality
+- Support generic filtering
+- Support sorting
+
+**Checkpoint 20.3**: Verify advanced query features work correctly
+
+### 20.4 ProjectV2 Routes: Advanced Endpoints
+
+Add routes for advanced project endpoints.
+
+**File**: `src/routes/v2/resources/project-v2.js`
+
+**Routes to Add**:
+- PUT `/v2/project/transfer` - transfer
+- PUT `/v2/project/xlsx` - updateFromXLS (with multer)
+- POST `/v2/project/batch` - batchUpload (with multer)
+
+**Implementation Notes**:
+- Configure multer for file uploads
+- Ensure route ordering (specific routes before generic)
+- Follow V1 route structure
+
+**Checkpoint 20.4**: Verify routes are registered correctly
+
+### 20.5 ProjectV2 Integration Tests: Advanced Features
+
+Create comprehensive integration tests for advanced project features.
+
+**File**: `tests/v2/integration/project-v2.spec.js` (add to existing file)
+
+**Test Cases to Add**:
+1. PUT /v2/project/transfer - Transfer project
+2. PUT /v2/project/xlsx - Update from XLSX
+3. POST /v2/project/batch - Batch upload from CSV
+4. GET /v2/project?search=keyword - Full-text search
+5. GET /v2/project?orgUid=xxx - Filter by orgUid
+6. GET /v2/project?columns=field1&columns=field2 - Column selection
+7. GET /v2/project?xls=true - Excel export
+8. GET /v2/project?onlyMarketplaceProjects=true - Marketplace filter
+9. GET /v2/project?filter=field:value:eq - Generic filter
+10. GET /v2/project?order=field:DESC - Sorting
+11. Error handling - Invalid file format
+12. Error handling - Invalid target orgUid
+13. V1/V2 isolation - Verify V2 operations don't affect V1
+
+**Checkpoint 20.5**: Run tests and verify all pass
+
+```bash
+# Run project tests
+NODE_ENV=test USE_SIMULATOR=true npx mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/project-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all project advanced feature tests pass**
+
+---
+
+## Phase 21: Units Advanced Features
+
+Implement advanced features for Units endpoint: split, XLSX import, batch upload, and advanced query parameters.
+
+### 21.1 UnitV2 Model: Advanced Methods
+
+Add advanced methods to UnitV2 model.
+
+**File**: `src/models/v2/unit-v2.model.js`
+
+**Methods to Implement**:
+1. `split(unitId, records)` - Split units into multiple units
+2. `updateFromXLS(file)` - Update units from XLSX file
+3. `batchUpload(csvData)` - Batch upload from CSV
+
+**Implementation Notes**:
+- Follow V1 unit split logic
+- Use V2 staging table for operations
+- Validate split records
+- Handle XLSX/CSV parsing
+- Support bulk operations
+
+**Checkpoint 21.1**: Verify model methods work correctly
+
+### 21.2 UnitV2 Controller: Advanced Endpoints
+
+Add advanced endpoints to UnitV2 controller.
+
+**File**: `src/controllers/v2/unit-v2.controller.js`
+
+**Endpoints to Implement**:
+1. `split(req, res)` - POST /v2/unit/split
+2. `updateFromXLS(req, res)` - PUT /v2/unit/xlsx (with file upload)
+3. `batchUpload(req, res)` - POST /v2/unit/batch (with CSV file upload)
+
+**Implementation Notes**:
+- Add assertions for V2 read-only mode and home org existence
+- Handle file uploads with multer
+- Validate request data
+- Follow V1 response format
+
+**Checkpoint 21.2**: Verify controller endpoints work correctly
+
+### 21.3 UnitV2 Controller: Advanced Query Features
+
+Enhance findAll method with advanced query parameters.
+
+**File**: `src/controllers/v2/unit-v2.controller.js`
+
+**Query Parameters to Add**:
+- `search` - Full-text search
+- `orgUid` - Filter by organization
+- `columns` - Select specific columns
+- `xls` - Export to Excel
+- `includeProjectInfoInSearch` - Include project info in search
+- `marketplaceIdentifiers` - Filter by marketplace identifiers
+- `hasMarketplaceIdentifier` - Filter units with marketplace identifiers
+- `onlyTokenizedUnits` - Filter tokenized units
+- `filter` - Generic filter (e.g., `filter=field:value:eq`)
+- `order` - Sort order (e.g., `order=field:DESC`)
+
+**Implementation Notes**:
+- Enhance existing findAll method
+- Add full-text search support (FTS)
+- Implement column selection
+- Add Excel export functionality
+- Support generic filtering
+- Support sorting
+- Support project info in search
+
+**Checkpoint 21.3**: Verify advanced query features work correctly
+
+### 21.4 UnitV2 Routes: Advanced Endpoints
+
+Add routes for advanced unit endpoints.
+
+**File**: `src/routes/v2/resources/unit-v2.js`
+
+**Routes to Add**:
+- POST `/v2/unit/split` - split
+- PUT `/v2/unit/xlsx` - updateFromXLS (with multer)
+- POST `/v2/unit/batch` - batchUpload (with multer)
+
+**Implementation Notes**:
+- Configure multer for file uploads
+- Ensure route ordering (specific routes before generic)
+- Follow V1 route structure
+
+**Checkpoint 21.4**: Verify routes are registered correctly
+
+### 21.5 UnitV2 Integration Tests: Advanced Features
+
+Create comprehensive integration tests for advanced unit features.
+
+**File**: `tests/v2/integration/unit-v2.spec.js` (add to existing file)
+
+**Test Cases to Add**:
+1. POST /v2/unit/split - Split units
+2. PUT /v2/unit/xlsx - Update from XLSX
+3. POST /v2/unit/batch - Batch upload from CSV
+4. GET /v2/unit?search=keyword - Full-text search
+5. GET /v2/unit?orgUid=xxx - Filter by orgUid
+6. GET /v2/unit?columns=field1&columns=field2 - Column selection
+7. GET /v2/unit?xls=true - Excel export
+8. GET /v2/unit?includeProjectInfoInSearch=true - Project info in search
+9. GET /v2/unit?marketplaceIdentifiers=xxx - Marketplace filter
+10. GET /v2/unit?onlyTokenizedUnits=true - Tokenized units filter
+11. GET /v2/unit?filter=field:value:eq - Generic filter
+12. GET /v2/unit?order=field:DESC - Sorting
+13. Error handling - Invalid file format
+14. Error handling - Invalid split records
+15. V1/V2 isolation - Verify V2 operations don't affect V1
+
+**Checkpoint 21.5**: Run tests and verify all pass
+
+```bash
+# Run unit tests
+NODE_ENV=test USE_SIMULATOR=true npx mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/unit-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all unit advanced feature tests pass**
+
+---
+
+## Phase 22: Staging Advanced Features
+
+Implement advanced staging feature: offer file generation.
+
+### 22.1 StagingV2 Controller: Offer File Generation
+
+Add offer file generation endpoint to staging controller.
+
+**File**: `src/controllers/v2/staging-v2.controller.js`
+
+**Endpoint to Implement**:
+1. `generateOfferFile(req, res)` - GET /v2/staging/offer
+
+**Implementation Notes**:
+- Follow V1 staging offer file generation logic
+- Use V2 staging table
+- Generate offer file format compatible with V1
+- Return file download response
+
+**Checkpoint 22.1**: Verify controller endpoint works correctly
+
+### 22.2 StagingV2 Routes: Offer Endpoint
+
+Add route for staging offer file generation.
+
+**File**: `src/routes/v2/resources/staging-v2.js`
+
+**Route to Add**:
+- GET `/v2/staging/offer` - generateOfferFile
+
+**Implementation Notes**:
+- Ensure route ordering (specific routes before generic)
+- Follow V1 route structure
+
+**Checkpoint 22.2**: Verify route is registered correctly
+
+### 22.3 StagingV2 Integration Tests: Offer Feature
+
+Add integration test for staging offer file generation.
+
+**File**: `tests/v2/integration/staging-v2.spec.js` (add to existing file)
+
+**Test Cases to Add**:
+1. GET /v2/staging/offer - Generate offer file from staging
+2. GET /v2/staging/offer - Generate offer file with no staging records
+3. Error handling - Invalid staging state
+
+**Checkpoint 22.3**: Run tests and verify all pass
+
+```bash
+# Run staging tests
+NODE_ENV=test USE_SIMULATOR=true npx mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/staging-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all staging advanced feature tests pass**
+
+---
+
+## Phase 23: Governance Advanced Features
+
+Implement governance subscribe endpoint.
+
+### 23.1 GovernanceV2 Controller: Subscribe Endpoint
+
+Add subscribe endpoint to governance controller.
+
+**File**: `src/controllers/v2/governance-v2.controller.js`
+
+**Endpoint to Implement**:
+1. `subscribeToGovernanceBody(req, res)` - POST /v2/governance/subscribe
+
+**Implementation Notes**:
+- Follow V1 governance subscribe logic
+- Validate request body (governance body identifier)
+- Use V2 datalayer integration
+- Return proper success/error responses
+
+**Checkpoint 23.1**: Verify controller endpoint works correctly
+
+### 23.2 GovernanceV2 Routes: Subscribe Endpoint
+
+Add route for governance subscribe.
+
+**File**: `src/routes/v2/resources/governance-v2.js`
+
+**Route to Add**:
+- POST `/v2/governance/subscribe` - subscribeToGovernanceBody
+
+**Implementation Notes**:
+- Add validation middleware
+- Follow V1 route structure
+
+**Checkpoint 23.2**: Verify route is registered correctly
+
+### 23.3 GovernanceV2 Integration Tests: Subscribe Feature
+
+Add integration test for governance subscribe.
+
+**File**: `tests/v2/integration/governance-v2.spec.js` (add to existing file)
+
+**Test Cases to Add**:
+1. POST /v2/governance/subscribe - Subscribe to governance body
+2. Error handling - Invalid governance body identifier
+3. Error handling - Missing required parameters
+4. V1/V2 isolation - Verify V2 subscription doesn't affect V1
+
+**Checkpoint 23.3**: Run tests and verify all pass
+
+```bash
+# Run governance tests
+NODE_ENV=test USE_SIMULATOR=true npx mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/governance-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all governance advanced feature tests pass**
+
+---
 
 ### 15.14a Test Data Usage in Staging Tests
 
