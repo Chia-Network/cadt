@@ -55,7 +55,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
           table: 'location',
           action: 'INSERT',
           data: JSON.stringify([dbRecord]),
-          commited: false,
+          committed: false,
           failed_commit: false,
           is_transfer: false,
         });
@@ -188,7 +188,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
           table: 'location',
           action: 'UPDATE',
           data: JSON.stringify([dbUpdateData]),
-          commited: false,
+          committed: false,
           failed_commit: false,
           is_transfer: false,
         });
@@ -231,7 +231,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
           table: 'location',
           action: 'DELETE',
           data: JSON.stringify([{ cad_trust_location_id: id }]), // Use UUID string directly
-          commited: false,
+          committed: false,
           failed_commit: false,
           is_transfer: false,
         });

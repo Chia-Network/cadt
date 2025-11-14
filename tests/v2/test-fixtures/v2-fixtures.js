@@ -44,7 +44,7 @@ export const createV2StagingRecord = async (data) => {
     table: data.table || 'test_table',
     action: data.action || 'INSERT',
     data: JSON.stringify(data.records || []),
-    commited: false,
+    committed: false,
     failed_commit: false,
     is_transfer: data.isTransfer || false,
   });
@@ -72,10 +72,11 @@ export const getV2LastCreatedStagingRecord = async () => {
 export const createV2MetaRecord = async (key, value) => {
   const { MetaV2 } = await import('../../../src/models/v2/index.js');
 
-  return await MetaV2.upsert({
+  const [record] = await MetaV2.upsert({
     meta_key: key,
     meta_value: value,
   });
+  return record;
 };
 
 export const getV2MetaValue = async (key) => {
@@ -93,21 +94,23 @@ export const getV2MetaValue = async (key) => {
 export const createV2GovernanceRecord = async (key, value) => {
   const { GovernanceV2 } = await import('../../../src/models/v2/index.js');
 
-  return await GovernanceV2.upsert({
+  const [record] = await GovernanceV2.upsert({
     meta_key: key,
     meta_value: value,
     confirmed: true,
   });
+  return record;
 };
 
 // V2 Simulator fixtures
 export const createV2SimulatorRecord = async (key, value) => {
   const { SimulatorV2 } = await import('../../../src/models/v2/index.js');
 
-  return await SimulatorV2.upsert({
+  const [record] = await SimulatorV2.upsert({
     key: key,
     value: value,
   });
+  return record;
 };
 
 // V2 Test setup utilities
@@ -141,7 +144,7 @@ export const validateV2StagingRecord = (record) => {
   expect(record).to.have.property('table');
   expect(record).to.have.property('action');
   expect(record).to.have.property('data');
-  expect(record).to.have.property('commited');
+  expect(record).to.have.property('committed');
   expect(record).to.have.property('failed_commit');
   expect(record).to.have.property('is_transfer');
   expect(record).to.have.property('created_at');
@@ -165,7 +168,7 @@ export const createV2TestPayload = (tableName, overrides = {}) => {
       table: 'test_table',
       action: 'INSERT',
       data: JSON.stringify([{ test: 'data' }]),
-      commited: false,
+      committed: false,
       failed_commit: false,
       is_transfer: false,
     },

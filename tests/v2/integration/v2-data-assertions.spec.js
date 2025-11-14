@@ -61,7 +61,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
         table: 'organizations',
         action: 'INSERT',
         data: JSON.stringify([testData]),
-        commited: false,
+        committed: false,
         failed_commit: false,
         is_transfer: false,
       });
@@ -97,7 +97,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
         table: 'meta',
         action: 'INSERT',
         data: JSON.stringify([testData]),
-        commited: false,
+        committed: false,
         failed_commit: false,
         is_transfer: false,
       });
@@ -134,7 +134,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
         table: 'meta',
         action: 'INSERT',
         data: JSON.stringify([testData1, testData2]),
-        commited: false,
+        committed: false,
         failed_commit: false,
         is_transfer: false,
       });
@@ -155,7 +155,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
         table: 'meta',
         action: 'INSERT',
         data: JSON.stringify([{ meta_key: 'test', meta_value: 'test' }]),
-        commited: false,
+        committed: false,
         failed_commit: false,
         is_transfer: false,
       });
@@ -191,7 +191,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
         table: 'meta',
         action: 'INSERT',
         data: JSON.stringify([{ meta_key: 'test', meta_value: 'test' }]),
-        commited: false,
+        committed: false,
         failed_commit: false,
         is_transfer: false,
       });
@@ -219,7 +219,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
         table: 'meta',
         action: 'INSERT',
         data: JSON.stringify([{ meta_key: 'test', meta_value: 'test' }]),
-        commited: false,
+        committed: false,
         failed_commit: false,
         is_transfer: false, // Not a transfer
       });
@@ -242,7 +242,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
         table: 'meta',
         action: 'INSERT',
         data: JSON.stringify([{ meta_key: 'test', meta_value: 'test' }]),
-        commited: false,
+        committed: false,
         failed_commit: false,
         is_transfer: true, // This is a transfer
       });

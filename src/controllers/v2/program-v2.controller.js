@@ -79,7 +79,7 @@ export const create = async (req, res) => {
       table: 'program',
       action: 'INSERT',
       data: JSON.stringify([dbRecord]),
-      commited: false,
+      committed: false,
       failed_commit: false,
       is_transfer: false,
     });
@@ -200,7 +200,7 @@ export const update = async (req, res) => {
       table: 'program',
       action: 'UPDATE',
       data: JSON.stringify([dbUpdateData]),
-      commited: false,
+      committed: false,
       failed_commit: false,
       is_transfer: false,
     });
@@ -242,7 +242,7 @@ export const destroy = async (req, res) => {
       table: 'program',
       action: 'DELETE',
       data: JSON.stringify([{ cad_trust_program_id: id }]), // Use UUID string directly
-      commited: false,
+      committed: false,
       failed_commit: false,
       is_transfer: false,
     });

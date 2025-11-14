@@ -51,7 +51,7 @@ ProjectMethodologyV2Mirror.init(
   {
     sequelize: sequelizeV2,
     modelName: 'ProjectMethodologyV2Mirror',
-    tableName: 'project_methodolgy',
+    tableName: 'project_methodology',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',

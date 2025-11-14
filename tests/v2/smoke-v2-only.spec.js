@@ -39,7 +39,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
       );
 
       const tableNames = tables.map(t => t.name);
-      const expectedTables = ['staging', 'audit', 'organizations', 'meta', 'governance', 'simulator', 'methodology', 'program', 'project', 'validation', 'verification', 'issuance', 'unit', 'location', 'estimation', 'rating', 'co_benefit', 'project_methodolgy', 'stakeholder', 'stakeholder_projects', 'label', 'unit_label', 'aef_t1_submission', 'aef_t5_authorized_entities', 'aef_t2_authorizations', 'aef_t3_actions', 'aef_t4_holdings'];
+      const expectedTables = ['staging', 'audit', 'organizations', 'meta', 'governance', 'simulator', 'methodology', 'program', 'project', 'validation', 'verification', 'issuance', 'unit', 'location', 'estimation', 'rating', 'co_benefit', 'project_methodology', 'stakeholder', 'stakeholder_projects', 'label', 'unit_label', 'aef_t1_submission', 'aef_t5_authorized_entities', 'aef_t2_authorizations', 'aef_t3_actions', 'aef_t4_holdings'];
 
       for (const expectedTable of expectedTables) {
         expect(tableNames).to.include(expectedTable);
@@ -62,7 +62,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
       expect(columnNames).to.include('table');
       expect(columnNames).to.include('action');
       expect(columnNames).to.include('data');
-      expect(columnNames).to.include('commited');
+      expect(columnNames).to.include('committed');
       expect(columnNames).to.include('failed_commit');
       expect(columnNames).to.include('is_transfer');
       expect(columnNames).to.include('created_at');
@@ -160,7 +160,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
         table: 'test_table',
         action: 'INSERT',
         data: JSON.stringify([{ test: 'data' }]),
-        commited: false,
+        committed: false,
         failed_commit: false,
         is_transfer: false,
       };
@@ -169,7 +169,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
 
       expect(stagingRecord.table).to.equal('test_table');
       expect(stagingRecord.action).to.equal('INSERT');
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
       expect(stagingRecord.failed_commit).to.be.false;
       expect(stagingRecord.is_transfer).to.be.false;
 

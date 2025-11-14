@@ -12,7 +12,7 @@ uuid varchar [unique, note: 'UUID for staging operations']
 table varchar [note: 'target table name']
 action varchar [note: 'CRUD operation type']
 data text [note: 'JSON data to be staged']
-commited boolean [not null, default: false, note: 'commit status']
+committed boolean [not null, default: false, note: 'commit status']
 failed_commit boolean [not null, default: false, note: 'commit failure status']
 is_transfer boolean [not null, default: false, note: 'transfer operation flag']
 created_at timestamp [note: 'generated']
@@ -182,7 +182,7 @@ created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 }
 
-Table project_methodolgy {
+Table project_methodology {
 cad_trust_project_id varchar [note: 'Foreign key to project table']
 cad_trust_methodology_id varchar [note: 'references methodology UUID']
 project_methodology_date date
@@ -435,8 +435,8 @@ Ref: issuance.cad_trust_issuance_id < unit.cad_trust_issuance_id
 Ref: location.cad_trust_location_id < issuance.cad_trust_location_id
 
 // project methodology mapping
-Ref: project_methodolgy.cad_trust_project_id < project.cad_trust_project_id
-Ref: project_methodolgy.cad_trust_methodology_id < methodology.cad_trust_methodology_id
+Ref: project_methodology.cad_trust_project_id < project.cad_trust_project_id
+Ref: project_methodology.cad_trust_methodology_id < methodology.cad_trust_methodology_id
 
 // label mapping
 Ref: label.cad_trust_label_id < unit_label.cad_trust_label_id

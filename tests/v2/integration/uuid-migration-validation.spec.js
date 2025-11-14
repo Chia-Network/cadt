@@ -12,6 +12,23 @@ import {
   LocationV2,
   MethodologyV2,
 } from '../../../src/models/v2/index.js';
+
+// Helper to add UUID to model creation if needed
+const addUuidIfNeeded = (modelName, data) => {
+  const uuidFields = {
+    ValidationV2: 'cadTrustValidationId',
+    VerificationV2: 'cadTrustVerificationId',
+    IssuanceV2: 'cadTrustIssuanceId',
+    UnitV2: 'cadTrustUnitId',
+    ProjectV2: 'cadTrustProjectId',
+  };
+
+  const uuidField = uuidFields[modelName];
+  if (uuidField && !data[uuidField]) {
+    data[uuidField] = uuidv4();
+  }
+  return data;
+};
 import {
   resetV2StagingTable,
   resetV2DataTables,
@@ -107,13 +124,13 @@ describe('V2 UUID Migration Validation Tests', function () {
         programRegistryActivityId: 'TEST-001',
       });
 
-      const project = await ProjectV2.create({
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
         projectSector: 'Agriculture',
         cadTrustProgramId: program.cadTrustProgramId,
-      });
+      }));
 
       const validation = await ValidationV2.create({
         validationId: 'TEST-VALIDATION-001',
@@ -134,13 +151,13 @@ describe('V2 UUID Migration Validation Tests', function () {
         programRegistryActivityId: 'TEST-001',
       });
 
-      const project = await ProjectV2.create({
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
         projectSector: 'Agriculture',
         cadTrustProgramId: program.cadTrustProgramId,
-      });
+      }));
 
       const validation = await ValidationV2.create({
         validationId: 'TEST-VALIDATION-001',
@@ -168,13 +185,13 @@ describe('V2 UUID Migration Validation Tests', function () {
         programRegistryActivityId: 'TEST-001',
       });
 
-      const project = await ProjectV2.create({
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
         projectSector: 'Agriculture',
         cadTrustProgramId: program.cadTrustProgramId,
-      });
+      }));
 
       const validation = await ValidationV2.create({
         validationId: 'TEST-VALIDATION-001',
@@ -214,13 +231,13 @@ describe('V2 UUID Migration Validation Tests', function () {
         programRegistryActivityId: 'TEST-001',
       });
 
-      const project = await ProjectV2.create({
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
         projectSector: 'Agriculture',
         cadTrustProgramId: program.cadTrustProgramId,
-      });
+      }));
 
       const validation = await ValidationV2.create({
         validationId: 'TEST-VALIDATION-001',
@@ -271,13 +288,13 @@ describe('V2 UUID Migration Validation Tests', function () {
         programRegistryActivityId: 'TEST-001',
       });
 
-      const project = await ProjectV2.create({
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
         projectSector: 'Agriculture',
         cadTrustProgramId: program.cadTrustProgramId,
-      });
+      }));
 
       const location = await LocationV2.create({
         locationCountry: 'United States',
@@ -313,13 +330,13 @@ describe('V2 UUID Migration Validation Tests', function () {
         programRegistryActivityId: 'TEST-001',
       });
 
-      const project = await ProjectV2.create({
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
         projectSector: 'Agriculture',
         cadTrustProgramId: program.cadTrustProgramId,
-      });
+      }));
 
       // Verify foreign key is UUID string
       expect(project.cadTrustProgramId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
@@ -344,13 +361,13 @@ describe('V2 UUID Migration Validation Tests', function () {
         programRegistryActivityId: 'TEST-001',
       });
 
-      const project = await ProjectV2.create({
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
         projectSector: 'Agriculture',
         cadTrustProgramId: program.cadTrustProgramId,
-      });
+      }));
 
       const validation = await ValidationV2.create({
         validationId: 'TEST-VALIDATION-001',

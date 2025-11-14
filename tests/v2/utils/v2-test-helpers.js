@@ -44,7 +44,7 @@ export const createV2TestHomeOrg = async () => {
   const { OrganizationsV2 } = await import('../../../src/models/v2/index.js');
 
   // Create test home organization for V2
-  await OrganizationsV2.upsert({
+  const [org, created] = await OrganizationsV2.upsert({
     org_uid: 'test-home-org-v2',
     name: 'Test Home Organization V2',
     icon: 'test-icon',
@@ -61,6 +61,8 @@ export const createV2TestHomeOrg = async () => {
     data_model_version_store_id: 'test-store-id-v2',
     data_model_version_store_hash: 'test-store-hash-v2',
   });
+
+  return org;
 };
 
 export const getV2HomeOrgId = async () => {

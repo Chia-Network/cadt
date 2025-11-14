@@ -74,20 +74,26 @@ const getSubscribedStoreData = async (
 ) => {
   let subscriptions = providedSubscriptions;
   if (!subscriptions) {
-    const { storeIds: rpcSubscriptions, success } =
-      await dataLayer.getSubscriptions();
-    if (!success) {
-      throw new Error('failed to retrieve subscriptions from datalayer');
-    }
+    // In simulator mode, return empty subscriptions list
+    if (USE_SIMULATOR) {
+      subscriptions = [];
+    } else {
+      const { storeIds: rpcSubscriptions, success } =
+        await dataLayer.getSubscriptions();
+      if (!success) {
+        throw new Error('failed to retrieve subscriptions from datalayer');
+      }
 
-    subscriptions = rpcSubscriptions;
+      subscriptions = rpcSubscriptions;
+    }
   }
 
   const alreadySubscribed = subscriptions.includes(storeId);
 
   if (!alreadySubscribed) {
     logger.info(`No Subscription Found for ${storeId}, Subscribing...`);
-    const response = await dataLayer.subscribeToStoreOnDataLayer(storeId);
+    // Use the wrapper function that checks USE_SIMULATOR
+    const response = await subscribeToStoreOnDataLayer(storeId);
 
     if (!response) {
       throw new Error(`Failed to subscribe to ${storeId}`);
@@ -95,16 +101,19 @@ const getSubscribedStoreData = async (
   }
 
   if (waitForSync) {
-    let synced = false;
-    while (!synced) {
-      const syncStatus = await dataLayer.getSyncStatus(storeId);
-      synced = isDlStoreSynced(syncStatus?.sync_status);
+    // In simulator mode, data is immediately available - skip sync wait
+    if (!USE_SIMULATOR) {
+      let synced = false;
+      while (!synced) {
+        const syncStatus = await dataLayer.getSyncStatus(storeId);
+        synced = isDlStoreSynced(syncStatus?.sync_status);
 
-      if (!synced) {
-        logger.warn(
-          `datalayer has not fully synced subscribed store ${storeId}. waiting to return data until store is synced`,
-        );
-        await new Promise((resolve) => setTimeout(() => resolve(), 10000));
+        if (!synced) {
+          logger.warn(
+            `datalayer has not fully synced subscribed store ${storeId}. waiting to return data until store is synced`,
+          );
+          await new Promise((resolve) => setTimeout(() => resolve(), 10000));
+        }
       }
     }
   }
@@ -205,7 +214,13 @@ const getStoreData = async (storeId, callback, onFail, rootHash, retry = 0) => {
       return onFail(`Max retries exceeded for store ${storeId}`);
     }
 
-    const encodedData = await dataLayer.getStoreData(storeId, rootHash);
+    // In simulator mode, use simulator.getStoreData instead of real datalayer
+    let encodedData;
+    if (USE_SIMULATOR) {
+      encodedData = await simulator.getStoreData(storeId);
+    } else {
+      encodedData = await dataLayer.getStoreData(storeId, rootHash);
+    }
 
     if (!encodedData || _.isEmpty(encodedData?.keys_values)) {
       logger.debug(`No data found for store ${storeId}, retrying...`);

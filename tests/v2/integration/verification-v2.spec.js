@@ -3,6 +3,24 @@ import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StagingV2, VerificationV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { v4 as uuidv4 } from 'uuid';
+
+// Helper to add UUID to model creation if needed
+const addUuidIfNeeded = (modelName, data) => {
+  const uuidFields = {
+    ValidationV2: 'cadTrustValidationId',
+    VerificationV2: 'cadTrustVerificationId',
+    IssuanceV2: 'cadTrustIssuanceId',
+    UnitV2: 'cadTrustUnitId',
+    ProjectV2: 'cadTrustProjectId',
+  };
+
+  const uuidField = uuidFields[modelName];
+  if (uuidField && !data[uuidField]) {
+    data[uuidField] = uuidv4();
+  }
+  return data;
+};
 import {
   resetV2StagingTable,
   resetV2DataTables,
@@ -27,6 +45,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     });
 
     testProject = await ProjectV2.create({
+      cadTrustProjectId: uuidv4(),
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Verification',
@@ -34,12 +53,12 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       cadTrustProgramId: testProgram.cadTrustProgramId,
     });
 
-    testValidation = await ValidationV2.create({
+    testValidation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
       validationId: 'TEST-VALIDATION-001',
       validationType: 'Validation of Project Design Document',
       validationBody: 'AENOR International S.A.U.',
       cadTrustProjectId: testProject.cadTrustProjectId,
-    });
+    }));
   });
 
   after(async function () {
@@ -58,20 +77,20 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       programRegistryActivityId: 'TEST-ACT-001',
     });
 
-    testProject = await ProjectV2.create({
+    testProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Verification',
       projectSector: 'Agriculture',
       cadTrustProgramId: testProgram.cadTrustProgramId,
-    });
+    }));
 
-    testValidation = await ValidationV2.create({
+    testValidation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
       validationId: 'TEST-VALIDATION-001',
       validationType: 'Validation of Project Design Document',
       validationBody: 'AENOR International S.A.U.',
       cadTrustProjectId: testProject.cadTrustProjectId,
-    });
+    }));
   });
 
   describe('POST /v2/verification (Create)', function () {
@@ -106,7 +125,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('verification');
       expect(stagingRecord.action).to.equal('INSERT');
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged data
       const stagedData = JSON.parse(stagingRecord.data);
@@ -332,12 +351,12 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
 
     it('should return verifications from database with project and validation associations', async function () {
       // Create a verification directly in database
-      const verification = await VerificationV2.create({
+      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
         verificationId: 'Database Verification',
         verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         cadTrustValidationId: testValidation.cadTrustValidationId,
-      });
+      }));
 
       const response = await supertest(app)
         .get('/v2/verification')
@@ -366,12 +385,12 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
 
     it('should return verification by ID with project and validation associations', async function () {
       // Create a verification directly in database
-      const verification = await VerificationV2.create({
+      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
         verificationId: 'Get Test Verification',
         verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         cadTrustValidationId: testValidation.cadTrustValidationId,
-      });
+      }));
 
       const response = await supertest(app)
         .get(`/v2/verification/${verification.cadTrustVerificationId}`)
@@ -404,12 +423,12 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
 
     it('should stage verification update', async function () {
       // Create a verification directly in database
-      const verification = await VerificationV2.create({
+      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
         verificationId: 'Original ID',
         verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         cadTrustValidationId: testValidation.cadTrustValidationId,
-      });
+      }));
 
       const updateData = {
         verificationId: 'Updated ID',
@@ -440,7 +459,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged update data
       const stagedData = JSON.parse(stagingRecord.data);
@@ -465,10 +484,10 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
 
     it('should stage verification deletion', async function () {
       // Create a verification directly in database
-      const verification = await VerificationV2.create({
+      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
         verificationId: 'To Be Deleted',
         cadTrustProjectId: testProject.cadTrustProjectId,
-      });
+      }));
 
       const response = await supertest(app)
         .delete(`/v2/verification/${verification.cadTrustVerificationId}`)
@@ -485,7 +504,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);

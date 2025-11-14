@@ -3,6 +3,25 @@ import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StagingV2, ValidationV2, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { v4 as uuidv4 } from 'uuid';
+
+// Helper to add UUID to model creation if needed
+const addUuidIfNeeded = (modelName, data) => {
+  const uuidFields = {
+    ValidationV2: 'cadTrustValidationId',
+    VerificationV2: 'cadTrustVerificationId',
+    IssuanceV2: 'cadTrustIssuanceId',
+    UnitV2: 'cadTrustUnitId',
+    ProjectV2: 'cadTrustProjectId',
+  };
+
+  const uuidField = uuidFields[modelName];
+  if (uuidField && !data[uuidField]) {
+    data[uuidField] = uuidv4();
+  }
+  return data;
+};
+
 import {
   resetV2StagingTable,
   resetV2DataTables,
@@ -26,6 +45,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     });
 
     testProject = await ProjectV2.create({
+      cadTrustProjectId: uuidv4(),
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Validation',
@@ -50,13 +70,13 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       programRegistryActivityId: 'TEST-ACT-001',
     });
 
-    testProject = await ProjectV2.create({
+    testProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Validation',
       projectSector: 'Agriculture',
       cadTrustProgramId: testProgram.cadTrustProgramId,
-    });
+    }));
   });
 
   describe('POST /v2/validation (Create)', function () {
@@ -92,7 +112,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('validation');
       expect(stagingRecord.action).to.equal('INSERT');
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged data
       const stagedData = JSON.parse(stagingRecord.data);
@@ -300,12 +320,12 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
 
     it('should return validations from database with project association', async function () {
       // Create a validation directly in database
-      const validation = await ValidationV2.create({
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: 'Database Validation',
         validationType: 'Validation of Project Design Document',
         validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
-      });
+      }));
 
       const response = await supertest(app)
         .get('/v2/validation')
@@ -332,12 +352,12 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
 
     it('should return validation by ID with project association', async function () {
       // Create a validation directly in database
-      const validation = await ValidationV2.create({
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: 'Get Test Validation',
         validationType: 'Validation of Post Registration Change',
         validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
-      });
+      }));
 
       const response = await supertest(app)
         .get(`/v2/validation/${validation.cadTrustValidationId}`)
@@ -369,12 +389,12 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
 
     it('should stage validation update', async function () {
       // Create a validation directly in database
-      const validation = await ValidationV2.create({
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: 'Original ID',
         validationType: 'Validation of Project Design Document',
         validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
-      });
+      }));
 
       const updateData = {
         validationId: 'Updated ID',
@@ -406,7 +426,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged update data
       const stagedData = JSON.parse(stagingRecord.data);
@@ -429,10 +449,10 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
 
     it('should stage validation deletion', async function () {
       // Create a validation directly in database
-      const validation = await ValidationV2.create({
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: 'To Be Deleted',
         cadTrustProjectId: testProject.cadTrustProjectId,
-      });
+      }));
 
       const response = await supertest(app)
         .delete(`/v2/validation/${validation.cadTrustValidationId}`)
@@ -449,7 +469,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);

@@ -81,7 +81,7 @@ export const create = async (req, res) => {
       table: 'methodology',
       action: 'INSERT',
       data: JSON.stringify([dbRecord]),
-      commited: false,
+      committed: false,
       failed_commit: false,
       is_transfer: false,
     });
@@ -203,7 +203,7 @@ export const update = async (req, res) => {
       table: 'methodology',
       action: 'UPDATE',
       data: JSON.stringify([dbUpdateData]),
-      commited: false,
+      committed: false,
       failed_commit: false,
       is_transfer: false,
     });
@@ -245,7 +245,7 @@ export const destroy = async (req, res) => {
       table: 'methodology',
       action: 'DELETE',
       data: JSON.stringify([{ cad_trust_methodology_id: id }]),
-      commited: false,
+      committed: false,
       failed_commit: false,
       is_transfer: false,
     });

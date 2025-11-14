@@ -40,4 +40,9 @@ alwaysApply: true
 
 # Testing
 - Always run v2 tests individually to avoid v1 test interference
-- Work iteratively and write and run tests when any API endpoint is created or modified
+- Work iteratively and write and run tests when any API endpoint is created or modified.  Additionally, any time significant functionality is added, tests should be created and run as part of the development process.  Create the tests as close to the creation of the functionality as possible - don't wait until a later phase of the project to write the tests.  After running tests and fixing any issues identified by the tests, stop and ask for user input and feedback before proceeding.
+- Most tests should use simulation mode, which does not require datalayer or chia to be running. If running a test in simulation mode results in an error with the datalayer connection, something is wrong which needs to be addressed.
+
+# Documentation
+- We will write documentation in a specific task, not as we go.
+- Documentation should closely follow the formatting, style, and structure of existing v1 documentation at /docs/cadt_rpc_api.md.  v2 documentation should be in file /docs/cadt_rpc_api_v2.md.

@@ -15,7 +15,7 @@ export default {
       table: Sequelize.STRING,
       action: Sequelize.STRING,
       data: Sequelize.STRING,
-      commited: {
+      committed: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
         defaultValue: false,

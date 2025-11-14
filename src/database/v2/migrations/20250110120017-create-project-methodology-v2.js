@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export default {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('project_methodolgy', {
+    await queryInterface.createTable('project_methodology', {
       cad_trust_project_id: {
         type: Sequelize.UUID,
         allowNull: false,
@@ -36,19 +36,19 @@ export default {
     });
 
     // Add composite primary key
-    await queryInterface.addConstraint('project_methodolgy', {
+    await queryInterface.addConstraint('project_methodology', {
       fields: ['cad_trust_project_id', 'cad_trust_methodology_id'],
       type: 'primary key',
-      name: 'project_methodolgy_pkey'
+      name: 'project_methodology_pkey'
     });
 
     // Add indexes for better performance
-    await queryInterface.addIndex('project_methodolgy', ['cad_trust_project_id']);
-    await queryInterface.addIndex('project_methodolgy', ['cad_trust_methodology_id']);
-    await queryInterface.addIndex('project_methodolgy', ['project_methodology_date']);
+    await queryInterface.addIndex('project_methodology', ['cad_trust_project_id']);
+    await queryInterface.addIndex('project_methodology', ['cad_trust_methodology_id']);
+    await queryInterface.addIndex('project_methodology', ['project_methodology_date']);
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('project_methodolgy');
+    await queryInterface.dropTable('project_methodology');
   },
 };

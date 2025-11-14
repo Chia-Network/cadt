@@ -1,7 +1,15 @@
 'use strict';
 
+import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
 import { sequelizeV2 } from '../../database/v2/index.js';
+import StagingV2 from './staging-v2.model.js';
+import {
+  createXlsFromSequelizeResults,
+  transformFullXslsToChangeList,
+} from '../../utils/xls.js';
+import { getDeletedItems } from '../../utils/model-utils.js';
+import { UnitV2 } from './unit-v2.model.js';
 
 class IssuanceV2 extends Model {
   static associate(models) {
@@ -17,15 +25,140 @@ class IssuanceV2 extends Model {
       as: 'methodology',
     });
 
+    // Issuance has many Units
+    IssuanceV2.hasMany(models.UnitV2, {
+      foreignKey: 'cadTrustIssuanceId',
+      as: 'units',
+    });
+
     // Note: LocationV2 association will be added when Location endpoint is implemented
     // Issuance belongs to Location (optional)
     // IssuanceV2.belongsTo(models.LocationV2, {
     //   foreignKey: 'cadTrustLocationId',
     //   as: 'location',
     // });
+  }
 
-    // Note: Other associations will be added when those models are implemented
-    // - Issuance has many Units
+  /**
+   * Returns associated models for IssuanceV2
+   * Used by getDeletedItems to identify child records
+   * @returns {Array} Array of associated model objects
+   */
+  static getAssociatedModels = () => [{ model: UnitV2, pluralize: true }];
+
+  /**
+   * Generates changelist from staged data for IssuanceV2 model
+   * @param {Array} stagedData - Array of staging records
+   * @param {string} comment - Comment for the commit
+   * @param {string} author - Author of the commit
+   * @param {string} registryId - Registry store ID (passed in for performance)
+   * @param {boolean} isUpdateComment - Whether comment already exists in datalayer
+   * @param {boolean} isUpdateAuthor - Whether author already exists in datalayer
+   * @returns {Object} Changelist object with issuance and child table changes
+   */
+  static async generateChangeListFromStagedData(
+    stagedData,
+    comment,
+    author,
+    registryId,
+    isUpdateComment,
+    isUpdateAuthor,
+  ) {
+    // PERFORMANCE: Early exit if no staged records for this model
+    const hasStagedData = stagedData.some(
+      (record) => record.table === 'issuance',
+    );
+    if (!hasStagedData) {
+      return {
+        issuance: [],
+        unit: [],
+      };
+    }
+
+    const [insertRecords, updateRecords, deleteChangeList] =
+      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'issuance');
+
+    const primaryKeyMap = {
+      issuance: 'cad_trust_issuance_id',
+      unit: 'cad_trust_unit_id',
+    };
+
+    // PERFORMANCE: Only call getDeletedItems() if UPDATE records exist
+    const deletedRecords =
+      updateRecords.length > 0
+        ? await getDeletedItems(
+            updateRecords,
+            primaryKeyMap,
+            IssuanceV2,
+            'issuance',
+          )
+        : [];
+
+    // Convert records to Excel format (only if records exist)
+    const insertXslsSheets =
+      insertRecords.length > 0
+        ? createXlsFromSequelizeResults({
+            rows: insertRecords,
+            model: IssuanceV2,
+            toStructuredCsv: true,
+          })
+        : null;
+
+    const updateXslsSheets =
+      updateRecords.length > 0
+        ? createXlsFromSequelizeResults({
+            rows: updateRecords,
+            model: IssuanceV2,
+            toStructuredCsv: true,
+          })
+        : null;
+
+    const deleteXslsSheets =
+      deletedRecords.length > 0
+        ? createXlsFromSequelizeResults({
+            rows: deletedRecords,
+            model: IssuanceV2,
+            toStructuredCsv: true,
+          })
+        : null;
+
+    // Convert Excel to changelist (only if Excel sheets were created)
+    const insertChangeList = insertXslsSheets
+      ? await transformFullXslsToChangeList(
+          insertXslsSheets,
+          'insert',
+          primaryKeyMap,
+        )
+      : {};
+
+    const updateChangeList = updateXslsSheets
+      ? await transformFullXslsToChangeList(
+          updateXslsSheets,
+          'update',
+          primaryKeyMap,
+        )
+      : {};
+
+    const deletedAssociationsChangeList = deleteXslsSheets
+      ? await transformFullXslsToChangeList(
+          deleteXslsSheets,
+          'delete',
+          primaryKeyMap,
+        )
+      : {};
+
+    return {
+      issuance: [
+        ..._.get(insertChangeList, 'issuance', []),
+        ..._.get(updateChangeList, 'issuance', []),
+        ...deleteChangeList,
+      ],
+      unit: [
+        ..._.get(insertChangeList, 'unit', []),
+        ..._.get(updateChangeList, 'unit', []),
+        ..._.get(deletedAssociationsChangeList, 'unit', []),
+      ],
+    };
   }
 }
 

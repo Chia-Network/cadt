@@ -60,7 +60,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('program');
       expect(stagingRecord.action).to.equal('INSERT');
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged data
       const stagedData = JSON.parse(stagingRecord.data);
@@ -308,7 +308,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged update data
       const stagedData = JSON.parse(stagingRecord.data);
@@ -352,7 +352,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);

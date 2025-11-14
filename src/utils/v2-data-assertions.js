@@ -172,13 +172,17 @@ export const assertStagingTableIsEmpty = async () => {
 
 /**
  * V2-specific assertion that there are no pending commits excluding transfers
+ * Checks for records that have been committed (committed: true) but are still
+ * waiting for blockchain confirmation. This prevents creating new records
+ * when there are already committed records pending.
  *
  * @throws {Error} If there are pending commits (excluding transfers)
  */
 export const assertNoPendingCommitsExcludingTransfers = async () => {
   const pendingCommits = await StagingV2.count({
     where: {
-      commited: false,
+      committed: true,
+      failed_commit: false,
       is_transfer: false,
     },
   });
@@ -307,6 +311,26 @@ export const assertIsActiveGovernanceBodyV2 = async () => {
   if (!governanceBodyIsSetUp) {
     throw new Error(
       'You are not an governance body and can not use this functionality',
+    );
+  }
+};
+
+/**
+ * V2-specific assertion that an organization does not exist
+ * Checks the V2 organizations table for the given orgUid
+ *
+ * @param {string} orgUid - The organization UID to check
+ * @throws {Error} If orgUid exists in V2 organizations
+ */
+export const assertV2OrgDoesNotExist = async (orgUid) => {
+  const organization = await OrganizationsV2.findOne({
+    where: { org_uid: orgUid },
+    raw: true,
+  });
+
+  if (organization) {
+    throw new Error(
+      `Organization with orgUid ${orgUid} already exists in V2 database`,
     );
   }
 };

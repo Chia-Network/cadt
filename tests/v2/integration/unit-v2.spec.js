@@ -3,6 +3,25 @@ import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StagingV2, UnitV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { v4 as uuidv4 } from 'uuid';
+
+// Helper to add UUID to model creation if needed
+const addUuidIfNeeded = (modelName, data) => {
+  const uuidFields = {
+    ValidationV2: 'cadTrustValidationId',
+    VerificationV2: 'cadTrustVerificationId',
+    IssuanceV2: 'cadTrustIssuanceId',
+    UnitV2: 'cadTrustUnitId',
+    ProjectV2: 'cadTrustProjectId',
+  };
+  
+  const uuidField = uuidFields[modelName];
+  if (uuidField && !data[uuidField]) {
+    data[uuidField] = uuidv4();
+  }
+  return data;
+};
+
 import {
   resetV2StagingTable,
   resetV2DataTables,
@@ -25,27 +44,27 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       programRegistryActivityId: 'TEST-ACT-001',
     });
 
-    const testProject = await ProjectV2.create({
+    const testProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Unit',
       projectSector: 'Agriculture',
       cadTrustProgramId: testProgram.cadTrustProgramId,
-    });
+    }));
 
-    const testValidation = await ValidationV2.create({
+    const testValidation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
       validationId: 'TEST-VALIDATION-001',
       validationType: 'Validation of Project Design Document',
       validationBody: 'AENOR International S.A.U.',
       cadTrustProjectId: testProject.cadTrustProjectId,
-    });
+    }));
 
-    const testVerification = await VerificationV2.create({
+    const testVerification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
       verificationId: 'TEST-VERIFICATION-001',
       verificationBody: 'AENOR International S.A.U.',
       cadTrustProjectId: testProject.cadTrustProjectId,
       cadTrustValidationId: testValidation.cadTrustValidationId,
-    });
+    }));
 
     const testMethodology = await MethodologyV2.create({
       methodologyCode: 'TEST-METHODOLOGY-001',
@@ -53,12 +72,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       methodologyType: 'Methodology for Afforestation and Reforestation',
     });
 
-    testIssuance = await IssuanceV2.create({
+    testIssuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
       issuanceId: 'TEST-ISSUANCE-001',
       issuanceDate: '2024-01-01',
       cadTrustVerificationId: testVerification.cadTrustVerificationId,
       cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
-    });
+    }));
   });
 
   beforeEach(async function () {
@@ -72,27 +91,27 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       programRegistryActivityId: 'TEST-ACT-001',
     });
 
-    const testProject = await ProjectV2.create({
+    const testProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Unit',
       projectSector: 'Agriculture',
       cadTrustProgramId: testProgram.cadTrustProgramId,
-    });
+    }));
 
-    const testValidation = await ValidationV2.create({
+    const testValidation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
       validationId: 'TEST-VALIDATION-001',
       validationType: 'Validation of Project Design Document',
       validationBody: 'AENOR International S.A.U.',
       cadTrustProjectId: testProject.cadTrustProjectId,
-    });
+    }));
 
-    const testVerification = await VerificationV2.create({
+    const testVerification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
       verificationId: 'TEST-VERIFICATION-001',
       verificationBody: 'AENOR International S.A.U.',
       cadTrustProjectId: testProject.cadTrustProjectId,
       cadTrustValidationId: testValidation.cadTrustValidationId,
-    });
+    }));
 
     const testMethodology = await MethodologyV2.create({
       methodologyCode: 'TEST-METHODOLOGY-001',
@@ -100,12 +119,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       methodologyType: 'Methodology for Afforestation and Reforestation',
     });
 
-    testIssuance = await IssuanceV2.create({
+    testIssuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
       issuanceId: 'TEST-ISSUANCE-001',
       issuanceDate: '2024-01-01',
       cadTrustVerificationId: testVerification.cadTrustVerificationId,
       cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
-    });
+    }));
   });
 
   after(async function () {
@@ -514,13 +533,13 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
     it('should return units from database', async function () {
       // Create a unit directly in the database
-      const unit = await UnitV2.create({
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
         unitSerialId: 'TEST-UNIT-DB-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
         unitVintageYear: 2024,
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      });
+      }));
 
       const response = await supertest(app)
         .get('/v2/unit')
@@ -544,13 +563,13 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
     it('should return unit by ID', async function () {
       // Create a unit directly in the database
-      const unit = await UnitV2.create({
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
         unitSerialId: 'TEST-UNIT-GET-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
         unitVintageYear: 2024,
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      });
+      }));
 
       const response = await supertest(app)
         .get(`/v2/unit/${unit.cadTrustUnitId}`)
@@ -582,13 +601,13 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
     it('should stage unit update', async function () {
       // Create a unit directly in the database
-      const unit = await UnitV2.create({
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
         unitSerialId: 'TEST-UNIT-UPDATE-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
         unitVintageYear: 2024,
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      });
+      }));
 
       const updateData = {
         unitSerialId: 'UPDATED-UNIT-001',
@@ -629,13 +648,13 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
     it('should stage unit deletion', async function () {
       // Create a unit directly in the database
-      const unit = await UnitV2.create({
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
         unitSerialId: 'TEST-UNIT-DELETE-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
         unitVintageYear: 2024,
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
-      });
+      }));
 
       const response = await supertest(app)
         .delete(`/v2/unit/${unit.cadTrustUnitId}`)

@@ -1,10 +1,101 @@
 'use strict';
 
+import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
 import { sequelizeV2 } from '../../database/v2/index.js';
 import ModelTypes from './aef-t2-authorizations-v2.modeltypes.cjs';
+import StagingV2 from './staging-v2.model.js';
+import {
+  createXlsFromSequelizeResults,
+  transformFullXslsToChangeList,
+} from '../../utils/xls.js';
 
-class AefT2AuthorizationsV2 extends Model {}
+class AefT2AuthorizationsV2 extends Model {
+  /**
+   * Generates changelist from staged data for AefT2AuthorizationsV2 model
+   * @param {Array} stagedData - Array of staging records
+   * @param {string} comment - Comment for the commit
+   * @param {string} author - Author of the commit
+   * @param {string} registryId - Registry store ID (passed in for performance)
+   * @param {boolean} isUpdateComment - Whether comment already exists in datalayer
+   * @param {boolean} isUpdateAuthor - Whether author already exists in datalayer
+   * @returns {Object} Changelist object with aef_t2_authorizations changes
+   */
+  static async generateChangeListFromStagedData(
+    stagedData,
+    comment,
+    author,
+    registryId,
+    isUpdateComment,
+    isUpdateAuthor,
+  ) {
+    // PERFORMANCE: Early exit if no staged records for this model
+    const hasStagedData = stagedData.some(
+      (record) => record.table === 'aef_t2_authorizations',
+    );
+    if (!hasStagedData) {
+      return {
+        aef_t2_authorizations: [],
+      };
+    }
+
+    const [insertRecords, updateRecords, deleteChangeList] =
+      StagingV2.seperateStagingDataIntoActionGroups(
+        stagedData,
+        'aef_t2_authorizations',
+      );
+
+    const primaryKeyMap = {
+      aef_t2_authorizations: 'cad_trust_aef_t2_authorizations_id',
+    };
+
+    // PERFORMANCE: Independent models have no child tables, so skip getDeletedItems()
+
+    // Convert records to Excel format (only if records exist)
+    const insertXslsSheets =
+      insertRecords.length > 0
+        ? createXlsFromSequelizeResults({
+            rows: insertRecords,
+            model: AefT2AuthorizationsV2,
+            toStructuredCsv: true,
+          })
+        : null;
+
+    const updateXslsSheets =
+      updateRecords.length > 0
+        ? createXlsFromSequelizeResults({
+            rows: updateRecords,
+            model: AefT2AuthorizationsV2,
+            toStructuredCsv: true,
+          })
+        : null;
+
+    // Convert Excel to changelist (only if Excel sheets were created)
+    const insertChangeList = insertXslsSheets
+      ? await transformFullXslsToChangeList(
+          insertXslsSheets,
+          'insert',
+          primaryKeyMap,
+        )
+      : {};
+
+    const updateChangeList = updateXslsSheets
+      ? await transformFullXslsToChangeList(
+          updateXslsSheets,
+          'update',
+          primaryKeyMap,
+        )
+      : {};
+
+    return {
+      aef_t2_authorizations: [
+        ..._.get(insertChangeList, 'aef_t2_authorizations', []),
+        ..._.get(updateChangeList, 'aef_t2_authorizations', []),
+        ...deleteChangeList,
+      ],
+    };
+  }
+}
 
 AefT2AuthorizationsV2.init(ModelTypes, {
   sequelize: sequelizeV2,

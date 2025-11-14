@@ -13,10 +13,11 @@ module.exports = {
   table: Sequelize.STRING,
   action: Sequelize.STRING,
   data: Sequelize.STRING,
-  commited: {
+  committed: {
     type: Sequelize.BOOLEAN,
     allowNull: false,
     defaultValue: false,
+    field: 'committed', // Explicit field mapping to ensure correct column name
   },
   failed_commit: {
     type: Sequelize.BOOLEAN,

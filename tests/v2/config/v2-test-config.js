@@ -86,7 +86,7 @@ export const generateV2TestData = {
     table: 'test_table',
     action: 'INSERT',
     data: JSON.stringify([{ test: 'data' }]),
-    commited: false,
+    committed: false,
     failed_commit: false,
     is_transfer: false,
     ...overrides,

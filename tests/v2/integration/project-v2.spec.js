@@ -3,6 +3,25 @@ import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StagingV2, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { v4 as uuidv4 } from 'uuid';
+
+// Helper to add UUID to model creation if needed
+const addUuidIfNeeded = (modelName, data) => {
+  const uuidFields = {
+    ValidationV2: 'cadTrustValidationId',
+    VerificationV2: 'cadTrustVerificationId',
+    IssuanceV2: 'cadTrustIssuanceId',
+    UnitV2: 'cadTrustUnitId',
+    ProjectV2: 'cadTrustProjectId',
+  };
+  
+  const uuidField = uuidFields[modelName];
+  if (uuidField && !data[uuidField]) {
+    data[uuidField] = uuidv4();
+  }
+  return data;
+};
+
 import {
   resetV2StagingTable,
   resetV2DataTables,
@@ -83,7 +102,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('project');
       expect(stagingRecord.action).to.equal('INSERT');
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged data
       const stagedData = JSON.parse(stagingRecord.data);
@@ -403,7 +422,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
     it('should return projects from database with program association', async function () {
       // Create a project directly in database
-      const project = await ProjectV2.create({
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Database Registry',
         projectId: 'DB-PROJECT-001',
         projectName: 'Database Project',
@@ -412,7 +431,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectStatus: 'Listed',
         projectUnitMetric: 'tCO2e',
         cadTrustProgramId: testProgram.cadTrustProgramId,
-      });
+      }));
 
       const response = await supertest(app)
         .get('/v2/project')
@@ -523,7 +542,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged update data
       const stagedData = JSON.parse(stagingRecord.data);
@@ -568,7 +587,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
-      expect(stagingRecord.commited).to.be.false;
+      expect(stagingRecord.committed).to.be.false;
 
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);
