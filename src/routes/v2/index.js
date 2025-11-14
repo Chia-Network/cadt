@@ -23,6 +23,7 @@ import aefT3ActionsV2Routes from './aef-t3-actions-v2.routes.js';
 import aefT4HoldingsV2Routes from './aef-t4-holdings-v2.routes.js';
 import { StagingV2Router } from './resources/staging-v2.js';
 import { OrganizationsV2Router } from './resources/organizations-v2.js';
+import { AuditV2Router } from './resources/audit-v2.js';
 
 const V2Router = express.Router();
 
@@ -59,5 +60,6 @@ V2Router.use('/aef-t3-actions', aefT3ActionsV2Routes);
 V2Router.use('/aef-t4-holdings', aefT4HoldingsV2Routes);
 V2Router.use('/staging', StagingV2Router);
 V2Router.use('/organizations', OrganizationsV2Router);
+V2Router.use('/audit', AuditV2Router);
 
 export { V2Router };

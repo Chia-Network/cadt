@@ -18,18 +18,19 @@
 - ✅ **Phase 13**: AEF Endpoints (All Tier 5 AEF tables)
 - ✅ **Phase 14**: Governance Endpoint (System table with full CRUD operations)
 - ✅ **Phase 15**: Datalayer Sync Integration (Complete with staging operations, changelist generation, commit functionality, and performance monitoring)
+- ✅ **Phase 16**: V2 Organization Management (Complete with all 20 subsections: create, upgrade, read, edit, import/subscribe, delete/sync, mirror operations, and comprehensive tests)
+- ✅ **Phase 17**: Audit Endpoints (Complete with 4 endpoints: findAll, findConflicts, resetToGeneration, resetToDate, and comprehensive tests)
 
-**CURRENT STATUS:** ✅ CORE API ENDPOINTS COMPLETED - V2 API core functionality is implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer.
+**CURRENT STATUS:** ✅ CORE API ENDPOINTS COMPLETED - V2 API core functionality is implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer. ✅ V2 Organization Management complete - Full organization lifecycle management with create, upgrade, import, subscription, and mirror operations.
 
 **PENDING PHASES:**
-- ⏳ **Phase 16.21**: V2 API Documentation
-- ⏳ **Phase 17**: Audit Endpoints (4 endpoints)
 - ⏳ **Phase 18**: Offer/Transfer Endpoints (6 endpoints)
 - ⏳ **Phase 19**: Filestore Endpoints (6 endpoints)
 - ⏳ **Phase 20**: Projects Advanced Features (transfer, xlsx, batch, advanced query params)
 - ⏳ **Phase 21**: Units Advanced Features (split, xlsx, batch, advanced query params)
 - ⏳ **Phase 22**: Staging Advanced Features (offer file generation)
 - ⏳ **Phase 23**: Governance Advanced Features (subscribe endpoint)
+- ⏳ **Phase 24**: V2 API Documentation
 
 **COMPLETED ENDPOINTS (22 total):**
 - Core: Methodology, Program, Project, Validation, Verification, Issuance, Unit, Location (8 endpoints)
@@ -2003,9 +2004,11 @@ npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/exten
 
 **STOP HERE - User verifies all staging tests pass**
 
-## Phase 16: V2 Organization Management
+## Phase 16: V2 Organization Management ✅ COMPLETE
 
 **Phase Overview**: Implement V2 organization creation and upgrade functionality, enabling new users to create V2-only organizations and existing V1 users to upgrade to V2.
+
+**STATUS**: ✅ **COMPLETE** - All 20 subsections (16.1-16.20) implemented and tested. V2 organization management is fully operational.
 
 **Key Requirements**:
 - New users: Create V2 home org via V2 endpoint (no V1 org or V1 singleton)
@@ -2820,261 +2823,9 @@ npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/exten
 
 **STOP HERE - User verifies all organization tests pass**
 
-### 16.21 V2 API Documentation
-
-Create comprehensive API documentation for ALL V2 API endpoints following the V1 documentation structure and style.
-
-**File Location**: `/docs/cadt_rpc_api_v2.md`
-
-**Documentation Requirements**:
-
-1. **Structure and Format**:
-   - Follow the exact formatting, style, and structure of `/docs/cadt_rpc_api.md`
-   - Use same markdown structure (headers, code blocks, tables)
-   - Maintain same level of detail as V1 documentation
-   - Can be slightly more thorough where helpful, but not significantly more detailed
-   - Include same table of contents structure with links to all sections
-
-2. **Content Sections**:
-   - **Introduction**: Update to reference V2 API (`/v2` instead of `/v1`)
-   - **Workflow Description**: Update staging workflow description for V2 (same concept, V2-specific details)
-   - **All Endpoint Sections**: Document all V2 endpoints organized by resource type
-   - Use same example data from V1 where applicable
-   - Create new example data for V2-specific endpoints and data models
-
-3. **All V2 Endpoints to Document** (organized by section - document ALL actual endpoints):
-
-   **Organizations** (15 endpoints):
-   - `GET /v2/organizations` - List all organizations
-   - `GET /v2/organizations/status` - Get home org sync status
-   - `GET /v2/organizations/metadata` - Get metadata (with orgUid query param)
-   - `POST /v2/organizations` - Create V2 home org (new users) - supports both JSON body and file upload
-   - `POST /v2/organizations/upgrade` - Upgrade from V1 to V2 (existing users)
-   - `POST /v2/organizations/metadata` - Add metadata to home organization
-   - `POST /v2/organizations/sync` - Sync organization metadata
-   - `POST /v2/organizations/mirror` - Add mirror for a store
-   - `POST /v2/organizations/remove-mirror` - Remove mirror for a store
-   - `PUT /v2/organizations/edit` - Edit home organization (name and/or icon) - supports file upload
-   - `PUT /v2/organizations` - Import organization from datalayer
-   - `PUT /v2/organizations/subscribe` - Subscribe to organization
-   - `PUT /v2/organizations/unsubscribe` - Unsubscribe from organization
-   - `PUT /v2/organizations/resync` - Resync organization
-   - `DELETE /v2/organizations/:orgUid` - Delete organization
-
-   **Core Data Endpoints** (8 resource types, 5 CRUD operations each = 40 endpoints):
-   - `methodology`:
-     - `POST /v2/methodology` - Create methodology
-     - `GET /v2/methodology` - List all methodologies
-     - `GET /v2/methodology/:id` - Get single methodology
-     - `PUT /v2/methodology/:id` - Update methodology
-     - `DELETE /v2/methodology/:id` - Delete methodology
-   - `program`:
-     - `POST /v2/program` - Create program
-     - `GET /v2/program` - List all programs
-     - `GET /v2/program/:id` - Get single program
-     - `PUT /v2/program/:id` - Update program
-     - `DELETE /v2/program/:id` - Delete program
-   - `project`:
-     - `POST /v2/project` - Create project
-     - `GET /v2/project` - List all projects
-     - `GET /v2/project/:id` - Get single project
-     - `PUT /v2/project/:id` - Update project
-     - `DELETE /v2/project/:id` - Delete project
-   - `validation`:
-     - `POST /v2/validation` - Create validation
-     - `GET /v2/validation` - List all validations
-     - `GET /v2/validation/:id` - Get single validation
-     - `PUT /v2/validation/:id` - Update validation
-     - `DELETE /v2/validation/:id` - Delete validation
-   - `verification`:
-     - `POST /v2/verification` - Create verification
-     - `GET /v2/verification` - List all verifications
-     - `GET /v2/verification/:id` - Get single verification
-     - `PUT /v2/verification/:id` - Update verification
-     - `DELETE /v2/verification/:id` - Delete verification
-   - `issuance`:
-     - `POST /v2/issuance` - Create issuance
-     - `GET /v2/issuance` - List all issuances
-     - `GET /v2/issuance/:id` - Get single issuance
-     - `PUT /v2/issuance/:id` - Update issuance
-     - `DELETE /v2/issuance/:id` - Delete issuance
-   - `unit`:
-     - `POST /v2/unit` - Create unit
-     - `GET /v2/unit` - List all units
-     - `GET /v2/unit/:id` - Get single unit
-     - `PUT /v2/unit/:id` - Update unit
-     - `DELETE /v2/unit/:id` - Delete unit
-   - `location`:
-     - `POST /v2/location` - Create location
-     - `GET /v2/location` - List all locations
-     - `GET /v2/location/:id` - Get single location
-     - `PUT /v2/location/:id` - Update location
-     - `DELETE /v2/location/:id` - Delete location
-
-   **Tier 1 Dependencies** (3 resource types, 5 CRUD operations each = 15 endpoints):
-   - `estimation`:
-     - `POST /v2/estimation` - Create estimation
-     - `GET /v2/estimation` - List all estimations
-     - `GET /v2/estimation/:id` - Get single estimation
-     - `PUT /v2/estimation/:id` - Update estimation
-     - `DELETE /v2/estimation/:id` - Delete estimation
-   - `rating`:
-     - `POST /v2/rating` - Create rating
-     - `GET /v2/rating` - List all ratings
-     - `GET /v2/rating/:id` - Get single rating
-     - `PUT /v2/rating/:id` - Update rating
-     - `DELETE /v2/rating/:id` - Delete rating
-   - `co-benefit`:
-     - `POST /v2/co-benefit` - Create co-benefit
-     - `GET /v2/co-benefit` - List all co-benefits
-     - `GET /v2/co-benefit/:id` - Get single co-benefit
-     - `PUT /v2/co-benefit/:id` - Update co-benefit
-     - `DELETE /v2/co-benefit/:id` - Delete co-benefit
-
-   **Tier 4 Join Tables** (5 resource types with varying route patterns):
-   - `project-methodology`:
-     - `POST /v2/project-methodology` - Create project-methodology relationship
-     - `GET /v2/project-methodology` - List all project-methodology relationships
-     - `GET /v2/project-methodology/project/:projectId/methodology/:methodologyId` - Get single relationship
-     - `PUT /v2/project-methodology/project/:projectId/methodology/:methodologyId` - Update relationship
-     - `DELETE /v2/project-methodology/project/:projectId/methodology/:methodologyId` - Delete relationship
-   - `stakeholder`:
-     - `POST /v2/stakeholder` - Create stakeholder
-     - `GET /v2/stakeholder` - List all stakeholders
-     - `GET /v2/stakeholder/:id` - Get single stakeholder
-     - `PUT /v2/stakeholder/:id` - Update stakeholder
-     - `DELETE /v2/stakeholder/:id` - Delete stakeholder
-   - `stakeholder-projects`:
-     - `POST /v2/stakeholder-projects` - Create stakeholder-project relationship
-     - `GET /v2/stakeholder-projects` - List all stakeholder-project relationships
-     - `GET /v2/stakeholder-projects/:id` - Get single relationship
-     - `PUT /v2/stakeholder-projects/:id` - Update relationship
-     - `DELETE /v2/stakeholder-projects/:id` - Delete relationship
-   - `label`:
-     - `POST /v2/label` - Create label
-     - `GET /v2/label` - List all labels
-     - `GET /v2/label/:id` - Get single label
-     - `PUT /v2/label/:id` - Update label
-     - `DELETE /v2/label/:id` - Delete label
-   - `unit-label`:
-     - `POST /v2/unit-label` - Create unit-label relationship
-     - `GET /v2/unit-label` - List all unit-label relationships
-     - `GET /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId` - Get single relationship (composite key)
-     - `PUT /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId` - Update relationship
-     - `DELETE /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId` - Delete relationship
-
-   **Tier 5 AEF Tables** (5 resource types, 5 CRUD operations each = 25 endpoints):
-   - `aef-t1-submission`:
-     - `POST /v2/aef-t1-submission` - Create AEF-T1-Submission
-     - `GET /v2/aef-t1-submission` - List all AEF-T1-Submissions
-     - `GET /v2/aef-t1-submission/:cadTrustAefT1SubmissionId` - Get single submission
-     - `PUT /v2/aef-t1-submission/:cadTrustAefT1SubmissionId` - Update submission
-     - `DELETE /v2/aef-t1-submission/:cadTrustAefT1SubmissionId` - Delete submission
-   - `aef-t5-authorized-entities`:
-     - `POST /v2/aef-t5-authorized-entities` - Create AEF-T5-Authorized-Entities
-     - `GET /v2/aef-t5-authorized-entities` - List all AEF-T5-Authorized-Entities
-     - `GET /v2/aef-t5-authorized-entities/:cadTrustAefT5AuthorizedEntitiesId` - Get single entity
-     - `PUT /v2/aef-t5-authorized-entities/:cadTrustAefT5AuthorizedEntitiesId` - Update entity
-     - `DELETE /v2/aef-t5-authorized-entities/:cadTrustAefT5AuthorizedEntitiesId` - Delete entity
-   - `aef-t2-authorizations`:
-     - `POST /v2/aef-t2-authorizations` - Create AEF-T2-Authorizations
-     - `GET /v2/aef-t2-authorizations` - List all AEF-T2-Authorizations
-     - `GET /v2/aef-t2-authorizations/:cadTrustAefT2AuthorizationsId` - Get single authorization
-     - `PUT /v2/aef-t2-authorizations/:cadTrustAefT2AuthorizationsId` - Update authorization
-     - `DELETE /v2/aef-t2-authorizations/:cadTrustAefT2AuthorizationsId` - Delete authorization
-   - `aef-t3-actions`:
-     - `POST /v2/aef-t3-actions` - Create AEF-T3-Actions
-     - `GET /v2/aef-t3-actions` - List all AEF-T3-Actions
-     - `GET /v2/aef-t3-actions/:cadTrustAefT3ActionsId` - Get single action
-     - `PUT /v2/aef-t3-actions/:cadTrustAefT3ActionsId` - Update action
-     - `DELETE /v2/aef-t3-actions/:cadTrustAefT3ActionsId` - Delete action
-   - `aef-t4-holdings`:
-     - `POST /v2/aef-t4-holdings` - Create AEF-T4-Holdings
-     - `GET /v2/aef-t4-holdings` - List all AEF-T4-Holdings
-     - `GET /v2/aef-t4-holdings/:cadTrustAefT4HoldingsId` - Get single holding
-     - `PUT /v2/aef-t4-holdings/:cadTrustAefT4HoldingsId` - Update holding
-     - `DELETE /v2/aef-t4-holdings/:cadTrustAefT4HoldingsId` - Delete holding
-
-   **System Endpoints**:
-   - `governance` (10 endpoints):
-     - `GET /v2/governance` - Get all governance data
-     - `GET /v2/governance/exists` - Check if governance body exists
-     - `GET /v2/governance/sync` - Sync governance data
-     - `GET /v2/governance/meta/orgList` - Get organization list
-     - `GET /v2/governance/meta/pickList` - Get picklist data
-     - `GET /v2/governance/meta/glossary` - Get glossary data
-     - `POST /v2/governance` - Create governance body
-     - `POST /v2/governance/meta/orgList` - Set organization list
-     - `POST /v2/governance/meta/pickList` - Set picklist data
-     - `POST /v2/governance/meta/glossary` - Set glossary data
-   - `staging` (7 endpoints):
-     - `GET /v2/staging` - List staged records (with query params: page, limit, type, table)
-     - `GET /v2/staging/pending` - Check for pending commits
-     - `POST /v2/staging/commit` - Commit staged records
-     - `POST /v2/staging/retry` - Retry failed commit
-     - `PUT /v2/staging` - Edit staged record
-     - `DELETE /v2/staging` - Delete specific staged record
-     - `DELETE /v2/staging/clean` - Clean all staging records
-
-   **Health Check**:
-   - `GET /v2/health` - Health check endpoint
-
-4. **Documentation Format for Each Endpoint**:
-   - **Functionality**: Brief description
-   - **Options/Parameters**: Table format (same as V1) - document query params, body params, etc.
-   - **Examples**: Request and Response with curl commands
-   - **Notes**: Any important warnings, timing information, or V2-specific behaviors
-
-5. **Example Data Guidelines**:
-   - Reuse V1 example data where possible (orgUids, projectIds, unitIds, etc.)
-   - For V2-specific endpoints (upgrade, new data models), create new example data
-   - Ensure example data is consistent throughout the documentation
-   - Use realistic but clearly example data (not production values)
-   - Maintain consistency in UUIDs, names, and other identifiers across examples
-
-6. **Key Differences from V1 to Highlight**:
-   - V2 uses `/v2` prefix instead of `/v1`
-   - V2 field names use camelCase in API (matching database snake_case)
-   - V2 organizations: `POST /organizations` supports both JSON body and file upload
-   - V2 organizations: Has `/upgrade` endpoint for V1→V2 migration
-   - V2 organizations: Edit endpoint is `PUT /organizations/edit` (not `PUT /organizations`)
-   - V2 staging: Uses V2-specific staging table and commit process
-   - V2 data models: All use UUID v4 primary keys (not auto-increment integers)
-   - V2 data models: Foreign key validation checks both main table and staging table
-
-7. **Section Organization** (organize by actual V2 endpoint structure, not V1 structure):
-   - Commands table of contents (with links to all sections)
-   - Organizations section (detailed - all 15 endpoints)
-   - Staging section (V2-specific staging operations - all 7 endpoints)
-   - Governance section (all 10 endpoints)
-   - Core data model sections (Methodology, Program, Project, Validation, Verification, Issuance, Unit, Location - 5 CRUD operations each)
-   - Tier 1 Dependencies sections (Estimation, Rating, Co-Benefit - 5 CRUD operations each)
-   - Tier 4 Join Tables sections (Project-Methodology, Stakeholder, Stakeholder-Projects, Label, Unit-Label - note composite key routes where applicable)
-   - Tier 5 AEF Tables sections (AEF-T1-Submission, AEF-T5-Authorized-Entities, AEF-T2-Authorizations, AEF-T3-Actions, AEF-T4-Holdings - 5 CRUD operations each)
-   - Health Check section
-   - Additional resources sections for each endpoint group (match V1 format)
-
-8. **V2-Specific Documentation Notes**:
-   - Document staging workflow for V2 (same concept as V1 but V2-specific)
-   - Document V1/V2 isolation (V2 operations don't affect V1 data)
-   - Document upgrade path from V1 to V2
-   - Document any V2-specific validation rules or behaviors
-   - Document camelCase field naming convention
-
-**Reference**: V1 documentation at `/docs/cadt_rpc_api.md` (entire file)
-
-**Checkpoint 16.21**: Review documentation for completeness and accuracy
-
-```bash
-# Review the generated documentation
-cat docs/cadt_rpc_api_v2.md
-```
-
-**STOP HERE - User reviews and approves V2 API documentation**
-
 ---
 
-## Phase 17: Audit Endpoints
+## Phase 17: Audit Endpoints ✅ COMPLETE
 
 Implement V2 audit functionality for tracking data history and managing conflicts.
 
@@ -3746,6 +3497,260 @@ NODE_ENV=test USE_SIMULATOR=true npx mocha --loader node_modules/extensionless/s
 
 ---
 
+## Phase 24: V2 API Documentation
+
+Create comprehensive API documentation for ALL V2 API endpoints following the V1 documentation structure and style.
+
+**File Location**: `/docs/cadt_rpc_api_v2.md`
+
+**Documentation Requirements**:
+
+1. **Structure and Format**:
+   - Follow the exact formatting, style, and structure of `/docs/cadt_rpc_api.md`
+   - Use same markdown structure (headers, code blocks, tables)
+   - Maintain same level of detail as V1 documentation
+   - Can be slightly more thorough where helpful, but not significantly more detailed
+   - Include same table of contents structure with links to all sections
+
+2. **Content Sections**:
+   - **Introduction**: Update to reference V2 API (`/v2` instead of `/v1`)
+   - **Workflow Description**: Update staging workflow description for V2 (same concept, V2-specific details)
+   - **All Endpoint Sections**: Document all V2 endpoints organized by resource type
+   - Use same example data from V1 where applicable
+   - Create new example data for V2-specific endpoints and data models
+
+3. **All V2 Endpoints to Document** (organized by section - document ALL actual endpoints):
+
+   **Organizations** (15 endpoints):
+   - `GET /v2/organizations` - List all organizations
+   - `GET /v2/organizations/status` - Get home org sync status
+   - `GET /v2/organizations/metadata` - Get metadata (with orgUid query param)
+   - `POST /v2/organizations` - Create V2 home org (new users) - supports both JSON body and file upload
+   - `POST /v2/organizations/upgrade` - Upgrade from V1 to V2 (existing users)
+   - `POST /v2/organizations/metadata` - Add metadata to home organization
+   - `POST /v2/organizations/sync` - Sync organization metadata
+   - `POST /v2/organizations/mirror` - Add mirror for a store
+   - `POST /v2/organizations/remove-mirror` - Remove mirror for a store
+   - `PUT /v2/organizations/edit` - Edit home organization (name and/or icon) - supports file upload
+   - `PUT /v2/organizations` - Import organization from datalayer
+   - `PUT /v2/organizations/subscribe` - Subscribe to organization
+   - `PUT /v2/organizations/unsubscribe` - Unsubscribe from organization
+   - `PUT /v2/organizations/resync` - Resync organization
+   - `DELETE /v2/organizations/:orgUid` - Delete organization
+
+   **Core Data Endpoints** (8 resource types, 5 CRUD operations each = 40 endpoints):
+   - `methodology`:
+     - `POST /v2/methodology` - Create methodology
+     - `GET /v2/methodology` - List all methodologies
+     - `GET /v2/methodology/:id` - Get single methodology
+     - `PUT /v2/methodology/:id` - Update methodology
+     - `DELETE /v2/methodology/:id` - Delete methodology
+   - `program`:
+     - `POST /v2/program` - Create program
+     - `GET /v2/program` - List all programs
+     - `GET /v2/program/:id` - Get single program
+     - `PUT /v2/program/:id` - Update program
+     - `DELETE /v2/program/:id` - Delete program
+   - `project`:
+     - `POST /v2/project` - Create project
+     - `GET /v2/project` - List all projects
+     - `GET /v2/project/:id` - Get single project
+     - `PUT /v2/project/:id` - Update project
+     - `DELETE /v2/project/:id` - Delete project
+   - `validation`:
+     - `POST /v2/validation` - Create validation
+     - `GET /v2/validation` - List all validations
+     - `GET /v2/validation/:id` - Get single validation
+     - `PUT /v2/validation/:id` - Update validation
+     - `DELETE /v2/validation/:id` - Delete validation
+   - `verification`:
+     - `POST /v2/verification` - Create verification
+     - `GET /v2/verification` - List all verifications
+     - `GET /v2/verification/:id` - Get single verification
+     - `PUT /v2/verification/:id` - Update verification
+     - `DELETE /v2/verification/:id` - Delete verification
+   - `issuance`:
+     - `POST /v2/issuance` - Create issuance
+     - `GET /v2/issuance` - List all issuances
+     - `GET /v2/issuance/:id` - Get single issuance
+     - `PUT /v2/issuance/:id` - Update issuance
+     - `DELETE /v2/issuance/:id` - Delete issuance
+   - `unit`:
+     - `POST /v2/unit` - Create unit
+     - `GET /v2/unit` - List all units
+     - `GET /v2/unit/:id` - Get single unit
+     - `PUT /v2/unit/:id` - Update unit
+     - `DELETE /v2/unit/:id` - Delete unit
+   - `location`:
+     - `POST /v2/location` - Create location
+     - `GET /v2/location` - List all locations
+     - `GET /v2/location/:id` - Get single location
+     - `PUT /v2/location/:id` - Update location
+     - `DELETE /v2/location/:id` - Delete location
+
+   **Tier 1 Dependencies** (3 resource types, 5 CRUD operations each = 15 endpoints):
+   - `estimation`:
+     - `POST /v2/estimation` - Create estimation
+     - `GET /v2/estimation` - List all estimations
+     - `GET /v2/estimation/:id` - Get single estimation
+     - `PUT /v2/estimation/:id` - Update estimation
+     - `DELETE /v2/estimation/:id` - Delete estimation
+   - `rating`:
+     - `POST /v2/rating` - Create rating
+     - `GET /v2/rating` - List all ratings
+     - `GET /v2/rating/:id` - Get single rating
+     - `PUT /v2/rating/:id` - Update rating
+     - `DELETE /v2/rating/:id` - Delete rating
+   - `co-benefit`:
+     - `POST /v2/co-benefit` - Create co-benefit
+     - `GET /v2/co-benefit` - List all co-benefits
+     - `GET /v2/co-benefit/:id` - Get single co-benefit
+     - `PUT /v2/co-benefit/:id` - Update co-benefit
+     - `DELETE /v2/co-benefit/:id` - Delete co-benefit
+
+   **Tier 4 Join Tables** (5 resource types with varying route patterns):
+   - `project-methodology`:
+     - `POST /v2/project-methodology` - Create project-methodology relationship
+     - `GET /v2/project-methodology` - List all project-methodology relationships
+     - `GET /v2/project-methodology/project/:projectId/methodology/:methodologyId` - Get single relationship
+     - `PUT /v2/project-methodology/project/:projectId/methodology/:methodologyId` - Update relationship
+     - `DELETE /v2/project-methodology/project/:projectId/methodology/:methodologyId` - Delete relationship
+   - `stakeholder`:
+     - `POST /v2/stakeholder` - Create stakeholder
+     - `GET /v2/stakeholder` - List all stakeholders
+     - `GET /v2/stakeholder/:id` - Get single stakeholder
+     - `PUT /v2/stakeholder/:id` - Update stakeholder
+     - `DELETE /v2/stakeholder/:id` - Delete stakeholder
+   - `stakeholder-projects`:
+     - `POST /v2/stakeholder-projects` - Create stakeholder-project relationship
+     - `GET /v2/stakeholder-projects` - List all stakeholder-project relationships
+     - `GET /v2/stakeholder-projects/:id` - Get single relationship
+     - `PUT /v2/stakeholder-projects/:id` - Update relationship
+     - `DELETE /v2/stakeholder-projects/:id` - Delete relationship
+   - `label`:
+     - `POST /v2/label` - Create label
+     - `GET /v2/label` - List all labels
+     - `GET /v2/label/:id` - Get single label
+     - `PUT /v2/label/:id` - Update label
+     - `DELETE /v2/label/:id` - Delete label
+   - `unit-label`:
+     - `POST /v2/unit-label` - Create unit-label relationship
+     - `GET /v2/unit-label` - List all unit-label relationships
+     - `GET /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId` - Get single relationship (composite key)
+     - `PUT /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId` - Update relationship
+     - `DELETE /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId` - Delete relationship
+
+   **Tier 5 AEF Tables** (5 resource types, 5 CRUD operations each = 25 endpoints):
+   - `aef-t1-submission`:
+     - `POST /v2/aef-t1-submission` - Create AEF-T1-Submission
+     - `GET /v2/aef-t1-submission` - List all AEF-T1-Submissions
+     - `GET /v2/aef-t1-submission/:cadTrustAefT1SubmissionId` - Get single submission
+     - `PUT /v2/aef-t1-submission/:cadTrustAefT1SubmissionId` - Update submission
+     - `DELETE /v2/aef-t1-submission/:cadTrustAefT1SubmissionId` - Delete submission
+   - `aef-t5-authorized-entities`:
+     - `POST /v2/aef-t5-authorized-entities` - Create AEF-T5-Authorized-Entities
+     - `GET /v2/aef-t5-authorized-entities` - List all AEF-T5-Authorized-Entities
+     - `GET /v2/aef-t5-authorized-entities/:cadTrustAefT5AuthorizedEntitiesId` - Get single entity
+     - `PUT /v2/aef-t5-authorized-entities/:cadTrustAefT5AuthorizedEntitiesId` - Update entity
+     - `DELETE /v2/aef-t5-authorized-entities/:cadTrustAefT5AuthorizedEntitiesId` - Delete entity
+   - `aef-t2-authorizations`:
+     - `POST /v2/aef-t2-authorizations` - Create AEF-T2-Authorizations
+     - `GET /v2/aef-t2-authorizations` - List all AEF-T2-Authorizations
+     - `GET /v2/aef-t2-authorizations/:cadTrustAefT2AuthorizationsId` - Get single authorization
+     - `PUT /v2/aef-t2-authorizations/:cadTrustAefT2AuthorizationsId` - Update authorization
+     - `DELETE /v2/aef-t2-authorizations/:cadTrustAefT2AuthorizationsId` - Delete authorization
+   - `aef-t3-actions`:
+     - `POST /v2/aef-t3-actions` - Create AEF-T3-Actions
+     - `GET /v2/aef-t3-actions` - List all AEF-T3-Actions
+     - `GET /v2/aef-t3-actions/:cadTrustAefT3ActionsId` - Get single action
+     - `PUT /v2/aef-t3-actions/:cadTrustAefT3ActionsId` - Update action
+     - `DELETE /v2/aef-t3-actions/:cadTrustAefT3ActionsId` - Delete action
+   - `aef-t4-holdings`:
+     - `POST /v2/aef-t4-holdings` - Create AEF-T4-Holdings
+     - `GET /v2/aef-t4-holdings` - List all AEF-T4-Holdings
+     - `GET /v2/aef-t4-holdings/:cadTrustAefT4HoldingsId` - Get single holding
+     - `PUT /v2/aef-t4-holdings/:cadTrustAefT4HoldingsId` - Update holding
+     - `DELETE /v2/aef-t4-holdings/:cadTrustAefT4HoldingsId` - Delete holding
+
+   **System Endpoints**:
+   - `governance` (10 endpoints):
+     - `GET /v2/governance` - Get all governance data
+     - `GET /v2/governance/exists` - Check if governance body exists
+     - `GET /v2/governance/sync` - Sync governance data
+     - `GET /v2/governance/meta/orgList` - Get organization list
+     - `GET /v2/governance/meta/pickList` - Get picklist data
+     - `GET /v2/governance/meta/glossary` - Get glossary data
+     - `POST /v2/governance` - Create governance body
+     - `POST /v2/governance/meta/orgList` - Set organization list
+     - `POST /v2/governance/meta/pickList` - Set picklist data
+     - `POST /v2/governance/meta/glossary` - Set glossary data
+   - `staging` (7 endpoints):
+     - `GET /v2/staging` - List staged records (with query params: page, limit, type, table)
+     - `GET /v2/staging/pending` - Check for pending commits
+     - `POST /v2/staging/commit` - Commit staged records
+     - `POST /v2/staging/retry` - Retry failed commit
+     - `PUT /v2/staging` - Edit staged record
+     - `DELETE /v2/staging` - Delete specific staged record
+     - `DELETE /v2/staging/clean` - Clean all staging records
+
+   **Health Check**:
+   - `GET /v2/health` - Health check endpoint
+
+4. **Documentation Format for Each Endpoint**:
+   - **Functionality**: Brief description
+   - **Options/Parameters**: Table format (same as V1) - document query params, body params, etc.
+   - **Examples**: Request and Response with curl commands
+   - **Notes**: Any important warnings, timing information, or V2-specific behaviors
+
+5. **Example Data Guidelines**:
+   - Reuse V1 example data where possible (orgUids, projectIds, unitIds, etc.)
+   - For V2-specific endpoints (upgrade, new data models), create new example data
+   - Ensure example data is consistent throughout the documentation
+   - Use realistic but clearly example data (not production values)
+   - Maintain consistency in UUIDs, names, and other identifiers across examples
+
+6. **Key Differences from V1 to Highlight**:
+   - V2 uses `/v2` prefix instead of `/v1`
+   - V2 field names use camelCase in API (matching database snake_case)
+   - V2 organizations: `POST /organizations` supports both JSON body and file upload
+   - V2 organizations: Has `/upgrade` endpoint for V1→V2 migration
+   - V2 organizations: Edit endpoint is `PUT /organizations/edit` (not `PUT /organizations`)
+   - V2 staging: Uses V2-specific staging table and commit process
+   - V2 data models: All use UUID v4 primary keys (not auto-increment integers)
+   - V2 data models: Foreign key validation checks both main table and staging table
+
+7. **Section Organization** (organize by actual V2 endpoint structure, not V1 structure):
+   - Commands table of contents (with links to all sections)
+   - Organizations section (detailed - all 15 endpoints)
+   - Staging section (V2-specific staging operations - all 7 endpoints)
+   - Governance section (all 10 endpoints)
+   - Core data model sections (Methodology, Program, Project, Validation, Verification, Issuance, Unit, Location - 5 CRUD operations each)
+   - Tier 1 Dependencies sections (Estimation, Rating, Co-Benefit - 5 CRUD operations each)
+   - Tier 4 Join Tables sections (Project-Methodology, Stakeholder, Stakeholder-Projects, Label, Unit-Label - note composite key routes where applicable)
+   - Tier 5 AEF Tables sections (AEF-T1-Submission, AEF-T5-Authorized-Entities, AEF-T2-Authorizations, AEF-T3-Actions, AEF-T4-Holdings - 5 CRUD operations each)
+   - Health Check section
+   - Additional resources sections for each endpoint group (match V1 format)
+
+8. **V2-Specific Documentation Notes**:
+   - Document staging workflow for V2 (same concept as V1 but V2-specific)
+   - Document V1/V2 isolation (V2 operations don't affect V1 data)
+   - Document upgrade path from V1 to V2
+   - Document any V2-specific validation rules or behaviors
+   - Document camelCase field naming convention
+
+**Reference**: V1 documentation at `/docs/cadt_rpc_api.md` (entire file)
+
+**Checkpoint 24.1**: Review documentation for completeness and accuracy
+
+```bash
+# Review the generated documentation
+cat docs/cadt_rpc_api_v2.md
+```
+
+**STOP HERE - User reviews and approves V2 API documentation**
+
+---
+
 ### 15.14a Test Data Usage in Staging Tests
 
 **Test Scenarios Using Generated Data**:
@@ -4285,7 +4290,7 @@ static async pushToDataLayer(tableToPush, comment, author, ids = []) {
           push: 1
         }
       },
-      data: {
+      data: {label:archived-readytodelete
         recordCount: stagedRecords.length,
         tableCount: new Set(stagedRecords.map(r => r.table)).size,
         changelistSize: mergedChangeList.length
