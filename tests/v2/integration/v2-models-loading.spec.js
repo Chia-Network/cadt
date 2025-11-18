@@ -39,17 +39,17 @@ describe('V2 System Models - Loading Test', function () {
 
       // Test model configurations
       expect(StagingV2.options.tableName).to.equal('staging');
-      expect(StagingV2.options.modelName).to.equal('StagingV2');
+      expect(StagingV2.name).to.equal('StagingV2');
       expect(StagingV2.options.timestamps).to.be.true;
       expect(StagingV2.options.createdAt).to.equal('created_at');
       expect(StagingV2.options.updatedAt).to.equal('updated_at');
       expect(StagingV2.options.underscored).to.be.true;
 
       expect(OrganizationsV2.options.tableName).to.equal('organizations');
-      expect(OrganizationsV2.options.modelName).to.equal('OrganizationsV2');
+      expect(OrganizationsV2.name).to.equal('OrganizationsV2');
 
       expect(MetaV2.options.tableName).to.equal('meta');
-      expect(MetaV2.options.modelName).to.equal('MetaV2');
+      expect(MetaV2.name).to.equal('MetaV2');
     });
 
     it('should have snake_case attributes in model types', async function () {

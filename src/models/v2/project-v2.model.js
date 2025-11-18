@@ -14,6 +14,17 @@ import { LocationV2 } from './location-v2.model.js';
 import { EstimationV2 } from './estimation-v2.model.js';
 import { RatingV2 } from './rating-v2.model.js';
 import { CoBenefitV2 } from './co-benefit-v2.model.js';
+import OrganizationsV2 from './organizations-v2.model.js';
+import { v4 as uuidv4 } from 'uuid';
+import { Readable } from 'stream';
+import csv from 'csvtojson';
+import xlsx from 'node-xlsx';
+import {
+  transformMetaUid,
+  tableDataFromXlsx,
+  collapseTablesData,
+} from '../../utils/xls.js';
+import { logger } from '../../config/logger.js';
 
 class ProjectV2 extends Model {
   static associate(models) {
@@ -214,6 +225,345 @@ class ProjectV2 extends Model {
       comment: commentChangeList,
       author: authorChangeList,
     };
+  }
+
+  /**
+   * Transfer a project between organizations
+   * Creates a staging record with is_transfer flag set to true
+   * @param {string} projectId - The cadTrustProjectId of the project to transfer
+   * @param {string} targetOrgUid - The target organization UID (optional, defaults to home org)
+   * @returns {Promise<void>}
+   * @throws {Error} If project doesn't exist or transfer fails
+   */
+  static async transfer(projectId, targetOrgUid = null) {
+    // Find the project with all associations
+    // Use the actual association names from the model
+    const project = await ProjectV2.findByPk(projectId, {
+      include: [
+        { model: LocationV2, as: 'locations' },
+        { model: EstimationV2, as: 'estimations' },
+        { model: RatingV2, as: 'ratings' },
+        { model: CoBenefitV2, as: 'coBenefits' },
+      ],
+    });
+
+    if (!project) {
+      throw new Error(
+        `Project with cadTrustProjectId ${projectId} does not exist`,
+      );
+    }
+
+    // Get home org (target org for transfer)
+    const homeOrg = await OrganizationsV2.getHomeOrg();
+    if (!homeOrg) {
+      throw new Error('No home organization found');
+    }
+
+    // Convert project to plain object and prepare for staging
+    const projectData = project.toJSON();
+
+    // Create staging record with is_transfer flag
+    await StagingV2.upsert({
+      uuid: projectId,
+      action: 'UPDATE',
+      table: 'project',
+      data: JSON.stringify([projectData]),
+      is_transfer: true,
+      committed: true, // Transfer records are marked as committed immediately
+    });
+
+    logger.info(`Project ${projectId} staged for transfer`);
+  }
+
+  /**
+   * Update projects from XLSX file
+   * Parses XLSX file and stages updates
+   * @param {Buffer} fileBuffer - XLSX file buffer
+   * @returns {Promise<void>}
+   * @throws {Error} If file parsing or staging fails
+   */
+  static async updateFromXLS(fileBuffer) {
+    try {
+      // Parse XLSX file
+      const xlsxParsed = transformMetaUid(xlsx.parse(fileBuffer));
+
+      // Extract table data from XLSX
+      const stagedDataItems = tableDataFromXlsx(xlsxParsed, ProjectV2);
+
+      // Collapse table data
+      const collapsedData = collapseTablesData(stagedDataItems, ProjectV2);
+
+      // Update table with data (creates staging records)
+      // Note: updateTableWithData uses V1 models, so we need a V2 version
+      // For now, we'll create a V2-compatible version
+      await ProjectV2.updateTableWithDataV2(collapsedData);
+
+      logger.info('Projects updated from XLSX file');
+    } catch (error) {
+      logger.error('Error updating projects from XLSX:', error);
+      throw new Error(`Failed to update projects from XLSX: ${error.message}`);
+    }
+  }
+
+  /**
+   * V2-compatible version of updateTableWithData
+   * Creates staging records for XLSX imports
+   * @param {Object} tableData - Collapsed table data from XLSX
+   * @returns {Promise<void>}
+   */
+  static async updateTableWithDataV2(tableData) {
+    const modelAssociations = ProjectV2.getAssociatedModels();
+
+    const removeModelKeyInChildren = [
+      'locations',
+      'coBenefits',
+      'estimations',
+      'ratings',
+    ];
+
+    // Use V2 transaction
+    await sequelizeV2.transaction(async () => {
+      const homeOrg = await OrganizationsV2.getHomeOrg();
+      if (!homeOrg) {
+        throw new Error('No home organization found');
+      }
+
+             await Promise.all(
+                 Object.values(tableData).map(async (data) => {
+                   // Skip if data structure is invalid
+                   if (
+                     !data ||
+                     data.data == null ||
+                     data.model == null ||
+                     !Array.isArray(data.data)
+                   ) {
+                     return;
+                   }
+
+          await Promise.all(
+            data.data
+              .filter((row) => !_.isEmpty(row))
+              .map(async (row) => {
+                // Convert camelCase to snake_case for V2 primary key
+                const primaryKeyField = 'cadTrustProjectId';
+                const existingRecord = await ProjectV2.findByPk(
+                  row[primaryKeyField],
+                );
+
+                const exists = Boolean(existingRecord);
+
+                // Handle child records
+                await ProjectV2.updateModelChildIdsV2(
+                  modelAssociations,
+                  row,
+                  removeModelKeyInChildren,
+                  ProjectV2,
+                  false,
+                );
+
+                // Validate (if validation exists)
+                // Note: V2 models may not have validateImport yet
+                const validation = data.model.validateImport?.validate(row);
+
+                await ProjectV2.updateModelChildIdsV2(
+                  modelAssociations,
+                  row,
+                  removeModelKeyInChildren,
+                  ProjectV2,
+                  true,
+                );
+
+                // Merge new record with existing record
+                let stagedRecord = Array.isArray(row) ? row : [row];
+
+                stagedRecord = stagedRecord.map((record) => {
+                  return Object.keys(record).reduce((syncedRecord, key) => {
+                    syncedRecord[key] = record[key];
+                    return syncedRecord;
+                  }, existingRecord?.dataValues ?? {});
+                });
+
+                if (!validation || !validation.error) {
+                  await StagingV2.upsert({
+                    uuid: row[primaryKeyField] || uuidv4(),
+                    action: exists ? 'UPDATE' : 'INSERT',
+                    table: 'project',
+                    data: JSON.stringify(stagedRecord),
+                  });
+                } else {
+                  validation.error.message +=
+                    ' on project for ' + JSON.stringify(row);
+                  logger.error(validation.error.message);
+                  throw validation.error;
+                }
+              }),
+          );
+        }),
+      );
+    });
+  }
+
+  /**
+   * Helper to update child record IDs (V2 version)
+   * @private
+   */
+  static async updateModelChildIdsV2(
+    modelAssociations,
+    row,
+    removeModelKeyInChildren,
+    model,
+    setKey,
+  ) {
+    // Map model names to association keys (camelCase)
+    const modelToKeyMap = {
+      LocationV2: 'locations',
+      EstimationV2: 'estimations',
+      RatingV2: 'ratings',
+      CoBenefitV2: 'coBenefits',
+    };
+
+    // Map model names to primary key fields
+    const modelToPrimaryKeyMap = {
+      LocationV2: 'cadTrustLocationId',
+      EstimationV2: 'cadTrustEstimationId',
+      RatingV2: 'cadTrustRatingId',
+      CoBenefitV2: 'cadTrustCoBenefitId',
+    };
+
+    modelAssociations.forEach((association) => {
+      const modelName = association.model.name;
+      const childKey = modelToKeyMap[modelName];
+      const primaryKeyField = modelToPrimaryKeyMap[modelName];
+
+      if (childKey && row[childKey] && Array.isArray(row[childKey])) {
+        row[childKey].forEach((child) => {
+          if (setKey) {
+            // Set the project ID on child records
+            if (!child.cadTrustProjectId && row.cadTrustProjectId) {
+              child.cadTrustProjectId = row.cadTrustProjectId;
+            }
+          } else {
+            // Remove or update child record IDs
+            if (removeModelKeyInChildren.includes(childKey)) {
+              // Generate ID if missing
+              if (!child[primaryKeyField]) {
+                child[primaryKeyField] = uuidv4();
+              }
+            }
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * Batch upload projects from CSV file
+   * Parses CSV and creates staging records
+   * @param {Object} csvFile - CSV file object with data buffer
+   * @returns {Promise<void>}
+   * @throws {Error} If CSV parsing or staging fails
+   */
+  static async batchUpload(csvFile) {
+    const buffer = csvFile.data;
+    const stream = Readable.from(buffer.toString('utf8'));
+
+    const recordsToCreate = [];
+
+    return new Promise((resolve, reject) => {
+      csv()
+        .fromStream(stream)
+        .subscribe(async (newRecord) => {
+          let action = 'UPDATE';
+
+          // Convert camelCase to snake_case for V2
+          const projectId = newRecord.cadTrustProjectId || newRecord.cad_trust_project_id;
+
+          if (projectId) {
+            // Check if project exists
+            const possibleExistingRecord = await ProjectV2.findByPk(projectId);
+
+            if (!possibleExistingRecord) {
+              reject(
+                new Error(
+                  `Project with cadTrustProjectId ${projectId} does not exist`,
+                ),
+              );
+              return;
+            }
+
+            // Verify it belongs to home org (for updates)
+            const homeOrg = await OrganizationsV2.getHomeOrg();
+            if (!homeOrg) {
+              reject(new Error('No home organization found'));
+              return;
+            }
+          } else {
+            // New project - generate UUID
+            newRecord.cadTrustProjectId = uuidv4();
+            const homeOrg = await OrganizationsV2.getHomeOrg();
+            if (!homeOrg) {
+              reject(new Error('No home organization found'));
+              return;
+            }
+            action = 'INSERT';
+          }
+
+          // Update project properties (handle child records)
+          ProjectV2.updateProjectPropertiesV2(newRecord);
+
+          const stagedData = {
+            uuid: newRecord.cadTrustProjectId,
+            action: action,
+            table: 'project',
+            data: JSON.stringify([newRecord]),
+          };
+
+          recordsToCreate.push(stagedData);
+        })
+        .on('error', (error) => {
+          reject(error);
+        })
+        .on('done', async () => {
+          if (recordsToCreate.length) {
+            await StagingV2.bulkCreate(recordsToCreate, {
+              logging: (msg) => logger.info(msg),
+            });
+
+            resolve();
+          } else {
+            reject(new Error('There were no valid records to parse'));
+          }
+        });
+    });
+  }
+
+  /**
+   * Helper to update project properties from CSV (V2 version)
+   * @private
+   */
+  static updateProjectPropertiesV2(project) {
+    if (typeof project !== 'object') return;
+
+    // Handle child record arrays
+    const childRecordKeys = ['locations', 'estimations', 'ratings', 'coBenefits'];
+
+    childRecordKeys.forEach((key) => {
+      if (project[key] && typeof project[key] === 'string') {
+        try {
+          project[key] = JSON.parse(project[key]);
+        } catch {
+          // If not JSON, leave as is
+        }
+      }
+
+      if (Array.isArray(project[key])) {
+        project[key].forEach((item) => {
+          if (!item.cadTrustProjectId) {
+            item.cadTrustProjectId = project.cadTrustProjectId;
+          }
+        });
+      }
+    });
   }
 }
 

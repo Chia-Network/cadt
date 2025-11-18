@@ -1916,6 +1916,9 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       const orgIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
       testOrgUid = await OrganizationsV2.createHomeOrganization(orgName, orgIcon, 'v2');
       await waitForOrgCreation();
+      // With scheduler disabled in test mode, we just need a short delay
+      // to ensure any pending database operations from org creation complete
+      await new Promise((resolve) => setTimeout(resolve, 500));
     });
 
     describe('deleteAllOrganizationData', function () {
@@ -1945,6 +1948,9 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
           where: { org_uid: testOrgUid },
         });
         expect(auditBefore).to.exist;
+
+        // Add a small delay before deletion to ensure any pending database operations complete
+        await new Promise((resolve) => setTimeout(resolve, 200));
 
         // Delete organization data
         await OrganizationsV2.deleteAllOrganizationData(testOrgUid);

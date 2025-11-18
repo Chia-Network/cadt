@@ -14,7 +14,7 @@ const addUuidIfNeeded = (modelName, data) => {
     UnitV2: 'cadTrustUnitId',
     ProjectV2: 'cadTrustProjectId',
   };
-  
+
   const uuidField = uuidFields[modelName];
   if (uuidField && !data[uuidField]) {
     data[uuidField] = uuidv4();
@@ -671,6 +671,481 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
+    });
+  });
+
+  describe('Phase 21.5: Advanced Features Tests', function () {
+    let testProgram;
+    let testProject;
+    let testValidation;
+    let testVerification;
+    let testMethodology;
+    let testIssuanceForAdvanced;
+
+    beforeEach(async function () {
+      await resetV2StagingTable();
+
+      // Create test data for advanced features
+      testProgram = await ProgramV2.create({
+        programName: 'Test Program for Advanced',
+        programRegistry: 'Test Registry',
+        programRegistryActivityId: 'TEST-ADV-001',
+      });
+
+      testProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Test Registry',
+        projectId: 'TEST-ADV-PROJECT',
+        projectName: 'Test Project for Advanced',
+        projectSector: 'Agriculture',
+        cadTrustProgramId: testProgram.cadTrustProgramId,
+      }));
+
+      testValidation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
+        validationId: 'TEST-ADV-VALIDATION',
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'AENOR International S.A.U.',
+        cadTrustProjectId: testProject.cadTrustProjectId,
+      }));
+
+      testVerification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
+        verificationId: 'TEST-ADV-VERIFICATION',
+        verificationBody: 'AENOR International S.A.U.',
+        cadTrustProjectId: testProject.cadTrustProjectId,
+        cadTrustValidationId: testValidation.cadTrustValidationId,
+      }));
+
+      testMethodology = await MethodologyV2.create({
+        methodologyCode: 'TEST-ADV-METHODOLOGY',
+        methodologyName: 'Test Methodology for Advanced',
+        methodologyType: 'Methodology for Afforestation and Reforestation',
+      });
+
+      testIssuanceForAdvanced = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
+        issuanceId: 'TEST-ADV-ISSUANCE',
+        issuanceDate: '2024-01-01',
+        cadTrustVerificationId: testVerification.cadTrustVerificationId,
+        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      }));
+    });
+
+    describe('POST /v2/unit/split', function () {
+      it('should split a unit successfully', async function () {
+        // Create a unit to split
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'SPLIT-UNIT-001',
+          unitStartBlock: '1000',
+          unitEndBlock: '2000',
+          unitCount: 100,
+          unitType: 'Avoidance - nature',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+        }));
+
+        const splitData = {
+          cadTrustUnitId: unit.cadTrustUnitId,
+          records: [
+            {
+              unitCount: 30,
+              unitBlockStart: '1000',
+              unitBlockEnd: '1029',
+              unitCurrentOwner: 'Owner 1',
+              unitStatus: 'Issued',
+            },
+            {
+              unitCount: 40,
+              unitBlockStart: '1030',
+              unitBlockEnd: '1069',
+              unitCurrentOwner: 'Owner 2',
+              unitStatus: 'Held',
+            },
+            {
+              unitCount: 30,
+              unitBlockStart: '1070',
+              unitBlockEnd: '1099',
+              unitCurrentOwner: 'Owner 3',
+              unitStatus: 'Retired',
+            },
+          ],
+        };
+
+        const response = await supertest(app)
+          .post('/v2/unit/split')
+          .send(splitData)
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.message).to.equal('Unit split successful');
+
+        // Verify staging record was created
+        const stagingRecord = await StagingV2.findOne({
+          where: {
+            uuid: unit.cadTrustUnitId,
+            table: 'unit',
+            action: 'UPDATE',
+          },
+        });
+        expect(stagingRecord).to.exist;
+
+        // Verify split records in staging data
+        const stagedData = JSON.parse(stagingRecord.data);
+        expect(stagedData).to.be.an('array');
+        expect(stagedData.length).to.equal(3);
+        expect(stagedData[0].cadTrustUnitId).to.equal(unit.cadTrustUnitId); // First keeps original ID
+        expect(stagedData[1].cadTrustUnitId).to.not.equal(unit.cadTrustUnitId); // Others get new IDs
+      });
+
+      it('should return error if cadTrustUnitId is missing', async function () {
+        const response = await supertest(app)
+          .post('/v2/unit/split')
+          .send({
+            records: [
+              {
+                unitCount: 50,
+                unitBlockStart: '1000',
+                unitBlockEnd: '1049',
+              },
+            ],
+          })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('cadTrustUnitId is required');
+      });
+
+      it('should return error if records array is missing', async function () {
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'SPLIT-UNIT-002',
+          unitStartBlock: '1000',
+          unitEndBlock: '2000',
+          unitCount: 100,
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+        }));
+
+        const response = await supertest(app)
+          .post('/v2/unit/split')
+          .send({
+            cadTrustUnitId: unit.cadTrustUnitId,
+          })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('records array is required');
+      });
+
+      it('should return error if split count does not match original', async function () {
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'SPLIT-UNIT-003',
+          unitStartBlock: '1000',
+          unitEndBlock: '2000',
+          unitCount: 100,
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+        }));
+
+        const splitData = {
+          cadTrustUnitId: unit.cadTrustUnitId,
+          records: [
+            {
+              unitCount: 50,
+              unitBlockStart: '1000',
+              unitBlockEnd: '1049',
+            },
+            {
+              unitCount: 40,
+              unitBlockStart: '1050',
+              unitBlockEnd: '1089',
+            },
+            // Total is 90, but original is 100 - should fail
+          ],
+        };
+
+        const response = await supertest(app)
+          .post('/v2/unit/split')
+          .send(splitData)
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('does not match original unit count');
+      });
+
+      it('should return error if unit does not exist', async function () {
+        const response = await supertest(app)
+          .post('/v2/unit/split')
+          .send({
+            cadTrustUnitId: 'non-existent-id',
+            records: [
+              {
+                unitCount: 50,
+                unitBlockStart: '1000',
+                unitBlockEnd: '1049',
+              },
+            ],
+          })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('does not exist');
+      });
+    });
+
+    describe('PUT /v2/unit/xlsx', function () {
+      it('should update units from XLSX file', async function () {
+        // Create a simple XLSX file buffer
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const testData = [
+          ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitType', 'unitVintageYear', 'unitStatus', 'cadTrustIssuanceId'],
+          ['test-uuid-1', 'XLSX-UNIT-001', '1000', '2000', '50', 'Avoidance - nature', '2024', 'Issued', testIssuanceForAdvanced.cadTrustIssuanceId],
+        ];
+        const xlsxBuffer = xlsx.build([{ name: 'unit', data: testData }]);
+
+        const response = await supertest(app)
+          .put('/v2/unit/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.message).to.include('Updates from xlsx added to staging');
+      });
+
+      it('should return error if no file is provided', async function () {
+        const response = await supertest(app)
+          .put('/v2/unit/xlsx')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.message).to.include('File Not Received');
+      });
+    });
+
+    describe('POST /v2/unit/batch', function () {
+      it('should batch upload new units from CSV file (INSERT)', async function () {
+        // Create a CSV file buffer without cadTrustUnitId to trigger INSERT
+        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
+CSV-UNIT-001,1000,2000,50,Avoidance - nature,2024,Issued,${testIssuanceForAdvanced.cadTrustIssuanceId}
+CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.message).to.include('CSV processing complete');
+
+        // Verify records were staged
+        const stagingRecords = await StagingV2.findAll({
+          where: {
+            table: 'unit',
+            action: 'INSERT',
+          },
+        });
+
+        expect(stagingRecords.length).to.be.at.least(2);
+      });
+
+      it('should batch update existing units from CSV file (UPDATE)', async function () {
+        // Create units first
+        const unit1 = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'CSV-UPDATE-001',
+          unitStartBlock: '1000',
+          unitEndBlock: '2000',
+          unitCount: 50,
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+        }));
+
+        const unit2 = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'CSV-UPDATE-002',
+          unitStartBlock: '2000',
+          unitEndBlock: '3000',
+          unitCount: 75,
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+        }));
+
+        // Create a CSV file buffer with cadTrustUnitId to trigger UPDATE
+        const csvContent = `cadTrustUnitId,unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
+${unit1.cadTrustUnitId},CSV-UPDATE-001,1000,2000,60,Avoidance - nature,2024,Issued,${testIssuanceForAdvanced.cadTrustIssuanceId}
+${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,Held,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.message).to.include('CSV processing complete');
+
+        // Verify records were staged as UPDATE
+        const stagingRecords = await StagingV2.findAll({
+          where: {
+            table: 'unit',
+            action: 'UPDATE',
+          },
+        });
+
+        expect(stagingRecords.length).to.be.at.least(2);
+      });
+
+      it('should return error if no CSV file is provided', async function () {
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.message).to.include('Cannot find the required csv file');
+      });
+    });
+
+    describe('GET /v2/unit - Advanced Query Features', function () {
+      beforeEach(async function () {
+        // Create multiple test units for query testing
+        await UnitV2.bulkCreate([
+          addUuidIfNeeded('UnitV2', {
+            unitSerialId: 'QUERY-UNIT-001',
+            unitStartBlock: '1000',
+            unitEndBlock: '2000',
+            unitCount: 50,
+            unitType: 'Avoidance - nature',
+            unitVintageYear: 2024,
+            unitStatus: 'Issued',
+            cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          }),
+          addUuidIfNeeded('UnitV2', {
+            unitSerialId: 'QUERY-UNIT-002',
+            unitStartBlock: '2000',
+            unitEndBlock: '3000',
+            unitCount: 75,
+            unitType: 'Reduction - technical',
+            unitVintageYear: 2023,
+            unitStatus: 'Held',
+            cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          }),
+          addUuidIfNeeded('UnitV2', {
+            unitSerialId: 'QUERY-UNIT-003',
+            unitStartBlock: '3000',
+            unitEndBlock: '4000',
+            unitCount: 100,
+            unitType: 'Removal - nature',
+            unitVintageYear: 2024,
+            unitStatus: 'Retired',
+            cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          }),
+        ]);
+      });
+
+      it('should filter by single field using generic filter', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ filter: 'unitType:Avoidance - nature:eq', page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body.data).to.be.an('array');
+        response.body.data.forEach(unit => {
+          expect(unit.unitType).to.equal('Avoidance - nature');
+        });
+      });
+
+      it('should filter by multiple values using generic filter', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ filter: 'unitStatus:["Issued","Held"]:in', page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body.data).to.be.an('array');
+        response.body.data.forEach(unit => {
+          expect(['Issued', 'Held']).to.include(unit.unitStatus);
+        });
+      });
+
+      it('should select specific columns', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({
+            columns: ['cadTrustUnitId', 'unitSerialId', 'unitType'].join(','),
+            page: 1,
+            limit: 10,
+          })
+          .expect(200);
+
+        expect(response.body.data).to.be.an('array');
+        if (response.body.data.length > 0) {
+          const unit = response.body.data[0];
+          expect(unit).to.have.property('cadTrustUnitId');
+          expect(unit).to.have.property('unitSerialId');
+          expect(unit).to.have.property('unitType');
+          // Should not have other fields (unless they're associations)
+          expect(unit).to.not.have.property('unitCount');
+        }
+      });
+
+      it('should sort by field in ascending order', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ order: 'unitSerialId:ASC', page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body.data).to.be.an('array');
+        if (response.body.data.length > 1) {
+          const serialIds = response.body.data.map(u => u.unitSerialId);
+          const sortedSerialIds = [...serialIds].sort();
+          expect(serialIds).to.deep.equal(sortedSerialIds);
+        }
+      });
+
+      it('should sort by field in descending order', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ order: 'unitSerialId:DESC', page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body.data).to.be.an('array');
+        if (response.body.data.length > 1) {
+          const serialIds = response.body.data.map(u => u.unitSerialId);
+          const sortedSerialIds = [...serialIds].sort().reverse();
+          expect(serialIds).to.deep.equal(sortedSerialIds);
+        }
+      });
+
+      it('should export to Excel format', async function () {
+        // XLS export doesn't require pagination
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ xls: 'true' })
+          .expect(200);
+
+        // Excel export should return binary data
+        expect(response.headers['content-disposition']).to.include('attachment');
+        expect(response.headers['content-disposition']).to.include('.xlsx');
+        expect(response.headers['content-type']).to.exist;
+      });
+
+      it('should combine multiple query parameters', async function () {
+        const units = await UnitV2.findAll({ limit: 1 });
+        const unitId = units[0].cadTrustUnitId;
+
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({
+            filter: `cadTrustUnitId:${unitId}:eq`,
+            columns: ['cadTrustUnitId', 'unitSerialId'].join(','),
+            order: 'unitSerialId:ASC',
+            page: 1,
+            limit: 10,
+          })
+          .expect(200);
+
+        expect(response.body.data).to.be.an('array');
+        expect(response.body.data.length).to.equal(1);
+        expect(response.body.data[0].cadTrustUnitId).to.equal(unitId);
+        expect(response.body.data[0]).to.have.property('unitSerialId');
+      });
     });
   });
 });

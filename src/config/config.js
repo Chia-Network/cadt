@@ -73,6 +73,9 @@ export default {
     dialect: 'sqlite',
     storage: './test-v2.sqlite3',
     logging: false,
+    dialectOptions: {
+      busyTimeout: 30000, // 30 seconds - allows SQLite to wait for locks instead of immediately failing
+    },
   },
   v2MirrorTest: {
     dialect: 'sqlite',

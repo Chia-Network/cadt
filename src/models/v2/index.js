@@ -6,6 +6,8 @@ import GovernanceV2 from './governance-v2.model.js';
 import AuditV2 from './audit-v2.model.js';
 import AuditV2Mirror from './audit-v2.model.mirror.js';
 import SimulatorV2 from './simulator-v2.model.js';
+import FilestoreV2 from './filestore-v2.model.js';
+import { OfferV2 } from './offer-v2.model.js';
 
 // V2 Data Table Models
 import { MethodologyV2 } from './methodology-v2.model.js';
@@ -82,6 +84,8 @@ export {
   AuditV2,
   AuditV2Mirror,
   SimulatorV2,
+  FilestoreV2,
+  OfferV2,
   MethodologyV2,
   MethodologyV2Mirror,
   ProgramV2,
@@ -135,6 +139,7 @@ export default {
   AuditV2,
   AuditV2Mirror,
   SimulatorV2,
+  FilestoreV2,
   MethodologyV2,
   MethodologyV2Mirror,
   ProgramV2,

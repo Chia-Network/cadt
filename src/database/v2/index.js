@@ -148,7 +148,11 @@ async function setV2WALMode() {
   try {
     await sequelizeV2.authenticate();
     await sequelizeV2.query('PRAGMA journal_mode=WAL;', { type: QueryTypes.RAW });
+    // Set busy_timeout to 30 seconds (30000ms) to handle concurrent access
+    // This tells SQLite to wait up to 30 seconds before returning SQLITE_BUSY
+    await sequelizeV2.query('PRAGMA busy_timeout=30000;', { type: QueryTypes.RAW });
     console.log('V2 WAL mode set successfully.');
+    console.log('V2 busy_timeout set to 30000ms.');
   } catch (error) {
     console.error('Unable to set V2 WAL mode:', error);
   }

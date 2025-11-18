@@ -1521,5 +1521,139 @@ describe('V2 Governance Model Tests', function () {
       );
     });
   });
+
+  describe('Phase 23.3: Governance Subscribe Endpoint', function () {
+    beforeEach(async function () {
+      // Clean up any existing governance records
+      await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
+    });
+
+    it('should subscribe to governance body successfully', async function () {
+      const governanceBodyId = 'test-governance-body-store-id';
+
+      const response = await supertest(app)
+        .post('/v2/governance/subscribe')
+        .send({ governanceBodyId })
+        .expect(200);
+
+      expect(response.body).to.have.property('success', true);
+      expect(response.body.message).to.include('Subscribed to governance body');
+
+      // Verify governance body ID was stored in MetaV2
+      const metaRecord = await MetaV2.findOne({
+        where: { meta_key: 'governanceBodyId' },
+      });
+      expect(metaRecord).to.exist;
+      expect(metaRecord.meta_value).to.equal(governanceBodyId);
+    });
+
+    it('should return error if governanceBodyId is missing', async function () {
+      const response = await supertest(app)
+        .post('/v2/governance/subscribe')
+        .send({})
+        .expect(400);
+
+      expect(response.body).to.have.property('success', false);
+      expect(response.body.message).to.include('governanceBodyId is required');
+    });
+
+    it('should return error if governanceBodyId is empty string', async function () {
+      const response = await supertest(app)
+        .post('/v2/governance/subscribe')
+        .send({ governanceBodyId: '' })
+        .expect(400);
+
+      expect(response.body).to.have.property('success', false);
+      expect(response.body.message).to.include('governanceBodyId is required');
+    });
+
+    it('should update existing governanceBodyId when subscribing again', async function () {
+      const firstGovernanceBodyId = 'first-governance-body-id';
+      const secondGovernanceBodyId = 'second-governance-body-id';
+
+      // First subscription
+      await supertest(app)
+        .post('/v2/governance/subscribe')
+        .send({ governanceBodyId: firstGovernanceBodyId })
+        .expect(200);
+
+      // Verify first ID was stored
+      let metaRecord = await MetaV2.findOne({
+        where: { meta_key: 'governanceBodyId' },
+      });
+      expect(metaRecord.meta_value).to.equal(firstGovernanceBodyId);
+
+      // Second subscription (should update)
+      await supertest(app)
+        .post('/v2/governance/subscribe')
+        .send({ governanceBodyId: secondGovernanceBodyId })
+        .expect(200);
+
+      // Verify second ID replaced first
+      metaRecord = await MetaV2.findOne({
+        where: { meta_key: 'governanceBodyId' },
+      });
+      expect(metaRecord.meta_value).to.equal(secondGovernanceBodyId);
+
+      // Verify only one record exists
+      const allRecords = await MetaV2.findAll({
+        where: { meta_key: 'governanceBodyId' },
+      });
+      expect(allRecords).to.have.length(1);
+    });
+
+    it('should maintain V1/V2 isolation when subscribing', async function () {
+      const { Meta } = await import('../../../src/models/index.js');
+      const v1GovernanceBodyId = 'v1-governance-body-id';
+      const v2GovernanceBodyId = 'v2-governance-body-id';
+
+      // Create V1 governance body ID
+      await Meta.upsert({
+        metaKey: 'governanceBodyId',
+        metaValue: v1GovernanceBodyId,
+      });
+
+      // Subscribe to V2 governance body
+      await supertest(app)
+        .post('/v2/governance/subscribe')
+        .send({ governanceBodyId: v2GovernanceBodyId })
+        .expect(200);
+
+      // Verify V1 governance body ID is unchanged
+      const v1Record = await Meta.findOne({
+        where: { metaKey: 'governanceBodyId' },
+      });
+      expect(v1Record).to.exist;
+      expect(v1Record.metaValue).to.equal(v1GovernanceBodyId);
+
+      // Verify V2 governance body ID is stored separately
+      const v2Record = await MetaV2.findOne({
+        where: { meta_key: 'governanceBodyId' },
+      });
+      expect(v2Record).to.exist;
+      expect(v2Record.meta_value).to.equal(v2GovernanceBodyId);
+      expect(v2Record.meta_value).to.not.equal(v1GovernanceBodyId);
+    });
+
+    it('should handle simulator mode correctly', async function () {
+      const governanceBodyId = 'test-governance-body-store-id';
+
+      // In simulator mode, subscribeToStoreOnDataLayer returns undefined (no-op)
+      // This should not cause an error
+      const response = await supertest(app)
+        .post('/v2/governance/subscribe')
+        .send({ governanceBodyId })
+        .expect(200);
+
+      expect(response.body).to.have.property('success', true);
+
+      // Verify governance body ID was stored
+      const metaRecord = await MetaV2.findOne({
+        where: { meta_key: 'governanceBodyId' },
+      });
+      expect(metaRecord).to.exist;
+      expect(metaRecord.meta_value).to.equal(governanceBodyId);
+    });
+  });
 });
 

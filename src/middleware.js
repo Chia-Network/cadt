@@ -132,6 +132,10 @@ app.use(function (req, res, next) {
 
 app.use(async function (req, res, next) {
   if (process.env.NODE_ENV !== 'test') {
+    // Wait for migrations to complete before accessing organizations table
+    const { waitForMigrations } = await import('./routes/index.js');
+    await waitForMigrations();
+
     // If the home organization is syncing, then we treat all requests as read-only
     const homeOrg = await Organization.getHomeOrg();
 
@@ -155,6 +159,10 @@ app.use(async function (req, res, next) {
 });
 
 app.use(async function (req, res, next) {
+  // Wait for migrations to complete before accessing organizations table
+  const { waitForMigrations } = await import('./routes/index.js');
+  await waitForMigrations();
+
   const orgMap = await Organization.getOrgsMap();
   const notSynced = Object.keys(orgMap).find((key) => !orgMap[key].synced);
 

@@ -227,9 +227,9 @@ class OrganizationsV2 extends Model {
         OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } }),
       ]);
 
-      const onConfirm = () => {
+      const onConfirm = async () => {
         logger.info('V2 Organization confirmed, you are ready to go');
-        OrganizationsV2.update(
+        await OrganizationsV2.update(
           {
             subscribed: true,
           },
@@ -247,7 +247,8 @@ class OrganizationsV2 extends Model {
         );
       } else {
         // In simulator mode, data is immediately available
-        onConfirm();
+        // Await the update to ensure it completes before returning
+        await onConfirm();
       }
 
       return newOrganizationId;
@@ -1230,7 +1231,11 @@ class OrganizationsV2 extends Model {
    * @param {string} orgUid - Organization UID
    * @returns {Promise<void>}
    */
-  static async deleteAllOrganizationData(orgUid) {
+  static async deleteAllOrganizationData(orgUid, retryCount = 0) {
+    const maxRetries = 10;
+    const baseDelay = 200; // 200ms base delay
+    const maxDelay = 5000; // 5 seconds max delay
+
     logger.verbose('acquiring add/delete org mutex to delete organization');
     const releaseAddDeleteMutex =
       await addOrDeleteOrganizationRecordMutex.acquire();
@@ -1263,6 +1268,8 @@ class OrganizationsV2 extends Model {
       });
 
       // Delete from meta table (org-related metadata)
+      // Note: This delete might not match anything if the record doesn't exist
+      // We delete it here to clean up, but the main logic below handles create/update
       await MetaV2.destroy({
         where: { meta_key: 'userDeletedOrgUid', meta_value: orgUid },
         transaction,
@@ -1274,49 +1281,88 @@ class OrganizationsV2 extends Model {
       // Therefore, we only delete from system tables (AuditV2, StagingV2, MetaV2) and the organization itself.
 
       // Add to deleted orgs list (before commit so it's part of transaction)
-      // Check if record exists first, then create or update
+      // Use upsert instead of findOne + create/update to avoid unique constraint lock issues
+      // First, try to find existing record to get current value
       const existingMeta = await MetaV2.findOne({
         where: { meta_key: 'userDeletedOrgUid' },
         transaction,
       });
 
+      let deletedOrgs = [];
       if (existingMeta) {
         // Parse existing value and add orgUid if not already present
-        let deletedOrgs = [];
         try {
           deletedOrgs = JSON.parse(existingMeta.meta_value || '[]');
         } catch {
           deletedOrgs = [];
         }
-        if (!deletedOrgs.includes(orgUid)) {
-          deletedOrgs.push(orgUid);
-          await MetaV2.update(
-            { meta_value: JSON.stringify(deletedOrgs) },
-            { where: { meta_key: 'userDeletedOrgUid' }, transaction },
-          );
-        }
-      } else {
-        // Create new record with orgUid as array
-        await MetaV2.create({
+      }
+
+      if (!deletedOrgs.includes(orgUid)) {
+        deletedOrgs.push(orgUid);
+        // Use upsert to handle both create and update cases atomically
+        // This avoids unique constraint lock issues
+        await MetaV2.upsert({
           meta_key: 'userDeletedOrgUid',
-          meta_value: JSON.stringify([orgUid]),
+          meta_value: JSON.stringify(deletedOrgs),
+        }, {
           transaction,
         });
       }
 
       await transaction.commit();
     } catch (error) {
+      await transaction.rollback();
+
+      // Check if it's a database lock error and we haven't exceeded max retries
+      // Check both error.message and error.original (Sequelize wraps errors)
+      const errorMessage = error.message || '';
+      const originalError = error.original || error.parent || {};
+      const originalMessage = originalError.message || '';
+      const errorCode = error.code || originalError.code || '';
+
+      const isDatabaseLockError =
+        errorMessage.includes('SQLITE_BUSY') ||
+        errorMessage.includes('database is locked') ||
+        originalMessage.includes('SQLITE_BUSY') ||
+        originalMessage.includes('database is locked') ||
+        errorCode === 'SQLITE_BUSY' ||
+        originalError.code === 'SQLITE_BUSY';
+
+      if (isDatabaseLockError && retryCount < maxRetries) {
+        // Calculate exponential backoff delay
+        const delay = Math.min(baseDelay * Math.pow(2, retryCount), maxDelay);
+        logger.info(
+          `Database lock detected for deleteAllOrganizationData (attempt ${retryCount + 1}/${maxRetries}). Retrying in ${delay}ms...`,
+        );
+
+        // Release mutexes before retry
+        releaseAddDeleteMutex();
+        releaseAuditTransactionMutex();
+
+        // Wait before retry
+        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        // Retry the operation
+        return await OrganizationsV2.deleteAllOrganizationData(
+          orgUid,
+          retryCount + 1,
+        );
+      }
+
+      // If not a lock error or max retries exceeded, throw the error
       logger.error(
         `failed to delete all db records for organization ${orgUid}, rolling back changes. Error: ${error.message}`,
       );
-      await transaction.rollback();
+      releaseAddDeleteMutex();
+      releaseAuditTransactionMutex();
       throw new Error(
         `an error occurred while deleting records corresponding to organization ${orgUid}. no changes have been made`,
       );
-    } finally {
-      releaseAddDeleteMutex();
-      releaseAuditTransactionMutex();
     }
+    // Success case - release mutexes
+    releaseAddDeleteMutex();
+    releaseAuditTransactionMutex();
   }
 
   /**

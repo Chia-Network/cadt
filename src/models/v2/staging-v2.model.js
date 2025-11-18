@@ -8,9 +8,15 @@ const Op = Sequelize.Op;
 import * as rxjs from 'rxjs';
 
 import { sequelizeV2 } from '../../database/v2/index.js';
-import { encodeHex } from '../../utils/datalayer-utils.js';
+import { encodeHex, generateOffer } from '../../utils/datalayer-utils.js';
 import datalayer from '../../datalayer';
 import { logger } from '../../config/logger';
+import * as datalayerPersistance from '../../datalayer/persistance.js';
+import {
+  createXlsFromSequelizeResults,
+  transformFullXslsToChangeList,
+} from '../../utils/xls.js';
+import { formatModelAssociationName } from '../../utils/model-utils.js';
 
 import ModelTypes from './staging-v2.modeltypes.cjs';
 
@@ -38,6 +44,7 @@ import {
   AefT2AuthorizationsV2,
   AefT3ActionsV2,
   AefT4HoldingsV2,
+  MetaV2,
 } from './index.js';
 
 class StagingV2 extends Model {
@@ -509,6 +516,339 @@ class StagingV2 extends Model {
       throw error;
     }
   }
+
+  /**
+   * Generate offer file for project transfer
+   * Adapted from V1 Staging.generateOfferFile for V2 models and field names
+   * @returns {Promise<Object>} Offer file response
+   */
+  static generateOfferFile = async () => {
+    try {
+      const stagingRecord = await StagingV2.findOne({
+        where: { is_transfer: true },
+        raw: true,
+      });
+
+      if (!stagingRecord) {
+        throw new Error('No transfer record found in staging');
+      }
+
+      const makerProjectRecord = _.head(JSON.parse(stagingRecord.data));
+
+      const myOrganization = await OrganizationsV2.getHomeOrg();
+      if (!myOrganization) {
+        throw new Error('No home organization found');
+      }
+
+      // In V2, projects don't have orgUid field directly
+      // We need to find the taker organization by finding which org owns the project
+      // For now, we'll get the project from the database to find its current owner
+      // Since V2 projects don't have orgUid, we'll need to find organizations that have
+      // projects in their registry stores. For simplicity, we'll get all non-home orgs
+      // and find the one that matches the project's registry context.
+      // Note: This is a simplified approach - in production, you'd need to track
+      // which organization owns which projects through registry store relationships
+
+      // Get the actual project from database to determine its context
+      const actualProject = await ProjectV2.findByPk(makerProjectRecord.cadTrustProjectId);
+      if (!actualProject) {
+        throw new Error(
+          `Project with cadTrustProjectId ${makerProjectRecord.cadTrustProjectId} not found`,
+        );
+      }
+
+      // For V2, we need a different approach to find taker org
+      // Since projects don't have orgUid, we'll use the first non-home org as taker
+      // In a real scenario, this would be determined by registry store ownership
+      // Note: OrganizationsV2 uses snake_case field names in database
+      const takerOrganization = await OrganizationsV2.findOne({
+        where: {
+          is_home: false,
+          subscribed: true,
+        },
+        raw: true,
+      });
+
+      if (!takerOrganization) {
+        throw new Error('No taker organization found for transfer');
+      }
+
+      const maker = { inclusions: [] };
+      const taker = { inclusions: [] };
+
+      taker.storeId = takerOrganization.registryStoreId;
+      maker.storeId = myOrganization.registryStoreId;
+
+      // Get taker project with all associations
+      // Use explicit association aliases from ProjectV2 model
+      const takerProjectRecord = await ProjectV2.findOne({
+        where: { cadTrustProjectId: makerProjectRecord.cadTrustProjectId },
+        include: [
+          { model: LocationV2, as: 'locations' },
+          { model: EstimationV2, as: 'estimations' },
+          { model: RatingV2, as: 'ratings' },
+          { model: CoBenefitV2, as: 'coBenefits' },
+        ],
+      });
+
+      if (!takerProjectRecord) {
+        throw new Error(
+          `Project with cadTrustProjectId ${makerProjectRecord.cadTrustProjectId} not found`,
+        );
+      }
+
+      // Convert Sequelize instance to plain object
+      const takerProjectPlain = takerProjectRecord.get({ plain: true });
+      takerProjectPlain.projectStatus = 'Transitioned';
+
+      const newMakerCadTrustProjectId = uuidv4();
+      // Update maker project record (note: V2 projects don't have orgUid field)
+      makerProjectRecord.cadTrustProjectId = newMakerCadTrustProjectId;
+
+      // V2 project child records
+      const projectChildRecords = [
+        'locations',
+        'estimations',
+        'ratings',
+        'coBenefits',
+      ];
+
+      // Each child record for the maker needs the new projectId
+      // Note: V2 child records may not have orgUid field
+      projectChildRecords.forEach((childRecordSet) => {
+        if (makerProjectRecord[childRecordSet]) {
+          makerProjectRecord[childRecordSet].forEach((childRecord) => {
+            childRecord.cadTrustProjectId = newMakerCadTrustProjectId;
+            // Only update orgUid if the field exists (for compatibility)
+            if (childRecord.orgUid !== undefined) {
+              childRecord.orgUid = myOrganization.orgUid;
+            }
+          });
+        }
+      });
+
+      // Get verifications for the project, then issuances for those verifications
+      const verifications = await VerificationV2.findAll({
+        where: { cadTrustProjectId: takerProjectPlain.cadTrustProjectId },
+        raw: true,
+      });
+
+      const verificationIds = verifications.map((v) => v.cadTrustVerificationId);
+
+      const issuances = await IssuanceV2.findAll({
+        where: {
+          cadTrustVerificationId: { [Op.in]: verificationIds },
+        },
+        raw: true,
+      });
+
+      const issuanceIds = issuances.map((i) => i.cadTrustIssuanceId);
+
+      // Get units for the issuances
+      // Note: In V2, units may not have orgUid field, so we'll get all units for these issuances
+      let unitTakerRecords = await UnitV2.findAll({
+        where: {
+          cadTrustIssuanceId: { [Op.in]: issuanceIds },
+        },
+        raw: true,
+      });
+
+      // Makers get an unaltered copy of all the project units from the taker
+      const unitMakerRecords = _.cloneDeep(unitTakerRecords);
+
+      unitTakerRecords = unitTakerRecords.map((record) => {
+        record.unitStatus = 'Exported';
+        record.cadTrustUnitId = uuidv4();
+        // Only update orgUid if the field exists (for compatibility)
+        if (record.orgUid !== undefined) {
+          record.orgUid = myOrganization.orgUid;
+        }
+        return record;
+      });
+
+      // Update maker unit records with new project ID references
+      // Note: V2 units may not have orgUid field
+      unitMakerRecords.forEach((record) => {
+        // Find the corresponding issuance and update references if needed
+        const issuance = issuances.find(
+          (i) => i.cadTrustIssuanceId === record.cadTrustIssuanceId,
+        );
+        if (issuance) {
+          // Find the corresponding verification and update if needed
+          const verification = verifications.find(
+            (v) => v.cadTrustVerificationId === issuance.cadTrustVerificationId,
+          );
+          if (verification) {
+            // Update verification to point to new project
+            verification.cadTrustProjectId = newMakerCadTrustProjectId;
+            // Only update orgUid if the field exists (for compatibility)
+            if (verification.orgUid !== undefined) {
+              verification.orgUid = myOrganization.orgUid;
+            }
+          }
+        }
+        // Only update orgUid if the field exists (for compatibility)
+        if (record.orgUid !== undefined) {
+          record.orgUid = myOrganization.orgUid;
+        }
+      });
+
+      const primaryProjectKeyMap = {
+        project: 'cadTrustProjectId',
+        locations: 'cadTrustLocationId',
+        estimations: 'cadTrustEstimationId',
+        ratings: 'cadTrustRatingId',
+        coBenefits: 'cadTrustCoBenefitId',
+      };
+
+      const primaryUnitKeyMap = {
+        unit: 'cadTrustUnitId',
+        unitLabels: 'id', // Join table uses 'id' as primary key
+      };
+
+      const takerProjectXslsSheets = createXlsFromSequelizeResults({
+        rows: [takerProjectPlain],
+        model: ProjectV2,
+        toStructuredCsv: true,
+      });
+
+      const makerProjectPlain = makerProjectRecord.get
+        ? makerProjectRecord.get({ plain: true })
+        : makerProjectRecord;
+      const makerProjectXslsSheets = createXlsFromSequelizeResults({
+        rows: [makerProjectPlain],
+        model: ProjectV2,
+        toStructuredCsv: true,
+      });
+
+      const takerUnitXslsSheets = createXlsFromSequelizeResults({
+        rows: unitTakerRecords,
+        model: UnitV2,
+        toStructuredCsv: true,
+      });
+
+      const makerUnitXslsSheets = createXlsFromSequelizeResults({
+        rows: unitMakerRecords,
+        model: UnitV2,
+        toStructuredCsv: true,
+      });
+
+      const makerProjectInclusions = await transformFullXslsToChangeList(
+        makerProjectXslsSheets,
+        'insert',
+        primaryProjectKeyMap,
+      );
+
+      const takerProjectInclusions = await transformFullXslsToChangeList(
+        takerProjectXslsSheets,
+        'insert',
+        primaryProjectKeyMap,
+      );
+
+      const takerUnitInclusions = await transformFullXslsToChangeList(
+        takerUnitXslsSheets,
+        'insert',
+        primaryUnitKeyMap,
+      );
+
+      const makerUnitInclusions = await transformFullXslsToChangeList(
+        makerUnitXslsSheets,
+        'insert',
+        primaryUnitKeyMap,
+      );
+
+      const formatForOfferTransfer = (record) => {
+        return record
+          .filter((inclusion) => inclusion.action !== 'delete')
+          .map((inclusion) => ({
+            key: inclusion.key,
+            value: inclusion.value,
+          }));
+      };
+
+      taker.inclusions.push(
+        ...formatForOfferTransfer(takerProjectInclusions.project || []),
+      );
+
+      if (takerUnitInclusions?.unit) {
+        taker.inclusions.push(
+          ...formatForOfferTransfer(takerUnitInclusions.unit),
+        );
+      }
+
+      if (makerProjectInclusions?.project) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.project),
+        );
+      }
+
+      if (makerProjectInclusions?.locations) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.locations),
+        );
+      }
+
+      if (makerProjectInclusions?.estimations) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.estimations),
+        );
+      }
+
+      if (makerProjectInclusions?.ratings) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.ratings),
+        );
+      }
+
+      if (makerProjectInclusions?.coBenefits) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerProjectInclusions.coBenefits),
+        );
+      }
+
+      if (makerUnitInclusions?.unit) {
+        maker.inclusions.push(
+          ...formatForOfferTransfer(makerUnitInclusions.unit),
+        );
+      }
+
+      const offerInfo = generateOffer(maker, taker);
+
+      // In simulator mode, return mock response to avoid datalayer connection
+      const { getConfig } = await import('../../utils/config-loader.js');
+      const CONFIG = getConfig().APP;
+      let offerResponse;
+
+      if (CONFIG.USE_SIMULATOR) {
+        // Mock response for simulator mode
+        offerResponse = {
+          success: true,
+          offer: {
+            trade_id: `simulator-trade-${Date.now()}`,
+            maker: offerInfo.maker,
+            taker: offerInfo.taker,
+          },
+        };
+      } else {
+        offerResponse = await datalayerPersistance.makeOffer(offerInfo);
+      }
+
+      if (!offerResponse.success) {
+        throw new Error(offerResponse.error);
+      }
+
+      // MetaV2 uses snake_case field names in database (meta_key, meta_value)
+      await MetaV2.upsert({
+        meta_key: 'activeOfferTradeId',
+        meta_value: offerResponse.offer.trade_id,
+      });
+
+      return _.omit(offerResponse, ['success']);
+    } catch (error) {
+      logger.error('Error generating offer file:', error);
+      throw new Error(error.message);
+    }
+  };
 }
 
 StagingV2.init(ModelTypes, {

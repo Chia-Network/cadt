@@ -1030,5 +1030,231 @@ describe('V2 Staging Integration Tests', function () {
       expect([200, 400, 500]).to.include(response.status);
     });
   });
+
+  describe('Phase 22.4: Staging Offer File Generation', function () {
+    let takerOrg;
+    let testProjectId;
+    let testVerificationId;
+    let testIssuanceId;
+    let testUnitId;
+
+    beforeEach(async function () {
+      await resetV2StagingTable();
+      await resetV2DataTables();
+
+      // Create a taker organization (non-home org)
+      takerOrg = await OrganizationsV2.create({
+        orgUid: uuidv4(),
+        orgName: 'Taker Organization',
+        orgIcon: 'https://example.com/icon.png',
+        isHome: false,
+        subscribed: true,
+        synced: true,
+        registryStoreId: 'test-registry-store-id-taker',
+      });
+
+      // Create program
+      const programDataSnake = await generateV2ProgramData();
+      const programData = {
+        cadTrustProgramId: programDataSnake.cad_trust_program_id,
+        programName: programDataSnake.program_name,
+        programRegistry: programDataSnake.program_registry,
+        programRegistryActivityId: programDataSnake.program_registry_activity_id,
+        programRegistryProgramId: programDataSnake.program_registry_program_id,
+        programDescription: programDataSnake.program_description,
+      };
+      const program = await ProgramV2.create(programData);
+
+      // Create project for taker org
+      const projectDataSnake = await generateV2ProjectData({
+        cad_trust_program_id: program.cadTrustProgramId,
+        org_uid: takerOrg.orgUid,
+      });
+      const projectData = {
+        cadTrustProjectId: projectDataSnake.cad_trust_project_id,
+        projectRegistryName: projectDataSnake.project_registry_name,
+        projectId: projectDataSnake.project_id,
+        projectCreditingProgram: projectDataSnake.project_crediting_program,
+        projectName: projectDataSnake.project_name,
+        projectLink: projectDataSnake.project_link,
+        projectDescription: projectDataSnake.project_description,
+        projectSector: projectDataSnake.project_sector,
+        projectType: projectDataSnake.project_type,
+        projectSubtype: projectDataSnake.project_subtype,
+        projectStatus: projectDataSnake.project_status,
+        projectStatusDate: projectDataSnake.project_status_date,
+        projectUnitMetric: projectDataSnake.project_unit_metric,
+        cadTrustReferenceProjectId: projectDataSnake.cad_trust_reference_project_id,
+        cadTrustProgramId: projectDataSnake.cad_trust_program_id,
+        // Note: V2 projects don't have orgUid field - organization relationship is through registry stores
+      };
+      const project = await ProjectV2.create(projectData);
+      testProjectId = project.cadTrustProjectId;
+
+      // Create validation
+      const validationDataSnake = await generateV2ValidationData({
+        cad_trust_project_id: testProjectId,
+      });
+      const validation = await ValidationV2.create({
+        cadTrustValidationId: validationDataSnake.cad_trust_validation_id,
+        validationId: validationDataSnake.validation_id,
+        validationType: validationDataSnake.validation_type,
+        validationBody: validationDataSnake.validation_body,
+        cadTrustProjectId: validationDataSnake.cad_trust_project_id,
+      });
+
+      // Create verification
+      const verificationDataSnake = await generateV2VerificationData({
+        cad_trust_project_id: testProjectId,
+        cad_trust_validation_id: validation.cadTrustValidationId,
+      });
+      const verification = await VerificationV2.create({
+        cadTrustVerificationId: verificationDataSnake.cad_trust_verification_id,
+        verificationId: verificationDataSnake.verification_id,
+        verificationBody: verificationDataSnake.verification_body,
+        cadTrustProjectId: verificationDataSnake.cad_trust_project_id,
+        cadTrustValidationId: verificationDataSnake.cad_trust_validation_id,
+      });
+      testVerificationId = verification.cadTrustVerificationId;
+
+      // Create methodology
+      const methodologyDataSnake = await generateV2MethodologyData();
+      const methodology = await MethodologyV2.create({
+        cadTrustMethodologyId: methodologyDataSnake.cad_trust_methodology_id,
+        methodologyCode: methodologyDataSnake.methodology_code,
+        methodologyName: methodologyDataSnake.methodology_name,
+        methodologyVersion: methodologyDataSnake.methodology_version,
+        methodologyDate: methodologyDataSnake.methodology_date,
+        methodologyLink: methodologyDataSnake.methodology_link,
+        methodologyType: methodologyDataSnake.methodology_type,
+      });
+
+      // Create issuance
+      const issuanceDataSnake = await generateV2IssuanceData({
+        cad_trust_verification_id: testVerificationId,
+        cad_trust_methodology_id: methodology.cadTrustMethodologyId,
+      });
+      const issuance = await IssuanceV2.create({
+        cadTrustIssuanceId: issuanceDataSnake.cad_trust_issuance_id,
+        issuanceId: issuanceDataSnake.issuance_id,
+        issuanceDate: issuanceDataSnake.issuance_date,
+        cadTrustVerificationId: issuanceDataSnake.cad_trust_verification_id,
+        cadTrustMethodologyId: issuanceDataSnake.cad_trust_methodology_id,
+      });
+      testIssuanceId = issuance.cadTrustIssuanceId;
+
+      // Create unit
+      const unitDataSnake = await generateV2UnitData({
+        cad_trust_issuance_id: testIssuanceId,
+        org_uid: takerOrg.orgUid,
+      });
+      const unit = await UnitV2.create({
+        cadTrustUnitId: unitDataSnake.cad_trust_unit_id,
+        unitSerialId: unitDataSnake.unit_serial_id,
+        unitStartBlock: unitDataSnake.unit_start_block,
+        unitEndBlock: unitDataSnake.unit_end_block,
+        unitCount: unitDataSnake.unit_count,
+        unitType: unitDataSnake.unit_type,
+        unitVintageYear: unitDataSnake.unit_vintage_year,
+        unitStatus: unitDataSnake.unit_status,
+        cadTrustIssuanceId: unitDataSnake.cad_trust_issuance_id,
+        // Note: V2 units may not have orgUid field - organization relationship is through registry stores
+      });
+      testUnitId = unit.cadTrustUnitId;
+    });
+
+    it('should generate offer file from transfer staging record', async function () {
+      // Create transfer staging record using ProjectV2.transfer
+      await ProjectV2.transfer(testProjectId);
+
+      // Verify transfer record exists
+      const transferRecord = await StagingV2.findOne({
+        where: { is_transfer: true },
+      });
+      expect(transferRecord).to.exist;
+
+      // Generate offer file (simulator mode will return mock response)
+      const response = await supertest(app)
+        .get('/v2/staging/offer')
+        .expect(200);
+
+      expect(response.body).to.have.property('offer');
+      expect(response.body.offer).to.have.property('trade_id');
+      expect(response.body.offer).to.have.property('maker');
+      expect(response.body.offer).to.have.property('taker');
+      expect(response.body.offer.maker).to.be.an('array');
+      expect(response.body.offer.taker).to.be.an('array');
+    });
+
+    it('should return error if no transfer record exists', async function () {
+      // No transfer record created
+
+      const response = await supertest(app)
+        .get('/v2/staging/offer')
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      // Error could be "No transfer record found" or "Staging table is empty"
+      expect(response.body.error || response.body.message).to.match(/No transfer record found|Staging table is empty/);
+    });
+
+    it('should return error if staging table is empty', async function () {
+      // Staging table is empty (no transfer record)
+
+      const response = await supertest(app)
+        .get('/v2/staging/offer')
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.message).to.include('Error generating offer file');
+    });
+
+    it('should return error if there are pending commits excluding transfers', async function () {
+      // Create transfer record
+      await ProjectV2.transfer(testProjectId);
+
+      // Create a non-transfer staging record that is committed (pending commit)
+      // assertNoPendingCommitsExcludingTransfers checks for committed: true, failed_commit: false
+      const programDataSnake = await generateV2ProgramData();
+      await StagingV2.create({
+        uuid: uuidv4(),
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programDataSnake]),
+        committed: true,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const response = await supertest(app)
+        .get('/v2/staging/offer')
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('pending commits');
+    });
+
+    it('should store activeOfferTradeId in MetaV2 after generating offer', async function () {
+      const { MetaV2 } = await import('../../../src/models/v2/index.js');
+
+      // Create transfer staging record
+      await ProjectV2.transfer(testProjectId);
+
+      // Generate offer file (simulator mode will return mock response)
+      const response = await supertest(app)
+        .get('/v2/staging/offer')
+        .expect(200);
+
+      expect(response.body.offer).to.have.property('trade_id');
+
+      // Verify activeOfferTradeId is stored in MetaV2
+      // MetaV2 uses snake_case field names in database (meta_key, meta_value)
+      const metaRecord = await MetaV2.findOne({
+        where: { meta_key: 'activeOfferTradeId' },
+      });
+      expect(metaRecord).to.exist;
+      expect(metaRecord.meta_value || metaRecord.metaValue).to.equal(response.body.offer.trade_id);
+    });
+  });
 });
 

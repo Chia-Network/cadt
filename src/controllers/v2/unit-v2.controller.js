@@ -4,12 +4,15 @@ import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
 
-import { StagingV2, UnitV2, IssuanceV2, OrganizationsV2 } from '../../models/v2/index.js';
+import { StagingV2, UnitV2, IssuanceV2, OrganizationsV2, UnitLabelV2 } from '../../models/v2/index.js';
 
 import {
   optionallyPaginatedResponse,
   paginationParams,
+  columnsToInclude,
 } from '../../utils/helpers';
+
+import { formatModelAssociationName } from '../../utils/model-utils.js';
 
 import {
   assertV2IfReadOnlyMode,
@@ -18,8 +21,18 @@ import {
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 
+import {
+  sendXls,
+  createXlsFromSequelizeResults,
+} from '../../utils/xls.js';
+
 import { logger } from '../../config/logger.js';
 import { unitV2Schema } from '../../validations/v2/unit-v2.validations.js';
+
+// Regex patterns for query parsing
+const genericFilterRegex = /^(\w+):(.+):(\w+)$/;
+const genericSortColumnRegex = /^(\w+):(ASC|DESC)$/i;
+const isArrayRegex = /^\[.*\]$/;
 
 export const create = async (req, res) => {
   try {
@@ -126,21 +139,168 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit } = req.query;
-    const pagination = paginationParams(page, limit);
+    let {
+      page,
+      limit,
+      columns,
+      xls,
+      filter,
+      order,
+      // Note: V2 units don't have orgUid directly (linked via issuance/project)
+      // Note: V2 units don't have marketplace fields yet
+      // Note: V2 doesn't have FTS (full-text search) yet
+      // These parameters are reserved for future implementation
+      // orgUid,
+      // search,
+      // includeProjectInfoInSearch,
+      // marketplaceIdentifiers,
+      // hasMarketplaceIdentifier,
+      // onlyTokenizedUnits,
+    } = req.query;
 
-    const records = await UnitV2.findAndCountAll({
-      ...pagination,
-      include: [
-        {
-          model: IssuanceV2,
-          as: 'issuance',
+    let where = {};
+
+    // Handle generic filter (e.g., filter=field:value:eq)
+    if (filter) {
+      const matches = filter.match(genericFilterRegex);
+      if (matches) {
+        // Check if the value param is an array so we can parse it
+        const valueMatches = matches[2].match(isArrayRegex);
+        where[matches[1]] = {
+          [Sequelize.Op[matches[3]]]: valueMatches
+            ? JSON.parse(matches[2])
+            : matches[2],
+        };
+      }
+    }
+
+    // Get associated models for column selection
+    const includes = UnitV2.getAssociatedModels();
+
+    // Default columns for UnitV2
+    // Note: createdAt and updatedAt are always included automatically by Sequelize timestamps
+    const defaultColumns = [
+      'cadTrustUnitId',
+      'unitSerialId',
+      'unitStartBlock',
+      'unitEndBlock',
+      'unitCount',
+      'unitType',
+      'unitVintageYear',
+      'unitStatus',
+      'unitStatusReason',
+      'unitStatusDate',
+      'unitRetirementDetail',
+      'unitRetirementBeneficiary',
+      'unitRetirementBeneficiaryId',
+      'unitLink',
+      'unitMetric',
+      'unitCurrentOwner',
+      'unitItmosReferenceId',
+      'cadTrustIssuanceId',
+      'createdAt',
+      'updatedAt',
+    ];
+
+    // Handle column selection
+    let normalizedColumns = undefined;
+    if (columns) {
+      // Ensure columns is an array
+      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+
+      // Remove any unsupported columns
+      const validColumns = columnsArray.filter((col) =>
+        defaultColumns
+          .concat(includes.map(formatModelAssociationName))
+          .includes(col),
+      );
+
+      // If only FK fields have been specified, select just ID
+      if (!validColumns.length) {
+        normalizedColumns = ['cadTrustUnitId'];
+      } else {
+        normalizedColumns = validColumns;
+      }
+    }
+    // When no columns specified, normalizedColumns stays undefined - Sequelize will include all fields
+
+    // Handle pagination
+    let pagination = paginationParams(page, limit);
+
+    // If XLS export, remove pagination
+    if (xls) {
+      pagination = { offset: undefined, limit: undefined };
+    }
+
+    // Build query with column selection and includes
+    // Consistent with other V2 controllers: if no columns specified, don't set attributes
+    let queryAttributes = undefined;
+    let fixedIncludes = [
+      {
+        model: IssuanceV2,
+        as: 'issuance',
+        required: false,
+      },
+    ];
+
+    if (normalizedColumns) {
+      // User requested specific columns - use columnsToInclude helper
+      const columnQuery = columnsToInclude(normalizedColumns, includes);
+      queryAttributes = columnQuery.attributes;
+
+      // Build includes with correct V2 aliases based on requested columns
+      const columnsArray = normalizedColumns;
+      if (columnsArray.includes('unitLabels') || columnsArray.includes('UnitLabelV2')) {
+        fixedIncludes.push({
+          model: UnitLabelV2,
+          as: 'unitLabels',
           required: false,
-        },
-      ],
+        });
+      }
+    }
+
+    const query = {
+      attributes: queryAttributes, // undefined = include all fields (consistent with other V2 controllers)
+      include: fixedIncludes,
+      ...pagination,
+    };
+
+    // Handle sorting (default to createdAt DESC)
+    // Use Sequelize.literal with snake_case column name for consistent behavior
+    let resultOrder = [[Sequelize.literal('`UnitV2`.`created_at`'), 'DESC']];
+
+    if (order?.match(genericSortColumnRegex)) {
+      const matches = order.match(genericSortColumnRegex);
+      const fieldName = matches[1];
+      // Map camelCase to snake_case for ordering (consistent with model field mappings)
+      const snakeCaseField = fieldName.replace(/([A-Z])/g, '_$1').toLowerCase();
+      resultOrder = [[Sequelize.literal(`\`UnitV2\`.\`${snakeCaseField}\``), matches[2]]];
+    }
+
+    // Execute query
+    const results = await UnitV2.findAndCountAll({
+      distinct: true,
+      where: Object.keys(where).length > 0 ? where : undefined,
+      order: resultOrder,
+      ...query,
     });
 
-    res.json(optionallyPaginatedResponse(records, page, limit));
+    const response = optionallyPaginatedResponse(results, page, limit);
+
+    // Handle XLS export
+    if (xls) {
+      return sendXls(
+        UnitV2.name,
+        createXlsFromSequelizeResults({
+          rows: response.data || response,
+          model: UnitV2,
+          toStructuredCsv: false,
+        }),
+        res,
+      );
+    }
+
+    res.json(response);
   } catch (err) {
     logger.error('Error retrieving units:', err);
     res.status(400).json({
@@ -311,6 +471,122 @@ export const destroy = async (req, res) => {
     res.status(400).json({
       message: 'Error deleting unit',
       error: err.message,
+      success: false,
+    });
+  }
+};
+
+/**
+ * Split a unit into multiple units
+ * POST /v2/unit/split
+ */
+export const split = async (req, res) => {
+  try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
+    const { cadTrustUnitId, records } = req.body;
+
+    if (!cadTrustUnitId) {
+      return res.status(400).json({
+        message: 'Error splitting unit',
+        error: 'cadTrustUnitId is required',
+        success: false,
+      });
+    }
+
+    if (!records || !Array.isArray(records) || records.length === 0) {
+      return res.status(400).json({
+        message: 'Error splitting unit',
+        error: 'records array is required and must not be empty',
+        success: false,
+      });
+    }
+
+    // Use the model's split method
+    await UnitV2.split(cadTrustUnitId, records);
+
+    res.json({
+      message: 'Unit split successful',
+      success: true,
+    });
+  } catch (error) {
+    logger.error('Error splitting unit:', error);
+    res.status(400).json({
+      message: 'Error splitting unit',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
+/**
+ * Update units from XLSX file
+ * PUT /v2/unit/xlsx
+ * Requires file upload via multer
+ */
+export const updateFromXLS = async (req, res) => {
+  try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: 'File Not Received',
+        success: false,
+      });
+    }
+
+    // Use the model's updateFromXLS method
+    await UnitV2.updateFromXLS(req.file.buffer);
+
+    res.json({
+      message: 'Updates from xlsx added to staging',
+      success: true,
+    });
+  } catch (error) {
+    logger.error('Error updating units from XLSX:', error);
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
+/**
+ * Batch upload units from CSV file
+ * POST /v2/unit/batch
+ * Requires CSV file upload via multer
+ */
+export const batchUpload = async (req, res) => {
+  try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: 'Cannot find the required csv file',
+        success: false,
+      });
+    }
+
+    // Use the model's batchUpload method
+    await UnitV2.batchUpload({ data: req.file.buffer });
+
+    res.json({
+      message:
+        'CSV processing complete, your records have been added to the staging table.',
+      success: true,
+    });
+  } catch (error) {
+    logger.error('Batch Upload Failed.', error);
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
       success: false,
     });
   }

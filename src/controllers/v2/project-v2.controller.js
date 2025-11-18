@@ -4,22 +4,36 @@ import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
 
-import { StagingV2, ProjectV2, ProgramV2, OrganizationsV2 } from '../../models/v2/index.js';
+import { StagingV2, ProjectV2, ProgramV2, OrganizationsV2, LocationV2, EstimationV2, RatingV2, CoBenefitV2 } from '../../models/v2/index.js';
 
 import {
   optionallyPaginatedResponse,
   paginationParams,
+  columnsToInclude,
 } from '../../utils/helpers';
+
+import {
+  genericFilterRegex,
+  genericSortColumnRegex,
+  isArrayRegex,
+} from '../../utils/string-utils.js';
+
+import {
+  createXlsFromSequelizeResults,
+  sendXls,
+} from '../../utils/xls.js';
 
 import {
   assertV2IfReadOnlyMode,
   assertV2HomeOrgExists,
   assertNoPendingCommitsExcludingTransfers,
   assertRecordExistanceOrStaged,
+  assertStagingTableIsEmpty,
 } from '../../utils/v2-data-assertions.js';
 
 import { logger } from '../../config/logger.js';
 import { projectV2Schema } from '../../validations/v2/project-v2.validations.js';
+import { formatModelAssociationName } from '../../utils/model-utils.js';
 
 export const create = async (req, res) => {
   try {
@@ -116,21 +130,192 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit } = req.query;
-    const pagination = paginationParams(page, limit);
+    let {
+      page,
+      limit,
+      columns,
+      xls,
+      projectIds,
+      filter,
+      order,
+    } = req.query;
 
-    const records = await ProjectV2.findAndCountAll({
-      ...pagination,
-      include: [
-        {
-          model: ProgramV2,
-          as: 'program',
+    let where = {};
+
+    // Handle generic filter (e.g., filter=field:value:eq)
+    if (filter) {
+      const matches = filter.match(genericFilterRegex);
+      if (matches) {
+        // Check if the value param is an array so we can parse it
+        const valueMatches = matches[2].match(isArrayRegex);
+        where[matches[1]] = {
+          [Sequelize.Op[matches[3]]]: valueMatches
+            ? JSON.parse(matches[2])
+            : matches[2],
+        };
+      }
+    }
+
+    // Handle projectIds filter (array of cadTrustProjectId)
+    // Note: Sequelize uses camelCase for model attributes, but we need to check the actual field name
+    if (projectIds) {
+      const idsArray = Array.isArray(projectIds) ? projectIds : projectIds.split(',').map(id => id.trim());
+      where.cadTrustProjectId = {
+        [Sequelize.Op.in]: idsArray,
+      };
+    }
+
+    // Get associated models for column selection
+    const includes = ProjectV2.getAssociatedModels();
+
+    // Default columns for ProjectV2
+    // Note: createdAt and updatedAt are always included automatically by Sequelize timestamps
+    // They don't need to be in defaultColumns, but can be requested by users
+    const defaultColumns = [
+      'cadTrustProjectId',
+      'projectRegistryName',
+      'projectId',
+      'projectCreditingProgram',
+      'projectName',
+      'projectLink',
+      'projectDescription',
+      'projectSector',
+      'projectType',
+      'projectSubtype',
+      'projectStatus',
+      'projectStatusDate',
+      'projectUnitMetric',
+      'cadTrustReferenceProjectId',
+      'cadTrustProgramId',
+      'createdAt',
+      'updatedAt',
+    ];
+
+    // Handle column selection
+    // Note: columnsToInclude expects an array, so we'll normalize columns here
+    let normalizedColumns = undefined;
+    if (columns) {
+      // Ensure columns is an array
+      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+
+      // Remove any unsupported columns
+      const validColumns = columnsArray.filter((col) =>
+        defaultColumns
+          .concat(includes.map(formatModelAssociationName))
+          .includes(col),
+      );
+
+      // If only FK fields have been specified, select just ID
+      if (!validColumns.length) {
+        normalizedColumns = ['cadTrustProjectId'];
+      } else {
+        normalizedColumns = validColumns;
+      }
+    }
+    // When no columns specified, normalizedColumns stays undefined - Sequelize will include all fields
+
+    // Handle pagination
+    let pagination = paginationParams(page, limit);
+
+    // If XLS export, remove pagination
+    if (xls) {
+      pagination = { offset: undefined, limit: undefined };
+    }
+
+    // Build query with column selection and includes
+    // Consistent with other V2 controllers: if no columns specified, don't set attributes
+    // This lets Sequelize automatically include all fields including timestamps
+    let queryAttributes = undefined;
+    let fixedIncludes = [
+      {
+        model: ProgramV2,
+        as: 'program',
+        required: false,
+      },
+    ];
+
+    if (normalizedColumns) {
+      // User requested specific columns - use columnsToInclude helper
+      const columnQuery = columnsToInclude(normalizedColumns, includes);
+      queryAttributes = columnQuery.attributes;
+
+      // Build includes with correct V2 aliases based on requested columns
+      const columnsArray = normalizedColumns;
+      if (columnsArray.includes('locations') || columnsArray.includes('LocationV2')) {
+        fixedIncludes.push({
+          model: LocationV2,
+          as: 'locations',
           required: false,
-        },
-      ],
+        });
+      }
+      if (columnsArray.includes('estimations') || columnsArray.includes('EstimationV2')) {
+        fixedIncludes.push({
+          model: EstimationV2,
+          as: 'estimations',
+          required: false,
+        });
+      }
+      if (columnsArray.includes('ratings') || columnsArray.includes('RatingV2')) {
+        fixedIncludes.push({
+          model: RatingV2,
+          as: 'ratings',
+          required: false,
+        });
+      }
+      if (columnsArray.includes('coBenefits') || columnsArray.includes('CoBenefitV2')) {
+        fixedIncludes.push({
+          model: CoBenefitV2,
+          as: 'coBenefits',
+          required: false,
+        });
+      }
+    }
+
+    const query = {
+      attributes: queryAttributes, // undefined = include all fields (consistent with other V2 controllers)
+      include: fixedIncludes,
+      ...pagination,
+    };
+
+    // Handle sorting (default to createdAt DESC)
+    // Note: Sequelize maps camelCase attributes to snake_case for SELECT when underscored: true
+    // But ORDER BY needs explicit mapping when attributes are specified
+    // Use Sequelize.literal with snake_case column name for consistent behavior
+    let resultOrder = [[Sequelize.literal('`ProjectV2`.`created_at`'), 'DESC']];
+
+    if (order?.match(genericSortColumnRegex)) {
+      const matches = order.match(genericSortColumnRegex);
+      const fieldName = matches[1];
+      // Map camelCase to snake_case for ordering (consistent with model field mappings)
+      // Convert camelCase to snake_case: projectName -> project_name, createdAt -> created_at
+      const snakeCaseField = fieldName.replace(/([A-Z])/g, '_$1').toLowerCase();
+      resultOrder = [[Sequelize.literal(`\`ProjectV2\`.\`${snakeCaseField}\``), matches[2]]];
+    }
+
+    // Execute query
+    const results = await ProjectV2.findAndCountAll({
+      distinct: true,
+      where: Object.keys(where).length > 0 ? where : undefined,
+      order: resultOrder,
+      ...query,
     });
 
-    res.json(optionallyPaginatedResponse(records, page, limit));
+    const response = optionallyPaginatedResponse(results, page, limit);
+
+    // Handle XLS export
+    if (xls) {
+      return sendXls(
+        'projects',
+        createXlsFromSequelizeResults({
+          rows: response.data || response,
+          model: ProjectV2,
+          toStructuredCsv: false,
+        }),
+        res,
+      );
+    }
+
+    res.json(response);
   } catch (err) {
     logger.error('Error retrieving projects:', err);
     res.status(400).json({
@@ -300,6 +485,114 @@ export const destroy = async (req, res) => {
     res.status(400).json({
       message: 'Error deleting project',
       error: err.message,
+      success: false,
+    });
+  }
+};
+
+/**
+ * Transfer a project between organizations
+ * PUT /v2/project/transfer
+ * Requires staging table to be empty
+ */
+export const transfer = async (req, res) => {
+  try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertStagingTableIsEmpty();
+
+    const { cadTrustProjectId } = req.body;
+
+    if (!cadTrustProjectId) {
+      return res.status(400).json({
+        message: 'cadTrustProjectId is required',
+        success: false,
+      });
+    }
+
+    // Use the model's transfer method
+    await ProjectV2.transfer(cadTrustProjectId);
+
+    res.json({
+      message: 'Project transfer staged successfully',
+      success: true,
+    });
+  } catch (err) {
+    logger.error('Error transferring project:', err);
+    res.status(400).json({
+      message: 'Error transferring project',
+      error: err.message,
+      success: false,
+    });
+  }
+};
+
+/**
+ * Update projects from XLSX file
+ * PUT /v2/project/xlsx
+ * Requires file upload via multer
+ */
+export const updateFromXLS = async (req, res) => {
+  try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: 'File Not Received',
+        success: false,
+      });
+    }
+
+    // Use the model's updateFromXLS method
+    await ProjectV2.updateFromXLS(req.file.buffer);
+
+    res.json({
+      message: 'Updates from xlsx added to staging',
+      success: true,
+    });
+  } catch (error) {
+    logger.error('Error updating projects from XLSX:', error);
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
+/**
+ * Batch upload projects from CSV file
+ * POST /v2/project/batch
+ * Requires CSV file upload via multer
+ */
+export const batchUpload = async (req, res) => {
+  try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: 'Cannot find the required csv file in request',
+        success: false,
+      });
+    }
+
+    // Use the model's batchUpload method
+    await ProjectV2.batchUpload({ data: req.file.buffer });
+
+    res.json({
+      message:
+        'CSV processing complete, your records have been added to the staging table.',
+      success: true,
+    });
+  } catch (error) {
+    logger.error('Batch Upload Failed.', error);
+    res.status(400).json({
+      message: 'Batch Upload Failed.',
+      error: error.message,
       success: false,
     });
   }

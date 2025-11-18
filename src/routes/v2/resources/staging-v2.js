@@ -15,6 +15,11 @@ StagingV2Router.get('/pending', (req, res) => {
   return StagingV2Controller.hasPendingCommits(req, res);
 });
 
+// GET /v2/staging/offer - generateOfferFile (must be before generic routes)
+StagingV2Router.get('/offer', (req, res) => {
+  return StagingV2Controller.generateOfferFile(req, res);
+});
+
 // POST /v2/staging/commit - commit
 StagingV2Router.post('/commit', (req, res) => {
   return StagingV2Controller.commit(req, res);

@@ -139,7 +139,8 @@ class Governance extends Model {
       // If on simulator or testnet, use the stubbed picklist data and return
       if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
         logger.info('SIMULATOR/TESTNET MODE: Using sample picklist');
-        Governance.upsert({
+        // Await the upsert to ensure transaction completes before returning
+        await Governance.upsert({
           metaKey: 'pickList',
           metaValue: JSON.stringify(PickListStub),
           confirmed: true,

@@ -193,6 +193,26 @@ export const assertNoPendingCommitsExcludingTransfers = async () => {
 };
 
 /**
+ * V2-specific assertion that there are no pending commits (including transfers)
+ * Checks for records that have been committed (committed: true) but are still
+ * waiting for blockchain confirmation.
+ *
+ * @throws {Error} If there are any pending commits
+ */
+export const assertNoPendingCommits = async () => {
+  const pendingCommits = await StagingV2.count({
+    where: {
+      committed: true,
+      failed_commit: false,
+    },
+  });
+
+  if (pendingCommits > 0) {
+    throw new Error('There are pending commits in staging table');
+  }
+};
+
+/**
  * V2-specific assertion that a home organization exists
  * Checks the V2 organizations table for a home organization
  *

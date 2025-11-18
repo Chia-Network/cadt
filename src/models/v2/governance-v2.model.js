@@ -434,6 +434,46 @@ class GovernanceV2 extends Model {
       }
     }
   }
+
+  /**
+   * Subscribe to a governance body store
+   * Subscribes to the governance body store on datalayer and stores the governance body ID
+   * @param {string} governanceBodyId - The governance body store ID to subscribe to
+   * @returns {Promise<{governanceBodyId: string}>}
+   * @throws {Error} If subscription fails or governance body ID is invalid
+   */
+  static async subscribeToGovernanceBody(governanceBodyId) {
+    const { USE_SIMULATOR } = getConfig().APP;
+
+    if (!governanceBodyId) {
+      throw new Error('governanceBodyId is required');
+    }
+
+    logger.info(`Subscribing to governance body store ${governanceBodyId}`);
+
+    // Subscribe to governance body store on datalayer
+    const subscribed = await datalayer.subscribeToStoreOnDataLayer(governanceBodyId);
+
+    // In simulator mode, subscribeToStoreOnDataLayer returns undefined (no-op)
+    // In production mode, it returns true/false
+    if (!USE_SIMULATOR && !subscribed) {
+      throw new Error(
+        `Failed to subscribe to or validate subscription for governance body store ${governanceBodyId}`,
+      );
+    }
+
+    // Store governance body ID in MetaV2 for future sync operations
+    await MetaV2.upsert({
+      meta_key: 'governanceBodyId',
+      meta_value: governanceBodyId,
+    });
+
+    logger.info(`Successfully subscribed to governance body store ${governanceBodyId}`);
+
+    return {
+      governanceBodyId,
+    };
+  }
 }
 
 GovernanceV2.init(ModelTypes, {

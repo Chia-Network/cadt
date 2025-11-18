@@ -24,8 +24,10 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
   describe('assertRecordExistanceOrStaged', function () {
     it('should find record in main table when it exists', async function () {
       // Create a test meta record instead (simpler)
+      // Use a unique key to avoid conflicts
+      const uniqueKey = `test-key-main-${Date.now()}-${Math.random()}`;
       const meta = await MetaV2.create({
-        meta_key: 'test-key-main',
+        meta_key: uniqueKey,
         meta_value: 'test-value-main',
       });
 
@@ -213,13 +215,13 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
     });
 
     it('should throw when there are pending commits excluding transfers', async function () {
-      // Create a non-transfer staging record
+      // Create a non-transfer staging record with committed: true (pending commit)
       await StagingV2.create({
         uuid: 'test-uuid-pending',
         table: 'meta',
         action: 'INSERT',
         data: JSON.stringify([{ meta_key: 'test', meta_value: 'test' }]),
-        committed: false,
+        committed: true, // This is a pending commit
         failed_commit: false,
         is_transfer: false, // Not a transfer
       });

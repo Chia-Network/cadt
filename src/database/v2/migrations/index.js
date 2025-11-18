@@ -29,6 +29,9 @@ import CreateAefT2AuthorizationsV2 from './20250110120024-create-aef-t2-authoriz
 import CreateAefT3ActionsV2 from './20250110120025-create-aef-t3-actions-v2.js';
 import CreateAefT4HoldingsV2 from './20250110120026-create-aef-t4-holdings-v2.js';
 
+// V2 System Table Migrations (continued)
+import CreateFilestoreV2 from './20250110120030-create-filestore-v2.js';
+
 export const migrations = [
   {
     migration: CreateStagingV2,
@@ -137,5 +140,9 @@ export const migrations = [
   {
     migration: CreateAefT4HoldingsV2,
     name: '20250110120026-create-aef-t4-holdings-v2',
+  },
+  {
+    migration: CreateFilestoreV2,
+    name: '20250110120030-create-filestore-v2',
   },
 ];

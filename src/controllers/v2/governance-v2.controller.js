@@ -307,3 +307,40 @@ export const sync = async (req, res) => {
   }
 };
 
+/**
+ * Subscribe to a governance body store
+ * Subscribes to the specified governance body store on datalayer
+ *
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with success message
+ */
+export const subscribeToGovernanceBody = async (req, res) => {
+  try {
+    await assertV2IfReadOnlyMode();
+
+    const { governanceBodyId } = req.body;
+
+    if (!governanceBodyId) {
+      return res.status(400).json({
+        message: 'governanceBodyId is required',
+        success: false,
+      });
+    }
+
+    await GovernanceV2.subscribeToGovernanceBody(governanceBodyId);
+
+    return res.json({
+      message: 'Subscribed to governance body',
+      success: true,
+    });
+  } catch (error) {
+    logger.error(`Error subscribing to governance body: ${error.message}`);
+    res.status(400).json({
+      message: 'Error subscribing to governance body',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+

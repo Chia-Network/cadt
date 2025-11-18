@@ -17,6 +17,9 @@ import {
   assertNoPendingCommitsExcludingTransfers,
 } from '../../utils/v2-data-assertions.js';
 
+// Note: assertWalletIsSyncedV2 doesn't exist yet, will need to be implemented
+// For now, we'll skip wallet sync check or use V1 assertion if compatible
+
 /**
  * Check if there are pending commits
  * This checks for uncommitted records (committed: false) that need to be committed,
@@ -265,6 +268,32 @@ export const retryRecord = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: 'Staging Record can not be restaged.',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
+/**
+ * Generate offer file for project transfer
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+export const generateOfferFile = async (req, res) => {
+  try {
+    await assertV2IfReadOnlyMode();
+    await assertStagingTableNotEmpty();
+    await assertV2HomeOrgExists();
+    // Note: assertWalletIsSyncedV2 doesn't exist yet, skipping for now
+    // await assertWalletIsSyncedV2();
+    await assertNoPendingCommitsExcludingTransfers();
+
+    const offerFile = await StagingV2.generateOfferFile();
+    res.json(offerFile);
+  } catch (error) {
+    console.trace(error);
+    res.status(400).json({
+      message: 'Error generating offer file.',
       error: error.message,
       success: false,
     });

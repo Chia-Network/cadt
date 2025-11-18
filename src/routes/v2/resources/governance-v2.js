@@ -43,5 +43,10 @@ GovernanceV2Router.post('/meta/glossary', (req, res) => {
   return GovernanceV2Controller.setGlossary(req, res);
 });
 
+// Subscribe to governance body endpoint
+GovernanceV2Router.post('/subscribe', (req, res) => {
+  return GovernanceV2Controller.subscribeToGovernanceBody(req, res);
+});
+
 export { GovernanceV2Router };
 

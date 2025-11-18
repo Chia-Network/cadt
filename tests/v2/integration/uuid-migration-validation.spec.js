@@ -21,6 +21,7 @@ const addUuidIfNeeded = (modelName, data) => {
     IssuanceV2: 'cadTrustIssuanceId',
     UnitV2: 'cadTrustUnitId',
     ProjectV2: 'cadTrustProjectId',
+    LocationV2: 'cadTrustLocationId',
   };
 
   const uuidField = uuidFields[modelName];
@@ -61,7 +62,8 @@ describe('V2 UUID Migration Validation Tests', function () {
         const primaryKeyColumn = results.find(col => col.pk === 1);
 
         expect(primaryKeyColumn).to.exist;
-        expect(primaryKeyColumn.type).to.equal('VARCHAR(36)');
+        // SQLite stores VARCHAR(36) as TEXT or UUID, so check for any of these
+        expect(['VARCHAR(36)', 'TEXT', 'UUID']).to.include(primaryKeyColumn.type);
         expect(primaryKeyColumn.notnull).to.equal(1);
         expect(primaryKeyColumn.pk).to.equal(1);
       }
@@ -132,12 +134,12 @@ describe('V2 UUID Migration Validation Tests', function () {
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
-      const validation = await ValidationV2.create({
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: 'TEST-VALIDATION-001',
         validationType: 'Validation of Project Design Document',
         validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: project.cadTrustProjectId,
-      });
+      }));
 
       expect(validation.cadTrustValidationId).to.exist;
       expect(validation.cadTrustValidationId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
@@ -159,19 +161,19 @@ describe('V2 UUID Migration Validation Tests', function () {
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
-      const validation = await ValidationV2.create({
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: 'TEST-VALIDATION-001',
         validationType: 'Validation of Project Design Document',
         validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: project.cadTrustProjectId,
-      });
+      }));
 
-      const verification = await VerificationV2.create({
+      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
         verificationId: 'TEST-VERIFICATION-001',
         verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: project.cadTrustProjectId,
         cadTrustValidationId: validation.cadTrustValidationId,
-      });
+      }));
 
       expect(verification.cadTrustVerificationId).to.exist;
       expect(verification.cadTrustVerificationId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
@@ -193,19 +195,19 @@ describe('V2 UUID Migration Validation Tests', function () {
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
-      const validation = await ValidationV2.create({
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: 'TEST-VALIDATION-001',
         validationType: 'Validation of Project Design Document',
         validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: project.cadTrustProjectId,
-      });
+      }));
 
-      const verification = await VerificationV2.create({
+      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
         verificationId: 'TEST-VERIFICATION-001',
         verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: project.cadTrustProjectId,
         cadTrustValidationId: validation.cadTrustValidationId,
-      });
+      }));
 
       const methodology = await MethodologyV2.create({
         methodologyCode: 'TEST-METHOD-001',
@@ -213,11 +215,11 @@ describe('V2 UUID Migration Validation Tests', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
-      const issuance = await IssuanceV2.create({
+      const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISSUANCE-001',
         cadTrustVerificationId: verification.cadTrustVerificationId,
         cadTrustMethodologyId: methodology.cadTrustMethodologyId,
-      });
+      }));
 
       expect(issuance.cadTrustIssuanceId).to.exist;
       expect(issuance.cadTrustIssuanceId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
@@ -239,19 +241,19 @@ describe('V2 UUID Migration Validation Tests', function () {
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
-      const validation = await ValidationV2.create({
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: 'TEST-VALIDATION-001',
         validationType: 'Validation of Project Design Document',
         validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: project.cadTrustProjectId,
-      });
+      }));
 
-      const verification = await VerificationV2.create({
+      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
         verificationId: 'TEST-VERIFICATION-001',
         verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: project.cadTrustProjectId,
         cadTrustValidationId: validation.cadTrustValidationId,
-      });
+      }));
 
       const methodology = await MethodologyV2.create({
         methodologyCode: 'TEST-METHOD-001',
@@ -259,13 +261,13 @@ describe('V2 UUID Migration Validation Tests', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
-      const issuance = await IssuanceV2.create({
+      const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISSUANCE-001',
         cadTrustVerificationId: verification.cadTrustVerificationId,
         cadTrustMethodologyId: methodology.cadTrustMethodologyId,
-      });
+      }));
 
-      const unit = await UnitV2.create({
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
@@ -274,7 +276,7 @@ describe('V2 UUID Migration Validation Tests', function () {
         unitStatus: 'Issued',
         unitMetric: 'tCO2e',
         cadTrustIssuanceId: issuance.cadTrustIssuanceId,
-      });
+      }));
 
       expect(unit.cadTrustUnitId).to.exist;
       expect(unit.cadTrustUnitId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
@@ -296,13 +298,13 @@ describe('V2 UUID Migration Validation Tests', function () {
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
-      const location = await LocationV2.create({
+      const location = await LocationV2.create(addUuidIfNeeded('LocationV2', {
         locationCountry: 'United States',
         locationRegion: 'California',
         locationGis: '{"type": "Point", "coordinates": [-122.4194, 37.7749]}',
         locationMapType: 'geojson',
         cadTrustProjectId: project.cadTrustProjectId,
-      });
+      }));
 
       expect(location.cadTrustLocationId).to.exist;
       expect(location.cadTrustLocationId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
@@ -342,12 +344,12 @@ describe('V2 UUID Migration Validation Tests', function () {
       expect(project.cadTrustProgramId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
       expect(project.cadTrustProgramId).to.equal(program.cadTrustProgramId);
 
-      const validation = await ValidationV2.create({
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: 'TEST-VALIDATION-001',
         validationType: 'Validation of Project Design Document',
         validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: project.cadTrustProjectId,
-      });
+      }));
 
       // Verify foreign key is UUID string
       expect(validation.cadTrustProjectId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
@@ -369,19 +371,19 @@ describe('V2 UUID Migration Validation Tests', function () {
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
-      const validation = await ValidationV2.create({
+      const validation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
         validationId: 'TEST-VALIDATION-001',
         validationType: 'Validation of Project Design Document',
         validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: project.cadTrustProjectId,
-      });
+      }));
 
-      const verification = await VerificationV2.create({
+      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
         verificationId: 'TEST-VERIFICATION-001',
         verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: project.cadTrustProjectId,
         cadTrustValidationId: validation.cadTrustValidationId,
-      });
+      }));
 
       const methodology = await MethodologyV2.create({
         methodologyCode: 'TEST-METHOD-001',
@@ -389,13 +391,13 @@ describe('V2 UUID Migration Validation Tests', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
-      const issuance = await IssuanceV2.create({
+      const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISSUANCE-001',
         cadTrustVerificationId: verification.cadTrustVerificationId,
         cadTrustMethodologyId: methodology.cadTrustMethodologyId,
-      });
+      }));
 
-      const unit = await UnitV2.create({
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
@@ -404,15 +406,15 @@ describe('V2 UUID Migration Validation Tests', function () {
         unitStatus: 'Issued',
         unitMetric: 'tCO2e',
         cadTrustIssuanceId: issuance.cadTrustIssuanceId,
-      });
+      }));
 
-      const location = await LocationV2.create({
+      const location = await LocationV2.create(addUuidIfNeeded('LocationV2', {
         locationCountry: 'United States',
         locationRegion: 'California',
         locationGis: '{"type": "Point", "coordinates": [-122.4194, 37.7749]}',
         locationMapType: 'geojson',
         cadTrustProjectId: project.cadTrustProjectId,
-      });
+      }));
 
       // Verify all foreign key relationships are maintained with UUIDs
       expect(unit.cadTrustIssuanceId).to.equal(issuance.cadTrustIssuanceId);

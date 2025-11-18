@@ -11,7 +11,7 @@
   "scripts": {
     "start": "npx cross-env NODE_ENV=local node --import=extensionless/register --no-warnings ./src/server.js",
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/**/*.spec.js --reporter spec --exit --timeout 300000",
-    "test:v2": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/ --reporter spec --exit --timeout 300000",
+    "test:v2": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js 'tests/v2/**/*.spec.js' --reporter spec --exit --timeout 300000",
     "test:v2:integration": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/ --reporter spec --exit --timeout 300000",
     "test:v2:smoke": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/smoke-v2-only.spec.js --reporter spec --exit --timeout 300000",
     "test:v2:aef": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/aef-*.spec.js --reporter spec --exit --timeout 300000",

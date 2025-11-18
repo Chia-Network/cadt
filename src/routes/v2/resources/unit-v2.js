@@ -1,7 +1,27 @@
 import express from 'express';
+import multer from 'multer';
 import * as UnitV2Controller from '../../../controllers/v2/unit-v2.controller.js';
 
 const UnitV2Router = express.Router();
+const upload = multer();
+
+// Advanced routes (must come before generic :id routes)
+// POST /v2/unit/split - Split unit into multiple units
+UnitV2Router.post('/split', UnitV2Controller.split);
+
+// PUT /v2/unit/xlsx - Update units from XLSX file
+UnitV2Router.put(
+  '/xlsx',
+  upload.single('xlsx'),
+  UnitV2Controller.updateFromXLS,
+);
+
+// POST /v2/unit/batch - Batch upload units from CSV file
+UnitV2Router.post(
+  '/batch',
+  upload.single('csv'),
+  UnitV2Controller.batchUpload,
+);
 
 // CRUD routes for unit
 UnitV2Router.post('/', UnitV2Controller.create);
