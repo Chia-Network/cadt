@@ -12,6 +12,11 @@ export default {
         unique: true,
         comment: 'generated UUID'
       },
+      org_uid: {
+        type: Sequelize.STRING(64),
+        allowNull: false,
+        comment: 'Organization UID - identifies which organization owns this unit. Automatically set from home organization.'
+      },
       unit_serial_id: {
         type: Sequelize.STRING,
         allowNull: false,
@@ -94,6 +99,7 @@ export default {
     });
 
     // Add indexes for better performance
+    await queryInterface.addIndex('unit', ['org_uid']);
     await queryInterface.addIndex('unit', ['unit_serial_id']);
     await queryInterface.addIndex('unit', ['unit_vintage_year']);
     await queryInterface.addIndex('unit', ['unit_status']);

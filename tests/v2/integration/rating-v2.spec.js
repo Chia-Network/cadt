@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { RatingV2, RatingV2Mirror, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
 describe('Rating V2 Endpoint Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -12,6 +13,10 @@ describe('Rating V2 Endpoint Integration Tests', function () {
   before(async function () {
     console.log('Setting up Rating V2 test environment...');
     await prepareV2Db();
+
+    // Create test home organization
+    await createV2TestHomeOrg();
+    const homeOrgId = await getV2HomeOrgId();
 
     // Create test program
     const program = await ProgramV2.create({
@@ -25,6 +30,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     // Create test project
     const project = await ProjectV2.create({
       cadTrustProjectId: uuidv4(),
+      orgUid: homeOrgId,
       projectName: 'Test Project for Rating',
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-RATING-001',
@@ -45,6 +51,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should create a new rating', async function () {
       const ratingData = {
         ratingType: 'CDP',
+        ratingName: 'Test Rating Name',
         ratingValue: 'A+',
         ratingLink: 'https://example.com/rating',
         cadTrustProjectId: testProjectId,
@@ -55,6 +62,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       expect(rating).to.exist;
       expect(rating.cadTrustRatingId).to.exist;
       expect(rating.ratingType).to.equal('CDP');
+      expect(rating.ratingName).to.equal('Test Rating Name');
       expect(rating.ratingValue).to.equal('A+');
       expect(rating.ratingLink).to.equal('https://example.com/rating');
       expect(rating.cadTrustProjectId).to.equal(testProjectId);
@@ -65,6 +73,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should read a rating by ID', async function () {
       const ratingData = {
         ratingType: 'CCQI',
+        ratingName: 'Quality Rating',
         ratingValue: 'B-',
         ratingLink: 'https://example.com/rating2',
         cadTrustProjectId: testProjectId,
@@ -76,6 +85,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       expect(foundRating).to.exist;
       expect(foundRating.cadTrustRatingId).to.equal(createdRating.cadTrustRatingId);
       expect(foundRating.ratingType).to.equal('CCQI');
+      expect(foundRating.ratingName).to.equal('Quality Rating');
       expect(foundRating.ratingValue).to.equal('B-');
       expect(foundRating.ratingLink).to.equal('https://example.com/rating2');
       expect(foundRating.cadTrustProjectId).to.equal(testProjectId);
@@ -90,6 +100,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       // Verify each rating has required fields
       ratings.forEach(rating => {
         expect(rating.cadTrustRatingId).to.exist;
+        expect(rating.ratingName).to.exist;
         expect(rating.ratingValue).to.exist;
         expect(rating.cadTrustProjectId).to.exist;
         expect(rating.createdAt).to.exist;
@@ -100,6 +111,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should update a rating', async function () {
       const ratingData = {
         ratingType: 'CDP',
+        ratingName: 'Original Rating Name',
         ratingValue: 'C+',
         ratingLink: 'https://example.com/rating3',
         cadTrustProjectId: testProjectId,
@@ -109,6 +121,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
 
       const updateData = {
         ratingType: 'CCQI',
+        ratingName: 'Updated Rating Name',
         ratingValue: 'A-',
         ratingLink: 'https://example.com/rating3-updated',
         cadTrustProjectId: testProjectId,
@@ -119,6 +132,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       const updatedRating = await RatingV2Mirror.findByPk(createdRating.cadTrustRatingId);
 
       expect(updatedRating.ratingType).to.equal('CCQI');
+      expect(updatedRating.ratingName).to.equal('Updated Rating Name');
       expect(updatedRating.ratingValue).to.equal('A-');
       expect(updatedRating.ratingLink).to.equal('https://example.com/rating3-updated');
     });
@@ -126,6 +140,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should delete a rating', async function () {
       const ratingData = {
         ratingType: 'CDP',
+        ratingName: 'Rating to Delete',
         ratingValue: 'D',
         ratingLink: 'https://example.com/rating4',
         cadTrustProjectId: testProjectId,
@@ -145,7 +160,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should reject rating with missing required fields', async function () {
       try {
         await RatingV2Mirror.create({
-          // Missing ratingValue, cadTrustProjectId
+          // Missing ratingName, ratingValue, cadTrustProjectId
           ratingType: 'CDP',
         });
         expect.fail('Should have thrown validation error');
@@ -159,6 +174,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       try {
         await RatingV2Mirror.create({
           ratingType: 'INVALID_TYPE',
+          ratingName: 'Test Rating',
           ratingValue: 'A+',
           cadTrustProjectId: testProjectId,
         });
@@ -174,6 +190,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       try {
         await RatingV2Mirror.create({
           ratingType: 'CDP',
+          ratingName: 'Test Rating',
           ratingValue: 'A+',
           cadTrustProjectId: 'invalid-uuid',
         });
@@ -188,6 +205,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should accept rating with optional fields null', async function () {
       const ratingData = {
         ratingType: null,
+        ratingName: 'Required Rating Name',
         ratingValue: 'B+',
         ratingLink: null,
         cadTrustProjectId: testProjectId,
@@ -197,12 +215,14 @@ describe('Rating V2 Endpoint Integration Tests', function () {
 
       expect(rating).to.exist;
       expect(rating.ratingType).to.be.null;
+      expect(rating.ratingName).to.equal('Required Rating Name');
       expect(rating.ratingLink).to.be.null;
     });
 
     it('should accept rating with valid URI for rating link', async function () {
       const ratingData = {
         ratingType: 'CDP',
+        ratingName: 'URI Test Rating',
         ratingValue: 'A',
         ratingLink: 'https://www.example.com/rating-report',
         cadTrustProjectId: testProjectId,
@@ -222,6 +242,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       try {
         await RatingV2Mirror.create({
           ratingType: 'CDP',
+          ratingName: 'Test Rating',
           ratingValue: 'A+',
           cadTrustProjectId: nonExistentProjectId,
         });
@@ -236,6 +257,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should accept rating with valid project ID', async function () {
       const ratingData = {
         ratingType: 'CCQI',
+        ratingName: 'Valid Project Rating',
         ratingValue: 'B+',
         cadTrustProjectId: testProjectId,
       };
@@ -251,6 +273,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should load rating with project association', async function () {
       const ratingData = {
         ratingType: 'CDP',
+        ratingName: 'Association Test Rating',
         ratingValue: 'A-',
         ratingLink: 'https://example.com/rating-association',
         cadTrustProjectId: testProjectId,
@@ -279,6 +302,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should generate valid UUID for rating', async function () {
       const ratingData = {
         ratingType: 'CDP',
+        ratingName: 'UUID Test Rating',
         ratingValue: 'A+',
         cadTrustProjectId: testProjectId,
       };
@@ -294,6 +318,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       const ratingData = {
         cadTrustRatingId: explicitUuid,
         ratingType: 'CCQI',
+        ratingName: 'Explicit UUID Rating',
         ratingValue: 'B',
         cadTrustProjectId: testProjectId,
       };
@@ -308,6 +333,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should accept valid CDP rating type', async function () {
       const ratingData = {
         ratingType: 'CDP',
+        ratingName: 'CDP Rating',
         ratingValue: 'A+',
         cadTrustProjectId: testProjectId,
       };
@@ -320,6 +346,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
     it('should accept valid CCQI rating type', async function () {
       const ratingData = {
         ratingType: 'CCQI',
+        ratingName: 'CCQI Rating',
         ratingValue: 'B-',
         cadTrustProjectId: testProjectId,
       };
@@ -335,6 +362,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       const longRatingValue = 'A'.repeat(255); // Maximum length
       const ratingData = {
         ratingType: 'CDP',
+        ratingName: 'Long Value Rating',
         ratingValue: longRatingValue,
         cadTrustProjectId: testProjectId,
       };
@@ -349,6 +377,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       const longRatingLink = 'https://example.com/' + 'a'.repeat(1000); // Very long URL
       const ratingData = {
         ratingType: 'CCQI',
+        ratingName: 'Long Link Rating',
         ratingValue: 'C+',
         ratingLink: longRatingLink,
         cadTrustProjectId: testProjectId,

@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { EstimationV2, EstimationV2Mirror, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
 describe('Estimation V2 Endpoint Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -12,6 +13,10 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
   before(async function () {
     console.log('Setting up Estimation V2 test environment...');
     await prepareV2Db();
+
+    // Create test home organization
+    await createV2TestHomeOrg();
+    const homeOrgId = await getV2HomeOrgId();
 
     // Create test program
     const program = await ProgramV2.create({
@@ -25,6 +30,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
     // Create test project
     const project = await ProjectV2.create({
       cadTrustProjectId: uuidv4(),
+      orgUid: homeOrgId,
       projectName: 'Test Project for Estimation',
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-EST-001',

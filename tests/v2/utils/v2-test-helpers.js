@@ -77,9 +77,11 @@ export const getV2HomeOrgId = async () => {
 // V2 test data generators
 export const createV2TestProject = async () => {
   const { v4: uuidv4 } = await import('uuid');
+  const homeOrgId = await getV2HomeOrgId();
 
   return {
     cad_trust_project_id: uuidv4(),
+    org_uid: homeOrgId || 'test-home-org-v2', // Use home org UID if available, fallback to test org
     project_registry_name: 'Test Registry V2',
     project_id: 'TEST-PROJECT-V2',
     project_crediting_program: 'Test Program V2',

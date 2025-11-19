@@ -26,11 +26,13 @@
 - ✅ **Phase 21**: Units Advanced Features (Complete with split, xlsx, batch upload, and advanced query features: columns, xls export, generic filter, sorting, and comprehensive tests)
 - ✅ **Phase 22**: Staging Advanced Features (Complete with offer file generation for project transfers)
 - ✅ **Phase 23**: Governance Advanced Features (Complete with subscribe endpoint)
+- ✅ **Phase 24**: V2 API Documentation (Complete with comprehensive documentation for all V2 endpoints)
 
-**CURRENT STATUS:** ✅ CORE API ENDPOINTS COMPLETED - V2 API core functionality is implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer. ✅ V2 Organization Management complete - Full organization lifecycle management with create, upgrade, import, subscription, and mirror operations. ✅ Offer/Transfer Endpoints complete - Full offer generation, import, commit, and cancellation functionality. ✅ Filestore Endpoints complete - Full file storage and management functionality. ✅ Projects Advanced Features complete - Transfer, XLSX import, CSV batch upload, and advanced query features. ✅ Units Advanced Features complete - Split, XLSX import, CSV batch upload, and advanced query features. ✅ Staging Advanced Features complete - Offer file generation for project transfers. ✅ Governance Advanced Features complete - Subscribe to governance body functionality.
+**CURRENT STATUS:** ✅ CORE API ENDPOINTS COMPLETED - V2 API core functionality is implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer. ✅ V2 Organization Management complete - Full organization lifecycle management with create, upgrade, import, subscription, and mirror operations. ✅ Offer/Transfer Endpoints complete - Full offer generation, import, commit, and cancellation functionality. ✅ Filestore Endpoints complete - Full file storage and management functionality. ✅ Projects Advanced Features complete - Transfer, XLSX import, CSV batch upload, and advanced query features. ✅ Units Advanced Features complete - Split, XLSX import, CSV batch upload, and advanced query features. ✅ Staging Advanced Features complete - Offer file generation for project transfers. ✅ Governance Advanced Features complete - Subscribe to governance body functionality. ✅ V2 API Documentation complete - Comprehensive documentation for all V2 endpoints following V1 structure and style.
 
 **PENDING PHASES:**
-- ⏳ **Phase 24**: V2 API Documentation
+- ⏳ **Phase 25**: Add orgUid Field to Projects and Units Tables
+- ⏳ **Phase 26**: Full-Text Search (FTS5) Implementation
 
 **COMPLETED ENDPOINTS (22 total):**
 - Core: Methodology, Program, Project, Validation, Verification, Issuance, Unit, Location (8 endpoints)
@@ -4352,3 +4354,815 @@ static async pushToDataLayer(tableToPush, comment, author, ids = []) {
 - Test `pushToDataLayer()` with multiple tables
 - Test error scenarios (failed commits, invalid data)
 - Test V1/V2 isolation
+
+---
+
+## Phase 25: Add orgUid Field to Projects and Units Tables
+
+Add `orgUid` field to the `project` and `unit` tables to enable direct organization filtering, similar to V1 implementation.
+
+**Goals**:
+- Add `org_uid` column to `project` and `unit` tables
+- Update API endpoints to accept and return `orgUid` field
+- Add validation for `orgUid` in request schemas
+- Update tests to account for `orgUid`
+- Update API documentation to reflect `orgUid` field
+
+**Important Notes**:
+- **No migration needed**: Since there are no production V2 instances, we can simply add the field to the table creation code
+- **Database recreation**: Any existing V2 databases can be deleted and recreated
+- **Keep it simple**: Don't create complex migrations - just add the field to the table definitions
+- **V1 Behavior**: In V1, `orgUid` is automatically set from the home organization - users cannot provide it. We should follow the same pattern in V2.
+
+### 25.1 Update Project Table Schema
+
+Add `org_uid` column to the `project` table definition.
+
+**File**: `src/models/v2/project-v2.model.js`
+
+**Changes**:
+1. Add `orgUid` field to model definition:
+   ```javascript
+   orgUid: {
+     type: Sequelize.STRING(64),
+     allowNull: false, // Required - automatically set from home organization
+     field: 'org_uid',
+     comment: 'Organization UID - identifies which organization owns this project. Automatically set from home organization.'
+   }
+   ```
+
+2. Update table creation in migration/model sync to include the column:
+   ```sql
+   org_uid VARCHAR(64) NOT NULL
+   ```
+
+3. Update mirror model to include `orgUid` field:
+   **File**: `src/models/v2/project-v2.model.mirror.js`
+   - Add `orgUid` field definition (same as main model)
+   - Note: Migrations run on both SQLite and MySQL mirror, so column will be created automatically
+
+**Checkpoint 25.1**: Verify project table includes `org_uid` column after database recreation
+
+### 25.2 Update Unit Table Schema
+
+Add `org_uid` column to the `unit` table definition.
+
+**File**: `src/models/v2/unit-v2.model.js`
+
+**Changes**:
+1. Add `orgUid` field to model definition:
+   ```javascript
+   orgUid: {
+     type: Sequelize.STRING(64),
+     allowNull: false, // Required - automatically set from home organization
+     field: 'org_uid',
+     comment: 'Organization UID - identifies which organization owns this unit. Automatically set from home organization.'
+   }
+   ```
+
+2. Update table creation in migration/model sync to include the column:
+   ```sql
+   org_uid VARCHAR(64) NOT NULL
+   ```
+
+3. Update mirror model to include `orgUid` field:
+   **File**: `src/models/v2/unit-v2.model.mirror.js`
+   - Add `orgUid` field definition (same as main model)
+   - Note: Migrations run on both SQLite and MySQL mirror, so column will be created automatically
+
+**Checkpoint 25.2**: Verify unit table includes `org_uid` column after database recreation
+
+### 25.3 Update Project API Validation Schema
+
+Reject `orgUid` if provided in API requests (it's automatically set by the controller).
+
+**File**: `src/validators/v2/project-v2.validator.js`
+
+**Changes**:
+1. **Do NOT add `orgUid` to validation schemas** - it should be rejected if provided
+2. Add validation check in controller to reject `orgUid` if present in request body (similar to how `createdAt`, `updatedAt`, `cadTrustProjectId` are rejected)
+
+**Note**: Following V1 pattern - `orgUid` is automatically set from the home organization and cannot be user-provided.
+
+**Checkpoint 25.3**: Verify validation rejects `orgUid` if provided in POST and PUT requests
+
+### 25.4 Update Unit API Validation Schema
+
+Reject `orgUid` if provided in API requests (it's automatically set by the controller).
+
+**File**: `src/validators/v2/unit-v2.validator.js`
+
+**Changes**:
+1. **Do NOT add `orgUid` to validation schemas** - it should be rejected if provided
+2. Add validation check in controller to reject `orgUid` if present in request body (similar to how `createdAt`, `updatedAt`, `cadTrustUnitId` are rejected)
+
+**Note**: Following V1 pattern - `orgUid` is automatically set from the home organization and cannot be user-provided.
+
+**Checkpoint 25.4**: Verify validation rejects `orgUid` if provided in POST and PUT requests
+
+### 25.5 Update Project Controller
+
+Ensure Project controller automatically sets `orgUid` from home organization (like V1).
+
+**File**: `src/controllers/v2/project-v2.controller.js`
+
+**Changes**:
+1. **Reject `orgUid` if provided** in request body (add check similar to `createdAt`/`updatedAt` rejection)
+2. **Automatically set `orgUid`** from home organization in `create` method:
+   ```javascript
+   // Get home organization
+   const homeOrg = await OrganizationsV2.getHomeOrg();
+   if (!homeOrg) {
+     throw new Error('Home organization not found');
+   }
+
+   // Set orgUid automatically (user cannot provide it)
+   dbRecord.org_uid = homeOrg.orgUid;
+   ```
+3. **Automatically set `orgUid`** from home organization in `update` method (for non-transfer updates)
+4. **Preserve `orgUid`** from original record in transfer operations (if applicable)
+5. Verify `orgUid` is included in response serialization (should be automatic via model)
+6. Add `orgUid` filtering support to `findAll` method:
+   ```javascript
+   if (orgUid) {
+     if (!where) {
+       where = {};
+     }
+     where.orgUid = orgUid;
+   }
+   ```
+
+**Checkpoint 25.5**: Test creating/updating projects - verify `orgUid` is automatically set and filtering by `orgUid` works
+
+### 25.6 Update Unit Controller
+
+Ensure Unit controller automatically sets `orgUid` from home organization (like V1).
+
+**File**: `src/controllers/v2/unit-v2.controller.js`
+
+**Changes**:
+1. **Reject `orgUid` if provided** in request body (add check similar to `createdAt`/`updatedAt` rejection)
+2. **Automatically set `orgUid`** from home organization in `create` method:
+   ```javascript
+   // Get home organization
+   const homeOrg = await OrganizationsV2.getHomeOrg();
+   if (!homeOrg) {
+     throw new Error('Home organization not found');
+   }
+
+   // Set orgUid automatically (user cannot provide it)
+   dbRecord.org_uid = homeOrg.orgUid;
+   ```
+3. **Automatically set `orgUid`** from home organization in `update` method
+4. Verify `orgUid` is included in response serialization (should be automatic via model)
+5. Add `orgUid` filtering support to `findAll` method:
+   ```javascript
+   if (orgUid) {
+     if (!where) {
+       where = {};
+     }
+     where.orgUid = orgUid;
+   }
+   ```
+
+**Checkpoint 25.6**: Test creating/updating units - verify `orgUid` is automatically set and filtering by `orgUid` works
+
+### 25.7 Update Project Tests
+
+Update Project tests to account for `orgUid` field.
+
+**Files**:
+- `tests/v2/integration/project-v2.spec.js`
+- `tests/v2/unit/project-v2.spec.js`
+
+**Changes**:
+1. Update test fixtures to expect `orgUid` to be automatically set (not provided in request)
+2. Add test cases for:
+   - Creating project - verify `orgUid` is automatically set from home organization
+   - Rejecting `orgUid` if provided in request body
+   - Updating project - verify `orgUid` is automatically set from home organization
+   - Filtering projects by `orgUid` query parameter
+   - Verifying `orgUid` is returned in responses
+3. Update existing tests to account for automatic `orgUid` assignment
+
+**Checkpoint 25.7**: Run Project tests and verify they pass with `orgUid` field
+
+### 25.8 Update Unit Tests
+
+Update Unit tests to account for `orgUid` field.
+
+**Files**:
+- `tests/v2/integration/unit-v2.spec.js`
+- `tests/v2/unit/unit-v2.spec.js`
+
+**Changes**:
+1. Update test fixtures to expect `orgUid` to be automatically set (not provided in request)
+2. Add test cases for:
+   - Creating unit - verify `orgUid` is automatically set from home organization
+   - Rejecting `orgUid` if provided in request body
+   - Updating unit - verify `orgUid` is automatically set from home organization
+   - Filtering units by `orgUid` query parameter
+   - Verifying `orgUid` is returned in responses
+3. Update existing tests to account for automatic `orgUid` assignment
+
+**Checkpoint 25.8**: Run Unit tests and verify they pass with `orgUid` field
+
+### 25.9 Update API Documentation
+
+Update V2 API documentation to reflect `orgUid` field in Projects and Units endpoints.
+
+**File**: `docs/cadt_rpc_api_v2.md`
+
+**Changes**:
+1. **Projects Section**:
+   - Add `orgUid` to field descriptions (note: automatically set, not user-provided)
+   - Add `orgUid` to response examples (show it in responses)
+   - Document `orgUid` query parameter for filtering (`?orgUid=xxx`)
+   - Note that `orgUid` cannot be provided in POST/PUT requests (automatically set from home organization)
+   - Update examples to show `orgUid` in responses and filtering usage
+
+2. **Units Section**:
+   - Add `orgUid` to field descriptions (note: automatically set, not user-provided)
+   - Add `orgUid` to response examples (show it in responses)
+   - Document `orgUid` query parameter for filtering (`?orgUid=xxx`)
+   - Note that `orgUid` cannot be provided in POST/PUT requests (automatically set from home organization)
+   - Update examples to show `orgUid` in responses and filtering usage
+
+**Checkpoint 25.9**: Review documentation to ensure `orgUid` is properly documented
+
+### 25.10 Run Full Test Suite
+
+Run the complete V2 test suite to ensure all changes work correctly together.
+
+**Command**:
+```bash
+npm run test:v2
+```
+
+**Important**: After adding `orgUid` as a required field to `project` and `unit` tables, other test files that create `ProjectV2` or `UnitV2` records directly (not via API) will need to be updated to include `orgUid`. These tests will fail with `notNull Violation` errors until updated.
+
+**Test Files That May Need Updates**:
+- `tests/v2/integration/aef-t2-authorizations-v2.spec.js`
+- `tests/v2/integration/aef-t3-actions-v2.spec.js`
+- `tests/v2/integration/aef-t4-holdings-v2.spec.js`
+- `tests/v2/integration/aef-t5-authorized-entities-v2.spec.js`
+- `tests/v2/integration/co-benefit-v2.spec.js`
+- `tests/v2/integration/estimation-v2.spec.js`
+- `tests/v2/integration/issuance-v2.spec.js`
+- `tests/v2/integration/location-v2.spec.js`
+- `tests/v2/integration/offer-v2.spec.js`
+- `tests/v2/integration/project-methodology-v2.spec.js`
+- `tests/v2/integration/rating-v2.spec.js`
+- `tests/v2/integration/staging-v2.spec.js`
+- `tests/v2/integration/stakeholder-projects-v2.spec.js`
+- `tests/v2/integration/unit-label-v2.spec.js`
+- `tests/v2/integration/uuid-migration-validation-simple.spec.js`
+- `tests/v2/integration/uuid-migration-validation.spec.js`
+- `tests/v2/integration/validation-v2.spec.js`
+- `tests/v2/integration/verification-v2.spec.js`
+
+**Fix Pattern**: For each test file that creates `ProjectV2` or `UnitV2` records directly:
+1. Import `getV2HomeOrgId` from `tests/v2/utils/v2-test-helpers.js`
+2. Get the home org UID: `const homeOrgId = await getV2HomeOrgId();`
+3. Add `orgUid: homeOrgId` to all `ProjectV2.create()` and `UnitV2.create()` calls
+4. Add `orgUid: homeOrgId` to all `ProjectV2.bulkCreate()` and `UnitV2.bulkCreate()` calls
+
+**Note**: This should be done as part of Phase 25.10 to ensure all tests pass before moving to Phase 26.
+
+**Checkpoint 25.10**: Verify all V2 tests pass (including fixing other test files that create ProjectV2/UnitV2 records)
+
+**STOP HERE - User verifies all tests pass and documentation is complete**
+
+---
+
+## Phase 26: Full-Text Search (FTS5) Implementation
+
+Implement SQLite FTS5 full-text search for Projects and Units endpoints with improvements over V1 implementation.
+
+**Goals**:
+- Add `?search=xxx` query parameter support to Projects and Units endpoints
+- Implement FTS5 virtual tables with automatic maintenance via triggers
+- Fix performance and correctness issues from V1 implementation
+- Use BM25 ranking for better relevance
+- Improve query sanitization
+- Add error handling and recovery utilities
+- Support `orgUid` filtering in FTS queries (now that field exists)
+
+**V2-Specific Considerations**:
+- V2 projects/units now have `orgUid` field (can filter by orgUid in FTS queries)
+- Map V2 snake_case field names correctly in FTS tables
+- Handle V2's relationship structure (units → issuance → project)
+- Use V2 database connection (`sequelizeV2`)
+
+**Improvements Over V1**:
+1. **Performance**: Use `COUNT(*)` instead of loading all rows for count
+2. **Ranking**: Use BM25 ranking instead of default `rank` (better relevance)
+3. **Query Sanitization**: Better sanitization that preserves user intent (don't force prefix matching)
+4. **Trigger Efficiency**: Use `INSERT OR REPLACE` instead of DELETE + INSERT
+5. **UNION Queries**: Fix rank ordering for units UNION queries
+6. **Error Handling**: Add recovery for corrupted/missing FTS tables
+7. **Rebuild Utility**: Add utility to rebuild FTS tables if needed
+
+### 26.1 FTS5 Migration: Create Virtual Tables
+
+Create migration to set up FTS5 virtual tables for Projects and Units.
+
+**File**: `src/database/v2/migrations/YYYYMMDDHHMMSS-create-fts5-tables.js`
+
+**Migration Steps**:
+
+1. **Create `projects_v2_fts` virtual table** (includes `org_uid`):
+   ```sql
+   CREATE VIRTUAL TABLE projects_v2_fts USING fts5(
+     cad_trust_project_id,
+     org_uid,
+     project_registry_name,
+     project_id,
+     project_crediting_program,
+     project_name,
+     project_link,
+     project_description,
+     project_sector,
+     project_type,
+     project_subtype,
+     project_status,
+     project_status_date,
+     project_unit_metric,
+     cad_trust_reference_project_id,
+     cad_trust_program_id
+   );
+   ```
+
+2. **Create `units_v2_fts` virtual table** (includes `org_uid`):
+   ```sql
+   CREATE VIRTUAL TABLE units_v2_fts USING fts5(
+     cad_trust_unit_id,
+     org_uid,
+     unit_serial_id,
+     unit_start_block,
+     unit_end_block,
+     unit_count,
+     unit_type,
+     unit_vintage_year,
+     unit_status,
+     unit_status_reason,
+     unit_status_date,
+     unit_retirement_detail,
+     unit_retirement_beneficiary,
+     unit_retirement_beneficiary_id,
+     unit_link,
+     unit_metric,
+     unit_current_owner,
+     unit_itmos_reference_id,
+     cad_trust_issuance_id
+   );
+   ```
+
+3. **Populate initial data** (includes `org_uid`):
+   ```sql
+   INSERT INTO projects_v2_fts SELECT
+     cad_trust_project_id,
+     org_uid,
+     project_registry_name,
+     project_id,
+     project_crediting_program,
+     project_name,
+     project_link,
+     project_description,
+     project_sector,
+     project_type,
+     project_subtype,
+     project_status,
+     project_status_date,
+     project_unit_metric,
+     cad_trust_reference_project_id,
+     cad_trust_program_id
+   FROM project;
+
+   INSERT INTO units_v2_fts SELECT
+     cad_trust_unit_id,
+     org_uid,
+     unit_serial_id,
+     unit_start_block,
+     unit_end_block,
+     unit_count,
+     unit_type,
+     unit_vintage_year,
+     unit_status,
+     unit_status_reason,
+     unit_status_date,
+     unit_retirement_detail,
+     unit_retirement_beneficiary,
+     unit_retirement_beneficiary_id,
+     unit_link,
+     unit_metric,
+     unit_current_owner,
+     unit_itmos_reference_id,
+     cad_trust_issuance_id
+   FROM unit;
+   ```
+
+**Checkpoint 26.1**: Verify migration runs successfully and FTS tables are created with `org_uid` field
+
+### 26.2 FTS5 Triggers: Automatic Maintenance
+
+Create triggers to automatically maintain FTS tables when data changes.
+
+**File**: `src/database/v2/migrations/YYYYMMDDHHMMSS-create-fts5-triggers.js`
+
+**Trigger Implementation**:
+
+1. **Projects INSERT trigger** (includes `org_uid`):
+   ```sql
+   CREATE TRIGGER project_v2_insert_fts AFTER INSERT ON project BEGIN
+     INSERT INTO projects_v2_fts(
+       cad_trust_project_id,
+       org_uid,
+       project_registry_name,
+       project_id,
+       project_crediting_program,
+       project_name,
+       project_link,
+       project_description,
+       project_sector,
+       project_type,
+       project_subtype,
+       project_status,
+       project_status_date,
+       project_unit_metric,
+       cad_trust_reference_project_id,
+       cad_trust_program_id
+     ) VALUES (
+       new.cad_trust_project_id,
+       new.org_uid,
+       new.project_registry_name,
+       new.project_id,
+       new.project_crediting_program,
+       new.project_name,
+       new.project_link,
+       new.project_description,
+       new.project_sector,
+       new.project_type,
+       new.project_subtype,
+       new.project_status,
+       new.project_status_date,
+       new.project_unit_metric,
+       new.cad_trust_reference_project_id,
+       new.cad_trust_program_id
+     );
+   END;
+   ```
+
+2. **Projects UPDATE trigger** (using INSERT OR REPLACE for efficiency, includes `org_uid`):
+   ```sql
+   CREATE TRIGGER project_v2_update_fts AFTER UPDATE ON project BEGIN
+     INSERT OR REPLACE INTO projects_v2_fts(
+       cad_trust_project_id,
+       org_uid,
+       -- ... all fields
+     ) VALUES (
+       new.cad_trust_project_id,
+       new.org_uid,
+       -- ... all values
+     );
+   END;
+   ```
+
+3. **Projects DELETE trigger**:
+   ```sql
+   CREATE TRIGGER project_v2_delete_fts AFTER DELETE ON project BEGIN
+     DELETE FROM projects_v2_fts WHERE cad_trust_project_id = old.cad_trust_project_id;
+   END;
+   ```
+
+4. **Units INSERT trigger** (similar structure to projects, includes `org_uid`)
+
+5. **Units UPDATE trigger** (using INSERT OR REPLACE, includes `org_uid`)
+
+6. **Units DELETE trigger** (similar structure to projects)
+
+**Checkpoint 26.2**: Verify triggers work correctly by inserting/updating/deleting test records with `org_uid`
+
+### 26.3 Improved Query Sanitization Utility
+
+Create improved query sanitization function for FTS5 queries.
+
+**File**: `src/utils/v2-fts-utils.js`
+
+**Function**: `sanitizeSqliteFtsQuery(query)`
+
+**Improvements Over V1**:
+- Don't force prefix matching (remove automatic `*` suffix)
+- Better handling of special characters
+- Preserve user intent (phrases, exact matches)
+- Proper escaping of FTS5 special characters: `" ' * + - AND OR NOT`
+
+**Implementation**:
+```javascript
+export const sanitizeSqliteFtsQuery = (query) => {
+  if (!query || typeof query !== 'string') {
+    return '';
+  }
+
+  // Trim whitespace
+  query = query.trim();
+
+  // Empty query returns empty string (will match nothing)
+  if (!query) {
+    return '';
+  }
+
+  // Escape double quotes (FTS5 uses double quotes for phrases)
+  query = query.replace(/"/g, '""');
+
+  // Note: Don't force prefix matching - let users control it
+  // Users can add '*' themselves if they want prefix matching
+
+  return query;
+};
+```
+
+**Checkpoint 26.3**: Test sanitization with various query inputs (phrases, special chars, empty strings)
+
+### 26.4 ProjectV2 Model: FTS Methods
+
+Add FTS methods to ProjectV2 model with improvements.
+
+**File**: `src/models/v2/project-v2.model.js`
+
+**Methods to Add**:
+
+1. **`static async fts(searchStr, pagination, columns = [], orgUid = null)`**:
+   - Dialect detection (SQLite only for V2)
+   - Call `findAllSqliteFts` method
+   - Filter columns appropriately
+   - Pass `orgUid` parameter for filtering
+
+2. **`static async findAllSqliteFts(searchStr, pagination, columns = [], orgUid = null)`**:
+   - Use BM25 ranking instead of default `rank`
+   - Use `COUNT(*)` for efficient count query
+   - Handle empty search strings
+   - Filter by `orgUid` if provided (using WHERE clause on FTS table)
+   - Return matching `cadTrustProjectId` values
+
+**Improvements**:
+- Use `ORDER BY bm25(projects_v2_fts) ASC` (lower scores = better matches)
+- Use `SELECT COUNT(*)` instead of loading all rows
+- Better error handling
+- Support `orgUid` filtering in FTS queries
+
+**Implementation Notes**:
+- Map V2 snake_case field names correctly
+- Use `sequelizeV2` connection
+- Include `orgUid` filtering when provided: `WHERE projects_v2_fts.org_uid = :orgUid`
+
+**Checkpoint 26.4**: Test FTS method with various search queries, including `orgUid` filtering
+
+### 26.5 UnitV2 Model: FTS Methods
+
+Add FTS methods to UnitV2 model with improvements.
+
+**File**: `src/models/v2/unit-v2.model.js`
+
+**Methods to Add**:
+
+1. **`static async fts(searchStr, pagination, columns = [], includeProjectInfo = false, orgUid = null)`**:
+   - Dialect detection (SQLite only)
+   - Call `findAllSqliteFts` method
+   - Support `includeProjectInfo` flag for searching related project data
+   - Pass `orgUid` parameter for filtering
+
+2. **`static async findAllSqliteFts(searchStr, pagination, columns = [], includeProjectInfo = false, orgUid = null)`**:
+   - Use BM25 ranking
+   - Use `COUNT(*)` for count
+   - Fix UNION query rank ordering (use subquery with BM25)
+   - Handle `includeProjectInfo` flag (join with projects_v2_fts via issuance)
+   - Filter by `orgUid` if provided
+
+**Improvements**:
+- Fix UNION rank ordering: Use subquery with BM25 ranking
+- Use `ORDER BY bm25(units_v2_fts) ASC` for relevance
+- Proper handling of UNION deduplication in count
+- Support `orgUid` filtering in FTS queries
+
+**Implementation Notes**:
+- Map V2 snake_case field names
+- Handle V2 relationships (units → issuance → project)
+- Include `orgUid` filtering when provided: `WHERE units_v2_fts.org_uid = :orgUid`
+- Support searching project info via `includeProjectInfo` flag
+
+**Checkpoint 26.5**: Test FTS method with various queries, including `includeProjectInfo=true` and `orgUid` filtering
+
+### 26.6 ProjectV2 Controller: Search Integration
+
+Integrate FTS search into ProjectV2 controller.
+
+**File**: `src/controllers/v2/project-v2.controller.js`
+
+**Changes to `findAll` method**:
+
+1. **Add `search` parameter** to query params extraction
+2. **Extract `orgUid` parameter** (already exists for filtering)
+3. **Call FTS method** when search is provided:
+   ```javascript
+   if (search) {
+     const ftsResults = await ProjectV2.fts(
+       search,
+       pagination,
+       columns.filter((col) => col !== 'methodology2'), // Exclude if needed
+       orgUid // Pass orgUid for FTS filtering
+     );
+     const mappedResults = ftsResults.rows.map((ftsResult) =>
+       _.get(ftsResult, 'dataValues.cadTrustProjectId'),
+     );
+
+     if (!where) {
+       where = {};
+     }
+
+     where.cadTrustProjectId = {
+       [Sequelize.Op.in]: mappedResults,
+     };
+
+     // Note: orgUid filtering is handled in FTS query, so don't add it to where clause again
+   }
+   ```
+
+**Implementation Notes**:
+- Use V2 field names (`cadTrustProjectId` instead of `warehouseProjectId`)
+- Integrate with existing filter/order/columns logic
+- Maintain compatibility with other query parameters
+- Pass `orgUid` to FTS method for efficient filtering
+
+**Checkpoint 26.6**: Test search parameter with various queries and combinations with other params, including `orgUid`
+
+### 26.7 UnitV2 Controller: Search Integration
+
+Integrate FTS search into UnitV2 controller.
+
+**File**: `src/controllers/v2/unit-v2.controller.js`
+
+**Changes to `findAll` method**:
+
+1. **Add `search` and `includeProjectInfoInSearch` parameters**
+2. **Extract `orgUid` parameter** (already exists for filtering)
+3. **Call FTS method** when search is provided:
+   ```javascript
+   if (search) {
+     const ftsResults = await UnitV2.fts(
+       search,
+       pagination,
+       columns,
+       includeProjectInfoInSearch === 'true',
+       orgUid // Pass orgUid for FTS filtering
+     );
+     const mappedResults = ftsResults.rows.map((ftsResult) =>
+       _.get(ftsResult, 'dataValues.cadTrustUnitId'),
+     );
+
+     if (!where) {
+       where = {};
+     }
+
+     where.cadTrustUnitId = {
+       [Sequelize.Op.in]: mappedResults,
+     };
+
+     // Note: orgUid filtering is handled in FTS query, so don't add it to where clause again
+   }
+   ```
+
+**Implementation Notes**:
+- Use V2 field names (`cadTrustUnitId` instead of `warehouseUnitId`)
+- Support `includeProjectInfoInSearch` flag
+- Integrate with existing query parameters
+- Pass `orgUid` to FTS method for efficient filtering
+
+**Checkpoint 26.7**: Test search parameter with various queries, including project info search and `orgUid` filtering
+
+### 26.8 FTS Rebuild Utility
+
+Add utility methods to rebuild FTS tables if they get corrupted or out of sync.
+
+**Files**:
+- `src/models/v2/project-v2.model.js`
+- `src/models/v2/unit-v2.model.js`
+
+**Methods to Add**:
+
+1. **`static async rebuildFtsTable()`**:
+   ```javascript
+   static async rebuildFtsTable() {
+     await sequelizeV2.query('DELETE FROM projects_v2_fts');
+     await sequelizeV2.query(`
+       INSERT INTO projects_v2_fts SELECT
+         cad_trust_project_id,
+         project_registry_name,
+         -- ... all fields
+       FROM project
+     `);
+   }
+   ```
+
+2. **Add error handling** to FTS methods:
+   ```javascript
+   try {
+     // ... FTS query logic
+   } catch (error) {
+     if (error.message.includes('no such table: projects_v2_fts')) {
+       logger.error('FTS table missing, attempting rebuild');
+       await ProjectV2.rebuildFtsTable();
+       // Retry query
+       return ProjectV2.findAllSqliteFts(searchStr, pagination, columns);
+     }
+     throw error;
+   }
+   ```
+
+**Checkpoint 26.8**: Test rebuild utility and error handling
+
+### 26.9 FTS Integration Tests
+
+Create comprehensive integration tests for FTS functionality.
+
+**File**: `tests/v2/integration/fts-v2.spec.js`
+
+**Test Cases**:
+
+**Projects FTS Tests**:
+1. Search projects by project name
+2. Search projects by sector
+3. Search projects by methodology
+4. Search projects with multiple words
+5. Search projects with special characters
+6. Search projects with empty string (should return no results)
+7. Search projects combined with filter parameter
+8. Search projects combined with columns parameter
+9. Search projects combined with order parameter
+10. Search projects with pagination
+11. Search projects with XLS export
+12. Search projects filtered by `orgUid`
+13. Search projects with `orgUid` and other query parameters combined
+14. Verify BM25 ranking (better matches appear first)
+15. Verify count query efficiency (doesn't load all rows)
+
+**Units FTS Tests**:
+1. Search units by unit owner
+2. Search units by unit status
+3. Search units by serial number block
+4. Search units with `includeProjectInfoInSearch=true` (searches project data)
+5. Search units with UNION query (handles assetId search)
+6. Search units combined with other query parameters
+7. Search units filtered by `orgUid`
+8. Search units with `orgUid` and `includeProjectInfoInSearch=true` combined
+9. Verify BM25 ranking
+10. Verify UNION rank ordering works correctly
+11. Verify count query efficiency
+
+**Error Handling Tests**:
+1. Test rebuild utility when FTS table is missing
+2. Test rebuild utility when FTS table is corrupted
+3. Test error handling for invalid queries
+
+**Performance Tests**:
+1. Verify COUNT(*) is used (not loading all rows)
+2. Verify BM25 ranking is used (not default rank)
+3. Measure query performance with large datasets
+
+**Checkpoint 26.9**: Run all FTS tests and verify they pass
+
+```bash
+# Run FTS tests
+NODE_ENV=test USE_SIMULATOR=true npx mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/fts-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all FTS tests pass**
+
+---
+
+## Summary of Phase 26 Improvements
+
+**Performance Improvements**:
+- ✅ Use `COUNT(*)` instead of loading all rows (major performance gain)
+- ✅ Use BM25 ranking for better relevance
+- ✅ Use `INSERT OR REPLACE` in triggers (more efficient)
+
+**Correctness Improvements**:
+- ✅ Fix UNION rank ordering (proper ranking across UNION results)
+- ✅ Better query sanitization (preserves user intent)
+
+**Reliability Improvements**:
+- ✅ Add error handling for corrupted/missing FTS tables
+- ✅ Add rebuild utility for maintenance
+
+**V2-Specific Adaptations**:
+- ✅ Map snake_case field names correctly
+- ✅ Handle V2 relationships (units → issuance → project)
+- ✅ Use V2 database connection
+- ✅ Support `orgUid` filtering in FTS queries (field now exists in tables)
+
+**Expected Results**:
+- Full-text search works for Projects and Units endpoints
+- Better search relevance than V1 (BM25 ranking)
+- Better performance than V1 (efficient count queries)
+- More reliable than V1 (error handling and recovery)

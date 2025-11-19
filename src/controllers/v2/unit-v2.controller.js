@@ -74,11 +74,11 @@ export const create = async (req, res) => {
       });
     }
 
-    // Check for forbidden ID field
-    if (newRecord.hasOwnProperty('cadTrustUnitId')) {
+    // Check for forbidden orgUid field
+    if (newRecord.hasOwnProperty('orgUid')) {
       return res.status(400).json({
         message: 'Error creating new unit',
-        error: 'cadTrustUnitId is auto-generated and cannot be set via API',
+        error: 'orgUid is automatically set from home organization and cannot be set via API',
         success: false,
       });
     }
@@ -86,12 +86,23 @@ export const create = async (req, res) => {
     // Validate foreign keys
     await assertRecordExistanceOrStaged(IssuanceV2, newRecord.cadTrustIssuanceId);
 
+    // Get home organization and set orgUid automatically
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      return res.status(400).json({
+        message: 'Error creating new unit',
+        error: 'Home organization not found',
+        success: false,
+      });
+    }
+
     // Generate UUID for staging
     const uuid = uuidv4();
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
       cad_trust_unit_id: uuidv4(), // Generate UUID for primary key
+      org_uid: homeOrg.org_uid, // Automatically set from home organization
       unit_serial_id: newRecord.unitSerialId,
       unit_start_block: newRecord.unitStartBlock,
       unit_end_block: newRecord.unitEndBlock,
@@ -144,13 +155,12 @@ export const findAll = async (req, res) => {
       limit,
       columns,
       xls,
+      orgUid,
       filter,
       order,
-      // Note: V2 units don't have orgUid directly (linked via issuance/project)
       // Note: V2 units don't have marketplace fields yet
       // Note: V2 doesn't have FTS (full-text search) yet
       // These parameters are reserved for future implementation
-      // orgUid,
       // search,
       // includeProjectInfoInSearch,
       // marketplaceIdentifiers,
@@ -172,6 +182,11 @@ export const findAll = async (req, res) => {
             : matches[2],
         };
       }
+    }
+
+    // Handle orgUid filter
+    if (orgUid) {
+      where.orgUid = orgUid;
     }
 
     // Get associated models for column selection
@@ -383,12 +398,32 @@ export const update = async (req, res) => {
       });
     }
 
+    // Check for forbidden orgUid field
+    if (updateData.hasOwnProperty('orgUid')) {
+      return res.status(400).json({
+        message: 'Error updating unit',
+        error: 'orgUid is automatically set from home organization and cannot be updated via API',
+        success: false,
+      });
+    }
+
     // Validate foreign keys
     await assertRecordExistanceOrStaged(IssuanceV2, updateData.cadTrustIssuanceId);
+
+    // Get home organization and set orgUid automatically (for non-transfer updates)
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      return res.status(400).json({
+        message: 'Error updating unit',
+        error: 'Home organization not found',
+        success: false,
+      });
+    }
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
       cad_trust_unit_id: id, // Use UUID string directly
+      org_uid: homeOrg.org_uid, // Automatically set from home organization
     };
 
     if (updateData.unitSerialId !== undefined) dbUpdateData.unit_serial_id = updateData.unitSerialId;

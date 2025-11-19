@@ -502,6 +502,12 @@ UnitV2.init(
       unique: true,
       field: 'cad_trust_unit_id',
     },
+    orgUid: {
+      type: Sequelize.STRING(64),
+      allowNull: false,
+      field: 'org_uid',
+      comment: 'Organization UID - identifies which organization owns this unit. Automatically set from home organization.',
+    },
     unitSerialId: {
       type: Sequelize.STRING,
       allowNull: false,

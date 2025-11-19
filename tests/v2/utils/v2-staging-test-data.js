@@ -193,7 +193,8 @@ export const generateV2RatingData = async (overrides = {}) => {
 
   return {
     cad_trust_rating_id: generateUuid(),
-    rating_type: getRandomPicklistValue('ratingType') || 'Quality',
+    rating_type: getRandomPicklistValue('ratingType') || 'CDP',
+    rating_name: 'Test Rating Name',
     rating_value: 'A+',
     rating_link: 'https://example.com/rating',
     ...overrides,

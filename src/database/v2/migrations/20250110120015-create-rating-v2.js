@@ -17,6 +17,11 @@ export default {
         allowNull: true,
         comment: 'picklist from type'
       },
+      rating_name: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        comment: 'name of the rating'
+      },
       rating_value: {
         type: Sequelize.STRING,
         allowNull: false,

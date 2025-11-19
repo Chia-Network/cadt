@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
-import { resetV2DataTables } from '../utils/v2-test-helpers.js';
+import { resetV2DataTables, createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 import { ProgramV2, ProjectV2, LocationV2 } from '../../../src/models/v2/index.js';
 
 describe('V2 Location API - Basic CRUD Tests', function () {
@@ -11,6 +11,10 @@ describe('V2 Location API - Basic CRUD Tests', function () {
   beforeEach(async function () {
     // Reset all V2 data tables before each test
     await resetV2DataTables();
+
+    // Create test home organization
+    await createV2TestHomeOrg();
+    const homeOrgId = await getV2HomeOrgId();
 
     // Create test program
     testProgram = await ProgramV2.create({
@@ -25,6 +29,7 @@ describe('V2 Location API - Basic CRUD Tests', function () {
     // Create test project
     testProject = await ProjectV2.create({
       cadTrustProjectId: '550e8400-e29b-41d4-a716-446655440002',
+      orgUid: homeOrgId,
       projectRegistryName: 'TEST-REGISTRY',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project',

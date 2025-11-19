@@ -20,6 +20,11 @@ RatingV2Mirror.init(
       allowNull: true,
       field: 'rating_type',
     },
+    ratingName: {
+      type: Sequelize.STRING,
+      allowNull: false,
+      field: 'rating_name',
+    },
     ratingValue: {
       type: Sequelize.STRING,
       allowNull: false,

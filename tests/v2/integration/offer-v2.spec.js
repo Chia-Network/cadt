@@ -53,6 +53,7 @@ describe('Phase 18.4: OfferV2 Integration Tests', function () {
 
     testProject = await ProjectV2.create({
       cadTrustProjectId: uuidv4(),
+      orgUid: testOrgUid,
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Offer',

@@ -33,6 +33,8 @@ const addUuidIfNeeded = (modelName, data) => {
 import {
   resetV2StagingTable,
   resetV2DataTables,
+  createV2TestHomeOrg,
+  getV2HomeOrgId,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 UUID Migration Validation Tests', function () {
@@ -41,6 +43,8 @@ describe('V2 UUID Migration Validation Tests', function () {
   before(async function () {
     console.log('Setting up V2 UUID validation test environment...');
     await prepareV2Db();
+    // Create test home organization
+    await createV2TestHomeOrg();
   });
 
   after(async function () {
@@ -98,6 +102,7 @@ describe('V2 UUID Migration Validation Tests', function () {
     });
 
     it('should generate valid UUIDs for ProjectV2', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         cadTrustProgramId: uuidv4(),
         programName: 'Test Program',
@@ -107,6 +112,7 @@ describe('V2 UUID Migration Validation Tests', function () {
 
       const project = await ProjectV2.create({
         cadTrustProjectId: uuidv4(),
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
@@ -120,6 +126,7 @@ describe('V2 UUID Migration Validation Tests', function () {
     });
 
     it('should generate valid UUIDs for ValidationV2', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         programName: 'Test Program',
         programRegistry: 'Test Registry',
@@ -127,6 +134,7 @@ describe('V2 UUID Migration Validation Tests', function () {
       });
 
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
@@ -147,6 +155,7 @@ describe('V2 UUID Migration Validation Tests', function () {
     });
 
     it('should generate valid UUIDs for VerificationV2', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         programName: 'Test Program',
         programRegistry: 'Test Registry',
@@ -154,6 +163,7 @@ describe('V2 UUID Migration Validation Tests', function () {
       });
 
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
@@ -181,6 +191,7 @@ describe('V2 UUID Migration Validation Tests', function () {
     });
 
     it('should generate valid UUIDs for IssuanceV2', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         programName: 'Test Program',
         programRegistry: 'Test Registry',
@@ -188,6 +199,7 @@ describe('V2 UUID Migration Validation Tests', function () {
       });
 
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
@@ -227,6 +239,7 @@ describe('V2 UUID Migration Validation Tests', function () {
     });
 
     it('should generate valid UUIDs for UnitV2', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         programName: 'Test Program',
         programRegistry: 'Test Registry',
@@ -234,6 +247,7 @@ describe('V2 UUID Migration Validation Tests', function () {
       });
 
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
@@ -268,6 +282,7 @@ describe('V2 UUID Migration Validation Tests', function () {
       }));
 
       const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        orgUid: homeOrgId,
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
@@ -284,6 +299,7 @@ describe('V2 UUID Migration Validation Tests', function () {
     });
 
     it('should generate valid UUIDs for LocationV2', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         programName: 'Test Program',
         programRegistry: 'Test Registry',
@@ -291,6 +307,7 @@ describe('V2 UUID Migration Validation Tests', function () {
       });
 
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
@@ -326,6 +343,7 @@ describe('V2 UUID Migration Validation Tests', function () {
 
   describe('Foreign Key UUID Consistency', function () {
     it('should use UUID strings for all foreign key references', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         programName: 'Test Program',
         programRegistry: 'Test Registry',
@@ -333,6 +351,7 @@ describe('V2 UUID Migration Validation Tests', function () {
       });
 
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
@@ -357,6 +376,7 @@ describe('V2 UUID Migration Validation Tests', function () {
     });
 
     it('should maintain referential integrity with UUID foreign keys', async function () {
+      const homeOrgId = await getV2HomeOrgId();
       const program = await ProgramV2.create({
         programName: 'Test Program',
         programRegistry: 'Test Registry',
@@ -364,6 +384,7 @@ describe('V2 UUID Migration Validation Tests', function () {
       });
 
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
@@ -398,6 +419,7 @@ describe('V2 UUID Migration Validation Tests', function () {
       }));
 
       const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        orgUid: homeOrgId,
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',

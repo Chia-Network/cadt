@@ -12,6 +12,11 @@ export default {
         unique: true,
         comment: 'generated UUID'
       },
+      org_uid: {
+        type: Sequelize.STRING(64),
+        allowNull: false,
+        comment: 'Organization UID - identifies which organization owns this project. Automatically set from home organization.'
+      },
       project_registry_name: {
         type: Sequelize.STRING,
         allowNull: false,
@@ -82,6 +87,7 @@ export default {
     });
 
     // Add indexes for better performance
+    await queryInterface.addIndex('project', ['org_uid']);
     await queryInterface.addIndex('project', ['project_registry_name']);
     await queryInterface.addIndex('project', ['project_id']);
     await queryInterface.addIndex('project', ['project_name']);

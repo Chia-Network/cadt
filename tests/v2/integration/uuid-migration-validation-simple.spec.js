@@ -15,6 +15,8 @@ import {
 import {
   resetV2StagingTable,
   resetV2DataTables,
+  createV2TestHomeOrg,
+  getV2HomeOrgId,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 UUID Migration Validation Tests - Simplified', function () {
@@ -23,6 +25,8 @@ describe('V2 UUID Migration Validation Tests - Simplified', function () {
   before(async function () {
     console.log('Setting up V2 UUID validation test environment...');
     await prepareV2Db();
+    // Create test home organization
+    await createV2TestHomeOrg();
   });
 
   after(async function () {
@@ -96,6 +100,7 @@ describe('V2 UUID Migration Validation Tests - Simplified', function () {
     it('should accept valid UUIDs for ProjectV2 with foreign key', async function () {
       const programUuid = uuidv4();
       const projectUuid = uuidv4();
+      const homeOrgId = await getV2HomeOrgId();
 
       const program = await ProgramV2.create({
         cadTrustProgramId: programUuid,
@@ -106,6 +111,7 @@ describe('V2 UUID Migration Validation Tests - Simplified', function () {
 
       const project = await ProjectV2.create({
         cadTrustProjectId: projectUuid,
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
@@ -124,6 +130,7 @@ describe('V2 UUID Migration Validation Tests - Simplified', function () {
     it('should use UUID strings for all foreign key references', async function () {
       const programUuid = uuidv4();
       const projectUuid = uuidv4();
+      const homeOrgId = await getV2HomeOrgId();
 
       const program = await ProgramV2.create({
         cadTrustProgramId: programUuid,
@@ -134,6 +141,7 @@ describe('V2 UUID Migration Validation Tests - Simplified', function () {
 
       const project = await ProjectV2.create({
         cadTrustProjectId: projectUuid,
+        orgUid: homeOrgId,
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',

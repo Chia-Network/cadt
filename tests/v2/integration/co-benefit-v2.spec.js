@@ -2,16 +2,22 @@ import { expect } from 'chai';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { CoBenefitV2, CoBenefitV2Mirror, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
 describe('Co-Benefit V2 Endpoint Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
 
   let testProjectId;
   let testProgramId;
+  let homeOrgId;
 
   before(async function () {
     console.log('Setting up Co-Benefit V2 test environment...');
     await prepareV2Db();
+
+    // Create test home organization
+    await createV2TestHomeOrg();
+    homeOrgId = await getV2HomeOrgId();
 
     // Create test program
     const program = await ProgramV2.create({
@@ -25,6 +31,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
     // Create test project
     const project = await ProjectV2.create({
       cadTrustProjectId: uuidv4(),
+      orgUid: homeOrgId,
       projectName: 'Test Project for Co-Benefit',
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-COBENEFIT-001',
@@ -325,6 +332,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
       // Create another project
       const anotherProject = await ProjectV2.create({
         cadTrustProjectId: uuidv4(),
+        orgUid: homeOrgId,
         projectName: 'Another Test Project',
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJ-COBENEFIT-002',

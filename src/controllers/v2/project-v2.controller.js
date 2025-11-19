@@ -75,9 +75,28 @@ export const create = async (req, res) => {
       });
     }
 
+    // Check for forbidden orgUid field
+    if (newRecord.hasOwnProperty('orgUid')) {
+      return res.status(400).json({
+        message: 'Error creating new project',
+        error: 'orgUid is automatically set from home organization and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Validate foreign key if provided
     if (newRecord.cadTrustProgramId) {
       await assertRecordExistanceOrStaged(ProgramV2, newRecord.cadTrustProgramId);
+    }
+
+    // Get home organization and set orgUid automatically
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      return res.status(400).json({
+        message: 'Error creating new project',
+        error: 'Home organization not found',
+        success: false,
+      });
     }
 
     // Generate UUID for staging
@@ -86,6 +105,7 @@ export const create = async (req, res) => {
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
       cad_trust_project_id: uuidv4(), // Generate UUID for primary key
+      org_uid: homeOrg.org_uid, // Automatically set from home organization
       project_registry_name: newRecord.projectRegistryName,
       project_id: newRecord.projectId,
       project_crediting_program: newRecord.projectCreditingProgram,
@@ -136,6 +156,7 @@ export const findAll = async (req, res) => {
       columns,
       xls,
       projectIds,
+      orgUid,
       filter,
       order,
     } = req.query;
@@ -163,6 +184,11 @@ export const findAll = async (req, res) => {
       where.cadTrustProjectId = {
         [Sequelize.Op.in]: idsArray,
       };
+    }
+
+    // Handle orgUid filter
+    if (orgUid) {
+      where.orgUid = orgUid;
     }
 
     // Get associated models for column selection
@@ -398,14 +424,34 @@ export const update = async (req, res) => {
       });
     }
 
+    // Check for forbidden orgUid field
+    if (updateData.hasOwnProperty('orgUid')) {
+      return res.status(400).json({
+        message: 'Error updating project',
+        error: 'orgUid is automatically set from home organization and cannot be updated via API',
+        success: false,
+      });
+    }
+
     // Validate foreign key if provided
     if (updateData.cadTrustProgramId) {
       await assertRecordExistanceOrStaged(ProgramV2, updateData.cadTrustProgramId);
     }
 
+    // Get home organization and set orgUid automatically (for non-transfer updates)
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      return res.status(400).json({
+        message: 'Error updating project',
+        error: 'Home organization not found',
+        success: false,
+      });
+    }
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
       cad_trust_project_id: id, // Use UUID string directly
+      org_uid: homeOrg.org_uid, // Automatically set from home organization
     };
 
     if (updateData.projectRegistryName !== undefined) dbUpdateData.project_registry_name = updateData.projectRegistryName;

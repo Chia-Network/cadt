@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StakeholderProjectV2, StakeholderProjectV2Mirror, StakeholderV2, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
 describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -9,10 +10,15 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
   let testProjectId;
   let testProgramId;
   let testStakeholderId;
+  let homeOrgId;
 
   before(async function () {
     console.log('Setting up Stakeholder-Projects V2 test environment...');
     await prepareV2Db();
+
+    // Create test home organization
+    await createV2TestHomeOrg();
+    homeOrgId = await getV2HomeOrgId();
 
     // Create test program
     const program = await ProgramV2.create({
@@ -26,6 +32,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
     // Create test project
     const project = await ProjectV2.create({
       cadTrustProjectId: uuidv4(),
+      orgUid: homeOrgId,
       projectName: 'Test Project for Stakeholder-Projects',
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-STAKEPROJ-001',
@@ -338,6 +345,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
       // Create another project
       const anotherProject = await ProjectV2.create({
         cadTrustProjectId: uuidv4(),
+        orgUid: homeOrgId,
         projectName: 'Another Test Project',
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJ-STAKEPROJ-002',

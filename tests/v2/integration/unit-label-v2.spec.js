@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { UnitLabelV2, UnitLabelV2Mirror, LabelV2, UnitV2, IssuanceV2, VerificationV2, ProjectV2, ProgramV2, MethodologyV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
 describe('Unit-Label V2 Join Table Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -13,10 +14,15 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
   let testProjectId;
   let testProgramId;
   let testMethodologyId;
+  let homeOrgId;
 
   before(async function () {
     console.log('Setting up Unit-Label V2 test environment...');
     await prepareV2Db();
+
+    // Create test home organization
+    await createV2TestHomeOrg();
+    homeOrgId = await getV2HomeOrgId();
 
     // Create test program
     const program = await ProgramV2.create({
@@ -30,6 +36,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
     // Create test project
     const project = await ProjectV2.create({
       cadTrustProjectId: uuidv4(),
+      orgUid: homeOrgId,
       projectName: 'Test Project for Unit-Label',
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-UNITLABEL-001',
@@ -83,6 +90,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
     // Create test unit
     const unit = await UnitV2.create({
       cadTrustUnitId: uuidv4(),
+      orgUid: homeOrgId,
       unitSerialId: 'TEST-UNIT-UNITLABEL-001',
       unitStartBlock: '1000',
       unitEndBlock: '2000',
@@ -476,6 +484,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       // Create another unit
       const anotherUnit = await UnitV2.create({
         cadTrustUnitId: uuidv4(),
+        orgUid: homeOrgId,
         unitSerialId: 'TEST-UNIT-UNITLABEL-002',
         unitStartBlock: '2000',
         unitEndBlock: '3000',

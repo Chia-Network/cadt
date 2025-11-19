@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { AefT5AuthorizedEntitiesV2, AefT5AuthorizedEntitiesV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
 describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -18,6 +19,10 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
     console.log('Setting up AEF-T5-Authorized-Entities V2 test environment...');
     await prepareV2Db();
 
+    // Create test home organization
+    await createV2TestHomeOrg();
+    const homeOrgId = await getV2HomeOrgId();
+
     // Create test program
     const program = await ProgramV2.create({
       cadTrustProgramId: uuidv4(),
@@ -30,6 +35,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
     // Create test project
     const project = await ProjectV2.create({
       cadTrustProjectId: uuidv4(),
+      orgUid: homeOrgId,
       projectName: 'Test Project for AEF-T5',
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-AEFT5-001',
@@ -83,6 +89,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
     // Create test unit
     const unit = await UnitV2.create({
       cadTrustUnitId: uuidv4(),
+      orgUid: homeOrgId,
       unitSerialId: 'TEST-UNIT-AEFT5-001',
       unitStartBlock: '1000',
       unitEndBlock: '2000',

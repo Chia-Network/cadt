@@ -25,7 +25,7 @@ import {
   generateV2UnitData,
   generateV2LocationData,
 } from '../utils/v2-staging-test-data.js';
-import { createV2TestHomeOrg, resetV2StagingTable, resetV2DataTables } from '../utils/v2-test-helpers.js';
+import { createV2TestHomeOrg, getV2HomeOrgId, resetV2StagingTable, resetV2DataTables } from '../utils/v2-test-helpers.js';
 import { v4 as uuidv4 } from 'uuid';
 
 describe('V2 Staging Integration Tests', function () {
@@ -55,6 +55,9 @@ describe('V2 Staging Integration Tests', function () {
     // Clean up staging and data tables before each test
     await resetV2StagingTable();
     await resetV2DataTables();
+
+    // Get home org ID for test data
+    const homeOrgId = await getV2HomeOrgId();
 
     // Create base records for tests that need them
     // Convert snake_case to camelCase for direct model creation
@@ -88,6 +91,7 @@ describe('V2 Staging Integration Tests', function () {
     });
     const projectData = {
       cadTrustProjectId: projectDataSnake.cad_trust_project_id,
+      orgUid: homeOrgId,
       projectRegistryName: projectDataSnake.project_registry_name,
       projectId: projectDataSnake.project_id,
       projectCreditingProgram: projectDataSnake.project_crediting_program,
@@ -1043,8 +1047,9 @@ describe('V2 Staging Integration Tests', function () {
       await resetV2DataTables();
 
       // Create a taker organization (non-home org)
+      const takerOrgUidValue = uuidv4();
       takerOrg = await OrganizationsV2.create({
-        orgUid: uuidv4(),
+        orgUid: takerOrgUidValue,
         orgName: 'Taker Organization',
         orgIcon: 'https://example.com/icon.png',
         isHome: false,
@@ -1052,6 +1057,10 @@ describe('V2 Staging Integration Tests', function () {
         synced: true,
         registryStoreId: 'test-registry-store-id-taker',
       });
+      // Ensure orgUid is accessible
+      if (!takerOrg.orgUid) {
+        takerOrg.orgUid = takerOrgUidValue;
+      }
 
       // Create program
       const programDataSnake = await generateV2ProgramData();
@@ -1066,12 +1075,14 @@ describe('V2 Staging Integration Tests', function () {
       const program = await ProgramV2.create(programData);
 
       // Create project for taker org
+      const actualTakerOrgUid = takerOrg.orgUid || takerOrg.org_uid || takerOrgUidValue;
       const projectDataSnake = await generateV2ProjectData({
         cad_trust_program_id: program.cadTrustProgramId,
-        org_uid: takerOrg.orgUid,
+        org_uid: actualTakerOrgUid,
       });
       const projectData = {
         cadTrustProjectId: projectDataSnake.cad_trust_project_id,
+        orgUid: projectDataSnake.org_uid || actualTakerOrgUid,
         projectRegistryName: projectDataSnake.project_registry_name,
         projectId: projectDataSnake.project_id,
         projectCreditingProgram: projectDataSnake.project_crediting_program,
@@ -1086,7 +1097,6 @@ describe('V2 Staging Integration Tests', function () {
         projectUnitMetric: projectDataSnake.project_unit_metric,
         cadTrustReferenceProjectId: projectDataSnake.cad_trust_reference_project_id,
         cadTrustProgramId: projectDataSnake.cad_trust_program_id,
-        // Note: V2 projects don't have orgUid field - organization relationship is through registry stores
       };
       const project = await ProjectV2.create(projectData);
       testProjectId = project.cadTrustProjectId;
@@ -1144,12 +1154,14 @@ describe('V2 Staging Integration Tests', function () {
       testIssuanceId = issuance.cadTrustIssuanceId;
 
       // Create unit
+      const unitOrgUid = takerOrg.orgUid || takerOrg.org_uid || takerOrgUidValue;
       const unitDataSnake = await generateV2UnitData({
         cad_trust_issuance_id: testIssuanceId,
-        org_uid: takerOrg.orgUid,
+        org_uid: unitOrgUid,
       });
       const unit = await UnitV2.create({
         cadTrustUnitId: unitDataSnake.cad_trust_unit_id,
+        orgUid: unitDataSnake.org_uid || unitOrgUid,
         unitSerialId: unitDataSnake.unit_serial_id,
         unitStartBlock: unitDataSnake.unit_start_block,
         unitEndBlock: unitDataSnake.unit_end_block,
@@ -1158,7 +1170,6 @@ describe('V2 Staging Integration Tests', function () {
         unitVintageYear: unitDataSnake.unit_vintage_year,
         unitStatus: unitDataSnake.unit_status,
         cadTrustIssuanceId: unitDataSnake.cad_trust_issuance_id,
-        // Note: V2 units may not have orgUid field - organization relationship is through registry stores
       });
       testUnitId = unit.cadTrustUnitId;
     });

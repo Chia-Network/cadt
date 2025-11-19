@@ -26,16 +26,22 @@ import {
   resetV2StagingTable,
   resetV2DataTables,
   waitForV2DataLayerSync,
+  createV2TestHomeOrg,
+  getV2HomeOrgId,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Unit API - Basic CRUD Tests', function () {
   this.timeout(30000);
 
   let testIssuance;
+  let homeOrg;
 
   before(async function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
+
+    // Create test home organization
+    homeOrg = await createV2TestHomeOrg();
 
     // Create a test program, project, validation, verification, methodology, and issuance for foreign key validation
     const testProgram = await ProgramV2.create({
@@ -44,12 +50,14 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       programRegistryActivityId: 'TEST-ACT-001',
     });
 
+    const homeOrgId = await getV2HomeOrgId();
     const testProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Unit',
       projectSector: 'Agriculture',
       cadTrustProgramId: testProgram.cadTrustProgramId,
+      orgUid: homeOrgId,
     }));
 
     const testValidation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
@@ -91,12 +99,14 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       programRegistryActivityId: 'TEST-ACT-001',
     });
 
+    const homeOrgId = await getV2HomeOrgId();
     const testProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Unit',
       projectSector: 'Agriculture',
       cadTrustProgramId: testProgram.cadTrustProgramId,
+      orgUid: homeOrgId,
     }));
 
     const testValidation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
@@ -482,6 +492,55 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       expect(response.body.error).to.include('updatedAt" is not allowed');
     });
 
+    it('should reject unit with forbidden orgUid field', async function () {
+      const unitData = {
+        unitSerialId: 'TEST-UNIT-ORGUID',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitVintageYear: 2024,
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+        orgUid: 'some-org-uid',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit')
+        .send(unitData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('orgUid');
+      expect(response.body.error).to.include('automatically set');
+    });
+
+    it('should automatically set orgUid from home organization when creating unit', async function () {
+      const unitData = {
+        unitSerialId: 'AUTO-ORGUID-001',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitVintageYear: 2024,
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit')
+        .send(unitData)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+
+      // Verify staged data includes org_uid from home organization
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0]).to.have.property('org_uid');
+      // Verify org_uid matches the actual home organization
+      const actualHomeOrgId = await getV2HomeOrgId();
+      expect(stagedData[0].org_uid).to.equal(actualHomeOrgId);
+    });
+
     it('should reject unit with invalid unitLink format', async function () {
       const unitData = {
         unitSerialId: 'TEST-UNIT-001',
@@ -533,12 +592,14 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
     it('should return units from database', async function () {
       // Create a unit directly in the database
+      const homeOrgId = await getV2HomeOrgId();
       const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
         unitSerialId: 'TEST-UNIT-DB-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
         unitVintageYear: 2024,
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
       }));
 
       const response = await supertest(app)
@@ -563,12 +624,14 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
     it('should return unit by ID', async function () {
       // Create a unit directly in the database
+      const homeOrgId = await getV2HomeOrgId();
       const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
         unitSerialId: 'TEST-UNIT-GET-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
         unitVintageYear: 2024,
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
       }));
 
       const response = await supertest(app)
@@ -601,12 +664,14 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
     it('should stage unit update', async function () {
       // Create a unit directly in the database
+      const homeOrgId = await getV2HomeOrgId();
       const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
         unitSerialId: 'TEST-UNIT-UPDATE-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
         unitVintageYear: 2024,
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
       }));
 
       const updateData = {
@@ -633,6 +698,85 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
+
+      // Verify staged update data includes org_uid from home organization
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0]).to.have.property('org_uid');
+      // Verify org_uid matches the actual home organization
+      const actualHomeOrgId = await getV2HomeOrgId();
+      expect(stagedData[0].org_uid).to.equal(actualHomeOrgId);
+    });
+
+    it('should reject unit update with forbidden orgUid field', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: 'TEST-UNIT-UPDATE-002',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitVintageYear: 2024,
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+
+      const updateData = {
+        unitSerialId: 'UPDATED-UNIT-002',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitVintageYear: 2024,
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+        orgUid: 'some-other-org-uid',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/unit/${unit.cadTrustUnitId}`)
+        .send(updateData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('orgUid');
+      expect(response.body.error).to.include('automatically set');
+    });
+
+    it('should automatically set orgUid from home organization when updating unit', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: 'TEST-UNIT-UPDATE-003',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitVintageYear: 2024,
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+
+      const updateData = {
+        unitSerialId: 'UPDATED-UNIT-003',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitVintageYear: 2024,
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/unit/${unit.cadTrustUnitId}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+
+      // Verify staged update data includes org_uid from home organization
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'unit',
+          action: 'UPDATE',
+        },
+      });
+      expect(stagingRecord).to.exist;
+
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0]).to.have.property('org_uid');
+      // Verify org_uid matches the actual home organization
+      const actualHomeOrgId = await getV2HomeOrgId();
+      expect(stagedData[0].org_uid).to.equal(actualHomeOrgId);
     });
   });
 
@@ -648,12 +792,14 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
     it('should stage unit deletion', async function () {
       // Create a unit directly in the database
+      const homeOrgId = await getV2HomeOrgId();
       const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
         unitSerialId: 'TEST-UNIT-DELETE-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
         unitVintageYear: 2024,
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
       }));
 
       const response = await supertest(app)
@@ -692,12 +838,14 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         programRegistryActivityId: 'TEST-ADV-001',
       });
 
+      const homeOrgId = await getV2HomeOrgId();
       testProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-ADV-PROJECT',
         projectName: 'Test Project for Advanced',
         projectSector: 'Agriculture',
         cadTrustProgramId: testProgram.cadTrustProgramId,
+        orgUid: homeOrgId,
       }));
 
       testValidation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
@@ -731,6 +879,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
     describe('POST /v2/unit/split', function () {
       it('should split a unit successfully', async function () {
         // Create a unit to split
+        const homeOrgId = await getV2HomeOrgId();
         const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
           unitSerialId: 'SPLIT-UNIT-001',
           unitStartBlock: '1000',
@@ -739,6 +888,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
           unitType: 'Avoidance - nature',
           unitVintageYear: 2024,
           cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
         }));
 
         const splitData = {
@@ -813,6 +963,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       });
 
       it('should return error if records array is missing', async function () {
+        const homeOrgId = await getV2HomeOrgId();
         const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
           unitSerialId: 'SPLIT-UNIT-002',
           unitStartBlock: '1000',
@@ -820,6 +971,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
           unitCount: 100,
           unitVintageYear: 2024,
           cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
         }));
 
         const response = await supertest(app)
@@ -834,6 +986,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       });
 
       it('should return error if split count does not match original', async function () {
+        const homeOrgId = await getV2HomeOrgId();
         const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
           unitSerialId: 'SPLIT-UNIT-003',
           unitStartBlock: '1000',
@@ -841,6 +994,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
           unitCount: 100,
           unitVintageYear: 2024,
           cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
         }));
 
         const splitData = {
@@ -949,6 +1103,7 @@ CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvan
 
       it('should batch update existing units from CSV file (UPDATE)', async function () {
         // Create units first
+        const homeOrgId = await getV2HomeOrgId();
         const unit1 = await UnitV2.create(addUuidIfNeeded('UnitV2', {
           unitSerialId: 'CSV-UPDATE-001',
           unitStartBlock: '1000',
@@ -956,6 +1111,7 @@ CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvan
           unitCount: 50,
           unitVintageYear: 2024,
           cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
         }));
 
         const unit2 = await UnitV2.create(addUuidIfNeeded('UnitV2', {
@@ -965,6 +1121,7 @@ CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvan
           unitCount: 75,
           unitVintageYear: 2024,
           cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
         }));
 
         // Create a CSV file buffer with cadTrustUnitId to trigger UPDATE
@@ -1006,6 +1163,7 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
     describe('GET /v2/unit - Advanced Query Features', function () {
       beforeEach(async function () {
         // Create multiple test units for query testing
+        const homeOrgId = await getV2HomeOrgId();
         await UnitV2.bulkCreate([
           addUuidIfNeeded('UnitV2', {
             unitSerialId: 'QUERY-UNIT-001',
@@ -1016,6 +1174,7 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
             unitVintageYear: 2024,
             unitStatus: 'Issued',
             cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+            orgUid: homeOrgId,
           }),
           addUuidIfNeeded('UnitV2', {
             unitSerialId: 'QUERY-UNIT-002',
@@ -1026,6 +1185,7 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
             unitVintageYear: 2023,
             unitStatus: 'Held',
             cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+            orgUid: homeOrgId,
           }),
           addUuidIfNeeded('UnitV2', {
             unitSerialId: 'QUERY-UNIT-003',
@@ -1036,8 +1196,24 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
             unitVintageYear: 2024,
             unitStatus: 'Retired',
             cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+            orgUid: homeOrgId,
           }),
         ]);
+      });
+
+      it('should filter by orgUid', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ orgUid: homeOrgId, page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body).to.have.property('data');
+        expect(response.body.data).to.be.an('array');
+        // All returned units should have the matching orgUid
+        response.body.data.forEach(unit => {
+          expect(unit.orgUid).to.equal(homeOrgId);
+        });
       });
 
       it('should filter by single field using generic filter', async function () {

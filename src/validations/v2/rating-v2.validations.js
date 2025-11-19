@@ -12,6 +12,10 @@ export const ratingV2Schema = Joi.object({
   }),
 
   // Required fields
+  ratingName: Joi.string().max(255).required().messages({
+    'any.required': 'ratingName is required',
+    'string.max': 'ratingName must not exceed 255 characters',
+  }),
   ratingValue: Joi.string().max(255).required().messages({
     'any.required': 'ratingValue is required',
     'string.max': 'ratingValue must not exceed 255 characters',

@@ -38,6 +38,7 @@ export const createRatingV2 = async (req, res) => {
     const rating = await RatingV2Mirror.create({
       cadTrustRatingId: ratingId,
       ratingType: value.ratingType,
+      ratingName: value.ratingName,
       ratingValue: value.ratingValue,
       ratingLink: value.ratingLink,
       cadTrustProjectId: value.cadTrustProjectId,
@@ -177,6 +178,7 @@ export const updateRatingV2 = async (req, res) => {
     // Update rating in staging table
     await existingRating.update({
       ratingType: value.ratingType,
+      ratingName: value.ratingName,
       ratingValue: value.ratingValue,
       ratingLink: value.ratingLink,
       cadTrustProjectId: value.cadTrustProjectId,

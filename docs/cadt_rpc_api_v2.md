@@ -1,4 +1,6 @@
-# CADT RPC API V2 Guide
+# [DRAFT] CADT RPC API V2 Guide
+
+
 
 This page lists commands and examples from the Climate Warehouse RPC API V2.
 
@@ -17,13 +19,10 @@ It is essential to remember that the staging process is distinct from the commit
 RPCs prepares the data, while `staging` RPCs finalize the transition to the blockchain. This workflow ensures a clear
 separation between temporary updates and permanent, public changes, maintaining both data integrity and transparency.
 
-**V2 API Key Features:**
+**V2 Features:**
 - V2 operations are isolated from V1 - V2 data does not affect V1 data and vice versa
-- All V2 database fields use snake_case (e.g., `org_uid`, `created_at`)
-- All V2 API fields use camelCase (e.g., `orgUid`, `createdAt`)
-- V2 data models use UUID v4 primary keys (not auto-increment integers)
-- V2 supports upgrading existing V1 organizations to V2
-- V2 includes many new data models not available in V1
+- V1 and V2 can run simultaneously
+- V2 supports upgrading existing V1 organizations to V2. This will not migrate the data, but simply create a new store for V2 alongside the existing V1 store.
 
 Please also see the following related documents:
 
@@ -1404,6 +1403,7 @@ Response
   "data": [
     {
       "cadTrustProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
       "projectId":"789",
       "originProjectId":"123",
       "registryOfOrigin":"Sweden National Registry",
@@ -1429,6 +1429,8 @@ Response
 }
 ```
 
+**Note**: The `orgUid` field is automatically set from the home organization when creating or updating projects. It cannot be provided in POST or PUT requests and will be rejected if included.
+
 ---
 
 #### Get single project
@@ -1444,6 +1446,7 @@ Response
 ```json
 {
   "cadTrustProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
   "projectId":"555",
   "originProjectId":"555",
   "registryOfOrigin":"Gold Standard",
@@ -1459,6 +1462,33 @@ Response
   "methodology":"Decomposition of fluoroform (HFC-23) waste streams --- Version 6.0.0",
   "createdAt":"2022-03-11T05:17:55.422Z",
   "updatedAt":"2022-03-11T05:17:55.422Z"
+}
+```
+
+---
+
+#### List projects by orgUid
+
+- Filter projects by organization UID. Pagination is required when filtering by orgUid.
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/project?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "cadTrustProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "projectName":"Stop Desertification",
+      "projectStatus":"Registered"
+    }
+  ]
 }
 ```
 
@@ -1503,6 +1533,8 @@ Download stream to download the XLS file of project records.
 ### POST Examples
 
 #### Create project
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
 
 Request
 ```sh
@@ -1557,6 +1589,8 @@ Response
 ### PUT Examples
 
 #### Update project
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
 
 Request
 ```sh
@@ -2083,6 +2117,7 @@ Response
   "data": [
     {
       "cadTrustUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
       "cadTrustProjectLocationId":"789",
       "unitBlockStart":"A345",
       "unitBlockEnd":"B567",
@@ -2103,6 +2138,8 @@ Response
 }
 ```
 
+**Note**: The `orgUid` field is automatically set from the home organization when creating or updating units. It cannot be provided in POST or PUT requests and will be rejected if included.
+
 ---
 
 #### Get single unit
@@ -2116,6 +2153,7 @@ Response
 ```json
 {
   "cadTrustUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
   "cadTrustProjectLocationId":"789",
   "unitBlockStart":"A345",
   "unitBlockEnd":"B567",
@@ -2131,6 +2169,37 @@ Response
   "correspondingAdjustmentStatus":"Pending",
   "createdAt":"2022-03-13T05:29:39.647Z",
   "updatedAt":"2022-03-13T05:29:39.647Z"
+}
+```
+
+---
+
+#### List units by orgUid
+
+- Filter units by organization UID. Pagination is required when filtering by orgUid.
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/unit?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 7,
+  "data": [
+    {
+      "cadTrustUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "unitSerialId":"TEST-UNIT-001",
+      "unitBlockStart":"A345",
+      "unitBlockEnd":"B567",
+      "unitCount":222,
+      "unitType":"Reduction - technical",
+      "unitStatus":"Buffer"
+    }
+  ]
 }
 ```
 
@@ -2175,6 +2244,8 @@ Download stream to download the XLS file of unit records.
 ### POST Examples
 
 #### Create unit
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
 
 Request
 ```shell
@@ -2265,6 +2336,8 @@ Response
 ### PUT Examples
 
 #### Update unit
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
 
 Request
 ```shell
@@ -2625,9 +2698,8 @@ Response
       "cadTrustRatingId": "d31c3c75-b944-498d-9557-315f9005f478",
       "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
       "ratingType": "CCQI",
-      "ratingRangeHighest": "100",
-      "ratingRangeLowest": "0",
-      "rating": "97",
+      "ratingName": "Quality Assessment Rating",
+      "ratingValue": "97",
       "ratingLink": "testlink.com",
       "createdAt": "2022-03-11T05:17:55.427Z",
       "updatedAt": "2022-03-11T05:17:55.427Z"
@@ -2651,9 +2723,8 @@ Response
   "cadTrustRatingId": "d31c3c75-b944-498d-9557-315f9005f478",
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "ratingType": "CCQI",
-  "ratingRangeHighest": "100",
-  "ratingRangeLowest": "0",
-  "rating": "97",
+  "ratingName": "Quality Assessment Rating",
+  "ratingValue": "97",
   "ratingLink": "testlink.com",
   "createdAt": "2022-03-11T05:17:55.427Z",
   "updatedAt": "2022-03-11T05:17:55.427Z"
@@ -2673,9 +2744,8 @@ curl --location --request POST 'localhost:31310/v2/rating' \
 --data-raw '{
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "ratingType": "CCQI",
-  "ratingRangeHighest": "100",
-  "ratingRangeLowest": "0",
-  "rating": "97",
+  "ratingName": "Quality Assessment Rating",
+  "ratingValue": "97",
   "ratingLink": "testlink.com"
 }'
 ```
@@ -2702,9 +2772,8 @@ curl --location --request PUT 'localhost:31310/v2/rating/d31c3c75-b944-498d-9557
 --data-raw '{
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "ratingType": "CCQI",
-  "ratingRangeHighest": "100",
-  "ratingRangeLowest": "0",
-  "rating": "98",
+  "ratingName": "Updated Quality Assessment Rating",
+  "ratingValue": "98",
   "ratingLink": "testlink.com"
 }'
 ```

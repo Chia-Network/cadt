@@ -26,6 +26,8 @@ import {
   resetV2StagingTable,
   resetV2DataTables,
   waitForV2DataLayerSync,
+  createV2TestHomeOrg,
+  getV2HomeOrgId,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Validation API - Basic CRUD Tests', function () {
@@ -37,6 +39,10 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
 
+    // Create test home organization
+    await createV2TestHomeOrg();
+    const homeOrgId = await getV2HomeOrgId();
+
     // Create a test program and project for foreign key validation
     const testProgram = await ProgramV2.create({
       programName: 'Test Program for Validation',
@@ -46,6 +52,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
 
     testProject = await ProjectV2.create({
       cadTrustProjectId: uuidv4(),
+      orgUid: homeOrgId,
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Validation',
@@ -63,6 +70,9 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     await resetV2StagingTable();
     await resetV2DataTables();
 
+    // Get home org ID for test data
+    const homeOrgId = await getV2HomeOrgId();
+
     // Recreate test data after cleanup
     const testProgram = await ProgramV2.create({
       programName: 'Test Program for Validation',
@@ -71,6 +81,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     });
 
     testProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+      orgUid: homeOrgId,
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Validation',

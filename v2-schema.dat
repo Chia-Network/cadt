@@ -92,6 +92,7 @@ name varchar [primary key, note: 'migration name tracking']
 
 Table project {
 cad_trust_project_id varchar [primary key, unique, note: 'generated UUID']
+org_uid varchar [not null, note: 'Organization UID - identifies which organization owns this project. Automatically set from home organization.']
 project_registry_name varchar [not null]
 project_id varchar [not null]
 project_crediting_program varchar
@@ -149,6 +150,7 @@ cad_trust_location_id varchar [note: 'Foreign key to location table']
 
 Table unit {
 cad_trust_unit_id varchar [primary key, unique, note: 'generated UUID']
+org_uid varchar [not null, note: 'Organization UID - identifies which organization owns this unit. Automatically set from home organization.']
 unit_serial_id varchar [not null, note: 'registry provide unique id']
 unit_start_block varchar [not null]
 unit_end_block varchar [not null]
@@ -269,6 +271,7 @@ cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
 Table rating {
 cad_trust_rating_id varchar [primary key, unique, note: 'generated UUID']
 rating_type picklist [note: 'picklist from type']
+rating_name varchar [not null, note: 'name of the rating']
 rating_value varchar [not null]
 rating_link html
 created_at timestamp [note: 'generated']

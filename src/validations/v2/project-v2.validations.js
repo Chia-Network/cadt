@@ -28,4 +28,8 @@ export const projectV2Schema = Joi.object({
   cadTrustProgramId: Joi.string().uuid().optional(),
   // Note: createdAt and updatedAt are automatically managed by Sequelize
   // Note: cadTrustProjectId is auto-generated UUID
+  // Note: orgUid is automatically set from home organization and cannot be provided via API
+  orgUid: Joi.forbidden().messages({
+    'any.unknown': 'orgUid is automatically set from home organization and cannot be provided via API',
+  }),
 });

@@ -18,6 +18,12 @@ ProjectV2Mirror.init(
       unique: true,
       field: 'cad_trust_project_id',
     },
+    orgUid: {
+      type: Sequelize.STRING(64),
+      allowNull: false,
+      field: 'org_uid',
+      comment: 'Organization UID - identifies which organization owns this project. Automatically set from home organization.',
+    },
     projectRegistryName: {
       type: Sequelize.STRING,
       allowNull: false,

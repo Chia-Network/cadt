@@ -10,6 +10,11 @@ module.exports = {
     type: Sequelize.STRING,
     allowNull: true,
   },
+  ratingName: {
+    type: Sequelize.STRING,
+    allowNull: false,
+    field: 'rating_name',
+  },
   ratingValue: {
     type: Sequelize.STRING,
     allowNull: false,

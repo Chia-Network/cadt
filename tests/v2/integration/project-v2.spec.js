@@ -26,16 +26,22 @@ import {
   resetV2StagingTable,
   resetV2DataTables,
   waitForV2DataLayerSync,
+  createV2TestHomeOrg,
+  getV2HomeOrgId,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Project API - Basic CRUD Tests', function () {
   this.timeout(30000);
 
   let testProgram;
+  let homeOrg;
 
   before(async function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
+
+    // Create test home organization
+    homeOrg = await createV2TestHomeOrg();
 
     // Create a test program for foreign key validation
     testProgram = await ProgramV2.create({
@@ -408,6 +414,51 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body.success).to.be.false;
       expect(response.body.error).to.include('updatedAt');
     });
+
+    it('should reject project with forbidden orgUid field', async function () {
+      const invalidData = {
+        projectRegistryName: 'FORBIDDEN-ORGUID',
+        projectId: 'FORBIDDEN-ORGUID-001',
+        projectName: 'Forbidden orgUid Project',
+        orgUid: 'some-org-uid',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('orgUid');
+      expect(response.body.error).to.include('automatically set');
+    });
+
+    it('should automatically set orgUid from home organization when creating project', async function () {
+      const projectData = {
+        projectRegistryName: 'Auto OrgUid Registry',
+        projectId: 'AUTO-ORGUID-001',
+        projectName: 'Auto OrgUid Project',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(projectData)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+
+      // Verify staged data includes org_uid from home organization
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0]).to.have.property('org_uid');
+      // Verify org_uid matches the actual home organization
+      const actualHomeOrgId = await getV2HomeOrgId();
+      expect(stagedData[0].org_uid).to.equal(actualHomeOrgId);
+    });
   });
 
   describe('GET /v2/project (List)', function () {
@@ -422,6 +473,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
     it('should return projects from database with program association', async function () {
       // Create a project directly in database
+      const homeOrgId = await getV2HomeOrgId();
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Database Registry',
         projectId: 'DB-PROJECT-001',
@@ -431,6 +483,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectStatus: 'Listed',
         projectUnitMetric: 'tCO2e',
         cadTrustProgramId: testProgram.cadTrustProgramId,
+        orgUid: homeOrgId,
       }));
 
       const response = await supertest(app)
@@ -459,12 +512,14 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
     it('should return project by ID with program association', async function () {
       // Create a project directly in database
+      const homeOrgId = await getV2HomeOrgId();
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Get Test Registry',
         projectId: 'GET-TEST-001',
         projectName: 'Get Test Project',
         projectSector: 'Energy industries (renewable-/ non renewable sources)',
         cadTrustProgramId: testProgram.cadTrustProgramId,
+        orgUid: homeOrgId,
       }));
 
       const response = await supertest(app)
@@ -498,11 +553,13 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
     it('should stage project update', async function () {
       // Create a project directly in database
+      const homeOrgId = await getV2HomeOrgId();
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'Original Registry',
         projectId: 'ORIGINAL-001',
         projectName: 'Original Name',
         projectSector: 'Agriculture',
+        orgUid: homeOrgId,
       }));
 
       const updateData = {
@@ -551,6 +608,76 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(stagedData[0].project_registry_name).to.equal('Updated Registry');
       expect(stagedData[0].project_sector).to.equal('Energy industries (renewable-/ non renewable sources)');
       expect(stagedData[0].cad_trust_program_id).to.equal(testProgram.cadTrustProgramId);
+      // Verify org_uid is automatically set in update
+      expect(stagedData[0]).to.have.property('org_uid');
+      const actualHomeOrgId = await getV2HomeOrgId();
+      expect(stagedData[0].org_uid).to.equal(actualHomeOrgId);
+    });
+
+    it('should reject project update with forbidden orgUid field', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Original Registry',
+        projectId: 'ORIGINAL-002',
+        projectName: 'Original Name',
+        projectSector: 'Agriculture',
+        orgUid: homeOrgId,
+      }));
+
+      const updateData = {
+        projectRegistryName: 'Updated Registry',
+        projectId: 'UPDATED-002',
+        projectName: 'Updated Name',
+        orgUid: 'some-other-org-uid',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/project/${project.cadTrustProjectId}`)
+        .send(updateData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('orgUid');
+      expect(response.body.error).to.include('automatically set');
+    });
+
+    it('should automatically set orgUid from home organization when updating project', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Original Registry',
+        projectId: 'ORIGINAL-003',
+        projectName: 'Original Name',
+        projectSector: 'Agriculture',
+        orgUid: homeOrgId,
+      }));
+
+      const updateData = {
+        projectRegistryName: 'Updated Registry',
+        projectId: 'UPDATED-003',
+        projectName: 'Updated Name',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/project/${project.cadTrustProjectId}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+
+      // Verify staged update data includes org_uid from home organization
+      const stagingRecord = await StagingV2.findOne({
+        where: {
+          table: 'project',
+          action: 'UPDATE',
+        },
+      });
+      expect(stagingRecord).to.exist;
+
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0]).to.have.property('org_uid');
+      // Verify org_uid matches the actual home organization
+      const actualHomeOrgId = await getV2HomeOrgId();
+      expect(stagedData[0].org_uid).to.equal(actualHomeOrgId);
     });
   });
 
@@ -566,10 +693,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
     it('should stage project deletion', async function () {
       // Create a project directly in database
+      const homeOrgId = await getV2HomeOrgId();
       const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
         projectRegistryName: 'To Be Deleted',
         projectId: 'DELETE-001',
         projectName: 'To Be Deleted Project',
+        orgUid: homeOrgId,
       }));
 
       const response = await supertest(app)
@@ -599,6 +728,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
     describe('PUT /v2/project/transfer', function () {
       it('should transfer a project successfully', async function () {
         // Create a project in the database
+        const homeOrgId = await getV2HomeOrgId();
         const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
           projectRegistryName: 'Transfer Test Registry',
           projectId: 'TRANSFER-001',
@@ -608,6 +738,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
           projectStatus: 'Listed',
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
+          orgUid: homeOrgId,
         }));
 
         // Clear staging table before transfer
@@ -648,6 +779,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
           is_transfer: false,
         });
 
+        const homeOrgId = await getV2HomeOrgId();
         const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
           projectRegistryName: 'Test Registry',
           projectId: 'TRANSFER-002',
@@ -657,6 +789,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
           projectStatus: 'Listed',
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
+          orgUid: homeOrgId,
         }));
 
         const response = await supertest(app)
@@ -754,6 +887,7 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
 
       it('should batch update existing projects from CSV file (UPDATE)', async function () {
         // Create projects first
+        const homeOrgId = await getV2HomeOrgId();
         const project1 = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
           projectRegistryName: 'Test Registry',
           projectId: 'CSV-UPDATE-001',
@@ -763,6 +897,7 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
           projectStatus: 'Listed',
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
+          orgUid: homeOrgId,
         }));
 
         const project2 = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
@@ -774,6 +909,7 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
           projectStatus: 'Registered',
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
+          orgUid: homeOrgId,
         }));
 
         // Create a CSV file buffer with cadTrustProjectId to trigger UPDATE
@@ -815,6 +951,7 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
     describe('GET /v2/project - Advanced Query Features', function () {
       beforeEach(async function () {
         // Create multiple test projects for query testing
+        const homeOrgId = await getV2HomeOrgId();
         await ProjectV2.bulkCreate([
           addUuidIfNeeded('ProjectV2', {
             projectRegistryName: 'Query Test Registry',
@@ -825,6 +962,7 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectStatus: 'Listed',
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
+            orgUid: homeOrgId,
           }),
           addUuidIfNeeded('ProjectV2', {
             projectRegistryName: 'Query Test Registry',
@@ -835,6 +973,7 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectStatus: 'Registered',
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
+            orgUid: homeOrgId,
           }),
           addUuidIfNeeded('ProjectV2', {
             projectRegistryName: 'Query Test Registry',
@@ -845,12 +984,47 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectStatus: 'Listed',
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
+            orgUid: homeOrgId,
           }),
         ]);
       });
 
+      it('should filter by orgUid', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        // Create projects with the home org UID
+        await ProjectV2.bulkCreate([
+          addUuidIfNeeded('ProjectV2', {
+            projectRegistryName: 'Org Filter Registry',
+            projectId: 'ORG-FILTER-001',
+            projectName: 'Org Filter Project 1',
+            projectSector: 'Agriculture',
+            projectType: 'Landfill gas',
+            projectStatus: 'Listed',
+            projectUnitMetric: 'tCO2e',
+            cadTrustProgramId: testProgram.cadTrustProgramId,
+            orgUid: homeOrgId,
+          }),
+        ]);
+
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ orgUid: homeOrgId, page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body).to.have.property('data');
+        expect(response.body.data).to.be.an('array');
+        // All returned projects should have the matching orgUid
+        response.body.data.forEach(project => {
+          expect(project.orgUid).to.equal(homeOrgId);
+        });
+      });
+
       it('should filter by projectIds', async function () {
-        const projects = await ProjectV2.findAll({ limit: 2 });
+        const homeOrgId = await getV2HomeOrgId();
+        const projects = await ProjectV2.findAll({
+          where: { orgUid: homeOrgId },
+          limit: 2
+        });
         const projectIds = projects.map(p => p.cadTrustProjectId);
 
         const response = await supertest(app)
@@ -951,7 +1125,11 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
       });
 
       it('should combine multiple query parameters', async function () {
-        const projects = await ProjectV2.findAll({ limit: 1 });
+        const homeOrgId = await getV2HomeOrgId();
+        const projects = await ProjectV2.findAll({
+          where: { orgUid: homeOrgId },
+          limit: 1
+        });
         const projectId = projects[0].cadTrustProjectId;
 
         const response = await supertest(app)
