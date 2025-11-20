@@ -158,11 +158,10 @@ export const findAll = async (req, res) => {
       orgUid,
       filter,
       order,
+      search,
+      includeProjectInfoInSearch,
       // Note: V2 units don't have marketplace fields yet
-      // Note: V2 doesn't have FTS (full-text search) yet
       // These parameters are reserved for future implementation
-      // search,
-      // includeProjectInfoInSearch,
       // marketplaceIdentifiers,
       // hasMarketplaceIdentifier,
       // onlyTokenizedUnits,
@@ -184,8 +183,8 @@ export const findAll = async (req, res) => {
       }
     }
 
-    // Handle orgUid filter
-    if (orgUid) {
+    // Handle orgUid filter (only if not using FTS search, as FTS handles orgUid internally)
+    if (orgUid && !search) {
       where.orgUid = orgUid;
     }
 
@@ -245,6 +244,89 @@ export const findAll = async (req, res) => {
     // If XLS export, remove pagination
     if (xls) {
       pagination = { offset: undefined, limit: undefined };
+    }
+
+    // Handle FTS search parameter
+    if (search) {
+      // Get associated models for column selection (needed for FTS)
+      const includes = UnitV2.getAssociatedModels();
+
+      // Default columns for UnitV2
+      const defaultColumns = [
+        'cadTrustUnitId',
+        'unitSerialId',
+        'unitStartBlock',
+        'unitEndBlock',
+        'unitCount',
+        'unitType',
+        'unitVintageYear',
+        'unitStatus',
+        'unitStatusReason',
+        'unitStatusDate',
+        'unitRetirementDetail',
+        'unitRetirementBeneficiary',
+        'unitRetirementBeneficiaryId',
+        'unitLink',
+        'unitMetric',
+        'unitCurrentOwner',
+        'unitItmosReferenceId',
+        'cadTrustIssuanceId',
+        'createdAt',
+        'updatedAt',
+      ];
+
+      // Handle column selection for FTS (reuse normalizedColumns if available)
+      let ftsColumns = normalizedColumns || [];
+      if (ftsColumns.length === 0 && columns) {
+        const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+        const validColumns = columnsArray.filter((col) =>
+          defaultColumns
+            .concat(includes.map(formatModelAssociationName))
+            .includes(col),
+        );
+        ftsColumns = validColumns.length > 0 ? validColumns : ['cadTrustUnitId'];
+      }
+
+      // Call FTS method (use pagination without XLS override for FTS)
+      const ftsPagination = paginationParams(page, limit);
+      const ftsResults = await UnitV2.fts(
+        search,
+        ftsPagination,
+        ftsColumns,
+        includeProjectInfoInSearch === 'true' || includeProjectInfoInSearch === true,
+        orgUid, // Pass orgUid for FTS filtering
+      );
+
+      // Extract cadTrustUnitId values from FTS results
+      const mappedResults = ftsResults.rows.map((ftsResult) =>
+        _.get(ftsResult, 'cad_trust_unit_id') || _.get(ftsResult, 'cadTrustUnitId'),
+      );
+
+      // Filter by FTS results
+      if (mappedResults.length > 0) {
+        // If warehouseUnitId filter already exists (from other filters), intersect with FTS results
+        if (where.cadTrustUnitId && where.cadTrustUnitId[Sequelize.Op.in]) {
+          const existingIds = where.cadTrustUnitId[Sequelize.Op.in];
+          const intersectedIds = existingIds.filter(id => mappedResults.includes(id));
+          where.cadTrustUnitId = {
+            [Sequelize.Op.in]: intersectedIds.length > 0 ? intersectedIds : ['no-match'],
+          };
+        } else {
+          where.cadTrustUnitId = {
+            [Sequelize.Op.in]: mappedResults,
+          };
+        }
+      } else {
+        // No FTS results - return empty set
+        const response = optionallyPaginatedResponse(
+          { count: ftsResults.count, rows: [] },
+          page,
+          limit,
+        );
+        return res.json(response);
+      }
+
+      // Note: orgUid filtering is handled in FTS query, so don't add it to where clause again
     }
 
     // Build query with column selection and includes

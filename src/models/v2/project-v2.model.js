@@ -25,6 +25,7 @@ import {
   collapseTablesData,
 } from '../../utils/xls.js';
 import { logger } from '../../config/logger.js';
+import { sanitizeSqliteFtsQuery } from '../../utils/v2-fts-utils.js';
 
 class ProjectV2 extends Model {
   static associate(models) {
@@ -535,6 +536,242 @@ class ProjectV2 extends Model {
           }
         });
     });
+  }
+
+  /**
+   * FTS search wrapper - detects dialect and calls appropriate method
+   * @param {string} searchStr - Search query string
+   * @param {Object} pagination - Pagination object with offset and limit
+   * @param {Array} columns - Optional array of columns to select
+   * @param {string} orgUid - Optional organization UID for filtering
+   * @returns {Promise<Object>} - Object with count and rows
+   */
+  static async fts(searchStr, pagination, columns = [], orgUid = null) {
+    // V2 only supports SQLite for FTS5
+    const dialect = sequelizeV2.getDialect();
+    if (dialect === 'sqlite') {
+      return ProjectV2.findAllSqliteFts(searchStr, pagination, columns, orgUid);
+    }
+
+    // For non-SQLite databases, return empty results
+    logger.warn('FTS5 search is only supported for SQLite databases');
+    return {
+      count: 0,
+      rows: [],
+    };
+  }
+
+  /**
+   * SQLite FTS5 search implementation with BM25 ranking
+   * @param {string} searchStr - Search query string
+   * @param {Object} pagination - Pagination object with offset and limit
+   * @param {Array} columns - Optional array of columns to select
+   * @param {string} orgUid - Optional organization UID for filtering
+   * @returns {Promise<Object>} - Object with count and rows
+   */
+  static async findAllSqliteFts(searchStr, pagination, columns = [], orgUid = null) {
+    try {
+      const { offset, limit } = pagination;
+
+      // Sanitize search query
+      const sanitizedSearch = sanitizeSqliteFtsQuery(searchStr);
+
+      // Handle empty or invalid search strings
+      if (!sanitizedSearch || sanitizedSearch === '*') {
+        // * isn't a valid matcher on its own, return empty set
+        return {
+          count: 0,
+          rows: [],
+        };
+      }
+
+      // Remove leading '+' if present (legacy V1 behavior)
+      let finalSearch = sanitizedSearch;
+      if (finalSearch.startsWith('+')) {
+        finalSearch = finalSearch.replace('+', '');
+      }
+
+      // Build WHERE clause
+      let whereClause = 'projects_v2_fts MATCH :search';
+      const replacements = { search: finalSearch };
+
+      // Add orgUid filter if provided
+      if (orgUid) {
+        whereClause += ' AND projects_v2_fts.org_uid = :orgUid';
+        replacements.orgUid = orgUid;
+      }
+
+      // Build count query using COUNT(*) for efficiency
+      const countSql = `
+        SELECT COUNT(*) as count
+        FROM projects_v2_fts
+        WHERE ${whereClause}
+      `;
+
+      let countResult;
+      try {
+        countResult = await sequelizeV2.query(countSql, {
+          replacements,
+          type: Sequelize.QueryTypes.SELECT,
+        });
+      } catch (error) {
+        logger.error('FTS count query failed', {
+          error: error.message,
+          sql: countSql,
+          replacements,
+        });
+        throw error;
+      }
+
+      const count = countResult[0]?.count || 0;
+
+      // Build main query with BM25 ranking
+      // Note: Lower BM25 scores = better matches, so ORDER BY ASC
+      let fields = 'cad_trust_project_id';
+      // Always include org_uid when filtering by orgUid
+      if (orgUid) {
+        fields += ', org_uid';
+      }
+      if (columns.length > 0) {
+        // Filter out invalid columns and map camelCase to snake_case if needed
+        const validColumns = columns
+          .filter((col) => {
+            // Map common camelCase to snake_case
+            const columnMap = {
+              cadTrustProjectId: 'cad_trust_project_id',
+              orgUid: 'org_uid',
+              projectRegistryName: 'project_registry_name',
+              projectId: 'project_id',
+              projectCreditingProgram: 'project_crediting_program',
+              projectName: 'project_name',
+              projectLink: 'project_link',
+              projectDescription: 'project_description',
+              projectSector: 'project_sector',
+              projectType: 'project_type',
+              projectSubtype: 'project_subtype',
+              projectStatus: 'project_status',
+              projectStatusDate: 'project_status_date',
+              projectUnitMetric: 'project_unit_metric',
+              cadTrustReferenceProjectId: 'cad_trust_reference_project_id',
+              cadTrustProgramId: 'cad_trust_program_id',
+            };
+            return columnMap[col] || col;
+          })
+          .map((col) => {
+            const columnMap = {
+              cadTrustProjectId: 'cad_trust_project_id',
+              orgUid: 'org_uid',
+              projectRegistryName: 'project_registry_name',
+              projectId: 'project_id',
+              projectCreditingProgram: 'project_crediting_program',
+              projectName: 'project_name',
+              projectLink: 'project_link',
+              projectDescription: 'project_description',
+              projectSector: 'project_sector',
+              projectType: 'project_type',
+              projectSubtype: 'project_subtype',
+              projectStatus: 'project_status',
+              projectStatusDate: 'project_status_date',
+              projectUnitMetric: 'project_unit_metric',
+              cadTrustReferenceProjectId: 'cad_trust_reference_project_id',
+              cadTrustProgramId: 'cad_trust_program_id',
+            };
+            return columnMap[col] || col;
+          });
+        // Always include cad_trust_project_id for identification
+        const hasProjectId = validColumns.includes('cad_trust_project_id');
+        fields = hasProjectId
+          ? validColumns.join(', ')
+          : `cad_trust_project_id, ${validColumns.join(', ')}`;
+        // Ensure org_uid is included if filtering by orgUid and not already in columns
+        if (orgUid && !validColumns.includes('org_uid') && !columns.includes('orgUid')) {
+          fields += ', org_uid';
+        }
+      }
+
+      let sql = `
+        SELECT ${fields}, bm25(projects_v2_fts) as relevance
+        FROM projects_v2_fts
+        WHERE ${whereClause}
+      `;
+
+      // Add ordering and pagination
+      if (limit !== undefined && offset !== undefined) {
+        sql += ` ORDER BY bm25(projects_v2_fts) ASC LIMIT :limit OFFSET :offset`;
+        replacements.limit = limit;
+        replacements.offset = offset;
+      } else {
+        sql += ` ORDER BY bm25(projects_v2_fts) ASC`;
+      }
+
+      const rows = await sequelizeV2.query(sql, {
+        replacements,
+        type: Sequelize.QueryTypes.SELECT,
+      });
+
+      return {
+        count,
+        rows,
+      };
+    } catch (error) {
+      // Check if error is due to missing FTS table
+      if (error.message && error.message.includes('no such table: projects_v2_fts')) {
+        logger.error('FTS table missing, attempting rebuild', { error: error.message });
+        try {
+          await ProjectV2.rebuildFtsTable();
+          // Retry query after rebuild
+          return ProjectV2.findAllSqliteFts(searchStr, pagination, columns, orgUid);
+        } catch (rebuildError) {
+          logger.error('Failed to rebuild FTS table', { error: rebuildError.message });
+          throw rebuildError;
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Rebuild FTS5 table - useful for recovery from corruption or sync issues
+   * @returns {Promise<void>}
+   */
+  static async rebuildFtsTable() {
+    const dialect = sequelizeV2.getDialect();
+    if (dialect !== 'sqlite') {
+      logger.warn('FTS5 rebuild is only supported for SQLite databases');
+      return;
+    }
+
+    try {
+      // Delete all existing FTS data
+      await sequelizeV2.query('DELETE FROM projects_v2_fts');
+
+      // Re-populate from main table
+      await sequelizeV2.query(`
+        INSERT INTO projects_v2_fts SELECT
+          cad_trust_project_id,
+          org_uid,
+          project_registry_name,
+          project_id,
+          project_crediting_program,
+          project_name,
+          project_link,
+          project_description,
+          project_sector,
+          project_type,
+          project_subtype,
+          project_status,
+          project_status_date,
+          project_unit_metric,
+          cad_trust_reference_project_id,
+          cad_trust_program_id
+        FROM project
+      `);
+
+      logger.info('Projects FTS5 table rebuilt successfully');
+    } catch (error) {
+      logger.error('Error rebuilding projects FTS5 table', { error: error.message });
+      throw error;
+    }
   }
 
   /**

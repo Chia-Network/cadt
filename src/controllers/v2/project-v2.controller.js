@@ -159,6 +159,7 @@ export const findAll = async (req, res) => {
       orgUid,
       filter,
       order,
+      search,
     } = req.query;
 
     let where = {};
@@ -186,8 +187,8 @@ export const findAll = async (req, res) => {
       };
     }
 
-    // Handle orgUid filter
-    if (orgUid) {
+    // Handle orgUid filter (only if not using FTS search, as FTS handles orgUid internally)
+    if (orgUid && !search) {
       where.orgUid = orgUid;
     }
 
@@ -246,6 +247,65 @@ export const findAll = async (req, res) => {
     // If XLS export, remove pagination
     if (xls) {
       pagination = { offset: undefined, limit: undefined };
+    }
+
+    // Handle FTS search parameter
+    if (search) {
+      // Handle column selection for FTS (reuse normalizedColumns if available)
+      let ftsColumns = normalizedColumns || [];
+      if (ftsColumns.length === 0 && columns) {
+        const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+        const validColumns = columnsArray.filter((col) =>
+          defaultColumns
+            .concat(includes.map(formatModelAssociationName))
+            .includes(col),
+        );
+        ftsColumns = validColumns.length > 0 ? validColumns : [];
+      }
+      // If still empty, use empty array (will select all default fields)
+      if (ftsColumns.length === 0) {
+        ftsColumns = [];
+      }
+
+      // Call FTS method (use pagination without XLS override for FTS)
+      const ftsPagination = paginationParams(page, limit);
+      const ftsResults = await ProjectV2.fts(
+        search,
+        ftsPagination,
+        ftsColumns,
+        orgUid, // Pass orgUid for FTS filtering
+      );
+
+      // Extract cadTrustProjectId values from FTS results
+      const mappedResults = ftsResults.rows.map((ftsResult) =>
+        _.get(ftsResult, 'cad_trust_project_id') || _.get(ftsResult, 'cadTrustProjectId'),
+      );
+
+      // Filter by FTS results
+      if (mappedResults.length > 0) {
+        // If projectIds filter already exists, intersect with FTS results
+        if (where.cadTrustProjectId && where.cadTrustProjectId[Sequelize.Op.in]) {
+          const existingIds = where.cadTrustProjectId[Sequelize.Op.in];
+          const intersectedIds = existingIds.filter(id => mappedResults.includes(id));
+          where.cadTrustProjectId = {
+            [Sequelize.Op.in]: intersectedIds.length > 0 ? intersectedIds : ['no-match'],
+          };
+        } else {
+          where.cadTrustProjectId = {
+            [Sequelize.Op.in]: mappedResults,
+          };
+        }
+      } else {
+        // No FTS results - return empty set
+        const response = optionallyPaginatedResponse(
+          { count: ftsResults.count, rows: [] },
+          page,
+          limit,
+        );
+        return res.json(response);
+      }
+
+      // Note: orgUid filtering is handled in FTS query, so don't add it to where clause again
     }
 
     // Build query with column selection and includes

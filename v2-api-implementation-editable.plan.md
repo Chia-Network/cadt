@@ -27,12 +27,13 @@
 - ✅ **Phase 22**: Staging Advanced Features (Complete with offer file generation for project transfers)
 - ✅ **Phase 23**: Governance Advanced Features (Complete with subscribe endpoint)
 - ✅ **Phase 24**: V2 API Documentation (Complete with comprehensive documentation for all V2 endpoints)
+- ✅ **Phase 25**: Add orgUid Field to Projects and Units Tables (Complete - orgUid automatically set from home organization, validation rejects user-provided orgUid, filtering support added, all tests passing)
+- ✅ **Phase 26**: Full-Text Search (FTS5) Implementation (Complete - FTS5 tables and triggers created, search methods implemented for Projects and Units, comprehensive integration tests passing, all 35 FTS tests passing)
 
-**CURRENT STATUS:** ✅ CORE API ENDPOINTS COMPLETED - V2 API core functionality is implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer. ✅ V2 Organization Management complete - Full organization lifecycle management with create, upgrade, import, subscription, and mirror operations. ✅ Offer/Transfer Endpoints complete - Full offer generation, import, commit, and cancellation functionality. ✅ Filestore Endpoints complete - Full file storage and management functionality. ✅ Projects Advanced Features complete - Transfer, XLSX import, CSV batch upload, and advanced query features. ✅ Units Advanced Features complete - Split, XLSX import, CSV batch upload, and advanced query features. ✅ Staging Advanced Features complete - Offer file generation for project transfers. ✅ Governance Advanced Features complete - Subscribe to governance body functionality. ✅ V2 API Documentation complete - Comprehensive documentation for all V2 endpoints following V1 structure and style.
+**CURRENT STATUS:** ✅ ALL PHASES COMPLETE - V2 API is fully implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer. ✅ V2 Organization Management complete - Full organization lifecycle management with create, upgrade, import, subscription, and mirror operations. ✅ Offer/Transfer Endpoints complete - Full offer generation, import, commit, and cancellation functionality. ✅ Filestore Endpoints complete - Full file storage and management functionality. ✅ Projects Advanced Features complete - Transfer, XLSX import, CSV batch upload, and advanced query features. ✅ Units Advanced Features complete - Split, XLSX import, CSV batch upload, and advanced query features. ✅ Staging Advanced Features complete - Offer file generation for project transfers. ✅ Governance Advanced Features complete - Subscribe to governance body functionality. ✅ V2 API Documentation complete - Comprehensive documentation for all V2 endpoints following V1 structure and style. ✅ orgUid Field Integration complete - Projects and Units tables now include orgUid field with automatic assignment from home organization. ✅ FTS5 Implementation complete - Full-text search with BM25 ranking, automatic triggers, orgUid filtering, and comprehensive test coverage (35 tests passing).
 
 **PENDING PHASES:**
-- ⏳ **Phase 25**: Add orgUid Field to Projects and Units Tables
-- ⏳ **Phase 26**: Full-Text Search (FTS5) Implementation
+- None - All phases complete! ✅
 
 **COMPLETED ENDPOINTS (22 total):**
 - Core: Methodology, Program, Project, Validation, Verification, Issuance, Unit, Location (8 endpoints)
@@ -4357,9 +4358,11 @@ static async pushToDataLayer(tableToPush, comment, author, ids = []) {
 
 ---
 
-## Phase 25: Add orgUid Field to Projects and Units Tables
+## Phase 25: Add orgUid Field to Projects and Units Tables ✅ COMPLETE
 
 Add `orgUid` field to the `project` and `unit` tables to enable direct organization filtering, similar to V1 implementation.
+
+**STATUS**: ✅ **COMPLETE** - All subsections (25.1-25.10) implemented and tested. The `orgUid` field is automatically set from the home organization in both Project and Unit controllers, validation rejects user-provided `orgUid`, filtering by `orgUid` works in `findAll` methods, and all 850 tests pass.
 
 **Goals**:
 - Add `org_uid` column to `project` and `unit` tables

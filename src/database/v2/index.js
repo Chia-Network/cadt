@@ -97,6 +97,29 @@ export const checkForV2Migrations = async (db) => {
         .includes(migration.name);
     });
 
+    // Special handling for FTS triggers migration - verify triggers exist even if marked complete
+    const ftsTriggersMigration = migrations.find(m => m.name === '20250110120032-create-fts5-triggers-v2');
+    if (ftsTriggersMigration && db.getDialect() === 'sqlite') {
+      const isCompleted = completedMigrations.some(m => m.name === ftsTriggersMigration.name);
+      if (isCompleted) {
+        // Verify triggers actually exist
+        const triggerCheck = await db.query(
+          "SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE '%v2%fts%'",
+          { type: Sequelize.QueryTypes.SELECT },
+        );
+        if (triggerCheck.length !== 6) {
+          logger.warn(`FTS triggers missing (found ${triggerCheck.length}, expected 6), re-running migration`);
+          // Remove from completed migrations so it runs again
+          await db.query('DELETE FROM `SequelizeMetaV2` WHERE name = :name', {
+            replacements: { name: ftsTriggersMigration.name },
+            type: Sequelize.QueryTypes.DELETE,
+          });
+          // Re-add to pending migrations
+          notCompletedMigrations.push(ftsTriggersMigration);
+        }
+      }
+    }
+
     for (let i = 0; i < notCompletedMigrations.length; i++) {
       try {
         const notCompleted = notCompletedMigrations[i];

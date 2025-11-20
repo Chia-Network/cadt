@@ -32,6 +32,10 @@ import CreateAefT4HoldingsV2 from './20250110120026-create-aef-t4-holdings-v2.js
 // V2 System Table Migrations (continued)
 import CreateFilestoreV2 from './20250110120030-create-filestore-v2.js';
 
+// V2 FTS5 Migrations
+import CreateFts5TablesV2 from './20250110120031-create-fts5-tables-v2.js';
+import CreateFts5TriggersV2 from './20250110120032-create-fts5-triggers-v2.js';
+
 export const migrations = [
   {
     migration: CreateStagingV2,
@@ -144,5 +148,13 @@ export const migrations = [
   {
     migration: CreateFilestoreV2,
     name: '20250110120030-create-filestore-v2',
+  },
+  {
+    migration: CreateFts5TablesV2,
+    name: '20250110120031-create-fts5-tables-v2',
+  },
+  {
+    migration: CreateFts5TriggersV2,
+    name: '20250110120032-create-fts5-triggers-v2',
   },
 ];

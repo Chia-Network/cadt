@@ -19,6 +19,7 @@ import {
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { UnitLabelV2 } from './unit-label-v2.model.js';
 import { logger } from '../../config/logger.js';
+import { sanitizeSqliteFtsQuery } from '../../utils/v2-fts-utils.js';
 
 class UnitV2 extends Model {
   static associate(models) {
@@ -446,6 +447,347 @@ class UnitV2 extends Model {
   }
 
   /**
+   * FTS search wrapper - detects dialect and calls appropriate method
+   * @param {string} searchStr - Search query string
+   * @param {Object} pagination - Pagination object with offset and limit
+   * @param {Array} columns - Optional array of columns to select
+   * @param {boolean} includeProjectInfo - Whether to include project info in search
+   * @param {string} orgUid - Optional organization UID for filtering
+   * @returns {Promise<Object>} - Object with count and rows
+   */
+  static async fts(searchStr, pagination, columns = [], includeProjectInfo = false, orgUid = null) {
+    // V2 only supports SQLite for FTS5
+    const dialect = sequelizeV2.getDialect();
+    if (dialect === 'sqlite') {
+      return UnitV2.findAllSqliteFts(searchStr, pagination, columns, includeProjectInfo, orgUid);
+    }
+
+    // For non-SQLite databases, return empty results
+    logger.warn('FTS5 search is only supported for SQLite databases');
+    return {
+      count: 0,
+      rows: [],
+    };
+  }
+
+  /**
+   * SQLite FTS5 search implementation with BM25 ranking and UNION support
+   * @param {string} searchStr - Search query string
+   * @param {Object} pagination - Pagination object with offset and limit
+   * @param {Array} columns - Optional array of columns to select
+   * @param {boolean} includeProjectInfo - Whether to include project info in search
+   * @param {string} orgUid - Optional organization UID for filtering
+   * @returns {Promise<Object>} - Object with count and rows
+   */
+  static async findAllSqliteFts(searchStr, pagination, columns = [], includeProjectInfo = false, orgUid = null) {
+    try {
+      logger.info('UnitV2.findAllSqliteFts called', {
+        searchStr,
+        pagination,
+        columns,
+        includeProjectInfo,
+        orgUid,
+      });
+
+      const { offset, limit } = pagination;
+
+      // Sanitize search query
+      const sanitizedSearch = sanitizeSqliteFtsQuery(searchStr);
+      logger.info('Search string sanitized', { searchStr, sanitizedSearch });
+
+      // Handle empty or invalid search strings
+      if (!sanitizedSearch || sanitizedSearch === '*') {
+        // * isn't a valid matcher on its own, return empty set
+        logger.info('Empty or invalid search string, returning empty results');
+        return {
+          count: 0,
+          rows: [],
+        };
+      }
+
+      // Remove leading '+' if present (legacy V1 behavior)
+      let finalSearch = sanitizedSearch;
+      if (finalSearch.startsWith('+')) {
+        finalSearch = finalSearch.replace('+', '');
+      }
+
+      // For FTS5, wrap search strings containing hyphens in double quotes to prevent
+      // SQLite from misinterpreting hyphens as operators or column names
+      // Only wrap if the string contains hyphens and isn't already quoted
+      if (finalSearch && finalSearch.includes('-') && !finalSearch.startsWith('"') && !finalSearch.endsWith('"')) {
+        // Escape any existing double quotes in the search string
+        const escapedSearch = finalSearch.replace(/"/g, '""');
+        finalSearch = `"${escapedSearch}"`;
+      }
+      logger.info('Final search string prepared', { finalSearch });
+
+      // Build field selection
+      // Always include org_uid when filtering by orgUid, or when columns are empty (for basic queries)
+      let fields = 'cad_trust_unit_id';
+      if (orgUid) {
+        fields += ', org_uid';
+      }
+      if (columns.length > 0) {
+        // Map camelCase to snake_case for valid columns
+        const columnMap = {
+          cadTrustUnitId: 'cad_trust_unit_id',
+          orgUid: 'org_uid',
+          unitSerialId: 'unit_serial_id',
+          unitStartBlock: 'unit_start_block',
+          unitEndBlock: 'unit_end_block',
+          unitCount: 'unit_count',
+          unitType: 'unit_type',
+          unitVintageYear: 'unit_vintage_year',
+          unitStatus: 'unit_status',
+          unitStatusReason: 'unit_status_reason',
+          unitStatusDate: 'unit_status_date',
+          unitRetirementDetail: 'unit_retirement_detail',
+          unitRetirementBeneficiary: 'unit_retirement_beneficiary',
+          unitRetirementBeneficiaryId: 'unit_retirement_beneficiary_id',
+          unitLink: 'unit_link',
+          unitMetric: 'unit_metric',
+          unitCurrentOwner: 'unit_current_owner',
+          unitItmosReferenceId: 'unit_itmos_reference_id',
+          cadTrustIssuanceId: 'cad_trust_issuance_id',
+        };
+        const validColumns = columns
+          .filter((col) => columnMap[col] || col)
+          .map((col) => columnMap[col] || col);
+        fields = validColumns.join(', ');
+        // Ensure org_uid is included if filtering by orgUid
+        if (orgUid && !validColumns.includes('org_uid') && !columns.includes('orgUid')) {
+          fields += ', org_uid';
+        }
+      } else if (orgUid && !fields.includes('org_uid')) {
+        // If no columns specified but filtering by orgUid, ensure org_uid is included
+        fields += ', org_uid';
+      }
+
+      // Build WHERE clause for orgUid filter
+      let orgUidFilter = '';
+      const replacements = {};
+      if (orgUid) {
+        orgUidFilter = ' AND units_v2_fts.org_uid = :orgUid';
+        replacements.orgUid = orgUid;
+      }
+
+      let sql;
+      let countSql;
+
+      if (includeProjectInfo) {
+        // UNION query with project info search
+        // Note: V2 uses snake_case table names and field names
+        sql = `
+          SELECT ${fields}, bm25(units_v2_fts) as relevance
+          FROM units_v2_fts
+          WHERE units_v2_fts MATCH :search1${orgUidFilter}
+          UNION
+          SELECT ${fields}, bm25(units_v2_fts) as relevance
+          FROM units_v2_fts
+          WHERE units_v2_fts MATCH :search3${orgUidFilter}
+          UNION
+        SELECT ${fields}, bm25(units_v2_fts) as relevance
+        FROM units_v2_fts
+        INNER JOIN issuance ON units_v2_fts.cad_trust_issuance_id = issuance.cad_trust_issuance_id
+        INNER JOIN verification ON issuance.cad_trust_verification_id = verification.cad_trust_verification_id
+        INNER JOIN projects_v2_fts ON verification.cad_trust_project_id = projects_v2_fts.cad_trust_project_id
+        WHERE projects_v2_fts MATCH :search2${orgUidFilter ? ' AND units_v2_fts.org_uid = :orgUid' : ''}
+        `;
+
+        // Count query - use subquery to handle UNION deduplication
+        countSql = `
+          SELECT COUNT(*) as count FROM (
+            SELECT cad_trust_unit_id
+            FROM units_v2_fts
+            WHERE units_v2_fts MATCH :search1${orgUidFilter}
+            UNION
+            SELECT cad_trust_unit_id
+            FROM units_v2_fts
+            WHERE units_v2_fts MATCH :search3${orgUidFilter}
+            UNION
+          SELECT units_v2_fts.cad_trust_unit_id
+          FROM units_v2_fts
+          INNER JOIN issuance ON units_v2_fts.cad_trust_issuance_id = issuance.cad_trust_issuance_id
+          INNER JOIN verification ON issuance.cad_trust_verification_id = verification.cad_trust_verification_id
+          INNER JOIN projects_v2_fts ON verification.cad_trust_project_id = projects_v2_fts.cad_trust_project_id
+          WHERE projects_v2_fts MATCH :search2${orgUidFilter ? ' AND units_v2_fts.org_uid = :orgUid' : ''}
+          )
+        `;
+
+        replacements.search1 = finalSearch;
+        replacements.search2 = finalSearch;
+        replacements.search3 = `0x${finalSearch}`; // For assetId search
+      } else {
+        // Standard UNION query (for assetId search with 0x prefix)
+        sql = `
+          SELECT ${fields}, bm25(units_v2_fts) as relevance
+          FROM units_v2_fts
+          WHERE units_v2_fts MATCH :search${orgUidFilter}
+          UNION
+          SELECT ${fields}, bm25(units_v2_fts) as relevance
+          FROM units_v2_fts
+          WHERE units_v2_fts MATCH :search2${orgUidFilter}
+        `;
+
+        // Count query - use subquery to handle UNION deduplication
+        countSql = `
+          SELECT COUNT(*) as count FROM (
+            SELECT cad_trust_unit_id
+            FROM units_v2_fts
+            WHERE units_v2_fts MATCH :search${orgUidFilter ? orgUidFilter : ''}
+            UNION
+            SELECT cad_trust_unit_id
+            FROM units_v2_fts
+            WHERE units_v2_fts MATCH :search2${orgUidFilter ? orgUidFilter : ''}
+          )
+        `;
+
+        replacements.search = finalSearch;
+        replacements.search2 = `0x${finalSearch}`; // For assetId search
+      }
+
+      logger.info('FTS query prepared', {
+        includeProjectInfo,
+        sql: sql.substring(0, 200) + '...',
+        countSql: countSql.substring(0, 200) + '...',
+        replacements,
+        fields,
+        orgUidFilter,
+      });
+
+      // Check if FTS table exists and has data
+      try {
+        const tableCheck = await sequelizeV2.query(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='units_v2_fts'",
+          { type: Sequelize.QueryTypes.SELECT },
+        );
+        logger.info('FTS table check', { tableExists: tableCheck.length > 0 });
+
+        if (tableCheck.length > 0) {
+          const rowCount = await sequelizeV2.query(
+            'SELECT COUNT(*) as count FROM units_v2_fts',
+            { type: Sequelize.QueryTypes.SELECT },
+          );
+          logger.info('FTS table row count', { count: rowCount[0]?.count || 0 });
+
+          // Test a simple FTS query to verify the table works
+          try {
+            const testQuery = 'SELECT cad_trust_unit_id FROM units_v2_fts WHERE units_v2_fts MATCH :testSearch LIMIT 1';
+            const testResult = await sequelizeV2.query(testQuery, {
+              replacements: { testSearch: finalSearch },
+              type: Sequelize.QueryTypes.SELECT,
+            });
+            logger.info('Simple FTS test query succeeded', { resultCount: testResult.length });
+          } catch (testError) {
+            logger.error('Simple FTS test query failed', {
+              error: testError.message,
+              errorStack: testError.stack,
+              testSearch: finalSearch,
+            });
+          }
+        }
+      } catch (checkError) {
+        logger.warn('Error checking FTS table', { error: checkError.message });
+      }
+
+      // Execute count query
+      // Add error handling to debug SQL issues
+      let countResult;
+      try {
+        // Try to manually construct SQL to see what Sequelize might be doing
+        let manualSql = countSql;
+        for (const [key, value] of Object.entries(replacements)) {
+          manualSql = manualSql.replace(`:${key}`, `'${value}'`);
+        }
+        logger.info('Executing FTS count query', {
+          countSql,
+          replacements: JSON.stringify(replacements),
+          manualSqlPreview: manualSql.substring(0, 500),
+        });
+
+        // Enable Sequelize logging temporarily to see actual SQL
+        const originalLogging = sequelizeV2.options.logging;
+        sequelizeV2.options.logging = (sql) => {
+          logger.info('Sequelize executing SQL', { sql: sql.substring(0, 1000) });
+        };
+
+        countResult = await sequelizeV2.query(countSql, {
+          replacements,
+          type: Sequelize.QueryTypes.SELECT,
+          logging: false, // Don't double-log
+        });
+
+        // Restore original logging
+        sequelizeV2.options.logging = originalLogging;
+
+        logger.info('FTS count query succeeded', { count: countResult[0]?.count || 0 });
+      } catch (error) {
+        logger.error('FTS count query failed', {
+          error: error.message,
+          errorStack: error.stack,
+          sql: countSql,
+          replacements: JSON.stringify(replacements),
+          searchStr,
+          finalSearch,
+          sanitizedSearch,
+          // Try to construct what the SQL might look like
+          attemptedSql: countSql.replace(/:search/g, `'${finalSearch}'`).replace(/:search2/g, `'0x${finalSearch}'`).substring(0, 500),
+        });
+        throw error;
+      }
+
+      const count = countResult[0]?.count || 0;
+
+      // Add ordering and pagination to main query
+      // Use subquery to properly order UNION results by BM25 relevance
+      if (limit !== undefined && offset !== undefined) {
+        sql = `
+          SELECT * FROM (
+            ${sql}
+          ) ORDER BY relevance ASC LIMIT :limit OFFSET :offset
+        `;
+        replacements.limit = limit;
+        replacements.offset = offset;
+      } else {
+        sql = `
+          SELECT * FROM (
+            ${sql}
+          ) ORDER BY relevance ASC
+        `;
+      }
+
+      logger.info('Executing FTS main query', {
+        sql: sql.substring(0, 300) + '...',
+        replacements: JSON.stringify(replacements),
+      });
+      const rows = await sequelizeV2.query(sql, {
+        replacements,
+        type: Sequelize.QueryTypes.SELECT,
+      });
+      logger.info('FTS main query succeeded', { rowCount: rows.length });
+
+      return {
+        count,
+        rows,
+      };
+    } catch (error) {
+      // Check if error is due to missing FTS table
+      if (error.message && error.message.includes('no such table: units_v2_fts')) {
+        logger.error('FTS table missing, attempting rebuild', { error: error.message });
+        try {
+          await UnitV2.rebuildFtsTable();
+          // Retry query after rebuild
+          return UnitV2.findAllSqliteFts(searchStr, pagination, columns, includeProjectInfo, orgUid);
+        } catch (rebuildError) {
+          logger.error('Failed to rebuild FTS table', { error: rebuildError.message });
+          throw rebuildError;
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Helper to update child record IDs (V2 version)
    * @private
    */
@@ -490,6 +832,53 @@ class UnitV2 extends Model {
         });
       }
     });
+  }
+
+  /**
+   * Rebuild FTS5 table - useful for recovery from corruption or sync issues
+   * @returns {Promise<void>}
+   */
+  static async rebuildFtsTable() {
+    const dialect = sequelizeV2.getDialect();
+    if (dialect !== 'sqlite') {
+      logger.warn('FTS5 rebuild is only supported for SQLite databases');
+      return;
+    }
+
+    try {
+      // Delete all existing FTS data
+      await sequelizeV2.query('DELETE FROM units_v2_fts');
+
+      // Re-populate from main table
+      await sequelizeV2.query(`
+        INSERT INTO units_v2_fts SELECT
+          cad_trust_unit_id,
+          org_uid,
+          unit_serial_id,
+          unit_start_block,
+          unit_end_block,
+          unit_count,
+          unit_type,
+          unit_vintage_year,
+          unit_status,
+          unit_status_reason,
+          unit_status_date,
+          unit_retirement_detail,
+          unit_retirement_beneficiary,
+          unit_retirement_beneficiary_id,
+          unit_link,
+          unit_metric,
+          unit_current_owner,
+          unit_itmos_reference_id,
+          cad_trust_issuance_id
+        FROM unit
+      `);
+
+      logger.info('Units FTS5 table rebuilt successfully');
+    } catch (error) {
+      logger.error('Error rebuilding units FTS5 table', { error: error.message });
+      throw error;
+    }
   }
 }
 
