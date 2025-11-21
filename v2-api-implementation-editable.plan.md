@@ -29,11 +29,12 @@
 - ✅ **Phase 24**: V2 API Documentation (Complete with comprehensive documentation for all V2 endpoints)
 - ✅ **Phase 25**: Add orgUid Field to Projects and Units Tables (Complete - orgUid automatically set from home organization, validation rejects user-provided orgUid, filtering support added, all tests passing)
 - ✅ **Phase 26**: Full-Text Search (FTS5) Implementation (Complete - FTS5 tables and triggers created, search methods implemented for Projects and Units, comprehensive integration tests passing, all 35 FTS tests passing)
+- ⏳ **Phase 27**: Datalayer Registry Sync Background Tasks (In Progress - Automatic organization import, registry data sync, and organization metadata sync tasks)
 
-**CURRENT STATUS:** ✅ ALL PHASES COMPLETE - V2 API is fully implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer. ✅ V2 Organization Management complete - Full organization lifecycle management with create, upgrade, import, subscription, and mirror operations. ✅ Offer/Transfer Endpoints complete - Full offer generation, import, commit, and cancellation functionality. ✅ Filestore Endpoints complete - Full file storage and management functionality. ✅ Projects Advanced Features complete - Transfer, XLSX import, CSV batch upload, and advanced query features. ✅ Units Advanced Features complete - Split, XLSX import, CSV batch upload, and advanced query features. ✅ Staging Advanced Features complete - Offer file generation for project transfers. ✅ Governance Advanced Features complete - Subscribe to governance body functionality. ✅ V2 API Documentation complete - Comprehensive documentation for all V2 endpoints following V1 structure and style. ✅ orgUid Field Integration complete - Projects and Units tables now include orgUid field with automatic assignment from home organization. ✅ FTS5 Implementation complete - Full-text search with BM25 ranking, automatic triggers, orgUid filtering, and comprehensive test coverage (35 tests passing).
+**CURRENT STATUS:** ✅ V2 API is fully implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer. ✅ V2 Organization Management complete - Full organization lifecycle management with create, upgrade, import, subscription, and mirror operations. ✅ Offer/Transfer Endpoints complete - Full offer generation, import, commit, and cancellation functionality. ✅ Filestore Endpoints complete - Full file storage and management functionality. ✅ Projects Advanced Features complete - Transfer, XLSX import, CSV batch upload, and advanced query features. ✅ Units Advanced Features complete - Split, XLSX import, CSV batch upload, and advanced query features. ✅ Staging Advanced Features complete - Offer file generation for project transfers. ✅ Governance Advanced Features complete - Subscribe to governance body functionality. ✅ V2 API Documentation complete - Comprehensive documentation for all V2 endpoints following V1 structure and style. ✅ orgUid Field Integration complete - Projects and Units tables now include orgUid field with automatic assignment from home organization. ✅ FTS5 Implementation complete - Full-text search with BM25 ranking, automatic triggers, orgUid filtering, and comprehensive test coverage (35 tests passing). ⏳ Datalayer Registry Sync Background Tasks - Implementing automatic background tasks to sync organizations from governance and import registry data from subscribed organizations.
 
 **PENDING PHASES:**
-- None - All phases complete! ✅
+- ⏳ **Phase 27**: Datalayer Registry Sync Background Tasks
 
 **COMPLETED ENDPOINTS (22 total):**
 - Core: Methodology, Program, Project, Validation, Verification, Issuance, Unit, Location (8 endpoints)
@@ -5169,3 +5170,1239 @@ NODE_ENV=test USE_SIMULATOR=true npx mocha --loader node_modules/extensionless/s
 - Better search relevance than V1 (BM25 ranking)
 - Better performance than V1 (efficient count queries)
 - More reliable than V1 (error handling and recovery)
+
+---
+
+## Phase 27: Datalayer Registry Sync Background Tasks
+
+Implement automatic background tasks for V2 datalayer synchronization, enabling V2 to automatically discover organizations from governance and sync registry data from subscribed organizations.
+
+**Phase Overview**: V2 currently has the ability to commit staged records to datalayer (outbound sync), but lacks the automatic background tasks that sync data FROM other organizations (inbound sync). This phase implements the critical infrastructure needed for V2 to function as a distributed registry system.
+
+**STATUS**: ⏳ **IN PROGRESS** - Implementing background tasks for automatic organization discovery and registry data synchronization.
+
+**Key Requirements**:
+- Automatically import organizations from governance orgList
+- Automatically sync registry data from all subscribed organizations
+- Automatically sync organization metadata
+- Handle V2 schema differences (snake_case, UUID primary keys)
+- Use V2 models and database connections
+- Maintain V1/V2 isolation
+
+**Critical Gap Identified**:
+Without these background tasks, V2 cannot automatically receive and process data from other organizations in the network. The database becomes stale unless manually triggered, defeating the purpose of a distributed registry system.
+
+### 27.1 V2 Model Keys Mapping Utility
+
+Create V2 equivalent of V1's `ModelKeys` mapping to enable registry sync to map datalayer keys to V2 models.
+
+**File**: `src/utils/v2-model-utils.js` (new file)
+
+**Purpose**: Map datalayer keys (e.g., `"project|{uuid}"`) to V2 Sequelize models for automatic upsert/delete operations during registry sync.
+
+**Implementation**:
+
+1. **Create ModelKeysV2 object**:
+   ```javascript
+   import {
+     ProgramV2, MethodologyV2, ProjectV2, ValidationV2, VerificationV2,
+     IssuanceV2, UnitV2, LocationV2, EstimationV2, RatingV2, CoBenefitV2,
+     ProjectMethodologyV2, StakeholderV2, StakeholderProjectV2, LabelV2, UnitLabelV2,
+     AefT1SubmissionV2, AefT5AuthorizedEntitiesV2, AefT2AuthorizationsV2,
+     AefT3ActionsV2, AefT4HoldingsV2
+   } from '../models/v2/index.js';
+
+   export const ModelKeysV2 = {
+     program: ProgramV2,
+     methodology: MethodologyV2,
+     project: ProjectV2,
+     validation: ValidationV2,
+     verification: VerificationV2,
+     issuance: IssuanceV2,
+     unit: UnitV2,
+     location: LocationV2,
+     estimation: EstimationV2,
+     rating: RatingV2,
+     co_benefit: CoBenefitV2,
+     project_methodology: ProjectMethodologyV2,
+     stakeholder: StakeholderV2,
+     stakeholder_projects: StakeholderProjectV2,
+     label: LabelV2,
+     unit_label: UnitLabelV2,
+     aef_t1_submission: AefT1SubmissionV2,
+     aef_t5_authorized_entities: AefT5AuthorizedEntitiesV2,
+     aef_t2_authorizations: AefT2AuthorizationsV2,
+     aef_t3_actions: AefT3ActionsV2,
+     aef_t4_holdings: AefT4HoldingsV2,
+   };
+   ```
+
+2. **Add helper function to get primary key field name**:
+   ```javascript
+   export const getV2PrimaryKeyField = (modelKey) => {
+     const primaryKeyMap = {
+       program: 'cad_trust_program_id',
+       methodology: 'cad_trust_methodology_id',
+       project: 'cad_trust_project_id',
+       validation: 'cad_trust_validation_id',
+       verification: 'cad_trust_verification_id',
+       issuance: 'cad_trust_issuance_id',
+       unit: 'cad_trust_unit_id',
+       location: 'cad_trust_location_id',
+       estimation: 'cad_trust_estimation_id',
+       rating: 'cad_trust_rating_id',
+       co_benefit: 'cad_trust_co_benefit_id',
+       project_methodology: 'id',
+       stakeholder: 'cad_trust_stakeholder_id',
+       stakeholder_projects: 'id',
+       label: 'cad_trust_label_id',
+       unit_label: 'id',
+       aef_t1_submission: 'cad_trust_aef_t1_submission_id',
+       aef_t5_authorized_entities: 'cad_trust_aef_t5_authorized_entities_id',
+       aef_t2_authorizations: 'cad_trust_aef_t2_authorizations_id',
+       aef_t3_actions: 'cad_trust_aef_t3_actions_id',
+       aef_t4_holdings: 'cad_trust_aef_t4_holdings_id',
+     };
+     return primaryKeyMap[modelKey];
+   };
+   ```
+
+**CRITICAL Requirements**:
+- Use V2 table names (snake_case): `program`, `project`, `project_methodology`, etc.
+- Map to V2 models (ProgramV2, ProjectV2, etc.)
+- Include all 21 data models
+- Primary key field names match V2 schema (snake_case)
+
+**Reference**: V1 implementation in `src/utils/model-utils.js` (ModelKeys object)
+
+**Checkpoint 27.1**: Verify ModelKeysV2 mapping works correctly
+
+```bash
+# Test that ModelKeysV2 can be imported and used
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-registries-v2.spec.js --reporter spec --exit --timeout 300000 --grep "ModelKeysV2"
+```
+
+**STOP HERE - User verifies ModelKeysV2 mapping works**
+
+### 27.2 V2 Meta Model: User Deleted Orgs Support
+
+Add support for tracking user-deleted organizations in V2 (similar to V1's Meta.getUserDeletedOrgUids).
+
+**File**: `src/models/v2/meta-v2.model.js`
+
+**Methods to Add**:
+
+1. **`static async getUserDeletedOrgUids()`**:
+   - Query MetaV2 for `meta_key = 'userDeletedOrgUids'`
+   - Parse JSON array from `meta_value`
+   - Return array of orgUids (or empty array if not found)
+
+2. **`static async addUserDeletedOrgUid(orgUid)`**:
+   - Get current list of deleted orgUids
+   - Add new orgUid if not already present
+   - Update MetaV2 record
+
+3. **`static async removeUserDeletedOrgUid(orgUid)`**:
+   - Get current list of deleted orgUids
+   - Remove orgUid from list
+   - Update MetaV2 record
+
+**CRITICAL Requirements**:
+- Use MetaV2 model (not Meta)
+- Use snake_case: `meta_key`, `meta_value`
+- Store as JSON array in `meta_value`
+
+**Reference**: V1 implementation in `src/models/meta/meta.model.js`
+
+**Checkpoint 27.2**: Test user deleted orgs methods
+
+```bash
+# Test getUserDeletedOrgUids, addUserDeletedOrgUid, removeUserDeletedOrgUid
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/meta-v2.spec.js --reporter spec --exit --timeout 300000 --grep "userDeletedOrgUids"
+```
+
+**STOP HERE - User verifies user deleted orgs methods work**
+
+### 27.3 Background Task: Sync Default Organizations V2
+
+Create background task to automatically import organizations from governance orgList.
+
+**File**: `src/tasks/sync-default-organizations-v2.js` (new file)
+
+**Task Implementation**:
+
+1. **Get default organization list from V2 governance**:
+   - Use `getDefaultOrganizationListV2()` from `src/utils/v2-data-loaders.js`
+   - Get list of orgUids from governance orgList
+
+2. **Get user-deleted organizations**:
+   - Call `MetaV2.getUserDeletedOrgUids()` to get list of orgs user explicitly removed
+   - Skip any orgs in this list
+
+3. **For each org in default list**:
+   - Check if org exists in OrganizationsV2 table
+   - If missing, call `OrganizationsV2.importOrganization(orgUid)`
+   - Log success/failure
+
+4. **Error handling**:
+   - Catch errors and log with retry information
+   - Don't throw (task scheduler will retry)
+
+**Task Configuration**:
+- Frequency: Every 5 minutes (default: 300 seconds)
+- Run immediately: true
+- Prevent overrun: true
+- Task ID: `sync-default-organizations-v2`
+
+**CRITICAL Requirements**:
+- Use V2 models: `OrganizationsV2`, `MetaV2`, `GovernanceV2`
+- Use V2 utilities: `getDefaultOrganizationListV2()`
+- Use V2 assertions: `assertDataLayerAvailable()`, `assertWalletIsSynced()`
+- Skip simulator mode (only run in production)
+- Respect user-deleted orgs (don't re-add orgs user removed)
+
+**Reference**: V1 implementation in `src/tasks/sync-default-organizations.js`
+
+**Checkpoint 27.3**: Test sync-default-organizations-v2 task
+
+```bash
+# Test that task can be imported and runs without errors
+# Test that it imports missing organizations from governance orgList
+# Test that it respects user-deleted orgs
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-default-organizations-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies sync-default-organizations-v2 task works**
+
+### 27.4 Background Task: Sync Organization Meta V2
+
+Create background task to automatically sync organization metadata.
+
+**File**: `src/tasks/sync-organization-meta-v2.js` (new file)
+
+**Task Implementation**:
+
+1. **Get all subscribed V2 organizations**:
+   - Query OrganizationsV2 for `subscribed: true`
+
+2. **For each organization**:
+   - Call `OrganizationsV2.syncOrganizationMeta()` (method already exists)
+   - This updates name, icon, and metadata from datalayer
+
+3. **Error handling**:
+   - Catch errors and log
+   - Don't throw (task scheduler will retry)
+
+**Task Configuration**:
+- Frequency: Every 5 minutes (default: 300 seconds)
+- Run immediately: true
+- Prevent overrun: true
+- Task ID: `sync-organization-meta-v2`
+
+**CRITICAL Requirements**:
+- Use V2 models: `OrganizationsV2`
+- Use V2 assertions
+- Skip simulator mode (only run in production)
+- Method `syncOrganizationMeta()` already exists in OrganizationsV2 model
+
+**Reference**: V1 implementation in `src/tasks/sync-organization-meta.js`
+
+**Checkpoint 27.4**: Test sync-organization-meta-v2 task
+
+```bash
+# Test that task can be imported and runs without errors
+# Test that it syncs metadata for subscribed organizations
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-organization-meta-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies sync-organization-meta-v2 task works**
+
+### 27.5 Background Task: Sync Registries V2 (CRITICAL)
+
+Create background task to automatically sync registry data from all subscribed organizations.
+
+**File**: `src/tasks/sync-registries-v2.js` (new file)
+
+**Task Implementation**:
+
+This is the most critical task - it syncs registry data from subscribed organizations by processing kv diffs from datalayer and updating V2 models.
+
+**Core Functionality**:
+
+1. **Get all subscribed V2 organizations**:
+   - Query OrganizationsV2 for `subscribed: true`
+
+2. **For each organization**:
+   - Get root history from datalayer for organization's registry store
+   - Compare with AuditV2 table to find unsynced generations
+   - For each unsynced generation:
+     - Get kv diff between generations using `datalayer.getRootDiff()`
+     - Process INSERT/DELETE operations:
+       - INSERT: Upsert records into V2 models using ModelKeysV2
+       - DELETE: Delete records from V2 models
+     - Create AuditV2 records for each change
+     - Update OrganizationsV2.registry_hash
+
+3. **Handle edge cases**:
+   - Generation mismatch detection and reset
+   - Waiting for datalayer sync completion
+   - Transaction management (prevents DB locks)
+   - Handle empty diffs (NO CHANGE audit records)
+
+**Key Differences from V1**:
+- Uses OrganizationsV2 instead of Organization
+- Uses AuditV2 instead of Audit
+- Uses ModelKeysV2 instead of ModelKeys
+- Uses sequelizeV2 instead of sequelize
+- Uses V2 table names (snake_case)
+- Uses V2 primary key fields (UUID strings, not integers)
+- Processes V2 models (21 models vs 2 in V1)
+
+**Task Configuration**:
+- Frequency: Every 10 seconds (same as V1 for real-time sync)
+- Run immediately: true
+- Prevent overrun: true
+- Task ID: `sync-registries-v2`
+- Mutex protection: Use `syncRegistriesTaskMutexV2` (create V2 version)
+
+**CRITICAL Requirements**:
+- Use V2 models: `OrganizationsV2`, `AuditV2`, `StagingV2`, and all 21 data models via ModelKeysV2
+- Use V2 database connection: `sequelizeV2`
+- Use V2 table names: `project`, `unit`, `project_methodology`, etc. (snake_case)
+- Use V2 primary key fields: `cad_trust_project_id`, `cad_trust_unit_id`, etc.
+- Handle V2 schema differences:
+  - UUID primary keys (not integers)
+  - Snake_case field names
+  - Different field names (e.g., `cad_trust_project_id` vs `warehouseProjectId`)
+- Map datalayer keys correctly:
+  - Datalayer keys format: `"project|{uuid}"` or `"unit|{uuid}"`
+  - Extract model key: `key.split('|')[0]` → `"project"` or `"unit"`
+  - Map to V2 model: `ModelKeysV2[modelKey]`
+- Handle staging table truncation:
+  - After home org sync, truncate V2 staging table (not V1)
+- Transaction management:
+  - Use V2 mutex: `syncRegistriesTaskMutexV2`
+  - Use V2 transaction: `sequelizeV2.transaction()`
+- Error handling:
+  - Log errors but don't throw (task scheduler will retry)
+  - Handle missing root history gracefully
+  - Handle generation mismatches
+
+**Implementation Structure** (similar to V1):
+
+```javascript
+import { SimpleIntervalJob, Task } from 'toad-scheduler';
+import { OrganizationsV2, AuditV2, StagingV2 } from '../models/v2/index.js';
+import { ModelKeysV2, getV2PrimaryKeyField } from '../utils/v2-model-utils.js';
+import datalayer from '../datalayer';
+import { logger } from '../config/logger.js';
+import { sequelizeV2 } from '../database/v2/index.js';
+import { getConfig } from '../utils/config-loader';
+import { assertDataLayerAvailable, assertWalletIsSynced } from '../utils/v2-data-assertions.js';
+import { decodeHex, encodeHex, optimizeAndSortKvDiff } from '../utils/datalayer-utils';
+import { syncRegistriesTaskMutexV2, processingSyncRegistriesTransactionMutexV2 } from '../utils/v2-model-utils.js';
+
+const CONFIG = getConfig().APP;
+
+const task = new Task('sync-registries-v2', async () => {
+  logger.debug('sync registries v2 task invoked');
+  if (!syncRegistriesTaskMutexV2.isLocked()) {
+    const releaseSyncTaskMutex = await syncRegistriesTaskMutexV2.acquire();
+    try {
+      await processJob();
+    } catch (error) {
+      logger.error(`Error during V2 datasync: ${error.message}`);
+      console.trace(error);
+    } finally {
+      releaseSyncTaskMutex();
+    }
+  } else {
+    logger.debug('could not acquire sync registries v2 mutex. trying again shortly');
+  }
+});
+
+const job = new SimpleIntervalJob(
+  {
+    seconds: 10,
+    runImmediately: true,
+  },
+  task,
+  { id: 'sync-registries-v2', preventOverrun: true },
+);
+
+const processJob = async () => {
+  await assertDataLayerAvailable();
+  await assertWalletIsSynced();
+
+  logger.debug('running sync-registries-v2 processJob()');
+  const organizations = await OrganizationsV2.findAll({
+    where: { subscribed: true },
+    raw: true,
+  });
+
+  for (const organization of organizations) {
+    await syncOrganizationAuditV2(organization);
+  }
+};
+
+const syncOrganizationAuditV2 = async (organization) => {
+  // Implementation similar to V1 syncOrganizationAudit but using V2 models
+  // See V1 implementation in src/tasks/sync-registries.js lines 231-632
+  // Adapt for V2:
+  // - Use OrganizationsV2, AuditV2, ModelKeysV2
+  // - Use sequelizeV2
+  // - Use V2 table names and primary key fields
+  // - Handle V2 schema differences
+};
+```
+
+**Reference**: V1 implementation in `src/tasks/sync-registries.js` (entire file, especially `syncOrganizationAudit` function lines 231-632)
+
+**Checkpoint 27.5**: Test sync-registries-v2 task with basic functionality
+
+```bash
+# Test that task can be imported and runs without errors
+# Test that it processes organizations correctly
+# Test that it creates audit records
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-registries-v2.spec.js --reporter spec --exit --timeout 300000 --grep "basic|import|process"
+```
+
+**STOP HERE - User verifies sync-registries-v2 task basic functionality works**
+
+### 27.6 Sync Registries V2: Core Sync Logic
+
+Implement the core `syncOrganizationAuditV2` function that processes registry data for a single organization.
+
+**File**: `src/tasks/sync-registries-v2.js`
+
+**Function Implementation**:
+
+1. **Get root history and sync status**:
+   - Get root history from datalayer: `datalayer.getRootHistory(organization.registry_id)`
+   - Get sync status: `datalayer.getSyncStatus(organization.registry_id)`
+   - Validate root history exists
+
+2. **Find last processed generation**:
+   - Query AuditV2 for last record: `AuditV2.findOne({ where: { registry_id: organization.registry_id }, order: [['generation', 'DESC']] })`
+   - Handle case where no audit records exist (new registry - create CREATE REGISTRY audit entry)
+
+3. **Calculate sync status**:
+   - Compare root history length with last processed generation index
+   - Update OrganizationsV2 with sync status: `synced`, `sync_remaining`
+
+4. **Process unsynced generations**:
+   - For each unsynced generation:
+     - Get kv diff: `datalayer.getRootDiff(registryId, lastRoot.root_hash, newRoot.root_hash)`
+     - Optimize kv diff: `optimizeAndSortKvDiff(kvDiff)`
+     - Process each diff entry:
+       - Extract model key: `key.split('|')[0]` → `"project"`, `"unit"`, etc.
+       - Map to V2 model: `ModelKeysV2[modelKey]`
+       - For INSERT: Parse JSON record, upsert to V2 model
+       - For DELETE: Delete from V2 model using primary key
+       - Create AuditV2 record
+     - Update OrganizationsV2.registry_hash
+
+5. **Handle special cases**:
+   - Empty diffs (NO CHANGE audit records)
+   - Comment and author extraction from kv diff
+   - Transaction management
+   - Staging table truncation for home org
+
+**CRITICAL Requirements**:
+- Use V2 models and database connection
+- Use V2 table names and primary key fields
+- Handle UUID primary keys correctly (not integers)
+- Map datalayer keys to V2 models correctly
+- Use V2 mutex and transaction management
+- Handle V2 schema differences in record parsing
+
+**Key Adaptations from V1**:
+
+1. **Model Key Mapping**:
+   ```javascript
+   // V1: ModelKeys[key] (e.g., ModelKeys['project'])
+   // V2: ModelKeysV2[modelKey] (e.g., ModelKeysV2['project'])
+   const modelKey = key.split('|')[0]; // Extract "project" from "project|uuid"
+   if (modelKey && Object.keys(ModelKeysV2).includes(modelKey)) {
+     const ModelClass = ModelKeysV2[modelKey];
+     // Process record...
+   }
+   ```
+
+2. **Primary Key Field Names**:
+   ```javascript
+   // V1: Uses model.primaryKeyAttributes[0] (e.g., 'warehouseProjectId')
+   // V2: Use getV2PrimaryKeyField(modelKey) (e.g., 'cad_trust_project_id')
+   const primaryKeyField = getV2PrimaryKeyField(modelKey);
+   const primaryKeyValue = record[primaryKeyField];
+   ```
+
+3. **Record Parsing**:
+   ```javascript
+   // V1: Record may have camelCase fields
+   // V2: Record has snake_case fields (matching database)
+   const record = JSON.parse(decodeHex(diff.value));
+   // Record fields: cad_trust_project_id, org_uid, etc.
+   ```
+
+4. **Upsert Operations**:
+   ```javascript
+   // V1: ModelKeys[key].upsert(record, { transaction, mirrorTransaction })
+   // V2: ModelKeysV2[modelKey].upsert(record, { transaction })
+   // Note: V2 doesn't have mirrorTransaction (mirror DB handled separately if needed)
+   await ModelKeysV2[modelKey].upsert(record, { transaction });
+   ```
+
+5. **Delete Operations**:
+   ```javascript
+   // V1: Uses primaryKeyAttributes[0]
+   // V2: Uses getV2PrimaryKeyField()
+   await ModelKeysV2[modelKey].destroy({
+     where: {
+       [getV2PrimaryKeyField(modelKey)]: primaryKeyValue,
+     },
+     transaction,
+   });
+   ```
+
+6. **Audit Record Creation**:
+   ```javascript
+   // V1: Audit.create(auditData, { transaction, mirrorTransaction })
+   // V2: AuditV2.create(auditData, { transaction })
+   await AuditV2.create({
+     org_uid: organization.org_uid,
+     registry_id: organization.registry_id,
+     root_hash: rootToBeProcessed.root_hash,
+     type: diff.type,
+     table: modelKey,
+     change: decodeHex(diff.value),
+     onchain_confirmation_time_stamp: rootToBeProcessed.timestamp,
+     generation: toBeProcessedDatalayerGenerationIndex,
+     comment: extractedComment,
+     author: extractedAuthor,
+   }, { transaction });
+   ```
+
+7. **Staging Table Truncation**:
+   ```javascript
+   // V1: Staging.truncate({ transaction })
+   // V2: StagingV2.truncate({ transaction })
+   if (organization.org_uid === homeOrg?.org_uid) {
+     await StagingV2.truncate({ transaction });
+   }
+   ```
+
+**Reference**: V1 implementation in `src/tasks/sync-registries.js` lines 231-632 (`syncOrganizationAudit` function)
+
+**Checkpoint 27.6**: Test syncOrganizationAuditV2 with real organization data
+
+```bash
+# Test that syncOrganizationAuditV2 processes registry data correctly
+# Test INSERT operations (upsert records)
+# Test DELETE operations
+# Test audit record creation
+# Test generation tracking
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-registries-v2.spec.js --reporter spec --exit --timeout 300000 --grep "syncOrganizationAuditV2|INSERT|DELETE|audit"
+```
+
+**STOP HERE - User verifies syncOrganizationAuditV2 core logic works**
+
+### 27.7 Sync Registries V2: Edge Cases and Error Handling
+
+Implement edge case handling and error recovery for sync-registries-v2 task.
+
+**File**: `src/tasks/sync-registries-v2.js`
+
+**Edge Cases to Handle**:
+
+1. **Generation Mismatch Detection**:
+   - If CADT generation is ahead of datalayer generation (due to reorg)
+   - Reset organization to 2 generations back from highest datalayer generation
+   - Use `AuditV2.resetToGeneration()` method
+
+2. **Missing Root History**:
+   - If root history is empty, log warning and skip organization
+   - Return early without processing
+
+3. **Sync Status Validation**:
+   - Verify root history length matches sync status generation
+   - If mismatch, pause sync until resolved
+   - Log warnings for debugging
+
+4. **Unconfirmed Roots**:
+   - Wait for roots to be confirmed before processing
+   - Skip generation if root not yet confirmed
+   - Return early and retry on next task run
+
+5. **Empty Diffs**:
+   - Create NO CHANGE audit record if kv diff is empty
+   - Still update registry hash
+
+6. **Transaction Failures**:
+   - Rollback transaction on error
+   - Log error details
+   - Don't update registry hash on failure
+
+7. **Model Key Not Found**:
+   - Skip unknown model keys (log warning)
+   - Don't fail entire sync for unknown keys
+   - Continue processing other diffs
+
+8. **Invalid Record Data**:
+   - Handle JSON parse errors gracefully
+   - Log error and skip invalid record
+   - Continue processing other records
+
+**Error Handling Functions**:
+
+1. **`orgGenerationMismatchCheckV2`**:
+   - Similar to V1 `orgGenerationMismatchCheck`
+   - Uses AuditV2.resetToGeneration()
+   - Returns boolean indicating if reset occurred
+
+2. **Transaction Wrapper**:
+   - `createAndProcessTransactionV2(callback, afterCommitCallbacks)`
+   - Uses sequelizeV2.transaction()
+   - Uses processingSyncRegistriesTransactionMutexV2
+   - Handles rollback on error
+
+**CRITICAL Requirements**:
+- Use V2 models and methods for all operations
+- Handle errors gracefully (log but don't throw)
+- Maintain transaction integrity
+- Don't skip organizations permanently (retry on next run)
+
+**Reference**: V1 implementation in `src/tasks/sync-registries.js`:
+- `orgGenerationMismatchCheck` function (lines 650-676)
+- `createAndProcessTransaction` function (lines 149-194)
+- Error handling in `syncOrganizationAudit` (lines 231-632)
+
+**Checkpoint 27.7**: Test edge cases and error handling
+
+```bash
+# Test generation mismatch detection and reset
+# Test missing root history handling
+# Test unconfirmed roots handling
+# Test transaction rollback on error
+# Test invalid record data handling
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-registries-v2.spec.js --reporter spec --exit --timeout 300000 --grep "edge|error|mismatch|rollback"
+```
+
+**STOP HERE - User verifies edge cases and error handling work**
+
+### 27.8 V2 Mutex Utilities
+
+Create V2 versions of mutex utilities needed for sync-registries-v2 task.
+
+**File**: `src/utils/v2-model-utils.js` (add to existing file or create new section)
+
+**Mutexes to Create**:
+
+1. **`syncRegistriesTaskMutexV2`**:
+   - Prevents multiple sync-registries-v2 tasks from running simultaneously
+   - Similar to V1 `syncRegistriesTaskMutex`
+
+2. **`processingSyncRegistriesTransactionMutexV2`**:
+   - Prevents other operations from interfering with sync transactions
+   - Similar to V1 `processingSyncRegistriesTransactionMutex`
+
+**Implementation**:
+```javascript
+import { Mutex } from 'async-mutex';
+
+export const syncRegistriesTaskMutexV2 = new Mutex();
+export const processingSyncRegistriesTransactionMutexV2 = new Mutex();
+```
+
+**CRITICAL Requirements**:
+- Separate from V1 mutexes (V1/V2 isolation)
+- Use same Mutex class from async-mutex
+- Export for use in sync-registries-v2 task
+
+**Reference**: V1 implementation in `src/utils/model-utils.js` lines 21-28
+
+**Checkpoint 27.8**: Verify mutexes work correctly
+
+```bash
+# Test that mutexes can be imported and used
+# Test that they prevent concurrent execution
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-registries-v2.spec.js --reporter spec --exit --timeout 300000 --grep "mutex"
+```
+
+**STOP HERE - User verifies V2 mutexes work**
+
+### 27.9 Register V2 Background Tasks
+
+Register all V2 background tasks in the task scheduler.
+
+**File**: `src/tasks/index.js`
+
+**Changes**:
+
+1. **Import V2 tasks**:
+   ```javascript
+   import syncDefaultOrganizationsV2 from './sync-default-organizations-v2.js';
+   import syncOrganizationMetaV2 from './sync-organization-meta-v2.js';
+   import syncRegistriesV2 from './sync-registries-v2.js';
+   ```
+
+2. **Add V2 tasks to scheduler**:
+   ```javascript
+   const start = () => {
+     // Existing V1 tasks
+     const defaultJobs = [
+       syncGovernanceBody,
+       syncDefaultOrganizations,
+       syncPickLists,
+       syncRegistries,
+       syncOrganizationMeta,
+       mirrorCheck,
+       resetAuditTable,
+       validateOrganizationTableAndSubscriptions,
+       cleanUpFailedOrg,
+     ];
+
+     // Add V2 tasks
+     const v2Jobs = [
+       syncDefaultOrganizationsV2,
+       syncOrganizationMetaV2,
+       syncRegistriesV2,
+     ];
+
+     // Register all tasks
+     [...defaultJobs, ...v2Jobs].forEach((job) => {
+       jobRegistry[job.id] = job;
+       scheduler.addSimpleIntervalJob(job);
+     });
+   };
+   ```
+
+**CRITICAL Requirements**:
+- V2 tasks run alongside V1 tasks (both systems active)
+- V2 tasks use different task IDs (no conflicts)
+- V2 tasks are independent (V1/V2 isolation)
+
+**Checkpoint 27.9**: Verify V2 tasks are registered and start correctly
+
+```bash
+# Test that V2 tasks are registered in scheduler
+# Test that they start without errors
+# Test that they don't conflict with V1 tasks
+node -e "import('./src/tasks/index.js').then(m => { m.default.start(); console.log('Tasks started'); setTimeout(() => process.exit(0), 1000); })"
+```
+
+**STOP HERE - User verifies V2 tasks are registered**
+
+### 27.10 Integration Tests: Sync Default Organizations V2
+
+Create comprehensive integration tests for sync-default-organizations-v2 task.
+
+**File**: `tests/v2/integration/sync-default-organizations-v2.spec.js` (new file)
+
+**Test Cases**:
+
+1. **Basic Functionality**:
+   - Task imports organizations from governance orgList
+   - Task skips organizations that already exist
+   - Task respects user-deleted organizations
+
+2. **Organization Import**:
+   - Test importing single organization
+   - Test importing multiple organizations
+   - Test that imported organizations are subscribed
+
+3. **User Deleted Orgs**:
+   - Test that user-deleted orgs are not re-imported
+   - Test that removing org from deleted list allows re-import
+
+4. **Error Handling**:
+   - Test handling of missing governance data
+   - Test handling of invalid orgUids in orgList
+   - Test handling of import failures
+
+5. **V1/V2 Isolation**:
+   - Verify V2 task doesn't affect V1 organizations
+   - Verify V1 task doesn't affect V2 organizations
+
+**Checkpoint 27.10**: Run sync-default-organizations-v2 tests
+
+```bash
+# Run all sync-default-organizations-v2 tests
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-default-organizations-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all sync-default-organizations-v2 tests pass**
+
+### 27.11 Integration Tests: Sync Organization Meta V2
+
+Create comprehensive integration tests for sync-organization-meta-v2 task.
+
+**File**: `tests/v2/integration/sync-organization-meta-v2.spec.js` (new file)
+
+**Test Cases**:
+
+1. **Basic Functionality**:
+   - Task syncs metadata for subscribed organizations
+   - Task updates name, icon, and metadata fields
+   - Task updates org_hash field
+
+2. **Metadata Updates**:
+   - Test syncing name changes
+   - Test syncing icon changes
+   - Test syncing custom metadata (meta_* fields)
+
+3. **Error Handling**:
+   - Test handling of missing organization stores
+   - Test handling of sync failures
+   - Test that errors don't stop task execution
+
+4. **V1/V2 Isolation**:
+   - Verify V2 task doesn't affect V1 organizations
+   - Verify V1 task doesn't affect V2 organizations
+
+**Checkpoint 27.11**: Run sync-organization-meta-v2 tests
+
+```bash
+# Run all sync-organization-meta-v2 tests
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-organization-meta-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all sync-organization-meta-v2 tests pass**
+
+### 27.12 Integration Tests: Sync Registries V2
+
+Create comprehensive integration tests for sync-registries-v2 task.
+
+**File**: `tests/v2/integration/sync-registries-v2.spec.js` (new file)
+
+**Test Cases**:
+
+1. **Basic Functionality**:
+   - Task processes subscribed organizations
+   - Task creates audit records for changes
+   - Task updates registry hash
+
+2. **INSERT Operations**:
+   - Test upserting new project records
+   - Test upserting new unit records
+   - Test upserting records for all 21 models
+   - Test that records are correctly parsed and stored
+
+3. **DELETE Operations**:
+   - Test deleting project records
+   - Test deleting unit records
+   - Test deleting records for all 21 models
+
+4. **Generation Tracking**:
+   - Test tracking generations correctly
+   - Test handling new registries (CREATE REGISTRY audit)
+   - Test handling NO CHANGE generations
+
+5. **Edge Cases**:
+   - Test generation mismatch detection and reset
+   - Test missing root history handling
+   - Test unconfirmed roots handling
+   - Test empty diffs (NO CHANGE records)
+   - Test invalid record data handling
+
+6. **Transaction Management**:
+   - Test transaction rollback on error
+   - Test staging table truncation for home org
+   - Test mutex prevents concurrent execution
+
+7. **Model Key Mapping**:
+   - Test all 21 models are mapped correctly
+   - Test primary key field extraction
+   - Test unknown model keys are skipped
+
+8. **V1/V2 Isolation**:
+   - Verify V2 sync doesn't affect V1 data
+   - Verify V1 sync doesn't affect V2 data
+   - Verify both systems can run simultaneously
+
+9. **Performance**:
+   - Test processing multiple generations
+   - Test processing large kv diffs
+   - Test processing multiple organizations
+
+**Checkpoint 27.12**: Run sync-registries-v2 tests
+
+```bash
+# Run all sync-registries-v2 tests
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-registries-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all sync-registries-v2 tests pass**
+
+### 27.13 End-to-End Integration Test
+
+Create end-to-end integration test that verifies all three V2 sync tasks work together.
+
+**File**: `tests/v2/integration/sync-tasks-e2e-v2.spec.js` (new file)
+
+**Test Scenarios**:
+
+1. **Complete Sync Flow**:
+   - Governance syncs orgList
+   - Sync-default-organizations-v2 imports orgs from orgList
+   - Organizations subscribe to registry stores
+   - Sync-registries-v2 syncs registry data
+   - Sync-organization-meta-v2 syncs metadata
+   - Verify all data is correctly imported and synced
+
+2. **Multi-Organization Sync**:
+   - Import multiple organizations
+   - Sync registry data from all organizations
+   - Verify data from each org is correctly stored
+   - Verify orgUid filtering works correctly
+
+3. **Continuous Sync**:
+   - Simulate new data being published by organizations
+   - Verify sync-registries-v2 picks up new generations
+   - Verify audit trail is maintained
+   - Verify data is correctly updated
+
+**Checkpoint 27.13**: Run end-to-end integration test
+
+```bash
+# Run end-to-end integration test
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-tasks-e2e-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies end-to-end integration test passes**
+
+### 27.14 Update Plan Status
+
+Update plan to mark Phase 27 as complete.
+
+**Checkpoint 27.14**: Verify all Phase 27 work is complete
+
+```bash
+# Run full V2 test suite to ensure nothing broke
+npm run test:v2
+
+# Should see all tests passing including new sync task tests
+```
+
+**STOP HERE - User verifies all V2 tests pass and Phase 27 is complete**
+
+---
+
+## Summary of Phase 27 Implementation
+
+**Background Tasks Created**:
+- ✅ `sync-default-organizations-v2.js` - Automatically imports organizations from governance orgList
+- ✅ `sync-organization-meta-v2.js` - Automatically syncs organization metadata
+- ✅ `sync-registries-v2.js` - Automatically syncs registry data from subscribed organizations (CRITICAL)
+
+**Utilities Created**:
+- ✅ `ModelKeysV2` - Maps datalayer keys to V2 models
+- ✅ `getV2PrimaryKeyField()` - Gets primary key field name for V2 models
+- ✅ V2 mutex utilities for task coordination
+
+**Key Features**:
+- Automatic organization discovery from governance
+- Automatic registry data synchronization
+- Automatic organization metadata updates
+- V1/V2 isolation maintained
+- Comprehensive error handling and edge case management
+- Full test coverage
+
+**Expected Results**:
+- V2 automatically discovers and imports organizations from governance
+- V2 automatically syncs registry data from subscribed organizations
+- V2 database stays up-to-date with network changes
+- V2 functions as a complete distributed registry system
+- V2 can both publish data (via staging/commit) and receive data (via sync tasks)
+
+---
+
+## Phase 28: Additional V2 Background Tasks
+
+Implement additional V2 background tasks for production operations: mirror checking, organization validation, picklist syncing, and failed org cleanup.
+
+**Phase Overview**: V1 has several additional background tasks that support production operations. V2 needs equivalent tasks to maintain system health and ensure proper datalayer mirroring and organization subscription management.
+
+**STATUS**: ⏳ **PENDING** - Additional background tasks for production operations.
+
+**Key Requirements**:
+- Mirror checking for V2 organizations
+- Organization subscription validation
+- Picklist syncing (optional - lower priority)
+- Failed org cleanup (optional - lower priority)
+
+### 28.1 Background Task: Mirror Check V2
+
+Create background task to automatically add mirrors for V2 organization stores.
+
+**File**: `src/tasks/mirror-check-v2.js` (new file)
+
+**Task Implementation**:
+
+1. **Get mirror URL**:
+   - Use `getMirrorUrl()` from datalayer utils
+   - Skip if not configured
+
+2. **Check for V2 governance**:
+   - Query MetaV2 for `governanceBodyId` and `mainGoveranceBodyId`
+   - If governance node, add mirrors for governance stores
+
+3. **Get all V2 organizations**:
+   - Call `OrganizationsV2.getOrgsMap()`
+
+4. **For each subscribed organization**:
+   - Add mirror for `org_uid` store
+   - Add mirror for `data_model_version_store_id` store
+   - Add mirror for `registry_id` store
+
+**Task Configuration**:
+- Frequency: Every 5 minutes (default: 300 seconds)
+- Run immediately: true
+- Prevent overrun: true
+- Task ID: `mirror-check-v2`
+- Config check: `AUTO_MIRROR_EXTERNAL_STORES` (default: true)
+
+**CRITICAL Requirements**:
+- Use V2 models: `OrganizationsV2`, `MetaV2`
+- Use V2 methods: `OrganizationsV2.getOrgsMap()`, `OrganizationsV2.addMirror()`
+- Skip simulator mode
+- Handle errors gracefully (log but don't throw)
+
+**Reference**: V1 implementation in `src/tasks/mirror-check.js`
+
+**Checkpoint 28.1**: Test mirror-check-v2 task
+
+```bash
+# Test that task can be imported and runs without errors
+# Test that it adds mirrors for V2 organizations
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/mirror-check-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies mirror-check-v2 task works**
+
+### 28.2 Background Task: Validate Organization Table and Subscriptions V2
+
+Create background task to validate V2 organization subscriptions and reconcile store IDs.
+
+**File**: `src/tasks/validate-organization-table-and-subscriptions-v2.js` (new file)
+
+**Task Implementation**:
+
+1. **Get all V2 organizations**:
+   - Query OrganizationsV2 for all organizations
+
+2. **For each organization**:
+   - Skip if `org_uid === 'PENDING'`
+   - Skip if org is in user-deleted list
+   - If `subscribed: true`:
+     - Call `OrganizationsV2.reconcileOrganization(organization)`
+   - If `subscribed: false`:
+     - Call `OrganizationsV2.unsubscribeFromOrganizationStores(organization)`
+
+**Task Configuration**:
+- Frequency: Every 15 minutes (default: 900 seconds)
+- Run immediately: true
+- Prevent overrun: true
+- Task ID: `validate-organization-table-v2`
+
+**CRITICAL Requirements**:
+- Use V2 models: `OrganizationsV2`, `MetaV2`
+- Use V2 methods: `OrganizationsV2.reconcileOrganization()`, `OrganizationsV2.unsubscribeFromOrganizationStores()`
+- Use V2 utilities: `MetaV2.getUserDeletedOrgUids()`
+- Skip simulator mode
+- Handle errors gracefully (log but don't throw)
+
+**Reference**: V1 implementation in `src/tasks/validate-organization-table-and-subscriptions.js`
+
+**Checkpoint 28.2**: Test validate-organization-table-v2 task
+
+```bash
+# Test that task can be imported and runs without errors
+# Test that it reconciles subscribed organizations
+# Test that it unsubscribes unsubscribed organizations
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/validate-organization-table-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies validate-organization-table-v2 task works**
+
+### 28.3 Background Task: Sync Picklists V2 (Optional - Lower Priority)
+
+Create background task to periodically refresh V2 picklist values from governance.
+
+**File**: `src/tasks/sync-picklists-v2.js` (new file)
+
+**Task Implementation**:
+
+1. **Call picklist loader**:
+   - Call `pullPickListValuesV2()` from `src/utils/v2-data-loaders.js`
+   - This refreshes picklist cache from governance
+
+**Task Configuration**:
+- Frequency: Every 30 seconds (default: 30 seconds)
+- Run immediately: true
+- Prevent overrun: true
+- Task ID: `sync-picklist-v2`
+
+**Note**: This is lower priority because:
+- Picklists are already loaded on startup (`pullPickListValuesV2()` called in `src/routes/index.js`)
+- Picklists don't change frequently
+- V1 has this task but it's mainly for keeping cache fresh
+
+**CRITICAL Requirements**:
+- Use V2 utilities: `pullPickListValuesV2()`
+- Skip simulator mode
+- Handle errors gracefully
+
+**Reference**: V1 implementation in `src/tasks/sync-picklists.js`
+
+**Checkpoint 28.3**: Test sync-picklists-v2 task (if implemented)
+
+```bash
+# Test that task can be imported and runs without errors
+# Test that it refreshes picklist values
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-picklists-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies sync-picklists-v2 task works (if implemented)**
+
+### 28.4 Background Task: Clean Up Failed Org V2 (Optional - Lower Priority)
+
+Create background task to clean up PENDING organization records from failed V2 org creation.
+
+**File**: `src/tasks/clean-up-failed-org-v2.js` (new file)
+
+**Task Implementation**:
+
+1. **Delete PENDING org records**:
+   - Query OrganizationsV2 for `org_uid = 'PENDING'`
+   - Delete any found records
+
+**Task Configuration**:
+- Frequency: Every 7 days (basically runs on startup)
+- Run immediately: true
+- Prevent overrun: true
+- Task ID: `clean-up-failed-org-v2`
+
+**Note**: This is lower priority because:
+- PENDING orgs are rare (only during interrupted org creation)
+- V2 doesn't auto-create orgs, so PENDING records are even rarer
+- This is mainly a cleanup task for edge cases
+
+**CRITICAL Requirements**:
+- Use V2 models: `OrganizationsV2`
+- Skip simulator mode
+- Handle errors gracefully
+
+**Reference**: V1 implementation in `src/tasks/clean-up-failed-org.js`
+
+**Checkpoint 28.4**: Test clean-up-failed-org-v2 task (if implemented)
+
+```bash
+# Test that task can be imported and runs without errors
+# Test that it cleans up PENDING org records
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/clean-up-failed-org-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies clean-up-failed-org-v2 task works (if implemented)**
+
+### 28.5 Register Additional V2 Background Tasks
+
+Register additional V2 background tasks in the task scheduler.
+
+**File**: `src/tasks/index.js`
+
+**Changes**:
+
+1. **Import additional V2 tasks**:
+   ```javascript
+   import mirrorCheckV2 from './mirror-check-v2.js';
+   import validateOrganizationTableV2 from './validate-organization-table-and-subscriptions-v2.js';
+   // Optional:
+   // import syncPicklistsV2 from './sync-picklists-v2.js';
+   // import cleanUpFailedOrgV2 from './clean-up-failed-org-v2.js';
+   ```
+
+2. **Add to V2 tasks array**:
+   ```javascript
+   const v2Jobs = [
+     syncDefaultOrganizationsV2,
+     syncOrganizationMetaV2,
+     syncRegistriesV2,
+     mirrorCheckV2,
+     validateOrganizationTableV2,
+     // Optional:
+     // syncPicklistsV2,
+     // cleanUpFailedOrgV2,
+   ];
+   ```
+
+**CRITICAL Requirements**:
+- Register all implemented V2 tasks
+- Optional tasks can be commented out if not implemented
+- V2 tasks run alongside V1 tasks
+
+**Checkpoint 28.5**: Verify additional V2 tasks are registered
+
+```bash
+# Test that V2 tasks are registered in scheduler
+# Test that they start without errors
+node -e "import('./src/tasks/index.js').then(m => { m.default.start(); console.log('Tasks started'); setTimeout(() => process.exit(0), 1000); })"
+```
+
+**STOP HERE - User verifies additional V2 tasks are registered**
+
+### 28.6 Integration Tests: Additional V2 Background Tasks
+
+Create comprehensive integration tests for additional V2 background tasks.
+
+**Files**:
+- `tests/v2/integration/mirror-check-v2.spec.js` (new file)
+- `tests/v2/integration/validate-organization-table-v2.spec.js` (new file)
+- `tests/v2/integration/sync-picklists-v2.spec.js` (new file, if implemented)
+- `tests/v2/integration/clean-up-failed-org-v2.spec.js` (new file, if implemented)
+
+**Test Cases** (for each task):
+
+1. **Basic Functionality**:
+   - Task runs without errors
+   - Task performs expected operations
+   - Task handles errors gracefully
+
+2. **V1/V2 Isolation**:
+   - Verify V2 task doesn't affect V1 data
+   - Verify V1 task doesn't affect V2 data
+
+3. **Edge Cases**:
+   - Test with no organizations
+   - Test with missing configuration
+   - Test error handling
+
+**Checkpoint 28.6**: Run all additional V2 task tests
+
+```bash
+# Run all additional V2 task tests
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/mirror-check-v2.spec.js tests/v2/integration/validate-organization-table-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all additional V2 task tests pass**
+
+---
+
+## Summary of Phase 28 Implementation
+
+**Background Tasks Created**:
+- ✅ `mirror-check-v2.js` - Automatically adds mirrors for V2 organization stores (MEDIUM priority)
+- ✅ `validate-organization-table-and-subscriptions-v2.js` - Validates and reconciles V2 organization subscriptions (MEDIUM priority)
+- ⏳ `sync-picklists-v2.js` - Periodically refreshes picklist values (LOW priority - optional)
+- ⏳ `clean-up-failed-org-v2.js` - Cleans up PENDING org records (LOW priority - optional)
+
+**Key Features**:
+- Automatic mirror management for V2 organizations
+- Automatic organization subscription validation
+- V1/V2 isolation maintained
+- Production-ready background task infrastructure
+
+**Expected Results**:
+- V2 organizations have mirrors automatically maintained
+- V2 organization subscriptions stay validated and reconciled
+- V2 system operates reliably in production environment
