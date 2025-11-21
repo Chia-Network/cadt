@@ -6128,8 +6128,8 @@ Implement additional V2 background tasks for production operations: mirror check
 **Key Requirements**:
 - Mirror checking for V2 organizations
 - Organization subscription validation
-- Picklist syncing (optional - lower priority)
-- Failed org cleanup (optional - lower priority)
+- Picklist syncing (configurable interval)
+- Failed org cleanup (configurable interval)
 
 ### 28.1 Background Task: Mirror Check V2
 
@@ -6225,7 +6225,7 @@ npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/exten
 
 **STOP HERE - User verifies validate-organization-table-v2 task works**
 
-### 28.3 Background Task: Sync Picklists V2 (Optional - Lower Priority)
+### 28.3 Background Task: Sync Picklists V2
 
 Create background task to periodically refresh V2 picklist values from governance.
 
@@ -6238,34 +6238,32 @@ Create background task to periodically refresh V2 picklist values from governanc
    - This refreshes picklist cache from governance
 
 **Task Configuration**:
-- Frequency: Every 30 seconds (default: 30 seconds)
+- Frequency: Configurable via `APP.TASKS.PICKLIST_SYNC_TASK_INTERVAL` (default: 600 seconds / 10 minutes)
 - Run immediately: true
 - Prevent overrun: true
 - Task ID: `sync-picklist-v2`
 
-**Note**: This is lower priority because:
-- Picklists are already loaded on startup (`pullPickListValuesV2()` called in `src/routes/index.js`)
-- Picklists don't change frequently
-- V1 has this task but it's mainly for keeping cache fresh
-
 **CRITICAL Requirements**:
 - Use V2 utilities: `pullPickListValuesV2()`
+- Use configurable interval: `CONFIG?.TASKS?.PICKLIST_SYNC_TASK_INTERVAL || 600` (10 minutes default)
 - Skip simulator mode
 - Handle errors gracefully
+- Match V1 implementation pattern exactly
 
 **Reference**: V1 implementation in `src/tasks/sync-picklists.js`
 
-**Checkpoint 28.3**: Test sync-picklists-v2 task (if implemented)
+**Checkpoint 28.3**: Test sync-picklists-v2 task
 
 ```bash
 # Test that task can be imported and runs without errors
 # Test that it refreshes picklist values
+# Test that interval is configurable
 npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/sync-picklists-v2.spec.js --reporter spec --exit --timeout 300000
 ```
 
-**STOP HERE - User verifies sync-picklists-v2 task works (if implemented)**
+**STOP HERE - User verifies sync-picklists-v2 task works**
 
-### 28.4 Background Task: Clean Up Failed Org V2 (Optional - Lower Priority)
+### 28.4 Background Task: Clean Up Failed Org V2
 
 Create background task to clean up PENDING organization records from failed V2 org creation.
 
@@ -6278,32 +6276,32 @@ Create background task to clean up PENDING organization records from failed V2 o
    - Delete any found records
 
 **Task Configuration**:
-- Frequency: Every 7 days (basically runs on startup)
+- Frequency: Configurable via `APP.TASKS.CLEAN_UP_FAILED_ORG_TASK_INTERVAL` (default: 7 days in seconds = 604800)
 - Run immediately: true
 - Prevent overrun: true
 - Task ID: `clean-up-failed-org-v2`
 
-**Note**: This is lower priority because:
-- PENDING orgs are rare (only during interrupted org creation)
-- V2 doesn't auto-create orgs, so PENDING records are even rarer
-- This is mainly a cleanup task for edge cases
+**Note**: V1 has this hardcoded to 7 days with a comment "BAD EXAMPLE. DO NOT DO THIS." V2 will make it configurable as an improvement over V1.
 
 **CRITICAL Requirements**:
 - Use V2 models: `OrganizationsV2`
+- Use configurable interval: `CONFIG?.TASKS?.CLEAN_UP_FAILED_ORG_TASK_INTERVAL || 604800` (7 days in seconds)
 - Skip simulator mode
 - Handle errors gracefully
+- Convert interval from seconds to days for SimpleIntervalJob (or use seconds if ToadScheduler supports it)
 
 **Reference**: V1 implementation in `src/tasks/clean-up-failed-org.js`
 
-**Checkpoint 28.4**: Test clean-up-failed-org-v2 task (if implemented)
+**Checkpoint 28.4**: Test clean-up-failed-org-v2 task
 
 ```bash
 # Test that task can be imported and runs without errors
 # Test that it cleans up PENDING org records
+# Test that interval is configurable
 npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/clean-up-failed-org-v2.spec.js --reporter spec --exit --timeout 300000
 ```
 
-**STOP HERE - User verifies clean-up-failed-org-v2 task works (if implemented)**
+**STOP HERE - User verifies clean-up-failed-org-v2 task works**
 
 ### 28.5 Register Additional V2 Background Tasks
 
@@ -6317,9 +6315,8 @@ Register additional V2 background tasks in the task scheduler.
    ```javascript
    import mirrorCheckV2 from './mirror-check-v2.js';
    import validateOrganizationTableV2 from './validate-organization-table-and-subscriptions-v2.js';
-   // Optional:
-   // import syncPicklistsV2 from './sync-picklists-v2.js';
-   // import cleanUpFailedOrgV2 from './clean-up-failed-org-v2.js';
+   import syncPicklistsV2 from './sync-picklists-v2.js';
+   import cleanUpFailedOrgV2 from './clean-up-failed-org-v2.js';
    ```
 
 2. **Add to V2 tasks array**:
@@ -6330,9 +6327,8 @@ Register additional V2 background tasks in the task scheduler.
      syncRegistriesV2,
      mirrorCheckV2,
      validateOrganizationTableV2,
-     // Optional:
-     // syncPicklistsV2,
-     // cleanUpFailedOrgV2,
+     syncPicklistsV2,
+     cleanUpFailedOrgV2,
    ];
    ```
 
@@ -6391,10 +6387,10 @@ npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/exten
 ## Summary of Phase 28 Implementation
 
 **Background Tasks Created**:
-- ✅ `mirror-check-v2.js` - Automatically adds mirrors for V2 organization stores (MEDIUM priority)
-- ✅ `validate-organization-table-and-subscriptions-v2.js` - Validates and reconciles V2 organization subscriptions (MEDIUM priority)
-- ⏳ `sync-picklists-v2.js` - Periodically refreshes picklist values (LOW priority - optional)
-- ⏳ `clean-up-failed-org-v2.js` - Cleans up PENDING org records (LOW priority - optional)
+- ✅ `mirror-check-v2.js` - Automatically adds mirrors for V2 organization stores
+- ✅ `validate-organization-table-and-subscriptions-v2.js` - Validates and reconciles V2 organization subscriptions
+- ✅ `sync-picklists-v2.js` - Periodically refreshes picklist values (configurable interval)
+- ✅ `clean-up-failed-org-v2.js` - Cleans up PENDING org records (configurable interval - improvement over V1)
 
 **Key Features**:
 - Automatic mirror management for V2 organizations
@@ -6406,3 +6402,275 @@ npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/exten
 - V2 organizations have mirrors automatically maintained
 - V2 organization subscriptions stay validated and reconciled
 - V2 system operates reliably in production environment
+
+---
+
+## Phase 29: Websocket Support for V2
+
+Implement websocket support for V2 models to enable real-time change notifications, matching V1's websocket functionality.
+
+**Phase Overview**: V1 has websocket support for real-time change notifications on projects, units, and staging. V2 currently only has websocket support for staging. This phase adds websocket support for ProjectV2 and UnitV2 models.
+
+**STATUS**: ⏳ **PENDING** - Websocket support for V2 models.
+
+**Key Requirements**:
+- Add RxJS Subject to ProjectV2 and UnitV2 models
+- Emit change notifications on create/update/delete operations
+- Update websocket handler to support V2 subscriptions
+- Test websocket functionality
+
+**Note**: Server already has socket.io setup for `/v2/ws` namespace, and StagingV2 already has websocket support implemented.
+
+### 29.1 Add Websocket Support to ProjectV2 Model
+
+Add RxJS Subject and change emission to ProjectV2 model.
+
+**File**: `src/models/v2/project-v2.model.js`
+
+**Changes**:
+
+1. **Add RxJS import**:
+   ```javascript
+   import * as rxjs from 'rxjs';
+   ```
+
+2. **Add changes Subject** (after class declaration):
+   ```javascript
+   class ProjectV2 extends Model {
+     static changes = new rxjs.Subject();
+     // ... rest of class
+   ```
+
+3. **Override `create()` method**:
+   - Emit change notification: `ProjectV2.changes.next(['projects', orgUid])`
+   - Extract `org_uid` from values or result
+   - Call `super.create()` first, then emit change
+
+4. **Override `destroy()` method**:
+   - Emit change notification: `ProjectV2.changes.next(['projects'])`
+   - Call `super.destroy()` first, then emit change
+
+5. **Override `upsert()` method** (if not already overridden):
+   - Emit change notification: `ProjectV2.changes.next(['projects', orgUid])`
+   - Extract `org_uid` from values
+   - Call `super.upsert()` first, then emit change
+
+**CRITICAL Requirements**:
+- Follow V1 pattern: emit after operation completes
+- Extract `org_uid` from values or result (V2 uses snake_case: `org_uid`)
+- Emit `['projects', orgUid]` for create/upsert, `['projects']` for destroy
+- Ensure changes are emitted even if operation fails (use try/finally if needed)
+
+**Reference**: V1 implementation in `src/models/projects/projects.model.js` lines 44, 125-172
+
+**Checkpoint 29.1**: Test ProjectV2 changes emission
+
+```bash
+# Test that ProjectV2.changes Subject exists and emits changes
+# Test create, update, destroy operations emit changes
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/websocket-v2.spec.js --reporter spec --exit --timeout 300000 --grep "ProjectV2"
+```
+
+**STOP HERE - User verifies ProjectV2 changes emission works**
+
+### 29.2 Add Websocket Support to UnitV2 Model
+
+Add RxJS Subject and change emission to UnitV2 model.
+
+**File**: `src/models/v2/unit-v2.model.js`
+
+**Changes**:
+
+1. **Add RxJS import**:
+   ```javascript
+   import * as rxjs from 'rxjs';
+   ```
+
+2. **Add changes Subject** (after class declaration):
+   ```javascript
+   class UnitV2 extends Model {
+     static changes = new rxjs.Subject();
+     // ... rest of class
+   ```
+
+3. **Override `create()` method**:
+   - Emit change notification: `UnitV2.changes.next(['units', orgUid])`
+   - Extract `org_uid` from result (units belong to issuances, which belong to projects)
+   - Call `super.create()` first, then emit change
+
+4. **Override `destroy()` method**:
+   - Emit change notification: `UnitV2.changes.next(['units'])`
+   - Call `super.destroy()` first, then emit change
+
+5. **Override `upsert()` method** (if not already overridden):
+   - Emit change notification: `UnitV2.changes.next(['units', orgUid])`
+   - Extract `org_uid` from values or result
+   - Call `super.upsert()` first, then emit change
+
+**CRITICAL Requirements**:
+- Follow V1 pattern: emit after operation completes
+- Extract `org_uid` from values or result (V2 uses snake_case: `org_uid`)
+- Emit `['units', orgUid]` for create/upsert, `['units']` for destroy
+- Note: V1 Unit model emits `['projects', orgUid]` on upsert (this seems like a bug, but we'll match V1 behavior if intentional)
+
+**Reference**: V1 implementation in `src/models/units/units.model.js` lines 26, 70-116
+
+**Checkpoint 29.2**: Test UnitV2 changes emission
+
+```bash
+# Test that UnitV2.changes Subject exists and emits changes
+# Test create, update, destroy operations emit changes
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/websocket-v2.spec.js --reporter spec --exit --timeout 300000 --grep "UnitV2"
+```
+
+**STOP HERE - User verifies UnitV2 changes emission works**
+
+### 29.3 Update Websocket Handler for V2
+
+Update websocket handler to support V2 model subscriptions.
+
+**File**: `src/websocket.js`
+
+**Current State**: Handler already supports both V1 and V2 namespaces (`/v1/ws` and `/v2/ws`), but only subscribes to V1 models.
+
+**Changes**:
+
+1. **Import V2 models**:
+   ```javascript
+   import { ProjectV2, UnitV2, StagingV2 } from './models/v2/index.js';
+   ```
+
+2. **Detect namespace** (socket.nsp.name):
+   - Check if socket is connected to `/v2/ws` namespace
+   - Use V2 models for V2 namespace, V1 models for V1 namespace
+
+3. **Update subscription logic**:
+   - For `/v1/ws`: Use `Project`, `Unit`, `Staging` (existing)
+   - For `/v2/ws`: Use `ProjectV2`, `UnitV2`, `StagingV2` (new)
+
+**Implementation Pattern**:
+```javascript
+const isV2 = socket.nsp.name === '/v2/ws';
+const ProjectModel = isV2 ? ProjectV2 : Project;
+const UnitModel = isV2 ? UnitV2 : Unit;
+const StagingModel = isV2 ? StagingV2 : Staging;
+
+switch (feed) {
+  case 'projects':
+    if (!socketSubscriptions[socket.id].includes('projects')) {
+      ProjectModel.changes.subscribe((data) => {
+        socket.emit('change:projects', data);
+      });
+      socketSubscriptions[socket.id].push('projects');
+      callback('success');
+    }
+    break;
+  // ... similar for units and staging
+}
+```
+
+**CRITICAL Requirements**:
+- Maintain backward compatibility with V1 websocket connections
+- Use namespace detection to route to correct models
+- V1 and V2 websocket connections should work independently
+- Same event names (`change:projects`, `change:units`, `change:staging`) for both versions
+
+**Reference**: Current implementation in `src/websocket.js` and V1 models
+
+**Checkpoint 29.3**: Test websocket handler with V2 models
+
+```bash
+# Test that websocket handler correctly routes V2 connections to V2 models
+# Test that V1 and V2 websocket connections work independently
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/websocket-v2.spec.js --reporter spec --exit --timeout 300000 --grep "websocket|handler"
+```
+
+**STOP HERE - User verifies websocket handler works with V2**
+
+### 29.4 Integration Tests: Websocket V2
+
+Create comprehensive integration tests for V2 websocket functionality.
+
+**File**: `tests/v2/integration/websocket-v2.spec.js` (new file)
+
+**Test Cases**:
+
+1. **Model Changes Emission**:
+   - Test ProjectV2.changes Subject exists
+   - Test ProjectV2.create() emits changes
+   - Test ProjectV2.destroy() emits changes
+   - Test ProjectV2.upsert() emits changes
+   - Test UnitV2.changes Subject exists
+   - Test UnitV2.create() emits changes
+   - Test UnitV2.destroy() emits changes
+   - Test UnitV2.upsert() emits changes
+
+2. **Websocket Connection**:
+   - Test connection to `/v2/ws` namespace
+   - Test authentication flow
+   - Test disconnect handling
+
+3. **Websocket Subscriptions**:
+   - Test subscribe to 'projects' feed
+   - Test subscribe to 'units' feed
+   - Test subscribe to 'staging' feed
+   - Test duplicate subscription handling
+   - Test multiple clients can subscribe independently
+
+4. **Change Notifications**:
+   - Test creating ProjectV2 emits `change:projects` event
+   - Test updating ProjectV2 emits `change:projects` event
+   - Test deleting ProjectV2 emits `change:projects` event
+   - Test creating UnitV2 emits `change:units` event
+   - Test updating UnitV2 emits `change:units` event
+   - Test deleting UnitV2 emits `change:units` event
+   - Test creating StagingV2 emits `change:staging` event
+
+5. **V1/V2 Isolation**:
+   - Test V1 websocket connections don't receive V2 changes
+   - Test V2 websocket connections don't receive V1 changes
+   - Test both V1 and V2 connections can work simultaneously
+
+6. **Edge Cases**:
+   - Test orgUid extraction from different value formats
+   - Test changes emission with transactions
+   - Test error handling during change emission
+
+**CRITICAL Requirements**:
+- Use socket.io-client for testing websocket connections
+- Test both V1 and V2 namespaces
+- Verify change event payloads match expected format
+- Ensure V1/V2 isolation is maintained
+
+**Reference**: V1 websocket tests (if they exist) or create from scratch
+
+**Checkpoint 29.4**: Run all websocket V2 tests
+
+```bash
+# Run all websocket V2 tests
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/websocket-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all websocket V2 tests pass**
+
+---
+
+## Summary of Phase 29 Implementation
+
+**Websocket Support Added**:
+- ✅ ProjectV2.changes Subject and change emission
+- ✅ UnitV2.changes Subject and change emission
+- ✅ Websocket handler updated for V2 namespace routing
+- ✅ Comprehensive integration tests
+
+**Key Features**:
+- Real-time change notifications for V2 projects and units
+- V1/V2 websocket isolation maintained
+- Backward compatibility with V1 websocket connections
+- Same event names and patterns as V1 for consistency
+
+**Expected Results**:
+- Clients can connect to `/v2/ws` namespace
+- Clients can subscribe to 'projects', 'units', and 'staging' feeds
+- Real-time notifications are emitted when V2 projects/units are created/updated/deleted
+- V1 and V2 websocket connections work independently without interference
