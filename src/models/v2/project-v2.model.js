@@ -2,6 +2,7 @@
 
 import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
+import * as rxjs from 'rxjs';
 import { sequelizeV2 } from '../../database/v2/index.js';
 import StagingV2 from './staging-v2.model.js';
 import {
@@ -28,6 +29,8 @@ import { logger } from '../../config/logger.js';
 import { sanitizeSqliteFtsQuery } from '../../utils/v2-fts-utils.js';
 
 class ProjectV2 extends Model {
+  static changes = new rxjs.Subject();
+
   static associate(models) {
     // Project belongs to Program
     ProjectV2.belongsTo(models.ProgramV2, {
@@ -75,6 +78,25 @@ class ProjectV2 extends Model {
     { model: RatingV2, pluralize: true },
     { model: CoBenefitV2, pluralize: true },
   ];
+
+  static async create(values, options) {
+    const createResult = await super.create(values, options);
+    const { org_uid } = values;
+    ProjectV2.changes.next(['projects', org_uid]);
+    return createResult;
+  }
+
+  static async upsert(values, options) {
+    const upsertResult = await super.upsert(values, options);
+    const { org_uid } = values;
+    ProjectV2.changes.next(['projects', org_uid]);
+    return upsertResult;
+  }
+
+  static async destroy(options) {
+    ProjectV2.changes.next(['projects']);
+    return super.destroy(options);
+  }
 
   /**
    * Generates changelist from staged data for ProjectV2 model

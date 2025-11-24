@@ -18,7 +18,7 @@
     "test:v2:core": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js 'tests/v2/integration/co-benefit-v2.spec.js' 'tests/v2/integration/estimation-v2.spec.js' 'tests/v2/integration/rating-v2.spec.js' 'tests/v2/integration/label-v2.spec.js' 'tests/v2/integration/stakeholder-v2.spec.js' --reporter spec --exit --timeout 300000",
     "test:v2:joins": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js 'tests/v2/integration/project-methodology-v2.spec.js' 'tests/v2/integration/stakeholder-projects-v2.spec.js' 'tests/v2/integration/unit-label-v2.spec.js' --reporter spec --exit --timeout 300000",
     "release": "npx standard-version",
-    "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3",
+    "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3 && rm -f ./test-v2.sqlite3 && rm -f ./testMirror-v2.sqlite3",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
     "prepare": "husky",
     "build": "babel src --keep-file-extension --out-dir build --copy-files && cp package.json ./build && node change-build-package-type-commonjs.cjs",

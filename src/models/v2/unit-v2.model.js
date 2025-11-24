@@ -2,6 +2,7 @@
 
 import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
+import * as rxjs from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 import { Readable } from 'stream';
 import csv from 'csvtojson';
@@ -22,6 +23,8 @@ import { logger } from '../../config/logger.js';
 import { sanitizeSqliteFtsQuery } from '../../utils/v2-fts-utils.js';
 
 class UnitV2 extends Model {
+  static changes = new rxjs.Subject();
+
   static associate(models) {
     // Unit belongs to Issuance
     UnitV2.belongsTo(models.IssuanceV2, {
@@ -42,6 +45,26 @@ class UnitV2 extends Model {
    * @returns {Array} Array of associated model objects
    */
   static getAssociatedModels = () => [{ model: UnitLabelV2, pluralize: true }];
+
+  static async create(values, options) {
+    const createResult = await super.create(values, options);
+    const { org_uid } = createResult;
+    UnitV2.changes.next(['units', org_uid]);
+    return createResult;
+  }
+
+  static async upsert(values, options) {
+    const upsertResult = await super.upsert(values, options);
+    const { org_uid } = values;
+    // Note: Following V1 pattern, upsert emits 'projects' not 'units'
+    UnitV2.changes.next(['projects', org_uid]);
+    return upsertResult;
+  }
+
+  static async destroy(options) {
+    UnitV2.changes.next(['units']);
+    return super.destroy(options);
+  }
 
   /**
    * Generates changelist from staged data for UnitV2 model

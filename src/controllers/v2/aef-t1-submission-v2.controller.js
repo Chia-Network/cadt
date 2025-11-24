@@ -20,7 +20,7 @@ export const createAefT1SubmissionV2 = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'AEF-T1-Submission created successfully',
+      message: 'AEF-T1-Submission staged successfully',
       data: aefT1Submission,
     });
   } catch (error) {

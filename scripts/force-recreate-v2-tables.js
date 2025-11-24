@@ -25,8 +25,8 @@ async function forceRecreateV2Tables() {
       if (dataTables.some(table => migration.name.includes(table))) {
         try {
           await sequelizeV2.query(
-            'DELETE FROM SequelizeMetaV2 WHERE name = ?',
-            { replacements: [migration.name] }
+            'DELETE FROM SequelizeMetaV2 WHERE name = :name',
+            { replacements: { name: migration.name } }
           );
           console.log(`Removed migration record: ${migration.name}`);
         } catch (error) {
@@ -41,8 +41,8 @@ async function forceRecreateV2Tables() {
         try {
           console.log(`Running migration: ${migration.name}`);
           await migration.migration.up(sequelizeV2.getQueryInterface(), sequelizeV2.Sequelize);
-          await sequelizeV2.query('INSERT INTO SequelizeMetaV2 VALUES(?)', {
-            replacements: [migration.name]
+          await sequelizeV2.query('INSERT INTO SequelizeMetaV2 (name) VALUES(:name)', {
+            replacements: { name: migration.name }
           });
           console.log(`Completed migration: ${migration.name}`);
         } catch (error) {

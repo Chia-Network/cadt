@@ -82,7 +82,7 @@ export const createAefT2AuthorizationsV2 = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'AEF-T2-Authorizations created successfully',
+      message: 'AEF-T2-Authorizations staged successfully',
       data: aefT2Authorizations,
     });
   } catch (error) {

@@ -12,11 +12,11 @@ update_yaml_if_env_exists() {
     # Check if the environment variable is set (even if empty)
     if [ -n "${!env_var+x}" ]; then
         if [[ "${!env_var}" == "true" || "${!env_var}" == "false" ]]; then
-            yq eval "$yaml_path |= ${!env_var}" -i $config_path
+            yq eval "$yaml_path |= ${!env_var}" -i "$config_path"
         elif [ -z "${!env_var}" ]; then
-            yq eval "$yaml_path |= null" -i $config_path
+            yq eval "$yaml_path |= null" -i "$config_path"
         else
-            yq eval "$yaml_path |= \"${!env_var}\"" -i $config_path
+            yq eval "$yaml_path |= \"${!env_var}\"" -i "$config_path"
         fi
     fi
 }
@@ -25,16 +25,35 @@ update_yaml_if_env_exists() {
 create_config_if_not_exists() {
     local config_path=$1
 
-    if [ ! -f $config_path ]; then
+    if [ ! -f "$config_path" ]; then
         # Use Node to convert defaultConfig.js to YAML
-        CONFIG_PATH=$config_path node -e '
-            const yaml = require("yaml");
-            const fs = require("fs");
-            (async () => {
-                const { defaultConfig } = await import("/app/src/utils/defaultConfig.js");
-                fs.writeFileSync(process.env.CONFIG_PATH, yaml.stringify(defaultConfig));
-            })();
-        '
+        # Use a temporary .mjs file to properly handle ES module imports with top-level await
+        local temp_script=$(mktemp /tmp/create-config-XXXXXX.mjs)
+        cat > "$temp_script" << 'EOF'
+import yaml from "yaml";
+import fs from "fs";
+import { defaultConfig } from "/app/src/utils/defaultConfig.js";
+try {
+    fs.writeFileSync(process.env.CONFIG_PATH, yaml.stringify(defaultConfig));
+} catch (err) {
+    console.error("Error creating config file:", err);
+    process.exit(1);
+}
+EOF
+        CONFIG_PATH="$config_path" node "$temp_script"
+        local node_exit_code=$?
+        rm -f "$temp_script"
+
+        if [ $node_exit_code -ne 0 ]; then
+            echo "Error: Failed to create config file at \"$config_path\"" >&2
+            exit 1
+        fi
+
+        # Verify the file was created
+        if [ ! -f "$config_path" ]; then
+            echo "Error: Config file was not created at \"$config_path\"" >&2
+            exit 1
+        fi
     fi
 }
 
@@ -43,16 +62,16 @@ mkdir -p /root/.chia/mainnet/cadt/v1
 mkdir -p /root/.chia/mainnet/cadt/v2
 
 # Create config files if they don't exist
-create_config_if_not_exists $V1_CONFIG_PATH
-create_config_if_not_exists $V2_CONFIG_PATH
+create_config_if_not_exists "$V1_CONFIG_PATH"
+create_config_if_not_exists "$V2_CONFIG_PATH"
 
 # Function to update both config files with environment variables
 update_both_configs() {
     local env_var=$1
     local yaml_path=$2
 
-    update_yaml_if_env_exists "$env_var" "$yaml_path" $V1_CONFIG_PATH
-    update_yaml_if_env_exists "$env_var" "$yaml_path" $V2_CONFIG_PATH
+    update_yaml_if_env_exists "$env_var" "$yaml_path" "$V1_CONFIG_PATH"
+    update_yaml_if_env_exists "$env_var" "$yaml_path" "$V2_CONFIG_PATH"
 }
 
 # MIRROR_DB section
@@ -93,10 +112,10 @@ update_both_configs "GOVERNANCE_BODY_ID" '.GOVERNANCE.GOVERNANCE_BODY_ID'
 # Print config file contents if DOCKER_DEBUG is true
 if [ "${DOCKER_DEBUG}" = "true" ]; then
     echo "=== CADT V1 Config File Contents ==="
-    cat $V1_CONFIG_PATH
+    cat "$V1_CONFIG_PATH"
     echo "===================================="
     echo "=== CADT V2 Config File Contents ==="
-    cat $V2_CONFIG_PATH
+    cat "$V2_CONFIG_PATH"
     echo "===================================="
 fi
 

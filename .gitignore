@@ -3,6 +3,7 @@ data.sqlite3
 test.sqlite3
 test.sqlite3*
 testMirror.sqlite3
+testMirror-v2.sqlite3
 *-v2.sqlite3
 *-v2.sqlite3*
 *.sql
