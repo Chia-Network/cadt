@@ -32,8 +32,8 @@ export const initializeDatabases = async () => {
 
   const configV1 = getConfig();
   const configV2 = getConfigV2();
-  const enableV1 = configV1?.APP?.ENABLE_V1 !== false; // Default to true if not set
-  const enableV2 = configV2?.APP?.ENABLE_V2 !== false; // Default to true if not set
+  const enableV1 = configV1?.APP?.ENABLE !== false; // Default to true if not set
+  const enableV2 = configV2?.APP?.ENABLE !== false; // Default to true if not set
 
   const initPromises = [];
 

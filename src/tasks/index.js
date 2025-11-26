@@ -44,6 +44,11 @@ const start = (enableV1 = true, enableV2 = true) => {
       cleanUpFailedOrg,
     ];
     defaultJobs.forEach((defaultJob) => {
+      // Remove job if it already exists (for testing)
+      if (scheduler.existsById(defaultJob.id)) {
+        scheduler.stopById(defaultJob.id);
+        scheduler.removeById(defaultJob.id);
+      }
       jobRegistry[defaultJob.id] = defaultJob;
       scheduler.addSimpleIntervalJob(defaultJob);
     });
@@ -63,6 +68,11 @@ const start = (enableV1 = true, enableV2 = true) => {
       cleanUpFailedOrgV2,
     ];
     v2Jobs.forEach((v2Job) => {
+      // Remove job if it already exists (for testing)
+      if (scheduler.existsById(v2Job.id)) {
+        scheduler.stopById(v2Job.id);
+        scheduler.removeById(v2Job.id);
+      }
       jobRegistry[v2Job.id] = v2Job;
       scheduler.addSimpleIntervalJob(v2Job);
     });
@@ -78,4 +88,26 @@ const getJobStatus = () => {
   }, {});
 };
 
-export default { start, addJobToScheduler, jobRegistry, getJobStatus };
+const stopAll = () => {
+  // Get all job IDs before clearing registry
+  const jobIds = Object.keys(jobRegistry);
+
+  // Stop and remove all jobs from scheduler
+  jobIds.forEach((jobId) => {
+    try {
+      if (scheduler.existsById(jobId)) {
+        scheduler.stopById(jobId);
+        scheduler.removeById(jobId);
+      }
+    } catch (error) {
+      // Job might not exist, ignore
+    }
+  });
+
+  // Clear job registry
+  jobIds.forEach((key) => {
+    delete jobRegistry[key];
+  });
+};
+
+export default { start, addJobToScheduler, jobRegistry, getJobStatus, stopAll };

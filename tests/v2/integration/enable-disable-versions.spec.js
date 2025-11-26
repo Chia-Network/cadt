@@ -19,7 +19,7 @@ import { defaultConfig } from '../../../src/utils/defaultConfig.js';
  * - Config loading (getConfigV2)
  * - Database initialization behavior
  * - Scheduler task registration
- * - API endpoint behavior (503 responses when disabled)
+ * - API endpoint behavior (403 Forbidden responses when disabled)
  */
 describe('V1/V2 Enable/Disable Functionality Tests', function () {
   this.timeout(30000);
@@ -75,56 +75,64 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       const config = getConfig();
       expect(config).to.exist;
       expect(config.APP).to.exist;
-      expect(config.APP.ENABLE_V1).to.not.be.undefined;
+      expect(config.APP.ENABLE).to.not.be.undefined;
     });
 
     it('should load V2 config from v2/config.yaml', function () {
       const config = getConfigV2();
       expect(config).to.exist;
       expect(config.APP).to.exist;
-      expect(config.APP.ENABLE_V2).to.not.be.undefined;
+      expect(config.APP.ENABLE).to.not.be.undefined;
     });
 
-    it('should default ENABLE_V1 to true if not set', function () {
-      // Create config without ENABLE_V1
-      const testConfig = { ...defaultConfig };
-      delete testConfig.APP.ENABLE_V1;
+    it('should default ENABLE to true if not set in V1 config', function () {
+      // Create config without ENABLE - write a minimal config
+      const testConfig = {
+        APP: {
+          USE_SIMULATOR: false,
+        },
+      };
       fs.writeFileSync(v1ConfigPath, yaml.dump(testConfig), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
       const config = getConfig();
-      expect(config.APP.ENABLE_V1).to.be.undefined; // Will be merged with default
+      // mergeObjects merges defaultConfig into the loaded config, so ENABLE should be true
+      expect(config.APP.ENABLE).to.be.true;
     });
 
-    it('should default ENABLE_V2 to true if not set', function () {
-      // Create config without ENABLE_V2
-      const testConfig = { ...defaultConfig };
-      delete testConfig.APP.ENABLE_V2;
+    it('should default ENABLE to true if not set in V2 config', function () {
+      // Create config without ENABLE - write a minimal config
+      const testConfig = {
+        APP: {
+          USE_SIMULATOR: false,
+        },
+      };
       fs.writeFileSync(v2ConfigPath, yaml.dump(testConfig), 'utf8');
 
       if (getConfigV2.cache) getConfigV2.cache.clear();
       const config = getConfigV2();
-      expect(config.APP.ENABLE_V2).to.be.undefined; // Will be merged with default
+      // mergeObjects merges defaultConfig into the loaded config, so ENABLE should be true
+      expect(config.APP.ENABLE).to.be.true;
     });
 
-    it('should respect ENABLE_V1: false in config', function () {
+    it('should respect ENABLE: false in V1 config', function () {
       const testConfig = { ...defaultConfig };
-      testConfig.APP.ENABLE_V1 = false;
+      testConfig.APP.ENABLE = false;
       fs.writeFileSync(v1ConfigPath, yaml.dump(testConfig), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
       const config = getConfig();
-      expect(config.APP.ENABLE_V1).to.be.false;
+      expect(config.APP.ENABLE).to.be.false;
     });
 
-    it('should respect ENABLE_V2: false in config', function () {
+    it('should respect ENABLE: false in V2 config', function () {
       const testConfig = { ...defaultConfig };
-      testConfig.APP.ENABLE_V2 = false;
+      testConfig.APP.ENABLE = false;
       fs.writeFileSync(v2ConfigPath, yaml.dump(testConfig), 'utf8');
 
       if (getConfigV2.cache) getConfigV2.cache.clear();
       const config = getConfigV2();
-      expect(config.APP.ENABLE_V2).to.be.false;
+      expect(config.APP.ENABLE).to.be.false;
     });
   });
 
@@ -132,11 +140,11 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     it('should read config correctly when both are enabled', async function () {
       // Set both to enabled
       const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE_V1 = true;
+      v1Config.APP.ENABLE = true;
       fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
 
       const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE_V2 = true;
+      v2Config.APP.ENABLE = true;
       fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
@@ -146,18 +154,18 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE_V1).to.be.true;
-      expect(configV2.APP.ENABLE_V2).to.be.true;
+      expect(configV1.APP.ENABLE).to.be.true;
+      expect(configV2.APP.ENABLE).to.be.true;
     });
 
     it('should read config correctly when V1 is disabled', async function () {
       // Set V1 to disabled, V2 to enabled
       const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE_V1 = false;
+      v1Config.APP.ENABLE = false;
       fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
 
       const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE_V2 = true;
+      v2Config.APP.ENABLE = true;
       fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
@@ -167,18 +175,18 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE_V1).to.be.false;
-      expect(configV2.APP.ENABLE_V2).to.be.true;
+      expect(configV1.APP.ENABLE).to.be.false;
+      expect(configV2.APP.ENABLE).to.be.true;
     });
 
     it('should read config correctly when V2 is disabled', async function () {
       // Set V1 to enabled, V2 to disabled
       const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE_V1 = true;
+      v1Config.APP.ENABLE = true;
       fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
 
       const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE_V2 = false;
+      v2Config.APP.ENABLE = false;
       fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
@@ -188,20 +196,20 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE_V1).to.be.true;
-      expect(configV2.APP.ENABLE_V2).to.be.false;
+      expect(configV1.APP.ENABLE).to.be.true;
+      expect(configV2.APP.ENABLE).to.be.false;
     });
   });
 
   describe('Scheduler Task Registration', function () {
     beforeEach(function () {
-      // Clear scheduler before each test
-      scheduler.jobRegistry = {};
+      // Stop and clear all scheduler jobs before each test
+      scheduler.stopAll();
     });
 
-    it('should register V1 tasks when ENABLE_V1 is true', function () {
+    it('should register V1 tasks when ENABLE is true in V1 config', function () {
       const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE_V1 = true;
+      v1Config.APP.ENABLE = true;
       fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
@@ -209,15 +217,16 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       scheduler.start(true, false);
 
       // Check that V1 tasks are registered
+      // Note: job IDs must match the actual IDs defined in the task files
       const v1TaskIds = [
-        'sync-governance-body',
+        'sync-governance-meta', // Note: job ID is 'sync-governance-meta', not 'sync-governance-body'
         'sync-default-organizations',
-        'sync-picklists',
+        'sync-picklist', // Note: job ID is 'sync-picklist', not 'sync-picklists'
         'sync-registries',
         'sync-organization-meta',
         'mirror-check',
         'reset-audit-table',
-        'validate-organization-table-and-subscriptions',
+        'validate-organization-table', // Note: job ID is 'validate-organization-table', not 'validate-organization-table-and-subscriptions'
         'clean-up-failed-org',
       ];
 
@@ -226,19 +235,19 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       });
     });
 
-    it('should not register V1 tasks when ENABLE_V1 is false', function () {
+    it('should not register V1 tasks when ENABLE is false in V1 config', function () {
       scheduler.start(false, true);
 
       // Check that V1 tasks are NOT registered
       const v1TaskIds = [
-        'sync-governance-body',
+        'sync-governance-meta',
         'sync-default-organizations',
-        'sync-picklists',
+        'sync-picklist',
         'sync-registries',
         'sync-organization-meta',
         'mirror-check',
         'reset-audit-table',
-        'validate-organization-table-and-subscriptions',
+        'validate-organization-table',
         'clean-up-failed-org',
       ];
 
@@ -247,7 +256,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       });
     });
 
-    it('should register V2 tasks when ENABLE_V2 is true', function () {
+    it('should register V2 tasks when ENABLE is true in V2 config', function () {
       scheduler.start(false, true);
 
       // Check that V2 tasks are registered
@@ -256,8 +265,8 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
         'sync-organization-meta-v2',
         'sync-registries-v2',
         'mirror-check-v2',
-        'validate-organization-table-and-subscriptions-v2',
-        'sync-picklists-v2',
+        'validate-organization-table-v2', // Note: job ID is 'validate-organization-table-v2', not 'validate-organization-table-and-subscriptions-v2'
+        'sync-picklist-v2', // Note: job ID is 'sync-picklist-v2', not 'sync-picklists-v2'
         'clean-up-failed-org-v2',
       ];
 
@@ -266,7 +275,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       });
     });
 
-    it('should not register V2 tasks when ENABLE_V2 is false', function () {
+    it('should not register V2 tasks when ENABLE is false in V2 config', function () {
       scheduler.start(true, false);
 
       // Check that V2 tasks are NOT registered
@@ -275,8 +284,8 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
         'sync-organization-meta-v2',
         'sync-registries-v2',
         'mirror-check-v2',
-        'validate-organization-table-and-subscriptions-v2',
-        'sync-picklists-v2',
+        'validate-organization-table-v2',
+        'sync-picklist-v2',
         'clean-up-failed-org-v2',
       ];
 
@@ -289,7 +298,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       scheduler.start(true, true);
 
       // Check V1 tasks
-      expect(scheduler.jobRegistry['sync-governance-body']).to.exist;
+      expect(scheduler.jobRegistry['sync-governance-meta']).to.exist;
       expect(scheduler.jobRegistry['sync-registries']).to.exist;
 
       // Check V2 tasks
@@ -306,10 +315,10 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
   });
 
   describe('API Endpoint Behavior', function () {
-    it('should return 503 when V1 is disabled', async function () {
-      // Set V1 to disabled
+    it('should return 403 Forbidden when V1 is disabled', async function () {
+      // Set V1 to disabled in V1 config file
       const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE_V1 = false;
+      v1Config.APP.ENABLE = false;
       fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
@@ -317,58 +326,61 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       // Need to reload app with new config - in real scenario this would require restart
       // For testing, we'll verify the config is read correctly
       const config = getConfig();
-      expect(config.APP.ENABLE_V1).to.be.false;
+      expect(config.APP.ENABLE).to.be.false;
 
       // Note: In a real scenario, the app would need to be restarted for route changes
       // This test verifies the config is read correctly
+      // The actual HTTP response would be 403 Forbidden with an error message
     });
 
-    it('should return 503 when V2 is disabled', async function () {
-      // Set V2 to disabled
+    it('should return 403 Forbidden when V2 is disabled', async function () {
+      // Set V2 to disabled in V2 config file
       const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE_V2 = false;
+      v2Config.APP.ENABLE = false;
       fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
 
       if (getConfigV2.cache) getConfigV2.cache.clear();
 
       const config = getConfigV2();
-      expect(config.APP.ENABLE_V2).to.be.false;
+      expect(config.APP.ENABLE).to.be.false;
+
+      // The actual HTTP response would be 403 Forbidden with an error message
     });
 
     it('should allow V1 endpoints when V1 is enabled', async function () {
-      // Set V1 to enabled
+      // Set V1 to enabled in V1 config file
       const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE_V1 = true;
+      v1Config.APP.ENABLE = true;
       fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
 
       const config = getConfig();
-      expect(config.APP.ENABLE_V1).to.be.true;
+      expect(config.APP.ENABLE).to.be.true;
     });
 
     it('should allow V2 endpoints when V2 is enabled', async function () {
-      // Set V2 to enabled
+      // Set V2 to enabled in V2 config file
       const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE_V2 = true;
+      v2Config.APP.ENABLE = true;
       fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
 
       if (getConfigV2.cache) getConfigV2.cache.clear();
 
       const config = getConfigV2();
-      expect(config.APP.ENABLE_V2).to.be.true;
+      expect(config.APP.ENABLE).to.be.true;
     });
   });
 
   describe('Integration: Full System Behavior', function () {
     it('should work correctly with V1 disabled and V2 enabled', async function () {
-      // Set V1 to disabled, V2 to enabled
+      // Set V1 to disabled in V1 config, V2 to enabled in V2 config
       const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE_V1 = false;
+      v1Config.APP.ENABLE = false;
       fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
 
       const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE_V2 = true;
+      v2Config.APP.ENABLE = true;
       fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
@@ -377,11 +389,11 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE_V1).to.be.false;
-      expect(configV2.APP.ENABLE_V2).to.be.true;
+      expect(configV1.APP.ENABLE).to.be.false;
+      expect(configV2.APP.ENABLE).to.be.true;
 
       // Scheduler should only register V2 tasks
-      scheduler.jobRegistry = {};
+      scheduler.stopAll();
       scheduler.start(false, true);
 
       expect(scheduler.jobRegistry['sync-registries-v2']).to.exist;
@@ -389,13 +401,13 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     });
 
     it('should work correctly with V1 enabled and V2 disabled', async function () {
-      // Set V1 to enabled, V2 to disabled
+      // Set V1 to enabled in V1 config, V2 to disabled in V2 config
       const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE_V1 = true;
+      v1Config.APP.ENABLE = true;
       fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
 
       const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE_V2 = false;
+      v2Config.APP.ENABLE = false;
       fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
@@ -404,11 +416,11 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE_V1).to.be.true;
-      expect(configV2.APP.ENABLE_V2).to.be.false;
+      expect(configV1.APP.ENABLE).to.be.true;
+      expect(configV2.APP.ENABLE).to.be.false;
 
       // Scheduler should only register V1 tasks
-      scheduler.jobRegistry = {};
+      scheduler.stopAll();
       scheduler.start(true, false);
 
       expect(scheduler.jobRegistry['sync-registries']).to.exist;
@@ -416,13 +428,13 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     });
 
     it('should work correctly with both disabled', async function () {
-      // Set both to disabled
+      // Set both to disabled in their respective config files
       const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE_V1 = false;
+      v1Config.APP.ENABLE = false;
       fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
 
       const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE_V2 = false;
+      v2Config.APP.ENABLE = false;
       fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
@@ -431,11 +443,11 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE_V1).to.be.false;
-      expect(configV2.APP.ENABLE_V2).to.be.false;
+      expect(configV1.APP.ENABLE).to.be.false;
+      expect(configV2.APP.ENABLE).to.be.false;
 
       // Scheduler should register no tasks
-      scheduler.jobRegistry = {};
+      scheduler.stopAll();
       scheduler.start(false, false);
 
       expect(Object.keys(scheduler.jobRegistry)).to.have.length(0);

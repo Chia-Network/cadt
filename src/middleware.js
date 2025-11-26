@@ -194,20 +194,23 @@ app.get('/health', (req, res) => {
 });
 
 // Conditionally mount V1 and V2 routes based on config
+// Each version's enable flag is in its own config file
 const configV1 = getConfig();
 const configV2 = getConfigV2();
-const enableV1 = configV1?.APP?.ENABLE_V1 !== false; // Default to true if not set
-const enableV2 = configV2?.APP?.ENABLE_V2 !== false; // Default to true if not set
+const enableV1 = configV1?.APP?.ENABLE !== false; // Default to true if not set
+const enableV2 = configV2?.APP?.ENABLE !== false; // Default to true if not set
 
 if (enableV1) {
   app.use('/v1', V1Router);
   logger.info('[v1]: V1 API routes enabled');
 } else {
-  // Return 503 Service Unavailable for disabled V1 endpoints
+  // Return 403 Forbidden for disabled V1 endpoints
+  // 403 is more appropriate than 503 since this is a configuration choice, not temporary unavailability
   app.use('/v1', (req, res) => {
-    res.status(503).json({
+    res.status(403).json({
       error: 'V1 API is disabled',
-      message: 'V1 functionality has been disabled in the configuration. Set APP.ENABLE_V1 to true to enable it.',
+      message: 'V1 functionality has been disabled',
+      success: false,
     });
   });
   logger.info('[v1]: V1 API routes disabled');
@@ -217,11 +220,13 @@ if (enableV2) {
   app.use('/v2', V2Router);
   logger.info('[v2]: V2 API routes enabled');
 } else {
-  // Return 503 Service Unavailable for disabled V2 endpoints
+  // Return 403 Forbidden for disabled V2 endpoints
+  // 403 is more appropriate than 503 since this is a configuration choice, not temporary unavailability
   app.use('/v2', (req, res) => {
-    res.status(503).json({
+    res.status(403).json({
       error: 'V2 API is disabled',
-      message: 'V2 functionality has been disabled in the configuration. Set APP.ENABLE_V2 to true to enable it.',
+      message: 'V2 functionality has been disabled',
+      success: false,
     });
   });
   logger.info('[v2]: V2 API routes disabled');

@@ -23,8 +23,9 @@ export const defaultConfig = {
     AUTO_SUBSCRIBE_FILESTORE: false,
     AUTO_MIRROR_EXTERNAL_STORES: true,
     LOG_LEVEL: 'info',
-    ENABLE_V1: true,
-    ENABLE_V2: true,
+    // ENABLE defaults to true for both V1 and V2 config files
+    // Set to false in the respective config file to disable that version
+    ENABLE: true,
     TASKS: {
       GOVERNANCE_SYNC_TASK_INTERVAL: 86400,
       ORGANIZATION_META_SYNC_TASK_INTERVAL: 300,
