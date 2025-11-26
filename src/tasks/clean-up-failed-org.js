@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const task = new Task('clean-up failed-org', async () => {
-  logger.debug('cleaning up any records from failed organization creations');
+  logger.debug('[v1]: cleaning up any records from failed organization creations');
   try {
     if (!CONFIG.USE_SIMULATOR) {
       await Organization.destroy({ where: { orgUid: 'PENDING' } });

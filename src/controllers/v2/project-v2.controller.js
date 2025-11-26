@@ -139,7 +139,7 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('Error creating project:', err);
+    logger.error('[v2]: Error creating project:', err);
     res.status(400).json({
       message: 'Error creating new project',
       error: err.message,
@@ -403,7 +403,7 @@ export const findAll = async (req, res) => {
 
     res.json(response);
   } catch (err) {
-    logger.error('Error retrieving projects:', err);
+    logger.error('[v2]: Error retrieving projects:', err);
     res.status(400).json({
       message: 'Error retrieving projects',
       error: err.message,
@@ -434,7 +434,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('Error retrieving project:', err);
+    logger.error('[v2]: Error retrieving project:', err);
     res.status(400).json({
       message: 'Error retrieving project',
       error: err.message,
@@ -545,7 +545,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('Error updating project:', err);
+    logger.error('[v2]: Error updating project:', err);
     res.status(400).json({
       message: 'Error updating project',
       error: err.message,
@@ -587,7 +587,7 @@ export const destroy = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('Error deleting project:', err);
+    logger.error('[v2]: Error deleting project:', err);
     res.status(400).json({
       message: 'Error deleting project',
       error: err.message,
@@ -624,7 +624,7 @@ export const transfer = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('Error transferring project:', err);
+    logger.error('[v2]: Error transferring project:', err);
     res.status(400).json({
       message: 'Error transferring project',
       error: err.message,
@@ -659,7 +659,7 @@ export const updateFromXLS = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error updating projects from XLSX:', error);
+    logger.error('[v2]: Error updating projects from XLSX:', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
@@ -695,7 +695,7 @@ export const batchUpload = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Batch Upload Failed.', error);
+    logger.error('[v2]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,

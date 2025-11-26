@@ -67,7 +67,7 @@ class AuditV2 extends Model {
     // V1 uses a SQL query to find duplicate issuances across registries
     // V2 schema is different, so conflict detection logic needs to be adapted
     // For now, return empty array as placeholder
-    logger.debug('findConflicts called for V2 - returning empty array (not yet implemented)');
+    logger.debug('[v2]: findConflicts called for V2 - returning empty array (not yet implemented)');
     return [];
   }
 

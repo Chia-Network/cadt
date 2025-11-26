@@ -19,7 +19,7 @@ const task = new Task('sync-governance-meta', async () => {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    logger.info('Syncing governance data');
+    logger.info('[v1]: Syncing governance data');
     if (CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID) {
       logger.info(
         `Governance Config Found ${CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID}`,

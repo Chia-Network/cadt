@@ -6,7 +6,7 @@ import { logger } from '../config/logger.js';
 const CONFIG = getConfig().APP;
 
 const task = new Task('clean-up-failed-org-v2', async () => {
-  logger.debug('cleaning up any records from failed V2 organization creations');
+  logger.debug('[v2]: cleaning up any records from failed V2 organization creations');
   try {
     if (!CONFIG.USE_SIMULATOR) {
       await OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } });

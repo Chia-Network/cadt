@@ -31,13 +31,13 @@ export const initializeDatabases = async () => {
   migrationsReadyPromise = Promise.all([
     // Initialize V1 database
     sequelize.authenticate().then(async () => {
-      logger.info('Connected to database');
+      logger.info('[v1]: Connected to database');
       pullPickListValues();
       await prepareDb();
     }),
     // Initialize V2 database
     sequelizeV2.authenticate().then(async () => {
-      logger.info('Connected to V2 database');
+      logger.info('[v2]: Connected to V2 database');
       // Run migrations first to ensure tables exist before querying them
       await prepareV2Db();
       // Await pullPickListValuesV2 to ensure it completes before other operations

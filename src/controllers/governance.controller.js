@@ -148,7 +148,7 @@ export const setDefaultOrgList = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error updating default orgs:', error);
+    logger.error('[v1]: Error updating default orgs:', error);
     res.status(400).json({
       message: 'Cant update default orgs',
       error: error.message,

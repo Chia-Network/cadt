@@ -139,7 +139,7 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('Error creating unit:', err);
+    logger.error('[v2]: Error creating unit:', err);
     res.status(400).json({
       message: 'Error creating new unit',
       error: err.message,
@@ -399,7 +399,7 @@ export const findAll = async (req, res) => {
 
     res.json(response);
   } catch (err) {
-    logger.error('Error retrieving units:', err);
+    logger.error('[v2]: Error retrieving units:', err);
     res.status(400).json({
       message: 'Error retrieving units',
       error: err.message,
@@ -430,7 +430,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('Error retrieving unit:', err);
+    logger.error('[v2]: Error retrieving unit:', err);
     res.status(400).json({
       message: 'Error retrieving unit',
       error: err.message,
@@ -542,7 +542,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('Error updating unit:', err);
+    logger.error('[v2]: Error updating unit:', err);
     res.status(400).json({
       message: 'Error updating unit',
       error: err.message,
@@ -584,7 +584,7 @@ export const destroy = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('Error deleting unit:', err);
+    logger.error('[v2]: Error deleting unit:', err);
     res.status(400).json({
       message: 'Error deleting unit',
       error: err.message,
@@ -629,7 +629,7 @@ export const split = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error splitting unit:', error);
+    logger.error('[v2]: Error splitting unit:', error);
     res.status(400).json({
       message: 'Error splitting unit',
       error: error.message,
@@ -664,7 +664,7 @@ export const updateFromXLS = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error updating units from XLSX:', error);
+    logger.error('[v2]: Error updating units from XLSX:', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
@@ -700,7 +700,7 @@ export const batchUpload = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Batch Upload Failed.', error);
+    logger.error('[v2]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,

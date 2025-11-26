@@ -351,7 +351,7 @@ export const updateFromXLS = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Batch Upload Failed.', error);
+    logger.error('[v1]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
@@ -583,7 +583,7 @@ export const batchUpload = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Batch Upload Failed.', error);
+    logger.error('[v1]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,

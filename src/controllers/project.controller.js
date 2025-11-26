@@ -326,7 +326,7 @@ export const transfer = async (req, res) => {
       message: err.message,
       success: false,
     });
-    logger.error('Error adding update to stage', err);
+    logger.error('[v1]: Error adding update to stage', err);
   }
 };
 
@@ -427,7 +427,7 @@ const update = async (req, res, isTransfer = false) => {
       message: err.message,
       success: false,
     });
-    logger.error('Error adding update to stage', err);
+    logger.error('[v1]: Error adding update to stage', err);
   }
 };
 
@@ -481,7 +481,7 @@ export const batchUpload = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Batch Upload Failed.', error);
+    logger.error('[v1]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,

@@ -198,7 +198,7 @@ class StagingV2 extends Model {
           }
         } catch (error) {
           // If record doesn't exist or error occurs, set original to null
-          logger.debug(`Could not fetch original record for ${table}:${uuid}`, {
+          logger.debug(`[v2]: Could not fetch original record for ${table}:${uuid}`, {
             error: error.message,
           });
           original = null;
@@ -356,7 +356,7 @@ class StagingV2 extends Model {
             const duration = Date.now() - modelStart;
             monitor.modelTimings[ModelClass.name] = duration;
 
-            logger.debug(`Model ${ModelClass.name} processed in ${duration}ms`, {
+            logger.debug(`[v2]: Model ${ModelClass.name} processed in ${duration}ms`, {
               model: ModelClass.name,
               duration,
               action: 'generateChangeList',
@@ -368,7 +368,7 @@ class StagingV2 extends Model {
             return result;
           } catch (error) {
             const duration = Date.now() - modelStart;
-            logger.error(`Model ${ModelClass.name} failed after ${duration}ms`, {
+            logger.error(`[v2]: Model ${ModelClass.name} failed after ${duration}ms`, {
               model: ModelClass.name,
               duration,
               error: error.message,
@@ -446,7 +446,7 @@ class StagingV2 extends Model {
       const totalDuration = Date.now() - commitStartTime;
       const memoryAfter = process.memoryUsage();
 
-      logger.info('Commit completed with performance metrics', {
+      logger.info('[v2]: Commit completed with performance metrics', {
         duration: {
           total: totalDuration,
           stages: monitor.stages,
@@ -480,7 +480,7 @@ class StagingV2 extends Model {
       const ERROR_THRESHOLD = 30000; // 30 seconds
 
       if (totalDuration > ERROR_THRESHOLD) {
-        logger.error('Commit exceeded error threshold', {
+        logger.error('[v2]: Commit exceeded error threshold', {
           duration: totalDuration,
           threshold: ERROR_THRESHOLD,
           recordCount: stagedRecords.length,
@@ -488,7 +488,7 @@ class StagingV2 extends Model {
           recommendation: 'Investigate performance bottleneck',
         });
       } else if (totalDuration > WARNING_THRESHOLD) {
-        logger.warn('Commit exceeded warning threshold', {
+        logger.warn('[v2]: Commit exceeded warning threshold', {
           duration: totalDuration,
           threshold: WARNING_THRESHOLD,
           recordCount: stagedRecords.length,
@@ -500,7 +500,7 @@ class StagingV2 extends Model {
       const memoryDelta =
         (memoryAfter.heapUsed - memoryBefore.heapUsed) / 1024 / 1024; // MB
       if (memoryDelta > 100) {
-        logger.warn('High memory usage during commit', {
+        logger.warn('[v2]: High memory usage during commit', {
           heapUsedDelta: memoryDelta.toFixed(2) + ' MB',
           recordCount: stagedRecords.length,
           recommendation: 'Consider batching commits for large datasets',
@@ -508,7 +508,7 @@ class StagingV2 extends Model {
       }
     } catch (error) {
       const totalDuration = Date.now() - commitStartTime;
-      logger.error('Commit failed with performance metrics', {
+      logger.error('[v2]: Commit failed with performance metrics', {
         duration: totalDuration,
         error: error.message,
         metrics: monitor,
@@ -845,7 +845,7 @@ class StagingV2 extends Model {
 
       return _.omit(offerResponse, ['success']);
     } catch (error) {
-      logger.error('Error generating offer file:', error);
+      logger.error('[v2]: Error generating offer file:', error);
       throw new Error(error.message);
     }
   };

@@ -209,7 +209,7 @@ export const setDefaultOrgList = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error updating default orgs:', error);
+    logger.error('[v2]: Error updating default orgs:', error);
     res.status(400).json({
       message: 'Cant update default orgs',
       error: error.message,
@@ -242,7 +242,7 @@ export const setPickList = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error updating picklist:', error);
+    logger.error('[v2]: Error updating picklist:', error);
     res.status(400).json({
       message: 'Cant update picklist',
       error: error.message,
@@ -274,7 +274,7 @@ export const setGlossary = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error updating glossary:', error);
+    logger.error('[v2]: Error updating glossary:', error);
     res.status(400).json({
       message: 'Cant update glossary',
       error: error.message,
@@ -335,7 +335,7 @@ export const subscribeToGovernanceBody = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error subscribing to governance body: ${error.message}`);
+    logger.error(`[v2]: Error subscribing to governance body: ${error.message}`);
     res.status(400).json({
       message: 'Error subscribing to governance body',
       error: error.message,

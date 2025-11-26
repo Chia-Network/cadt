@@ -92,7 +92,7 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('Error creating methodology:', err);
+    logger.error('[v2]: Error creating methodology:', err);
     res.status(400).json({
       message: 'Error creating new methodology',
       error: err.message,
@@ -112,7 +112,7 @@ export const findAll = async (req, res) => {
 
     res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
-    logger.error('Error retrieving methodologies:', err);
+    logger.error('[v2]: Error retrieving methodologies:', err);
     res.status(400).json({
       message: 'Error retrieving methodologies',
       error: err.message,
@@ -135,7 +135,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('Error retrieving methodology:', err);
+    logger.error('[v2]: Error retrieving methodology:', err);
     res.status(400).json({
       message: 'Error retrieving methodology',
       error: err.message,
@@ -213,7 +213,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('Error updating methodology:', err);
+    logger.error('[v2]: Error updating methodology:', err);
     res.status(400).json({
       message: 'Error updating methodology',
       error: err.message,
@@ -255,7 +255,7 @@ export const destroy = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('Error deleting methodology:', err);
+    logger.error('[v2]: Error deleting methodology:', err);
     res.status(400).json({
       message: 'Error deleting methodology',
       error: err.message,

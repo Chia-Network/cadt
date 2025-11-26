@@ -269,9 +269,9 @@ class UnitV2 extends Model {
 
       await StagingV2.create(stagedData);
 
-      logger.info(`Unit ${unitId} split into ${splitRecords.length} units`);
+      logger.info(`[v2]: Unit ${unitId} split into ${splitRecords.length} units`);
     } catch (error) {
-      logger.error('Error splitting unit:', error);
+      logger.error('[v2]: Error splitting unit:', error);
       throw new Error(`Failed to split unit: ${error.message}`);
     }
   }
@@ -296,9 +296,9 @@ class UnitV2 extends Model {
       // Update table with data (creates staging records)
       await UnitV2.updateTableWithDataV2(collapsedData);
 
-      logger.info('Units updated from XLSX file');
+      logger.info('[v2]: Units updated from XLSX file');
     } catch (error) {
-      logger.error('Error updating units from XLSX:', error);
+      logger.error('[v2]: Error updating units from XLSX:', error);
       throw new Error(`Failed to update units from XLSX: ${error.message}`);
     }
   }
@@ -486,7 +486,7 @@ class UnitV2 extends Model {
     }
 
     // For non-SQLite databases, return empty results
-    logger.warn('FTS5 search is only supported for SQLite databases');
+    logger.warn('[v2]: FTS5 search is only supported for SQLite databases');
     return {
       count: 0,
       rows: [],
@@ -504,7 +504,7 @@ class UnitV2 extends Model {
    */
   static async findAllSqliteFts(searchStr, pagination, columns = [], includeProjectInfo = false, orgUid = null) {
     try {
-      logger.info('UnitV2.findAllSqliteFts called', {
+      logger.info('[v2]: UnitV2.findAllSqliteFts called', {
         searchStr,
         pagination,
         columns,
@@ -516,12 +516,12 @@ class UnitV2 extends Model {
 
       // Sanitize search query
       const sanitizedSearch = sanitizeSqliteFtsQuery(searchStr);
-      logger.info('Search string sanitized', { searchStr, sanitizedSearch });
+      logger.info('[v2]: Search string sanitized', { searchStr, sanitizedSearch });
 
       // Handle empty or invalid search strings
       if (!sanitizedSearch || sanitizedSearch === '*') {
         // * isn't a valid matcher on its own, return empty set
-        logger.info('Empty or invalid search string, returning empty results');
+        logger.info('[v2]: Empty or invalid search string, returning empty results');
         return {
           count: 0,
           rows: [],
@@ -542,7 +542,7 @@ class UnitV2 extends Model {
         const escapedSearch = finalSearch.replace(/"/g, '""');
         finalSearch = `"${escapedSearch}"`;
       }
-      logger.info('Final search string prepared', { finalSearch });
+      logger.info('[v2]: Final search string prepared', { finalSearch });
 
       // Build field selection
       // Always include org_uid when filtering by orgUid, or when columns are empty (for basic queries)
@@ -669,7 +669,7 @@ class UnitV2 extends Model {
         replacements.search2 = `0x${finalSearch}`; // For assetId search
       }
 
-      logger.info('FTS query prepared', {
+      logger.info('[v2]: FTS query prepared', {
         includeProjectInfo,
         sql: sql.substring(0, 200) + '...',
         countSql: countSql.substring(0, 200) + '...',
@@ -684,14 +684,14 @@ class UnitV2 extends Model {
           "SELECT name FROM sqlite_master WHERE type='table' AND name='units_v2_fts'",
           { type: Sequelize.QueryTypes.SELECT },
         );
-        logger.info('FTS table check', { tableExists: tableCheck.length > 0 });
+        logger.info('[v2]: FTS table check', { tableExists: tableCheck.length > 0 });
 
         if (tableCheck.length > 0) {
           const rowCount = await sequelizeV2.query(
             'SELECT COUNT(*) as count FROM units_v2_fts',
             { type: Sequelize.QueryTypes.SELECT },
           );
-          logger.info('FTS table row count', { count: rowCount[0]?.count || 0 });
+          logger.info('[v2]: FTS table row count', { count: rowCount[0]?.count || 0 });
 
           // Test a simple FTS query to verify the table works
           try {
@@ -700,9 +700,9 @@ class UnitV2 extends Model {
               replacements: { testSearch: finalSearch },
               type: Sequelize.QueryTypes.SELECT,
             });
-            logger.info('Simple FTS test query succeeded', { resultCount: testResult.length });
+            logger.info('[v2]: Simple FTS test query succeeded', { resultCount: testResult.length });
           } catch (testError) {
-            logger.error('Simple FTS test query failed', {
+            logger.error('[v2]: Simple FTS test query failed', {
               error: testError.message,
               errorStack: testError.stack,
               testSearch: finalSearch,
@@ -710,7 +710,7 @@ class UnitV2 extends Model {
           }
         }
       } catch (checkError) {
-        logger.warn('Error checking FTS table', { error: checkError.message });
+        logger.warn('[v2]: Error checking FTS table', { error: checkError.message });
       }
 
       // Execute count query
@@ -722,7 +722,7 @@ class UnitV2 extends Model {
         for (const [key, value] of Object.entries(replacements)) {
           manualSql = manualSql.replace(`:${key}`, `'${value}'`);
         }
-        logger.info('Executing FTS count query', {
+        logger.info('[v2]: Executing FTS count query', {
           countSql,
           replacements: JSON.stringify(replacements),
           manualSqlPreview: manualSql.substring(0, 500),
@@ -731,7 +731,7 @@ class UnitV2 extends Model {
         // Enable Sequelize logging temporarily to see actual SQL
         const originalLogging = sequelizeV2.options.logging;
         sequelizeV2.options.logging = (sql) => {
-          logger.info('Sequelize executing SQL', { sql: sql.substring(0, 1000) });
+          logger.info('[v2]: Sequelize executing SQL', { sql: sql.substring(0, 1000) });
         };
 
         countResult = await sequelizeV2.query(countSql, {
@@ -743,9 +743,9 @@ class UnitV2 extends Model {
         // Restore original logging
         sequelizeV2.options.logging = originalLogging;
 
-        logger.info('FTS count query succeeded', { count: countResult[0]?.count || 0 });
+        logger.info('[v2]: FTS count query succeeded', { count: countResult[0]?.count || 0 });
       } catch (error) {
-        logger.error('FTS count query failed', {
+        logger.error('[v2]: FTS count query failed', {
           error: error.message,
           errorStack: error.stack,
           sql: countSql,
@@ -779,7 +779,7 @@ class UnitV2 extends Model {
         `;
       }
 
-      logger.info('Executing FTS main query', {
+      logger.info('[v2]: Executing FTS main query', {
         sql: sql.substring(0, 300) + '...',
         replacements: JSON.stringify(replacements),
       });
@@ -787,7 +787,7 @@ class UnitV2 extends Model {
         replacements,
         type: Sequelize.QueryTypes.SELECT,
       });
-      logger.info('FTS main query succeeded', { rowCount: rows.length });
+      logger.info('[v2]: FTS main query succeeded', { rowCount: rows.length });
 
       return {
         count,
@@ -796,13 +796,13 @@ class UnitV2 extends Model {
     } catch (error) {
       // Check if error is due to missing FTS table
       if (error.message && error.message.includes('no such table: units_v2_fts')) {
-        logger.error('FTS table missing, attempting rebuild', { error: error.message });
+        logger.error('[v2]: FTS table missing, attempting rebuild', { error: error.message });
         try {
           await UnitV2.rebuildFtsTable();
           // Retry query after rebuild
           return UnitV2.findAllSqliteFts(searchStr, pagination, columns, includeProjectInfo, orgUid);
         } catch (rebuildError) {
-          logger.error('Failed to rebuild FTS table', { error: rebuildError.message });
+          logger.error('[v2]: Failed to rebuild FTS table', { error: rebuildError.message });
           throw rebuildError;
         }
       }
@@ -864,7 +864,7 @@ class UnitV2 extends Model {
   static async rebuildFtsTable() {
     const dialect = sequelizeV2.getDialect();
     if (dialect !== 'sqlite') {
-      logger.warn('FTS5 rebuild is only supported for SQLite databases');
+      logger.warn('[v2]: FTS5 rebuild is only supported for SQLite databases');
       return;
     }
 
@@ -897,9 +897,9 @@ class UnitV2 extends Model {
         FROM unit
       `);
 
-      logger.info('Units FTS5 table rebuilt successfully');
+      logger.info('[v2]: Units FTS5 table rebuilt successfully');
     } catch (error) {
-      logger.error('Error rebuilding units FTS5 table', { error: error.message });
+      logger.error('[v2]: Error rebuilding units FTS5 table', { error: error.message });
       throw error;
     }
   }

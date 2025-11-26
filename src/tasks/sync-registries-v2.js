@@ -26,19 +26,19 @@ dotenv.config();
 const CONFIG = getConfig().APP;
 
 const task = new Task('sync-registries-v2', async () => {
-  logger.debug('sync registries v2 task invoked');
+  logger.debug('[v2]: sync registries v2 task invoked');
   if (!syncRegistriesTaskMutexV2.isLocked()) {
     const releaseSyncTaskMutex = await syncRegistriesTaskMutexV2.acquire();
     try {
       await processJob();
     } catch (error) {
-      logger.error(`Error during V2 datasync: ${error.message}`);
+      logger.error(`[v2]: Error during V2 datasync: ${error.message}`);
       console.trace(error);
 
       // Log additional information if present in the error object
       if (error.response && error.response.body) {
         logger.error(
-          `Additional error details: ${JSON.stringify(error.response.body)}`,
+          `[v2]: Additional error details: ${JSON.stringify(error.response.body)}`,
         );
       }
     } finally {
@@ -46,7 +46,7 @@ const task = new Task('sync-registries-v2', async () => {
     }
   } else {
     logger.debug(
-      'could not acquire sync registries v2 mutex. trying again shortly',
+      '[v2]: could not acquire sync registries v2 mutex. trying again shortly',
     );
   }
 });
@@ -64,8 +64,8 @@ const processJob = async () => {
   await assertDataLayerAvailable();
   await assertWalletIsSynced();
 
-  logger.debug('running sync-registries-v2 processJob()');
-  logger.debug('querying organization model');
+  logger.debug('[v2]: running sync-registries-v2 processJob()');
+  logger.debug('[v2]: querying organization model');
   const organizations = await OrganizationsV2.findAll({
     where: { subscribed: true },
     raw: true,
@@ -85,7 +85,7 @@ const tryParseJSON = (jsonString, defaultValue) => {
 };
 
 const truncateStagingV2 = async () => {
-  logger.info('ATTEMPTING TO TRUNCATE V2 STAGING TABLE');
+  logger.info('[v2]: ATTEMPTING TO TRUNCATE V2 STAGING TABLE');
 
   let success = false;
   let attempts = 0;
@@ -95,17 +95,17 @@ const truncateStagingV2 = async () => {
     try {
       await StagingV2.truncate();
       success = true; // If truncate succeeds, set success to true to exit the loop
-      logger.info('V2 STAGING TABLE TRUNCATED SUCCESSFULLY');
+      logger.info('[v2]: V2 STAGING TABLE TRUNCATED SUCCESSFULLY');
     } catch (error) {
       attempts++;
       logger.error(
-        `TRUNCATION FAILED ON ATTEMPT ${attempts}: ${error.message}`,
+        `[v2]: TRUNCATION FAILED ON ATTEMPT ${attempts}: ${error.message}`,
       );
       if (attempts < maxAttempts) {
-        logger.info('WAITING 1 SECOND BEFORE RETRYING...');
+        logger.info('[v2]: WAITING 1 SECOND BEFORE RETRYING...');
         await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
       } else {
-        logger.error('MAXIMUM TRUNCATION ATTEMPTS REACHED, GIVING UP');
+        logger.error('[v2]: MAXIMUM TRUNCATION ATTEMPTS REACHED, GIVING UP');
       }
     }
   }

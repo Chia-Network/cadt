@@ -56,7 +56,7 @@ class OrganizationsV2 extends Model {
    */
   static async createHomeOrganization(name, icon, dataVersion = 'v2') {
     try {
-      logger.info('Creating New V2 Organization, This could take a while.');
+      logger.info('[v2]: Creating New V2 Organization, This could take a while.');
 
       // Check for existing V2 home org
       const existingV2Org = await OrganizationsV2.findOne({
@@ -65,7 +65,7 @@ class OrganizationsV2 extends Model {
       });
 
       if (existingV2Org) {
-        logger.info('V2 home organization already exists');
+        logger.info('[v2]: V2 home organization already exists');
         return existingV2Org.org_uid;
       }
 
@@ -104,7 +104,7 @@ class OrganizationsV2 extends Model {
             }
           } catch (error) {
             // If getStoreData fails, we still error because V1 org exists
-            logger.debug(`Failed to check V1 singleton: ${error.message}`);
+            logger.debug(`[v2]: Failed to check V1 singleton: ${error.message}`);
           }
         }
 
@@ -125,29 +125,29 @@ class OrganizationsV2 extends Model {
         icon: '',
       });
 
-      logger.verbose('createHomeOrg() is creating organization (orgUid) store');
+      logger.verbose('[v2]: createHomeOrg() is creating organization (orgUid) store');
       const newOrganizationId = USE_SIMULATOR
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
         : await datalayer.createDataLayerStore();
 
-      logger.verbose('createHomeOrg() is creating registryId store');
+      logger.verbose('[v2]: createHomeOrg() is creating registryId store');
       const registryStoreId = USE_SIMULATOR
         ? 'e9241e7e-b4bd-4cde-ae35-5b42235f9d3b'
         : await datalayer.createDataLayerStore();
 
-      logger.verbose('createHomeOrg() is creating dataModelVersionId store');
+      logger.verbose('[v2]: createHomeOrg() is creating dataModelVersionId store');
       const dataModelVersionStoreId = USE_SIMULATOR
         ? 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
         : await datalayer.createDataLayerStore();
 
-      logger.verbose('createHomeOrg() is creating file store');
+      logger.verbose('[v2]: createHomeOrg() is creating file store');
       const fileStoreId = USE_SIMULATOR
         ? 'f1a2b3c4-d5e6-7890-abcd-ef1234567890'
         : await datalayer.createDataLayerStore();
 
       const revertOrganizationIfFailed = async () => {
         logger.error(
-          'create V2 organization process failed. removing failed home organization records. please try again',
+          '[v2]: create V2 organization process failed. removing failed home organization records. please try again',
         );
         await Promise.all([
           OrganizationsV2.destroy({ where: { org_uid: newOrganizationId } }),
@@ -157,18 +157,18 @@ class OrganizationsV2 extends Model {
 
       if (!USE_SIMULATOR) {
         logger.info(
-          'create V2 organization process is waiting for all store creations to confirm on the blockchain',
+          '[v2]: create V2 organization process is waiting for all store creations to confirm on the blockchain',
         );
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
       logger.verbose(
-        `the blockchain reported new V2 organization stores orgUid: ${newOrganizationId}, ` +
+        `[v2]: the blockchain reported new V2 organization stores orgUid: ${newOrganizationId}, ` +
           `dataModelVersionStore: ${dataModelVersionStoreId}, registryId: ${registryStoreId} have confirmed. `,
       );
       logger.info(
-        `committing V2 organization data to orgUid store ${newOrganizationId}`,
+        `[v2]: committing V2 organization data to orgUid store ${newOrganizationId}`,
       );
 
       // Sync the organization store
@@ -185,14 +185,14 @@ class OrganizationsV2 extends Model {
 
       if (!USE_SIMULATOR) {
         logger.info(
-          'create V2 organization process is waiting for organization data committed to orgUid store to confirm on the blockchain',
+          '[v2]: create V2 organization process is waiting for organization data committed to orgUid store to confirm on the blockchain',
         );
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
       logger.info(
-        `committing registry data model version data to data model version store ${dataModelVersionStoreId}`,
+        `[v2]: committing registry data model version data to data model version store ${dataModelVersionStoreId}`,
       );
 
       // CRITICAL: Create singleton with only v2 key (not v1)
@@ -206,13 +206,13 @@ class OrganizationsV2 extends Model {
 
       if (!USE_SIMULATOR) {
         logger.info(
-          'create V2 organization process is waiting for data model version to confirm on the blockchain',
+          '[v2]: create V2 organization process is waiting for data model version to confirm on the blockchain',
         );
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
-      logger.info('adding new V2 home organization to CADT database');
+      logger.info('[v2]: adding new V2 home organization to CADT database');
       await Promise.all([
         OrganizationsV2.create({
           org_uid: newOrganizationId,
@@ -228,7 +228,7 @@ class OrganizationsV2 extends Model {
       ]);
 
       const onConfirm = async () => {
-        logger.info('V2 Organization confirmed, you are ready to go');
+        logger.info('[v2]: V2 Organization confirmed, you are ready to go');
         await OrganizationsV2.update(
           {
             subscribed: true,
@@ -238,7 +238,7 @@ class OrganizationsV2 extends Model {
       };
 
       if (!USE_SIMULATOR) {
-        logger.info('Waiting for New V2 Organization to be confirmed');
+        logger.info('[v2]: Waiting for New V2 Organization to be confirmed');
         // In non-simulator mode, use callback-based getStoreData to wait for confirmation
         datalayer.getStoreData(
           newOrganizationId,
@@ -254,7 +254,7 @@ class OrganizationsV2 extends Model {
       return newOrganizationId;
     } catch (error) {
       logger.error(
-        `create V2 organization process failed. removing failed home organization records. please try again. Error: ${error.message}`,
+        `[v2]: create V2 organization process failed. removing failed home organization records. please try again. Error: ${error.message}`,
       );
       await OrganizationsV2.destroy({ where: { is_home: true } });
       throw error;
@@ -271,7 +271,7 @@ class OrganizationsV2 extends Model {
    */
   static async upgradeFromV1(name, icon) {
     try {
-      logger.info('Upgrading from V1 to V2 Organization, This could take a while.');
+      logger.info('[v2]: Upgrading from V1 to V2 Organization, This could take a while.');
 
       // CRITICAL: Check if V1 home org exists
       const v1Org = await Organization.findOne({
@@ -328,7 +328,7 @@ class OrganizationsV2 extends Model {
           const decodedValue = decodeHex(kv.value);
           decodedSingleton[decodedKey] = decodedValue;
         } catch (error) {
-          logger.warn(`Failed to decode singleton key/value: ${error.message}`);
+          logger.warn(`[v2]: Failed to decode singleton key/value: ${error.message}`);
         }
       });
 
@@ -340,17 +340,17 @@ class OrganizationsV2 extends Model {
       }
 
       // Create new V2 stores (completely new store IDs, different from V1)
-      logger.verbose('upgradeFromV1() is creating new V2 orgUid store');
+      logger.verbose('[v2]: upgradeFromV1() is creating new V2 orgUid store');
       const newV2OrgUid = USE_SIMULATOR
         ? 'v2-org-uid-' + Date.now()
         : await datalayer.createDataLayerStore();
 
-      logger.verbose('upgradeFromV1() is creating new V2 registryId store');
+      logger.verbose('[v2]: upgradeFromV1() is creating new V2 registryId store');
       const newV2RegistryStoreId = USE_SIMULATOR
         ? 'v2-registry-' + Date.now()
         : await datalayer.createDataLayerStore();
 
-      logger.verbose('upgradeFromV1() is creating new V2 file store');
+      logger.verbose('[v2]: upgradeFromV1() is creating new V2 file store');
       const newV2FileStoreId = USE_SIMULATOR
         ? 'v2-filestore-' + Date.now()
         : await datalayer.createDataLayerStore();
@@ -360,7 +360,7 @@ class OrganizationsV2 extends Model {
 
       const revertUpgradeIfFailed = async () => {
         logger.error(
-          'upgrade from V1 to V2 organization process failed. removing failed V2 organization records. please try again',
+          '[v2]: upgrade from V1 to V2 organization process failed. removing failed V2 organization records. please try again',
         );
         await OrganizationsV2.destroy({ where: { org_uid: newV2OrgUid } });
         await OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } });
@@ -368,18 +368,18 @@ class OrganizationsV2 extends Model {
 
       if (!USE_SIMULATOR) {
         logger.info(
-          'upgrade from V1 to V2 organization process is waiting for all store creations to confirm on the blockchain',
+          '[v2]: upgrade from V1 to V2 organization process is waiting for all store creations to confirm on the blockchain',
         );
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
       logger.verbose(
-        `the blockchain reported new V2 organization stores orgUid: ${newV2OrgUid}, ` +
+        `[v2]: the blockchain reported new V2 organization stores orgUid: ${newV2OrgUid}, ` +
           `registryId: ${newV2RegistryStoreId} have confirmed. `,
       );
       logger.info(
-        `committing V2 organization data to orgUid store ${newV2OrgUid}`,
+        `[v2]: committing V2 organization data to orgUid store ${newV2OrgUid}`,
       );
 
       // Set up V2 orgUid store (completely new store)
@@ -396,14 +396,14 @@ class OrganizationsV2 extends Model {
 
       if (!USE_SIMULATOR) {
         logger.info(
-          'upgrade from V1 to V2 organization process is waiting for organization data committed to orgUid store to confirm on the blockchain',
+          '[v2]: upgrade from V1 to V2 organization process is waiting for organization data committed to orgUid store to confirm on the blockchain',
         );
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
       logger.info(
-        `updating shared data model version store ${sharedDataModelVersionStoreId} to add v2 key`,
+        `[v2]: updating shared data model version store ${sharedDataModelVersionStoreId} to add v2 key`,
       );
 
       // CRITICAL: Add v2 key to existing singleton (preserve v1 key)
@@ -420,13 +420,13 @@ class OrganizationsV2 extends Model {
 
       if (!USE_SIMULATOR) {
         logger.info(
-          'upgrade from V1 to V2 organization process is waiting for data model version update to confirm on the blockchain',
+          '[v2]: upgrade from V1 to V2 organization process is waiting for data model version update to confirm on the blockchain',
         );
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
-      logger.info('adding new V2 home organization to CADT database');
+      logger.info('[v2]: adding new V2 home organization to CADT database');
       await OrganizationsV2.create({
         org_uid: newV2OrgUid,
         data_model_version_store_id: sharedDataModelVersionStoreId, // SAME as V1 - shared singleton
@@ -439,7 +439,7 @@ class OrganizationsV2 extends Model {
       });
 
       const onConfirm = () => {
-        logger.info('V2 Organization upgrade confirmed, you are ready to go');
+        logger.info('[v2]: V2 Organization upgrade confirmed, you are ready to go');
         OrganizationsV2.update(
           {
             subscribed: true,
@@ -449,7 +449,7 @@ class OrganizationsV2 extends Model {
       };
 
       if (!USE_SIMULATOR) {
-        logger.info('Waiting for V2 Organization upgrade to be confirmed');
+        logger.info('[v2]: Waiting for V2 Organization upgrade to be confirmed');
         await getStoreDataPromise(
           newV2OrgUid,
           onConfirm,
@@ -462,7 +462,7 @@ class OrganizationsV2 extends Model {
       return newV2OrgUid;
     } catch (error) {
       logger.error(
-        `upgrade from V1 to V2 organization process failed. removing failed V2 organization records. please try again. Error: ${error.message}`,
+        `[v2]: upgrade from V1 to V2 organization process failed. removing failed V2 organization records. please try again. Error: ${error.message}`,
       );
       await OrganizationsV2.destroy({ where: { is_home: true } });
       throw error;
@@ -499,7 +499,7 @@ class OrganizationsV2 extends Model {
         // Delete the original metadata property
         delete myOrganization.metadata;
       } catch (error) {
-        logger.warn('Failed to parse organization metadata', { error: error.message });
+        logger.warn('[v2]: Failed to parse organization metadata', { error: error.message });
       }
     }
 
@@ -526,7 +526,7 @@ class OrganizationsV2 extends Model {
    */
   static async getOrgsMap() {
     logger.silly(
-      '[MIRROR_DEBUG] Starting getOrgsMap() - querying V2 organizations from database',
+      '[v2]: [MIRROR_DEBUG] Starting getOrgsMap() - querying V2 organizations from database',
     );
 
     const organizations = await OrganizationsV2.findAll({
@@ -548,7 +548,7 @@ class OrganizationsV2 extends Model {
     });
 
     logger.debug(
-      `[MIRROR_DEBUG] Found ${organizations.length} V2 organizations in database`,
+      `[v2]: [MIRROR_DEBUG] Found ${organizations.length} V2 organizations in database`,
     );
 
     // Add XCH address and balance for home org
@@ -573,13 +573,13 @@ class OrganizationsV2 extends Model {
     const orgsMap = organizations.reduce((map, current) => {
       map[current.org_uid] = current.dataValues;
       logger.debug(
-        `[MIRROR_DEBUG] Added to map - org_uid: ${current.org_uid}, name: ${current.dataValues.name}, subscribed: ${current.dataValues.subscribed}`,
+        `[v2]: [MIRROR_DEBUG] Added to map - org_uid: ${current.org_uid}, name: ${current.dataValues.name}, subscribed: ${current.dataValues.subscribed}`,
       );
       return map;
     }, {});
 
     logger.debug(
-      `[MIRROR_DEBUG] Returning V2 organizations map with ${Object.keys(orgsMap).length} entries`,
+      `[v2]: [MIRROR_DEBUG] Returning V2 organizations map with ${Object.keys(orgsMap).length} entries`,
     );
     return orgsMap;
   }
@@ -592,7 +592,7 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<void>}
    */
   static async upsertDataLayerV2(storeId, data) {
-    logger.info(`Syncing ${storeId} (V2)`);
+    logger.info(`[v2]: Syncing ${storeId} (V2)`);
 
     // Get current store data to check for existing keys
     let currentData = {};
@@ -614,7 +614,7 @@ class OrganizationsV2 extends Model {
       }
     } catch (error) {
       // Store might not exist yet or have no data - that's okay
-      logger.debug(`No existing data found for store ${storeId}, proceeding with insert only`);
+      logger.debug(`[v2]: No existing data found for store ${storeId}, proceeding with insert only`);
       currentData = {};
     }
 
@@ -716,7 +716,7 @@ class OrganizationsV2 extends Model {
       try {
         existingMetadata = JSON.parse(rawOrg.metadata);
       } catch (error) {
-        logger.warn('Failed to parse existing metadata, starting fresh', {
+        logger.warn('[v2]: Failed to parse existing metadata, starting fresh', {
           error: error.message,
         });
         existingMetadata = {};
@@ -745,7 +745,7 @@ class OrganizationsV2 extends Model {
    * @throws {Error} If v2 registry store ID not found
    */
   static async getRegistryStoreIdFromSingleton(dataModelVersionStoreId, requiredVersion = 'v2') {
-    logger.debug(`Getting registry store ID from singleton ${dataModelVersionStoreId}, required version: ${requiredVersion}`);
+    logger.debug(`[v2]: Getting registry store ID from singleton ${dataModelVersionStoreId}, required version: ${requiredVersion}`);
 
     // Get singleton data - use getStoreDataPromise in simulator mode, getSubscribedStoreData otherwise
     let singletonData = null;
@@ -780,7 +780,7 @@ class OrganizationsV2 extends Model {
               `Timeout getting singleton data from ${dataModelVersionStoreId}: ${error.message}`,
             );
           }
-          logger.debug(`${error.message}. RETRYING`);
+          logger.debug(`[v2]: ${error.message}. RETRYING`);
           await new Promise((resolve) => setTimeout(resolve, 10000));
         }
       }
@@ -789,7 +789,7 @@ class OrganizationsV2 extends Model {
     // V2 system requires v2 - no fallback to v1
     // Pure V1 organizations should use V1 API, not V2
     if (singletonData[requiredVersion]) {
-      logger.debug(`Found registry store ID for version ${requiredVersion}: ${singletonData[requiredVersion]}`);
+      logger.debug(`[v2]: Found registry store ID for version ${requiredVersion}: ${singletonData[requiredVersion]}`);
       return singletonData[requiredVersion];
     }
 
@@ -806,23 +806,23 @@ class OrganizationsV2 extends Model {
    */
   static async subscribeToOrganization(orgUid) {
     if (orgUid === 'PENDING') {
-      logger.info('cannot subscribe to a home organization while its pending.');
+      logger.info('[v2]: cannot subscribe to a home organization while its pending.');
       throw new Error('Cannot subscribe to PENDING organization');
     }
 
-    logger.debug(`Running the organization subscription process on organization ${orgUid}`);
+    logger.debug(`[v2]: Running the organization subscription process on organization ${orgUid}`);
 
     // Timeout: 10 minutes
     const timeout = Date.now() + 600000;
     const reachedTimeout = () => Date.now() > timeout;
     const onTimeout = (error) => {
       const message = `Reached timeout before subscribing to all required stores. Failure at timeout: ${error.message}`;
-      logger.error(message);
+      logger.error(`[v2]: ${message}`);
       throw new Error(message);
     };
 
     // Step 1: Get org store data to find dataModelVersionStoreId
-    logger.debug(`Determining datamodel version singleton id for org ${orgUid}`);
+    logger.debug(`[v2]: Determining datamodel version singleton id for org ${orgUid}`);
     let orgStoreData = null;
 
     if (USE_SIMULATOR) {
@@ -851,7 +851,7 @@ class OrganizationsV2 extends Model {
           if (reachedTimeout()) {
             onTimeout(error);
           }
-          logger.debug(`${error.message}. RETRYING`);
+          logger.debug(`[v2]: ${error.message}. RETRYING`);
           await new Promise((resolve) => setTimeout(resolve, 10000));
         }
       }
@@ -864,21 +864,21 @@ class OrganizationsV2 extends Model {
       );
     }
     logger.debug(
-      `The registry datamodel version pointer singleton id for organization ${orgUid} is ${dataModelVersionStoreId}`,
+      `[v2]: The registry datamodel version pointer singleton id for organization ${orgUid} is ${dataModelVersionStoreId}`,
     );
 
     // Step 2: Get registry store ID from singleton (must be v2 - V2 system only)
-    logger.debug(`Determining registry store singleton id for org ${orgUid}`);
+    logger.debug(`[v2]: Determining registry store singleton id for org ${orgUid}`);
     const registryStoreId = await OrganizationsV2.getRegistryStoreIdFromSingleton(
       dataModelVersionStoreId,
       'v2', // Must be v2 - V2 system only works with V2 organizations
     );
     logger.debug(
-      `The registry singleton id for organization ${orgUid} is ${registryStoreId}`,
+      `[v2]: The registry singleton id for organization ${orgUid} is ${registryStoreId}`,
     );
 
     // Step 3: Subscribe to registry store
-    logger.debug(`Checking registry store singleton for org ${orgUid}`);
+    logger.debug(`[v2]: Checking registry store singleton for org ${orgUid}`);
     const subscribedToRegistryStore =
       await datalayer.subscribeToStoreOnDataLayer(registryStoreId);
     // In simulator mode, subscribeToStoreOnDataLayer returns undefined (no-op)
@@ -891,12 +891,12 @@ class OrganizationsV2 extends Model {
 
     // Step 4: Subscribe to file store if enabled
     if (AUTO_SUBSCRIBE_FILESTORE) {
-      logger.info(`Subscribing to file store for organization ${orgUid}`);
+      logger.info(`[v2]: Subscribing to file store for organization ${orgUid}`);
       try {
         await FileStore.subscribeToFileStore(orgUid);
       } catch (error) {
         logger.warn(
-          `Failed to subscribe to file store. Error: ${error.message}`,
+          `[v2]: Failed to subscribe to file store. Error: ${error.message}`,
         );
       }
     }
@@ -907,7 +907,7 @@ class OrganizationsV2 extends Model {
       raw: true,
     });
     if (organization) {
-      logger.info(`Marking existing organization record as subscribed`);
+      logger.info(`[v2]: Marking existing organization record as subscribed`);
       await OrganizationsV2.update(
         { subscribed: true },
         { where: { org_uid: orgUid } },
@@ -928,7 +928,7 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<void>}
    */
   static async importOrganization(orgUid, isHome = false) {
-    logger.verbose('Acquiring mutex to import organization');
+    logger.verbose('[v2]: Acquiring mutex to import organization');
     const releaseMutex = await addOrDeleteOrganizationRecordMutex.acquire();
 
     try {
@@ -949,9 +949,9 @@ class OrganizationsV2 extends Model {
         where: { meta_key: 'userDeletedOrgUid', meta_value: orgUid },
       });
 
-      logger.info(`Importing organization ${orgUid} ${isHome && 'as home'}`);
+      logger.info(`[v2]: Importing organization ${orgUid} ${isHome && 'as home'}`);
       logger.debug(
-        `Running the organization model subscription process on ${orgUid}`,
+        `[v2]: Running the organization model subscription process on ${orgUid}`,
       );
 
       // Subscribe to organization stores
@@ -960,7 +960,7 @@ class OrganizationsV2 extends Model {
         storeIds = await OrganizationsV2.subscribeToOrganization(orgUid);
       } catch (error) {
         logger.error(
-          `Failure validating or adding subscriptions for org import. cannot import. Error: ${error.message}`,
+          `[v2]: Failure validating or adding subscriptions for org import. cannot import. Error: ${error.message}`,
         );
         throw new Error(
           `Failed to subscribe to, or validate subscribed store data for, organization ${orgUid}`,
@@ -1060,7 +1060,7 @@ class OrganizationsV2 extends Model {
         is_home: isHome,
       };
       logger.info(
-        `Adding organization with the following info: ${JSON.stringify(organizationData)}`,
+        `[v2]: Adding organization with the following info: ${JSON.stringify(organizationData)}`,
       );
 
       await OrganizationsV2.create(organizationData);
@@ -1095,7 +1095,7 @@ class OrganizationsV2 extends Model {
     storesToUnsubscribe.forEach((storeId) => {
       if (!storeId) {
         const message = `Organization stores cannot be nil. found nil store id associated with organization ${organization.org_uid}`;
-        logger.error(message);
+        logger.error(`[v2]: ${message}`);
         throw new Error(message);
       }
     });
@@ -1104,10 +1104,10 @@ class OrganizationsV2 extends Model {
       if (subscriptionIds.includes(storeId)) {
         try {
           await datalayer.unsubscribeFromDataLayerStoreWithRetry(storeId);
-          logger.info(`Successfully unsubscribed from store ${storeId}`);
+          logger.info(`[v2]: Successfully unsubscribed from store ${storeId}`);
         } catch (error) {
           logger.error(
-            `unsubscribeFromOrganizationStores() encountered an error: ${error.message}`,
+            `[v2]: unsubscribeFromOrganizationStores() encountered an error: ${error.message}`,
           );
           failedUnsubscribes.push(storeId);
         }
@@ -1116,7 +1116,7 @@ class OrganizationsV2 extends Model {
 
     if (failedUnsubscribes.length) {
       const message = `Failed to unsubscribe from the following organization stores: ${failedUnsubscribes.join(', ')}`;
-      logger.error(message);
+      logger.error(`[v2]: ${message}`);
       throw new Error(message);
     }
 
@@ -1142,7 +1142,7 @@ class OrganizationsV2 extends Model {
   static async reconcileOrganization(organization) {
     const { org_uid, is_home } = organization;
 
-    logger.info(`Reconciling organization ${org_uid}`);
+    logger.info(`[v2]: Reconciling organization ${org_uid}`);
 
     // Validate store ownership if home org (skip in simulator mode)
     if (is_home && !USE_SIMULATOR) {
@@ -1217,12 +1217,12 @@ class OrganizationsV2 extends Model {
 
     // Update database if discrepancies found
     if (needsUpdate) {
-      logger.info(`Updating organization ${org_uid} with datalayer data`);
+      logger.info(`[v2]: Updating organization ${org_uid} with datalayer data`);
       await OrganizationsV2.update(updates, {
         where: { org_uid },
       });
     } else {
-      logger.debug(`Organization ${org_uid} is in sync with datalayer`);
+      logger.debug(`[v2]: Organization ${org_uid} is in sync with datalayer`);
     }
   }
 
@@ -1236,12 +1236,12 @@ class OrganizationsV2 extends Model {
     const baseDelay = 200; // 200ms base delay
     const maxDelay = 5000; // 5 seconds max delay
 
-    logger.verbose('acquiring add/delete org mutex to delete organization');
+    logger.verbose('[v2]: acquiring add/delete org mutex to delete organization');
     const releaseAddDeleteMutex =
       await addOrDeleteOrganizationRecordMutex.acquire();
 
     logger.verbose(
-      'acquiring processingSyncRegistriesTransaction mutex to delete organization',
+      '[v2]: acquiring processingSyncRegistriesTransaction mutex to delete organization',
     );
     const releaseAuditTransactionMutex =
       await processingSyncRegistriesTransactionMutex.acquire();
@@ -1333,7 +1333,7 @@ class OrganizationsV2 extends Model {
         // Calculate exponential backoff delay
         const delay = Math.min(baseDelay * Math.pow(2, retryCount), maxDelay);
         logger.info(
-          `Database lock detected for deleteAllOrganizationData (attempt ${retryCount + 1}/${maxRetries}). Retrying in ${delay}ms...`,
+          `[v2]: Database lock detected for deleteAllOrganizationData (attempt ${retryCount + 1}/${maxRetries}). Retrying in ${delay}ms...`,
         );
 
         // Release mutexes before retry
@@ -1352,7 +1352,7 @@ class OrganizationsV2 extends Model {
 
       // If not a lock error or max retries exceeded, throw the error
       logger.error(
-        `failed to delete all db records for organization ${orgUid}, rolling back changes. Error: ${error.message}`,
+        `[v2]: failed to delete all db records for organization ${orgUid}, rolling back changes. Error: ${error.message}`,
       );
       releaseAddDeleteMutex();
       releaseAuditTransactionMutex();
@@ -1386,8 +1386,8 @@ class OrganizationsV2 extends Model {
             );
 
         const onFail = async (message) => {
-          logger.info(`Unable to sync metadata from ${organization.org_uid}`);
-          logger.error(`ORGANIZATION DATA SYNC ERROR: ${message}`);
+          logger.info(`[v2]: Unable to sync metadata from ${organization.org_uid}`);
+          logger.error(`[v2]: ORGANIZATION DATA SYNC ERROR: ${message}`);
           await OrganizationsV2.update(
             { org_hash: '0' },
             { where: { org_uid: organization.org_uid } },
@@ -1419,14 +1419,14 @@ class OrganizationsV2 extends Model {
             );
 
             logger.debug(
-              `Updating orgUid ${organization.org_uid} with hash ${updateHash}`,
+              `[v2]: Updating orgUid ${organization.org_uid} with hash ${updateHash}`,
             );
             await OrganizationsV2.update(
               { org_hash: updateHash },
               { where: { org_uid: organization.org_uid } },
             );
           } catch (error) {
-            logger.info(error.message);
+            logger.info(`[v2]: ${error.message}`);
             onFail(error.message);
           }
         };
@@ -1440,7 +1440,7 @@ class OrganizationsV2 extends Model {
         );
       }
     } catch (error) {
-      logger.error(`Error in syncOrganizationMeta: ${error.message}`);
+      logger.error(`[v2]: Error in syncOrganizationMeta: ${error.message}`);
     }
   }
 

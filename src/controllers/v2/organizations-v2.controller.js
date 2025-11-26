@@ -100,7 +100,7 @@ export const create = async (req, res) => {
           }
         } catch (error) {
           // If getStoreData fails, we still error because V1 org exists
-          logger.debug(`Failed to check V1 singleton: ${error.message}`);
+          logger.debug(`[v2]: Failed to check V1 singleton: ${error.message}`);
         }
       }
 
@@ -146,7 +146,7 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error creating V2 home organization: ${error.message}`);
+    logger.error(`[v2]: Error creating V2 home organization: ${error.message}`);
     res.status(400).json({
       message: 'Error creating V2 home organization',
       error: error.message,
@@ -207,7 +207,7 @@ export const upgrade = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error upgrading to V2 organization: ${error.message}`);
+    logger.error(`[v2]: Error upgrading to V2 organization: ${error.message}`);
     res.status(400).json({
       message: 'Error upgrading to V2 organization',
       error: error.message,
@@ -226,7 +226,7 @@ export const findAll = async (req, res) => {
     const orgsMap = await OrganizationsV2.getOrgsMap();
     return res.json(orgsMap);
   } catch (error) {
-    logger.error(`Error retrieving organizations: ${error.message}`);
+    logger.error(`[v2]: Error retrieving organizations: ${error.message}`);
     res.status(400).json({
       message: 'Error retrieving organizations',
       error: error.message,
@@ -266,7 +266,7 @@ export const homeOrgSyncStatus = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error getting home org sync status: ${error.message}`);
+    logger.error(`[v2]: Error getting home org sync status: ${error.message}`);
     res.status(400).json({
       message: error.message,
       success: false,
@@ -303,7 +303,7 @@ export const editHomeOrg = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error editing home organization: ${error.message}`);
+    logger.error(`[v2]: Error editing home organization: ${error.message}`);
     res.status(400).json({
       message: 'Error initiating your organization',
       error: error.message,
@@ -330,7 +330,7 @@ export const addMetadata = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error adding metadata to organization: ${error.message}`);
+    logger.error(`[v2]: Error adding metadata to organization: ${error.message}`);
     res.status(400).json({
       message: 'Error adding metadata to your organization',
       error: error.message,
@@ -383,7 +383,7 @@ export const getMetaData = async (req, res) => {
 
     return res.json(cleanedMetadata);
   } catch (error) {
-    logger.error(`Error getting metadata for organization: ${error.message}`);
+    logger.error(`[v2]: Error getting metadata for organization: ${error.message}`);
     res.status(400).json({
       message: 'Error getting metadata for organization',
       error: error.message,
@@ -419,7 +419,7 @@ export const importOrganization = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error importing organization: ${error.message}`);
+    logger.error(`[v2]: Error importing organization: ${error.message}`);
     res.status(400).json({
       message: 'Error importing organization',
       error: error.message,
@@ -453,7 +453,7 @@ export const subscribeToOrganization = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error subscribing to organization: ${error.message}`);
+    logger.error(`[v2]: Error subscribing to organization: ${error.message}`);
     res.status(400).json({
       message: 'Error subscribing to organization',
       error: error.message,
@@ -564,7 +564,7 @@ export const unsubscribeFromOrganization = async (req, res) => {
       });
     }
   } catch (error) {
-    logger.error(`Error unsubscribing from organization: ${error.message}`);
+    logger.error(`[v2]: Error unsubscribing from organization: ${error.message}`);
     res.status(400).json({
       message: 'Error unsubscribing from organization datalayer stores',
       error: error.message,
@@ -634,7 +634,7 @@ export const resyncOrganization = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error resyncing organization: ${error.message}`);
+    logger.error(`[v2]: Error resyncing organization: ${error.message}`);
     res.status(400).json({
       message: 'Error resyncing organization',
       error: error.message,
@@ -694,7 +694,7 @@ export const deleteOrganization = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error deleting organization: ${error.message}`);
+    logger.error(`[v2]: Error deleting organization: ${error.message}`);
     res.status(400).json({
       message: 'Error deleting organization',
       error: error.message,
@@ -719,7 +719,7 @@ export const sync = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`Error syncing organization metadata: ${error.message}`);
+    logger.error(`[v2]: Error syncing organization metadata: ${error.message}`);
     res.status(400).json({
       message: 'Error syncing organization metadata',
       error: error.message,
@@ -768,7 +768,7 @@ export const addMirror = async (req, res) => {
       });
     }
   } catch (error) {
-    logger.error(`Error adding mirror: ${error.message}`);
+    logger.error(`[v2]: Error adding mirror: ${error.message}`);
     res.status(400).json({
       message: 'Error adding mirror',
       error: error.message,
@@ -817,7 +817,7 @@ export const removeMirror = async (req, res) => {
       });
     }
   } catch (error) {
-    logger.error(`Error removing mirror: ${error.message}`);
+    logger.error(`[v2]: Error removing mirror: ${error.message}`);
     res.status(400).json({
       message: 'Error removing mirror',
       error: error.message,

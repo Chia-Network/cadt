@@ -204,7 +204,7 @@ class FilestoreV2 extends Model {
           );
         })
         .catch((error) => {
-          logger.warn('Failed to sync file store data', { error: error.message });
+          logger.warn('[v2]: Failed to sync file store data', { error: error.message });
         });
     }
 
@@ -321,7 +321,7 @@ class FilestoreV2 extends Model {
       data: fileContent,
       org_uid: myOrganization.org_uid,
     }).catch((error) => {
-      logger.warn('Failed to cache file', { error: error.message });
+      logger.warn('[v2]: Failed to cache file', { error: error.message });
     });
 
     return fileContent;

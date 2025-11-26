@@ -34,7 +34,7 @@ export const subscribeToFileStore = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error subscribing to file store:', error);
+    logger.error('[v2]: Error subscribing to file store:', error);
     res.status(400).json({
       message: 'Can not subscribe to file store',
       error: error.message,
@@ -69,7 +69,7 @@ export const unsubscribeFromFileStore = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error unsubscribing from file store:', error);
+    logger.error('[v2]: Error unsubscribing from file store:', error);
     res.status(400).json({
       message: 'Can not unsubscribe from file store',
       error: error.message,
@@ -89,7 +89,7 @@ export const getFileList = async (req, res) => {
     const files = await FilestoreV2.getFileStoreList();
     res.json(files);
   } catch (error) {
-    logger.error('Error retrieving file list:', error);
+    logger.error('[v2]: Error retrieving file list:', error);
     res.status(400).json({
       message: 'Can not retrieve file list from filestore',
       error: error.message,
@@ -125,7 +125,7 @@ export const deleteFile = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error deleting file:', error);
+    logger.error('[v2]: Error deleting file:', error);
     res.status(400).json({
       message: 'Can not delete file from filestore',
       error: error.message,
@@ -161,7 +161,7 @@ export const getFile = async (req, res) => {
     const download = Buffer.from(file, 'base64');
     res.end(download);
   } catch (error) {
-    logger.error('Error retrieving file:', error);
+    logger.error('[v2]: Error retrieving file:', error);
 
     // Check if it's a "not found" error
     if (error.message && error.message.includes('not found')) {
@@ -224,7 +224,7 @@ export const addFile = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Error adding file to file store:', error);
+    logger.error('[v2]: Error adding file to file store:', error);
     res.status(400).json({
       message: 'Can not add file to file store',
       error: error.message,

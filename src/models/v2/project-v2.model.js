@@ -295,7 +295,7 @@ class ProjectV2 extends Model {
       committed: true, // Transfer records are marked as committed immediately
     });
 
-    logger.info(`Project ${projectId} staged for transfer`);
+    logger.info(`[v2]: Project ${projectId} staged for transfer`);
   }
 
   /**
@@ -321,9 +321,9 @@ class ProjectV2 extends Model {
       // For now, we'll create a V2-compatible version
       await ProjectV2.updateTableWithDataV2(collapsedData);
 
-      logger.info('Projects updated from XLSX file');
+      logger.info('[v2]: Projects updated from XLSX file');
     } catch (error) {
-      logger.error('Error updating projects from XLSX:', error);
+      logger.error('[v2]: Error updating projects from XLSX:', error);
       throw new Error(`Failed to update projects from XLSX: ${error.message}`);
     }
   }
@@ -576,7 +576,7 @@ class ProjectV2 extends Model {
     }
 
     // For non-SQLite databases, return empty results
-    logger.warn('FTS5 search is only supported for SQLite databases');
+    logger.warn('[v2]: FTS5 search is only supported for SQLite databases');
     return {
       count: 0,
       rows: [],
@@ -637,7 +637,7 @@ class ProjectV2 extends Model {
           type: Sequelize.QueryTypes.SELECT,
         });
       } catch (error) {
-        logger.error('FTS count query failed', {
+        logger.error('[v2]: FTS count query failed', {
           error: error.message,
           sql: countSql,
           replacements,
@@ -738,13 +738,13 @@ class ProjectV2 extends Model {
     } catch (error) {
       // Check if error is due to missing FTS table
       if (error.message && error.message.includes('no such table: projects_v2_fts')) {
-        logger.error('FTS table missing, attempting rebuild', { error: error.message });
+        logger.error('[v2]: FTS table missing, attempting rebuild', { error: error.message });
         try {
           await ProjectV2.rebuildFtsTable();
           // Retry query after rebuild
           return ProjectV2.findAllSqliteFts(searchStr, pagination, columns, orgUid);
         } catch (rebuildError) {
-          logger.error('Failed to rebuild FTS table', { error: rebuildError.message });
+          logger.error('[v2]: Failed to rebuild FTS table', { error: rebuildError.message });
           throw rebuildError;
         }
       }
@@ -759,7 +759,7 @@ class ProjectV2 extends Model {
   static async rebuildFtsTable() {
     const dialect = sequelizeV2.getDialect();
     if (dialect !== 'sqlite') {
-      logger.warn('FTS5 rebuild is only supported for SQLite databases');
+      logger.warn('[v2]: FTS5 rebuild is only supported for SQLite databases');
       return;
     }
 
@@ -789,9 +789,9 @@ class ProjectV2 extends Model {
         FROM project
       `);
 
-      logger.info('Projects FTS5 table rebuilt successfully');
+      logger.info('[v2]: Projects FTS5 table rebuilt successfully');
     } catch (error) {
-      logger.error('Error rebuilding projects FTS5 table', { error: error.message });
+      logger.error('[v2]: Error rebuilding projects FTS5 table', { error: error.message });
       throw error;
     }
   }
