@@ -1,4 +1,5 @@
 import { ToadScheduler } from 'toad-scheduler';
+import { logger } from '../config/logger.js';
 
 import syncDefaultOrganizations from './sync-default-organizations.js';
 import syncPickLists from './sync-picklists.js';
@@ -28,38 +29,46 @@ const addJobToScheduler = (job) => {
   scheduler.addSimpleIntervalJob(job);
 };
 
-const start = () => {
-  // add default jobs (V1)
-  const defaultJobs = [
-    syncGovernanceBody,
-    syncDefaultOrganizations,
-    syncPickLists,
-    syncRegistries,
-    syncOrganizationMeta,
-    mirrorCheck,
-    resetAuditTable,
-    validateOrganizationTableAndSubscriptions,
-    cleanUpFailedOrg,
-  ];
-  defaultJobs.forEach((defaultJob) => {
-    jobRegistry[defaultJob.id] = defaultJob;
-    scheduler.addSimpleIntervalJob(defaultJob);
-  });
+const start = (enableV1 = true, enableV2 = true) => {
+  // add default jobs (V1) if enabled
+  if (enableV1) {
+    const defaultJobs = [
+      syncGovernanceBody,
+      syncDefaultOrganizations,
+      syncPickLists,
+      syncRegistries,
+      syncOrganizationMeta,
+      mirrorCheck,
+      resetAuditTable,
+      validateOrganizationTableAndSubscriptions,
+      cleanUpFailedOrg,
+    ];
+    defaultJobs.forEach((defaultJob) => {
+      jobRegistry[defaultJob.id] = defaultJob;
+      scheduler.addSimpleIntervalJob(defaultJob);
+    });
+  } else {
+    logger.info('[v1]: V1 is disabled in config - skipping V1 scheduler tasks');
+  }
 
-  // add V2 background tasks
-  const v2Jobs = [
-    syncDefaultOrganizationsV2,
-    syncOrganizationMetaV2,
-    syncRegistriesV2,
-    mirrorCheckV2,
-    validateOrganizationTableAndSubscriptionsV2,
-    syncPicklistsV2,
-    cleanUpFailedOrgV2,
-  ];
-  v2Jobs.forEach((v2Job) => {
-    jobRegistry[v2Job.id] = v2Job;
-    scheduler.addSimpleIntervalJob(v2Job);
-  });
+  // add V2 background tasks if enabled
+  if (enableV2) {
+    const v2Jobs = [
+      syncDefaultOrganizationsV2,
+      syncOrganizationMetaV2,
+      syncRegistriesV2,
+      mirrorCheckV2,
+      validateOrganizationTableAndSubscriptionsV2,
+      syncPicklistsV2,
+      cleanUpFailedOrgV2,
+    ];
+    v2Jobs.forEach((v2Job) => {
+      jobRegistry[v2Job.id] = v2Job;
+      scheduler.addSimpleIntervalJob(v2Job);
+    });
+  } else {
+    logger.info('[v2]: V2 is disabled in config - skipping V2 scheduler tasks');
+  }
 };
 
 const getJobStatus = () => {

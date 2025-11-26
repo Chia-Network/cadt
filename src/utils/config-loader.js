@@ -44,9 +44,9 @@ const ensureVersionDirectoriesExist = (chiaRoot) => {
   });
 };
 
-export const getConfig = _.memoize(() => {
+// Helper function to load config for a specific version
+const loadConfigForVersion = (dataModelVersion) => {
   const chiaRoot = getChiaRoot();
-  const dataModelVersion = 'v1';
   const persistanceFolder = `${chiaRoot}/cadt/${dataModelVersion}`;
   const configFile = path.resolve(`${persistanceFolder}/config.yaml`);
 
@@ -91,4 +91,12 @@ export const getConfig = _.memoize(() => {
   } catch (e) {
     console.error(`Config file not found at ${configFile}`, e);
   }
+};
+
+export const getConfig = _.memoize(() => {
+  return loadConfigForVersion('v1');
+});
+
+export const getConfigV2 = _.memoize(() => {
+  return loadConfigForVersion('v2');
 });

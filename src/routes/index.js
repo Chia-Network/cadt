@@ -8,6 +8,8 @@ import { sequelizeV2 } from '../database/v2';
 import { logger } from '../config/logger.js';
 import { pullPickListValues } from '../utils/data-loaders';
 import { pullPickListValuesV2 } from '../utils/v2-data-loaders';
+import { getConfig } from '../utils/config-loader';
+import { getConfigV2 } from '../utils/config-loader';
 
 import app from '../middleware';
 
@@ -28,23 +30,43 @@ export const initializeDatabases = async () => {
     return migrationsReadyPromise;
   }
 
-  migrationsReadyPromise = Promise.all([
-    // Initialize V1 database
-    sequelize.authenticate().then(async () => {
-      logger.info('[v1]: Connected to database');
-      pullPickListValues();
-      await prepareDb();
-    }),
-    // Initialize V2 database
-    sequelizeV2.authenticate().then(async () => {
-      logger.info('[v2]: Connected to V2 database');
-      // Run migrations first to ensure tables exist before querying them
-      await prepareV2Db();
-      // Await pullPickListValuesV2 to ensure it completes before other operations
-      // This prevents it from holding database locks during tests
-      await pullPickListValuesV2();
-    }),
-  ]).then(() => {
+  const configV1 = getConfig();
+  const configV2 = getConfigV2();
+  const enableV1 = configV1?.APP?.ENABLE_V1 !== false; // Default to true if not set
+  const enableV2 = configV2?.APP?.ENABLE_V2 !== false; // Default to true if not set
+
+  const initPromises = [];
+
+  // Initialize V1 database if enabled
+  if (enableV1) {
+    initPromises.push(
+      sequelize.authenticate().then(async () => {
+        logger.info('[v1]: Connected to database');
+        pullPickListValues();
+        await prepareDb();
+      }),
+    );
+  } else {
+    logger.info('[v1]: V1 is disabled in config - skipping database initialization');
+  }
+
+  // Initialize V2 database if enabled
+  if (enableV2) {
+    initPromises.push(
+      sequelizeV2.authenticate().then(async () => {
+        logger.info('[v2]: Connected to V2 database');
+        // Run migrations first to ensure tables exist before querying them
+        await prepareV2Db();
+        // Await pullPickListValuesV2 to ensure it completes before other operations
+        // This prevents it from holding database locks during tests
+        await pullPickListValuesV2();
+      }),
+    );
+  } else {
+    logger.info('[v2]: V2 is disabled in config - skipping database initialization');
+  }
+
+  migrationsReadyPromise = Promise.all(initPromises).then(() => {
     migrationsReady = true;
     logger.info('All database migrations completed');
 
@@ -52,7 +74,7 @@ export const initializeDatabases = async () => {
     // In test mode, scheduler tasks can cause database locks that interfere with tests
     if (process.env.NODE_ENV !== 'test') {
       setTimeout(() => {
-        scheduler.start();
+        scheduler.start(enableV1, enableV2);
       }, 5000);
     } else {
       logger.debug('Skipping scheduler start in test mode');

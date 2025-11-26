@@ -6,7 +6,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import { V1Router } from './routes/v1';
 import { V2Router } from './routes/v2';
-import { getConfig } from './utils/config-loader';
+import { getConfig, getConfigV2 } from './utils/config-loader';
 import {
   assertChiaNetworkMatchInConfiguration,
   assertDataLayerAvailable,
@@ -193,8 +193,39 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use('/v1', V1Router);
-app.use('/v2', V2Router);
+// Conditionally mount V1 and V2 routes based on config
+const configV1 = getConfig();
+const configV2 = getConfigV2();
+const enableV1 = configV1?.APP?.ENABLE_V1 !== false; // Default to true if not set
+const enableV2 = configV2?.APP?.ENABLE_V2 !== false; // Default to true if not set
+
+if (enableV1) {
+  app.use('/v1', V1Router);
+  logger.info('[v1]: V1 API routes enabled');
+} else {
+  // Return 503 Service Unavailable for disabled V1 endpoints
+  app.use('/v1', (req, res) => {
+    res.status(503).json({
+      error: 'V1 API is disabled',
+      message: 'V1 functionality has been disabled in the configuration. Set APP.ENABLE_V1 to true to enable it.',
+    });
+  });
+  logger.info('[v1]: V1 API routes disabled');
+}
+
+if (enableV2) {
+  app.use('/v2', V2Router);
+  logger.info('[v2]: V2 API routes enabled');
+} else {
+  // Return 503 Service Unavailable for disabled V2 endpoints
+  app.use('/v2', (req, res) => {
+    res.status(503).json({
+      error: 'V2 API is disabled',
+      message: 'V2 functionality has been disabled in the configuration. Set APP.ENABLE_V2 to true to enable it.',
+    });
+  });
+  logger.info('[v2]: V2 API routes disabled');
+}
 
 app.use((err, req, res, next) => {
   if (err) {
