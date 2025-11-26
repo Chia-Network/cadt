@@ -6,6 +6,9 @@ export const defaultConfig = {
     DB_HOST: null,
   },
   APP: {
+    // ENABLE defaults to true for both V1 and V2 config files
+    // Set to false in the respective config file to disable that version
+    ENABLE: true,
     CW_PORT: 31310,
     BIND_ADDRESS: 'localhost',
     DATALAYER_URL: 'https://localhost:8562',
@@ -23,9 +26,6 @@ export const defaultConfig = {
     AUTO_SUBSCRIBE_FILESTORE: false,
     AUTO_MIRROR_EXTERNAL_STORES: true,
     LOG_LEVEL: 'info',
-    // ENABLE defaults to true for both V1 and V2 config files
-    // Set to false in the respective config file to disable that version
-    ENABLE: true,
     TASKS: {
       GOVERNANCE_SYNC_TASK_INTERVAL: 86400,
       ORGANIZATION_META_SYNC_TASK_INTERVAL: 300,

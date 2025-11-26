@@ -32,7 +32,12 @@ const getBaseOptions = () => {
   return baseOptions;
 };
 
+// Store last error for assertWalletIsSynced to check
+let lastWalletSyncError = null;
+
 const walletIsSynced = async () => {
+  lastWalletSyncError = null; // Clear previous error
+
   try {
     const { cert, key, timeout } = getBaseOptions();
 
@@ -43,18 +48,61 @@ const walletIsSynced = async () => {
       .cert(cert)
       .timeout(timeout);
 
-    const data = JSON.parse(response.text);
+    // Use response.body if available (superagent auto-parses JSON), otherwise parse response.text
+    const data = response.body || JSON.parse(response.text);
 
     if (data.success) {
-      return data.synced;
+      // Check both synced and syncing fields for robustness
+      // Wallet is considered synced if synced is true AND (syncing is false or undefined)
+      // Some wallet RPC versions may not include syncing field
+      const isSynced = data.synced === true && (data.syncing === false || data.syncing === undefined);
+
+      if (!isSynced) {
+        logger.debug(`Wallet sync status: synced=${data.synced}, syncing=${data.syncing}, genesis_initialized=${data.genesis_initialized}`);
+      }
+
+      return isSynced;
     }
 
+    logger.warn(`Wallet sync status check returned success=false: ${JSON.stringify(data)}`);
     return false;
   } catch (error) {
-    logger.error(error);
+    // Distinguish between connection errors and other errors
+    const errorCode = error.code || error.errno || '';
+    const errorMessage = error.message || '';
+
+    // Check for connection-related errors
+    const isConnectionError =
+      errorCode === 'ECONNREFUSED' ||
+      errorCode === 'ETIMEDOUT' ||
+      errorCode === 'ENOTFOUND' ||
+      errorCode === 'ECONNRESET' ||
+      errorMessage.includes('ECONNREFUSED') ||
+      errorMessage.includes('ETIMEDOUT') ||
+      errorMessage.includes('ENOTFOUND') ||
+      errorMessage.includes('ECONNRESET') ||
+      errorMessage.includes('connect') ||
+      errorMessage.includes('timeout');
+
+    if (isConnectionError) {
+      logger.error(`Wallet RPC is not responding at ${rpcUrl}. Error: ${error.message}`, error);
+      // Store error info for assertWalletIsSynced to use
+      lastWalletSyncError = {
+        isConnectionError: true,
+        walletRpcUrl: rpcUrl,
+        message: error.message,
+      };
+    } else {
+      logger.error(`Error checking wallet sync status: ${error.message}`, error);
+    }
+
+    // Return false to maintain backward compatibility
     return false;
   }
 };
+
+// Export function to check last error (for assertWalletIsSynced)
+const getLastWalletSyncError = () => lastWalletSyncError;
 
 const walletIsAvailable = async () => {
   return await walletIsSynced();
@@ -189,4 +237,5 @@ export default {
   getWalletBalance,
   waitForAllTransactionsToConfirm,
   getActiveNetwork,
+  getLastWalletSyncError,
 };
