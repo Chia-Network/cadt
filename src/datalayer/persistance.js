@@ -63,6 +63,12 @@ const getValue = async (storeId, storeKey) => {
 const getMirrors = async (storeId) => {
   logger.silly(`[MIRROR_DEBUG] Starting getMirrors for storeId: ${storeId}`);
 
+  // In simulator mode, return empty array (no mirrors in simulator)
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    logger.debug(`[MIRROR_DEBUG] Simulator mode - returning empty mirrors array`);
+    return [];
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/get_mirrors`;
   const { cert, key, timeout } = getBaseOptions();
 
@@ -236,6 +242,12 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
   logger.debug(
     '[MIRROR_DEBUG] No existing mirror found, proceeding to create new mirror',
   );
+
+  // In simulator mode, return success without making RPC call
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    logger.debug(`[MIRROR_DEBUG] Simulator mode - returning success for addMirror`);
+    return true;
+  }
 
   try {
     const coinAmount = _.get(CONFIG, 'DEFAULT_COIN_AMOUNT', 300000000);
@@ -510,6 +522,12 @@ const getStoreData = async (storeId, rootHash) => {
 };
 
 const getRoot = async (storeId) => {
+  // In simulator mode, use simulator instead of making RPC calls
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    const simulator = await import('./simulator.js');
+    return await simulator.getRoot(storeId);
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/get_root`;
   const { cert, key, timeout } = getBaseOptions();
 
@@ -770,6 +788,17 @@ const getOwnedStores = async () => {
 };
 
 const makeOffer = async (offer) => {
+  // In simulator mode, return mock response
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    return {
+      success: true,
+      offer: {
+        trade_id: `simulator-trade-${Date.now()}`,
+        ...offer,
+      },
+    };
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/make_offer`;
   const { cert, key, timeout } = getBaseOptions();
   offer.fee = CONFIG.DEFAULT_FEE;
@@ -796,6 +825,14 @@ const makeOffer = async (offer) => {
 };
 
 const takeOffer = async (offer) => {
+  // In simulator mode, return mock response
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    return {
+      success: true,
+      trade_id: `simulator-trade-${Date.now()}`,
+    };
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/take_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
@@ -822,6 +859,12 @@ const takeOffer = async (offer) => {
 
 const verifyOffer = async (offer) => {
   logger.debug('Verifying offer:', offer);
+
+  // In simulator mode, return success without making RPC call
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    return true;
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/verify_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
@@ -847,6 +890,11 @@ const verifyOffer = async (offer) => {
 };
 
 const cancelOffer = async (tradeId) => {
+  // In simulator mode, return success without making RPC call
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    return { success: true };
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/cancel_offer`;
   const { cert, key, timeout } = getBaseOptions();
 

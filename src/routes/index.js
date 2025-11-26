@@ -38,10 +38,11 @@ export const initializeDatabases = async () => {
     // Initialize V2 database
     sequelizeV2.authenticate().then(async () => {
       logger.info('Connected to V2 database');
+      // Run migrations first to ensure tables exist before querying them
+      await prepareV2Db();
       // Await pullPickListValuesV2 to ensure it completes before other operations
       // This prevents it from holding database locks during tests
       await pullPickListValuesV2();
-      await prepareV2Db();
     }),
   ]).then(() => {
     migrationsReady = true;
