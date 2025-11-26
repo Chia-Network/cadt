@@ -115,7 +115,7 @@ export const commitImportedOffer = async (req, res) => {
 
     res.json({
       message: 'Offer Accepted.',
-      tradeId: result.trade_id,
+      tradeId: result.tradeId,
       success: true,
     });
   } catch (error) {
