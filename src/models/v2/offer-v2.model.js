@@ -20,8 +20,6 @@ import {
 import { generateOffer } from '../../utils/datalayer-utils.js';
 import * as datalayerPersistance from '../../datalayer/persistance.js';
 import { getConfig } from '../../utils/config-loader.js';
-
-const { makeOffer, takeOffer, verifyOffer, cancelOffer } = datalayerPersistance;
 import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
@@ -268,7 +266,7 @@ class OfferV2 {
       }
 
       const offerInfo = generateOffer(maker, taker);
-      const offerResponse = await makeOffer(offerInfo);
+      const offerResponse = await datalayerPersistance.makeOffer(offerInfo);
 
       if (!offerResponse.success) {
         throw new Error(offerResponse.error);
@@ -325,7 +323,7 @@ class OfferV2 {
       const offerJSON = JSON.stringify(offerParsed);
 
       // Verify offer with datalayer
-      await verifyOffer(offerJSON);
+      await datalayerPersistance.verifyOffer(offerJSON);
 
       // Store in MetaV2
       await MetaV2.upsert({
@@ -353,7 +351,7 @@ class OfferV2 {
         throw new Error('No active offer file found');
       }
 
-      const response = await takeOffer(JSON.parse(offerFile.meta_value));
+      const response = await datalayerPersistance.takeOffer(JSON.parse(offerFile.meta_value));
 
       // Remove active offer from MetaV2
       await MetaV2.destroy({
@@ -388,7 +386,7 @@ class OfferV2 {
       }
 
       const tradeId = tradeIdRecord.meta_value;
-      await cancelOffer(tradeId);
+      await datalayerPersistance.cancelOffer(tradeId);
 
       // Remove trade ID from MetaV2
       await MetaV2.destroy({
