@@ -123,6 +123,9 @@ export default {
             unit_metric,
             unit_current_owner,
             unit_itmos_reference_id,
+            marketplace,
+            marketplace_link,
+            marketplace_identifier,
             cad_trust_issuance_id
           ) VALUES (
             new.cad_trust_unit_id,
@@ -143,6 +146,9 @@ export default {
             new.unit_metric,
             new.unit_current_owner,
             new.unit_itmos_reference_id,
+            new.marketplace,
+            new.marketplace_link,
+            new.marketplace_identifier,
             new.cad_trust_issuance_id
           );
         END;
@@ -170,6 +176,9 @@ export default {
             unit_metric,
             unit_current_owner,
             unit_itmos_reference_id,
+            marketplace,
+            marketplace_link,
+            marketplace_identifier,
             cad_trust_issuance_id
           ) VALUES (
             new.cad_trust_unit_id,
@@ -190,6 +199,9 @@ export default {
             new.unit_metric,
             new.unit_current_owner,
             new.unit_itmos_reference_id,
+            new.marketplace,
+            new.marketplace_link,
+            new.marketplace_identifier,
             new.cad_trust_issuance_id
           );
         END;

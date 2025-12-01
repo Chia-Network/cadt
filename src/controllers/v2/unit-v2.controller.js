@@ -120,6 +120,9 @@ export const create = async (req, res) => {
       unit_current_owner: newRecord.unitCurrentOwner,
       unit_itmos_reference_id: newRecord.unitItmosReferenceId,
       cad_trust_issuance_id: newRecord.cadTrustIssuanceId,
+      marketplace: newRecord.marketplace,
+      marketplace_link: newRecord.marketplaceLink,
+      marketplace_identifier: newRecord.marketplaceIdentifier,
     };
 
     // Stage the record
@@ -160,11 +163,9 @@ export const findAll = async (req, res) => {
       order,
       search,
       includeProjectInfoInSearch,
-      // Note: V2 units don't have marketplace fields yet
-      // These parameters are reserved for future implementation
-      // marketplaceIdentifiers,
-      // hasMarketplaceIdentifier,
-      // onlyTokenizedUnits,
+      marketplaceIdentifiers,
+      hasMarketplaceIdentifier,
+      onlyTokenizedUnits,
     } = req.query;
 
     let where = {};
@@ -186,6 +187,64 @@ export const findAll = async (req, res) => {
     // Handle orgUid filter (only if not using FTS search, as FTS handles orgUid internally)
     if (orgUid && !search) {
       where.orgUid = orgUid;
+    }
+
+    // Handle marketplaceIdentifiers filter
+    if (marketplaceIdentifiers) {
+      // Parse comma-separated string or array
+      const idsArray = Array.isArray(marketplaceIdentifiers)
+        ? marketplaceIdentifiers
+        : marketplaceIdentifiers.split(',').map(id => id.trim());
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.in]: idsArray,
+      };
+    }
+
+    // Handle hasMarketplaceIdentifier filter
+    // Convert string 'true'/'false' to boolean if needed
+    const hasMarketplaceIdentifierBool = hasMarketplaceIdentifier === 'true' || hasMarketplaceIdentifier === true;
+    const hasMarketplaceIdentifierFalse = hasMarketplaceIdentifier === 'false' || hasMarketplaceIdentifier === false;
+
+    if (hasMarketplaceIdentifierBool) {
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.ne]: null,
+      };
+    } else if (hasMarketplaceIdentifierFalse) {
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.eq]: null,
+      };
+    }
+
+    // Handle onlyTokenizedUnits filter
+    // Convert string 'true'/'false' to boolean if needed
+    const onlyTokenizedUnitsBool = onlyTokenizedUnits === 'true' || onlyTokenizedUnits === true;
+    const onlyTokenizedUnitsFalse = onlyTokenizedUnits === 'false' || onlyTokenizedUnits === false;
+
+    if (onlyTokenizedUnitsBool) {
+      where.marketplaceIdentifier = {
+        [Sequelize.Op.ne]: null, // Must have marketplace identifier
+      };
+      where.marketplace = {
+        [Sequelize.Op.eq]: 'Tokenized on Chia', // Must be tokenized on Chia
+      };
+    } else if (onlyTokenizedUnitsFalse) {
+      // Non-tokenized: NOT (marketplace='Tokenized on Chia' AND marketplaceIdentifier IS NOT NULL)
+      // Use Sequelize.literal for proper SQL NULL handling
+      const nonTokenizedCondition = Sequelize.literal(
+        "NOT (marketplace = 'Tokenized on Chia' AND marketplace_identifier IS NOT NULL)"
+      );
+
+      // Combine with existing conditions if any
+      if (Object.keys(where).length > 0) {
+        where = {
+          [Sequelize.Op.and]: [
+            where,
+            nonTokenizedCondition,
+          ],
+        };
+      } else {
+        where = nonTokenizedCondition;
+      }
     }
 
     // Get associated models for column selection
@@ -211,6 +270,9 @@ export const findAll = async (req, res) => {
       'unitMetric',
       'unitCurrentOwner',
       'unitItmosReferenceId',
+      'marketplace',
+      'marketplaceLink',
+      'marketplaceIdentifier',
       'cadTrustIssuanceId',
       'createdAt',
       'updatedAt',
@@ -270,6 +332,9 @@ export const findAll = async (req, res) => {
         'unitMetric',
         'unitCurrentOwner',
         'unitItmosReferenceId',
+        'marketplace',
+        'marketplaceLink',
+        'marketplaceIdentifier',
         'cadTrustIssuanceId',
         'createdAt',
         'updatedAt',
@@ -524,6 +589,9 @@ export const update = async (req, res) => {
     if (updateData.unitMetric !== undefined) dbUpdateData.unit_metric = updateData.unitMetric;
     if (updateData.unitCurrentOwner !== undefined) dbUpdateData.unit_current_owner = updateData.unitCurrentOwner;
     if (updateData.unitItmosReferenceId !== undefined) dbUpdateData.unit_itmos_reference_id = updateData.unitItmosReferenceId;
+    if (updateData.marketplace !== undefined) dbUpdateData.marketplace = updateData.marketplace;
+    if (updateData.marketplaceLink !== undefined) dbUpdateData.marketplace_link = updateData.marketplaceLink;
+    if (updateData.marketplaceIdentifier !== undefined) dbUpdateData.marketplace_identifier = updateData.marketplaceIdentifier;
     if (updateData.cadTrustIssuanceId !== undefined) dbUpdateData.cad_trust_issuance_id = updateData.cadTrustIssuanceId;
 
     // Stage the update

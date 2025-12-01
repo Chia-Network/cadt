@@ -47,6 +47,9 @@ export default {
           unit_metric,
           unit_current_owner,
           unit_itmos_reference_id,
+          marketplace,
+          marketplace_link,
+          marketplace_identifier,
           cad_trust_issuance_id
         );
       `);
@@ -93,6 +96,9 @@ export default {
           unit_metric,
           unit_current_owner,
           unit_itmos_reference_id,
+          marketplace,
+          marketplace_link,
+          marketplace_identifier,
           cad_trust_issuance_id
         FROM unit;
       `);

@@ -7,6 +7,7 @@ import {
   resetV2StagingTable,
   resetV2DataTables,
   waitForV2DataLayerSync,
+  createV2TestHomeOrg,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Methodology API - Basic CRUD Tests', function () {
@@ -15,6 +16,7 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
   before(async function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
+    await createV2TestHomeOrg();
   });
 
   after(async function () {

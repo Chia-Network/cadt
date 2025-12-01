@@ -1,24 +1,12 @@
 export const defaultConfig = {
-  MIRROR_DB: {
-    DB_USERNAME: null,
-    DB_PASSWORD: null,
-    DB_NAME: null,
-    DB_HOST: null,
-  },
   APP: {
-    // ENABLE defaults to true for both V1 and V2 config files
-    // Set to false in the respective config file to disable that version
-    ENABLE: true,
     CW_PORT: 31310,
     BIND_ADDRESS: 'localhost',
     DATALAYER_URL: 'https://localhost:8562',
     WALLET_URL: 'https://localhost:9256',
     USE_SIMULATOR: false,
-    READ_ONLY: false,
-    CADT_API_KEY: null,
     CHIA_NETWORK: 'mainnet',
     USE_DEVELOPMENT_MODE: false,
-    IS_GOVERNANCE_BODY: false,
     DEFAULT_FEE: 3000,
     DEFAULT_COIN_AMOUNT: 300,
     CERTIFICATE_FOLDER_PATH: null,
@@ -50,8 +38,36 @@ export const defaultConfig = {
       },
     },
   },
-  GOVERNANCE: {
-    GOVERNANCE_BODY_ID:
-      '23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e',
+  V1: {
+    ENABLE: true,
+    READ_ONLY: false,
+    CADT_API_KEY: null,
+    IS_GOVERNANCE_BODY: false,
+    GOVERNANCE: {
+      GOVERNANCE_BODY_ID:
+        '23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e',
+    },
+    MIRROR_DB: {
+      DB_USERNAME: null,
+      DB_PASSWORD: null,
+      DB_NAME: null,
+      DB_HOST: null,
+    },
+  },
+  V2: {
+    ENABLE: true,
+    READ_ONLY: false,
+    CADT_API_KEY: null,
+    IS_GOVERNANCE_BODY: false,
+    GOVERNANCE: {
+      GOVERNANCE_BODY_ID:
+        '23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e',
+    },
+    MIRROR_DB: {
+      DB_USERNAME: null,
+      DB_PASSWORD: null,
+      DB_NAME: null,
+      DB_HOST: null,
+    },
   },
 };

@@ -160,6 +160,7 @@ export const findAll = async (req, res) => {
       filter,
       order,
       search,
+      onlyMarketplaceProjects,
     } = req.query;
 
     let where = {};
@@ -190,6 +191,14 @@ export const findAll = async (req, res) => {
     // Handle orgUid filter (only if not using FTS search, as FTS handles orgUid internally)
     if (orgUid && !search) {
       where.orgUid = orgUid;
+    }
+
+    // Handle onlyMarketplaceProjects filter
+    if (onlyMarketplaceProjects) {
+      const marketplaceProjectIds = await ProjectV2.getTokenizedProjectIds();
+      where.cadTrustProjectId = {
+        [Sequelize.Op.in]: marketplaceProjectIds,
+      };
     }
 
     // Get associated models for column selection

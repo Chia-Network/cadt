@@ -753,6 +753,28 @@ class ProjectV2 extends Model {
   }
 
   /**
+   * Get project IDs that have tokenized units (units with marketplaceIdentifier set)
+   * Returns project IDs that have at least one unit with marketplaceIdentifier not null and not empty
+   * @returns {Promise<Array<string>>} Array of cadTrustProjectId values
+   */
+  static async getTokenizedProjectIds() {
+    const sqlQuery = `
+      SELECT DISTINCT project.cad_trust_project_id
+      FROM project
+      INNER JOIN validation ON project.cad_trust_project_id = validation.cad_trust_project_id
+      INNER JOIN verification ON validation.cad_trust_validation_id = verification.cad_trust_validation_id
+      INNER JOIN issuance ON verification.cad_trust_verification_id = issuance.cad_trust_verification_id
+      INNER JOIN unit ON issuance.cad_trust_issuance_id = unit.cad_trust_issuance_id
+      WHERE unit.marketplace_identifier IS NOT NULL
+        AND unit.marketplace_identifier != '';
+    `;
+    const results = await sequelizeV2.query(sqlQuery, {
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    return results.map(row => row.cad_trust_project_id);
+  }
+
+  /**
    * Rebuild FTS5 table - useful for recovery from corruption or sync issues
    * @returns {Promise<void>}
    */

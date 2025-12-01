@@ -167,6 +167,9 @@ unit_link html
 unit_metric picklist [note: 'picklist from metric']
 unit_current_owner varchar
 unit_itmos_reference_id varchar [note: 'for ITMOs tracking']
+marketplace varchar [note: 'Name of the marketplace where the unit is listed']
+marketplace_link varchar [note: 'URL link to the unit listing on the marketplace']
+marketplace_identifier varchar [note: 'Unique identifier for the unit on the marketplace']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_issuance_id varchar [not null, note: 'Foreign key to issuance table']

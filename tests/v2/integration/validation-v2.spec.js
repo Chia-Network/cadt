@@ -5,29 +5,13 @@ import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StagingV2, ValidationV2, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
-// Helper to add UUID to model creation if needed
-const addUuidIfNeeded = (modelName, data) => {
-  const uuidFields = {
-    ValidationV2: 'cadTrustValidationId',
-    VerificationV2: 'cadTrustVerificationId',
-    IssuanceV2: 'cadTrustIssuanceId',
-    UnitV2: 'cadTrustUnitId',
-    ProjectV2: 'cadTrustProjectId',
-  };
-
-  const uuidField = uuidFields[modelName];
-  if (uuidField && !data[uuidField]) {
-    data[uuidField] = uuidv4();
-  }
-  return data;
-};
-
 import {
   resetV2StagingTable,
   resetV2DataTables,
   waitForV2DataLayerSync,
   createV2TestHomeOrg,
   getV2HomeOrgId,
+  addUuidIfNeeded,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Validation API - Basic CRUD Tests', function () {

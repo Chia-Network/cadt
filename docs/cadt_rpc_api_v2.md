@@ -1382,6 +1382,7 @@ Query string options:
 |   projectIds       | String  | Filter by comma-separated list of project IDs                                                                   |
 |       filter       | String  | Generic filter (e.g., `filter=field:value:eq`)                                                                   |
 |       order        | String  | Sort order (e.g., `order=field:DESC`)                                                                   |
+| onlyMarketplaceProjects | Boolean | Filter projects that have at least one unit listed on a marketplace (`true` = projects with marketplace units only) |
 
 ### GET Examples
 
@@ -1514,6 +1515,32 @@ Response
   ]
 }
 ```
+
+---
+
+#### Filter projects with marketplace units
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/project?onlyMarketplaceProjects=true&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 3,
+  "data": [
+    {
+      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "projectName": "Stop Desertification",
+      "projectStatus": "Registered"
+    }
+  ]
+}
+```
+
+**Note**: This filter returns projects that have at least one unit with a `marketplaceIdentifier` set (not null and not empty). This includes both regular marketplace listings and tokenized units.
 
 ---
 
@@ -2097,6 +2124,9 @@ Query string options:
 |        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |
 |       filter       | String  | Generic filter (e.g., `filter=field:value:eq`)                                                                   |
 |       order        | String  | Sort order (e.g., `order=field:DESC`)                                                                   |
+| marketplaceIdentifiers | String/Array | Filter units by specific marketplace identifiers (comma-separated or array) |
+| hasMarketplaceIdentifier | Boolean | Filter units based on whether they have a marketplace identifier (`true` = with identifier, `false` = without identifier) |
+| onlyTokenizedUnits | Boolean | Filter units that have been tokenized on Chia blockchain (`true` = tokenized units only, `false` = non-tokenized units only) |
 
 ### GET Examples
 
@@ -2241,11 +2271,94 @@ Download stream to download the XLS file of unit records.
 
 ---
 
+#### Filter units by marketplace identifiers
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/unit?marketplaceIdentifiers=AKFEE3,XYZ123&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 2,
+  "data": [
+    {
+      "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "unitSerialId": "UNIT-001",
+      "marketplace": "Demo Marketplace",
+      "marketplaceLink": "http://climateWarehouse.com/myMarketplace",
+      "marketplaceIdentifier": "AKFEE3",
+      "unitVintageYear": 2024
+    }
+  ]
+}
+```
+
+---
+
+#### Filter units with marketplace identifier
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/unit?hasMarketplaceIdentifier=true&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 15,
+  "data": [
+    {
+      "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "unitSerialId": "UNIT-001",
+      "marketplace": "Demo Marketplace",
+      "marketplaceIdentifier": "AKFEE3",
+      "unitVintageYear": 2024
+    }
+  ]
+}
+```
+
+---
+
+#### Filter tokenized units
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/unit?onlyTokenizedUnits=true&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "unitSerialId": "UNIT-001",
+      "marketplace": "Tokenized on Chia",
+      "marketplaceIdentifier": "CHIA-TOKEN-12345",
+      "unitVintageYear": 2024
+    }
+  ]
+}
+```
+
+**Note**: Tokenized units must have `marketplace='Tokenized on Chia'` AND `marketplaceIdentifier` set (not null and not empty).
+
+---
+
 ### POST Examples
 
 #### Create unit
 
 **Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
+
+**Marketplace Fields**: The `marketplace`, `marketplaceLink`, and `marketplaceIdentifier` fields are optional. If provided, `marketplaceIdentifier` cannot be an empty string (must be null or a valid identifier).
 
 Request
 ```shell
@@ -2263,7 +2376,10 @@ curl --location -g --request POST 'localhost:31310/v2/unit' \
        "unitCount": 200,
        "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
        "correspondingAdjustmentDeclaration": "Unknown",
-       "correspondingAdjustmentStatus": "Not Started"
+       "correspondingAdjustmentStatus": "Not Started",
+       "marketplace": "Demo Marketplace",
+       "marketplaceLink": "http://climateWarehouse.com/myMarketplace",
+       "marketplaceIdentifier": "AKFEE3"
 }'
 ```
 
@@ -2275,6 +2391,36 @@ Response
   "success":true
 }
 ```
+
+---
+
+#### Create tokenized unit on Chia
+
+Request
+```shell
+curl --location -g --request POST 'localhost:31310/v2/unit' \
+     --header 'Content-Type: application/json' \
+     --data-raw '{
+       "unitSerialId": "UNIT-TOKENIZED-001",
+       "unitStartBlock": "BLK001",
+       "unitEndBlock": "BLK010",
+       "unitVintageYear": 2024,
+       "cadTrustIssuanceId": "issuance-uuid-here",
+       "marketplace": "Tokenized on Chia",
+       "marketplaceIdentifier": "CHIA-TOKEN-12345"
+}'
+```
+
+Response
+```json
+{
+  "message":"Unit staged successfully",
+  "uuid":"9a29f826-ea60-489f-a290-c734e8fd57f1",
+  "success":true
+}
+```
+
+**Note**: To mark a unit as tokenized on Chia, set `marketplace='Tokenized on Chia'` and provide a `marketplaceIdentifier`. The unit can then be queried using `onlyTokenizedUnits=true`.
 
 ---
 

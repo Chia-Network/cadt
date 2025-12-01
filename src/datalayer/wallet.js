@@ -1,15 +1,19 @@
 import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
-import { getConfig } from '../utils/config-loader';
+import { getActiveConfig } from '../utils/config-loader';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { logger } from '../config/logger.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
-const rpcUrl = getConfig().APP.WALLET_URL;
-const USE_SIMULATOR = getConfig().APP.USE_SIMULATOR;
-const CONFIG = getConfig().APP;
+// Use getActiveConfig() to get wallet URL from the enabled version's config
+// This ensures we use V2 config when V1 is disabled and V2 is enabled
+const getWalletConfig = () => getActiveConfig().APP;
+
+const rpcUrl = getWalletConfig().WALLET_URL;
+const USE_SIMULATOR = getWalletConfig().USE_SIMULATOR;
+const CONFIG = getWalletConfig();
 
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
@@ -110,7 +114,7 @@ const walletIsAvailable = async () => {
 
 const getWalletBalance = async () => {
   try {
-    if (getConfig().APP.USE_SIMULATOR) {
+    if (getWalletConfig().USE_SIMULATOR) {
       return Promise.resolve('999.00');
     }
 
@@ -182,7 +186,7 @@ const hasUnconfirmedTransactions = async () => {
 };
 
 const getPublicAddress = async () => {
-  if (getConfig().APP.USE_SIMULATOR) {
+  if (getWalletConfig().USE_SIMULATOR) {
     return Promise.resolve('xch33300ddsje98f33hkkdf9dfuSIMULATED_ADDRESS');
   }
 

@@ -13,26 +13,10 @@ import {
   MethodologyV2,
 } from '../../../src/models/v2/index.js';
 
-// Helper to add UUID to model creation if needed
-const addUuidIfNeeded = (modelName, data) => {
-  const uuidFields = {
-    ValidationV2: 'cadTrustValidationId',
-    VerificationV2: 'cadTrustVerificationId',
-    IssuanceV2: 'cadTrustIssuanceId',
-    UnitV2: 'cadTrustUnitId',
-    ProjectV2: 'cadTrustProjectId',
-    LocationV2: 'cadTrustLocationId',
-  };
-
-  const uuidField = uuidFields[modelName];
-  if (uuidField && !data[uuidField]) {
-    data[uuidField] = uuidv4();
-  }
-  return data;
-};
 import {
   resetV2StagingTable,
   resetV2DataTables,
+  addUuidIfNeeded,
   createV2TestHomeOrg,
   getV2HomeOrgId,
 } from '../utils/v2-test-helpers.js';

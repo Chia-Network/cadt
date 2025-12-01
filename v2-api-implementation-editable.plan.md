@@ -32,11 +32,12 @@
 - ✅ **Phase 27**: Datalayer Registry Sync Background Tasks (Complete - Automatic organization import, registry data sync, organization metadata sync tasks, ModelKeysV2 utility, MetaV2 methods, V2 mutexes, comprehensive sync logic implemented, basic tests passing)
 - ✅ **Phase 28**: Additional V2 Background Tasks (Complete - Mirror check, organization validation, picklist syncing, failed org cleanup tasks implemented and registered, basic tests passing)
 - ✅ **Phase 29**: Websocket Support for V2 (Complete - ProjectV2 and UnitV2 websocket support implemented, websocket handler updated, basic tests passing)
+- ✅ **Phase 31**: Marketplace and Tokenization Features (Complete - Added marketplace fields to Units table, query parameters for marketplace filtering, project-level marketplace filtering, FTS integration, comprehensive tests (23 tests passing), and API documentation)
 
-**CURRENT STATUS:** ✅ V2 API is fully implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer. ✅ V2 Organization Management complete - Full organization lifecycle management with create, upgrade, import, subscription, and mirror operations. ✅ Offer/Transfer Endpoints complete - Full offer generation, import, commit, and cancellation functionality. ✅ Filestore Endpoints complete - Full file storage and management functionality. ✅ Projects Advanced Features complete - Transfer, XLSX import, CSV batch upload, and advanced query features. ✅ Units Advanced Features complete - Split, XLSX import, CSV batch upload, and advanced query features. ✅ Staging Advanced Features complete - Offer file generation for project transfers. ✅ Governance Advanced Features complete - Subscribe to governance body functionality. ✅ V2 API Documentation complete - Comprehensive documentation for all V2 endpoints following V1 structure and style. ✅ orgUid Field Integration complete - Projects and Units tables now include orgUid field with automatic assignment from home organization. ✅ FTS5 Implementation complete - Full-text search with BM25 ranking, automatic triggers, orgUid filtering, and comprehensive test coverage (35 tests passing). ✅ Datalayer Registry Sync Background Tasks complete - Automatic organization import, registry data sync, and organization metadata sync tasks implemented with comprehensive sync logic. ✅ Additional V2 Background Tasks complete - Mirror check, organization validation, picklist syncing, and failed org cleanup tasks implemented. ✅ Websocket Support for V2 complete - Real-time change notifications for ProjectV2 and UnitV2 models implemented.
+**CURRENT STATUS:** ✅ V2 API is fully implemented with 22 endpoints (21 data endpoints + 1 governance system endpoint). ✅ Datalayer sync integration complete - V2 can commit staged records to Chia datalayer. ✅ V2 Organization Management complete - Full organization lifecycle management with create, upgrade, import, subscription, and mirror operations. ✅ Offer/Transfer Endpoints complete - Full offer generation, import, commit, and cancellation functionality. ✅ Filestore Endpoints complete - Full file storage and management functionality. ✅ Projects Advanced Features complete - Transfer, XLSX import, CSV batch upload, and advanced query features. ✅ Units Advanced Features complete - Split, XLSX import, CSV batch upload, and advanced query features. ✅ Staging Advanced Features complete - Offer file generation for project transfers. ✅ Governance Advanced Features complete - Subscribe to governance body functionality. ✅ V2 API Documentation complete - Comprehensive documentation for all V2 endpoints following V1 structure and style. ✅ orgUid Field Integration complete - Projects and Units tables now include orgUid field with automatic assignment from home organization. ✅ FTS5 Implementation complete - Full-text search with BM25 ranking, automatic triggers, orgUid filtering, and comprehensive test coverage (35 tests passing). ✅ Datalayer Registry Sync Background Tasks complete - Automatic organization import, registry data sync, and organization metadata sync tasks implemented with comprehensive sync logic. ✅ Additional V2 Background Tasks complete - Mirror check, organization validation, picklist syncing, and failed org cleanup tasks implemented. ✅ Websocket Support for V2 complete - Real-time change notifications for ProjectV2 and UnitV2 models implemented. ✅ Marketplace and Tokenization Features complete - Marketplace fields added to Units table, query parameters for marketplace filtering, project-level marketplace filtering, FTS integration, comprehensive tests (23 tests passing), and API documentation.
 
 **PENDING PHASES:**
-- None - All planned phases complete!
+- 🔄 **Phase 30**: Unified Configuration File Migration (Pending - Migrate from separate V1/V2 config files to unified config.yaml with APP/V1/V2 sections, implement migration logic, update all config loading code)
 
 **COMPLETED ENDPOINTS (22 total):**
 - Core: Methodology, Program, Project, Validation, Verification, Issuance, Unit, Location (8 endpoints)
@@ -6843,3 +6844,1003 @@ npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/exten
 - Clients can subscribe to 'projects', 'units', and 'staging' feeds
 - Real-time notifications are emitted when V2 projects/units are created/updated/deleted
 - V1 and V2 websocket connections work independently without interference
+
+---
+
+## Phase 30: Unified Configuration File Migration
+
+Migrate from separate V1 and V2 configuration files to a unified configuration file structure with APP, V1, and V2 sections.
+
+**STATUS**: 🔄 **PENDING** - Not yet started
+
+**Goals**:
+- Create unified config file at `~/.chia/mainnet/cadt/config.yaml` (or `${CHIA_ROOT}/cadt/config.yaml`)
+- Structure: APP section (shared config), V1 section (V1-specific), V2 section (V2-specific)
+- Implement migration logic to detect and migrate existing config files
+- Update all config loading code to use the new unified config structure
+- Ensure write permissions are checked before migration
+- Prevent creation of config files at old locations
+
+### 30.1 Update defaultConfig.js Structure
+
+Update the default configuration structure to support the new unified format.
+
+**File**: `src/utils/defaultConfig.js`
+
+**Changes**:
+1. Restructure `defaultConfig` to have three top-level sections:
+   - `APP`: Shared configuration values (CW_PORT, BIND_ADDRESS, DATALAYER_URL, WALLET_URL, USE_SIMULATOR, CHIA_NETWORK, USE_DEVELOPMENT_MODE, DEFAULT_FEE, DEFAULT_COIN_AMOUNT, CERTIFICATE_FOLDER_PATH, DATALAYER_FILE_SERVER_URL, AUTO_SUBSCRIBE_FILESTORE, AUTO_MIRROR_EXTERNAL_STORES, LOG_LEVEL, TASKS, REQUEST_CONTENT_LIMITS)
+   - `V1`: V1-specific configuration (ENABLE, READ_ONLY, CADT_API_KEY, IS_GOVERNANCE_BODY, GOVERNANCE, MIRROR_DB)
+   - `V2`: V2-specific configuration (ENABLE, READ_ONLY, CADT_API_KEY, IS_GOVERNANCE_BODY, GOVERNANCE, MIRROR_DB)
+
+2. Structure should match the desired output format:
+   ```javascript
+   export const defaultConfig = {
+     APP: {
+       CW_PORT: 31310,
+       BIND_ADDRESS: 'localhost',
+       DATALAYER_URL: 'https://localhost:8562',
+       WALLET_URL: 'https://localhost:9257',
+       USE_SIMULATOR: false,
+       CHIA_NETWORK: 'mainnet',
+       USE_DEVELOPMENT_MODE: false,
+       DEFAULT_FEE: 3000,
+       DEFAULT_COIN_AMOUNT: 300,
+       CERTIFICATE_FOLDER_PATH: null,
+       DATALAYER_FILE_SERVER_URL: null,
+       AUTO_SUBSCRIBE_FILESTORE: false,
+       AUTO_MIRROR_EXTERNAL_STORES: true,
+       LOG_LEVEL: 'info',
+       TASKS: {
+         GOVERNANCE_SYNC_TASK_INTERVAL: 86400,
+         ORGANIZATION_META_SYNC_TASK_INTERVAL: 300,
+         PICKLIST_SYNC_TASK_INTERVAL: 60,
+         MIRROR_CHECK_TASK_INTERVAL: 86460,
+         VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL: 1800,
+       },
+       REQUEST_CONTENT_LIMITS: {
+         STAGING: {
+           EDIT_DATA_LEN: 200,
+         },
+         UNITS: {
+           INCLUDE_COLUMNS_LEN: 200,
+           MARKETPLACE_IDENTIFIERS_LEN: 200,
+         },
+         PROJECTS: {
+           INCLUDE_COLUMNS_LEN: 200,
+           PROJECT_IDS_LEN: 200,
+         },
+       },
+     },
+     V1: {
+       ENABLE: true,
+       READ_ONLY: false,
+       CADT_API_KEY: null,
+       IS_GOVERNANCE_BODY: true,
+       GOVERNANCE: {
+         GOVERNANCE_BODY_ID: '23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e',
+       },
+       MIRROR_DB: {
+         DB_USERNAME: null,
+         DB_PASSWORD: null,
+         DB_NAME: null,
+         DB_HOST: null,
+       },
+     },
+     V2: {
+       ENABLE: true,
+       READ_ONLY: false,
+       CADT_API_KEY: null,
+       IS_GOVERNANCE_BODY: true,
+       GOVERNANCE: {
+         GOVERNANCE_BODY_ID: '23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e',
+       },
+       MIRROR_DB: {
+         DB_USERNAME: null,
+         DB_PASSWORD: null,
+         DB_NAME: null,
+         DB_HOST: null,
+       },
+     },
+   };
+   ```
+
+**Checkpoint 30.1**: Verify defaultConfig structure matches new format
+
+**STOP HERE - User verifies defaultConfig structure is correct**
+
+### 30.2 Create Config Migration Utility
+
+Create a utility function to migrate existing config files to the new unified format.
+
+**File**: `src/utils/config-migration.js` (new file)
+
+**Functionality**:
+1. **Detect old config files**:
+   - Check for `~/.chia/mainnet/cadt/v1/config.yaml` (or `${CHIA_ROOT}/cadt/v1/config.yaml`)
+   - Check for `~/.chia/mainnet/cadt/v2/config.yaml` (or `${CHIA_ROOT}/cadt/v2/config.yaml`)
+
+2. **Check write permissions**:
+   - Verify write permissions to `~/.chia/mainnet/cadt/config.yaml` (or `${CHIA_ROOT}/cadt/config.yaml`)
+   - If write permissions are not available, exit with error message:
+     ```
+     Error: Cannot write to unified config file location: ${CHIA_ROOT}/cadt/config.yaml
+     Please ensure the directory exists and has write permissions.
+     ```
+   - Use `fs.accessSync()` or `fs.promises.access()` to check write permissions
+
+3. **Load existing config files**:
+   - Load V1 config if it exists
+   - Load V2 config if it exists
+   - Use `yaml.load()` to parse existing config files
+
+4. **Merge configs into unified format**:
+   - Extract APP section from V1 config (if exists) or use defaults
+   - Extract V1-specific sections (ENABLE, READ_ONLY, CADT_API_KEY, IS_GOVERNANCE_BODY, GOVERNANCE, MIRROR_DB) from V1 config
+   - Extract V2-specific sections (ENABLE, READ_ONLY, CADT_API_KEY, IS_GOVERNANCE_BODY, GOVERNANCE, MIRROR_DB) from V2 config
+   - Merge with defaults from `defaultConfig.js`
+   - Handle cases where only V1 or only V2 config exists
+   - Handle case where neither config exists (use defaults)
+
+5. **Write unified config file**:
+   - Write merged config to `~/.chia/mainnet/cadt/config.yaml` (or `${CHIA_ROOT}/cadt/config.yaml`)
+   - Use `yaml.dump()` to write YAML format
+   - Ensure directory exists (create if needed with `fs.mkdirSync(..., { recursive: true })`)
+
+6. **Rename old config files**:
+   - After successful migration, rename V1 config: `config.yaml` → `config.yaml.old`
+   - After successful migration, rename V2 config: `config.yaml` → `config.yaml.old`
+   - Add header comment to `.old` files:
+     ```yaml
+     # This config file has been migrated to the unified config location.
+     # New config file location: ~/.chia/mainnet/cadt/config.yaml
+     # This file is kept for reference and can be safely deleted.
+     #
+     ```
+   - Then append the original content
+
+7. **Error handling**:
+   - If migration fails at any step, do not rename old config files
+   - Log errors clearly
+   - Exit with appropriate error code if critical errors occur
+
+**Checkpoint 30.2**: Verify migration utility can detect, migrate, and rename old config files
+
+**STOP HERE - User verifies migration utility works correctly**
+
+### 30.3 Update config-loader.js to Use Unified Config
+
+Update the config loader to load from the unified config file and extract V1/V2 sections.
+
+**File**: `src/utils/config-loader.js`
+
+**Changes**:
+1. **Update config file path**:
+   - Change from `${chiaRoot}/cadt/${dataModelVersion}/config.yaml` to `${chiaRoot}/cadt/config.yaml`
+   - Use `getChiaRoot()` to get the base path (preserves CHIA_ROOT variable usage)
+
+2. **Remove `ensureVersionDirectoriesExist` function**:
+   - This function creates config files in old locations - remove it entirely
+   - Do NOT create config files at `${chiaRoot}/cadt/v1/config.yaml` or `${chiaRoot}/cadt/v2/config.yaml`
+
+3. **Update `loadConfigForVersion` function**:
+   - Load unified config file from `${chiaRoot}/cadt/config.yaml`
+   - Extract the appropriate section based on `dataModelVersion`:
+     - For V1: Merge `config.APP` with `config.V1`
+     - For V2: Merge `config.APP` with `config.V2`
+   - Merge with defaults from `defaultConfig.js`
+   - Handle case where unified config doesn't exist (run migration first, then load)
+
+4. **Add migration check**:
+   - Before loading config, check if old config files exist
+   - If old config files exist, run migration utility
+   - Only proceed with loading after migration completes successfully
+
+5. **Update `getConfig` function**:
+   - Should still call `loadConfigForVersion('v1')`
+   - But now loads from unified config and merges APP + V1 sections
+
+6. **Update `getConfigV2` function**:
+   - Should still call `loadConfigForVersion('v2')`
+   - But now loads from unified config and merges APP + V2 sections
+
+7. **Update `getActiveConfig` function**:
+   - Should check `configV1?.V1?.ENABLE` and `configV2?.V2?.ENABLE` instead of `configV1?.APP?.ENABLE`
+   - Or adjust based on merged structure (after merging APP + V1/V2, ENABLE will be at top level)
+
+8. **Ensure directory exists**:
+   - Create `${chiaRoot}/cadt/` directory if it doesn't exist (but NOT v1/v2 subdirectories for config)
+   - Create unified config file if it doesn't exist (using defaultConfig structure)
+
+**Checkpoint 30.3**: Verify config loader loads from unified config and merges sections correctly
+
+**STOP HERE - User verifies config loading works with unified config**
+
+### 30.4 Update docker-entrypoint.sh for Unified Config
+
+Update Docker entrypoint script to work with unified config file.
+
+**File**: `docker-entrypoint.sh`
+
+**Changes**:
+1. **Update config paths**:
+   - Change `V1_CONFIG_PATH` from `/root/.chia/mainnet/cadt/v1/config.yaml` to `/root/.chia/mainnet/cadt/config.yaml`
+   - Change `V2_CONFIG_PATH` from `/root/.chia/mainnet/cadt/v2/config.yaml` to `/root/.chia/mainnet/cadt/config.yaml`
+   - Actually, both should point to the same unified config file
+
+2. **Update `create_config_if_not_exists` function**:
+   - Create unified config file at `/root/.chia/mainnet/cadt/config.yaml`
+   - Use new defaultConfig structure (with APP/V1/V2 sections)
+
+3. **Update directory creation**:
+   - Create `/root/.chia/mainnet/cadt/` directory (but NOT v1/v2 subdirectories for config)
+   - V1 and V2 database directories should still be created (`/root/.chia/mainnet/cadt/v1/` and `/root/.chia/mainnet/cadt/v2/` for databases)
+
+4. **Update environment variable handling**:
+   - Environment variables that affect APP section should update `APP.*` paths
+   - Environment variables that affect V1 should update `V1.*` paths
+   - Environment variables that affect V2 should update `V2.*` paths
+   - May need to determine which section based on variable name or add new logic
+
+**Checkpoint 30.4**: Verify Docker entrypoint creates unified config file correctly
+
+**STOP HERE - User verifies Docker entrypoint works with unified config**
+
+### 30.5 Update All Config Access Code
+
+Update all code that accesses config values to use the new merged structure.
+
+**Files to update** (search for `getConfig()` and `getConfigV2()` usage):
+1. **`src/config/config.js`**: Update to access merged config structure
+2. **`src/config/logger.js`**: Update to access merged config structure
+3. **`src/server.js`**: Update to access merged config structure
+4. **`src/database/index.js`**: Update to access merged config structure
+5. **`src/datalayer/wallet.js`**: Update to access merged config structure
+6. **All controller files**: Update to access merged config structure
+7. **All background task files**: Update to access merged config structure
+
+**Changes**:
+- After merging APP + V1/V2 sections, config structure will have values at top level
+- Example: `config.APP.CW_PORT` becomes `config.CW_PORT` after merge
+- Example: `config.V1.ENABLE` becomes `config.ENABLE` after merge (for V1 config)
+- Example: `config.V2.ENABLE` becomes `config.ENABLE` after merge (for V2 config)
+- Most code should continue to work if merge puts values at top level
+- Verify all config access patterns work correctly
+
+**Checkpoint 30.5**: Verify all config access code works with merged structure
+
+**STOP HERE - User verifies all config access works correctly**
+
+### 30.6 Add Tests for Config Migration
+
+Create tests to verify config migration works correctly.
+
+**File**: `tests/v2/integration/config-migration.spec.js` (new file)
+
+**Test Cases**:
+1. **Test migration from V1 config only**:
+   - Create V1 config file with custom values
+   - Run migration
+   - Verify unified config has APP section + V1 section
+   - Verify V1 config renamed to `.old`
+   - Verify V2 section uses defaults
+
+2. **Test migration from V2 config only**:
+   - Create V2 config file with custom values
+   - Run migration
+   - Verify unified config has APP section + V2 section
+   - Verify V2 config renamed to `.old`
+   - Verify V1 section uses defaults
+
+3. **Test migration from both V1 and V2 configs**:
+   - Create both V1 and V2 config files with custom values
+   - Run migration
+   - Verify unified config has APP section + V1 section + V2 section
+   - Verify both configs renamed to `.old`
+   - Verify APP section merged correctly (prefer V1 APP values if both exist)
+
+4. **Test migration with no existing configs**:
+   - Ensure no config files exist
+   - Run migration
+   - Verify unified config created with defaults
+
+5. **Test write permission check**:
+   - Simulate no write permissions to unified config location
+   - Verify migration fails with appropriate error
+   - Verify old config files not renamed
+
+6. **Test config loading after migration**:
+   - Run migration
+   - Load V1 config via `getConfig()`
+   - Load V2 config via `getConfigV2()`
+   - Verify merged structure is correct
+   - Verify values match expected merged values
+
+**Checkpoint 30.6**: Verify all config migration tests pass
+
+**STOP HERE - User verifies config migration tests pass**
+
+### 30.7 Update Documentation
+
+Update any documentation that references config file locations.
+
+**Files to check**:
+- `README.md` (if exists)
+- `docs/` directory files
+- Any setup/installation documentation
+
+**Changes**:
+- Update references from `~/.chia/mainnet/cadt/v1/config.yaml` to `~/.chia/mainnet/cadt/config.yaml`
+- Update references from `~/.chia/mainnet/cadt/v2/config.yaml` to `~/.chia/mainnet/cadt/config.yaml`
+- Document new config structure (APP/V1/V2 sections)
+- Document migration process (automatic on first run)
+
+**Checkpoint 30.7**: Verify documentation updated
+
+**STOP HERE - User verifies documentation is updated**
+
+### 30.8 Run Full Test Suite
+
+Run the complete test suite to ensure config migration doesn't break existing functionality.
+
+**Command**:
+```bash
+npm run test:v2
+npm test  # Run V1 tests too
+```
+
+**Important**: After config migration, verify:
+- All existing tests still pass
+- Config loading works for both V1 and V2
+- No breaking changes to existing functionality
+- Migration runs automatically on first startup
+
+**Checkpoint 30.8**: Verify full test suite passes
+
+**STOP HERE - User verifies full test suite passes**
+
+---
+
+## Phase 31: Marketplace and Tokenization Features
+
+Add marketplace and tokenization features to V2, enabling carbon credit units to be listed on marketplaces and tokenized on the Chia blockchain.
+
+**STATUS**: ✅ **COMPLETE** - All marketplace and tokenization features implemented, tested, and documented
+
+**Goals**:
+- Add marketplace fields to Units table (`marketplace`, `marketplaceLink`, `marketplaceIdentifier`)
+- Add query parameters for marketplace filtering (`marketplaceIdentifiers`, `hasMarketplaceIdentifier`, `onlyTokenizedUnits`)
+- Add project-level marketplace filtering (`onlyMarketplaceProjects`)
+- Add `getTokenizedProjectIds()` method to ProjectV2 model
+- Include marketplace fields in FTS5 search
+- Update API documentation with marketplace features
+- Create comprehensive tests for all marketplace functionality
+
+**Reference**: See `MARKETPLACE_TOKENIZATION_FEATURES.md` for detailed V1 implementation reference
+
+**Important Notes**:
+- **Database fields**: Use snake_case (`marketplace`, `marketplace_link`, `marketplace_identifier`)
+- **API fields**: Use camelCase (`marketplace`, `marketplaceLink`, `marketplaceIdentifier`)
+- **Tokenization logic**: A tokenized unit must have `marketplace='Tokenized on Chia'` AND `marketplaceIdentifier` is not null
+- **Validation**: `marketplaceIdentifier` cannot be empty string (must be null or valid identifier)
+- **Work iteratively**: Stop at each checkpoint for user validation before proceeding
+
+### 31.1 Update v2-schema.dat with Marketplace Fields
+
+Add marketplace fields to the `unit` table definition in the DBML schema file.
+
+**File**: `v2-schema.dat`
+
+**Changes**:
+1. Add three fields to the `unit` table definition:
+   ```dbml
+   marketplace varchar [note: 'Name of the marketplace where the unit is listed']
+   marketplace_link varchar [note: 'URL link to the unit listing on the marketplace']
+   marketplace_identifier varchar [note: 'Unique identifier for the unit on the marketplace']
+   ```
+
+2. Place these fields after `unit_itmos_reference_id` and before `created_at` to maintain logical grouping
+
+**Checkpoint 31.1**: Verify schema file includes marketplace fields in correct location
+
+**STOP HERE - User verifies schema file updated correctly**
+
+### 31.2 Update Existing Unit Migration with Marketplace Fields
+
+Add marketplace fields to the existing unit table creation migration.
+
+**File**: `src/database/v2/migrations/20250110120012-create-unit-v2.js`
+
+**Changes**:
+1. Add three fields to the `unit` table definition in the `up` method, after `unit_itmos_reference_id` and before `cad_trust_issuance_id`:
+   ```javascript
+   marketplace: {
+     type: Sequelize.STRING(255),
+     allowNull: true,
+     comment: 'Name of the marketplace where the unit is listed'
+   },
+   marketplace_link: {
+     type: Sequelize.STRING(255),
+     allowNull: true,
+     comment: 'URL link to the unit listing on the marketplace'
+   },
+   marketplace_identifier: {
+     type: Sequelize.STRING(255),
+     allowNull: true,
+     comment: 'Unique identifier for the unit on the marketplace'
+   },
+   ```
+
+2. **Note**: Since there are no running instances, we're updating the existing migration directly rather than creating a new one. Any existing V2 databases can be deleted and recreated.
+
+**Checkpoint 31.2**: Verify migration file includes marketplace fields
+
+**STOP HERE - User verifies migration file updated correctly**
+
+### 31.3 Update v2-example.sql with Marketplace Fields
+
+Add marketplace fields to the `unit` table CREATE statement and include example data.
+
+**File**: `v2-example.sql`
+
+**Changes**:
+1. Add three columns to the `unit` table CREATE statement:
+   ```sql
+   `marketplace` varchar(255) DEFAULT NULL,
+   `marketplace_link` varchar(255) DEFAULT NULL,
+   `marketplace_identifier` varchar(255) DEFAULT NULL,
+   ```
+
+2. Place these columns after `unit_itmos_reference_id` and before `created_at` to match schema
+
+3. Add example data showing marketplace usage:
+   - At least one unit with regular marketplace listing (e.g., `marketplace='Demo Marketplace'`, `marketplaceIdentifier='AKFEE3'`)
+   - At least one unit with tokenization (`marketplace='Tokenized on Chia'`, `marketplaceIdentifier='CHIA-TOKEN-12345'`)
+   - At least one unit without marketplace fields (NULL values)
+
+**Checkpoint 31.3**: Verify SQL file includes marketplace columns and example data
+
+**STOP HERE - User verifies SQL file updated correctly**
+
+### 31.4 Update UnitV2 Model with Marketplace Fields
+
+Add marketplace fields to the UnitV2 model definition.
+
+**File**: `src/models/v2/unit-v2.model.js`
+
+**Changes**:
+1. Add three fields to model definition:
+   ```javascript
+   marketplace: {
+     type: Sequelize.STRING(255),
+     allowNull: true,
+     field: 'marketplace',
+     comment: 'Name of the marketplace where the unit is listed'
+   },
+   marketplaceLink: {
+     type: Sequelize.STRING(255),
+     allowNull: true,
+     field: 'marketplace_link',
+     comment: 'URL link to the unit listing on the marketplace'
+   },
+   marketplaceIdentifier: {
+     type: Sequelize.STRING(255),
+     allowNull: true,
+     field: 'marketplace_identifier',
+     comment: 'Unique identifier for the unit on the marketplace'
+   }
+   ```
+
+2. Place these fields after `unitItmosReferenceId` and before `createdAt` to match schema
+
+3. Update mirror model if needed:
+   **File**: `src/models/v2/unit-v2.model.mirror.js`
+   - Add same three fields with same definitions
+
+**Checkpoint 31.4**: Verify model includes marketplace fields and can create/read units with marketplace data
+
+**STOP HERE - User verifies model updated correctly**
+
+### 31.5 Update UnitV2 Validation Schema
+
+Add marketplace field validation to UnitV2 validator.
+
+**File**: `src/validators/v2/unit-v2.validator.js`
+
+**Changes**:
+1. Add marketplace fields to validation schema:
+   ```javascript
+   marketplace: Joi.string().allow(null).optional(),
+   marketplaceLink: Joi.string().allow(null).optional(),
+   marketplaceIdentifier: Joi.string().disallow('').allow(null).optional(),
+   ```
+
+2. **Rules**:
+   - All marketplace fields are optional
+   - `marketplaceIdentifier` cannot be empty string (must be null or valid identifier)
+   - No length restrictions on marketplace fields
+
+3. Add query parameter validation:
+   ```javascript
+   marketplaceIdentifiers: Joi.array()
+     .items(Joi.string())
+     .single()
+     .max(200), // Max 200 marketplace identifiers per query
+   hasMarketplaceIdentifier: Joi.boolean(),
+   onlyTokenizedUnits: Joi.boolean(),
+   ```
+
+**Checkpoint 31.5**: Test validation - verify marketplace fields accepted and empty string rejected for `marketplaceIdentifier`
+
+**STOP HERE - User verifies validation works correctly**
+
+### 31.6 Update UnitV2 Controller: Add Marketplace Query Parameters
+
+Add marketplace filtering logic to UnitV2 controller `findAll` method.
+
+**File**: `src/controllers/v2/unit-v2.controller.js`
+
+**Changes**:
+1. Extract query parameters in `findAll` method:
+   - `marketplaceIdentifiers` (array of strings)
+   - `hasMarketplaceIdentifier` (boolean)
+   - `onlyTokenizedUnits` (boolean)
+
+2. Add filtering logic for `marketplaceIdentifiers`:
+   ```javascript
+   if (marketplaceIdentifiers) {
+     where.marketplaceIdentifier = {
+       [Sequelize.Op.in]: _.flatten([marketplaceIdentifiers]),
+     };
+   }
+   ```
+
+3. Add filtering logic for `hasMarketplaceIdentifier`:
+   ```javascript
+   if (hasMarketplaceIdentifier === true) {
+     where.marketplaceIdentifier = {
+       [Sequelize.Op.not]: null,
+     };
+   } else if (hasMarketplaceIdentifier === false) {
+     where.marketplaceIdentifier = {
+       [Sequelize.Op.eq]: null,
+     };
+   }
+   ```
+
+4. Add filtering logic for `onlyTokenizedUnits`:
+   ```javascript
+   if (onlyTokenizedUnits === true) {
+     where.marketplaceIdentifier = {
+       [Sequelize.Op.not]: null, // Must have marketplace identifier
+     };
+     where.marketplace = {
+       [Sequelize.Op.eq]: 'Tokenized on Chia', // Must be tokenized on Chia
+     };
+   } else if (onlyTokenizedUnits === false) {
+     where.marketplace = {
+       [Sequelize.Op.or]: [
+         { [Sequelize.Op.is]: null },
+         { [Sequelize.Op.not]: 'Tokenized on Chia' },
+       ],
+     };
+   }
+   ```
+
+5. Ensure marketplace fields are included in response serialization (should be automatic via model)
+
+**Checkpoint 31.6**: Test query parameters - verify filtering works for all three parameters
+
+```bash
+# Test marketplaceIdentifiers filter
+curl "http://localhost:31310/v2/units?marketplaceIdentifiers=AKFEE3,XYZ123"
+
+# Test hasMarketplaceIdentifier filter
+curl "http://localhost:31310/v2/units?hasMarketplaceIdentifier=true"
+
+# Test onlyTokenizedUnits filter
+curl "http://localhost:31310/v2/units?onlyTokenizedUnits=true"
+```
+
+**STOP HERE - User verifies query parameters work correctly**
+
+### 31.7 Update ProjectV2 Model: Add getTokenizedProjectIds Method
+
+Add method to ProjectV2 model to identify projects that have tokenized units.
+
+**File**: `src/models/v2/project-v2.model.js`
+
+**Changes**:
+1. Add static method `getTokenizedProjectIds()`:
+   ```javascript
+   static async getTokenizedProjectIds() {
+     const sqlQuery = `
+       SELECT DISTINCT project.cad_trust_project_id
+       FROM project
+       INNER JOIN validation ON project.cad_trust_project_id = validation.cad_trust_project_id
+       INNER JOIN verification ON validation.cad_trust_validation_id = verification.cad_trust_validation_id
+       INNER JOIN issuance ON verification.cad_trust_verification_id = issuance.cad_trust_verification_id
+       INNER JOIN unit ON issuance.cad_trust_issuance_id = unit.cad_trust_issuance_id
+       WHERE unit.marketplace_identifier IS NOT NULL
+         AND unit.marketplace_identifier != '';
+     `;
+     const results = await this.sequelize.query(sqlQuery, {
+       type: Sequelize.QueryTypes.SELECT,
+     });
+     return results.map(row => row.cad_trust_project_id);
+   }
+   ```
+
+2. **Key Logic**:
+   - Returns project IDs that have at least one unit with `marketplaceIdentifier` set (not null and not empty)
+   - Uses DISTINCT to avoid duplicate project IDs
+   - Follows V2 relationship chain: project → validation → verification → issuance → unit
+
+**Checkpoint 31.7**: Test method - verify it returns correct project IDs for projects with marketplace units
+
+**STOP HERE - User verifies method works correctly**
+
+### 31.8 Update ProjectV2 Controller: Add onlyMarketplaceProjects Filter
+
+Add `onlyMarketplaceProjects` query parameter to ProjectV2 controller.
+
+**File**: `src/controllers/v2/project-v2.controller.js`
+
+**Changes**:
+1. Extract `onlyMarketplaceProjects` query parameter in `findAll` method
+
+2. Add filtering logic:
+   ```javascript
+   if (onlyMarketplaceProjects) {
+     const marketplaceProjectIds = await ProjectV2.getTokenizedProjectIds();
+     if (!where) {
+       where = {};
+     }
+     where.cadTrustProjectId = {
+       [Sequelize.Op.in]: marketplaceProjectIds,
+     };
+   }
+   ```
+
+3. **Key Logic**:
+   - Uses `ProjectV2.getTokenizedProjectIds()` to find all projects with marketplace units
+   - Filters projects to only include those with marketplace units
+   - Returns empty array if no projects have marketplace units
+
+**Checkpoint 31.8**: Test query parameter - verify filtering works for `onlyMarketplaceProjects`
+
+```bash
+# Test onlyMarketplaceProjects filter
+curl "http://localhost:31310/v2/projects?onlyMarketplaceProjects=true"
+```
+
+**STOP HERE - User verifies query parameter works correctly**
+
+### 31.9 Update Existing FTS5 Migration: Include Marketplace Fields in Unit Search
+
+Add marketplace fields to the existing FTS5 virtual table migration and triggers for units.
+
+**Files**:
+- `src/database/v2/migrations/20250110120031-create-fts5-tables-v2.js` (FTS5 table creation)
+- `src/database/v2/migrations/20250110120032-create-fts5-triggers-v2.js` (FTS5 triggers)
+- `src/models/v2/unit-v2.model.js` (rebuildFtsTable method)
+
+**Changes**:
+
+1. **Update FTS5 table creation** (`20250110120031-create-fts5-tables-v2.js`):
+   - Update the `units_v2_fts` virtual table creation to include marketplace fields (add after `unit_itmos_reference_id`):
+     ```sql
+     CREATE VIRTUAL TABLE units_v2_fts USING fts5(
+       cad_trust_unit_id,
+       org_uid,
+       unit_serial_id,
+       unit_start_block,
+       unit_end_block,
+       unit_count,
+       unit_type,
+       unit_vintage_year,
+       unit_status,
+       unit_status_reason,
+       unit_status_date,
+       unit_retirement_detail,
+       unit_retirement_beneficiary,
+       unit_retirement_beneficiary_id,
+       unit_link,
+       unit_metric,
+       unit_current_owner,
+       unit_itmos_reference_id,
+       marketplace,
+       marketplace_link,
+       marketplace_identifier,
+       cad_trust_issuance_id
+     );
+     ```
+
+   - Update the initial data population INSERT statement to include marketplace fields:
+     ```sql
+     INSERT INTO units_v2_fts SELECT
+       cad_trust_unit_id,
+       org_uid,
+       unit_serial_id,
+       unit_start_block,
+       unit_end_block,
+       unit_count,
+       unit_type,
+       unit_vintage_year,
+       unit_status,
+       unit_status_reason,
+       unit_status_date,
+       unit_retirement_detail,
+       unit_retirement_beneficiary,
+       unit_retirement_beneficiary_id,
+       unit_link,
+       unit_metric,
+       unit_current_owner,
+       unit_itmos_reference_id,
+       marketplace,
+       marketplace_link,
+       marketplace_identifier,
+       cad_trust_issuance_id
+     FROM unit;
+     ```
+
+2. **Update FTS5 triggers** (`20250110120032-create-fts5-triggers-v2.js`):
+   - Update `unit_v2_insert_fts` trigger to include marketplace fields in INSERT statement
+   - Update `unit_v2_update_fts` trigger to include marketplace fields in INSERT OR REPLACE statement
+   - Add marketplace fields after `unit_itmos_reference_id` in both triggers:
+     ```sql
+     marketplace,
+     marketplace_link,
+     marketplace_identifier,
+     ```
+   - Add corresponding VALUES in both triggers:
+     ```sql
+     new.marketplace,
+     new.marketplace_link,
+     new.marketplace_identifier,
+     ```
+
+3. **Update rebuildFtsTable method** (`src/models/v2/unit-v2.model.js`):
+   - Update the `rebuildFtsTable()` method's INSERT statement to include marketplace fields
+   - Add marketplace fields after `unit_itmos_reference_id` in the SELECT and INSERT statements
+
+4. **Note**: Since there are no running instances, we're updating the existing migrations directly. Any existing V2 databases can be deleted and recreated.
+
+**Checkpoint 31.9**: Verify FTS5 migrations and rebuild method include marketplace fields
+
+**STOP HERE - User verifies FTS5 migrations and rebuild method updated correctly**
+
+### 31.10 Create Unit Marketplace Tests
+
+Create comprehensive tests for marketplace functionality in UnitV2.
+
+**File**: `tests/v2/integration/unit-v2-marketplace.spec.js` (new file)
+
+**Test Cases**:
+1. **Basic Marketplace Fields**:
+   - Create unit with marketplace fields
+   - Update unit to add marketplace fields
+   - Update unit to remove marketplace fields
+   - Verify marketplace fields returned in responses
+
+2. **marketplaceIdentifiers Query Parameter**:
+   - Filter units by single marketplace identifier
+   - Filter units by multiple marketplace identifiers
+   - Verify empty result for non-existent identifier
+   - Verify case sensitivity
+
+3. **hasMarketplaceIdentifier Query Parameter**:
+   - Filter units WITH marketplace identifier (`hasMarketplaceIdentifier=true`)
+   - Filter units WITHOUT marketplace identifier (`hasMarketplaceIdentifier=false`)
+   - Verify correct units returned
+
+4. **onlyTokenizedUnits Query Parameter**:
+   - Filter tokenized units (`onlyTokenizedUnits=true`) - must have `marketplace='Tokenized on Chia'` AND `marketplaceIdentifier`
+   - Filter non-tokenized units (`onlyTokenizedUnits=false`)
+   - Verify regular marketplace listings are NOT included in tokenized results
+   - Verify units with `marketplaceIdentifier` but wrong `marketplace` are NOT included
+
+5. **Validation Tests**:
+   - Reject empty string for `marketplaceIdentifier` (must be null or valid)
+   - Accept null values for all marketplace fields
+   - Accept valid marketplace data
+
+6. **FTS Integration**:
+   - Search units by marketplace name
+   - Search units by marketplace identifier
+   - Verify marketplace fields included in FTS search
+
+7. **Edge Cases**:
+   - Unit with `marketplace` but no `marketplaceIdentifier`
+   - Unit with `marketplaceIdentifier` but no `marketplace`
+   - Unit with `marketplace='Tokenized on Chia'` but no `marketplaceIdentifier`
+   - Multiple units with same marketplace identifier
+
+**Checkpoint 31.10**: Run Unit marketplace tests
+
+```bash
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/unit-v2-marketplace.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all Unit marketplace tests pass**
+
+### 31.11 Create Project Marketplace Tests
+
+Create comprehensive tests for marketplace functionality in ProjectV2.
+
+**File**: `tests/v2/integration/project-v2-marketplace.spec.js` (new file)
+
+**Test Cases**:
+1. **onlyMarketplaceProjects Query Parameter**:
+   - Filter projects with marketplace units (`onlyMarketplaceProjects=true`)
+   - Verify projects without marketplace units are excluded
+   - Verify projects with tokenized units are included
+   - Verify projects with regular marketplace units are included
+   - Verify empty result when no projects have marketplace units
+
+2. **getTokenizedProjectIds Method**:
+   - Test method returns correct project IDs
+   - Test method returns empty array when no projects have marketplace units
+   - Test method handles projects with multiple marketplace units (no duplicates)
+   - Test method handles projects with tokenized units
+
+3. **Integration with Units**:
+   - Create project with units that have marketplace fields
+   - Verify project appears in `onlyMarketplaceProjects` results
+   - Update unit to add marketplace fields
+   - Verify project appears in results after update
+   - Update unit to remove marketplace fields
+   - Verify project disappears from results if no units have marketplace fields
+
+**Checkpoint 31.11**: Run Project marketplace tests
+
+```bash
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/project-v2-marketplace.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies all Project marketplace tests pass**
+
+### 31.12 Update Existing Unit Tests
+
+Update existing UnitV2 tests to account for marketplace fields.
+
+**File**: `tests/v2/integration/unit-v2.spec.js`
+
+**Changes**:
+1. Update test fixtures to optionally include marketplace fields
+2. Verify marketplace fields are preserved in update operations
+3. Ensure marketplace fields don't break existing functionality
+4. Add marketplace fields to test data where appropriate
+
+**Checkpoint 31.12**: Run existing Unit tests to ensure no regressions
+
+```bash
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/unit-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies existing Unit tests still pass**
+
+### 31.13 Update Existing Project Tests
+
+Update existing ProjectV2 tests to account for marketplace functionality.
+
+**File**: `tests/v2/integration/project-v2.spec.js`
+
+**Changes**:
+1. Add test cases for `onlyMarketplaceProjects` query parameter
+2. Verify `getTokenizedProjectIds()` method integration
+3. Ensure marketplace functionality doesn't break existing features
+
+**Checkpoint 31.13**: Run existing Project tests to ensure no regressions
+
+```bash
+npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/project-v2.spec.js --reporter spec --exit --timeout 300000
+```
+
+**STOP HERE - User verifies existing Project tests still pass**
+
+### 31.14 Update API Documentation
+
+Update V2 API documentation to include marketplace and tokenization features.
+
+**File**: `docs/cadt_rpc_api_v2.md`
+
+**Changes**:
+1. **Units Section**:
+   - Add `marketplace`, `marketplaceLink`, `marketplaceIdentifier` to field descriptions
+   - Add these fields to request/response examples
+   - Document `marketplaceIdentifiers` query parameter:
+     - Description: Filter units by specific marketplace identifiers
+     - Usage: `GET /v2/units?marketplaceIdentifiers=AKFEE3,XYZ123`
+     - Example response
+   - Document `hasMarketplaceIdentifier` query parameter:
+     - Description: Filter units based on whether they have a marketplace identifier
+     - Usage: `GET /v2/units?hasMarketplaceIdentifier=true` or `?hasMarketplaceIdentifier=false`
+     - Example response
+   - Document `onlyTokenizedUnits` query parameter:
+     - Description: Filter units that have been tokenized on Chia blockchain
+     - Usage: `GET /v2/units?onlyTokenizedUnits=true` or `?onlyTokenizedUnits=false`
+     - Key Logic: Tokenized units must have `marketplace='Tokenized on Chia'` AND `marketplaceIdentifier` set
+     - Example response
+   - Add example workflows:
+     - Listing a unit on a marketplace
+     - Tokenizing a unit on Chia
+     - Querying marketplace units
+
+2. **Projects Section**:
+   - Document `onlyMarketplaceProjects` query parameter:
+     - Description: Filter projects that have at least one unit listed on a marketplace
+     - Usage: `GET /v2/projects?onlyMarketplaceProjects=true`
+     - Key Logic: Uses `getTokenizedProjectIds()` to find projects with marketplace units
+     - Example response
+   - Add example workflow:
+     - Finding projects with tokenized units
+
+3. **Validation Rules**:
+   - Document marketplace field validation rules:
+     - All marketplace fields are optional
+     - `marketplaceIdentifier` cannot be empty string (must be null or valid identifier)
+     - No length restrictions
+
+4. **Use Cases Section** (if exists):
+   - Add marketplace integration use case
+   - Add tokenization use case
+   - Add marketplace tracking use case
+
+5. **Follow V1 Documentation Style**:
+   - Match formatting and structure of existing V1 documentation
+   - Include clear examples and explanations
+   - Document all query parameters with usage examples
+
+**Checkpoint 31.14**: Review documentation to ensure marketplace features are properly documented
+
+**STOP HERE - User verifies documentation is complete and accurate**
+
+### 31.15 Run Full Test Suite
+
+Run the complete V2 test suite to ensure all changes work correctly together and no regressions introduced.
+
+**Command**:
+```bash
+npm run test:v2
+```
+
+**Important**: After adding marketplace fields, verify:
+- All existing tests still pass
+- New marketplace tests pass
+- FTS tests still work with marketplace fields
+- No breaking changes to existing functionality
+
+**Checkpoint 31.15**: Verify all V2 tests pass (including new marketplace tests)
+
+**STOP HERE - User verifies full test suite passes**
+
+---
+
+## Summary of Phase 31 Implementation
+
+**Marketplace Features Added**:
+- ✅ Three marketplace fields added to Units table (`marketplace`, `marketplaceLink`, `marketplaceIdentifier`)
+- ✅ Query parameters for marketplace filtering (`marketplaceIdentifiers`, `hasMarketplaceIdentifier`, `onlyTokenizedUnits`)
+- ✅ Project-level marketplace filtering (`onlyMarketplaceProjects`)
+- ✅ `getTokenizedProjectIds()` method in ProjectV2 model
+- ✅ Marketplace fields included in FTS5 search
+- ✅ Comprehensive validation rules
+- ✅ Comprehensive test coverage
+- ✅ Complete API documentation
+
+**Key Features**:
+- Units can be listed on external carbon credit marketplaces
+- Units can be tokenized on Chia blockchain (`marketplace='Tokenized on Chia'`)
+- Filter units by marketplace identifiers
+- Filter units by tokenization status
+- Filter projects that have marketplace units
+- Full-text search includes marketplace fields
+
+**Expected Results**:
+- Users can create/update units with marketplace information
+- Users can query units by marketplace status and identifiers
+- Users can identify tokenized units (`marketplace='Tokenized on Chia'`)
+- Users can find projects with marketplace units
+- FTS search includes marketplace fields
+- All V2 tests pass with marketplace features integrated

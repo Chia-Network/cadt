@@ -25,39 +25,41 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
   this.timeout(30000);
 
   const chiaRoot = getChiaRoot();
-  const v1ConfigPath = path.resolve(`${chiaRoot}/cadt/v1/config.yaml`);
-  const v2ConfigPath = path.resolve(`${chiaRoot}/cadt/v2/config.yaml`);
-  let originalV1Config = null;
-  let originalV2Config = null;
+  const unifiedConfigPath = path.resolve(`${chiaRoot}/cadt/config.yaml`);
+  let originalUnifiedConfig = null;
 
   before(async function () {
-    // Backup original configs
-    if (fs.existsSync(v1ConfigPath)) {
-      originalV1Config = fs.readFileSync(v1ConfigPath, 'utf8');
-    }
-    if (fs.existsSync(v2ConfigPath)) {
-      originalV2Config = fs.readFileSync(v2ConfigPath, 'utf8');
+    // Backup original unified config
+    if (fs.existsSync(unifiedConfigPath)) {
+      originalUnifiedConfig = fs.readFileSync(unifiedConfigPath, 'utf8');
     }
   });
 
   after(async function () {
-    // Restore original configs
-    if (originalV1Config !== null) {
-      fs.writeFileSync(v1ConfigPath, originalV1Config, 'utf8');
-    } else if (fs.existsSync(v1ConfigPath)) {
-      fs.unlinkSync(v1ConfigPath);
-    }
-
-    if (originalV2Config !== null) {
-      fs.writeFileSync(v2ConfigPath, originalV2Config, 'utf8');
-    } else if (fs.existsSync(v2ConfigPath)) {
-      fs.unlinkSync(v2ConfigPath);
+    // Restore original unified config
+    if (originalUnifiedConfig !== null) {
+      fs.writeFileSync(unifiedConfigPath, originalUnifiedConfig, 'utf8');
+    } else if (fs.existsSync(unifiedConfigPath)) {
+      fs.unlinkSync(unifiedConfigPath);
     }
 
     // Clear memoized configs
     getConfig.cache?.clear?.();
     getConfigV2.cache?.clear?.();
+    getChiaRoot.cache?.clear?.();
   });
+
+  // Helper function to write unified config
+  const writeUnifiedConfig = (v1Enable, v2Enable) => {
+    const testConfig = { ...defaultConfig };
+    testConfig.V1.ENABLE = v1Enable;
+    testConfig.V2.ENABLE = v2Enable;
+    const configDir = path.dirname(unifiedConfigPath);
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+    fs.writeFileSync(unifiedConfigPath, yaml.dump(testConfig), 'utf8');
+  };
 
   beforeEach(async function () {
     // Clear memoized configs before each test
@@ -68,136 +70,158 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     if (getConfigV2.cache) {
       getConfigV2.cache.clear();
     }
+    if (getChiaRoot.cache) {
+      getChiaRoot.cache.clear();
+    }
   });
 
   describe('Config Loading', function () {
-    it('should load V1 config from v1/config.yaml', function () {
+    it('should load V1 config from unified config.yaml', function () {
       const config = getConfig();
       expect(config).to.exist;
       expect(config.APP).to.exist;
-      expect(config.APP.ENABLE).to.not.be.undefined;
+      expect(config.ENABLE).to.not.be.undefined;
     });
 
-    it('should load V2 config from v2/config.yaml', function () {
+    it('should load V2 config from unified config.yaml', function () {
       const config = getConfigV2();
       expect(config).to.exist;
       expect(config.APP).to.exist;
-      expect(config.APP.ENABLE).to.not.be.undefined;
+      expect(config.ENABLE).to.not.be.undefined;
     });
 
     it('should default ENABLE to true if not set in V1 config', function () {
-      // Create config without ENABLE - write a minimal config
+      // Create unified config without V1.ENABLE - write a minimal config
       const testConfig = {
         APP: {
           USE_SIMULATOR: false,
         },
+        V1: {
+          READ_ONLY: false,
+        },
+        V2: {
+          READ_ONLY: false,
+        },
       };
-      fs.writeFileSync(v1ConfigPath, yaml.dump(testConfig), 'utf8');
+      // Ensure directory exists
+      const configDir = path.dirname(unifiedConfigPath);
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+      fs.writeFileSync(unifiedConfigPath, yaml.dump(testConfig), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
       const config = getConfig();
       // mergeObjects merges defaultConfig into the loaded config, so ENABLE should be true
-      expect(config.APP.ENABLE).to.be.true;
+      expect(config.ENABLE).to.be.true;
     });
 
     it('should default ENABLE to true if not set in V2 config', function () {
-      // Create config without ENABLE - write a minimal config
+      // Create unified config without V2.ENABLE - write a minimal config
       const testConfig = {
         APP: {
           USE_SIMULATOR: false,
         },
+        V1: {
+          READ_ONLY: false,
+        },
+        V2: {
+          READ_ONLY: false,
+        },
       };
-      fs.writeFileSync(v2ConfigPath, yaml.dump(testConfig), 'utf8');
+      // Ensure directory exists
+      const configDir = path.dirname(unifiedConfigPath);
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+      fs.writeFileSync(unifiedConfigPath, yaml.dump(testConfig), 'utf8');
 
       if (getConfigV2.cache) getConfigV2.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
       const config = getConfigV2();
       // mergeObjects merges defaultConfig into the loaded config, so ENABLE should be true
-      expect(config.APP.ENABLE).to.be.true;
+      expect(config.ENABLE).to.be.true;
     });
 
     it('should respect ENABLE: false in V1 config', function () {
       const testConfig = { ...defaultConfig };
-      testConfig.APP.ENABLE = false;
-      fs.writeFileSync(v1ConfigPath, yaml.dump(testConfig), 'utf8');
+      testConfig.V1.ENABLE = false;
+      const configDir = path.dirname(unifiedConfigPath);
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+      fs.writeFileSync(unifiedConfigPath, yaml.dump(testConfig), 'utf8');
 
       if (getConfig.cache) getConfig.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
       const config = getConfig();
-      expect(config.APP.ENABLE).to.be.false;
+      expect(config.ENABLE).to.be.false;
     });
 
     it('should respect ENABLE: false in V2 config', function () {
       const testConfig = { ...defaultConfig };
-      testConfig.APP.ENABLE = false;
-      fs.writeFileSync(v2ConfigPath, yaml.dump(testConfig), 'utf8');
+      testConfig.V2.ENABLE = false;
+      const configDir = path.dirname(unifiedConfigPath);
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+      fs.writeFileSync(unifiedConfigPath, yaml.dump(testConfig), 'utf8');
 
       if (getConfigV2.cache) getConfigV2.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
       const config = getConfigV2();
-      expect(config.APP.ENABLE).to.be.false;
+      expect(config.ENABLE).to.be.false;
     });
   });
 
   describe('Database Initialization', function () {
     it('should read config correctly when both are enabled', async function () {
       // Set both to enabled
-      const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE = true;
-      fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
-
-      const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE = true;
-      fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
+      writeUnifiedConfig(true, true);
 
       if (getConfig.cache) getConfig.cache.clear();
       if (getConfigV2.cache) getConfigV2.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       // Verify configs are read correctly
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE).to.be.true;
-      expect(configV2.APP.ENABLE).to.be.true;
+      expect(configV1.ENABLE).to.be.true;
+      expect(configV2.ENABLE).to.be.true;
     });
 
     it('should read config correctly when V1 is disabled', async function () {
       // Set V1 to disabled, V2 to enabled
-      const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE = false;
-      fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
-
-      const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE = true;
-      fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
+      writeUnifiedConfig(false, true);
 
       if (getConfig.cache) getConfig.cache.clear();
       if (getConfigV2.cache) getConfigV2.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       // Verify configs are read correctly
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE).to.be.false;
-      expect(configV2.APP.ENABLE).to.be.true;
+      expect(configV1.ENABLE).to.be.false;
+      expect(configV2.ENABLE).to.be.true;
     });
 
     it('should read config correctly when V2 is disabled', async function () {
       // Set V1 to enabled, V2 to disabled
-      const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE = true;
-      fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
-
-      const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE = false;
-      fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
+      writeUnifiedConfig(true, false);
 
       if (getConfig.cache) getConfig.cache.clear();
       if (getConfigV2.cache) getConfigV2.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       // Verify configs are read correctly
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE).to.be.true;
-      expect(configV2.APP.ENABLE).to.be.false;
+      expect(configV1.ENABLE).to.be.true;
+      expect(configV2.ENABLE).to.be.false;
     });
   });
 
@@ -208,11 +232,10 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     });
 
     it('should register V1 tasks when ENABLE is true in V1 config', function () {
-      const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE = true;
-      fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
+      writeUnifiedConfig(true, true);
 
       if (getConfig.cache) getConfig.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       scheduler.start(true, false);
 
@@ -316,17 +339,16 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
 
   describe('API Endpoint Behavior', function () {
     it('should return 403 Forbidden when V1 is disabled', async function () {
-      // Set V1 to disabled in V1 config file
-      const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE = false;
-      fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
+      // Set V1 to disabled in unified config
+      writeUnifiedConfig(false, true);
 
       if (getConfig.cache) getConfig.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       // Need to reload app with new config - in real scenario this would require restart
       // For testing, we'll verify the config is read correctly
       const config = getConfig();
-      expect(config.APP.ENABLE).to.be.false;
+      expect(config.ENABLE).to.be.false;
 
       // Note: In a real scenario, the app would need to be restarted for route changes
       // This test verifies the config is read correctly
@@ -334,63 +356,55 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     });
 
     it('should return 403 Forbidden when V2 is disabled', async function () {
-      // Set V2 to disabled in V2 config file
-      const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE = false;
-      fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
+      // Set V2 to disabled in unified config
+      writeUnifiedConfig(true, false);
 
       if (getConfigV2.cache) getConfigV2.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       const config = getConfigV2();
-      expect(config.APP.ENABLE).to.be.false;
+      expect(config.ENABLE).to.be.false;
 
       // The actual HTTP response would be 403 Forbidden with an error message
     });
 
     it('should allow V1 endpoints when V1 is enabled', async function () {
-      // Set V1 to enabled in V1 config file
-      const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE = true;
-      fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
+      // Set V1 to enabled in unified config
+      writeUnifiedConfig(true, true);
 
       if (getConfig.cache) getConfig.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       const config = getConfig();
-      expect(config.APP.ENABLE).to.be.true;
+      expect(config.ENABLE).to.be.true;
     });
 
     it('should allow V2 endpoints when V2 is enabled', async function () {
-      // Set V2 to enabled in V2 config file
-      const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE = true;
-      fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
+      // Set V2 to enabled in unified config
+      writeUnifiedConfig(true, true);
 
       if (getConfigV2.cache) getConfigV2.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       const config = getConfigV2();
-      expect(config.APP.ENABLE).to.be.true;
+      expect(config.ENABLE).to.be.true;
     });
   });
 
   describe('Integration: Full System Behavior', function () {
     it('should work correctly with V1 disabled and V2 enabled', async function () {
-      // Set V1 to disabled in V1 config, V2 to enabled in V2 config
-      const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE = false;
-      fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
-
-      const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE = true;
-      fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
+      // Set V1 to disabled, V2 to enabled in unified config
+      writeUnifiedConfig(false, true);
 
       if (getConfig.cache) getConfig.cache.clear();
       if (getConfigV2.cache) getConfigV2.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE).to.be.false;
-      expect(configV2.APP.ENABLE).to.be.true;
+      expect(configV1.ENABLE).to.be.false;
+      expect(configV2.ENABLE).to.be.true;
 
       // Scheduler should only register V2 tasks
       scheduler.stopAll();
@@ -401,23 +415,18 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     });
 
     it('should work correctly with V1 enabled and V2 disabled', async function () {
-      // Set V1 to enabled in V1 config, V2 to disabled in V2 config
-      const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE = true;
-      fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
-
-      const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE = false;
-      fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
+      // Set V1 to enabled, V2 to disabled in unified config
+      writeUnifiedConfig(true, false);
 
       if (getConfig.cache) getConfig.cache.clear();
       if (getConfigV2.cache) getConfigV2.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE).to.be.true;
-      expect(configV2.APP.ENABLE).to.be.false;
+      expect(configV1.ENABLE).to.be.true;
+      expect(configV2.ENABLE).to.be.false;
 
       // Scheduler should only register V1 tasks
       scheduler.stopAll();
@@ -428,23 +437,18 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     });
 
     it('should work correctly with both disabled', async function () {
-      // Set both to disabled in their respective config files
-      const v1Config = { ...defaultConfig };
-      v1Config.APP.ENABLE = false;
-      fs.writeFileSync(v1ConfigPath, yaml.dump(v1Config), 'utf8');
-
-      const v2Config = { ...defaultConfig };
-      v2Config.APP.ENABLE = false;
-      fs.writeFileSync(v2ConfigPath, yaml.dump(v2Config), 'utf8');
+      // Set both to disabled in unified config
+      writeUnifiedConfig(false, false);
 
       if (getConfig.cache) getConfig.cache.clear();
       if (getConfigV2.cache) getConfigV2.cache.clear();
+      if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
       const configV1 = getConfig();
       const configV2 = getConfigV2();
 
-      expect(configV1.APP.ENABLE).to.be.false;
-      expect(configV2.APP.ENABLE).to.be.false;
+      expect(configV1.ENABLE).to.be.false;
+      expect(configV2.ENABLE).to.be.false;
 
       // Scheduler should register no tasks
       scheduler.stopAll();

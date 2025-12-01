@@ -893,6 +893,9 @@ class UnitV2 extends Model {
           unit_metric,
           unit_current_owner,
           unit_itmos_reference_id,
+          marketplace,
+          marketplace_link,
+          marketplace_identifier,
           cad_trust_issuance_id
         FROM unit
       `);
@@ -999,6 +1002,24 @@ UnitV2.init(
       type: Sequelize.STRING,
       allowNull: true,
       field: 'unit_itmos_reference_id',
+    },
+    marketplace: {
+      type: Sequelize.STRING(255),
+      allowNull: true,
+      field: 'marketplace',
+      comment: 'Name of the marketplace where the unit is listed'
+    },
+    marketplaceLink: {
+      type: Sequelize.STRING(255),
+      allowNull: true,
+      field: 'marketplace_link',
+      comment: 'URL link to the unit listing on the marketplace'
+    },
+    marketplaceIdentifier: {
+      type: Sequelize.STRING(255),
+      allowNull: true,
+      field: 'marketplace_identifier',
+      comment: 'Unique identifier for the unit on the marketplace'
     },
     cadTrustIssuanceId: {
       type: Sequelize.STRING(36),

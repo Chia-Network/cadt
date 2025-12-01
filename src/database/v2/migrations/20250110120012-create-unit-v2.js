@@ -81,6 +81,21 @@ export default {
         type: Sequelize.STRING,
         allowNull: true,
       },
+      marketplace: {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+        comment: 'Name of the marketplace where the unit is listed'
+      },
+      marketplace_link: {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+        comment: 'URL link to the unit listing on the marketplace'
+      },
+      marketplace_identifier: {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+        comment: 'Unique identifier for the unit on the marketplace'
+      },
       cad_trust_issuance_id: {
         type: Sequelize.STRING(36),
         allowNull: false,

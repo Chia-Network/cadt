@@ -3,7 +3,7 @@
 import _ from 'lodash';
 
 import { StagingV2, OrganizationsV2, MetaV2 } from '../models/v2/index.js';
-import { getConfig } from './config-loader.js';
+import { getConfig, getConfigV2 } from './config-loader.js';
 
 /**
  * V2-specific assertion that the system is not in read-only mode
@@ -11,7 +11,10 @@ import { getConfig } from './config-loader.js';
  * @throws {Error} If system is in read-only mode
  */
 export const assertV2IfReadOnlyMode = async () => {
-  const { READ_ONLY } = getConfig().APP;
+  // Get V2 config - READ_ONLY is in V2 section of unified config file
+  // After merge in config-loader, READ_ONLY is at top level of returned config object
+  const config = getConfigV2();
+  const READ_ONLY = config.READ_ONLY;
   if (READ_ONLY) {
     throw new Error('You can not use this API in read-only mode');
   }
@@ -309,7 +312,10 @@ export const assertV2OrgIsHomeOrg = async (orgUid) => {
  * @throws {Error} If IS_GOVERNANCE_BODY is not set
  */
 export const assertCanBeGovernanceBodyV2 = async () => {
-  const { IS_GOVERNANCE_BODY } = getConfig().APP;
+  // Get V2 config - IS_GOVERNANCE_BODY is in V2 section of unified config file
+  // After merge in config-loader, IS_GOVERNANCE_BODY is at top level of returned config object
+  const config = getConfigV2();
+  const IS_GOVERNANCE_BODY = config.IS_GOVERNANCE_BODY;
   if (!IS_GOVERNANCE_BODY) {
     throw new Error(
       'You are not an governance body and can not use this functionality',

@@ -8,6 +8,7 @@ import {
   resetV2DataTables,
   createV2TestHomeOrg,
   waitForV2DataLayerSync,
+  addUuidIfNeeded,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Program API - Basic CRUD Tests', function () {

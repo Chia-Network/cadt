@@ -1,7 +1,6 @@
 #!/bin/bash
 
-V1_CONFIG_PATH="/root/.chia/mainnet/cadt/v1/config.yaml"
-V2_CONFIG_PATH="/root/.chia/mainnet/cadt/v2/config.yaml"
+UNIFIED_CONFIG_PATH="/root/.chia/mainnet/cadt/config.yaml"
 
 # Function to update yaml value if environment variable exists
 update_yaml_if_env_exists() {
@@ -58,65 +57,90 @@ EOF
 }
 
 # Create config directories if they don't exist
+# V1 and V2 directories still needed for databases
 mkdir -p /root/.chia/mainnet/cadt/v1
 mkdir -p /root/.chia/mainnet/cadt/v2
+# Unified config directory
+mkdir -p /root/.chia/mainnet/cadt
 
-# Create config files if they don't exist
-create_config_if_not_exists "$V1_CONFIG_PATH"
-create_config_if_not_exists "$V2_CONFIG_PATH"
+# Create unified config file if it doesn't exist
+create_config_if_not_exists "$UNIFIED_CONFIG_PATH"
 
-# Function to update both config files with environment variables
-update_both_configs() {
+# Function to update unified config with environment variables for APP section
+update_app_config() {
     local env_var=$1
     local yaml_path=$2
 
-    update_yaml_if_env_exists "$env_var" "$yaml_path" "$V1_CONFIG_PATH"
-    update_yaml_if_env_exists "$env_var" "$yaml_path" "$V2_CONFIG_PATH"
+    update_yaml_if_env_exists "$env_var" ".APP$yaml_path" "$UNIFIED_CONFIG_PATH"
 }
 
-# MIRROR_DB section
-update_both_configs "DB_USERNAME" '.MIRROR_DB.DB_USERNAME'
-update_both_configs "DB_PASSWORD" '.MIRROR_DB.DB_PASSWORD'
-update_both_configs "DB_NAME" '.MIRROR_DB.DB_NAME'
-update_both_configs "DB_HOST" '.MIRROR_DB.DB_HOST'
+# Function to update unified config with environment variables for V1 section
+update_v1_config() {
+    local env_var=$1
+    local yaml_path=$2
 
-# APP section
-update_both_configs "CW_PORT" '.APP.CW_PORT'
-update_both_configs "BIND_ADDRESS" '.APP.BIND_ADDRESS'
-update_both_configs "DATALAYER_URL" '.APP.DATALAYER_URL'
-update_both_configs "WALLET_URL" '.APP.WALLET_URL'
-update_both_configs "USE_SIMULATOR" '.APP.USE_SIMULATOR'
-update_both_configs "READ_ONLY" '.APP.READ_ONLY'
-update_both_configs "CADT_API_KEY" '.APP.CADT_API_KEY'
-update_both_configs "CHIA_NETWORK" '.APP.CHIA_NETWORK'
-update_both_configs "USE_DEVELOPMENT_MODE" '.APP.USE_DEVELOPMENT_MODE'
-update_both_configs "IS_GOVERNANCE_BODY" '.APP.IS_GOVERNANCE_BODY'
-update_both_configs "DEFAULT_FEE" '.APP.DEFAULT_FEE'
-update_both_configs "DEFAULT_COIN_AMOUNT" '.APP.DEFAULT_COIN_AMOUNT'
-update_both_configs "CERTIFICATE_FOLDER_PATH" '.APP.CERTIFICATE_FOLDER_PATH'
-update_both_configs "DATALAYER_FILE_SERVER_URL" '.APP.DATALAYER_FILE_SERVER_URL'
-update_both_configs "AUTO_SUBSCRIBE_FILESTORE" '.APP.AUTO_SUBSCRIBE_FILESTORE'
-update_both_configs "AUTO_MIRROR_EXTERNAL_STORES" '.APP.AUTO_MIRROR_EXTERNAL_STORES'
-update_both_configs "LOG_LEVEL" '.APP.LOG_LEVEL'
+    update_yaml_if_env_exists "$env_var" ".V1$yaml_path" "$UNIFIED_CONFIG_PATH"
+}
 
-# APP.TASKS section
-update_both_configs "GOVERNANCE_SYNC_TASK_INTERVAL" '.APP.TASKS.GOVERNANCE_SYNC_TASK_INTERVAL'
-update_both_configs "ORGANIZATION_META_SYNC_TASK_INTERVAL" '.APP.TASKS.ORGANIZATION_META_SYNC_TASK_INTERVAL'
-update_both_configs "PICKLIST_SYNC_TASK_INTERVAL" '.APP.TASKS.PICKLIST_SYNC_TASK_INTERVAL'
-update_both_configs "MIRROR_CHECK_TASK_INTERVAL" '.APP.TASKS.MIRROR_CHECK_TASK_INTERVAL'
-update_both_configs "CHECK_ORG_TABLE_SUBSCRIPTIONS_TASK_INTERVAL" '.APP.TASKS.CHECK_ORG_TABLE_SUBSCRIPTIONS_TASK_INTERVAL'
+# Function to update unified config with environment variables for V2 section
+update_v2_config() {
+    local env_var=$1
+    local yaml_path=$2
 
-# GOVERNANCE section
-update_both_configs "GOVERNANCE_BODY_ID" '.GOVERNANCE.GOVERNANCE_BODY_ID'
+    update_yaml_if_env_exists "$env_var" ".V2$yaml_path" "$UNIFIED_CONFIG_PATH"
+}
+
+# Function to update both V1 and V2 sections with same environment variable
+update_both_versions() {
+    local env_var=$1
+    local yaml_path=$2
+
+    update_v1_config "$env_var" "$yaml_path"
+    update_v2_config "$env_var" "$yaml_path"
+}
+
+# MIRROR_DB section (V1 and V2 specific)
+update_both_versions "DB_USERNAME" '.MIRROR_DB.DB_USERNAME'
+update_both_versions "DB_PASSWORD" '.MIRROR_DB.DB_PASSWORD'
+update_both_versions "DB_NAME" '.MIRROR_DB.DB_NAME'
+update_both_versions "DB_HOST" '.MIRROR_DB.DB_HOST'
+
+# APP section (shared)
+update_app_config "CW_PORT" '.CW_PORT'
+update_app_config "BIND_ADDRESS" '.BIND_ADDRESS'
+update_app_config "DATALAYER_URL" '.DATALAYER_URL'
+update_app_config "WALLET_URL" '.WALLET_URL'
+update_app_config "USE_SIMULATOR" '.USE_SIMULATOR'
+update_app_config "CHIA_NETWORK" '.CHIA_NETWORK'
+update_app_config "USE_DEVELOPMENT_MODE" '.USE_DEVELOPMENT_MODE'
+update_app_config "DEFAULT_FEE" '.DEFAULT_FEE'
+update_app_config "DEFAULT_COIN_AMOUNT" '.DEFAULT_COIN_AMOUNT'
+update_app_config "CERTIFICATE_FOLDER_PATH" '.CERTIFICATE_FOLDER_PATH'
+update_app_config "DATALAYER_FILE_SERVER_URL" '.DATALAYER_FILE_SERVER_URL'
+update_app_config "AUTO_SUBSCRIBE_FILESTORE" '.AUTO_SUBSCRIBE_FILESTORE'
+update_app_config "AUTO_MIRROR_EXTERNAL_STORES" '.AUTO_MIRROR_EXTERNAL_STORES'
+update_app_config "LOG_LEVEL" '.LOG_LEVEL'
+
+# APP.TASKS section (shared)
+update_app_config "GOVERNANCE_SYNC_TASK_INTERVAL" '.TASKS.GOVERNANCE_SYNC_TASK_INTERVAL'
+update_app_config "ORGANIZATION_META_SYNC_TASK_INTERVAL" '.TASKS.ORGANIZATION_META_SYNC_TASK_INTERVAL'
+update_app_config "PICKLIST_SYNC_TASK_INTERVAL" '.TASKS.PICKLIST_SYNC_TASK_INTERVAL'
+update_app_config "MIRROR_CHECK_TASK_INTERVAL" '.TASKS.MIRROR_CHECK_TASK_INTERVAL'
+update_app_config "CHECK_ORG_TABLE_SUBSCRIPTIONS_TASK_INTERVAL" '.TASKS.CHECK_ORG_TABLE_SUBSCRIPTIONS_TASK_INTERVAL'
+
+# V1 and V2 specific sections
+update_both_versions "READ_ONLY" '.READ_ONLY'
+update_both_versions "CADT_API_KEY" '.CADT_API_KEY'
+update_both_versions "IS_GOVERNANCE_BODY" '.IS_GOVERNANCE_BODY'
+
+# GOVERNANCE section (V1 and V2 specific)
+update_both_versions "GOVERNANCE_BODY_ID" '.GOVERNANCE.GOVERNANCE_BODY_ID'
 
 # Print config file contents if DOCKER_DEBUG is true
 if [ "${DOCKER_DEBUG}" = "true" ]; then
-    echo "=== CADT V1 Config File Contents ==="
-    cat "$V1_CONFIG_PATH"
-    echo "===================================="
-    echo "=== CADT V2 Config File Contents ==="
-    cat "$V2_CONFIG_PATH"
-    echo "===================================="
+    echo "=== CADT Unified Config File Contents ==="
+    cat "$UNIFIED_CONFIG_PATH"
+    echo "=========================================="
 fi
 
 # Execute the command passed to docker run

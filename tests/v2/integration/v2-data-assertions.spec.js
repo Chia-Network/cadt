@@ -256,15 +256,20 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
 
   describe('governance assertions', function () {
     describe('assertCanBeGovernanceBodyV2', function () {
-      it('should throw error when IS_GOVERNANCE_BODY is false in config (default)', async function () {
-        // Default config has IS_GOVERNANCE_BODY: false
+      it('should throw error when IS_GOVERNANCE_BODY is false in config', async function () {
+        // Override config to set IS_GOVERNANCE_BODY to false
         // This test verifies the assertion correctly throws when config is false
-        try {
-          await assertCanBeGovernanceBodyV2();
-          expect.fail('Should have thrown an error when IS_GOVERNANCE_BODY is false');
-        } catch (error) {
-          expect(error.message).to.include('You are not an governance body');
-        }
+        await withConfigOverride(
+          async () => {
+            try {
+              await assertCanBeGovernanceBodyV2();
+              expect.fail('Should have thrown an error when IS_GOVERNANCE_BODY is false');
+            } catch (error) {
+              expect(error.message).to.include('You are not an governance body');
+            }
+          },
+          { V1: { IS_GOVERNANCE_BODY: false } }
+        );
       });
 
       it('should pass when IS_GOVERNANCE_BODY is true in config', async function () {
