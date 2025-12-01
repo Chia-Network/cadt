@@ -18,8 +18,7 @@ import { Organization } from './models';
 import { OrganizationsV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
 
-const { CADT_API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =
-  getConfig().APP;
+const { USE_SIMULATOR } = getConfig().APP;
 
 const headerKeys = Object.freeze({
   API_VERSION_HEADER_KEY: 'x-api-version',
@@ -92,8 +91,26 @@ app.use(function (req, res, next) {
   next();
 });
 
-// Add optional API key if set in .env file
+// Add optional API key if set in config
+// Route-aware: Use V2 config for V2 routes, V1 config for V1 routes
 app.use(function (req, res, next) {
+  const isV2Route = req.path.startsWith('/v2/');
+  const isV1Route = req.path.startsWith('/v1/');
+
+  let CADT_API_KEY = null;
+  if (isV2Route) {
+    const configV2 = getConfigV2();
+    CADT_API_KEY = configV2.CADT_API_KEY;
+  } else if (isV1Route) {
+    const configV1 = getConfig();
+    CADT_API_KEY = configV1.CADT_API_KEY;
+  } else {
+    // For other routes, check both versions
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    CADT_API_KEY = configV2.CADT_API_KEY || configV1.CADT_API_KEY;
+  }
+
   if (CADT_API_KEY && CADT_API_KEY !== '') {
     const apikey = req.header('x-api-key');
     if (CADT_API_KEY === apikey) {
@@ -107,6 +124,23 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
+  const isV2Route = req.path.startsWith('/v2/');
+  const isV1Route = req.path.startsWith('/v1/');
+
+  let READ_ONLY = false;
+  if (isV2Route) {
+    const configV2 = getConfigV2();
+    READ_ONLY = configV2.READ_ONLY || false;
+  } else if (isV1Route) {
+    const configV1 = getConfig();
+    READ_ONLY = configV1.READ_ONLY || false;
+  } else {
+    // For other routes, check both versions
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    READ_ONLY = configV2.READ_ONLY || configV1.READ_ONLY || false;
+  }
+
   if (READ_ONLY) {
     res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, READ_ONLY);
   } else {
@@ -117,6 +151,23 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
+  const isV2Route = req.path.startsWith('/v2/');
+  const isV1Route = req.path.startsWith('/v1/');
+
+  let IS_GOVERNANCE_BODY = false;
+  if (isV2Route) {
+    const configV2 = getConfigV2();
+    IS_GOVERNANCE_BODY = configV2.IS_GOVERNANCE_BODY || false;
+  } else if (isV1Route) {
+    const configV1 = getConfig();
+    IS_GOVERNANCE_BODY = configV1.IS_GOVERNANCE_BODY || false;
+  } else {
+    // For other routes, check both versions
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    IS_GOVERNANCE_BODY = configV2.IS_GOVERNANCE_BODY || configV1.IS_GOVERNANCE_BODY || false;
+  }
+
   res.setHeader(headerKeys.GOVERNANCE_BODY_HEADER_KEY, IS_GOVERNANCE_BODY);
   next();
 });

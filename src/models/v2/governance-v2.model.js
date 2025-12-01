@@ -6,7 +6,7 @@ import { sequelizeV2 } from '../../database/v2/index.js';
 import { MetaV2 } from '../v2/index.js';
 import { Meta } from '../../models/index.js';
 import datalayer from '../../datalayer/index.js';
-import { getConfig } from '../../utils/config-loader.js';
+import { getConfig, getConfigV2 } from '../../utils/config-loader.js';
 import { logger } from '../../config/logger.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
 import PickListStub from '../governance/governance-v2.stub.js';
@@ -193,13 +193,13 @@ class GovernanceV2 extends Model {
    * @throws {Error} If already listening to another governance body or if V1 governance exists
    */
   static async createGoveranceBody() {
-    const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
+    const { GOVERNANCE_BODY_ID } = getConfigV2().GOVERNANCE;
     const { USE_SIMULATOR } = getConfig().APP;
 
     // Check if already listening to another governance body
     if (GOVERNANCE_BODY_ID && GOVERNANCE_BODY_ID !== '') {
       throw new Error(
-        'You are already listening to another governance body. Please clear GOVERNANCE_BODY_ID from your env and try again',
+        'You are already listening to another governance body. Please clear GOVERNANCE_BODY_ID from your V2 config and try again',
       );
     }
 
@@ -357,7 +357,7 @@ class GovernanceV2 extends Model {
     try {
       logger.debug('[v2]: running V2 governance model sync()');
 
-      const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
+      const { GOVERNANCE_BODY_ID } = getConfigV2().GOVERNANCE;
       const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
 
       if (!GOVERNANCE_BODY_ID) {
