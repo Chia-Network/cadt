@@ -2,9 +2,10 @@ import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
-import { getConfig } from '../utils/config-loader';
+import { getConfig, getConfigV2 } from '../utils/config-loader';
 import wallet from './wallet';
 import { Organization } from '../models';
+import { OrganizationsV2 } from '../models/v2/index.js';
 import { logger } from '../config/logger.js';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { getMirrorUrl } from '../utils/datalayer-utils';
@@ -12,6 +13,46 @@ import { getMirrorUrl } from '../utils/datalayer-utils';
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const CONFIG = getConfig().APP;
+
+/**
+ * Get home organization from the appropriate version (V2 if enabled, otherwise V1)
+ * Prioritizes V2 when enabled, falls back to V1 only if V1 is also enabled
+ * @returns {Promise<Object|null>} Home organization record or null if not found
+ */
+const getHomeOrg = async () => {
+  const configV1 = getConfig();
+  const configV2 = getConfigV2();
+  const enableV1 = configV1?.ENABLE !== false;
+  const enableV2 = configV2?.ENABLE !== false;
+
+  // Try V2 first if enabled
+  if (enableV2) {
+    try {
+      const v2HomeOrg = await OrganizationsV2.getHomeOrg();
+      if (v2HomeOrg) {
+        return v2HomeOrg;
+      }
+    } catch (error) {
+      // V2 org doesn't exist or error - fall through to V1 if enabled
+      logger.debug('[persistance]: V2 home org not found, trying V1');
+    }
+  }
+
+  // Fallback to V1 only if V1 is enabled
+  if (enableV1) {
+    try {
+      return await Organization.getHomeOrg();
+    } catch (error) {
+      // V1 org doesn't exist
+      logger.debug('[persistance]: No home org found in V1');
+      return null;
+    }
+  }
+
+  // Neither V1 nor V2 is enabled or orgs don't exist
+  logger.debug('[persistance]: No home org found - V1 and V2 both disabled or no orgs exist');
+  return null;
+};
 
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
@@ -192,7 +233,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
   await wallet.waitForAllTransactionsToConfirm();
   logger.silly('[MIRROR_DEBUG] Wallet transactions confirmed');
 
-  const homeOrg = await Organization.getHomeOrg();
+  const homeOrg = await getHomeOrg();
   logger.debug(
     `[MIRROR_DEBUG] Home org retrieved: ${homeOrg ? 'found' : 'not found'}`,
   );

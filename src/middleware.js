@@ -15,6 +15,7 @@ import {
 import packageJson from '../package.json' assert { type: 'json' };
 import datalayer from './datalayer';
 import { Organization } from './models';
+import { OrganizationsV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
 
 const { CADT_API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =
@@ -136,8 +137,62 @@ app.use(async function (req, res, next) {
     const { waitForMigrations } = await import('./routes/index.js');
     await waitForMigrations();
 
-    // If the home organization is syncing, then we treat all requests as read-only
-    const homeOrg = await Organization.getHomeOrg();
+    // Determine which version to use based on request path
+    const isV2Route = req.path.startsWith('/v2/');
+    const isV1Route = req.path.startsWith('/v1/');
+
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    const enableV1 = configV1?.ENABLE !== false;
+    const enableV2 = configV2?.ENABLE !== false;
+
+    let homeOrg = null;
+
+    // For V2 routes, only use V2 models
+    if (isV2Route && enableV2) {
+      try {
+        homeOrg = await OrganizationsV2.getHomeOrg();
+      } catch (error) {
+        // V2 organization may not exist yet, which is OK
+        logger.debug('No home organization found in V2');
+      }
+    }
+    // For V1 routes, only use V1 models
+    else if (isV1Route && enableV1) {
+      try {
+        homeOrg = await Organization.getHomeOrg();
+      } catch (error) {
+        // V1 organization may not exist yet, which is OK
+        logger.debug('No home organization found in V1');
+      }
+    }
+    // For other routes (like /health), check enabled versions
+    else if (!isV2Route && !isV1Route) {
+      // Try V2 first if enabled
+      if (enableV2) {
+        try {
+          homeOrg = await OrganizationsV2.getHomeOrg();
+        } catch (error) {
+          // If V2 fails and V1 is enabled, try V1
+          if (enableV1) {
+            try {
+              homeOrg = await Organization.getHomeOrg();
+            } catch (v1Error) {
+              // Both failed - organization may not exist yet, which is OK
+              logger.debug('No home organization found in V1 or V2');
+            }
+          }
+        }
+      } else if (enableV1) {
+        // Only V1 is enabled
+        try {
+          homeOrg = await Organization.getHomeOrg();
+        } catch (error) {
+          // Organization may not exist yet, which is OK
+          logger.debug('No home organization found in V1');
+        }
+      }
+    }
 
     if (homeOrg) {
       if (!['GET', 'DELETE'].includes(req.method) && !homeOrg.synced) {
@@ -163,13 +218,73 @@ app.use(async function (req, res, next) {
   const { waitForMigrations } = await import('./routes/index.js');
   await waitForMigrations();
 
-  const orgMap = await Organization.getOrgsMap();
+  // Determine which version to use based on request path
+  const isV2Route = req.path.startsWith('/v2/');
+  const isV1Route = req.path.startsWith('/v1/');
+
+  const configV1 = getConfig();
+  const configV2 = getConfigV2();
+  const enableV1 = configV1?.ENABLE !== false;
+  const enableV2 = configV2?.ENABLE !== false;
+
+  let orgMap = {};
+
+  // For V2 routes, only use V2 models
+  if (isV2Route && enableV2) {
+    try {
+      orgMap = await OrganizationsV2.getOrgsMap();
+    } catch (error) {
+      // V2 organizations may not exist yet, which is OK
+      logger.debug('No organizations found in V2');
+      orgMap = {};
+    }
+  }
+  // For V1 routes, only use V1 models
+  else if (isV1Route && enableV1) {
+    try {
+      orgMap = await Organization.getOrgsMap();
+    } catch (error) {
+      // V1 organizations may not exist yet, which is OK
+      logger.debug('No organizations found in V1');
+      orgMap = {};
+    }
+  }
+  // For other routes (like /health), check enabled versions
+  else if (!isV2Route && !isV1Route) {
+    // Try V2 first if enabled
+    if (enableV2) {
+      try {
+        orgMap = await OrganizationsV2.getOrgsMap();
+      } catch (error) {
+        // If V2 fails and V1 is enabled, try V1
+        if (enableV1) {
+          try {
+            orgMap = await Organization.getOrgsMap();
+          } catch (v1Error) {
+            // Both failed - organizations may not exist yet, which is OK
+            logger.debug('No organizations found in V1 or V2');
+            orgMap = {};
+          }
+        }
+      }
+    } else if (enableV1) {
+      // Only V1 is enabled
+      try {
+        orgMap = await Organization.getOrgsMap();
+      } catch (error) {
+        // Organizations may not exist yet, which is OK
+        logger.debug('No organizations found in V1');
+        orgMap = {};
+      }
+    }
+  }
+
   const notSynced = Object.keys(orgMap).find((key) => !orgMap[key].synced);
 
   res.setHeader(headerKeys.ALL_DATA_SYNCED, !notSynced);
 
   const syncRemaining = Object.keys(orgMap).reduce((agg, key) => {
-    return agg + orgMap[key].sync_remaining;
+    return agg + (orgMap[key].sync_remaining || 0);
   }, 0);
 
   res.setHeader(headerKeys.SYNC_REMAINING, syncRemaining);
