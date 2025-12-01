@@ -204,14 +204,25 @@ class GovernanceV2 extends Model {
     }
 
     // Check if this node is already a V1 governance body
-    const existingV1Governance = await Meta.findOne({
-      where: { metaKey: 'mainGoveranceBodyId' },
-    });
+    // Try to query V1 Meta table - if it doesn't exist, proceed with new V2 governance body
+    try {
+      const existingV1Governance = await Meta.findOne({
+        where: { metaKey: 'mainGoveranceBodyId' },
+      });
 
-    if (existingV1Governance) {
-      // Node is already a V1 governance body - add V2 support instead
-      logger.info('[v2]: Existing V1 governance body detected, adding V2 support...');
-      return await GovernanceV2.addV2ToExistingGovernanceBody();
+      if (existingV1Governance) {
+        // Node is already a V1 governance body - add V2 support instead
+        logger.info('[v2]: Existing V1 governance body detected, adding V2 support...');
+        return await GovernanceV2.addV2ToExistingGovernanceBody();
+      }
+    } catch (error) {
+      // V1 Meta table doesn't exist - this is OK, proceed with creating new V2 governance body
+      if (error.message && error.message.includes('no such table')) {
+        logger.debug('[v2]: V1 Meta table does not exist, proceeding with new V2 governance body creation');
+      } else {
+        // Re-throw if it's a different error
+        throw error;
+      }
     }
 
     // Create new governance body from scratch
