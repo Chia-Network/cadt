@@ -1,6 +1,6 @@
 import { Sequelize, QueryTypes } from 'sequelize';
 import config from '../../config/config.js';
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/loggerV2.js';
 import mysql from 'mysql2/promise';
 import { getConfig } from '../../utils/config-loader';
 
@@ -45,14 +45,14 @@ export const safeMirrorDbHandlerV2 = (callback) => {
           try {
             await callback();
           } catch (e) {
-            logger.error(`v2_mirror_error:${e.message}`);
+            loggerV2.error(`v2_mirror_error:${e.message}`);
           }
         })
         .catch(() => {
-          logger.info('V2 Mirror DB not connected');
+          loggerV2.info('V2 Mirror DB not connected');
         });
     } catch (error) {
-      logger.error(
+      loggerV2.error(
         'V2 MirrorDB tried to update before it was initialize, will try again later',
         error,
       );
@@ -68,11 +68,11 @@ export const seedV2Db = async (db) => {
 
     for (let i = 0; i < seeders.length; i++) {
       const seeder = seeders[i];
-      logger.info(`SEEDING V2: ${seeder.name}`, seeder);
+      loggerV2.info(`SEEDING V2: ${seeder.name}`, seeder);
       await seeder.seed.up(queryInterface, Sequelize);
     }
   } catch (error) {
-    logger.error('Error seeding V2 data', error);
+    loggerV2.error('Error seeding V2 data', error);
   }
 };
 
@@ -108,7 +108,7 @@ export const checkForV2Migrations = async (db) => {
           { type: Sequelize.QueryTypes.SELECT },
         );
         if (triggerCheck.length !== 6) {
-          logger.warn(`FTS triggers missing (found ${triggerCheck.length}, expected 6), re-running migration`);
+          loggerV2.warn(`FTS triggers missing (found ${triggerCheck.length}, expected 6), re-running migration`);
           // Remove from completed migrations so it runs again
           await db.query('DELETE FROM `SequelizeMetaV2` WHERE name = :name', {
             replacements: { name: ftsTriggersMigration.name },
@@ -123,18 +123,18 @@ export const checkForV2Migrations = async (db) => {
     for (let i = 0; i < notCompletedMigrations.length; i++) {
       try {
         const notCompleted = notCompletedMigrations[i];
-        logger.info(`V2 MIGRATING: ${notCompleted.name}`);
+        loggerV2.info(`V2 MIGRATING: ${notCompleted.name}`);
         await notCompleted.migration.up(db.queryInterface, Sequelize);
         await db.query('INSERT INTO `SequelizeMetaV2` (name) VALUES(:name)', {
           type: Sequelize.QueryTypes.INSERT,
           replacements: { name: notCompleted.name },
         });
       } catch (e) {
-        logger.error('V2 Migration not completed', e);
+        loggerV2.error('V2 Migration not completed', e);
       }
     }
   } catch (error) {
-    logger.error('Error checking for V2 migrations', error);
+    loggerV2.error('Error checking for V2 migrations', error);
   }
 };
 

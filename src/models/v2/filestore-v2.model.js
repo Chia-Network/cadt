@@ -11,7 +11,7 @@ import OrganizationsV2 from './organizations-v2.model.js';
 
 import datalayer from '../../datalayer';
 import { encodeHex } from '../../utils/datalayer-utils.js';
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 import { getConfig } from '../../utils/config-loader.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
@@ -204,7 +204,7 @@ class FilestoreV2 extends Model {
           );
         })
         .catch((error) => {
-          logger.warn('[v2]: Failed to sync file store data', { error: error.message });
+          loggerV2.warn('[v2]: Failed to sync file store data', { error: error.message });
         });
     }
 
@@ -321,7 +321,7 @@ class FilestoreV2 extends Model {
       data: fileContent,
       org_uid: myOrganization.org_uid,
     }).catch((error) => {
-      logger.warn('[v2]: Failed to cache file', { error: error.message });
+      loggerV2.warn('[v2]: Failed to cache file', { error: error.message });
     });
 
     return fileContent;

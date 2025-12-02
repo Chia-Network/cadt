@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
 const Op = Sequelize.Op;
 
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/loggerV2.js';
 import {
   StagingV2,
   OrganizationsV2,
@@ -279,7 +279,7 @@ class OfferV2 {
 
       return _.omit(offerResponse, ['success']);
     } catch (error) {
-      logger.error('[v2]: Error generating offer file:', error);
+      loggerV2.error('[v2]: Error generating offer file:', error);
       throw new Error(error.message);
     }
   }
@@ -301,7 +301,7 @@ class OfferV2 {
 
       return JSON.parse(offerFileJson.meta_value);
     } catch (error) {
-      logger.error('[v2]: Error getting current offer info:', error);
+      loggerV2.error('[v2]: Error getting current offer info:', error);
       throw new Error(error.message);
     }
   }
@@ -331,7 +331,7 @@ class OfferV2 {
         meta_value: offerJSON,
       });
     } catch (error) {
-      logger.error('[v2]: Error importing offer file:', error);
+      loggerV2.error('[v2]: Error importing offer file:', error);
       throw new Error(error.message);
     }
   }
@@ -365,7 +365,7 @@ class OfferV2 {
         message: 'Offer Accepted.',
       };
     } catch (error) {
-      logger.error('[v2]: Error committing imported offer:', error);
+      loggerV2.error('[v2]: Error committing imported offer:', error);
       throw new Error(error.message);
     }
   }
@@ -395,7 +395,7 @@ class OfferV2 {
         },
       });
     } catch (error) {
-      logger.error('[v2]: Error canceling active offer:', error);
+      loggerV2.error('[v2]: Error canceling active offer:', error);
       throw new Error(error.message);
     }
   }
@@ -412,7 +412,7 @@ class OfferV2 {
         },
       });
     } catch (error) {
-      logger.error('[v2]: Error canceling imported offer:', error);
+      loggerV2.error('[v2]: Error canceling imported offer:', error);
       throw new Error(error.message);
     }
   }

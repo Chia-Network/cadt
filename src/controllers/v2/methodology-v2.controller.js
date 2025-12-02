@@ -17,7 +17,7 @@ import {
   assertNoPendingCommitsExcludingTransfers,
 } from '../../utils/v2-data-assertions.js';
 
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 import { methodologyV2Schema } from '../../validations/v2/methodology-v2.validations.js';
 
 export const create = async (req, res) => {
@@ -92,7 +92,7 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error creating methodology:', err);
+    loggerV2.error('[v2]: Error creating methodology:', err);
     res.status(400).json({
       message: 'Error creating new methodology',
       error: err.message,
@@ -112,7 +112,7 @@ export const findAll = async (req, res) => {
 
     res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
-    logger.error('[v2]: Error retrieving methodologies:', err);
+    loggerV2.error('[v2]: Error retrieving methodologies:', err);
     res.status(400).json({
       message: 'Error retrieving methodologies',
       error: err.message,
@@ -135,7 +135,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('[v2]: Error retrieving methodology:', err);
+    loggerV2.error('[v2]: Error retrieving methodology:', err);
     res.status(400).json({
       message: 'Error retrieving methodology',
       error: err.message,
@@ -213,7 +213,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error updating methodology:', err);
+    loggerV2.error('[v2]: Error updating methodology:', err);
     res.status(400).json({
       message: 'Error updating methodology',
       error: err.message,
@@ -255,7 +255,7 @@ export const destroy = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error deleting methodology:', err);
+    loggerV2.error('[v2]: Error deleting methodology:', err);
     res.status(400).json({
       message: 'Error deleting methodology',
       error: err.message,

@@ -18,7 +18,7 @@ import {
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 import { issuanceV2Schema } from '../../validations/v2/issuance-v2.validations.js';
 
 export const create = async (req, res) => {
@@ -109,7 +109,7 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error creating issuance:', err);
+    loggerV2.error('[v2]: Error creating issuance:', err);
     res.status(400).json({
       message: 'Error creating new issuance',
       error: err.message,
@@ -142,7 +142,7 @@ export const findAll = async (req, res) => {
 
     res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
-    logger.error('[v2]: Error retrieving issuances:', err);
+    loggerV2.error('[v2]: Error retrieving issuances:', err);
     res.status(400).json({
       message: 'Error retrieving issuances',
       error: err.message,
@@ -179,7 +179,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('[v2]: Error retrieving issuance:', err);
+    loggerV2.error('[v2]: Error retrieving issuance:', err);
     res.status(400).json({
       message: 'Error retrieving issuance',
       error: err.message,
@@ -265,7 +265,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error updating issuance:', err);
+    loggerV2.error('[v2]: Error updating issuance:', err);
     res.status(400).json({
       message: 'Error updating issuance',
       error: err.message,
@@ -307,7 +307,7 @@ export const destroy = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error deleting issuance:', err);
+    loggerV2.error('[v2]: Error deleting issuance:', err);
     res.status(400).json({
       message: 'Error deleting issuance',
       error: err.message,

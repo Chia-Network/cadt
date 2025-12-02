@@ -4,7 +4,7 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions.js';
-import { logger } from '../config/logger.js';
+import { loggerV2 } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader.js';
 import dotenv from 'dotenv';
 
@@ -19,7 +19,7 @@ const task = new Task('validate-organization-table-v2', async () => {
 
     if (!CONFIG.USE_SIMULATOR) {
       const organizations = await OrganizationsV2.findAll({ raw: true });
-      logger.info(
+      loggerV2.info(
         'validating V2 organization table record store ids against datalayer store ids',
       );
 
@@ -32,19 +32,19 @@ const task = new Task('validate-organization-table-v2', async () => {
           }
 
           if (organization.subscribed) {
-            logger.verbose(
+            loggerV2.verbose(
               `running the organization reconciliation process for ${organization.name} (org_uid ${organization.org_uid})`,
             );
 
             try {
               await OrganizationsV2.reconcileOrganization(organization);
             } catch (error) {
-              logger.error(
+              loggerV2.error(
                 `failed reconcile organization records and subscriptions for organization ${organization.org_uid}. Error: ${error.message}. `,
               );
             }
           } else {
-            logger.info(
+            loggerV2.info(
               `organization ${organization.org_uid} is marked as unsubscribed. ensuring all organization stores are unsubscribed`,
             );
             await OrganizationsV2.unsubscribeFromOrganizationStores(
@@ -55,7 +55,7 @@ const task = new Task('validate-organization-table-v2', async () => {
       }
     }
   } catch (error) {
-    logger.error(
+    loggerV2.error(
       `failed to validate default organization records and subscriptions for V2. Error ${error.message}. ` +
         `Retrying in ${CONFIG?.TASKS?.VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL || 900} seconds`,
     );

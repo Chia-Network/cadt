@@ -18,7 +18,7 @@ import {
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 import { verificationV2Schema } from '../../validations/v2/verification-v2.validations.js';
 
 export const create = async (req, res) => {
@@ -108,7 +108,7 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error creating verification:', err);
+    loggerV2.error('[v2]: Error creating verification:', err);
     res.status(400).json({
       message: 'Error creating new verification',
       error: err.message,
@@ -140,7 +140,7 @@ export const findAll = async (req, res) => {
 
     res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
-    logger.error('[v2]: Error retrieving verifications:', err);
+    loggerV2.error('[v2]: Error retrieving verifications:', err);
     res.status(400).json({
       message: 'Error retrieving verifications',
       error: err.message,
@@ -176,7 +176,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('[v2]: Error retrieving verification:', err);
+    loggerV2.error('[v2]: Error retrieving verification:', err);
     res.status(400).json({
       message: 'Error retrieving verification',
       error: err.message,
@@ -261,7 +261,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error updating verification:', err);
+    loggerV2.error('[v2]: Error updating verification:', err);
     res.status(400).json({
       message: 'Error updating verification',
       error: err.message,
@@ -303,7 +303,7 @@ export const destroy = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error deleting verification:', err);
+    loggerV2.error('[v2]: Error deleting verification:', err);
     res.status(400).json({
       message: 'Error deleting verification',
       error: err.message,

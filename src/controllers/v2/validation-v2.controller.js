@@ -18,7 +18,7 @@ import {
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 import { validationV2Schema } from '../../validations/v2/validation-v2.validations.js';
 
 export const create = async (req, res) => {
@@ -105,7 +105,7 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error creating validation:', err);
+    loggerV2.error('[v2]: Error creating validation:', err);
     res.status(400).json({
       message: 'Error creating new validation',
       error: err.message,
@@ -132,7 +132,7 @@ export const findAll = async (req, res) => {
 
     res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
-    logger.error('[v2]: Error retrieving validations:', err);
+    loggerV2.error('[v2]: Error retrieving validations:', err);
     res.status(400).json({
       message: 'Error retrieving validations',
       error: err.message,
@@ -163,7 +163,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('[v2]: Error retrieving validation:', err);
+    loggerV2.error('[v2]: Error retrieving validation:', err);
     res.status(400).json({
       message: 'Error retrieving validation',
       error: err.message,
@@ -245,7 +245,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error updating validation:', err);
+    loggerV2.error('[v2]: Error updating validation:', err);
     res.status(400).json({
       message: 'Error updating validation',
       error: err.message,
@@ -287,7 +287,7 @@ export const destroy = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error deleting validation:', err);
+    loggerV2.error('[v2]: Error deleting validation:', err);
     res.status(400).json({
       message: 'Error deleting validation',
       error: err.message,

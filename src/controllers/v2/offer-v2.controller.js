@@ -13,7 +13,7 @@ import {
   assertStagingTableIsEmpty,
 } from '../../utils/v2-data-assertions.js';
 import { deserializeMaker, deserializeTaker } from '../../utils/datalayer-utils.js';
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 import { getConfig } from '../../utils/config-loader.js';
 
 const CONFIG = getConfig().APP;
@@ -32,7 +32,7 @@ export const generateOfferFile = async (req, res) => {
     const offerFile = await OfferV2.generateOfferFile();
     res.json(offerFile);
   } catch (error) {
-    logger.error('[v2]: Error generating offer file:', error);
+    loggerV2.error('[v2]: Error generating offer file:', error);
     res.status(400).json({
       message: 'Error generating offer file.',
       error: error.message,
@@ -59,7 +59,7 @@ export const cancelActiveOffer = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error canceling active offer:', error);
+    loggerV2.error('[v2]: Error canceling active offer:', error);
     res.status(400).json({
       message: 'Can not cancel active offer',
       error: error.message,
@@ -91,7 +91,7 @@ export const importOfferFile = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error importing offer file:', error);
+    loggerV2.error('[v2]: Error importing offer file:', error);
     res.status(400).json({
       message: 'Can not import offer file.',
       error: error.message,
@@ -119,7 +119,7 @@ export const commitImportedOffer = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error committing imported offer:', error);
+    loggerV2.error('[v2]: Error committing imported offer:', error);
     res.status(400).json({
       message: 'Can not commit offer.',
       error: error.message,
@@ -141,7 +141,7 @@ export const cancelImportedOffer = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error canceling imported offer:', error);
+    loggerV2.error('[v2]: Error canceling imported offer:', error);
     res.status(400).json({
       message: 'Can not cancel offer.',
       error: error.message,
@@ -225,7 +225,7 @@ export const getCurrentOfferInfo = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error getting offer info:', error);
+    loggerV2.error('[v2]: Error getting offer info:', error);
     res.status(400).json({
       message: 'Can not get offer.',
       error: error.message,

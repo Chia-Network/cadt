@@ -5,7 +5,7 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions';
-import { logger } from '../config/logger.js';
+import { loggerV2 } from '../config/logger.js';
 
 const CONFIG = getConfig().APP;
 

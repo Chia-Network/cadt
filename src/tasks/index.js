@@ -1,5 +1,5 @@
 import { ToadScheduler } from 'toad-scheduler';
-import { logger } from '../config/logger.js';
+import { loggerV2 } from '../config/logger.js';
 
 import syncDefaultOrganizations from './sync-default-organizations.js';
 import syncPickLists from './sync-picklists.js';

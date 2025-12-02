@@ -34,6 +34,7 @@ import fs from "fs";
 import { defaultConfig } from "/app/src/utils/defaultConfig.js";
 try {
     fs.writeFileSync(process.env.CONFIG_PATH, yaml.stringify(defaultConfig));
+    process.exit(0);
 } catch (err) {
     console.error("Error creating config file:", err);
     process.exit(1);

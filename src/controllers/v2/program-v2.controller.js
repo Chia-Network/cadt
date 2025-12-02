@@ -17,7 +17,7 @@ import {
   assertNoPendingCommitsExcludingTransfers,
 } from '../../utils/v2-data-assertions.js';
 
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 import { programV2Schema } from '../../validations/v2/program-v2.validations.js';
 
 export const create = async (req, res) => {
@@ -90,7 +90,7 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error creating program:', err);
+    loggerV2.error('[v2]: Error creating program:', err);
     res.status(400).json({
       message: 'Error creating new program',
       error: err.message,
@@ -110,7 +110,7 @@ export const findAll = async (req, res) => {
 
     res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
-    logger.error('[v2]: Error retrieving programs:', err);
+    loggerV2.error('[v2]: Error retrieving programs:', err);
     res.status(400).json({
       message: 'Error retrieving programs',
       error: err.message,
@@ -133,7 +133,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('[v2]: Error retrieving program:', err);
+    loggerV2.error('[v2]: Error retrieving program:', err);
     res.status(400).json({
       message: 'Error retrieving program',
       error: err.message,
@@ -210,7 +210,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error updating program:', err);
+    loggerV2.error('[v2]: Error updating program:', err);
     res.status(400).json({
       message: 'Error updating program',
       error: err.message,
@@ -252,7 +252,7 @@ export const destroy = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error deleting program:', err);
+    loggerV2.error('[v2]: Error deleting program:', err);
     res.status(400).json({
       message: 'Error deleting program',
       error: err.message,

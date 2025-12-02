@@ -25,7 +25,7 @@ import {
   tableDataFromXlsx,
   collapseTablesData,
 } from '../../utils/xls.js';
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/loggerV2.js';
 import { sanitizeSqliteFtsQuery } from '../../utils/v2-fts-utils.js';
 
 class ProjectV2 extends Model {
@@ -295,7 +295,7 @@ class ProjectV2 extends Model {
       committed: true, // Transfer records are marked as committed immediately
     });
 
-    logger.info(`[v2]: Project ${projectId} staged for transfer`);
+    loggerV2.info(`[v2]: Project ${projectId} staged for transfer`);
   }
 
   /**
@@ -321,9 +321,9 @@ class ProjectV2 extends Model {
       // For now, we'll create a V2-compatible version
       await ProjectV2.updateTableWithDataV2(collapsedData);
 
-      logger.info('[v2]: Projects updated from XLSX file');
+      loggerV2.info('[v2]: Projects updated from XLSX file');
     } catch (error) {
-      logger.error('[v2]: Error updating projects from XLSX:', error);
+      loggerV2.error('[v2]: Error updating projects from XLSX:', error);
       throw new Error(`Failed to update projects from XLSX: ${error.message}`);
     }
   }
@@ -416,7 +416,7 @@ class ProjectV2 extends Model {
                 } else {
                   validation.error.message +=
                     ' on project for ' + JSON.stringify(row);
-                  logger.error(validation.error.message);
+                  loggerV2.error(validation.error.message);
                   throw validation.error;
                 }
               }),
@@ -549,7 +549,7 @@ class ProjectV2 extends Model {
         .on('done', async () => {
           if (recordsToCreate.length) {
             await StagingV2.bulkCreate(recordsToCreate, {
-              logging: (msg) => logger.info(msg),
+              logging: (msg) => loggerV2.info(msg),
             });
 
             resolve();
@@ -576,7 +576,7 @@ class ProjectV2 extends Model {
     }
 
     // For non-SQLite databases, return empty results
-    logger.warn('[v2]: FTS5 search is only supported for SQLite databases');
+    loggerV2.warn('[v2]: FTS5 search is only supported for SQLite databases');
     return {
       count: 0,
       rows: [],
@@ -637,7 +637,7 @@ class ProjectV2 extends Model {
           type: Sequelize.QueryTypes.SELECT,
         });
       } catch (error) {
-        logger.error('[v2]: FTS count query failed', {
+        loggerV2.error('[v2]: FTS count query failed', {
           error: error.message,
           sql: countSql,
           replacements,
@@ -738,13 +738,13 @@ class ProjectV2 extends Model {
     } catch (error) {
       // Check if error is due to missing FTS table
       if (error.message && error.message.includes('no such table: projects_v2_fts')) {
-        logger.error('[v2]: FTS table missing, attempting rebuild', { error: error.message });
+        loggerV2.error('[v2]: FTS table missing, attempting rebuild', { error: error.message });
         try {
           await ProjectV2.rebuildFtsTable();
           // Retry query after rebuild
           return ProjectV2.findAllSqliteFts(searchStr, pagination, columns, orgUid);
         } catch (rebuildError) {
-          logger.error('[v2]: Failed to rebuild FTS table', { error: rebuildError.message });
+          loggerV2.error('[v2]: Failed to rebuild FTS table', { error: rebuildError.message });
           throw rebuildError;
         }
       }
@@ -781,7 +781,7 @@ class ProjectV2 extends Model {
   static async rebuildFtsTable() {
     const dialect = sequelizeV2.getDialect();
     if (dialect !== 'sqlite') {
-      logger.warn('[v2]: FTS5 rebuild is only supported for SQLite databases');
+      loggerV2.warn('[v2]: FTS5 rebuild is only supported for SQLite databases');
       return;
     }
 
@@ -811,9 +811,9 @@ class ProjectV2 extends Model {
         FROM project
       `);
 
-      logger.info('[v2]: Projects FTS5 table rebuilt successfully');
+      loggerV2.info('[v2]: Projects FTS5 table rebuilt successfully');
     } catch (error) {
-      logger.error('[v2]: Error rebuilding projects FTS5 table', { error: error.message });
+      loggerV2.error('[v2]: Error rebuilding projects FTS5 table', { error: error.message });
       throw error;
     }
   }

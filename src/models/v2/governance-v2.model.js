@@ -7,7 +7,7 @@ import { MetaV2 } from '../v2/index.js';
 import { Meta } from '../../models/index.js';
 import datalayer from '../../datalayer/index.js';
 import { getConfig, getConfigV2 } from '../../utils/config-loader.js';
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/loggerV2.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
 import PickListStub from '../governance/governance-v2.stub.js';
 
@@ -42,7 +42,7 @@ class GovernanceV2 extends Model {
         confirmed: true,
       });
     } else {
-      logger.warn(
+      loggerV2.warn(
         `[v2]: governance data in store ${sourceGovernanceBodyId} does not contain orgList values`,
       );
     }
@@ -54,7 +54,7 @@ class GovernanceV2 extends Model {
         confirmed: true,
       });
     } else {
-      logger.warn(
+      loggerV2.warn(
         `[v2]: governance data in store ${sourceGovernanceBodyId} does not contain glossary values`,
       );
     }
@@ -67,19 +67,19 @@ class GovernanceV2 extends Model {
       });
     } else if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
       // Fallback if the app gets through the upstream checks
-      logger.info('[v2]: SIMULATOR/DEVELOPMENT MODE: Using sample picklist');
+      loggerV2.info('[v2]: SIMULATOR/DEVELOPMENT MODE: Using sample picklist');
       updates.push({
         meta_key: 'pickList',
         meta_value: JSON.stringify(PickListStub),
         confirmed: true,
       });
     } else {
-      logger.warn(
+      loggerV2.warn(
         `[v2]: governance data in store ${sourceGovernanceBodyId} does not contain picklist values`,
       );
     }
 
-    logger.debug('[v2]: upserting governance data from governance body store');
+    loggerV2.debug('[v2]: upserting governance data from governance body store');
     await Promise.all(updates.map(async (update) => GovernanceV2.upsert(update)));
   }
 
@@ -106,7 +106,7 @@ class GovernanceV2 extends Model {
     }
 
     const mainGovernanceBodyId = existingV1Governance.metaValue;
-    logger.info(
+    loggerV2.info(
       `[v2]: Found existing V1 governance body: ${mainGovernanceBodyId}. Adding V2 support...`,
     );
 
@@ -120,7 +120,7 @@ class GovernanceV2 extends Model {
       );
     } catch (error) {
       // If store doesn't exist or can't be read, treat as empty
-      logger.warn(
+      loggerV2.warn(
         `[v2]: Could not read current version mapping from store ${mainGovernanceBodyId}: ${error.message}`,
       );
       currentVersionMapping = {};
@@ -135,7 +135,7 @@ class GovernanceV2 extends Model {
 
     // Create new V2-specific governance store
     const governanceVersionId = await datalayer.createDataLayerStore();
-    logger.info(`[v2]: Created new V2 governance store: ${governanceVersionId}`);
+    loggerV2.info(`[v2]: Created new V2 governance store: ${governanceVersionId}`);
 
     // Merge V2 into existing mapping (preserve V1 and any other versions)
     const updatedVersionMapping = {
@@ -143,13 +143,13 @@ class GovernanceV2 extends Model {
       [dataModelVersion]: governanceVersionId,
     };
 
-    logger.info(
+    loggerV2.info(
       `[v2]: Updating governance store mapping: ${JSON.stringify(updatedVersionMapping)}`,
     );
 
     // Update main governance body store's version mapping
     const revertIfFailed = async () => {
-      logger.warn('[v2]: Reverting Failed V2 Governance Body Addition');
+      loggerV2.warn('[v2]: Reverting Failed V2 Governance Body Addition');
       await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
     };
 
@@ -166,13 +166,13 @@ class GovernanceV2 extends Model {
         meta_key: 'governanceBodyId',
         meta_value: governanceVersionId,
       });
-      logger.info(
+      loggerV2.info(
         '[v2]: V2 governance support added to existing V1 governance body. You are ready to go',
       );
     };
 
     if (!USE_SIMULATOR) {
-      logger.info('[v2]: Waiting for V2 governance mapping to be confirmed');
+      loggerV2.info('[v2]: Waiting for V2 governance mapping to be confirmed');
       datalayer.getStoreData(
         mainGovernanceBodyId,
         onConfirm,
@@ -212,13 +212,13 @@ class GovernanceV2 extends Model {
 
       if (existingV1Governance) {
         // Node is already a V1 governance body - add V2 support instead
-        logger.info('[v2]: Existing V1 governance body detected, adding V2 support...');
+        loggerV2.info('[v2]: Existing V1 governance body detected, adding V2 support...');
         return await GovernanceV2.addV2ToExistingGovernanceBody();
       }
     } catch (error) {
       // V1 Meta table doesn't exist - this is OK, proceed with creating new V2 governance body
       if (error.message && error.message.includes('no such table')) {
-        logger.debug('[v2]: V1 Meta table does not exist, proceeding with new V2 governance body creation');
+        loggerV2.debug('[v2]: V1 Meta table does not exist, proceeding with new V2 governance body creation');
       } else {
         // Re-throw if it's a different error
         throw error;
@@ -231,7 +231,7 @@ class GovernanceV2 extends Model {
     const governanceVersionId = await datalayer.createDataLayerStore();
 
     const revertIfFailed = async () => {
-      logger.warn('[v2]: Reverting Failed Governance Body Creation');
+      loggerV2.warn('[v2]: Reverting Failed Governance Body Creation');
       await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
     };
 
@@ -253,11 +253,11 @@ class GovernanceV2 extends Model {
         meta_key: 'mainGoveranceBodyId',
         meta_value: governanceBodyId,
       });
-      logger.info('[v2]: V2 Governance body confirmed, you are ready to go');
+      loggerV2.info('[v2]: V2 Governance body confirmed, you are ready to go');
     };
 
     if (!USE_SIMULATOR) {
-      logger.info('[v2]: Waiting for New V2 Governance Body to be confirmed');
+      loggerV2.info('[v2]: Waiting for New V2 Governance Body to be confirmed');
       datalayer.getStoreData(
         governanceBodyId,
         onConfirm,
@@ -312,7 +312,7 @@ class GovernanceV2 extends Model {
     );
 
     const rollbackChangesIfFailed = async () => {
-      logger.info('[v2]: Reverting V2 Governance Records');
+      loggerV2.info('[v2]: Reverting V2 Governance Records');
       await GovernanceV2.destroy({
         where: {
           id: {
@@ -366,7 +366,7 @@ class GovernanceV2 extends Model {
    */
   static async sync(retryCounter = 0) {
     try {
-      logger.debug('[v2]: running V2 governance model sync()');
+      loggerV2.debug('[v2]: running V2 governance model sync()');
 
       const { GOVERNANCE_BODY_ID } = getConfigV2().GOVERNANCE;
       const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
@@ -377,7 +377,7 @@ class GovernanceV2 extends Model {
 
       // If on simulator or testnet, use the stubbed picklist data and return
       if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
-        logger.info('[v2]: SIMULATOR/TESTNET MODE: Using sample picklist');
+        loggerV2.info('[v2]: SIMULATOR/TESTNET MODE: Using sample picklist');
         await GovernanceV2.upsert({
           meta_key: 'pickList',
           meta_value: JSON.stringify(PickListStub),
@@ -399,7 +399,7 @@ class GovernanceV2 extends Model {
       );
 
       if (shouldSyncLegacy) {
-        logger.info(
+        loggerV2.info(
           `[v2]: using legacy governance upsert method for governance store ${GOVERNANCE_BODY_ID}`,
         );
         await GovernanceV2.upsertGovernanceDownload(
@@ -412,7 +412,7 @@ class GovernanceV2 extends Model {
       const dataModelVersion = 'v2'; // CRITICAL: Hardcode 'v2', not getDataModelVersion()
       const versionedGovernanceStoreId = governanceData[dataModelVersion];
       if (versionedGovernanceStoreId) {
-        logger.debug(
+        loggerV2.debug(
           `[v2]: getting ${dataModelVersion} governance data from store ${versionedGovernanceStoreId}`,
         );
         const versionedGovernanceData = await datalayer.getSubscribedStoreData(
@@ -434,12 +434,12 @@ class GovernanceV2 extends Model {
       await new Promise((resolve) => setTimeout(() => resolve(), 5000));
       const maxRetry = 50;
       if (retryCounter < maxRetry) {
-        logger.error(
+        loggerV2.error(
           `[v2]: Error Syncing V2 Governance Data. Retry attempt #${retryCounter + 1}. Retrying. Error:, ${error}`,
         );
         await GovernanceV2.sync(retryCounter + 1);
       } else {
-        logger.error(
+        loggerV2.error(
           `[v2]: Error Syncing V2 Governance Data. Retry attempts exceeded. This will not have the latest governance data and data sync may be impacted`,
         );
       }
@@ -460,7 +460,7 @@ class GovernanceV2 extends Model {
       throw new Error('governanceBodyId is required');
     }
 
-    logger.info(`[v2]: Subscribing to governance body store ${governanceBodyId}`);
+    loggerV2.info(`[v2]: Subscribing to governance body store ${governanceBodyId}`);
 
     // Subscribe to governance body store on datalayer
     const subscribed = await datalayer.subscribeToStoreOnDataLayer(governanceBodyId);
@@ -479,7 +479,7 @@ class GovernanceV2 extends Model {
       meta_value: governanceBodyId,
     });
 
-    logger.info(`[v2]: Successfully subscribed to governance body store ${governanceBodyId}`);
+    loggerV2.info(`[v2]: Successfully subscribed to governance body store ${governanceBodyId}`);
 
     return {
       governanceBodyId,

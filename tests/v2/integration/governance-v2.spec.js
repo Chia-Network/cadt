@@ -1137,27 +1137,33 @@ describe('V2 Governance Model Tests', function () {
             // Create governance body first
             await GovernanceV2.createGoveranceBody();
 
-            // Update pickList with valid schema
+            // Update pickList with valid schema (all required fields from v2 schema)
             const pickListData = {
-              registries: ['Registry1'],
               projectSector: ['Agriculture'],
+              aefT2AuthorizationsSector: ['Agriculture'],
               projectType: ['Energy'],
-              coveredByNDC: ['Yes'],
-              projectStatusValues: ['Active'],
+              aefT2AuthorizationsActivityType: ['Energy'],
+              projectStatus: ['Active'],
+              projectUnitMetric: ['tCO2e'],
               unitMetric: ['tCO2e'],
-              methodology: ['Method1'],
-              validationBody: ['Body1'],
-              countries: ['USA'],
-              ratingType: ['Type1'],
+              projectValidationBody: ['Body1'],
+              verificationBody: ['Body1'],
+              methodologyName: ['Method1'],
+              validationType: ['Type1'],
               unitType: ['Type1'],
               unitStatus: ['Active'],
-              verificationBody: ['Body1'],
-              projectTags: ['Tag1'],
-              unitTags: ['Tag1'],
-              coBenefits: ['Benefit1'],
-              correspondingAdjustmentDeclaration: ['Declaration1'],
-              correspondingAdjustmentStatus: ['Status1'],
+              locationCountry: ['USA'],
+              aefT5AuthorizedEntitiesIncorporationCountry: ['USA'],
+              locationMapType: ['GeoJSON'],
+              stakeholderType: ['Owner'],
               labelType: ['Label1'],
+              coBenefitId: ['Benefit1'],
+              ratingType: ['Type1'],
+              aefT2AuthorizationsMetric: ['GHC'],
+              aefT2AuthorizationsPurposesForAuthorization: ['IMP'],
+              aefT2AuthorizationsFirstTransferDefinitionOimp: ['Authorization'],
+              aefT3ActionsType: ['Acquisition'],
+              aefT3ActionsMitigationType: ['Emission reductions'],
             };
 
             const response = await supertest(app)
@@ -1174,8 +1180,8 @@ describe('V2 Governance Model Tests', function () {
             });
             expect(record).to.exist;
             const parsedData = JSON.parse(record.meta_value);
-            expect(parsedData).to.have.property('registries');
-            expect(parsedData.registries).to.include('Registry1');
+            expect(parsedData).to.have.property('projectSector');
+            expect(parsedData.projectSector).to.include('Agriculture');
           },
           { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
         );
@@ -1191,7 +1197,7 @@ describe('V2 Governance Model Tests', function () {
 
             // Send invalid pickList data (missing required fields)
             const invalidPickList = {
-              registries: ['Registry1'],
+              projectSector: ['Agriculture'],
               // Missing other required fields
             };
 

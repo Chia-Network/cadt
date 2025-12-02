@@ -26,7 +26,7 @@ import {
   createXlsFromSequelizeResults,
 } from '../../utils/xls.js';
 
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 import { unitV2Schema } from '../../validations/v2/unit-v2.validations.js';
 
 // Regex patterns for query parsing

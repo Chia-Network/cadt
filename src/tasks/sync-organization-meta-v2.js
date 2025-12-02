@@ -5,7 +5,7 @@ import {
   assertDataLayerAvailable,
   assertWalletIsSynced,
 } from '../utils/data-assertions.js';
-import { logger } from '../config/logger.js';
+import { loggerV2 } from '../config/logger.js';
 
 const CONFIG = getConfig().APP;
 
@@ -20,7 +20,7 @@ const task = new Task('sync-organization-meta-v2', async () => {
       await OrganizationsV2.syncOrganizationMeta();
     }
   } catch (error) {
-    logger.error(
+    loggerV2.error(
       `Retrying in ${
         CONFIG?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 300
       } seconds`,

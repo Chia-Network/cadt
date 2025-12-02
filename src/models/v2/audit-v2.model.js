@@ -4,7 +4,7 @@ import { Sequelize, Model } from 'sequelize';
 
 import { sequelizeV2 } from '../../database/v2/index.js';
 import OrganizationsV2 from './organizations-v2.model.js';
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 
 import ModelTypes from './audit-v2.modeltypes.cjs';
 
@@ -67,7 +67,7 @@ class AuditV2 extends Model {
     // V1 uses a SQL query to find duplicate issuances across registries
     // V2 schema is different, so conflict detection logic needs to be adapted
     // For now, return empty array as placeholder
-    logger.debug('[v2]: findConflicts called for V2 - returning empty array (not yet implemented)');
+    loggerV2.debug('[v2]: findConflicts called for V2 - returning empty array (not yet implemented)');
     return [];
   }
 

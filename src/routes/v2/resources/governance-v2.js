@@ -5,7 +5,7 @@ import joiExpress from 'express-joi-validation';
 import * as GovernanceV2Controller from '../../../controllers/v2/governance-v2.controller.js';
 import {
   setOrgListSchema,
-  governancePickListSchema,
+  governancePickListSchemaV2,
 } from '../../../validations/governance.validations.js';
 
 const validator = joiExpress.createValidator({ passError: true });
@@ -33,7 +33,7 @@ GovernanceV2Router.post(
 
 GovernanceV2Router.post(
   '/meta/pickList',
-  validator.body(governancePickListSchema),
+  validator.body(governancePickListSchemaV2),
   (req, res) => {
     return GovernanceV2Controller.setPickList(req, res);
   },

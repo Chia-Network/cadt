@@ -3,7 +3,7 @@
 import _ from 'lodash';
 
 import { GovernanceV2, MetaV2 } from '../../models/v2/index.js';
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 import { getConfig, getConfigV2 } from '../../utils/config-loader.js';
 import glossary from '../../models/governance/glossary.stub.js';
 import pickList from '../../models/governance/governance-v2.stub.js';
@@ -182,7 +182,7 @@ export const createGoveranceBody = async (req, res) => {
     // Start governance body creation in the background
     // Don't await - let it run asynchronously
     GovernanceV2.createGoveranceBody().catch((error) => {
-      logger.error('[v2]: Error creating governance body in background:', error);
+      loggerV2.error('[v2]: Error creating governance body in background:', error);
     });
 
     // Return immediately - work happens in background
@@ -224,7 +224,7 @@ export const setDefaultOrgList = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error updating default orgs:', error);
+    loggerV2.error('[v2]: Error updating default orgs:', error);
     res.status(400).json({
       message: 'Cant update default orgs',
       error: error.message,
@@ -257,7 +257,7 @@ export const setPickList = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error updating picklist:', error);
+    loggerV2.error('[v2]: Error updating picklist:', error);
     res.status(400).json({
       message: 'Cant update picklist',
       error: error.message,
@@ -289,7 +289,7 @@ export const setGlossary = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error updating glossary:', error);
+    loggerV2.error('[v2]: Error updating glossary:', error);
     res.status(400).json({
       message: 'Cant update glossary',
       error: error.message,
@@ -350,7 +350,7 @@ export const subscribeToGovernanceBody = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error(`[v2]: Error subscribing to governance body: ${error.message}`);
+    loggerV2.error(`[v2]: Error subscribing to governance body: ${error.message}`);
     res.status(400).json({
       message: 'Error subscribing to governance body',
       error: error.message,

@@ -31,7 +31,7 @@ import {
   assertStagingTableIsEmpty,
 } from '../../utils/v2-data-assertions.js';
 
-import { logger } from '../../config/logger.js';
+import { loggerV2 } from '../../config/logger.js';
 import { projectV2Schema } from '../../validations/v2/project-v2.validations.js';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 

@@ -1,18 +1,18 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { OrganizationsV2 } from '../models/v2/index.js';
 import { getConfig } from '../utils/config-loader.js';
-import { logger } from '../config/logger.js';
+import { loggerV2 } from '../config/logger.js';
 
 const CONFIG = getConfig().APP;
 
 const task = new Task('clean-up-failed-org-v2', async () => {
-  logger.debug('[v2]: cleaning up any records from failed V2 organization creations');
+  loggerV2.debug('[v2]: cleaning up any records from failed V2 organization creations');
   try {
     if (!CONFIG.USE_SIMULATOR) {
       await OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } });
     }
   } catch (error) {
-    logger.error(
+    loggerV2.error(
       `failed to clean up failed V2 organization creation records. Error: ${error.message}`,
     );
   }
