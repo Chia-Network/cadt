@@ -137,12 +137,17 @@ export const create = async (req, res) => {
       });
     }
 
-    // Call createHomeOrganization
-    const orgUid = await OrganizationsV2.createHomeOrganization(name, icon, 'v2');
+    // Call createHomeOrganization asynchronously (don't await)
+    // This allows the HTTP request to return immediately while creation happens in background
+    OrganizationsV2.createHomeOrganization(name, icon, 'v2').catch((error) => {
+      loggerV2.error(
+        `[v2]: Error creating V2 home organization in background: ${error.message}`,
+      );
+    });
 
-    res.json({
-      message: 'V2 home organization created successfully',
-      orgUid,
+    return res.json({
+      message:
+        'New V2 organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.',
       success: true,
     });
   } catch (error) {
