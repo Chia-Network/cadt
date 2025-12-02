@@ -7,7 +7,7 @@ import { MetaV2 } from '../v2/index.js';
 import { Meta } from '../../models/index.js';
 import datalayer from '../../datalayer/index.js';
 import { getConfig, getConfigV2 } from '../../utils/config-loader.js';
-import { loggerV2 } from '../../config/loggerV2.js';
+import { loggerV2 } from '../../config/logger.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
 import PickListStub from '../governance/governance-v2.stub.js';
 

@@ -1,6 +1,6 @@
 import { Sequelize, QueryTypes } from 'sequelize';
 import config from '../../config/config.js';
-import { loggerV2 } from '../../config/loggerV2.js';
+import { loggerV2 } from '../../config/logger.js';
 import mysql from 'mysql2/promise';
 import { getConfig } from '../../utils/config-loader';
 

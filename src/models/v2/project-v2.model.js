@@ -25,7 +25,7 @@ import {
   tableDataFromXlsx,
   collapseTablesData,
 } from '../../utils/xls.js';
-import { loggerV2 } from '../../config/loggerV2.js';
+import { loggerV2 } from '../../config/logger.js';
 import { sanitizeSqliteFtsQuery } from '../../utils/v2-fts-utils.js';
 
 class ProjectV2 extends Model {

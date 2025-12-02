@@ -19,7 +19,7 @@ import {
 } from '../../utils/xls.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { UnitLabelV2 } from './unit-label-v2.model.js';
-import { loggerV2 } from '../../config/loggerV2.js';
+import { loggerV2 } from '../../config/logger.js';
 import { sanitizeSqliteFtsQuery } from '../../utils/v2-fts-utils.js';
 
 class UnitV2 extends Model {

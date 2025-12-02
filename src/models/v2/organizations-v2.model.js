@@ -6,7 +6,7 @@ import _ from 'lodash';
 import { sequelizeV2 } from '../../database/v2/index.js';
 import datalayer from '../../datalayer';
 import * as simulator from '../../datalayer/simulator.js';
-import { logger } from '../../config/logger';
+import { loggerV2 } from '../../config/logger.js';
 import { getConfig } from '../../utils/config-loader';
 import { decodeHex, decodeDataLayerResponse } from '../../utils/datalayer-utils.js';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;

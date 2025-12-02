@@ -10,7 +10,7 @@ import * as rxjs from 'rxjs';
 import { sequelizeV2 } from '../../database/v2/index.js';
 import { encodeHex, generateOffer } from '../../utils/datalayer-utils.js';
 import datalayer from '../../datalayer';
-import { loggerV2 } from '../../config/logger';
+import { loggerV2 } from '../../config/logger.js';
 import * as datalayerPersistance from '../../datalayer/persistance.js';
 import {
   createXlsFromSequelizeResults,
