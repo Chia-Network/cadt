@@ -607,7 +607,7 @@ describe('V2 Governance Model Tests', function () {
             );
           }
         },
-        { GOVERNANCE: { GOVERNANCE_BODY_ID: 'existing-governance-body-id' } },
+        { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: 'existing-governance-body-id' } } },
       );
     });
 
@@ -809,15 +809,25 @@ describe('V2 Governance Model Tests', function () {
           expect(response.body).to.have.property('success', true);
           expect(response.body.message).to.include('Setting up new V2 Governance Body');
 
-          // Verify governance body was created
-          const governanceBodyId = await MetaV2.findOne({
-            where: { meta_key: 'governanceBodyId' },
-          });
+          // Governance body creation happens in background, so wait/poll for it
+          let governanceBodyId = null;
+          for (let i = 0; i < 30; i++) {
+            governanceBodyId = await MetaV2.findOne({
+              where: { meta_key: 'governanceBodyId' },
+            });
+            if (governanceBodyId) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
           expect(governanceBodyId).to.exist;
         },
         {
-          GOVERNANCE: { GOVERNANCE_BODY_ID: '' },
-          APP: { IS_GOVERNANCE_BODY: true },
+          V2: {
+            GOVERNANCE: { GOVERNANCE_BODY_ID: '' },
+            IS_GOVERNANCE_BODY: true,
+          },
+          APP: { USE_SIMULATOR: true },
         },
       );
     });
@@ -834,8 +844,10 @@ describe('V2 Governance Model Tests', function () {
           );
         },
         {
-          GOVERNANCE: { GOVERNANCE_BODY_ID: '' },
-          APP: { IS_GOVERNANCE_BODY: false },
+          V2: {
+            GOVERNANCE: { GOVERNANCE_BODY_ID: '' },
+            IS_GOVERNANCE_BODY: false,
+          },
         },
       );
     });
@@ -852,8 +864,10 @@ describe('V2 Governance Model Tests', function () {
           );
         },
         {
-          GOVERNANCE: { GOVERNANCE_BODY_ID: 'existing-governance-body-id' },
-          APP: { IS_GOVERNANCE_BODY: true },
+          V2: {
+            GOVERNANCE: { GOVERNANCE_BODY_ID: 'existing-governance-body-id' },
+            IS_GOVERNANCE_BODY: true,
+          },
         },
       );
     });
@@ -874,10 +888,17 @@ describe('V2 Governance Model Tests', function () {
           expect(response.body).to.have.property('success', true);
           expect(response.body.message).to.include('Setting up new V2 Governance Body');
 
-          // Verify V2 governance body was created
-          const v2GovernanceBodyId = await MetaV2.findOne({
-            where: { meta_key: 'governanceBodyId' },
-          });
+          // Governance body creation happens in background, so wait/poll for it
+          let v2GovernanceBodyId = null;
+          for (let i = 0; i < 30; i++) {
+            v2GovernanceBodyId = await MetaV2.findOne({
+              where: { meta_key: 'governanceBodyId' },
+            });
+            if (v2GovernanceBodyId) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
           expect(v2GovernanceBodyId).to.exist;
 
           // Verify V1 governance records are still intact
@@ -887,8 +908,11 @@ describe('V2 Governance Model Tests', function () {
           expect(v1MainRecord).to.exist;
         },
         {
-          GOVERNANCE: { GOVERNANCE_BODY_ID: '' },
-          APP: { IS_GOVERNANCE_BODY: true },
+          V2: {
+            GOVERNANCE: { GOVERNANCE_BODY_ID: '' },
+            IS_GOVERNANCE_BODY: true,
+          },
+          APP: { USE_SIMULATOR: true },
         },
       );
     });
@@ -1243,7 +1267,9 @@ describe('V2 Governance Model Tests', function () {
           expect(record.meta_value).to.be.a('string');
         },
         {
-          GOVERNANCE: { GOVERNANCE_BODY_ID: 'test-governance-body-id' },
+          V2: {
+            GOVERNANCE: { GOVERNANCE_BODY_ID: 'test-governance-body-id' },
+          },
           APP: { USE_SIMULATOR: true },
         },
       );
@@ -1285,7 +1311,9 @@ describe('V2 Governance Model Tests', function () {
           expect(record.confirmed).to.equal(true);
         },
         {
-          GOVERNANCE: { GOVERNANCE_BODY_ID: 'test-governance-body-id' },
+          V2: {
+            GOVERNANCE: { GOVERNANCE_BODY_ID: 'test-governance-body-id' },
+          },
           APP: { USE_DEVELOPMENT_MODE: true },
         },
       );
@@ -1317,18 +1345,24 @@ describe('V2 Governance Model Tests', function () {
           expect(response.status).to.equal(200);
           expect(response.body).to.have.property('success', true);
 
-          // Wait a bit for sync to complete
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          // Verify stub picklist was created
-          const record = await GovernanceV2.findOne({
-            where: { meta_key: 'pickList' },
-          });
+          // Wait for sync to complete (it should be quick in simulator mode)
+          let record = null;
+          for (let i = 0; i < 10; i++) {
+            record = await GovernanceV2.findOne({
+              where: { meta_key: 'pickList' },
+            });
+            if (record) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
           expect(record).to.exist;
           expect(record.confirmed).to.equal(true);
         },
         {
-          GOVERNANCE: { GOVERNANCE_BODY_ID: 'test-governance-body-id' },
+          V2: {
+            GOVERNANCE: { GOVERNANCE_BODY_ID: 'test-governance-body-id' },
+          },
           APP: { USE_SIMULATOR: true },
         },
       );
@@ -1466,6 +1500,19 @@ describe('V2 Governance Model Tests', function () {
           expect(createResponse.status).to.equal(200);
           expect(createResponse.body.success).to.equal(true);
 
+          // Wait for governance body creation to complete (happens in background)
+          let governanceBodyId = null;
+          for (let i = 0; i < 30; i++) {
+            governanceBodyId = await MetaV2.findOne({
+              where: { meta_key: 'governanceBodyId' },
+            });
+            if (governanceBodyId) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+          expect(governanceBodyId).to.exist;
+
           // Step 2: Update orgList via HTTP
           const orgListData = [{ orgUid: 'test-org-1' }];
           const updateResponse = await supertest(app)
@@ -1484,7 +1531,11 @@ describe('V2 Governance Model Tests', function () {
           expect(readResponse.body[0]).to.have.property('orgUid', 'test-org-1');
         },
         {
-          GOVERNANCE: { GOVERNANCE_BODY_ID: '' },
+          V2: {
+            GOVERNANCE: { GOVERNANCE_BODY_ID: '' },
+            IS_GOVERNANCE_BODY: true,
+          },
+          APP: { USE_SIMULATOR: true },
           APP: { IS_GOVERNANCE_BODY: true },
         },
       );

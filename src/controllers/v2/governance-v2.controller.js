@@ -4,7 +4,7 @@ import _ from 'lodash';
 
 import { GovernanceV2, MetaV2 } from '../../models/v2/index.js';
 import { logger } from '../../config/logger.js';
-import { getConfig } from '../../utils/config-loader.js';
+import { getConfig, getConfigV2 } from '../../utils/config-loader.js';
 import glossary from '../../models/governance/glossary.stub.js';
 import pickList from '../../models/governance/governance-v2.stub.js';
 import {
@@ -168,9 +168,24 @@ export const createGoveranceBody = async (req, res) => {
   try {
     await assertCanBeGovernanceBodyV2();
 
-    // Call the model method (handles both new creation and V1 upgrade)
-    await GovernanceV2.createGoveranceBody();
+    // Validate synchronously before starting background work
+    const { GOVERNANCE_BODY_ID } = getConfigV2().GOVERNANCE;
+    if (GOVERNANCE_BODY_ID && GOVERNANCE_BODY_ID !== '') {
+      return res.status(400).json({
+        message: 'Cant create V2 Governance Body',
+        error:
+          'You are already listening to another governance body. Please clear GOVERNANCE_BODY_ID from your V2 config and try again',
+        success: false,
+      });
+    }
 
+    // Start governance body creation in the background
+    // Don't await - let it run asynchronously
+    GovernanceV2.createGoveranceBody().catch((error) => {
+      logger.error('[v2]: Error creating governance body in background:', error);
+    });
+
+    // Return immediately - work happens in background
     return res.json({
       message:
         'Setting up new V2 Governance Body on this node, this can take a few mins',
