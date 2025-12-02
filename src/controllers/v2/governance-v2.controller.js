@@ -220,7 +220,7 @@ export const setDefaultOrgList = async (req, res) => {
     ]);
 
     return res.json({
-      message: 'Committed this new organization list to the datalayer',
+      message: 'Committing this new organization list to the datalayer',
       success: true,
     });
   } catch (error) {
@@ -253,7 +253,7 @@ export const setPickList = async (req, res) => {
     ]);
 
     return res.json({
-      message: 'Committed this pick list to the datalayer',
+      message: 'Committing this pick list to the datalayer',
       success: true,
     });
   } catch (error) {
@@ -285,7 +285,7 @@ export const setGlossary = async (req, res) => {
     ]);
 
     return res.json({
-      message: 'Committed glossary to the datalayer',
+      message: 'Committing glossary to the datalayer',
       success: true,
     });
   } catch (error) {

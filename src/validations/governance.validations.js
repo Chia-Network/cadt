@@ -1,4 +1,4 @@
-import Joi from 'joi';
+``import Joi from 'joi';
 
 export const governanceSubscribeSchema = Joi.object().keys({
   orgUid: Joi.string().required(),

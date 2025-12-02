@@ -1,5 +1,5 @@
 import { ToadScheduler } from 'toad-scheduler';
-import { loggerV2 } from '../config/logger.js';
+import { logger, loggerV2 } from '../config/logger.js';
 
 import syncDefaultOrganizations from './sync-default-organizations.js';
 import syncPickLists from './sync-picklists.js';
@@ -77,7 +77,7 @@ const start = (enableV1 = true, enableV2 = true) => {
       scheduler.addSimpleIntervalJob(v2Job);
     });
   } else {
-    logger.info('[v2]: V2 is disabled in config - skipping V2 scheduler tasks');
+    loggerV2.info('[v2]: V2 is disabled in config - skipping V2 scheduler tasks');
   }
 };
 
