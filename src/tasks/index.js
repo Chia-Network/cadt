@@ -12,6 +12,7 @@ import validateOrganizationTableAndSubscriptions from './validate-organization-t
 import cleanUpFailedOrg from './clean-up-failed-org.js';
 
 // V2 background tasks
+import syncGovernanceBodyV2 from './sync-governance-body-v2.js';
 import syncDefaultOrganizationsV2 from './sync-default-organizations-v2.js';
 import syncOrganizationMetaV2 from './sync-organization-meta-v2.js';
 import syncRegistriesV2 from './sync-registries-v2.js';
@@ -59,6 +60,7 @@ const start = (enableV1 = true, enableV2 = true) => {
   // add V2 background tasks if enabled
   if (enableV2) {
     const v2Jobs = [
+      syncGovernanceBodyV2,
       syncDefaultOrganizationsV2,
       syncOrganizationMetaV2,
       syncRegistriesV2,

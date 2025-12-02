@@ -1,6 +1,6 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { pullPickListValues } from '../utils/data-loaders';
-import { loggerV2 } from '../config/logger.js';
+import { logger } from '../config/logger.js';
 import {
   assertDataLayerAvailable,
   assertWalletIsSynced,

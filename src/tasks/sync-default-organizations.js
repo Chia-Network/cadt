@@ -5,7 +5,7 @@ import {
 } from '../utils/data-assertions.js';
 import { getDefaultOrganizationList } from '../utils/data-loaders.js';
 import { Meta, Organization } from '../models/index.js';
-import { loggerV2 } from '../config/logger.js';
+import { logger } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader.js';
 
 const CONFIG = getConfig().APP;

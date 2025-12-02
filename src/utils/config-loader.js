@@ -11,22 +11,38 @@ import { migrateConfigFiles } from './config-migration.js';
 // Helper function to load config for a specific version
 const loadConfigForVersion = (dataModelVersion) => {
   const chiaRoot = getChiaRoot();
-  const unifiedConfigDir = `${chiaRoot}/cadt`;
-  const unifiedConfigFile = path.resolve(`${unifiedConfigDir}/config.yaml`);
+  
+  // Use test config file when running tests
+  const isTestMode = process.env.NODE_ENV === 'test';
+  let unifiedConfigFile;
+  let unifiedConfigDir;
+  
+  if (isTestMode) {
+    // Use test-specific config file in project directory
+    const projectRoot = path.resolve(process.cwd());
+    unifiedConfigDir = path.resolve(`${projectRoot}/tests/v2/config`);
+    unifiedConfigFile = path.resolve(`${unifiedConfigDir}/test-config.yaml`);
+  } else {
+    // Use production config file
+    unifiedConfigDir = `${chiaRoot}/cadt`;
+    unifiedConfigFile = path.resolve(`${unifiedConfigDir}/config.yaml`);
+  }
 
-  // Check for old config files and migrate if needed
-  const v1ConfigFile = path.resolve(`${chiaRoot}/cadt/v1/config.yaml`);
-  const v2ConfigFile = path.resolve(`${chiaRoot}/cadt/v2/config.yaml`);
+  // Check for old config files and migrate if needed (only in production mode)
+  if (!isTestMode) {
+    const v1ConfigFile = path.resolve(`${chiaRoot}/cadt/v1/config.yaml`);
+    const v2ConfigFile = path.resolve(`${chiaRoot}/cadt/v2/config.yaml`);
 
-  if (fs.existsSync(v1ConfigFile) || fs.existsSync(v2ConfigFile)) {
-    if (!fs.existsSync(unifiedConfigFile)) {
-      // Old config files exist but unified config doesn't - run migration
-      try {
-        migrateConfigFiles();
-      } catch (error) {
-        console.error(`Config migration failed: ${error.message}`);
-        // If migration fails, try to continue with defaults
-        // This allows the system to start even if migration has issues
+    if (fs.existsSync(v1ConfigFile) || fs.existsSync(v2ConfigFile)) {
+      if (!fs.existsSync(unifiedConfigFile)) {
+        // Old config files exist but unified config doesn't - run migration
+        try {
+          migrateConfigFiles();
+        } catch (error) {
+          console.error(`Config migration failed: ${error.message}`);
+          // If migration fails, try to continue with defaults
+          // This allows the system to start even if migration has issues
+        }
       }
     }
   }

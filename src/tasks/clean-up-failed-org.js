@@ -1,7 +1,7 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Organization } from '../models';
 import { getConfig } from '../utils/config-loader';
-import { loggerV2 } from '../config/logger.js';
+import { logger } from '../config/logger.js';
 
 const CONFIG = getConfig().APP;
 

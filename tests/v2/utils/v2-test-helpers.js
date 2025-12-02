@@ -293,20 +293,22 @@ export const getV2TableSchema = async (tableName) => {
 
 /**
  * Helper to temporarily override config values for testing
- * Clears the memoize cache, modifies config file, runs test, then restores
+ * Clears the memoize cache, modifies test config file, runs test, then restores
+ * Uses test-specific config file (tests/v2/config/test-config.yaml) instead of production config
  *
  * @param {Function} testFn - The test function to run with overridden config
  * @param {Object} configOverrides - Config values to override (e.g., { APP: { IS_GOVERNANCE_BODY: true } })
  * @returns {Promise} Result of testFn
  */
 export const withConfigOverride = async (testFn, configOverrides) => {
-  const chiaRoot = getChiaRoot();
-  const unifiedConfigFile = path.resolve(`${chiaRoot}/cadt/config.yaml`);
+  // Use test-specific config file when running tests
+  const projectRoot = path.resolve(process.cwd());
+  const unifiedConfigDir = path.resolve(`${projectRoot}/tests/v2/config`);
+  const unifiedConfigFile = path.resolve(`${unifiedConfigDir}/test-config.yaml`);
 
   // Ensure directory exists
-  const configDir = path.dirname(unifiedConfigFile);
-  if (!fs.existsSync(configDir)) {
-    fs.mkdirSync(configDir, { recursive: true });
+  if (!fs.existsSync(unifiedConfigDir)) {
+    fs.mkdirSync(unifiedConfigDir, { recursive: true });
   }
 
   // Read current unified config
@@ -314,12 +316,9 @@ export const withConfigOverride = async (testFn, configOverrides) => {
   if (fs.existsSync(unifiedConfigFile)) {
     originalConfig = yaml.load(fs.readFileSync(unifiedConfigFile, 'utf8'));
   } else {
-    // If unified config doesn't exist, use default structure
-    originalConfig = {
-      APP: {},
-      V1: {},
-      V2: {},
-    };
+    // If test config doesn't exist, use default config structure
+    const { defaultConfig } = await import('../../../src/utils/defaultConfig.js');
+    originalConfig = JSON.parse(JSON.stringify(defaultConfig));
   }
 
   try {
@@ -335,11 +334,14 @@ export const withConfigOverride = async (testFn, configOverrides) => {
     }
 
     // Load current unified config structure (or use defaults)
-    const currentConfig = originalConfig ? JSON.parse(JSON.stringify(originalConfig)) : {
-      APP: {},
-      V1: {},
-      V2: {},
-    };
+    let currentConfig;
+    if (originalConfig) {
+      currentConfig = JSON.parse(JSON.stringify(originalConfig));
+    } else {
+      // Fallback to default config if originalConfig is null
+      const { defaultConfig } = await import('../../../src/utils/defaultConfig.js');
+      currentConfig = JSON.parse(JSON.stringify(defaultConfig));
+    }
 
     // Merge overrides into appropriate sections
     Object.keys(configOverrides).forEach(section => {

@@ -406,6 +406,9 @@ class GovernanceV2 extends Model {
           GOVERNANCE_BODY_ID,
           governanceData,
         );
+        // Legacy sync completed successfully, return early
+        loggerV2.info('[v2]: Successfully synced legacy governance data');
+        return;
       }
 
       // Check if the governance data for this version exists
@@ -425,9 +428,12 @@ class GovernanceV2 extends Model {
           GOVERNANCE_BODY_ID,
           versionedGovernanceData,
         );
+        loggerV2.info('[v2]: Successfully synced versioned governance data');
       } else {
-        throw new Error(
-          `Governance data is not available from store ${GOVERNANCE_BODY_ID} for ${dataModelVersion} data model.`,
+        // If no v2 key and not legacy, log warning but don't throw error
+        // This allows picklist and glossary to still be available if they were in legacy data
+        loggerV2.warn(
+          `[v2]: Governance data is not available from store ${GOVERNANCE_BODY_ID} for ${dataModelVersion} data model. Legacy data may have been synced.`,
         );
       }
     } catch (error) {

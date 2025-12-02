@@ -1,6 +1,6 @@
 import { SimpleIntervalJob, Task } from 'toad-scheduler';
 import { Audit, Meta } from '../models';
-import { loggerV2 } from '../config/logger.js';
+import { logger } from '../config/logger.js';
 import dotenv from 'dotenv';
 import _ from 'lodash';
 dotenv.config();
