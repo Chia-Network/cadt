@@ -424,6 +424,19 @@ class StagingV2 extends Model {
 
       monitor.stages.mergeChangelists = Date.now() - stage4Start;
 
+      // Log the final changelist before sending to datalayer
+      loggerV2.debug('[v2]: Final changelist prepared for datalayer', {
+        registryId,
+        changelistSize: finalChangeList.length,
+        changelistSummary: finalChangeList.map((change) => ({
+          action: change.action,
+          key: change.key ? change.key.substring(0, 20) + '...' : change.key,
+          hasValue: !!change.value,
+        })),
+        stagedRecordsCount: stagedRecords.length,
+        tables: [...new Set(stagedRecords.map((r) => r.table))],
+      });
+
       // Stage 5: Push to datalayer
       const stage5Start = Date.now();
 

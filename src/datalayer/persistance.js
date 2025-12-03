@@ -8,7 +8,7 @@ import { Organization } from '../models';
 import { OrganizationsV2 } from '../models/v2/index.js';
 import { logger } from '../config/logger.js';
 import { getChiaRoot } from '../utils/chia-root.js';
-import { getMirrorUrl } from '../utils/datalayer-utils';
+import { getMirrorUrl, decodeHex } from '../utils/datalayer-utils';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
@@ -632,8 +632,41 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
     try {
       await wallet.waitForAllTransactionsToConfirm();
 
+      // Log the changelist being sent (with decoded keys/values for readability)
+      logger.debug(`[DATALAYER_RPC] Sending changelist to storeId: ${storeId}`, {
+        storeId,
+        changelistSize: changelist.length,
+        changelist: changelist.map((change) => {
+          const decoded = {
+            action: change.action,
+            key: change.key ? decodeHex(change.key) : change.key,
+          };
+          if (change.value) {
+            try {
+              decoded.value = decodeHex(change.value);
+              // Try to parse as JSON for better readability
+              try {
+                decoded.valueParsed = JSON.parse(decoded.value);
+              } catch {
+                // Not JSON, that's fine
+              }
+            } catch (e) {
+              decoded.value = change.value; // Keep hex if decode fails
+            }
+          }
+          return decoded;
+        }),
+      });
+
       const url = `${CONFIG.DATALAYER_URL}/batch_update`;
       const { cert, key, timeout } = getBaseOptions();
+
+      logger.silly(`[DATALAYER_RPC] Making RPC call to: ${url}`, {
+        url,
+        storeId,
+        changelistLength: changelist.length,
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+      });
 
       const response = await superagent
         .post(url)
