@@ -112,10 +112,10 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Get single project](#get-single-project)
     - [List projects with advanced query features](#list-projects-with-advanced-query-features)
     - [Export projects to Excel](#export-projects-to-excel)
-  - [POST Examples](#post-examples-5)
+  - [POST Examples](#post-examples-4)
     - [Create project](#create-project)
     - [Batch upload projects from CSV](#batch-upload-projects-from-csv)
-  - [PUT Examples](#put-examples-5)
+  - [PUT Examples](#put-examples-4)
     - [Update project](#update-project)
     - [Transfer project between organizations](#transfer-project-between-organizations)
     - [Update projects from XLSX file](#update-projects-from-xlsx-file)
@@ -734,6 +734,210 @@ Response
 
 ---
 
+## `staging`
+
+Functionality: List, modify, commit, and delete records in the staging table
+
+Query string options:
+
+|        Key         |  Type   | Description                                                                                                                     |
+|:------------------:|:-------:|:--------------------------------------------------------------------------------------------------------------------------------|
+|   None (default)   |   N/A   | Display all staged records                                                                                                 |
+|       type         | String  | Filter by type: `staged` (uncommitted), `pending` (committed but not confirmed), or `failed` (failed commits)                                                               |
+|       table        | String  | Filter by table name (e.g., `project`, `unit`, `methodology`)                                                                           |
+|       limit        | Number  | (Conditionally Required) Limit the number of records to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+
+POST body options (for commit):
+
+|        Key         |  Type   | Description                                                                                                                     |
+|:------------------:|:-------:|:--------------------------------------------------------------------------------------------------------------------------------|
+|       ids          | Array   | (Optional) Array of UUIDs to commit. If not provided, all staged records will be committed                                                                                                 |
+|       author       | String  | (Optional) Author name for the commit                                                                           |
+|       comment      | String  | (Optional) Comment for the commit                                                                           |
+
+### GET Examples
+
+#### List all staged records
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/staging?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "id": 1,
+      "uuid": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "table": "methodology",
+      "action": "INSERT",
+      "committed": false,
+      "failed_commit": false,
+      "created_at": "2022-03-11T05:17:55.427Z",
+      "updated_at": "2022-03-11T05:17:55.427Z",
+      "diff": {
+        "original": {},
+        "change": {
+          "methodologyCode": "ACR-001",
+          "methodologyName": "Truck Stop Electrification",
+          "methodologyType": "Reduction - technical"
+        }
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### Check for pending commits
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/staging/pending' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "confirmed": false,
+  "message": "There are currently pending commits",
+  "success": true
+}
+```
+
+---
+
+### POST Examples
+
+#### Commit staged records
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/staging/commit' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "author": "John Doe",
+  "comment": "Committing methodology updates"
+}'
+```
+
+Response
+```json
+{
+  "message": "Staging Table committing to full node",
+  "success": true
+}
+```
+
+---
+
+#### Retry failed commit
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/staging/retry' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "uuid": "9b9bb857-c71b-4649-b805-a289db27dc1c"
+}'
+```
+
+Response
+```json
+{
+  "message": "Staging record re-staged",
+  "success": true
+}
+```
+
+---
+
+### PUT Examples
+
+#### Edit staged record
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/staging' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "uuid": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "data": {
+    "methodologyCode": "ACR-001",
+    "methodologyName": "Truck Stop Electrification - Updated",
+    "methodologyType": "Reduction - technical"
+  }
+}'
+```
+
+Response
+```json
+{
+  "message": "Staging record updated",
+  "success": true
+}
+```
+
+---
+
+### DELETE Examples
+
+#### Delete staged record
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/staging' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "uuid": "9b9bb857-c71b-4649-b805-a289db27dc1c"
+}'
+```
+
+Response
+```json
+{
+  "message": "Deleted from staging",
+  "success": true
+}
+```
+
+---
+
+#### Clean all staged records
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/staging/clean' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Staging Data Cleaned",
+  "success": true
+}
+```
+
+---
+
+### Additional Staging Resources
+
+- GET `/v2/staging` - List all staged records with pagination and filtering
+- GET `/v2/staging/pending` - Check if there are pending commits
+- POST `/v2/staging/commit` - Commit staged records to the datalayer
+- POST `/v2/staging/retry` - Retry committing a failed staging record
+- PUT `/v2/staging` - Update a staged record
+- DELETE `/v2/staging` - Delete a specific staged record
+- DELETE `/v2/staging/clean` - Delete all staged records
+
+---
 
 ## `governance`
 
