@@ -86,7 +86,7 @@ class Organization extends Model {
       ],
     });
 
-    logger.debug(
+    logger.silly(
       `[MIRROR_DEBUG] Found ${organizations.length} organizations in database`,
     );
 
@@ -110,13 +110,13 @@ class Organization extends Model {
 
     const orgsMap = organizations.reduce((map, current) => {
       map[current.orgUid] = current.dataValues;
-      logger.debug(
+      logger.silly(
         `[MIRROR_DEBUG] Added to map - orgUid: ${current.orgUid}, name: ${current.dataValues.name}, subscribed: ${current.dataValues.subscribed}`,
       );
       return map;
     }, {});
 
-    logger.debug(
+    logger.silly(
       `[MIRROR_DEBUG] Returning organizations map with ${Object.keys(orgsMap).length} entries`,
     );
     return orgsMap;

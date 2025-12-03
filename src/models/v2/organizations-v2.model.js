@@ -547,7 +547,7 @@ class OrganizationsV2 extends Model {
       ],
     });
 
-    loggerV2.debug(
+    loggerV2.silly(
       `[v2]: [MIRROR_DEBUG] Found ${organizations.length} V2 organizations in database`,
     );
 
@@ -572,13 +572,13 @@ class OrganizationsV2 extends Model {
 
     const orgsMap = organizations.reduce((map, current) => {
       map[current.org_uid] = current.dataValues;
-      loggerV2.debug(
+      loggerV2.silly(
         `[v2]: [MIRROR_DEBUG] Added to map - org_uid: ${current.org_uid}, name: ${current.dataValues.name}, subscribed: ${current.dataValues.subscribed}`,
       );
       return map;
     }, {});
 
-    loggerV2.debug(
+    loggerV2.silly(
       `[v2]: [MIRROR_DEBUG] Returning V2 organizations map with ${Object.keys(orgsMap).length} entries`,
     );
     return orgsMap;
