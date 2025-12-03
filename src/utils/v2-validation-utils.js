@@ -15,8 +15,8 @@ export const pickListValidationV2 = (field, name) => (value, helper) => {
   }
 
   return helper.message(
-    `${name || field} does not include a valid option ${pickList[field].join(
+    `${name || field} does not include a valid option. Valid options are: ${pickList[field].join(
       ', ',
-    )} instead got '${value}'`,
+    )}. Instead got '${value}'`,
   );
 };
