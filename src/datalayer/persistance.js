@@ -667,6 +667,20 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
         }
       }
 
+      // Handle "no change to tree data" error - this means the changelist wouldn't
+      // change the datalayer state (data already exists or is already in desired state)
+      // Treat this as success since the desired end state is already achieved
+      if (
+        data.error &&
+        data.error.includes('Changelist resulted in no change to tree data')
+      ) {
+        logger.info(
+          `Changelist resulted in no change to tree data for storeId: ${storeId}. ` +
+            `This indicates the data is already in the desired state. Treating as success.`,
+        );
+        return true;
+      }
+
       logger.error(
         `There was an error pushing your changes to the datalayer, ${JSON.stringify(
           data,
