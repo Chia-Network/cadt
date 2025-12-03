@@ -250,19 +250,54 @@ export const retryRecord = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
     await assertV2HomeOrgExists();
-    // Note: assertStagingRecordExistsV2 doesn't exist yet
-    // For now, we'll let the update fail naturally if UUID doesn't exist
 
-    await StagingV2.update(
+    // Validate UUID is provided
+    if (!req.body.uuid) {
+      return res.status(400).json({
+        message: 'UUID is required',
+        error: 'Missing uuid in request body',
+        success: false,
+      });
+    }
+
+    // Check if record exists and has failed_commit: true
+    const existingRecord = await StagingV2.findOne({
+      where: {
+        uuid: req.body.uuid,
+        failed_commit: true,
+      },
+    });
+
+    if (!existingRecord) {
+      return res.status(404).json({
+        message: 'No failed staging record found with the provided UUID',
+        error: `No staging record with uuid '${req.body.uuid}' found with failed_commit: true`,
+        success: false,
+      });
+    }
+
+    // Reset failed_commit and committed flags
+    const [affectedRows] = await StagingV2.update(
       { failed_commit: false, committed: false },
       {
         where: {
           uuid: req.body.uuid,
+          failed_commit: true, // Only update records that have failed_commit: true
         },
       },
     );
+
+    if (affectedRows === 0) {
+      return res.status(404).json({
+        message: 'No failed staging record found with the provided UUID',
+        error: `No staging record with uuid '${req.body.uuid}' found with failed_commit: true`,
+        success: false,
+      });
+    }
+
     res.json({
-      message: 'Staging record re-staged.',
+      message:
+        'Staging record re-staged successfully. Please retry your staging commit using POST /v2/staging/commit.',
       success: true,
     });
   } catch (error) {
