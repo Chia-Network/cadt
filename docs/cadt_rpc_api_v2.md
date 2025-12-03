@@ -1123,7 +1123,7 @@ Response
       "methodologyVersion": "1.0.0",
       "methodologyDate": "2022-01-01T00:00:00.000Z",
       "methodologyLink": "https://example.com/methodology",
-      "methodologyType": "Standard",
+      "methodologyType": "Reduction - technical",
       "createdAt": "2022-03-11T05:17:55.427Z",
       "updatedAt": "2022-03-11T05:17:55.427Z"
     }
@@ -1149,7 +1149,7 @@ Response
   "methodologyVersion": "1.0.0",
   "methodologyDate": "2022-01-01T00:00:00.000Z",
   "methodologyLink": "https://example.com/methodology",
-  "methodologyType": "Standard",
+  "methodologyType": "Reduction - technical",
   "createdAt": "2022-03-11T05:17:55.427Z",
   "updatedAt": "2022-03-11T05:17:55.427Z"
 }
@@ -1171,7 +1171,7 @@ curl --location --request POST 'localhost:31310/v2/methodology' \
   "methodologyVersion": "1.0.0",
   "methodologyDate": "2022-01-01",
   "methodologyLink": "https://example.com/methodology",
-  "methodologyType": "Standard"
+  "methodologyType": "Reduction - technical"
 }'
 ```
 
@@ -1200,7 +1200,7 @@ curl --location --request PUT 'localhost:31310/v2/methodology/9b9bb857-c71b-4649
   "methodologyVersion": "1.0.0",
   "methodologyDate": "2022-01-01",
   "methodologyLink": "https://example.com/methodology",
-  "methodologyType": "Standard"
+  "methodologyType": "Reduction - technical"
 }'
 ```
 

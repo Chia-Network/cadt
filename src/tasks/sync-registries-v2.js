@@ -175,7 +175,7 @@ const syncOrganizationAuditV2 = async (organization) => {
       if (lastRootSavedToAuditTable) {
         // Map V2 field names
         lastRootSavedToAuditTable.timestamp = Number(
-          lastRootSavedToAuditTable?.onchain_confirmation_timestamp || 0,
+          lastRootSavedToAuditTable?.onchain_confirmation_time_stamp || 0,
         );
         lastRootSavedToAuditTable.root_hash =
           lastRootSavedToAuditTable.root_hash;
@@ -189,6 +189,19 @@ const syncOrganizationAuditV2 = async (organization) => {
         `Syncing new registry ${organization.name} (orgUid ${organization.org_uid}, registryId ${organization.registry_id})`,
       );
 
+      // Validate that highestStoreGeneration exists and has required fields
+      if (!highestStoreGeneration || !highestStoreGeneration.root_hash) {
+        loggerV2.error(
+          `[v2]: Cannot create CREATE REGISTRY audit entry - root history is empty or missing root_hash for ${organization.name}`,
+        );
+        return;
+      }
+
+      // Ensure timestamp exists, use current time if missing
+      const timestamp = highestStoreGeneration.timestamp
+        ? highestStoreGeneration.timestamp.toString()
+        : Math.floor(Date.now() / 1000).toString();
+
       loggerV2.debug("creating 'CREATE REGISTRY' audit entry");
       await AuditV2.create({
         org_uid: organization.org_uid,
@@ -198,8 +211,7 @@ const syncOrganizationAuditV2 = async (organization) => {
         generation: 0,
         change: null,
         table: null,
-        onchain_confirmation_timestamp:
-          highestStoreGeneration.timestamp.toString(),
+        onchain_confirmation_time_stamp: timestamp,
       });
 
       // Destroy existing records for this singleton
@@ -394,7 +406,7 @@ const syncOrganizationAuditV2 = async (organization) => {
           type: 'NO CHANGE',
           table: null,
           change: null,
-          onchain_confirmation_timestamp: rootToBeProcessed.timestamp,
+          onchain_confirmation_time_stamp: rootToBeProcessed.timestamp?.toString() || Math.floor(Date.now() / 1000).toString(),
           generation: toBeProcessedDatalayerGenerationIndex,
           comment: '',
           author: '',
@@ -426,7 +438,7 @@ const syncOrganizationAuditV2 = async (organization) => {
             type: diff.type,
             table: modelKey,
             change: decodeHex(diff.value),
-            onchain_confirmation_timestamp: rootToBeProcessed.timestamp,
+            onchain_confirmation_time_stamp: rootToBeProcessed.timestamp?.toString() || Math.floor(Date.now() / 1000).toString(),
             generation: toBeProcessedDatalayerGenerationIndex,
             comment: _.get(
               tryParseJSON(
