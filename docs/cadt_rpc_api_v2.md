@@ -1613,24 +1613,20 @@ Response
     {
       "cadTrustProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
       "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "projectRegistryName":"Sweden National Registry",
       "projectId":"789",
-      "originProjectId":"123",
-      "registryOfOrigin":"Sweden National Registry",
-      "program":null,
+      "projectCreditingProgram":"Gold Standard",
       "projectName":"Stop Desertification",
-      "projectLink":"desertificationtest.com",
-      "projectDeveloper":"Dev 2",
-      "sector":"Fugitive emissions – from fuels (solid, oil and gas)",
+      "projectLink":"https://desertificationtest.com",
+      "projectDescription":"A project to stop desertification",
+      "projectSector":"Fugitive emissions – from fuels (solid, oil and gas)",
       "projectType":"Coal Mine Methane",
-      "projectTags":null,
-      "coveredByNDC":"Outside NDC",
-      "ndcInformation":null,
+      "projectSubtype":"Methane Capture",
       "projectStatus":"Registered",
       "projectStatusDate":"2022-02-02T00:00:00.000Z",
-      "unitMetric":"tCO2e",
-      "methodology":"Substitution of CO2 from fossil or mineral origin by CO2 from biogenic residual sources in the production of inorganic compounds --- Version 3.0",
-      "validationBody":null,
-      "validationDate":null,
+      "projectUnitMetric":"tCO2e",
+      "cadTrustReferenceProjectId":"REF-001",
+      "cadTrustProgramId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
       "createdAt":"2022-03-11T05:17:55.427Z",
       "updatedAt":"2022-03-11T05:17:55.427Z"
     }
@@ -1656,19 +1652,20 @@ Response
 {
   "cadTrustProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
   "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+  "projectRegistryName":"Gold Standard",
   "projectId":"555",
-  "originProjectId":"555",
-  "registryOfOrigin":"Gold Standard",
-  "program":null,
+  "projectCreditingProgram":"Gold Standard Program",
   "projectName":"Stop Deforestation",
   "projectLink":"http://testurl.com",
-  "projectDeveloper":"Example Developer",
-  "sector":"Agriculture Forestry and Other Land Use (AFOLU)",
+  "projectDescription":"A project to stop deforestation",
+  "projectSector":"Agriculture Forestry and Other Land Use (AFOLU)",
   "projectType":"Soil Enrichment",
+  "projectSubtype":"Soil Carbon",
   "projectStatus":"Listed",
   "projectStatusDate":"2022-03-02T00:00:00.000Z",
-  "unitMetric":"tCO2e",
-  "methodology":"Decomposition of fluoroform (HFC-23) waste streams --- Version 6.0.0",
+  "projectUnitMetric":"tCO2e",
+  "cadTrustReferenceProjectId":"REF-555",
+  "cadTrustProgramId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
   "createdAt":"2022-03-11T05:17:55.422Z",
   "updatedAt":"2022-03-11T05:17:55.422Z"
 }
@@ -1707,7 +1704,7 @@ Response
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v2/project?page=1&limit=10&search=forestry&columns=projectName&columns=projectStatus&filter=sector:Agriculture:eq&order=projectName:ASC' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v2/project?page=1&limit=10&search=forestry&columns=projectName&columns=projectStatus&filter=projectSector:Agriculture:eq&order=projectName:ASC' --header 'Content-Type: application/json'
 ```
 
 Response
@@ -1776,20 +1773,20 @@ Request
 curl --location --request POST 'localhost:31310/v2/project' \
      --header 'Content-Type: application/json' \
      --data-raw '{
+        "projectRegistryName": "UNFCCC",
         "projectId": "c9d147e2-bc07-4e68-a76d-43424fa8cd4e",
-        "originProjectId": "12345-123-123-12345",
-        "registryOfOrigin": "UNFCCC",
         "projectName": "POST sample",
         "projectLink": "http://testurl.com",
-        "projectDeveloper": "POST developer",
-        "sector": "Manufacturing industries",
+        "projectDescription": "Sample project description",
+        "projectCreditingProgram": "Gold Standard Program",
+        "projectSector": "Manufacturing industries",
         "projectType": "Conservation",
-        "coveredByNDC": "Inside NDC",
+        "projectSubtype": "Forest Conservation",
         "projectStatus": "Registered",
         "projectStatusDate": "2022-03-12",
-        "ndcInformation": "Shuffletag",
-        "unitMetric": "tCO2e",
-        "methodology": "Integrated Solar Combined Cycle (ISCC) projects --- Version 1.0.0"
+        "projectUnitMetric": "tCO2e",
+        "cadTrustReferenceProjectId": "REF-001",
+        "cadTrustProgramId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58"
 }'
 ```
 
@@ -1832,20 +1829,20 @@ Request
 curl --location -g --request PUT 'http://localhost:31310/v2/project/51ca9638-22b0-4e14-ae7a-c09d23b37b58' \
 --header 'Content-Type: application/json' \
 --data-raw '{
+    "projectRegistryName": "Verra",
     "projectId": "987",
-    "originProjectId": "555",
-    "registryOfOrigin": "Verra",
     "projectName": "Stop Deforestation",
     "projectLink": "http://testurl.com",
-    "projectDeveloper": "Example Developer",
-    "sector": "Mining/Mineral production",
+    "projectDescription": "Updated project description",
+    "projectCreditingProgram": "Verra Program",
+    "projectSector": "Mining/Mineral production",
     "projectType": "Afforestation",
-    "coveredByNDC": "Inside NDC",
-    "ndcInformation": "Shuffletag",
+    "projectSubtype": "Reforestation",
     "projectStatus": "Listed",
     "projectStatusDate": "2022-03-19",
-    "unitMetric": "tCO2e",
-    "methodology": "Baseline methodology for water pumping efficiency improvements --- Version 2.0"
+    "projectUnitMetric": "tCO2e",
+    "cadTrustReferenceProjectId": "REF-987",
+    "cadTrustProgramId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58"
 }'
 ```
 
