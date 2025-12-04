@@ -38,48 +38,48 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
 ## Commands
 
 - [`organizations`](#organizations)
-  - [GET Examples](#get-examples)
+  - [GET Examples](#organizations-get-examples)
     - [List all organizations](#list-all-organizations)
     - [Get organization status](#get-organization-status)
     - [Get organization metadata](#get-organization-metadata)
-  - [POST Examples](#post-examples)
+  - [POST Examples](#organizations-post-examples)
     - [Create a V2 organization](#create-a-v2-organization)
     - [Upgrade V1 organization to V2](#upgrade-v1-organization-to-v2)
     - [Add organization metadata](#add-organization-metadata)
     - [Sync organization metadata](#sync-organization-metadata)
     - [Add mirror for a store](#add-mirror-for-a-store)
     - [Remove mirror for a store](#remove-mirror-for-a-store)
-  - [PUT Examples](#put-examples)
+  - [PUT Examples](#organizations-put-examples)
     - [Edit home organization](#edit-home-organization)
     - [Import organization from datalayer](#import-organization-from-datalayer)
     - [Subscribe to organization](#subscribe-to-organization)
     - [Unsubscribe from organization](#unsubscribe-from-organization)
     - [Resync organization](#resync-organization)
-  - [DELETE Examples](#delete-examples)
+  - [DELETE Examples](#organizations-delete-examples)
     - [Delete organization](#delete-organization)
   - [Additional organizations resources](#additional-organizations-resources)
 - [`staging`](#staging)
-  - [GET Examples](#get-examples-1)
+  - [GET Examples](#staging-get-examples)
     - [List all staged records](#list-all-staged-records)
     - [Check for pending commits](#check-for-pending-commits)
-  - [POST Examples](#post-examples-1)
+  - [POST Examples](#staging-post-examples)
     - [Commit staged records](#commit-staged-records)
     - [Retry failed commit](#retry-failed-commit)
-  - [PUT Examples](#put-examples-1)
+  - [PUT Examples](#staging-put-examples)
     - [Edit staged record](#edit-staged-record)
-  - [DELETE Examples](#delete-examples-1)
+  - [DELETE Examples](#staging-delete-examples)
     - [Delete staged record](#delete-staged-record)
     - [Clean all staged records](#clean-all-staged-records)
   - [Additional staging resources](#additional-staging-resources)
 - [`governance`](#governance)
-  - [GET Examples](#get-examples-2)
+  - [GET Examples](#governance-get-examples)
     - [Get all governance data](#get-all-governance-data)
     - [Check if governance body exists](#check-if-governance-body-exists)
     - [Sync governance data](#sync-governance-data)
-    - [Get organization list](#get-organization-list)
     - [Get picklist data](#get-picklist-data)
+    - [Get the UID's of all organizations registered in governance data](#get-the-uids-of-all-organizations-registered-in-governance-data)
     - [Get glossary data](#get-glossary-data)
-  - [POST Examples](#post-examples-2)
+  - [POST Examples](#governance-post-examples)
     - [Create governance body](#create-governance-body)
     - [Set organization list](#set-organization-list)
     - [Set picklist data](#set-picklist-data)
@@ -87,257 +87,257 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Subscribe to governance body](#subscribe-to-governance-body)
   - [Additional Governance Resources](#additional-governance-resources)
 - [`methodology`](#methodology)
-  - [GET Examples](#get-examples-3)
+  - [GET Examples](#methodology-get-examples)
     - [List all methodologies](#list-all-methodologies)
     - [Get single methodology](#get-single-methodology)
-  - [POST Examples](#post-examples-3)
+  - [POST Examples](#methodology-post-examples)
     - [Create methodology](#create-methodology)
-  - [PUT Examples](#put-examples-3)
+  - [PUT Examples](#methodology-put-examples)
     - [Update methodology](#update-methodology)
-  - [DELETE Examples](#delete-examples-2)
+  - [DELETE Examples](#methodology-delete-examples)
     - [Delete methodology](#delete-methodology)
 - [`program`](#program)
-  - [GET Examples](#get-examples-4)
+  - [GET Examples](#program-get-examples)
     - [List all programs](#list-all-programs)
     - [Get single program](#get-single-program)
-  - [POST Examples](#post-examples-4)
+  - [POST Examples](#program-post-examples)
     - [Create program](#create-program)
-  - [PUT Examples](#put-examples-4)
+  - [PUT Examples](#program-put-examples)
     - [Update program](#update-program)
-  - [DELETE Examples](#delete-examples-3)
+  - [DELETE Examples](#program-delete-examples)
     - [Delete program](#delete-program)
 - [`project`](#project)
-  - [GET Examples](#get-examples-5)
+  - [GET Examples](#project-get-examples)
     - [List all projects](#list-all-projects)
     - [Get single project](#get-single-project)
     - [List projects with advanced query features](#list-projects-with-advanced-query-features)
     - [Export projects to Excel](#export-projects-to-excel)
-  - [POST Examples](#post-examples-4)
+  - [POST Examples](#project-post-examples)
     - [Create project](#create-project)
     - [Batch upload projects from CSV](#batch-upload-projects-from-csv)
-  - [PUT Examples](#put-examples-4)
+  - [PUT Examples](#project-put-examples)
     - [Update project](#update-project)
     - [Transfer project between organizations](#transfer-project-between-organizations)
     - [Update projects from XLSX file](#update-projects-from-xlsx-file)
-  - [DELETE Examples](#delete-examples-4)
+  - [DELETE Examples](#project-delete-examples)
     - [Delete project](#delete-project)
   - [Additional projects resources](#additional-projects-resources)
 - [`validation`](#validation)
-  - [GET Examples](#get-examples-6)
+  - [GET Examples](#validation-get-examples)
     - [List all validations](#list-all-validations)
     - [Get single validation](#get-single-validation)
-  - [POST Examples](#post-examples-6)
+  - [POST Examples](#validation-post-examples)
     - [Create validation](#create-validation)
-  - [PUT Examples](#put-examples-6)
+  - [PUT Examples](#validation-put-examples)
     - [Update validation](#update-validation)
-  - [DELETE Examples](#delete-examples-5)
+  - [DELETE Examples](#validation-delete-examples)
     - [Delete validation](#delete-validation)
 - [`verification`](#verification)
-  - [GET Examples](#get-examples-7)
+  - [GET Examples](#verification-get-examples)
     - [List all verifications](#list-all-verifications)
     - [Get single verification](#get-single-verification)
-  - [POST Examples](#post-examples-7)
+  - [POST Examples](#verification-post-examples)
     - [Create verification](#create-verification)
-  - [PUT Examples](#put-examples-7)
+  - [PUT Examples](#verification-put-examples)
     - [Update verification](#update-verification)
-  - [DELETE Examples](#delete-examples-6)
+  - [DELETE Examples](#verification-delete-examples)
     - [Delete verification](#delete-verification)
 - [`issuance`](#issuance)
-  - [GET Examples](#get-examples-8)
+  - [GET Examples](#issuance-get-examples)
     - [List all issuances](#list-all-issuances)
     - [Get single issuance](#get-single-issuance)
-  - [POST Examples](#post-examples-8)
+  - [POST Examples](#issuance-post-examples)
     - [Create issuance](#create-issuance)
-  - [PUT Examples](#put-examples-8)
+  - [PUT Examples](#issuance-put-examples)
     - [Update issuance](#update-issuance)
-  - [DELETE Examples](#delete-examples-7)
+  - [DELETE Examples](#issuance-delete-examples)
     - [Delete issuance](#delete-issuance)
 - [`unit`](#unit)
-  - [GET Examples](#get-examples-9)
+  - [GET Examples](#unit-get-examples)
     - [List all units](#list-all-units)
     - [Get single unit](#get-single-unit)
     - [List units with advanced query features](#list-units-with-advanced-query-features)
     - [Export units to Excel](#export-units-to-excel)
-  - [POST Examples](#post-examples-9)
+  - [POST Examples](#unit-post-examples)
     - [Create unit](#create-unit)
     - [Split unit into multiple units](#split-unit-into-multiple-units)
     - [Batch upload units from CSV](#batch-upload-units-from-csv)
-  - [PUT Examples](#put-examples-9)
+  - [PUT Examples](#unit-put-examples)
     - [Update unit](#update-unit)
     - [Update units from XLSX file](#update-units-from-xlsx-file)
-  - [DELETE Examples](#delete-examples-8)
+  - [DELETE Examples](#unit-delete-examples)
     - [Delete unit](#delete-unit)
   - [Additional Units Resources](#additional-units-resources)
 - [`location`](#location)
-  - [GET Examples](#get-examples-10)
+  - [GET Examples](#location-get-examples)
     - [List all locations](#list-all-locations)
     - [Get single location](#get-single-location)
-  - [POST Examples](#post-examples-10)
+  - [POST Examples](#location-post-examples)
     - [Create location](#create-location)
-  - [PUT Examples](#put-examples-10)
+  - [PUT Examples](#location-put-examples)
     - [Update location](#update-location)
-  - [DELETE Examples](#delete-examples-9)
+  - [DELETE Examples](#location-delete-examples)
     - [Delete location](#delete-location)
 - [`estimation`](#estimation)
-  - [GET Examples](#get-examples-11)
+  - [GET Examples](#estimation-get-examples)
     - [List all estimations](#list-all-estimations)
     - [Get single estimation](#get-single-estimation)
-  - [POST Examples](#post-examples-11)
+  - [POST Examples](#estimation-post-examples)
     - [Create estimation](#create-estimation)
-  - [PUT Examples](#put-examples-11)
+  - [PUT Examples](#estimation-put-examples)
     - [Update estimation](#update-estimation)
-  - [DELETE Examples](#delete-examples-10)
+  - [DELETE Examples](#estimation-delete-examples)
     - [Delete estimation](#delete-estimation)
 - [`rating`](#rating)
-  - [GET Examples](#get-examples-12)
+  - [GET Examples](#rating-get-examples)
     - [List all ratings](#list-all-ratings)
     - [Get single rating](#get-single-rating)
-  - [POST Examples](#post-examples-12)
+  - [POST Examples](#rating-post-examples)
     - [Create rating](#create-rating)
-  - [PUT Examples](#put-examples-12)
+  - [PUT Examples](#rating-put-examples)
     - [Update rating](#update-rating)
-  - [DELETE Examples](#delete-examples-11)
+  - [DELETE Examples](#rating-delete-examples)
     - [Delete rating](#delete-rating)
 - [`co-benefit`](#co-benefit)
-  - [GET Examples](#get-examples-13)
+  - [GET Examples](#co-benefit-get-examples)
     - [List all co-benefits](#list-all-co-benefits)
     - [Get single co-benefit](#get-single-co-benefit)
-  - [POST Examples](#post-examples-13)
+  - [POST Examples](#co-benefit-post-examples)
     - [Create co-benefit](#create-co-benefit)
-  - [PUT Examples](#put-examples-13)
+  - [PUT Examples](#co-benefit-put-examples)
     - [Update co-benefit](#update-co-benefit)
-  - [DELETE Examples](#delete-examples-12)
+  - [DELETE Examples](#co-benefit-delete-examples)
     - [Delete co-benefit](#delete-co-benefit)
 - [`project-methodology`](#project-methodology)
-  - [GET Examples](#get-examples-14)
+  - [GET Examples](#project-methodology-get-examples)
     - [List all project-methodology relationships](#list-all-project-methodology-relationships)
     - [Get single project-methodology relationship](#get-single-project-methodology-relationship)
-  - [POST Examples](#post-examples-14)
+  - [POST Examples](#project-methodology-post-examples)
     - [Create project-methodology relationship](#create-project-methodology-relationship)
-  - [PUT Examples](#put-examples-14)
+  - [PUT Examples](#project-methodology-put-examples)
     - [Update project-methodology relationship](#update-project-methodology-relationship)
-  - [DELETE Examples](#delete-examples-13)
+  - [DELETE Examples](#project-methodology-delete-examples)
     - [Delete project-methodology relationship](#delete-project-methodology-relationship)
 - [`stakeholder`](#stakeholder)
-  - [GET Examples](#get-examples-15)
+  - [GET Examples](#stakeholder-get-examples)
     - [List all stakeholders](#list-all-stakeholders)
     - [Get single stakeholder](#get-single-stakeholder)
-  - [POST Examples](#post-examples-15)
+  - [POST Examples](#stakeholder-post-examples)
     - [Create stakeholder](#create-stakeholder)
-  - [PUT Examples](#put-examples-15)
+  - [PUT Examples](#stakeholder-put-examples)
     - [Update stakeholder](#update-stakeholder)
-  - [DELETE Examples](#delete-examples-14)
+  - [DELETE Examples](#stakeholder-delete-examples)
     - [Delete stakeholder](#delete-stakeholder)
 - [`stakeholder-projects`](#stakeholder-projects)
-  - [GET Examples](#get-examples-16)
+  - [GET Examples](#stakeholder-projects-get-examples)
     - [List all stakeholder-project relationships](#list-all-stakeholder-project-relationships)
     - [Get single stakeholder-project relationship](#get-single-stakeholder-project-relationship)
-  - [POST Examples](#post-examples-16)
+  - [POST Examples](#stakeholder-projects-post-examples)
     - [Create stakeholder-project relationship](#create-stakeholder-project-relationship)
-  - [PUT Examples](#put-examples-16)
+  - [PUT Examples](#stakeholder-projects-put-examples)
     - [Update stakeholder-project relationship](#update-stakeholder-project-relationship)
-  - [DELETE Examples](#delete-examples-15)
+  - [DELETE Examples](#stakeholder-projects-delete-examples)
     - [Delete stakeholder-project relationship](#delete-stakeholder-project-relationship)
 - [`label`](#label)
-  - [GET Examples](#get-examples-17)
+  - [GET Examples](#label-get-examples)
     - [List all labels](#list-all-labels)
     - [Get single label](#get-single-label)
-  - [POST Examples](#post-examples-17)
+  - [POST Examples](#label-post-examples)
     - [Create label](#create-label)
-  - [PUT Examples](#put-examples-17)
+  - [PUT Examples](#label-put-examples)
     - [Update label](#update-label)
-  - [DELETE Examples](#delete-examples-16)
+  - [DELETE Examples](#label-delete-examples)
     - [Delete label](#delete-label)
 - [`unit-label`](#unit-label)
-  - [GET Examples](#get-examples-18)
+  - [GET Examples](#unit-label-get-examples)
     - [List all unit-label relationships](#list-all-unit-label-relationships)
     - [Get single unit-label relationship](#get-single-unit-label-relationship)
-  - [POST Examples](#post-examples-18)
+  - [POST Examples](#unit-label-post-examples)
     - [Create unit-label relationship](#create-unit-label-relationship)
-  - [PUT Examples](#put-examples-18)
+  - [PUT Examples](#unit-label-put-examples)
     - [Update unit-label relationship](#update-unit-label-relationship)
-  - [DELETE Examples](#delete-examples-17)
+  - [DELETE Examples](#unit-label-delete-examples)
     - [Delete unit-label relationship](#delete-unit-label-relationship)
 - [`aef-t1-submission`](#aef-t1-submission)
-  - [GET Examples](#get-examples-19)
+  - [GET Examples](#aef-t1-submission-get-examples)
     - [List all AEF-T1-Submissions](#list-all-aef-t1-submissions)
     - [Get single AEF-T1-Submission](#get-single-aef-t1-submission)
-  - [POST Examples](#post-examples-19)
+  - [POST Examples](#aef-t1-submission-post-examples)
     - [Create AEF-T1-Submission](#create-aef-t1-submission)
-  - [PUT Examples](#put-examples-19)
+  - [PUT Examples](#aef-t1-submission-put-examples)
     - [Update AEF-T1-Submission](#update-aef-t1-submission)
-  - [DELETE Examples](#delete-examples-18)
+  - [DELETE Examples](#aef-t1-submission-delete-examples)
     - [Delete AEF-T1-Submission](#delete-aef-t1-submission)
 - [`aef-t5-authorized-entities`](#aef-t5-authorized-entities)
-  - [GET Examples](#get-examples-20)
+  - [GET Examples](#aef-t5-authorized-entities-get-examples)
     - [List all AEF-T5-Authorized-Entities](#list-all-aef-t5-authorized-entities)
     - [Get single AEF-T5-Authorized-Entities](#get-single-aef-t5-authorized-entities)
-  - [POST Examples](#post-examples-20)
+  - [POST Examples](#aef-t5-authorized-entities-post-examples)
     - [Create AEF-T5-Authorized-Entities](#create-aef-t5-authorized-entities)
-  - [PUT Examples](#put-examples-20)
+  - [PUT Examples](#aef-t5-authorized-entities-put-examples)
     - [Update AEF-T5-Authorized-Entities](#update-aef-t5-authorized-entities)
-  - [DELETE Examples](#delete-examples-19)
+  - [DELETE Examples](#aef-t5-authorized-entities-delete-examples)
     - [Delete AEF-T5-Authorized-Entities](#delete-aef-t5-authorized-entities)
 - [`aef-t2-authorizations`](#aef-t2-authorizations)
-  - [GET Examples](#get-examples-21)
+  - [GET Examples](#aef-t2-authorizations-get-examples)
     - [List all AEF-T2-Authorizations](#list-all-aef-t2-authorizations)
     - [Get single AEF-T2-Authorizations](#get-single-aef-t2-authorizations)
-  - [POST Examples](#post-examples-21)
+  - [POST Examples](#aef-t2-authorizations-post-examples)
     - [Create AEF-T2-Authorizations](#create-aef-t2-authorizations)
-  - [PUT Examples](#put-examples-21)
+  - [PUT Examples](#aef-t2-authorizations-put-examples)
     - [Update AEF-T2-Authorizations](#update-aef-t2-authorizations)
-  - [DELETE Examples](#delete-examples-20)
+  - [DELETE Examples](#aef-t2-authorizations-delete-examples)
     - [Delete AEF-T2-Authorizations](#delete-aef-t2-authorizations)
 - [`aef-t3-actions`](#aef-t3-actions)
-  - [GET Examples](#get-examples-22)
+  - [GET Examples](#aef-t3-actions-get-examples)
     - [List all AEF-T3-Actions](#list-all-aef-t3-actions)
     - [Get single AEF-T3-Actions](#get-single-aef-t3-actions)
-  - [POST Examples](#post-examples-22)
+  - [POST Examples](#aef-t3-actions-post-examples)
     - [Create AEF-T3-Actions](#create-aef-t3-actions)
-  - [PUT Examples](#put-examples-22)
+  - [PUT Examples](#aef-t3-actions-put-examples)
     - [Update AEF-T3-Actions](#update-aef-t3-actions)
-  - [DELETE Examples](#delete-examples-21)
+  - [DELETE Examples](#aef-t3-actions-delete-examples)
     - [Delete AEF-T3-Actions](#delete-aef-t3-actions)
 - [`aef-t4-holdings`](#aef-t4-holdings)
-  - [GET Examples](#get-examples-23)
+  - [GET Examples](#aef-t4-holdings-get-examples)
     - [List all AEF-T4-Holdings](#list-all-aef-t4-holdings)
     - [Get single AEF-T4-Holdings](#get-single-aef-t4-holdings)
-  - [POST Examples](#post-examples-23)
+  - [POST Examples](#aef-t4-holdings-post-examples)
     - [Create AEF-T4-Holdings](#create-aef-t4-holdings)
-  - [PUT Examples](#put-examples-23)
+  - [PUT Examples](#aef-t4-holdings-put-examples)
     - [Update AEF-T4-Holdings](#update-aef-t4-holdings)
-  - [DELETE Examples](#delete-examples-22)
+  - [DELETE Examples](#aef-t4-holdings-delete-examples)
     - [Delete AEF-T4-Holdings](#delete-aef-t4-holdings)
 - [`audit`](#audit)
-  - [GET Examples](#get-examples-24)
+  - [GET Examples](#audit-get-examples)
     - [Show the complete history of an organization](#show-the-complete-history-of-an-organization)
     - [Find conflicts in organization data](#find-conflicts-in-organization-data)
-  - [POST Examples](#post-examples-24)
+  - [POST Examples](#audit-post-examples)
     - [Reset organization to specific generation](#reset-organization-to-specific-generation)
     - [Reset organization to specific date](#reset-organization-to-specific-date)
 - [`offer`](#offer)
-  - [GET Examples](#get-examples-25)
+  - [GET Examples](#offer-get-examples)
     - [Generate and download a datalayer offer file](#generate-and-download-a-datalayer-offer-file)
     - [Get the details of the currently uploaded offer file](#get-the-details-of-the-currently-uploaded-offer-file)
-  - [POST Examples](#post-examples-25)
+  - [POST Examples](#offer-post-examples)
     - [Upload an offer file](#upload-an-offer-file)
     - [Commit imported offer](#commit-imported-offer)
-  - [DELETE Examples](#delete-examples-23)
+  - [DELETE Examples](#offer-delete-examples)
     - [Cancel the currently active offer](#cancel-the-currently-active-offer)
     - [Reject the currently imported transfer offer file](#reject-the-currently-imported-transfer-offer-file)
   - [Additional offer resources](#additional-offer-resources)
 - [`filestore`](#filestore)
-  - [GET Examples](#get-examples-26)
+  - [GET Examples](#filestore-get-examples)
     - [Get file from filestore](#get-file-from-filestore)
     - [Get file list from filestore](#get-file-list-from-filestore)
-  - [POST Examples](#post-examples-26)
+  - [POST Examples](#filestore-post-examples)
     - [Add file to filestore](#add-file-to-filestore)
     - [Subscribe to filestore](#subscribe-to-filestore)
     - [Unsubscribe from filestore](#unsubscribe-from-filestore)
-  - [DELETE Examples](#delete-examples-24)
+  - [DELETE Examples](#filestore-delete-examples)
     - [Delete file from filestore](#delete-file-from-filestore)
 - [`health`](#health)
-  - [GET Examples](#get-examples-27)
+  - [GET Examples](#health-get-examples)
     - [Health check](#health-check)
 ---
 
@@ -354,6 +354,7 @@ GET Options:
 | None (default) | N/A | List all organizations |
 | orgUid | String | (Optional) Get metadata for specific organization |
 
+<a id="organizations-get-examples"></a>
 ### GET Examples
 
 #### List all organizations
@@ -429,6 +430,7 @@ POST Options:
 |  name  |  String  |      (Required) Name of the organization to be created       |
 |  icon  |  String  | (Required) URL of the icon to be used for this organization  |
 
+<a id="organizations-post-examples"></a>
 ### POST Examples
 
 #### Create a V2 organization
@@ -586,6 +588,7 @@ PUT Options:
 | orgUid | String  |                 (Required) OrgUid of the organization to import                  |
 | isHome | Boolean |  (Optional) Specify true if the specified orgUid should be imported as the home org   |
 
+<a id="organizations-put-examples"></a>
 ### PUT Examples
 
 #### Edit home organization
@@ -708,6 +711,7 @@ Response
 
 DELETE Options: None
 
+<a id="organizations-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete organization
@@ -756,6 +760,7 @@ POST body options (for commit):
 |       author       | String  | (Optional) Author name for the commit                                                                           |
 |       comment      | String  | (Optional) Comment for the commit                                                                           |
 
+<a id="staging-get-examples"></a>
 ### GET Examples
 
 #### List all staged records
@@ -813,6 +818,7 @@ Response
 
 ---
 
+<a id="staging-post-examples"></a>
 ### POST Examples
 
 #### Commit staged records
@@ -858,6 +864,7 @@ Response
 
 ---
 
+<a id="staging-put-examples"></a>
 ### PUT Examples
 
 #### Edit staged record
@@ -886,6 +893,7 @@ Response
 
 ---
 
+<a id="staging-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete staged record
@@ -946,6 +954,7 @@ Functionality for climate project development: create and manage governance data
 
 Most users will never use these endpoints.
 
+<a id="governance-get-examples"></a>
 ### GET Examples
 
 #### Get all governance data
@@ -1172,6 +1181,7 @@ Response
 
 ---
 
+<a id="governance-post-examples"></a>
 ### POST Examples
 
 #### Create governance body
@@ -1305,6 +1315,7 @@ Response
 
 Functionality: Create, read, update, and delete methodology records
 
+<a id="methodology-get-examples"></a>
 ### GET Examples
 
 #### List all methodologies
@@ -1361,6 +1372,7 @@ Response
 
 ---
 
+<a id="methodology-post-examples"></a>
 ### POST Examples
 
 #### Create methodology
@@ -1390,6 +1402,7 @@ Response
 
 ---
 
+<a id="methodology-put-examples"></a>
 ### PUT Examples
 
 #### Update methodology
@@ -1418,6 +1431,7 @@ Response
 
 ---
 
+<a id="methodology-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete methodology
@@ -1442,6 +1456,7 @@ Response
 
 Functionality: Create, read, update, and delete program records
 
+<a id="program-get-examples"></a>
 ### GET Examples
 
 #### List all programs
@@ -1496,6 +1511,7 @@ Response
 
 ---
 
+<a id="program-post-examples"></a>
 ### POST Examples
 
 #### Create program
@@ -1524,6 +1540,7 @@ Response
 
 ---
 
+<a id="program-put-examples"></a>
 ### PUT Examples
 
 #### Update program
@@ -1551,6 +1568,7 @@ Response
 
 ---
 
+<a id="program-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete program
@@ -1592,6 +1610,7 @@ Query string options:
 |       order        | String  | Sort order (e.g., `order=field:DESC`)                                                                   |
 | onlyMarketplaceProjects | Boolean | Filter projects that have at least one unit listed on a marketplace (`true` = projects with marketplace units only) |
 
+<a id="project-get-examples"></a>
 ### GET Examples
 
 #### List all projects
@@ -1818,6 +1837,7 @@ Response
 
 ---
 
+<a id="project-put-examples"></a>
 ### PUT Examples
 
 #### Update project
@@ -1895,6 +1915,7 @@ Response
 
 ---
 
+<a id="project-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete project
@@ -1928,6 +1949,7 @@ Response
 
 Functionality: Create, read, update, and delete validation records
 
+<a id="validation-get-examples"></a>
 ### GET Examples
 
 #### List all validations
@@ -1986,6 +2008,7 @@ Response
 
 ---
 
+<a id="validation-post-examples"></a>
 ### POST Examples
 
 #### Create validation
@@ -2016,6 +2039,7 @@ Response
 
 ---
 
+<a id="validation-put-examples"></a>
 ### PUT Examples
 
 #### Update validation
@@ -2045,6 +2069,7 @@ Response
 
 ---
 
+<a id="validation-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete validation
@@ -2069,6 +2094,7 @@ Response
 
 Functionality: Create, read, update, and delete verification records
 
+<a id="verification-get-examples"></a>
 ### GET Examples
 
 #### List all verifications
@@ -2125,6 +2151,7 @@ Response
 
 ---
 
+<a id="verification-post-examples"></a>
 ### POST Examples
 
 #### Create verification
@@ -2154,6 +2181,7 @@ Response
 
 ---
 
+<a id="verification-put-examples"></a>
 ### PUT Examples
 
 #### Update verification
@@ -2182,6 +2210,7 @@ Response
 
 ---
 
+<a id="verification-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete verification
@@ -2206,6 +2235,7 @@ Response
 
 Functionality: Create, read, update, and delete issuance records
 
+<a id="issuance-get-examples"></a>
 ### GET Examples
 
 #### List all issuances
@@ -2260,6 +2290,7 @@ Response
 
 ---
 
+<a id="issuance-post-examples"></a>
 ### POST Examples
 
 #### Create issuance
@@ -2288,6 +2319,7 @@ Response
 
 ---
 
+<a id="issuance-put-examples"></a>
 ### PUT Examples
 
 #### Update issuance
@@ -2315,6 +2347,7 @@ Response
 
 ---
 
+<a id="issuance-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete issuance
@@ -2357,6 +2390,7 @@ Query string options:
 | hasMarketplaceIdentifier | Boolean | Filter units based on whether they have a marketplace identifier (`true` = with identifier, `false` = without identifier) |
 | onlyTokenizedUnits | Boolean | Filter units that have been tokenized on Chia blockchain (`true` = tokenized units only, `false` = non-tokenized units only) |
 
+<a id="unit-get-examples"></a>
 ### GET Examples
 
 #### List all units
@@ -2719,6 +2753,7 @@ Response
 
 ---
 
+<a id="unit-put-examples"></a>
 ### PUT Examples
 
 #### Update unit
@@ -2774,6 +2809,7 @@ Response
 
 ---
 
+<a id="unit-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete unit
@@ -2807,6 +2843,7 @@ Response
 
 Functionality: Create, read, update, and delete location records
 
+<a id="location-get-examples"></a>
 ### GET Examples
 
 #### List all locations
@@ -2863,6 +2900,7 @@ Response
 
 ---
 
+<a id="location-post-examples"></a>
 ### POST Examples
 
 #### Create location
@@ -2892,6 +2930,7 @@ Response
 
 ---
 
+<a id="location-put-examples"></a>
 ### PUT Examples
 
 #### Update location
@@ -2920,6 +2959,7 @@ Response
 
 ---
 
+<a id="location-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete location
@@ -2945,6 +2985,7 @@ Response
 
 Functionality: Create, read, update, and delete estimation records
 
+<a id="estimation-get-examples"></a>
 ### GET Examples
 
 #### List all estimations
@@ -2999,6 +3040,7 @@ Response
 
 ---
 
+<a id="estimation-post-examples"></a>
 ### POST Examples
 
 #### Create estimation
@@ -3027,6 +3069,7 @@ Response
 
 ---
 
+<a id="estimation-put-examples"></a>
 ### PUT Examples
 
 #### Update estimation
@@ -3054,6 +3097,7 @@ Response
 
 ---
 
+<a id="estimation-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete estimation
@@ -3078,6 +3122,7 @@ Response
 
 Functionality: Create, read, update, and delete rating records
 
+<a id="rating-get-examples"></a>
 ### GET Examples
 
 #### List all ratings
@@ -3132,6 +3177,7 @@ Response
 
 ---
 
+<a id="rating-post-examples"></a>
 ### POST Examples
 
 #### Create rating
@@ -3160,6 +3206,7 @@ Response
 
 ---
 
+<a id="rating-put-examples"></a>
 ### PUT Examples
 
 #### Update rating
@@ -3187,6 +3234,7 @@ Response
 
 ---
 
+<a id="rating-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete rating
@@ -3211,6 +3259,7 @@ Response
 
 Functionality: Create, read, update, and delete co-benefit records
 
+<a id="co-benefit-get-examples"></a>
 ### GET Examples
 
 #### List all co-benefits
@@ -3259,6 +3308,7 @@ Response
 
 ---
 
+<a id="co-benefit-post-examples"></a>
 ### POST Examples
 
 #### Create co-benefit
@@ -3284,6 +3334,7 @@ Response
 
 ---
 
+<a id="co-benefit-put-examples"></a>
 ### PUT Examples
 
 #### Update co-benefit
@@ -3308,6 +3359,7 @@ Response
 
 ---
 
+<a id="co-benefit-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete co-benefit
@@ -3333,6 +3385,7 @@ Response
 
 Functionality: Create, read, update, and delete project-methodology relationships
 
+<a id="project-methodology-get-examples"></a>
 ### GET Examples
 
 #### List all project-methodology relationships
@@ -3379,6 +3432,7 @@ Response
 
 ---
 
+<a id="project-methodology-post-examples"></a>
 ### POST Examples
 
 #### Create project-methodology relationship
@@ -3405,6 +3459,7 @@ Response
 
 ---
 
+<a id="project-methodology-put-examples"></a>
 ### PUT Examples
 
 #### Update project-methodology relationship
@@ -3431,6 +3486,7 @@ Response
 
 ---
 
+<a id="project-methodology-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete project-methodology relationship
@@ -3455,6 +3511,7 @@ Response
 
 Functionality: Create, read, update, and delete stakeholder records
 
+<a id="stakeholder-get-examples"></a>
 ### GET Examples
 
 #### List all stakeholders
@@ -3531,6 +3588,7 @@ Response
 
 ---
 
+<a id="stakeholder-put-examples"></a>
 ### PUT Examples
 
 #### Update stakeholder
@@ -3556,6 +3614,7 @@ Response
 
 ---
 
+<a id="stakeholder-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete stakeholder
@@ -3580,6 +3639,7 @@ Response
 
 Functionality: Create, read, update, and delete stakeholder-project relationships
 
+<a id="stakeholder-projects-get-examples"></a>
 ### GET Examples
 
 #### List all stakeholder-project relationships
@@ -3628,6 +3688,7 @@ Response
 
 ---
 
+<a id="stakeholder-projects-post-examples"></a>
 ### POST Examples
 
 #### Create stakeholder-project relationship
@@ -3653,6 +3714,7 @@ Response
 
 ---
 
+<a id="stakeholder-projects-put-examples"></a>
 ### PUT Examples
 
 #### Update stakeholder-project relationship
@@ -3677,6 +3739,7 @@ Response
 
 ---
 
+<a id="stakeholder-projects-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete stakeholder-project relationship
@@ -3701,6 +3764,7 @@ Response
 
 Functionality: Create, read, update, and delete label records
 
+<a id="label-get-examples"></a>
 ### GET Examples
 
 #### List all labels
@@ -3753,6 +3817,7 @@ Response
 
 ---
 
+<a id="label-post-examples"></a>
 ### POST Examples
 
 #### Create label
@@ -3780,6 +3845,7 @@ Response
 
 ---
 
+<a id="label-put-examples"></a>
 ### PUT Examples
 
 #### Update label
@@ -3806,6 +3872,7 @@ Response
 
 ---
 
+<a id="label-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete label
@@ -3830,6 +3897,7 @@ Response
 
 Functionality: Create, read, update, and delete unit-label relationships
 
+<a id="unit-label-get-examples"></a>
 ### GET Examples
 
 #### List all unit-label relationships
@@ -3876,6 +3944,7 @@ Response
 
 ---
 
+<a id="unit-label-post-examples"></a>
 ### POST Examples
 
 #### Create unit-label relationship
@@ -3902,6 +3971,7 @@ Response
 
 ---
 
+<a id="unit-label-put-examples"></a>
 ### PUT Examples
 
 #### Update unit-label relationship
@@ -3928,6 +3998,7 @@ Response
 
 ---
 
+<a id="unit-label-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete unit-label relationship
@@ -3952,6 +4023,7 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T1-Submission records
 
+<a id="aef-t1-submission-get-examples"></a>
 ### GET Examples
 
 #### List all AEF-T1-Submissions
@@ -3998,6 +4070,7 @@ Response
 
 ---
 
+<a id="aef-t1-submission-post-examples"></a>
 ### POST Examples
 
 #### Create AEF-T1-Submission
@@ -4022,6 +4095,7 @@ Response
 
 ---
 
+<a id="aef-t1-submission-put-examples"></a>
 ### PUT Examples
 
 #### Update AEF-T1-Submission
@@ -4045,6 +4119,7 @@ Response
 
 ---
 
+<a id="aef-t1-submission-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete AEF-T1-Submission
@@ -4069,6 +4144,7 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T5-Authorized-Entities records
 
+<a id="aef-t5-authorized-entities-get-examples"></a>
 ### GET Examples
 
 #### List all AEF-T5-Authorized-Entities
@@ -4115,6 +4191,7 @@ Response
 
 ---
 
+<a id="aef-t5-authorized-entities-post-examples"></a>
 ### POST Examples
 
 #### Create AEF-T5-Authorized-Entities
@@ -4139,6 +4216,7 @@ Response
 
 ---
 
+<a id="aef-t5-authorized-entities-put-examples"></a>
 ### PUT Examples
 
 #### Update AEF-T5-Authorized-Entities
@@ -4162,6 +4240,7 @@ Response
 
 ---
 
+<a id="aef-t5-authorized-entities-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete AEF-T5-Authorized-Entities
@@ -4186,6 +4265,7 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T2-Authorizations records
 
+<a id="aef-t2-authorizations-get-examples"></a>
 ### GET Examples
 
 #### List all AEF-T2-Authorizations
@@ -4232,6 +4312,7 @@ Response
 
 ---
 
+<a id="aef-t2-authorizations-post-examples"></a>
 ### POST Examples
 
 #### Create AEF-T2-Authorizations
@@ -4256,6 +4337,7 @@ Response
 
 ---
 
+<a id="aef-t2-authorizations-put-examples"></a>
 ### PUT Examples
 
 #### Update AEF-T2-Authorizations
@@ -4279,6 +4361,7 @@ Response
 
 ---
 
+<a id="aef-t2-authorizations-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete AEF-T2-Authorizations
@@ -4303,6 +4386,7 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T3-Actions records
 
+<a id="aef-t3-actions-get-examples"></a>
 ### GET Examples
 
 #### List all AEF-T3-Actions
@@ -4349,6 +4433,7 @@ Response
 
 ---
 
+<a id="aef-t3-actions-post-examples"></a>
 ### POST Examples
 
 #### Create AEF-T3-Actions
@@ -4373,6 +4458,7 @@ Response
 
 ---
 
+<a id="aef-t3-actions-put-examples"></a>
 ### PUT Examples
 
 #### Update AEF-T3-Actions
@@ -4396,6 +4482,7 @@ Response
 
 ---
 
+<a id="aef-t3-actions-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete AEF-T3-Actions
@@ -4420,6 +4507,7 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T4-Holdings records
 
+<a id="aef-t4-holdings-get-examples"></a>
 ### GET Examples
 
 #### List all AEF-T4-Holdings
@@ -4466,6 +4554,7 @@ Response
 
 ---
 
+<a id="aef-t4-holdings-post-examples"></a>
 ### POST Examples
 
 #### Create AEF-T4-Holdings
@@ -4490,6 +4579,7 @@ Response
 
 ---
 
+<a id="aef-t4-holdings-put-examples"></a>
 ### PUT Examples
 
 #### Update AEF-T4-Holdings
@@ -4513,6 +4603,7 @@ Response
 
 ---
 
+<a id="aef-t4-holdings-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete AEF-T4-Holdings
@@ -4547,6 +4638,7 @@ Options:
 |   limit   | (Required) Number | Limit the number of audit records to be displayed (must be used with page, eg `?page=5&limit=2`) |
 |   page    | (Required) Number |       Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)       |
 
+<a id="audit-get-examples"></a>
 ### GET Examples
 
 #### Show the complete history of an organization
@@ -4609,6 +4701,7 @@ Response
 
 ---
 
+<a id="audit-post-examples"></a>
 ### POST Examples
 
 #### Reset organization to specific generation
@@ -4672,6 +4765,7 @@ Functionality: generate, view, import, accept, datalayer offers for data transfe
    - the offer taker accepts the offer to transfer ownership of the project record and the project record is removed
    from their organization registry and added to the offer makers organization registry
 
+<a id="offer-get-examples"></a>
 ### GET Examples
 
 #### Generate and download a datalayer offer file
@@ -4716,6 +4810,7 @@ Response
 
 ---
 
+<a id="offer-post-examples"></a>
 ### POST Examples
 
 #### Upload an offer file
@@ -4760,6 +4855,7 @@ Response
 
 ---
 
+<a id="offer-delete-examples"></a>
 ### DELETE Examples
 
 #### Cancel the currently active offer
@@ -4817,6 +4913,7 @@ Response
 
 Functionality: Manage files in the filestore
 
+<a id="filestore-get-examples"></a>
 ### GET Examples
 
 #### Get file from filestore
@@ -4855,6 +4952,7 @@ Response
 
 ---
 
+<a id="filestore-post-examples"></a>
 ### POST Examples
 
 #### Add file to filestore
@@ -4918,6 +5016,7 @@ Response
 
 ---
 
+<a id="filestore-delete-examples"></a>
 ### DELETE Examples
 
 #### Delete file from filestore
@@ -4942,6 +5041,7 @@ Response
 
 Functionality: Health check endpoint for V2 API
 
+<a id="health-get-examples"></a>
 ### GET Examples
 
 #### Health check
