@@ -459,34 +459,65 @@ const syncOrganizationAuditV2 = async (organization) => {
           if (modelKey && Object.keys(ModelKeysV2).includes(modelKey)) {
             const record = JSON.parse(decodeHex(diff.value));
             const primaryKeyField = getV2PrimaryKeyField(modelKey);
-            const primaryKeyValue = record[primaryKeyField];
+            // Convert snake_case field names from datalayer to camelCase for Sequelize
+            // V2 models use underscored: true, which means Sequelize expects camelCase in JS
+            const camelCaseRecord = _.mapKeys(record, (_value, key) => {
+              // Convert snake_case to camelCase
+              return _.camelCase(key);
+            });
+            const primaryKeyFieldCamelCase = _.camelCase(primaryKeyField);
+            const primaryKeyValue = camelCaseRecord[primaryKeyFieldCamelCase] || record[primaryKeyField];
 
             if (diff.type === 'INSERT') {
               loggerV2.verbose(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
 
               // Remove updatedAt/updated_at fields if they exist
               // This is because the db will update this field automatically and its not allowed to be null
-              delete record.updatedAt;
-              delete record.updated_at;
+              delete camelCaseRecord.updatedAt;
+              delete camelCaseRecord.updated_at;
 
               // if createdAt/created_at is null, remove it, so that the db will update it automatically
               // this field is also not allowed to be null
-              if (_.isNil(record.createdAt)) {
-                delete record.createdAt;
+              if (_.isNil(camelCaseRecord.createdAt)) {
+                delete camelCaseRecord.createdAt;
               }
-              if (_.isNil(record.created_at)) {
-                delete record.created_at;
+              if (_.isNil(camelCaseRecord.created_at)) {
+                delete camelCaseRecord.created_at;
               }
 
-              loggerV2.debug(`upserting diff record to ${modelKey} model`);
-              await ModelKeysV2[modelKey].upsert(record, {
-                transaction,
+              loggerV2.debug(`upserting diff record to ${modelKey} model`, {
+                modelKey,
+                primaryKeyField,
+                primaryKeyFieldCamelCase,
+                primaryKeyValue,
+                recordKeys: Object.keys(camelCaseRecord),
+                recordSample: _.pick(camelCaseRecord, [
+                  primaryKeyFieldCamelCase,
+                  'methodologyCode',
+                  'methodologyName',
+                ]),
               });
+              try {
+                await ModelKeysV2[modelKey].upsert(camelCaseRecord, {
+                  transaction,
+                });
+              } catch (upsertError) {
+                loggerV2.error(`Failed to upsert ${modelKey} record`, {
+                  modelKey,
+                  primaryKeyValue,
+                  error: upsertError.message,
+                  errorName: upsertError.name,
+                  sequelizeErrors: upsertError.errors,
+                  record: camelCaseRecord,
+                });
+                throw upsertError;
+              }
             } else if (diff.type === 'DELETE') {
               loggerV2.verbose(`DELETING: ${modelKey} - ${primaryKeyValue}`);
+              // For DELETE, use camelCase primary key field name
               await ModelKeysV2[modelKey].destroy({
                 where: {
-                  [primaryKeyField]: primaryKeyValue,
+                  [primaryKeyFieldCamelCase]: primaryKeyValue,
                 },
                 transaction,
               });
@@ -560,7 +591,13 @@ async function createAndProcessTransactionV2(callback, afterCommitCallbacks) {
     // Roll back the transaction if an error occurs
     if (transaction) {
       loggerV2.error(
-        `encountered error syncing organization audit. Rolling back transaction. Error: ${error}`,
+        `encountered error syncing organization audit. Rolling back transaction. Error: ${error.message}`,
+        {
+          error: error.name,
+          message: error.message,
+          stack: error.stack,
+          ...(error.errors && { sequelizeErrors: error.errors }),
+        },
       );
       await transaction.rollback();
       return false;

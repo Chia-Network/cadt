@@ -90,7 +90,32 @@ class StagingV2 extends Model {
         );
 
         if (stagingRecord.action === 'INSERT') {
-          insertRecords.push(...JSON.parse(stagingRecord.data));
+          loggerV2.debug('[v2]: Processing INSERT staging record', {
+            table,
+            uuid: stagingRecord.uuid,
+            dataType: typeof stagingRecord.data,
+            dataLength: stagingRecord.data?.length,
+            dataPreview: stagingRecord.data?.substring(0, 200),
+          });
+          try {
+            const parsedData = JSON.parse(stagingRecord.data);
+            loggerV2.debug('[v2]: Parsed INSERT data', {
+              table,
+              uuid: stagingRecord.uuid,
+              parsedDataType: Array.isArray(parsedData) ? 'array' : typeof parsedData,
+              parsedDataLength: Array.isArray(parsedData) ? parsedData.length : 'N/A',
+              parsedDataSample: Array.isArray(parsedData) && parsedData.length > 0 ? parsedData[0] : parsedData,
+            });
+            insertRecords.push(...(Array.isArray(parsedData) ? parsedData : [parsedData]));
+          } catch (error) {
+            loggerV2.error('[v2]: Failed to parse staging record data', {
+              table,
+              uuid: stagingRecord.uuid,
+              error: error.message,
+              data: stagingRecord.data,
+            });
+            throw error;
+          }
         } else if (stagingRecord.action === 'UPDATE') {
           // V2 uses snake_case table names directly (no need for hacky fix)
           const tablePrefix = table.toLowerCase();

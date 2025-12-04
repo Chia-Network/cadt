@@ -9,6 +9,7 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
+import { loggerV2 } from '../../config/logger.js';
 
 class MethodologyV2 extends Model {
   /**
@@ -42,6 +43,13 @@ class MethodologyV2 extends Model {
     const [insertRecords, updateRecords, deleteChangeList] =
       StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'methodology');
 
+    loggerV2.debug('[v2]: MethodologyV2 changelist generation', {
+      insertRecordsCount: insertRecords.length,
+      updateRecordsCount: updateRecords.length,
+      deleteChangeListCount: deleteChangeList.length,
+      insertRecordsSample: insertRecords.length > 0 ? insertRecords[0] : null,
+    });
+
     const primaryKeyMap = {
       methodology: 'cad_trust_methodology_id',
     };
@@ -59,6 +67,19 @@ class MethodologyV2 extends Model {
           })
         : null;
 
+    loggerV2.debug('[v2]: MethodologyV2 Excel sheets created', {
+      insertXslsSheets: insertXslsSheets ? 'created' : 'null',
+      insertXslsSheetsKeys: insertXslsSheets ? Object.keys(insertXslsSheets) : [],
+      insertXslsSheetsContent: insertXslsSheets
+        ? {
+            sheetName: Object.keys(insertXslsSheets)[0],
+            sheetData: insertXslsSheets[Object.keys(insertXslsSheets)[0]]?.data,
+          }
+        : null,
+      primaryKeyMap,
+      expectedKey: 'methodology',
+    });
+
     const updateXslsSheets =
       updateRecords.length > 0
         ? createXlsFromSequelizeResults({
@@ -68,30 +89,67 @@ class MethodologyV2 extends Model {
           })
         : null;
 
+    // Map sheet names from model.name (e.g., "MethodologyV2") to table name (e.g., "methodology")
+    // This is needed because createXlsFromSequelizeResults uses model.name as the key,
+    // but transformFullXslsToChangeList expects keys matching primaryKeyMap
+    const mapSheetNames = (xslsSheets, modelName, tableName) => {
+      if (!xslsSheets || !xslsSheets[modelName]) {
+        return xslsSheets;
+      }
+      const mapped = { ...xslsSheets };
+      mapped[tableName] = mapped[modelName];
+      delete mapped[modelName];
+      return mapped;
+    };
+
     // Convert Excel to changelist (only if Excel sheets were created)
+    // Pass V2 model map for checking existing records
+    const modelMap = {
+      methodology: MethodologyV2,
+    };
+
     const insertChangeList = insertXslsSheets
       ? await transformFullXslsToChangeList(
-          insertXslsSheets,
+          mapSheetNames(insertXslsSheets, MethodologyV2.name, 'methodology'),
           'insert',
           primaryKeyMap,
+          modelMap,
         )
       : {};
+
+    loggerV2.debug('[v2]: MethodologyV2 changelist after transform', {
+      insertChangeListKeys: Object.keys(insertChangeList),
+      insertChangeListMethodologyCount: _.get(
+        insertChangeList,
+        'methodology',
+        [],
+      ).length,
+      insertChangeListMethodology: _.get(insertChangeList, 'methodology', []),
+    });
 
     const updateChangeList = updateXslsSheets
       ? await transformFullXslsToChangeList(
-          updateXslsSheets,
+          mapSheetNames(updateXslsSheets, MethodologyV2.name, 'methodology'),
           'update',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 
-    return {
+    const finalChangelist = {
       methodology: [
         ..._.get(insertChangeList, 'methodology', []),
         ..._.get(updateChangeList, 'methodology', []),
         ...deleteChangeList,
       ],
     };
+
+    loggerV2.debug('[v2]: MethodologyV2 final changelist', {
+      finalChangelistSize: finalChangelist.methodology.length,
+      finalChangelist: finalChangelist.methodology,
+    });
+
+    return finalChangelist;
   }
 }
 
