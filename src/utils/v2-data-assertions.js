@@ -78,7 +78,7 @@ export const assertRecordExistanceOrStaged = async (Model, pk, pkField = null) =
   }
 
   // Record not found in either main table or staging
-  throw new Error(`${Model.name} does not have a record for ${pk} in main table or staging`);
+  throw new Error(`${primaryKeyAttribute} '${pk}' does not exist in main table or staging`);
 };
 
 /**
