@@ -1945,9 +1945,13 @@ Response
   "data": [
     {
       "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "validationId": "VAL-001",
+      "validationType": "Validation of Project Design Document",
       "validationBody": "Sample Validation Body",
       "validationDate": "2022-01-15T00:00:00.000Z",
+      "validationCreditPeriodStartDate": "2022-01-01T00:00:00.000Z",
+      "validationCreditPeriodEndDate": "2022-12-31T00:00:00.000Z",
+      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
       "createdAt": "2022-03-11T05:17:55.427Z",
       "updatedAt": "2022-03-11T05:17:55.427Z"
     }
@@ -1968,9 +1972,13 @@ Response
 ```json
 {
   "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "validationId": "VAL-001",
+  "validationType": "Validation of Project Design Document",
   "validationBody": "Sample Validation Body",
   "validationDate": "2022-01-15T00:00:00.000Z",
+  "validationCreditPeriodStartDate": "2022-01-01T00:00:00.000Z",
+  "validationCreditPeriodEndDate": "2022-12-31T00:00:00.000Z",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "createdAt": "2022-03-11T05:17:55.427Z",
   "updatedAt": "2022-03-11T05:17:55.427Z"
 }
@@ -1987,9 +1995,13 @@ Request
 curl --location --request POST 'localhost:31310/v2/validation' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "validationId": "VAL-001",
+  "validationType": "Validation of Project Design Document",
   "validationBody": "Sample Validation Body",
-  "validationDate": "2022-01-15"
+  "validationDate": "2022-01-15",
+  "validationCreditPeriodStartDate": "2022-01-01",
+  "validationCreditPeriodEndDate": "2022-12-31",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
 }'
 ```
 
@@ -2013,9 +2025,13 @@ Request
 curl --location --request PUT 'localhost:31310/v2/validation/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "validationId": "VAL-001",
+  "validationType": "Validation of Project Design Document",
   "validationBody": "Updated Validation Body",
-  "validationDate": "2022-01-15"
+  "validationDate": "2022-01-15",
+  "validationCreditPeriodStartDate": "2022-01-01",
+  "validationCreditPeriodEndDate": "2022-12-31",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
 }'
 ```
 
@@ -2070,9 +2086,12 @@ Response
   "data": [
     {
       "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "verificationId": "VER-001",
+      "verificationStartDate": "2022-02-01T00:00:00.000Z",
+      "verificationEndDate": "2022-02-20T00:00:00.000Z",
       "verificationBody": "Sample Verification Body",
-      "verificationDate": "2022-02-20T00:00:00.000Z",
+      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "createdAt": "2022-03-11T05:17:55.427Z",
       "updatedAt": "2022-03-11T05:17:55.427Z"
     }
@@ -2093,9 +2112,12 @@ Response
 ```json
 {
   "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "verificationId": "VER-001",
+  "verificationStartDate": "2022-02-01T00:00:00.000Z",
+  "verificationEndDate": "2022-02-20T00:00:00.000Z",
   "verificationBody": "Sample Verification Body",
-  "verificationDate": "2022-02-20T00:00:00.000Z",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "createdAt": "2022-03-11T05:17:55.427Z",
   "updatedAt": "2022-03-11T05:17:55.427Z"
 }
@@ -2112,9 +2134,12 @@ Request
 curl --location --request POST 'localhost:31310/v2/verification' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "verificationId": "VER-001",
+  "verificationStartDate": "2022-02-01",
+  "verificationEndDate": "2022-02-20",
   "verificationBody": "Sample Verification Body",
-  "verificationDate": "2022-02-20"
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }'
 ```
 
@@ -2138,9 +2163,12 @@ Request
 curl --location --request PUT 'localhost:31310/v2/verification/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "verificationId": "VER-001",
+  "verificationStartDate": "2022-02-01",
+  "verificationEndDate": "2022-02-20",
   "verificationBody": "Updated Verification Body",
-  "verificationDate": "2022-02-20"
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }'
 ```
 
@@ -2195,12 +2223,11 @@ Response
   "data": [
     {
       "cadTrustIssuanceId": "d9f58b08-af25-461c-88eb-403bb02b135e",
-      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-      "startDate": "2022-01-02T00:00:00.000Z",
-      "endDate": "2022-02-11T00:00:00.000Z",
-      "verificationApproach": "Sample Approach",
-      "verificationReportDate": "2022-03-16T00:00:00.000Z",
-      "verificationBody": "Sample Body",
+      "issuanceId": "ISS-001",
+      "issuanceDate": "2022-01-02T00:00:00.000Z",
+      "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+      "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
       "createdAt": "2022-03-12T08:58:43.271Z",
       "updatedAt": "2022-03-12T08:58:43.271Z"
     }
@@ -2221,12 +2248,11 @@ Response
 ```json
 {
   "cadTrustIssuanceId": "d9f58b08-af25-461c-88eb-403bb02b135e",
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "startDate": "2022-01-02T00:00:00.000Z",
-  "endDate": "2022-02-11T00:00:00.000Z",
-  "verificationApproach": "Sample Approach",
-  "verificationReportDate": "2022-03-16T00:00:00.000Z",
-  "verificationBody": "Sample Body",
+  "issuanceId": "ISS-001",
+  "issuanceDate": "2022-01-02T00:00:00.000Z",
+  "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
   "createdAt": "2022-03-12T08:58:43.271Z",
   "updatedAt": "2022-03-12T08:58:43.271Z"
 }
@@ -2243,12 +2269,11 @@ Request
 curl --location --request POST 'localhost:31310/v2/issuance' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "startDate": "2022-01-02",
-  "endDate": "2022-02-11",
-  "verificationApproach": "Sample Approach",
-  "verificationReportDate": "2022-03-16",
-  "verificationBody": "Sample Body"
+  "issuanceId": "ISS-001",
+  "issuanceDate": "2022-01-02",
+  "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011"
 }'
 ```
 
@@ -2272,12 +2297,11 @@ Request
 curl --location --request PUT 'localhost:31310/v2/issuance/d9f58b08-af25-461c-88eb-403bb02b135e' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "startDate": "2022-01-02",
-  "endDate": "2022-02-11",
-  "verificationApproach": "Updated Approach",
-  "verificationReportDate": "2022-03-16",
-  "verificationBody": "Updated Body"
+  "issuanceId": "ISS-001",
+  "issuanceDate": "2022-01-02",
+  "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011"
 }'
 ```
 
@@ -2353,19 +2377,23 @@ Response
     {
       "cadTrustUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
       "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-      "cadTrustProjectLocationId":"789",
-      "unitBlockStart":"A345",
-      "unitBlockEnd":"B567",
+      "unitSerialId":"UNIT-001",
+      "unitStartBlock":"A345",
+      "unitEndBlock":"B567",
       "unitCount":222,
-      "unitOwner":"Sample Owner",
-      "countryJurisdictionOfOwner":"Belize",
-      "serialNumberBlock":"A345-B567",
-      "vintageYear":2014,
+      "unitVintageYear":2014,
       "unitType":"Reduction - technical",
       "unitStatus":"Buffer",
-      "unitRegistryLink":"sampleurl.com",
-      "correspondingAdjustmentDeclaration":"Unknown",
-      "correspondingAdjustmentStatus":"Pending",
+      "unitStatusReason":"Issued and active",
+      "unitStatusDate":"2024-01-01T00:00:00.000Z",
+      "unitLink":"https://example.com/unit",
+      "unitMetric":"tCO2e",
+      "unitCurrentOwner":"Sample Owner",
+      "unitItmosReferenceId":"ITMO-001",
+      "marketplace":"Demo Marketplace",
+      "marketplaceLink":"http://climateWarehouse.com/myMarketplace",
+      "marketplaceIdentifier":"AKFEE3",
+      "cadTrustIssuanceId":"d9f58b08-af25-461c-88eb-403bb02b135e",
       "createdAt":"2022-03-13T05:29:39.647Z",
       "updatedAt":"2022-03-13T05:29:39.647Z"
     }
@@ -2389,19 +2417,23 @@ Response
 {
   "cadTrustUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
   "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-  "cadTrustProjectLocationId":"789",
-  "unitBlockStart":"A345",
-  "unitBlockEnd":"B567",
+  "unitSerialId":"UNIT-001",
+  "unitStartBlock":"A345",
+  "unitEndBlock":"B567",
   "unitCount":222,
-  "unitOwner":"Sample Owner",
-  "countryJurisdictionOfOwner":"Belize",
-  "serialNumberBlock":"A345-B567",
-  "vintageYear":2014,
+  "unitVintageYear":2014,
   "unitType":"Reduction - technical",
   "unitStatus":"Buffer",
-  "unitRegistryLink":"sampleurl.com",
-  "correspondingAdjustmentDeclaration":"Unknown",
-  "correspondingAdjustmentStatus":"Pending",
+  "unitStatusReason":"Issued and active",
+  "unitStatusDate":"2024-01-01T00:00:00.000Z",
+  "unitLink":"https://example.com/unit",
+  "unitMetric":"tCO2e",
+  "unitCurrentOwner":"Sample Owner",
+  "unitItmosReferenceId":"ITMO-001",
+  "marketplace":"Demo Marketplace",
+  "marketplaceLink":"http://climateWarehouse.com/myMarketplace",
+  "marketplaceIdentifier":"AKFEE3",
+  "cadTrustIssuanceId":"d9f58b08-af25-461c-88eb-403bb02b135e",
   "createdAt":"2022-03-13T05:29:39.647Z",
   "updatedAt":"2022-03-13T05:29:39.647Z"
 }
@@ -2428,9 +2460,10 @@ Response
       "cadTrustUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
       "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
       "unitSerialId":"TEST-UNIT-001",
-      "unitBlockStart":"A345",
-      "unitBlockEnd":"B567",
+      "unitStartBlock":"A345",
+      "unitEndBlock":"B567",
       "unitCount":222,
+      "unitVintageYear":2014,
       "unitType":"Reduction - technical",
       "unitStatus":"Buffer"
     }
@@ -2444,7 +2477,7 @@ Response
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v2/unit?page=1&limit=10&search=renewable&columns=unitOwner&columns=unitStatus&filter=vintageYear:2014:eq&order=unitOwner:ASC' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v2/unit?page=1&limit=10&search=renewable&columns=unitCurrentOwner&columns=unitStatus&filter=unitVintageYear:2014:eq&order=unitCurrentOwner:ASC' --header 'Content-Type: application/json'
 ```
 
 Response
@@ -2454,7 +2487,7 @@ Response
   "pageCount": 5,
   "data": [
     {
-      "unitOwner":"Sample Owner",
+      "unitCurrentOwner":"Sample Owner",
       "unitStatus":"Buffer"
     }
   ]
@@ -2570,21 +2603,23 @@ Request
 curl --location -g --request POST 'localhost:31310/v2/unit' \
      --header 'Content-Type: application/json' \
      --data-raw '{
-       "cadTrustProjectLocationId": "ID_USA",
-       "unitOwner": "Chia",
-       "countryJurisdictionOfOwner": "Andorra",
-       "vintageYear": 1998,
+       "unitSerialId": "UNIT-001",
+       "unitStartBlock": "abc123",
+       "unitEndBlock": "bcd456",
+       "unitVintageYear": 1998,
+       "unitCount": 200,
        "unitType": "Removal - technical",
        "unitStatus": "Held",
-       "unitBlockStart": "abc123",
-       "unitBlockEnd": "bcd456",
-       "unitCount": 200,
-       "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
-       "correspondingAdjustmentDeclaration": "Unknown",
-       "correspondingAdjustmentStatus": "Not Started",
+       "unitStatusReason": "Issued and active",
+       "unitStatusDate": "2024-01-01",
+       "unitLink": "http://climateWarehouse.com/myRegistry",
+       "unitMetric": "tCO2e",
+       "unitCurrentOwner": "Chia",
+       "unitItmosReferenceId": "ITMO-001",
        "marketplace": "Demo Marketplace",
        "marketplaceLink": "http://climateWarehouse.com/myMarketplace",
-       "marketplaceIdentifier": "AKFEE3"
+       "marketplaceIdentifier": "AKFEE3",
+       "cadTrustIssuanceId": "d9f58b08-af25-461c-88eb-403bb02b135e"
 }'
 ```
 
@@ -2695,16 +2730,20 @@ Request
 curl --location -g --request PUT 'localhost:31310/v2/unit/9a5def49-7af6-428a-9958-a1e88d74bf58' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "cadTrustProjectLocationId": "Brand New Location",
-    "unitOwner": "New Owner",
-    "countryJurisdictionOfOwner": "Vanuatu",
-    "serialNumberBlock": "QWERTY9800-ASDFGH9850",
-    "vintageYear": 2002,
+    "unitSerialId": "UNIT-001",
+    "unitStartBlock": "QWERTY9800",
+    "unitEndBlock": "ASDFGH9850",
+    "unitVintageYear": 2002,
+    "unitCount": 200,
     "unitType": "Removal - technical",
-    "unitStatus": "For Sale",
-    "unitRegistryLink": "http://climateWarehouse.com/myRegistry",
-    "correspondingAdjustmentDeclaration": "Unknown",
-    "correspondingAdjustmentStatus": "Not Started"
+    "unitStatus": "Held",
+    "unitStatusReason": "Updated status",
+    "unitStatusDate": "2024-01-01",
+    "unitLink": "http://climateWarehouse.com/myRegistry",
+    "unitMetric": "tCO2e",
+    "unitCurrentOwner": "New Owner",
+    "unitItmosReferenceId": "ITMO-002",
+    "cadTrustIssuanceId": "d9f58b08-af25-461c-88eb-403bb02b135e"
 }'
 ```
 
@@ -2784,11 +2823,13 @@ Response
   "pageCount": 5,
   "data": [
     {
-      "cadTrustProjectLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
+      "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
+      "locationCountry": "Latvia",
+      "locationRegion": "Vidzeme",
+      "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+      "locationMapType": "geojson",
+      "locationMapFileLink": "https://example.com/map.geojson",
       "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-      "country": "Latvia",
-      "inCountryRegion": null,
-      "geographicIdentifier": "Sample Identifier",
       "createdAt": "2022-03-11T05:17:55.425Z",
       "updatedAt": "2022-03-11T05:17:55.425Z"
     }
@@ -2808,11 +2849,13 @@ curl --location --request GET 'localhost:31310/v2/location/8182100d-7794-4df7-b3
 Response
 ```json
 {
-  "cadTrustProjectLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
+  "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
+  "locationCountry": "Latvia",
+  "locationRegion": "Vidzeme",
+  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+  "locationMapType": "geojson",
+  "locationMapFileLink": "https://example.com/map.geojson",
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "country": "Latvia",
-  "inCountryRegion": null,
-  "geographicIdentifier": "Sample Identifier",
   "createdAt": "2022-03-11T05:17:55.425Z",
   "updatedAt": "2022-03-11T05:17:55.425Z"
 }
@@ -2829,9 +2872,12 @@ Request
 curl --location --request POST 'localhost:31310/v2/location' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "country": "Latvia",
-  "geographicIdentifier": "Sample Identifier"
+  "locationCountry": "Latvia",
+  "locationRegion": "Vidzeme",
+  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+  "locationMapType": "geojson",
+  "locationMapFileLink": "https://example.com/map.geojson",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
 }'
 ```
 
@@ -2855,10 +2901,12 @@ Request
 curl --location --request PUT 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "country": "Latvia",
-  "inCountryRegion": "Region A",
-  "geographicIdentifier": "Updated Identifier"
+  "locationCountry": "Latvia",
+  "locationRegion": "Region A",
+  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+  "locationMapType": "geojson",
+  "locationMapFileLink": "https://example.com/updated-map.geojson",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
 }'
 ```
 
@@ -3180,8 +3228,8 @@ Response
   "data": [
     {
       "cadTrustCoBenefitId": "73cfbe9c-8cea-4aca-94d8-f1641e686787",
+      "coBenefitId": "SDG 1 - No poverty",
       "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-      "coBenefit": "SDG 1 - No poverty",
       "createdAt": "2022-03-11T05:17:55.424Z",
       "updatedAt": "2022-03-11T05:17:55.424Z"
     }
@@ -3202,8 +3250,8 @@ Response
 ```json
 {
   "cadTrustCoBenefitId": "73cfbe9c-8cea-4aca-94d8-f1641e686787",
+  "coBenefitId": "SDG 1 - No poverty",
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "coBenefit": "SDG 1 - No poverty",
   "createdAt": "2022-03-11T05:17:55.424Z",
   "updatedAt": "2022-03-11T05:17:55.424Z"
 }
@@ -3220,8 +3268,8 @@ Request
 curl --location --request POST 'localhost:31310/v2/co-benefit' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "coBenefit": "SDG 1 - No poverty"
+  "coBenefitId": "SDG 1 - No poverty",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
 }'
 ```
 
@@ -3245,8 +3293,8 @@ Request
 curl --location --request PUT 'localhost:31310/v2/co-benefit/73cfbe9c-8cea-4aca-94d8-f1641e686787' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "coBenefit": "SDG 2 - Zero hunger"
+  "coBenefitId": "SDG 2 - Zero hunger",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
 }'
 ```
 
@@ -3341,7 +3389,9 @@ curl --location --request POST 'localhost:31310/v2/project-methodology' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "cadTrustMethodologyId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58"
+  "cadTrustMethodologyId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "projectMethodologyDate": "2022-01-01",
+  "projectMethodologyDescription": "Primary methodology for this project"
 }'
 ```
 
@@ -3365,7 +3415,9 @@ curl --location --request PUT 'localhost:31310/v2/project-methodology/project/9b
 --header 'Content-Type: application/json' \
 --data-raw '{
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "cadTrustMethodologyId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58"
+  "cadTrustMethodologyId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "projectMethodologyDate": "2022-01-01",
+  "projectMethodologyDescription": "Updated methodology description"
 }'
 ```
 
@@ -3421,7 +3473,7 @@ Response
     {
       "cadTrustStakeholderId": "e880047e-cdf4-45bb-a9df-e706fa427713",
       "stakeholderName": "Sample Stakeholder",
-      "stakeholderType": "Organization",
+      "stakeholderType": "Owner",
       "stakeholderLink": "https://example.com/stakeholder",
       "createdAt": "2022-03-11T05:17:55.426Z",
       "updatedAt": "2022-03-11T05:17:55.426Z"
@@ -3444,7 +3496,7 @@ Response
 {
   "cadTrustStakeholderId": "e880047e-cdf4-45bb-a9df-e706fa427713",
   "stakeholderName": "Sample Stakeholder",
-  "stakeholderType": "Organization",
+  "stakeholderType": "Owner",
   "stakeholderLink": "https://example.com/stakeholder",
   "createdAt": "2022-03-11T05:17:55.426Z",
   "updatedAt": "2022-03-11T05:17:55.426Z"
@@ -3463,7 +3515,7 @@ curl --location --request POST 'localhost:31310/v2/stakeholder' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "stakeholderName": "Sample Stakeholder",
-  "stakeholderType": "Organization",
+  "stakeholderType": "Owner",
   "stakeholderLink": "https://example.com/stakeholder"
 }'
 ```
@@ -3489,7 +3541,7 @@ curl --location --request PUT 'localhost:31310/v2/stakeholder/e880047e-cdf4-45bb
 --header 'Content-Type: application/json' \
 --data-raw '{
   "stakeholderName": "Updated Stakeholder",
-  "stakeholderType": "Organization",
+  "stakeholderType": "Developer",
   "stakeholderLink": "https://example.com/stakeholder"
 }'
 ```
@@ -3666,15 +3718,10 @@ Response
   "data": [
     {
       "cadTrustLabelId": "dcacd68e-1cfb-4f06-9798-efa0aacda42c",
-      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-      "label": "Sample Label",
+      "labelName": "Sample Label",
       "labelType": "Certification",
-      "creditingPeriodStartDate": "2014-03-29T00:00:00.000Z",
-      "creditingPeriodEndDate": "2022-03-30T00:00:00.000Z",
-      "validityPeriodStartDate": "2017-03-08T00:00:00.000Z",
-      "validityPeriodEndDate": "2025-03-19T00:00:00.000Z",
-      "unitQuantity": 40,
       "labelLink": "http://samplelabel.net",
+      "labelDate": "2022-03-11T00:00:00.000Z",
       "createdAt": "2022-03-11T05:17:55.426Z",
       "updatedAt": "2022-03-11T05:17:55.426Z"
     }
@@ -3695,15 +3742,10 @@ Response
 ```json
 {
   "cadTrustLabelId": "dcacd68e-1cfb-4f06-9798-efa0aacda42c",
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "label": "Sample Label",
+  "labelName": "Sample Label",
   "labelType": "Certification",
-  "creditingPeriodStartDate": "2014-03-29T00:00:00.000Z",
-  "creditingPeriodEndDate": "2022-03-30T00:00:00.000Z",
-  "validityPeriodStartDate": "2017-03-08T00:00:00.000Z",
-  "validityPeriodEndDate": "2025-03-19T00:00:00.000Z",
-  "unitQuantity": 40,
   "labelLink": "http://samplelabel.net",
+  "labelDate": "2022-03-11T00:00:00.000Z",
   "createdAt": "2022-03-11T05:17:55.426Z",
   "updatedAt": "2022-03-11T05:17:55.426Z"
 }
@@ -3720,15 +3762,10 @@ Request
 curl --location --request POST 'localhost:31310/v2/label' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "label": "Sample Label",
+  "labelName": "Sample Label",
   "labelType": "Certification",
-  "creditingPeriodStartDate": "2014-03-29",
-  "creditingPeriodEndDate": "2022-03-30",
-  "validityPeriodStartDate": "2017-03-08",
-  "validityPeriodEndDate": "2025-03-19",
-  "unitQuantity": 40,
-  "labelLink": "http://samplelabel.net"
+  "labelLink": "http://samplelabel.net",
+  "labelDate": "2022-03-11"
 }'
 ```
 
@@ -3752,15 +3789,10 @@ Request
 curl --location --request PUT 'localhost:31310/v2/label/dcacd68e-1cfb-4f06-9798-efa0aacda42c' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "label": "Updated Label",
-  "labelType": "Certification",
-  "creditingPeriodStartDate": "2014-03-29",
-  "creditingPeriodEndDate": "2022-03-30",
-  "validityPeriodStartDate": "2017-03-08",
-  "validityPeriodEndDate": "2025-03-19",
-  "unitQuantity": 50,
-  "labelLink": "http://samplelabel.net"
+  "labelName": "Updated Label",
+  "labelType": "Article 6 - Endorsement",
+  "labelLink": "http://samplelabel.net",
+  "labelDate": "2022-03-11"
 }'
 ```
 
@@ -3854,7 +3886,9 @@ curl --location --request POST 'localhost:31310/v2/unit-label' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "cadTrustLabelId": "dcacd68e-1cfb-4f06-9798-efa0aacda42c",
-  "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3"
+  "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+  "labelUnitDate": "2022-03-11",
+  "labelUnitDescription": "Label applied to unit for certification"
 }'
 ```
 
@@ -3878,7 +3912,9 @@ curl --location --request PUT 'localhost:31310/v2/unit-label/dcacd68e-1cfb-4f06-
 --header 'Content-Type: application/json' \
 --data-raw '{
   "cadTrustLabelId": "dcacd68e-1cfb-4f06-9798-efa0aacda42c",
-  "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3"
+  "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+  "labelUnitDate": "2022-03-11",
+  "labelUnitDescription": "Updated label description"
 }'
 ```
 
