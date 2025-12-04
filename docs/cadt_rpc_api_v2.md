@@ -1459,10 +1459,11 @@ Response
   "data": [
     {
       "cadTrustProgramId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-      "programCode": "GS-001",
       "programName": "Gold Standard Program",
-      "programRegistryName": "Gold Standard",
-      "programLink": "https://example.com/program",
+      "programRegistry": "Gold Standard",
+      "programRegistryActivityId": "GS-001",
+      "programRegistryProgramId": "PROG-001",
+      "programDescription": "A carbon crediting program",
       "createdAt": "2022-03-11T05:17:55.422Z",
       "updatedAt": "2022-03-11T05:17:55.422Z"
     }
@@ -1483,10 +1484,11 @@ Response
 ```json
 {
   "cadTrustProgramId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58",
-  "programCode": "GS-001",
   "programName": "Gold Standard Program",
-  "programRegistryName": "Gold Standard",
-  "programLink": "https://example.com/program",
+  "programRegistry": "Gold Standard",
+  "programRegistryActivityId": "GS-001",
+  "programRegistryProgramId": "PROG-001",
+  "programDescription": "A carbon crediting program",
   "createdAt": "2022-03-11T05:17:55.422Z",
   "updatedAt": "2022-03-11T05:17:55.422Z"
 }
@@ -1503,10 +1505,11 @@ Request
 curl --location --request POST 'localhost:31310/v2/program' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "programCode": "GS-001",
   "programName": "Gold Standard Program",
-  "programRegistryName": "Gold Standard",
-  "programLink": "https://example.com/program"
+  "programRegistry": "Gold Standard",
+  "programRegistryActivityId": "GS-001",
+  "programRegistryProgramId": "PROG-001",
+  "programDescription": "A carbon crediting program"
 }'
 ```
 
@@ -1530,10 +1533,11 @@ Request
 curl --location --request PUT 'localhost:31310/v2/program/51ca9638-22b0-4e14-ae7a-c09d23b37b58' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "programCode": "GS-001",
   "programName": "Gold Standard Program - Updated",
-  "programRegistryName": "Gold Standard",
-  "programLink": "https://example.com/program"
+  "programRegistry": "Gold Standard",
+  "programRegistryActivityId": "GS-001",
+  "programRegistryProgramId": "PROG-001",
+  "programDescription": "An updated carbon crediting program"
 }'
 ```
 
