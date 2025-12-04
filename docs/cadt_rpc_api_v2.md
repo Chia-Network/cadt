@@ -1377,6 +1377,19 @@ Response
 
 #### Create methodology
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| methodologyCode | String | x | | Code identifying the methodology |
+| methodologyName | String | x | | Name of the methodology |
+| methodologyVersion | String | | | Version of the methodology |
+| methodologyDate | Date | | | Date of the methodology (ISO 8601 format) |
+| methodologyLink | String | | | URL link to the methodology. Must be a valid URI |
+| methodologyType | String | | x | Type of methodology |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/methodology' \
@@ -1406,6 +1419,19 @@ Response
 ### PUT Examples
 
 #### Update methodology
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| methodologyCode | String | x | | Code identifying the methodology |
+| methodologyName | String | x | | Name of the methodology |
+| methodologyVersion | String | | | Version of the methodology |
+| methodologyDate | Date | | | Date of the methodology (ISO 8601 format) |
+| methodologyLink | String | | | URL link to the methodology. Must be a valid URI |
+| methodologyType | String | | x | Type of methodology |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
 Request
 ```shell
@@ -1516,6 +1542,16 @@ Response
 
 #### Create program
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| programName | String | x | | Name of the program |
+| programRegistry | String | x | | Registry name for the program |
+| programRegistryActivityId | String | x | | Registry activity identifier |
+| programRegistryProgramId | String | | | Registry program identifier |
+| programDescription | String | | | Description of the program |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/program' \
@@ -1544,6 +1580,18 @@ Response
 ### PUT Examples
 
 #### Update program
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| programName | String | x | | Name of the program |
+| programRegistry | String | x | | Registry name for the program |
+| programRegistryActivityId | String | x | | Registry activity identifier |
+| programRegistryProgramId | String | | | Registry program identifier |
+| programDescription | String | | | Description of the program |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
 
 Request
 ```shell
@@ -1789,24 +1837,24 @@ Download stream to download the XLS file of project records.
 
 POST Fields:
 
-| Field | Type | Description |
-|:------:|:--------:|:------------------------------------------------------------:|
-| projectRegistryName | String | (Required) Name of the project registry |
-| projectId | String | (Required) Unique identifier for the project |
-| projectName | String | (Required) Name of the project |
-| projectCreditingProgram | String | (Optional) Name of the crediting program |
-| projectLink | String | (Optional) URL link to the project. Must be a valid URI |
-| projectDescription | String | (Optional) Description of the project |
-| projectSector | String | (Optional) Project sector. Must be a valid value from the picklist (see [Get picklist data](#get-picklist-data)) |
-| projectType | String | (Optional) Type of project. Must be a valid value from the picklist (see [Get picklist data](#get-picklist-data)) |
-| projectSubtype | String | (Optional) Subtype of the project |
-| projectStatus | String | (Optional) Status of the project. Must be a valid value from the picklist (see [Get picklist data](#get-picklist-data)) |
-| projectStatusDate | Date | (Optional) Date when the project status was set (ISO 8601 format) |
-| projectUnitMetric | String | (Optional) Unit metric for the project. Must be a valid value from the picklist (see [Get picklist data](#get-picklist-data)) |
-| cadTrustReferenceProjectId | String | (Optional) CAD Trust reference project identifier |
-| cadTrustProgramId | String | (Optional) CAD Trust program identifier. Must be a valid UUID |
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| projectRegistryName | String | x | | Name of the project registry |
+| projectId | String | x | | Unique identifier for the project |
+| projectName | String | x | | Name of the project |
+| projectCreditingProgram | String | | | Name of the crediting program |
+| projectLink | String | | | URL link to the project. Must be a valid URI |
+| projectDescription | String | | | Description of the project |
+| projectSector | String | | x | Project sector |
+| projectType | String | | x | Type of project |
+| projectSubtype | String | | | Subtype of the project |
+| projectStatus | String | | x | Status of the project |
+| projectStatusDate | Date | | | Date when the project status was set (ISO 8601 format) |
+| projectUnitMetric | String | | x | Unit metric for the project |
+| cadTrustReferenceProjectId | String | | | CAD Trust reference project identifier |
+| cadTrustProgramId | String | | | CAD Trust program identifier. Must be a valid UUID |
 
-**Note**: Valid picklist values for `projectSector`, `projectType`, `projectStatus`, and `projectUnitMetric` can be retrieved using `GET /v2/governance/meta/pickList`.
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
 Request
 ```sh
@@ -1864,6 +1912,27 @@ Response
 #### Update project
 
 **Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| projectRegistryName | String | x | | Name of the project registry |
+| projectId | String | x | | Unique identifier for the project |
+| projectName | String | x | | Name of the project |
+| projectCreditingProgram | String | | | Name of the crediting program |
+| projectLink | String | | | URL link to the project. Must be a valid URI |
+| projectDescription | String | | | Description of the project |
+| projectSector | String | | x | Project sector |
+| projectType | String | | x | Type of project |
+| projectSubtype | String | | | Subtype of the project |
+| projectStatus | String | | x | Status of the project |
+| projectStatusDate | Date | | | Date when the project status was set (ISO 8601 format) |
+| projectUnitMetric | String | | x | Unit metric for the project |
+| cadTrustReferenceProjectId | String | | | CAD Trust reference project identifier |
+| cadTrustProgramId | String | | | CAD Trust program identifier. Must be a valid UUID |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
 Request
 ```sh
@@ -2034,6 +2103,20 @@ Response
 
 #### Create validation
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| validationId | String | x | | Unique identifier for the validation |
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| validationType | String | | x | Type of validation |
+| validationBody | String | | x | Validation body |
+| validationDate | Date | | | Date of the validation (ISO 8601 format) |
+| validationCreditPeriodStartDate | Date | | | Start date of the credit period (ISO 8601 format) |
+| validationCreditPeriodEndDate | Date | | | End date of the credit period (ISO 8601 format) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/validation' \
@@ -2064,6 +2147,20 @@ Response
 ### PUT Examples
 
 #### Update validation
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| validationId | String | x | | Unique identifier for the validation |
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| validationType | String | | x | Type of validation |
+| validationBody | String | | x | Validation body |
+| validationDate | Date | | | Date of the validation (ISO 8601 format) |
+| validationCreditPeriodStartDate | Date | | | Start date of the credit period (ISO 8601 format) |
+| validationCreditPeriodEndDate | Date | | | End date of the credit period (ISO 8601 format) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
 Request
 ```shell
@@ -2177,6 +2274,19 @@ Response
 
 #### Create verification
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| verificationId | String | x | | Unique identifier for the verification |
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| verificationStartDate | Date | | | Start date of the verification (ISO 8601 format) |
+| verificationEndDate | Date | | | End date of the verification (ISO 8601 format) |
+| verificationBody | String | | x | Verification body |
+| cadTrustValidationId | String | | | CAD Trust validation identifier. Must be a valid UUID |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/verification' \
@@ -2206,6 +2316,19 @@ Response
 ### PUT Examples
 
 #### Update verification
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| verificationId | String | x | | Unique identifier for the verification |
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| verificationStartDate | Date | | | Start date of the verification (ISO 8601 format) |
+| verificationEndDate | Date | | | End date of the verification (ISO 8601 format) |
+| verificationBody | String | | x | Verification body |
+| cadTrustValidationId | String | | | CAD Trust validation identifier. Must be a valid UUID |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
 Request
 ```shell
@@ -2316,6 +2439,16 @@ Response
 
 #### Create issuance
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| issuanceId | String | x | | Unique identifier for the issuance |
+| cadTrustVerificationId | String | x | | CAD Trust verification identifier. Must be a valid UUID |
+| cadTrustMethodologyId | String | x | | CAD Trust methodology identifier |
+| issuanceDate | Date | | | Date of the issuance (ISO 8601 format) |
+| cadTrustLocationId | String | | | CAD Trust location identifier. Must be a valid UUID |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/issuance' \
@@ -2344,6 +2477,18 @@ Response
 ### PUT Examples
 
 #### Update issuance
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| issuanceId | String | x | | Unique identifier for the issuance |
+| cadTrustVerificationId | String | x | | CAD Trust verification identifier. Must be a valid UUID |
+| cadTrustMethodologyId | String | x | | CAD Trust methodology identifier |
+| issuanceDate | Date | | | Date of the issuance (ISO 8601 format) |
+| cadTrustLocationId | String | | | CAD Trust location identifier. Must be a valid UUID |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
 
 Request
 ```shell
@@ -2653,6 +2798,33 @@ Response
 
 **Marketplace Fields**: The `marketplace`, `marketplaceLink`, and `marketplaceIdentifier` fields are optional. If provided, `marketplaceIdentifier` cannot be an empty string (must be null or a valid identifier).
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| unitSerialId | String | x | | Serial identifier for the unit |
+| unitStartBlock | String | x | | Start block identifier |
+| unitEndBlock | String | x | | End block identifier |
+| unitVintageYear | Number | x | | Vintage year (must be between 1900 and 2100) |
+| cadTrustIssuanceId | String | x | | CAD Trust issuance identifier. Must be a valid UUID |
+| unitCount | Number | | | Count of units (must be >= 0) |
+| unitType | String | | x | Type of unit |
+| unitStatus | String | | x | Status of the unit |
+| unitStatusReason | String | | | Reason for the unit status |
+| unitStatusDate | Date | | | Date when the unit status was set (ISO 8601 format) |
+| unitRetirementDetail | String | | | Details about unit retirement |
+| unitRetirementBeneficiary | String | | | Beneficiary of unit retirement |
+| unitRetirementBeneficiaryId | String | | | Beneficiary identifier for unit retirement |
+| unitLink | String | | | URL link to the unit. Must be a valid URI |
+| unitMetric | String | | x | Unit metric |
+| unitCurrentOwner | String | | | Current owner of the unit |
+| unitItmosReferenceId | String | | | ITMOS reference identifier |
+| marketplace | String | | | Marketplace name (can be null) |
+| marketplaceLink | String | | | Marketplace link (can be null) |
+| marketplaceIdentifier | String | | | Marketplace identifier (can be null, but cannot be empty string) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
 Request
 ```shell
 curl --location -g --request POST 'localhost:31310/v2/unit' \
@@ -2780,6 +2952,33 @@ Response
 #### Update unit
 
 **Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| unitSerialId | String | x | | Serial identifier for the unit |
+| unitStartBlock | String | x | | Start block identifier |
+| unitEndBlock | String | x | | End block identifier |
+| unitVintageYear | Number | x | | Vintage year (must be between 1900 and 2100) |
+| cadTrustIssuanceId | String | x | | CAD Trust issuance identifier. Must be a valid UUID |
+| unitCount | Number | | | Count of units (must be >= 0) |
+| unitType | String | | x | Type of unit |
+| unitStatus | String | | x | Status of the unit |
+| unitStatusReason | String | | | Reason for the unit status |
+| unitStatusDate | Date | | | Date when the unit status was set (ISO 8601 format) |
+| unitRetirementDetail | String | | | Details about unit retirement |
+| unitRetirementBeneficiary | String | | | Beneficiary of unit retirement |
+| unitRetirementBeneficiaryId | String | | | Beneficiary identifier for unit retirement |
+| unitLink | String | | | URL link to the unit. Must be a valid URI |
+| unitMetric | String | | x | Unit metric |
+| unitCurrentOwner | String | | | Current owner of the unit |
+| unitItmosReferenceId | String | | | ITMOS reference identifier |
+| marketplace | String | | | Marketplace name (can be null) |
+| marketplaceLink | String | | | Marketplace link (can be null) |
+| marketplaceIdentifier | String | | | Marketplace identifier (can be null, but cannot be empty string) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
 Request
 ```shell
@@ -2926,6 +3125,19 @@ Response
 
 #### Create location
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| locationCountry | String | | x | Country of the location |
+| locationRegion | String | | | Region of the location (max 255 characters) |
+| locationGis | String | | | GIS data for the location (max 10000 characters) |
+| locationMapType | String | | | Type of map (max 100 characters) |
+| locationMapFileLink | String | | | URL link to the map file. Must be a valid URI (max 500 characters) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/location' \
@@ -2955,6 +3167,19 @@ Response
 ### PUT Examples
 
 #### Update location
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| locationCountry | String | | x | Country of the location |
+| locationRegion | String | | | Region of the location (max 255 characters) |
+| locationGis | String | | | GIS data for the location (max 10000 characters) |
+| locationMapType | String | | | Type of map (max 100 characters) |
+| locationMapFileLink | String | | | URL link to the map file. Must be a valid URI (max 500 characters) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`. Update requests must include ALL fields, not just the ones being changed.
 
 Request
 ```shell
@@ -3066,6 +3291,16 @@ Response
 
 #### Create estimation
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| estimationStartDate | Date | x | | Start date of the estimation period (ISO 8601 format: YYYY-MM-DD) |
+| estimationEndDate | Date | x | | End date of the estimation period (ISO 8601 format: YYYY-MM-DD). Must be after estimationStartDate |
+| estimationUnitCount | Number | | | Estimated unit count (max 6 decimal places) |
+| estimationReferenceNo | String | | | Reference number for the estimation (max 255 characters) |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/estimation' \
@@ -3094,6 +3329,18 @@ Response
 ### PUT Examples
 
 #### Update estimation
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| estimationStartDate | Date | x | | Start date of the estimation period (ISO 8601 format: YYYY-MM-DD) |
+| estimationEndDate | Date | x | | End date of the estimation period (ISO 8601 format: YYYY-MM-DD). Must be after estimationStartDate |
+| estimationUnitCount | Number | | | Estimated unit count (max 6 decimal places) |
+| estimationReferenceNo | String | | | Reference number for the estimation (max 255 characters) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
 
 Request
 ```shell
@@ -3203,6 +3450,16 @@ Response
 
 #### Create rating
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| ratingName | String | x | | Name of the rating (max 255 characters) |
+| ratingValue | String | x | | Value of the rating (max 255 characters) |
+| ratingType | String | | | Type of rating. Must be one of: CDP, CCQI |
+| ratingLink | String | | | URL link to the rating. Must be a valid URI |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/rating' \
@@ -3231,6 +3488,18 @@ Response
 ### PUT Examples
 
 #### Update rating
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| ratingName | String | x | | Name of the rating (max 255 characters) |
+| ratingValue | String | x | | Value of the rating (max 255 characters) |
+| ratingType | String | | | Type of rating. Must be one of: CDP, CCQI |
+| ratingLink | String | | | URL link to the rating. Must be a valid URI |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
 
 Request
 ```shell
@@ -3334,6 +3603,13 @@ Response
 
 #### Create co-benefit
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| coBenefitId | String | x | | Co-benefit identifier. Must be one of the valid SDG values: SDG 1 - No poverty, SDG 2 - Zero hunger, SDG 3 - Good health and well-being, SDG 4 - Quality education, SDG 5 - Gender equality, SDG 6 - Clean water and sanitation, SDG 7 - Affordable and clean energy, SDG 8 - Decent work and economic growth, SDG 9 - Industry, innovation, and infrastructure, SDG 10 - Reduced inequalities, SDG 11 - Sustainable cities and communities, SDG 12 - Responsible consumption and production, SDG 13 - Climate action, SDG 14 - Life below water, SDG 15 - Life on land, SDG 16 - Peace and justice strong institutions, SDG 17 - Partnerships for the goals |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/co-benefit' \
@@ -3359,6 +3635,15 @@ Response
 ### PUT Examples
 
 #### Update co-benefit
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| coBenefitId | String | x | | Co-benefit identifier. Must be one of the valid SDG values: SDG 1 - No poverty, SDG 2 - Zero hunger, SDG 3 - Good health and well-being, SDG 4 - Quality education, SDG 5 - Gender equality, SDG 6 - Clean water and sanitation, SDG 7 - Affordable and clean energy, SDG 8 - Decent work and economic growth, SDG 9 - Industry, innovation, and infrastructure, SDG 10 - Reduced inequalities, SDG 11 - Sustainable cities and communities, SDG 12 - Responsible consumption and production, SDG 13 - Climate action, SDG 14 - Life below water, SDG 15 - Life on land, SDG 16 - Peace and justice strong institutions, SDG 17 - Partnerships for the goals |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
 
 Request
 ```shell
@@ -3484,6 +3769,17 @@ Response
 ### PUT Examples
 
 #### Update project-methodology relationship
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| cadTrustMethodologyId | String | x | | CAD Trust methodology identifier. Must be a valid UUID |
+| projectMethodologyDate | Date | | | Date of the project-methodology relationship (ISO 8601 format: YYYY-MM-DD) |
+| projectMethodologyDescription | String | | | Description of the relationship (max 10000 characters) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
 
 Request
 ```shell
@@ -3614,6 +3910,16 @@ Response
 
 #### Update stakeholder
 
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| stakeholderName | String | x | | Name of the stakeholder (max 255 characters) |
+| stakeholderType | String | | | Type of stakeholder. Must be one of: Owner, Developer, Consultant |
+| stakeholderLink | String | | | URL link to the stakeholder. Must be a valid URI |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/stakeholder/e880047e-cdf4-45bb-a9df-e706fa427713' \
@@ -3740,6 +4046,15 @@ Response
 
 #### Update stakeholder-project relationship
 
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustStakeholderId | String | x | | CAD Trust stakeholder identifier. Must be a valid UUID |
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/stakeholder-projects/f1a2b3c4-d5e6-7890-abcd-ef1234567890' \
@@ -3843,6 +4158,15 @@ Response
 
 #### Create label
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| labelName | String | x | | Name of the label (max 255 characters) |
+| labelType | String | | | Type of label. Must be one of: Certification, Article 6 - Endorsement, Article 6 - Letter of Qualification, Article 6 - Authorisation, Article 6 - Letter of Approvals |
+| labelLink | String | | | URL link to the label. Must be a valid URI |
+| labelDate | Date | | | Date of the label (ISO 8601 format) |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/label' \
@@ -3870,6 +4194,17 @@ Response
 ### PUT Examples
 
 #### Update label
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| labelName | String | x | | Name of the label (max 255 characters) |
+| labelType | String | | | Type of label. Must be one of: Certification, Article 6 - Endorsement, Article 6 - Letter of Qualification, Article 6 - Authorisation, Article 6 - Letter of Approvals |
+| labelLink | String | | | URL link to the label. Must be a valid URI |
+| labelDate | Date | | | Date of the label (ISO 8601 format) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
 
 Request
 ```shell
@@ -3970,6 +4305,15 @@ Response
 
 #### Create unit-label relationship
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustLabelId | String | x | | CAD Trust label identifier. Must be a valid UUID |
+| cadTrustUnitId | String | x | | CAD Trust unit identifier. Must be a valid UUID |
+| labelUnitDate | Date | | | Date of the unit-label relationship (ISO 8601 format, can be null) |
+| labelUnitDescription | String | | | Description of the relationship (can be null) |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/unit-label' \
@@ -3996,6 +4340,17 @@ Response
 ### PUT Examples
 
 #### Update unit-label relationship
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustLabelId | String | x | | CAD Trust label identifier. Must be a valid UUID |
+| cadTrustUnitId | String | x | | CAD Trust unit identifier. Must be a valid UUID |
+| labelUnitDate | Date | | | Date of the unit-label relationship (ISO 8601 format, can be null) |
+| labelUnitDescription | String | | | Description of the relationship (can be null) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
 
 Request
 ```shell
@@ -4096,6 +4451,20 @@ Response
 
 #### Create AEF-T1-Submission
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT1SubmissionParty | String | x | | Party submitting the AEF (max 255 characters) |
+| aefT1SubmissionVersion | String | x | | Version of the submission (max 255 characters) |
+| aefT1SubmissionReportYear | Number | x | | Report year (must be between 1900 and 2100) |
+| aefT1SubmissionSubmissionDate | Date | x | | Submission date (ISO 8601 format) |
+| aefT1SubmissionReviewStatus | String | | | Review status (can be null) |
+| aefT1SubmissionResultCheck | String | | | Result check (can be null) |
+| aefT1SubmissionNdcFirstYear | Number | | | NDC first year (must be between 1900 and 2100, can be null) |
+| aefT1SubmissionNdcLastYear | Number | | | NDC last year (must be between 1900 and 2100, can be null) |
+| aefT1SubmissionReferenceReviewReport | String | | | Reference review report URL. Must be a valid URI (can be null) |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/aef-t1-submission' \
@@ -4120,6 +4489,22 @@ Response
 ### PUT Examples
 
 #### Update AEF-T1-Submission
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT1SubmissionParty | String | x | | Party submitting the AEF (max 255 characters) |
+| aefT1SubmissionVersion | String | x | | Version of the submission (max 255 characters) |
+| aefT1SubmissionReportYear | Number | x | | Report year (must be between 1900 and 2100) |
+| aefT1SubmissionSubmissionDate | Date | x | | Submission date (ISO 8601 format) |
+| aefT1SubmissionReviewStatus | String | | | Review status (can be null) |
+| aefT1SubmissionResultCheck | String | | | Result check (can be null) |
+| aefT1SubmissionNdcFirstYear | Number | | | NDC first year (must be between 1900 and 2100, can be null) |
+| aefT1SubmissionNdcLastYear | Number | | | NDC last year (must be between 1900 and 2100, can be null) |
+| aefT1SubmissionReferenceReviewReport | String | | | Reference review report URL. Must be a valid URI (can be null) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
 
 Request
 ```shell
@@ -4217,6 +4602,25 @@ Response
 
 #### Create AEF-T5-Authorized-Entities
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT5AuthorizedEntitiesAuthorizationDate | Date | x | | Authorization date (ISO 8601 format) |
+| aefT5AuthorizedEntitiesName | String | x | | Name of the authorized entity (max 255 characters) |
+| aefT5AuthorizedEntitiesId | String | x | | Identifier of the authorized entity (max 255 characters) |
+| aefT5AuthorizedEntitiesCooperativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT5AuthorizedEntitiesIncorporationCountry | String | | x | Incorporation country (can be null) |
+| aefT5AuthorizedEntitiesConditions | String | | | Conditions (can be null) |
+| aefT5AuthorizedEntitiesChangeConditions | String | | | Change conditions (can be null) |
+| aefT5AuthorizedEntitiesAdditionalInformation | String | | | Additional information (can be null) |
+| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
+| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
+| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/aef-t5-authorized-entities' \
@@ -4241,6 +4645,25 @@ Response
 ### PUT Examples
 
 #### Update AEF-T5-Authorized-Entities
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT5AuthorizedEntitiesAuthorizationDate | Date | x | | Authorization date (ISO 8601 format) |
+| aefT5AuthorizedEntitiesName | String | x | | Name of the authorized entity (max 255 characters) |
+| aefT5AuthorizedEntitiesId | String | x | | Identifier of the authorized entity (max 255 characters) |
+| aefT5AuthorizedEntitiesCooperativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT5AuthorizedEntitiesIncorporationCountry | String | | x | Incorporation country (can be null) |
+| aefT5AuthorizedEntitiesConditions | String | | | Conditions (can be null) |
+| aefT5AuthorizedEntitiesChangeConditions | String | | | Change conditions (can be null) |
+| aefT5AuthorizedEntitiesAdditionalInformation | String | | | Additional information (can be null) |
+| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
+| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
+| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
 Request
 ```shell
@@ -4338,6 +4761,36 @@ Response
 
 #### Create AEF-T2-Authorizations
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT2AuthorizationsId | String | x | | Authorization identifier (max 255 characters) |
+| aefT2AuthorizationsDate | Date | x | | Authorization date (ISO 8601 format) |
+| aefT2AuthorizationsCooperativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT2AuthorizationsAuthorizedPartyId | String | x | | Authorized party identifier (max 255 characters) |
+| aefT2AuthorizationsVersion | String | | | Version (max 255 characters, can be null) |
+| aefT2AuthorizationsQuantity | Number | | | Quantity (max 2 decimal places, can be null) |
+| aefT2AuthorizationsMetric | String | | x | Metric (can be null) |
+| aefT2AuthorizationsGwpValue | String | | | GWP value (max 255 characters, can be null) |
+| aefT2AuthorizationsApplicableNonGhgMetric | String | | | Applicable non-GHG metric (max 255 characters, can be null) |
+| aefT2AuthorizationsSector | String | | x | Sector (can be null) |
+| aefT2AuthorizationsActivityType | String | | x | Activity type (can be null) |
+| aefT2AuthorizationsPurposesForAuthorization | String | | x | Purposes for authorization (can be null) |
+| aefT2AuthorizationsAuthoziedEntityId | String | | | Authorized entity identifier (max 255 characters, can be null) |
+| aefT2AuthorizationsOimpAuthorizedParty | String | | | OIMP authorized party (max 255 characters, can be null) |
+| aefT2AuthorizationsAuthorizedTimeframe | String | | | Authorized timeframe (max 255 characters, can be null) |
+| aefT2AuthorizationsAuthorizationTerms | String | | | Authorization terms (max 255 characters, can be null) |
+| aefT2AuthorizationsAuthorizationDocumentation | String | | | Authorization documentation (can be null) |
+| aefT2AuthorizationsFirstTransferDefinitionOimp | String | | | First transfer definition OIMP (can be null) |
+| aefT2AuthorizationsAdditionalInformation | String | | | Additional information (can be null) |
+| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
+| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
+| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT5AuthorizedEntitiesId | String | | | CAD Trust AEF T5 authorized entities identifier. Must be a valid UUID (can be null) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/aef-t2-authorizations' \
@@ -4362,6 +4815,36 @@ Response
 ### PUT Examples
 
 #### Update AEF-T2-Authorizations
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT2AuthorizationsId | String | x | | Authorization identifier (max 255 characters) |
+| aefT2AuthorizationsDate | Date | x | | Authorization date (ISO 8601 format) |
+| aefT2AuthorizationsCooperativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT2AuthorizationsAuthorizedPartyId | String | x | | Authorized party identifier (max 255 characters) |
+| aefT2AuthorizationsVersion | String | | | Version (max 255 characters, can be null) |
+| aefT2AuthorizationsQuantity | Number | | | Quantity (max 2 decimal places, can be null) |
+| aefT2AuthorizationsMetric | String | | x | Metric (can be null) |
+| aefT2AuthorizationsGwpValue | String | | | GWP value (max 255 characters, can be null) |
+| aefT2AuthorizationsApplicableNonGhgMetric | String | | | Applicable non-GHG metric (max 255 characters, can be null) |
+| aefT2AuthorizationsSector | String | | x | Sector (can be null) |
+| aefT2AuthorizationsActivityType | String | | x | Activity type (can be null) |
+| aefT2AuthorizationsPurposesForAuthorization | String | | x | Purposes for authorization (can be null) |
+| aefT2AuthorizationsAuthoziedEntityId | String | | | Authorized entity identifier (max 255 characters, can be null) |
+| aefT2AuthorizationsOimpAuthorizedParty | String | | | OIMP authorized party (max 255 characters, can be null) |
+| aefT2AuthorizationsAuthorizedTimeframe | String | | | Authorized timeframe (max 255 characters, can be null) |
+| aefT2AuthorizationsAuthorizationTerms | String | | | Authorization terms (max 255 characters, can be null) |
+| aefT2AuthorizationsAuthorizationDocumentation | String | | | Authorization documentation (can be null) |
+| aefT2AuthorizationsFirstTransferDefinitionOimp | String | | | First transfer definition OIMP (can be null) |
+| aefT2AuthorizationsAdditionalInformation | String | | | Additional information (can be null) |
+| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
+| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
+| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT5AuthorizedEntitiesId | String | | | CAD Trust AEF T5 authorized entities identifier. Must be a valid UUID (can be null) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
 Request
 ```shell
@@ -4459,6 +4942,44 @@ Response
 
 #### Create AEF-T3-Actions
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT3ActionsDate | Date | x | | Action date (ISO 8601 format) |
+| aefT3ActionsCoopoerativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT3ActionsAuthorizationId | String | x | | Authorization identifier (max 255 characters) |
+| aefT3ActionsFirstTransferringPartyId | String | x | | First transferring party identifier (max 255 characters) |
+| aefT3ActionsPartyItmoRegistryId | String | x | | Party ITMO registry identifier (max 255 characters) |
+| aefT3ActionsItmoFirstId | String | x | | ITMO first identifier (max 255 characters) |
+| aefT3ActionsItmoLastId | String | x | | ITMO last identifier (max 255 characters) |
+| aefT3ActionsUnitRegistryId | String | x | | Unit registry identifier (max 255 characters) |
+| aefT3ActionsUnitFirstId | String | x | | Unit first identifier (max 255 characters) |
+| aefT3ActionsUnitLastId | String | x | | Unit last identifier (max 255 characters) |
+| aefT3ActionsQuantityTCo2 | Number | x | | Quantity in tCO2 (max 2 decimal places) |
+| aefT3ActionsVintageYear | Number | x | | Vintage year (must be between 1900 and 2100) |
+| aefT3ActionsTransferringPartyId | String | x | | Transferring party identifier (max 255 characters) |
+| aefT3ActionsAcquiringPartyId | String | x | | Acquiring party identifier (max 255 characters) |
+| aefT3ActionsType | String | | x | Action type (can be null) |
+| aefT3ActionsSubtype | String | | | Action subtype (max 255 characters, can be null) |
+| aefT3ActionsMetric | String | | x | Metric (can be null) |
+| aefT3ActionsGwpValue | String | | | GWP value (max 255 characters, can be null) |
+| aefT3ActionsApplicableNonGhgMetric | String | | | Applicable non-GHG metric (max 255 characters, can be null) |
+| aefT3ActionsQuantityNonGhg | String | | | Quantity non-GHG (max 255 characters, can be null) |
+| aefT3ActionsMitigationType | String | | x | Mitigation type (can be null) |
+| aefT3ActionsPurposeOfUseOimp | String | | | Purpose of use OIMP (max 255 characters, can be null) |
+| aefT3ActionsUsingParticipatingPartyId | String | | | Using participating party identifier (max 255 characters, can be null) |
+| aefT3ActionsUsingAuthorizedEntityId | String | | | Using authorized entity identifier (max 255 characters, can be null) |
+| aefT3ActionsItmoUsedYear | Number | | | ITMO used year (must be between 1900 and 2100, can be null) |
+| aefT3ActionsConsistencyCheckResult | String | | | Consistency check result (max 255 characters, can be null) |
+| aefT3ActionsAdditionalInformation | String | | | Additional information (max 255 characters, can be null) |
+| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
+| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
+| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/aef-t3-actions' \
@@ -4483,6 +5004,44 @@ Response
 ### PUT Examples
 
 #### Update AEF-T3-Actions
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT3ActionsDate | Date | x | | Action date (ISO 8601 format) |
+| aefT3ActionsCoopoerativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT3ActionsAuthorizationId | String | x | | Authorization identifier (max 255 characters) |
+| aefT3ActionsFirstTransferringPartyId | String | x | | First transferring party identifier (max 255 characters) |
+| aefT3ActionsPartyItmoRegistryId | String | x | | Party ITMO registry identifier (max 255 characters) |
+| aefT3ActionsItmoFirstId | String | x | | ITMO first identifier (max 255 characters) |
+| aefT3ActionsItmoLastId | String | x | | ITMO last identifier (max 255 characters) |
+| aefT3ActionsUnitRegistryId | String | x | | Unit registry identifier (max 255 characters) |
+| aefT3ActionsUnitFirstId | String | x | | Unit first identifier (max 255 characters) |
+| aefT3ActionsUnitLastId | String | x | | Unit last identifier (max 255 characters) |
+| aefT3ActionsQuantityTCo2 | Number | x | | Quantity in tCO2 (max 2 decimal places) |
+| aefT3ActionsVintageYear | Number | x | | Vintage year (must be between 1900 and 2100) |
+| aefT3ActionsTransferringPartyId | String | x | | Transferring party identifier (max 255 characters) |
+| aefT3ActionsAcquiringPartyId | String | x | | Acquiring party identifier (max 255 characters) |
+| aefT3ActionsType | String | | x | Action type (can be null) |
+| aefT3ActionsSubtype | String | | | Action subtype (max 255 characters, can be null) |
+| aefT3ActionsMetric | String | | x | Metric (can be null) |
+| aefT3ActionsGwpValue | String | | | GWP value (max 255 characters, can be null) |
+| aefT3ActionsApplicableNonGhgMetric | String | | | Applicable non-GHG metric (max 255 characters, can be null) |
+| aefT3ActionsQuantityNonGhg | String | | | Quantity non-GHG (max 255 characters, can be null) |
+| aefT3ActionsMitigationType | String | | x | Mitigation type (can be null) |
+| aefT3ActionsPurposeOfUseOimp | String | | | Purpose of use OIMP (max 255 characters, can be null) |
+| aefT3ActionsUsingParticipatingPartyId | String | | | Using participating party identifier (max 255 characters, can be null) |
+| aefT3ActionsUsingAuthorizedEntityId | String | | | Using authorized entity identifier (max 255 characters, can be null) |
+| aefT3ActionsItmoUsedYear | Number | | | ITMO used year (must be between 1900 and 2100, can be null) |
+| aefT3ActionsConsistencyCheckResult | String | | | Consistency check result (max 255 characters, can be null) |
+| aefT3ActionsAdditionalInformation | String | | | Additional information (max 255 characters, can be null) |
+| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
+| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
+| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
 Request
 ```shell
@@ -4580,6 +5139,33 @@ Response
 
 #### Create AEF-T4-Holdings
 
+POST Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT4HoldingsCoopoerativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT4HoldingsAuthorizationId | String | x | | Authorization identifier (max 255 characters) |
+| aefT4HoldingsFirstTransferringPartyId | String | x | | First transferring party identifier (max 255 characters) |
+| aefT4HoldingsPartyItmoRegistryId | String | x | | Party ITMO registry identifier (max 255 characters) |
+| aefT4HoldingsItmoFirstId | String | x | | ITMO first identifier (max 255 characters) |
+| aefT4HoldingsItmoLastId | String | x | | ITMO last identifier (max 255 characters) |
+| aefT4HoldingsUnitRegistryId | String | x | | Unit registry identifier (max 255 characters) |
+| aefT4HoldingsUnitFirstId | String | x | | Unit first identifier (max 255 characters) |
+| aefT4HoldingsUnitLastId | String | x | | Unit last identifier (max 255 characters) |
+| aefT4HoldingsQuantityTCo2 | Number | x | | Quantity in tCO2 (max 2 decimal places) |
+| aefT4HoldingsVintageYear | Number | x | | Vintage year (must be between 1900 and 2100) |
+| aefT4HoldingsMetric | String | | x | Metric (can be null) |
+| aefT4HoldingsGwpValue | String | | | GWP value (max 255 characters, can be null) |
+| aefT4HoldingsApplicableNonGhgMetric | String | | | Applicable non-GHG metric (max 255 characters, can be null) |
+| aefT4HoldingsQuantityNonGhg | String | | | Quantity non-GHG (max 255 characters, can be null) |
+| aefT4HoldingsMitigationType | String | | x | Mitigation type (can be null) |
+| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
+| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
+| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/aef-t4-holdings' \
@@ -4604,6 +5190,33 @@ Response
 ### PUT Examples
 
 #### Update AEF-T4-Holdings
+
+PUT Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT4HoldingsCoopoerativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT4HoldingsAuthorizationId | String | x | | Authorization identifier (max 255 characters) |
+| aefT4HoldingsFirstTransferringPartyId | String | x | | First transferring party identifier (max 255 characters) |
+| aefT4HoldingsPartyItmoRegistryId | String | x | | Party ITMO registry identifier (max 255 characters) |
+| aefT4HoldingsItmoFirstId | String | x | | ITMO first identifier (max 255 characters) |
+| aefT4HoldingsItmoLastId | String | x | | ITMO last identifier (max 255 characters) |
+| aefT4HoldingsUnitRegistryId | String | x | | Unit registry identifier (max 255 characters) |
+| aefT4HoldingsUnitFirstId | String | x | | Unit first identifier (max 255 characters) |
+| aefT4HoldingsUnitLastId | String | x | | Unit last identifier (max 255 characters) |
+| aefT4HoldingsQuantityTCo2 | Number | x | | Quantity in tCO2 (max 2 decimal places) |
+| aefT4HoldingsVintageYear | Number | x | | Vintage year (must be between 1900 and 2100) |
+| aefT4HoldingsMetric | String | | x | Metric (can be null) |
+| aefT4HoldingsGwpValue | String | | | GWP value (max 255 characters, can be null) |
+| aefT4HoldingsApplicableNonGhgMetric | String | | | Applicable non-GHG metric (max 255 characters, can be null) |
+| aefT4HoldingsQuantityNonGhg | String | | | Quantity non-GHG (max 255 characters, can be null) |
+| aefT4HoldingsMitigationType | String | | x | Mitigation type (can be null) |
+| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
+| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
+| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
 Request
 ```shell
