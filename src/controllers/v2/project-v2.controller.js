@@ -50,9 +50,13 @@ export const create = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error creating new project',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }
@@ -139,10 +143,10 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error creating project:', err);
+    loggerV2.error('[v2]: Error creating project:', err);
     res.status(400).json({
       message: 'Error creating new project',
-      error: err.message,
+      error: err?.message || err?.toString() || 'Unknown error occurred',
       success: false,
     });
   }

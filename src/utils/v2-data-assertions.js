@@ -31,8 +31,12 @@ export const assertV2IfReadOnlyMode = async () => {
  * @throws {Error} If record is not found in either main table or staging
  */
 export const assertRecordExistanceOrStaged = async (Model, pk, pkField = null) => {
-  // Determine the primary key field name
-  const primaryKeyField = pkField || Model.primaryKeyAttribute;
+  // Determine the primary key field name (Sequelize attribute name)
+  const primaryKeyAttribute = pkField || Model.primaryKeyAttribute;
+
+  // Get the database field name (snake_case) from the model definition
+  // Staging data is stored in database format (snake_case), not Sequelize attribute format (camelCase)
+  const primaryKeyDbField = Model.rawAttributes[primaryKeyAttribute]?.field || primaryKeyAttribute;
 
   // First check the main table
   const record = await Model.findByPk(pk);
@@ -57,7 +61,8 @@ export const assertRecordExistanceOrStaged = async (Model, pk, pkField = null) =
       const recordsToCheck = Array.isArray(stagedData) ? stagedData : [stagedData];
 
       for (const stagedRecord of recordsToCheck) {
-        if (stagedRecord[primaryKeyField] === pk) {
+        // Check using database field name (snake_case) since staging data is in DB format
+        if (stagedRecord[primaryKeyDbField] === pk) {
           // Found in staging - return a mock record object
           return {
             ...stagedRecord,
