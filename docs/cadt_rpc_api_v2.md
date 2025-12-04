@@ -1638,8 +1638,8 @@ Response
       "projectName":"Stop Desertification",
       "projectLink":"https://desertificationtest.com",
       "projectDescription":"A project to stop desertification",
-      "projectSector":"Fugitive emissions – from fuels (solid, oil and gas)",
-      "projectType":"Coal Mine Methane",
+      "projectSector":"Fugitive emissions from fuel (solid, oil and gas)",
+      "projectType":"Coal bed/mine methane",
       "projectSubtype":"Methane Capture",
       "projectStatus":"Registered",
       "projectStatusDate":"2022-02-02T00:00:00.000Z",
@@ -1677,8 +1677,8 @@ Response
   "projectName":"Stop Deforestation",
   "projectLink":"http://testurl.com",
   "projectDescription":"A project to stop deforestation",
-  "projectSector":"Agriculture Forestry and Other Land Use (AFOLU)",
-  "projectType":"Soil Enrichment",
+  "projectSector":"Agriculture, forestry and other land use (AFOLU)",
+  "projectType":"Afforestation",
   "projectSubtype":"Soil Carbon",
   "projectStatus":"Listed",
   "projectStatusDate":"2022-03-02T00:00:00.000Z",
@@ -1787,6 +1787,27 @@ Download stream to download the XLS file of project records.
 
 **Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
 
+POST Fields:
+
+| Field | Type | Description |
+|:------:|:--------:|:------------------------------------------------------------:|
+| projectRegistryName | String | (Required) Name of the project registry |
+| projectId | String | (Required) Unique identifier for the project |
+| projectName | String | (Required) Name of the project |
+| projectCreditingProgram | String | (Optional) Name of the crediting program |
+| projectLink | String | (Optional) URL link to the project. Must be a valid URI |
+| projectDescription | String | (Optional) Description of the project |
+| projectSector | String | (Optional) Project sector. Must be a valid value from the picklist (see [Get picklist data](#get-picklist-data)) |
+| projectType | String | (Optional) Type of project. Must be a valid value from the picklist (see [Get picklist data](#get-picklist-data)) |
+| projectSubtype | String | (Optional) Subtype of the project |
+| projectStatus | String | (Optional) Status of the project. Must be a valid value from the picklist (see [Get picklist data](#get-picklist-data)) |
+| projectStatusDate | Date | (Optional) Date when the project status was set (ISO 8601 format) |
+| projectUnitMetric | String | (Optional) Unit metric for the project. Must be a valid value from the picklist (see [Get picklist data](#get-picklist-data)) |
+| cadTrustReferenceProjectId | String | (Optional) CAD Trust reference project identifier |
+| cadTrustProgramId | String | (Optional) CAD Trust program identifier. Must be a valid UUID |
+
+**Note**: Valid picklist values for `projectSector`, `projectType`, `projectStatus`, and `projectUnitMetric` can be retrieved using `GET /v2/governance/meta/pickList`.
+
 Request
 ```sh
 curl --location --request POST 'localhost:31310/v2/project' \
@@ -1799,7 +1820,7 @@ curl --location --request POST 'localhost:31310/v2/project' \
         "projectDescription": "Sample project description",
         "projectCreditingProgram": "Gold Standard Program",
         "projectSector": "Manufacturing industries",
-        "projectType": "Conservation",
+        "projectType": "Reforestation",
         "projectSubtype": "Forest Conservation",
         "projectStatus": "Registered",
         "projectStatusDate": "2022-03-12",

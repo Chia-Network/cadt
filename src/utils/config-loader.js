@@ -11,12 +11,12 @@ import { migrateConfigFiles } from './config-migration.js';
 // Helper function to load config for a specific version
 const loadConfigForVersion = (dataModelVersion) => {
   const chiaRoot = getChiaRoot();
-  
+
   // Use test config file when running tests
   const isTestMode = process.env.NODE_ENV === 'test';
   let unifiedConfigFile;
   let unifiedConfigDir;
-  
+
   if (isTestMode) {
     // Use test-specific config file in project directory
     const projectRoot = path.resolve(process.cwd());
