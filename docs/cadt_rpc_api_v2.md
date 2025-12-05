@@ -1911,7 +1911,7 @@ curl --location -g --request PUT 'http://localhost:31310/v2/project/51ca9638-22b
     "projectLink": "http://testurl.com",
     "projectDescription": "Updated project description",
     "projectCreditingProgram": "Verra Program",
-    "projectSector": "Mining/Mineral production",
+    "projectSector": "Mining/mineral production",
     "projectType": "Afforestation",
     "projectSubtype": "Reforestation",
     "projectStatus": "Listed",
@@ -2025,7 +2025,7 @@ Response
       "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "validationId": "VAL-001",
       "validationType": "Validation of Project Design Document",
-      "validationBody": "Sample Validation Body",
+      "validationBody": "SCS Global Services",
       "validationDate": "2022-01-15T00:00:00.000Z",
       "validationCreditPeriodStartDate": "2022-01-01T00:00:00.000Z",
       "validationCreditPeriodEndDate": "2022-12-31T00:00:00.000Z",
@@ -2052,7 +2052,7 @@ Response
   "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "validationId": "VAL-001",
   "validationType": "Validation of Project Design Document",
-  "validationBody": "Sample Validation Body",
+  "validationBody": "SCS Global Services",
   "validationDate": "2022-01-15T00:00:00.000Z",
   "validationCreditPeriodStartDate": "2022-01-01T00:00:00.000Z",
   "validationCreditPeriodEndDate": "2022-12-31T00:00:00.000Z",
@@ -2090,7 +2090,7 @@ curl --location --request POST 'localhost:31310/v2/validation' \
 --data-raw '{
   "validationId": "VAL-001",
   "validationType": "Validation of Project Design Document",
-  "validationBody": "Sample Validation Body",
+  "validationBody": "SCS Global Services",
   "validationDate": "2022-01-15",
   "validationCreditPeriodStartDate": "2022-01-01",
   "validationCreditPeriodEndDate": "2022-12-31",
@@ -2125,7 +2125,7 @@ curl --location --request PUT 'localhost:31310/v2/validation/a1b2c3d4-e5f6-7890-
 --data-raw '{
   "validationId": "VAL-001",
   "validationType": "Validation of Project Design Document",
-  "validationBody": "Updated Validation Body",
+  "validationBody": "AENOR International S.A.U.",
   "validationDate": "2022-01-15",
   "validationCreditPeriodStartDate": "2022-01-01",
   "validationCreditPeriodEndDate": "2022-12-31",
@@ -2189,7 +2189,7 @@ Response
       "verificationId": "VER-001",
       "verificationStartDate": "2022-02-01T00:00:00.000Z",
       "verificationEndDate": "2022-02-20T00:00:00.000Z",
-      "verificationBody": "Sample Verification Body",
+      "verificationBody": "AENOR International S.A.U.",
       "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
       "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "createdAt": "2022-03-11T05:17:55.427Z",
@@ -2215,7 +2215,7 @@ Response
   "verificationId": "VER-001",
   "verificationStartDate": "2022-02-01T00:00:00.000Z",
   "verificationEndDate": "2022-02-20T00:00:00.000Z",
-  "verificationBody": "Sample Verification Body",
+  "verificationBody": "AENOR International S.A.U.",
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "createdAt": "2022-03-11T05:17:55.427Z",
@@ -2251,7 +2251,7 @@ curl --location --request POST 'localhost:31310/v2/verification' \
   "verificationId": "VER-001",
   "verificationStartDate": "2022-02-01",
   "verificationEndDate": "2022-02-20",
-  "verificationBody": "Sample Verification Body",
+  "verificationBody": "AENOR International S.A.U.",
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }'
@@ -2285,7 +2285,7 @@ curl --location --request PUT 'localhost:31310/v2/verification/b2c3d4e5-f6a7-890
   "verificationId": "VER-001",
   "verificationStartDate": "2022-02-01",
   "verificationEndDate": "2022-02-20",
-  "verificationBody": "Updated Verification Body",
+  "verificationBody": "SCS Global Services",
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }'
@@ -2844,7 +2844,7 @@ curl --location -g --request POST 'localhost:31310/v2/unit/split' \
       "unitBlockStart": "A001",
       "unitBlockEnd": "A010",
       "unitOwner": "New Owner 1",
-      "unitStatus": "active",
+      "unitStatus": "Issued",
       "countryJurisdictionOfOwner": "Bhutan"
     },
     {
