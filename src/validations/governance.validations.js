@@ -48,7 +48,7 @@ export const governancePickListSchemaV2 = Joi.object().keys({
   projectStatus: Joi.array().items(Joi.string()).min(1).required(),
   projectUnitMetric: Joi.array().items(Joi.string()).min(1).required(),
   unitMetric: Joi.array().items(Joi.string()).min(1).required(),
-  projectValidationBody: Joi.array().items(Joi.string()).min(1).required(),
+  validationBody: Joi.array().items(Joi.string()).min(1).required(),
   verificationBody: Joi.array().items(Joi.string()).min(1).required(),
   methodologyType: Joi.array().items(Joi.string()).min(1).required(),
   validationType: Joi.array().items(Joi.string()).min(1).required(),
