@@ -4,7 +4,7 @@ import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { CoBenefitV2, CoBenefitV2Mirror, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
+import { createV2TestHomeOrg, getV2HomeOrgId, resetV2StagingTable } from '../utils/v2-test-helpers.js';
 
 describe('Co-Benefit V2 Endpoint Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -451,6 +451,11 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
   describe('PUT /v2/co-benefit/:id (Update)', function () {
     let createdCoBenefitId;
 
+    beforeEach(async function () {
+      // Clean up staging table before each test to avoid pending commits errors
+      await resetV2StagingTable();
+    });
+
     before(async function () {
       const coBenefitData = {
         coBenefitId: 'SDG 2 - Zero hunger',
@@ -498,6 +503,11 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
   describe('DELETE /v2/co-benefit/:id (Delete)', function () {
     let createdCoBenefitId;
 
+    beforeEach(async function () {
+      // Clean up staging table before each test to avoid pending commits errors
+      await resetV2StagingTable();
+    });
+
     before(async function () {
       const coBenefitData = {
         coBenefitId: 'SDG 4 - Quality education',
@@ -523,6 +533,8 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
           coBenefitId: 'SDG 4 - Quality education',
           cadTrustProjectId: testProjectId,
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 

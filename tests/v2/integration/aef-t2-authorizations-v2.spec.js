@@ -725,10 +725,10 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
           cadTrustProjectId: testProjectId,
           aefT2AuthorizationsDate: '2024-01-15',
         });
-      }
-    });
-
-    it('should update an AEF-T2-Authorizations via API', async function () {
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
+       }
+    });it('should update an AEF-T2-Authorizations via API', async function () {
       const updateData = {
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
@@ -779,10 +779,10 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
           cadTrustUnitId: testUnitId,
           cadTrustProjectId: testProjectId,
         });
-      }
-    });
-
-    it('should delete an AEF-T2-Authorizations via API', async function () {
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
+       }
+    });it('should delete an AEF-T2-Authorizations via API', async function () {
       const response = await supertest(app)
         .delete(`/v2/aef-t2-authorizations/${createdAefT2AuthorizationsId}`);
 

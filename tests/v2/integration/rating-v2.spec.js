@@ -4,7 +4,7 @@ import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { RatingV2, RatingV2Mirror, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
+import { createV2TestHomeOrg, getV2HomeOrgId, resetV2StagingTable } from '../utils/v2-test-helpers.js';
 
 describe('Rating V2 Endpoint Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -512,17 +512,11 @@ describe('Rating V2 Endpoint Integration Tests', function () {
 
       // Commit the staging record so it exists for update
       let stagingRecord = null;
-
       if (response.body.uuid) {
-
         stagingRecord = await StagingV2.findOne({
-
           where: { uuid: response.body.uuid },
-
         });
-
       }
-
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         // Also create in main table for update test
@@ -533,6 +527,8 @@ describe('Rating V2 Endpoint Integration Tests', function () {
           ratingValue: 'B+',
           cadTrustProjectId: testProjectId,
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 
@@ -605,6 +601,8 @@ describe('Rating V2 Endpoint Integration Tests', function () {
           ratingValue: 'C+',
           cadTrustProjectId: testProjectId,
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 

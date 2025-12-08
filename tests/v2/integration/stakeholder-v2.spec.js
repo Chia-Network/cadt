@@ -317,9 +317,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       expect(response.body).to.not.have.property('data');
 
       // Verify record was staged
-      let stagingRecord = null;
-      if (response.body.uuid) {
-        stagingRecord = await StagingV2.findOne({
+      const stagingRecord = await StagingV2.findOne({
         where: { uuid: response.body.uuid },
       });
       expect(stagingRecord).to.exist;
@@ -386,8 +384,9 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       let stagingRecord = null;
       if (response.body.uuid) {
         stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
+          where: { uuid: response.body.uuid },
+        });
+      }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await StakeholderV2.create({
@@ -395,6 +394,8 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
           stakeholderName: 'Stakeholder to Update',
           stakeholderType: 'Owner',
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 
@@ -434,8 +435,9 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       let stagingRecord = null;
       if (response.body.uuid) {
         stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
+          where: { uuid: response.body.uuid },
+        });
+      }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await StakeholderV2.create({
@@ -443,6 +445,8 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
           stakeholderName: 'Stakeholder to Delete',
           stakeholderType: 'Consultant',
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 
