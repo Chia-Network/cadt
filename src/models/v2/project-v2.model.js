@@ -180,28 +180,69 @@ class ProjectV2 extends Model {
           })
         : null;
 
+    // Map sheet names from model.name (e.g., "ProjectV2") to table name (e.g., "project")
+    // This is needed because createXlsFromSequelizeResults uses model.name as the key,
+    // but transformFullXslsToChangeList expects keys matching primaryKeyMap
+    // Also map child table sheet names if they exist
+    const mapSheetNames = (xslsSheets, modelName, tableName) => {
+      if (!xslsSheets) {
+        return xslsSheets;
+      }
+      const mapped = { ...xslsSheets };
+      if (mapped[modelName]) {
+        mapped[tableName] = mapped[modelName];
+        delete mapped[modelName];
+      }
+      // Map child table names if they exist (LocationV2 -> location, etc.)
+      const childMappings = {
+        LocationV2: 'location',
+        EstimationV2: 'estimation',
+        RatingV2: 'rating',
+        CoBenefitV2: 'co_benefit',
+      };
+      Object.keys(childMappings).forEach((childModelName) => {
+        if (mapped[childModelName]) {
+          mapped[childMappings[childModelName]] = mapped[childModelName];
+          delete mapped[childModelName];
+        }
+      });
+      return mapped;
+    };
+
     // Convert Excel to changelist (only if Excel sheets were created)
+    // Pass V2 model map for checking existing records (including child tables)
+    const modelMap = {
+      project: ProjectV2,
+      location: LocationV2,
+      estimation: EstimationV2,
+      rating: RatingV2,
+      co_benefit: CoBenefitV2,
+    };
+
     const insertChangeList = insertXslsSheets
       ? await transformFullXslsToChangeList(
-          insertXslsSheets,
+          mapSheetNames(insertXslsSheets, ProjectV2.name, 'project'),
           'insert',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 
     const updateChangeList = updateXslsSheets
       ? await transformFullXslsToChangeList(
-          updateXslsSheets,
+          mapSheetNames(updateXslsSheets, ProjectV2.name, 'project'),
           'update',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 
     const deletedAssociationsChangeList = deleteXslsSheets
       ? await transformFullXslsToChangeList(
-          deleteXslsSheets,
+          mapSheetNames(deleteXslsSheets, ProjectV2.name, 'project'),
           'delete',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 
