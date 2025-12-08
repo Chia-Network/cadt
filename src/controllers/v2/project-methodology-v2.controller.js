@@ -53,12 +53,12 @@ export const createProjectMethodologyV2 = async (req, res) => {
       await assertRecordExistanceOrStaged(
         ProjectV2,
         newRecord.cadTrustProjectId,
-        `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+        `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`
       );
       await assertRecordExistanceOrStaged(
         MethodologyV2,
         newRecord.cadTrustMethodologyId,
-        `cadTrustMethodologyId '${newRecord.cadTrustMethodologyId}' does not exist. Please create the methodology first or use a valid cadTrustMethodologyId.`
+        `cadTrustMethodologyId '${newRecord.cadTrustMethodologyId}' does not exist. Please create the methodology first or use a valid cadTrustMethodologyId`
       );
     } catch (err) {
       return res.status(400).json({
@@ -283,14 +283,14 @@ export const updateProjectMethodologyV2 = async (req, res) => {
           await assertRecordExistanceOrStaged(
             ProjectV2,
             updateData.cadTrustProjectId,
-            `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+            `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`
           );
         }
         if (updateData.cadTrustMethodologyId) {
           await assertRecordExistanceOrStaged(
             MethodologyV2,
             updateData.cadTrustMethodologyId,
-            `cadTrustMethodologyId '${updateData.cadTrustMethodologyId}' does not exist. Please create the methodology first or use a valid cadTrustMethodologyId.`
+            `cadTrustMethodologyId '${updateData.cadTrustMethodologyId}' does not exist. Please create the methodology first or use a valid cadTrustMethodologyId`
           );
         }
       } catch (err) {

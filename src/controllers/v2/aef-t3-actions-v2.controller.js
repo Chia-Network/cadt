@@ -64,28 +64,28 @@ export const createAefT3ActionsV2 = async (req, res) => {
         await assertRecordExistanceOrStaged(
           AefT1SubmissionV2,
           newRecord.cadTrustAefT1SubmissionId,
-          `cadTrustAefT1SubmissionId '${newRecord.cadTrustAefT1SubmissionId}' does not exist. Please create the AEF-T1-Submission first or use a valid cadTrustAefT1SubmissionId.`
+          `cadTrustAefT1SubmissionId '${newRecord.cadTrustAefT1SubmissionId}' does not exist. Please create the AEF-T1-Submission first or use a valid cadTrustAefT1SubmissionId`
         );
       }
       if (newRecord.cadTrustUnitId) {
         await assertRecordExistanceOrStaged(
           UnitV2,
           newRecord.cadTrustUnitId,
-          `cadTrustUnitId '${newRecord.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId.`
+          `cadTrustUnitId '${newRecord.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId`
         );
       }
       if (newRecord.cadTrustProjectId) {
         await assertRecordExistanceOrStaged(
           ProjectV2,
           newRecord.cadTrustProjectId,
-          `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+          `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`
         );
       }
       if (newRecord.cadTrustAefT2AuthorizationsId) {
         await assertRecordExistanceOrStaged(
           AefT2AuthorizationsV2,
           newRecord.cadTrustAefT2AuthorizationsId,
-          `cadTrustAefT2AuthorizationsId '${newRecord.cadTrustAefT2AuthorizationsId}' does not exist. Please create the AEF-T2-Authorizations first or use a valid cadTrustAefT2AuthorizationsId.`
+          `cadTrustAefT2AuthorizationsId '${newRecord.cadTrustAefT2AuthorizationsId}' does not exist. Please create the AEF-T2-Authorizations first or use a valid cadTrustAefT2AuthorizationsId`
         );
       }
     } catch (err) {
@@ -276,28 +276,28 @@ export const updateAefT3ActionsV2 = async (req, res) => {
         await assertRecordExistanceOrStaged(
           AefT1SubmissionV2,
           updateData.cadTrustAefT1SubmissionId,
-          `cadTrustAefT1SubmissionId '${updateData.cadTrustAefT1SubmissionId}' does not exist. Please create the AEF-T1-Submission first or use a valid cadTrustAefT1SubmissionId.`
+          `cadTrustAefT1SubmissionId '${updateData.cadTrustAefT1SubmissionId}' does not exist. Please create the AEF-T1-Submission first or use a valid cadTrustAefT1SubmissionId`
         );
       }
       if (updateData.cadTrustUnitId) {
         await assertRecordExistanceOrStaged(
           UnitV2,
           updateData.cadTrustUnitId,
-          `cadTrustUnitId '${updateData.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId.`
+          `cadTrustUnitId '${updateData.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId`
         );
       }
       if (updateData.cadTrustProjectId) {
         await assertRecordExistanceOrStaged(
           ProjectV2,
           updateData.cadTrustProjectId,
-          `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+          `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`
         );
       }
       if (updateData.cadTrustAefT2AuthorizationsId) {
         await assertRecordExistanceOrStaged(
           AefT2AuthorizationsV2,
           updateData.cadTrustAefT2AuthorizationsId,
-          `cadTrustAefT2AuthorizationsId '${updateData.cadTrustAefT2AuthorizationsId}' does not exist. Please create the AEF-T2-Authorizations first or use a valid cadTrustAefT2AuthorizationsId.`
+          `cadTrustAefT2AuthorizationsId '${updateData.cadTrustAefT2AuthorizationsId}' does not exist. Please create the AEF-T2-Authorizations first or use a valid cadTrustAefT2AuthorizationsId`
         );
       }
     } catch (err) {

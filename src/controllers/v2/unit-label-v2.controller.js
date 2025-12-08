@@ -53,12 +53,12 @@ export const createUnitLabelV2 = async (req, res) => {
       await assertRecordExistanceOrStaged(
         LabelV2,
         newRecord.cadTrustLabelId,
-        `cadTrustLabelId '${newRecord.cadTrustLabelId}' does not exist. Please create the label first or use a valid cadTrustLabelId.`
+        `cadTrustLabelId '${newRecord.cadTrustLabelId}' does not exist. Please create the label first or use a valid cadTrustLabelId`
       );
       await assertRecordExistanceOrStaged(
         UnitV2,
         newRecord.cadTrustUnitId,
-        `cadTrustUnitId '${newRecord.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId.`
+        `cadTrustUnitId '${newRecord.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId`
       );
     } catch (err) {
       return res.status(400).json({
@@ -283,14 +283,14 @@ export const updateUnitLabelV2 = async (req, res) => {
           await assertRecordExistanceOrStaged(
             LabelV2,
             updateData.cadTrustLabelId,
-            `cadTrustLabelId '${updateData.cadTrustLabelId}' does not exist. Please create the label first or use a valid cadTrustLabelId.`
+            `cadTrustLabelId '${updateData.cadTrustLabelId}' does not exist. Please create the label first or use a valid cadTrustLabelId`
           );
         }
         if (updateData.cadTrustUnitId) {
           await assertRecordExistanceOrStaged(
             UnitV2,
             updateData.cadTrustUnitId,
-            `cadTrustUnitId '${updateData.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId.`
+            `cadTrustUnitId '${updateData.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId`
           );
         }
       } catch (err) {

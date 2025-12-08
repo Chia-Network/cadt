@@ -80,7 +80,11 @@ export const assertRecordExistanceOrStaged = async (Model, pk, apiFieldName = nu
 
   // Record not found in either main table or staging
   // Generate specific, actionable error message
-  // Use API field name (camelCase) if provided, otherwise use primary key attribute
+  // If apiFieldName contains the pk value, it's a full custom error message - use it as-is
+  // Otherwise, treat it as a field name and construct the message
+  if (apiFieldName && apiFieldName.includes(pk)) {
+    throw new Error(apiFieldName);
+  }
   const fieldName = apiFieldName || primaryKeyAttribute;
   throw new Error(`${fieldName} '${pk}' does not exist`);
 };

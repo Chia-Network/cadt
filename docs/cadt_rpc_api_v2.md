@@ -442,6 +442,13 @@ POST Options:
 
 **Using JSON body:**
 
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| name | String | x | Organization name |
+| icon | String | | Organization icon URL or base64-encoded image data |
+
 Request
 ```sh
 curl --location -g --request POST 'localhost:31310/v2/organizations' \
@@ -474,6 +481,13 @@ Response
 
 - This endpoint allows existing V1 organizations to be upgraded to V2.
 - The upgrade process migrates V1 organization data to V2 format while maintaining V1/V2 isolation.
+- **Note**: The request body is optional. The endpoint automatically detects and uses the existing V1 home organization.
+
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| orgUid | String | | V1 organization UID (optional, currently not used - endpoint automatically detects V1 home org) |
 
 Request
 ```sh
@@ -822,6 +836,15 @@ Response
 ### POST Examples
 
 #### Commit staged records
+
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| author | String | | Author name for the commit |
+| comment | String | | Comment describing the commit |
+| ids | Array of Strings | | Array of staging UUIDs to commit (max 10000 items). If not provided, all staged records will be committed |
+| table | String | | Table name filter. Valid values: Projects, Units (currently not used in V2) |
 
 Request
 ```shell
@@ -1185,6 +1208,14 @@ Response
 ### POST Examples
 
 #### Create governance body
+
+**Note**: Creating a governance body does not require any body parameters. The request body is optional and currently not used by the endpoint.
+
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| name | String | | Governance body name (currently not used, optional) |
 
 Request
 ```shell
@@ -3376,7 +3407,7 @@ Response
       "ratingType": "CCQI",
       "ratingName": "Quality Assessment Rating",
       "ratingValue": "97",
-      "ratingLink": "testlink.com",
+      "ratingLink": "https://www.example.com/rating-report",
       "createdAt": "2022-03-11T05:17:55.427Z",
       "updatedAt": "2022-03-11T05:17:55.427Z"
     }
@@ -3400,9 +3431,9 @@ Response
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "ratingType": "CCQI",
   "ratingName": "Quality Assessment Rating",
-  "ratingValue": "97",
-  "ratingLink": "testlink.com",
-  "createdAt": "2022-03-11T05:17:55.427Z",
+      "ratingValue": "97",
+      "ratingLink": "https://www.example.com/rating-report",
+      "createdAt": "2022-03-11T05:17:55.427Z",
   "updatedAt": "2022-03-11T05:17:55.427Z"
 }
 ```
@@ -3433,7 +3464,7 @@ curl --location --request POST 'localhost:31310/v2/rating' \
   "ratingType": "CCQI",
   "ratingName": "Quality Assessment Rating",
   "ratingValue": "97",
-  "ratingLink": "testlink.com"
+  "ratingLink": "https://www.example.com/rating-report"
 }'
 ```
 
@@ -3467,7 +3498,7 @@ curl --location --request PUT 'localhost:31310/v2/rating/d31c3c75-b944-498d-9557
   "ratingType": "CCQI",
   "ratingName": "Updated Quality Assessment Rating",
   "ratingValue": "98",
-  "ratingLink": "testlink.com"
+  "ratingLink": "https://www.example.com/rating-report"
 }'
 ```
 
@@ -3696,6 +3727,15 @@ Response
 
 #### Create project-methodology relationship
 
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String (UUID) | x | CAD Trust project identifier. Must be a valid UUID |
+| cadTrustMethodologyId | String (UUID) | x | CAD Trust methodology identifier. Must be a valid UUID |
+| projectMethodologyDate | String (ISO Date) | | Date of the project-methodology relationship (YYYY-MM-DD format) |
+| projectMethodologyDescription | String | | Description of the project-methodology relationship (max 10000 characters) |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/project-methodology' \
@@ -3829,6 +3869,14 @@ Response
 
 #### Create stakeholder
 
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| stakeholderName | String | x | | Stakeholder name (max 255 characters) |
+| stakeholderType | String | | x | Stakeholder type. Must be one of: Owner, Developer, Consultant |
+| stakeholderLink | String | | | URL link to the stakeholder. Must be a valid URI |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/stakeholder' \
@@ -3960,6 +4008,13 @@ Response
 ### POST Examples
 
 #### Create stakeholder-project relationship
+
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustStakeholderId | String (UUID) | x | CAD Trust stakeholder identifier. Must be a valid UUID |
+| cadTrustProjectId | String (UUID) | x | CAD Trust project identifier. Must be a valid UUID |
 
 Request
 ```shell

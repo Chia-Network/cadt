@@ -62,12 +62,12 @@ export const createStakeholderProjectV2 = async (req, res) => {
       await assertRecordExistanceOrStaged(
         StakeholderV2,
         newRecord.cadTrustStakeholderId,
-        `cadTrustStakeholderId '${newRecord.cadTrustStakeholderId}' does not exist. Please create the stakeholder first or use a valid cadTrustStakeholderId.`
+        `cadTrustStakeholderId '${newRecord.cadTrustStakeholderId}' does not exist. Please create the stakeholder first or use a valid cadTrustStakeholderId`
       );
       await assertRecordExistanceOrStaged(
         ProjectV2,
         newRecord.cadTrustProjectId,
-        `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+        `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`
       );
     } catch (err) {
       return res.status(400).json({
@@ -285,14 +285,14 @@ export const updateStakeholderProjectV2 = async (req, res) => {
           await assertRecordExistanceOrStaged(
             StakeholderV2,
             updateData.cadTrustStakeholderId,
-            `cadTrustStakeholderId '${updateData.cadTrustStakeholderId}' does not exist. Please create the stakeholder first or use a valid cadTrustStakeholderId.`
+            `cadTrustStakeholderId '${updateData.cadTrustStakeholderId}' does not exist. Please create the stakeholder first or use a valid cadTrustStakeholderId`
           );
         }
         if (updateData.cadTrustProjectId) {
           await assertRecordExistanceOrStaged(
             ProjectV2,
             updateData.cadTrustProjectId,
-            `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+            `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`
           );
         }
       } catch (err) {

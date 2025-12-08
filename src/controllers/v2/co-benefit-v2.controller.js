@@ -63,7 +63,7 @@ export const createCoBenefitV2 = async (req, res) => {
         await assertRecordExistanceOrStaged(
           ProjectV2,
           newRecord.cadTrustProjectId,
-          `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+          `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`
         );
       } catch (err) {
         return res.status(400).json({
@@ -210,7 +210,7 @@ export const updateCoBenefitV2 = async (req, res) => {
         await assertRecordExistanceOrStaged(
           ProjectV2,
           updateData.cadTrustProjectId,
-          `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+          `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`
         );
       } catch (err) {
         return res.status(400).json({
