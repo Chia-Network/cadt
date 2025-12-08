@@ -1,44 +1,98 @@
 'use strict';
 
-import { StakeholderV2, StakeholderV2Mirror } from '../../models/v2/index.js';
-import { stakeholderV2Schema } from '../../validations/v2/stakeholder-v2.validations.js';
+import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
+
+import { StagingV2, StakeholderV2 } from '../../models/v2/index.js';
+import { stakeholderV2Schema } from '../../validations/v2/stakeholder-v2.validations.js';
+import {
+  assertV2IfReadOnlyMode,
+  assertV2HomeOrgExists,
+  assertNoPendingCommitsExcludingTransfers,
+} from '../../utils/v2-data-assertions.js';
+import { loggerV2 } from '../../config/logger.js';
 
 export const createStakeholderV2 = async (req, res) => {
   try {
-    // Validate request body
-    const { error, value } = stakeholderV2Schema.validate(req.body);
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
+    const newRecord = _.cloneDeep(req.body);
+
+    // Validate the request data
+    const { error } = stakeholderV2Schema.validate(newRecord, {
+      allowUnknown: false,
+      stripUnknown: false,
+    });
+
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
+        message: 'Error creating new stakeholder',
+        error: errorMessage,
         success: false,
-        message: 'Validation error',
-        errors: error.details.map(detail => detail.message),
       });
     }
 
-    // Generate UUID for the stakeholder
+    // Check for forbidden fields
+    if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
+      return res.status(400).json({
+        message: 'Error creating new stakeholder',
+        error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
+        success: false,
+      });
+    }
+
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustStakeholderId')) {
+      return res.status(400).json({
+        message: 'Error creating new stakeholder',
+        error: 'cadTrustStakeholderId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
+    // Generate UUID for staging
+    const uuid = uuidv4();
+
+    // Generate UUID for primary key
     const cadTrustStakeholderId = uuidv4();
 
-    // Create stakeholder in staging table
-    const stakeholder = await StakeholderV2Mirror.create({
-      cadTrustStakeholderId,
-      stakeholderName: value.stakeholderName,
-      stakeholderType: value.stakeholderType,
-      stakeholderLink: value.stakeholderLink,
+    // Convert camelCase API fields to snake_case DB fields for staging
+    const dbRecord = {
+      cad_trust_stakeholder_id: cadTrustStakeholderId,
+      stakeholder_name: newRecord.stakeholderName,
+      stakeholder_type: newRecord.stakeholderType,
+      stakeholder_link: newRecord.stakeholderLink,
+    };
+
+    // Stage the record
+    await StagingV2.create({
+      uuid,
+      table: 'stakeholder',
+      action: 'INSERT',
+      data: JSON.stringify([dbRecord]),
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
     });
 
-    res.status(201).json({
-      success: true,
-      message: 'Stakeholder created successfully',
+    res.json({
+      message: 'Stakeholder staged successfully',
+      uuid,
       cadTrustStakeholderId,
-      data: stakeholder,
+      success: true,
     });
-  } catch (error) {
-    console.error('Error creating stakeholder:', error);
-    res.status(500).json({
+  } catch (err) {
+    loggerV2.error('[v2]: Error creating stakeholder:', err);
+    res.status(400).json({
+      message: 'Error creating new stakeholder',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
@@ -47,33 +101,22 @@ export const getStakeholderV2 = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Validate UUID format
-    if (!id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid stakeholder ID format',
-      });
-    }
-
     const stakeholder = await StakeholderV2.findByPk(id);
 
     if (!stakeholder) {
       return res.status(404).json({
-        success: false,
         message: 'Stakeholder not found',
+        success: false,
       });
     }
 
-    res.status(200).json({
-      success: true,
-      data: stakeholder,
-    });
-  } catch (error) {
-    console.error('Error fetching stakeholder:', error);
-    res.status(500).json({
+    res.status(200).json(stakeholder);
+  } catch (err) {
+    loggerV2.error('[v2]: Error fetching stakeholder:', err);
+    res.status(400).json({
+      message: 'Error retrieving stakeholder',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
@@ -89,103 +132,133 @@ export const getAllStakeholdersV2 = async (req, res) => {
       data: stakeholders,
       count: stakeholders.length,
     });
-  } catch (error) {
-    console.error('Error fetching stakeholders:', error);
-    res.status(500).json({
+  } catch (err) {
+    loggerV2.error('[v2]: Error fetching stakeholders:', err);
+    res.status(400).json({
+      message: 'Error retrieving stakeholders',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
 
 export const updateStakeholderV2 = async (req, res) => {
   try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
     const { id } = req.params;
+    const updateData = _.cloneDeep(req.body);
 
-    // Validate UUID format
-    if (!id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid stakeholder ID format',
-      });
-    }
-
-    // Validate request body
-    const { error, value } = stakeholderV2Schema.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors: error.details.map(detail => detail.message),
-      });
-    }
-
-    // Check if stakeholder exists
-    const existingStakeholder = await StakeholderV2Mirror.findByPk(id);
-    if (!existingStakeholder) {
+    // Verify record exists first (before validation)
+    const existingRecord = await StakeholderV2.findByPk(id);
+    if (!existingRecord) {
       return res.status(404).json({
-        success: false,
         message: 'Stakeholder not found',
+        success: false,
       });
     }
 
-    // Update stakeholder in staging table
-    await existingStakeholder.update({
-      stakeholderName: value.stakeholderName,
-      stakeholderType: value.stakeholderType,
-      stakeholderLink: value.stakeholderLink,
+    // Validate the request data
+    const { error } = stakeholderV2Schema.validate(updateData, {
+      allowUnknown: false,
+      stripUnknown: false,
     });
 
-    res.status(200).json({
-      success: true,
-      message: 'Stakeholder updated successfully',
-      data: existingStakeholder,
+    if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
+      return res.status(400).json({
+        message: 'Error updating stakeholder',
+        error: errorMessage,
+        success: false,
+      });
+    }
+
+    // Check for forbidden fields
+    if (updateData.hasOwnProperty('createdAt') || updateData.hasOwnProperty('updatedAt')) {
+      return res.status(400).json({
+        message: 'Error updating stakeholder',
+        error: 'createdAt and updatedAt fields are automatically managed and cannot be updated via API',
+        success: false,
+      });
+    }
+
+    // Convert camelCase API fields to snake_case DB fields for staging
+    const dbUpdateData = {
+      cad_trust_stakeholder_id: id, // Use UUID string directly
+    };
+
+    if (updateData.stakeholderName !== undefined) dbUpdateData.stakeholder_name = updateData.stakeholderName;
+    if (updateData.stakeholderType !== undefined) dbUpdateData.stakeholder_type = updateData.stakeholderType;
+    if (updateData.stakeholderLink !== undefined) dbUpdateData.stakeholder_link = updateData.stakeholderLink;
+
+    // Stage the update
+    await StagingV2.create({
+      uuid: uuidv4(),
+      table: 'stakeholder',
+      action: 'UPDATE',
+      data: JSON.stringify([dbUpdateData]),
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
     });
-  } catch (error) {
-    console.error('Error updating stakeholder:', error);
-    res.status(500).json({
+
+    res.json({
+      message: 'Stakeholder update staged successfully',
+      success: true,
+    });
+  } catch (err) {
+    loggerV2.error('[v2]: Error updating stakeholder:', err);
+    res.status(400).json({
+      message: 'Error updating stakeholder',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
 
 export const deleteStakeholderV2 = async (req, res) => {
   try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
     const { id } = req.params;
 
-    // Validate UUID format
-    if (!id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid stakeholder ID format',
-      });
-    }
-
-    // Check if stakeholder exists
-    const stakeholder = await StakeholderV2Mirror.findByPk(id);
-    if (!stakeholder) {
+    // Verify record exists
+    const existingRecord = await StakeholderV2.findByPk(id);
+    if (!existingRecord) {
       return res.status(404).json({
-        success: false,
         message: 'Stakeholder not found',
+        success: false,
       });
     }
 
-    // Delete stakeholder from staging table
-    await stakeholder.destroy();
-
-    res.status(200).json({
-      success: true,
-      message: 'Stakeholder deleted successfully',
+    // Stage the delete
+    await StagingV2.create({
+      uuid: uuidv4(),
+      table: 'stakeholder',
+      action: 'DELETE',
+      data: JSON.stringify([{ cad_trust_stakeholder_id: id }]), // Use UUID string directly
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
     });
-  } catch (error) {
-    console.error('Error deleting stakeholder:', error);
-    res.status(500).json({
+
+    res.json({
+      message: 'Stakeholder delete staged successfully',
+      success: true,
+    });
+  } catch (err) {
+    loggerV2.error('[v2]: Error deleting stakeholder:', err);
+    res.status(400).json({
+      message: 'Error deleting stakeholder',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };

@@ -129,7 +129,8 @@ describe('V2 Location API - Basic CRUD Tests', function () {
         .expect(500);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('ProjectV2 does not have a record');
+      expect(response.body.error).to.include('cadTrustProjectId');
+      expect(response.body.error).to.include('does not exist');
     });
 
     it('should accept location with valid cadTrustProjectId', async function () {
@@ -307,8 +308,7 @@ describe('V2 Location API - Basic CRUD Tests', function () {
       expect(response.body.data).to.have.length(1);
       expect(response.body.data[0].locationCountry).to.equal('Canada');
       expect(response.body.data[0].locationRegion).to.equal('British Columbia');
-      expect(response.body.data[0].project).to.exist;
-      expect(response.body.data[0].project.projectName).to.equal('Test Project');
+      // Note: Project association is not included by default - use columns parameter if needed
     });
   });
 
@@ -339,8 +339,7 @@ describe('V2 Location API - Basic CRUD Tests', function () {
       expect(response.body.data.cadTrustLocationId).to.equal(location.cadTrustLocationId);
       expect(response.body.data.locationCountry).to.equal('Canada');
       expect(response.body.data.locationRegion).to.equal('British Columbia');
-      expect(response.body.data.project).to.exist;
-      expect(response.body.data.project.projectName).to.equal('Test Project');
+      // Note: Project association is not included by default - use columns parameter if needed
     });
   });
 

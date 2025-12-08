@@ -114,9 +114,18 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       expect(response.body).to.have.property('success', true);
 
       // Verify record was staged
+      expect(response.body).to.have.property(\'uuid\');
+
+
       const stagingRecord = await StagingV2.findOne({
+
+
         where: { uuid: response.body.uuid },
+
+
       });
+
+
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('verification');
       expect(stagingRecord.action).to.equal('INSERT');
@@ -253,7 +262,8 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('ProjectV2 does not have a record');
+      expect(response.body.error).to.include('cadTrustProjectId');
+      expect(response.body.error).to.include('does not exist');
     });
 
     it('should accept verification with valid cadTrustProjectId', async function () {
@@ -283,7 +293,8 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('ValidationV2 does not have a record');
+      expect(response.body.error).to.include('cadTrustValidationId');
+      expect(response.body.error).to.include('does not exist');
     });
 
     it('should accept verification with valid cadTrustValidationId', async function () {
@@ -354,7 +365,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       }));
 
       const response = await supertest(app)
-        .get('/v2/verification')
+        .get('/v2/verification?columns=project&columns=validation')
         .expect(200);
 
       expect(response.body).to.be.an('array');
@@ -388,7 +399,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       }));
 
       const response = await supertest(app)
-        .get(`/v2/verification/${verification.cadTrustVerificationId}`)
+        .get(`/v2/verification/${verification.cadTrustVerificationId}?columns=project&columns=validation`)
         .expect(200);
 
       expect(response.body.verificationId).to.equal('Get Test Verification');

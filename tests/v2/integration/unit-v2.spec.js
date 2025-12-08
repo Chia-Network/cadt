@@ -285,7 +285,9 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('IssuanceV2 does not have a record');
+      expect(response.body.error).to.include('cadTrustIssuanceId');
+      expect(response.body.error).to.include('does not exist');
+      expect(response.body.error).to.include('550e8400-e29b-41d4-a716-446655440999');
     });
 
     it('should reject unit with invalid unitVintageYear format', async function () {

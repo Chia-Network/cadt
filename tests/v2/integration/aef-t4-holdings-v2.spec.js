@@ -1,6 +1,8 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { AefT4HoldingsV2, AefT4HoldingsV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, AefT2AuthorizationsV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2 } from '../../../src/models/v2/index.js';
+import { AefT4HoldingsV2, AefT4HoldingsV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, AefT2AuthorizationsV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -651,6 +653,193 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         const aefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
         expect(aefT4Holdings.aefT4HoldingsQuantityTCo2).to.equal(quantity);
       }
+    });
+  });
+
+  describe('POST /v2/aef-t4-holdings (Create)', function () {
+    it('should create a new AEF-T4-Holdings record via API', async function () {
+      const aefT4HoldingsData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
+        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-API',
+        aefT4HoldingsAuthorizationId: 'TEST-AUTH-API',
+        aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-API',
+        aefT4HoldingsQuantityTCo2: 1000.0,
+        aefT4HoldingsVintageYear: 2024,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t4-holdings')
+        .send(aefT4HoldingsData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T4-Holdings staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustAefT4HoldingsId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('aef_t4_holdings');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].cad_trust_aef_t1_submission_id).to.equal(testAefT1SubmissionId);
+      expect(stagedData[0].cad_trust_unit_id).to.equal(testUnitId);
+      expect(stagedData[0].cad_trust_project_id).to.equal(testProjectId);
+      expect(stagedData[0].cad_trust_aef_t4_holdings_id).to.equal(response.body.cadTrustAefT4HoldingsId);
+    });
+
+    it('should reject AEF-T4-Holdings with invalid foreign key (non-existent)', async function () {
+      const aefT4HoldingsData = {
+        cadTrustAefT1SubmissionId: '550e8400-e29b-41d4-a716-446655440999',
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t4-holdings')
+        .send(aefT4HoldingsData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustAefT1SubmissionId');
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('should reject AEF-T4-Holdings with forbidden fields', async function () {
+      const aefT4HoldingsData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        cadTrustAefT4HoldingsId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t4-holdings')
+        .send(aefT4HoldingsData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('PUT /v2/aef-t4-holdings/:id (Update)', function () {
+    let createdAefT4HoldingsId;
+
+    before(async function () {
+      const aefT4HoldingsData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
+        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-API',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t4-holdings')
+        .send(aefT4HoldingsData);
+
+      createdAefT4HoldingsId = response.body.cadTrustAefT4HoldingsId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await AefT4HoldingsV2.create({
+          cadTrustAefT4HoldingsId: createdAefT4HoldingsId,
+          cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+          cadTrustUnitId: testUnitId,
+          cadTrustProjectId: testProjectId,
+          cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
+          aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-API',
+        });
+      }
+    });
+
+    it('should update an AEF-T4-Holdings via API', async function () {
+      const updateData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
+        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-UPDATED',
+        aefT4HoldingsQuantityTCo2: 2000.0,
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/aef-t4-holdings/${createdAefT4HoldingsId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T4-Holdings update staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/aef-t4-holdings/:id (Delete)', function () {
+    let createdAefT4HoldingsId;
+
+    before(async function () {
+      const aefT4HoldingsData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t4-holdings')
+        .send(aefT4HoldingsData);
+
+      createdAefT4HoldingsId = response.body.cadTrustAefT4HoldingsId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await AefT4HoldingsV2.create({
+          cadTrustAefT4HoldingsId: createdAefT4HoldingsId,
+          cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+          cadTrustUnitId: testUnitId,
+          cadTrustProjectId: testProjectId,
+          cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
+        });
+      }
+    });
+
+    it('should delete an AEF-T4-Holdings via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/aef-t4-holdings/${createdAefT4HoldingsId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T4-Holdings delete staged successfully');
+      expect(response.body).to.have.property('success', true);
     });
   });
 });

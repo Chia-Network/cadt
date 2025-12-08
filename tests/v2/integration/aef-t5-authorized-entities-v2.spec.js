@@ -1,6 +1,8 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { AefT5AuthorizedEntitiesV2, AefT5AuthorizedEntitiesV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2 } from '../../../src/models/v2/index.js';
+import { AefT5AuthorizedEntitiesV2, AefT5AuthorizedEntitiesV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -500,6 +502,191 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
         expect(aefT5AuthorizedEntities.aefT5AuthorizedEntitiesIncorporationCountry).to.equal(country);
       }
+    });
+  });
+
+  describe('POST /v2/aef-t5-authorized-entities (Create)', function () {
+    it('should create a new AEF-T5-Authorized-Entities record via API', async function () {
+      const aefT5AuthorizedEntitiesData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+        aefT5AuthorizedEntitiesName: 'API Test Entity',
+        aefT5AuthorizedEntitiesId: 'TEST-AE-API',
+        aefT5AuthorizedEntitiesCooperativeApproachId: 'TEST-CA-API',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t5-authorized-entities')
+        .send(aefT5AuthorizedEntitiesData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T5-Authorized-Entities staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustAefT5AuthorizedEntitiesId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('aef_t5_authorized_entities');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].cad_trust_aef_t1_submission_id).to.equal(testAefT1SubmissionId);
+      expect(stagedData[0].cad_trust_unit_id).to.equal(testUnitId);
+      expect(stagedData[0].cad_trust_project_id).to.equal(testProjectId);
+      expect(stagedData[0].cad_trust_aef_t5_authorized_entities_id).to.equal(response.body.cadTrustAefT5AuthorizedEntitiesId);
+    });
+
+    it('should reject AEF-T5-Authorized-Entities with invalid foreign key (non-existent)', async function () {
+      const aefT5AuthorizedEntitiesData = {
+        cadTrustAefT1SubmissionId: '550e8400-e29b-41d4-a716-446655440999',
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t5-authorized-entities')
+        .send(aefT5AuthorizedEntitiesData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustAefT1SubmissionId');
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('should reject AEF-T5-Authorized-Entities with forbidden fields', async function () {
+      const aefT5AuthorizedEntitiesData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        cadTrustAefT5AuthorizedEntitiesId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t5-authorized-entities')
+        .send(aefT5AuthorizedEntitiesData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('PUT /v2/aef-t5-authorized-entities/:id (Update)', function () {
+    let createdAefT5AuthorizedEntitiesId;
+
+    before(async function () {
+      const aefT5AuthorizedEntitiesData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+        aefT5AuthorizedEntitiesName: 'AEF-T5 to Update',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t5-authorized-entities')
+        .send(aefT5AuthorizedEntitiesData);
+
+      createdAefT5AuthorizedEntitiesId = response.body.cadTrustAefT5AuthorizedEntitiesId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await AefT5AuthorizedEntitiesV2.create({
+          cadTrustAefT5AuthorizedEntitiesId: createdAefT5AuthorizedEntitiesId,
+          cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+          cadTrustUnitId: testUnitId,
+          cadTrustProjectId: testProjectId,
+          aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+          aefT5AuthorizedEntitiesName: 'AEF-T5 to Update',
+        });
+      }
+    });
+
+    it('should update an AEF-T5-Authorized-Entities via API', async function () {
+      const updateData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-12-31',
+        aefT5AuthorizedEntitiesName: 'Updated Entity Name',
+        aefT5AuthorizedEntitiesId: 'TEST-AE-UPDATED',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/aef-t5-authorized-entities/${createdAefT5AuthorizedEntitiesId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T5-Authorized-Entities update staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/aef-t5-authorized-entities/:id (Delete)', function () {
+    let createdAefT5AuthorizedEntitiesId;
+
+    before(async function () {
+      const aefT5AuthorizedEntitiesData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t5-authorized-entities')
+        .send(aefT5AuthorizedEntitiesData);
+
+      createdAefT5AuthorizedEntitiesId = response.body.cadTrustAefT5AuthorizedEntitiesId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await AefT5AuthorizedEntitiesV2.create({
+          cadTrustAefT5AuthorizedEntitiesId: createdAefT5AuthorizedEntitiesId,
+          cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+          cadTrustUnitId: testUnitId,
+          cadTrustProjectId: testProjectId,
+          aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+        });
+      }
+    });
+
+    it('should delete an AEF-T5-Authorized-Entities via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/aef-t5-authorized-entities/${createdAefT5AuthorizedEntitiesId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T5-Authorized-Entities delete staged successfully');
+      expect(response.body).to.have.property('success', true);
     });
   });
 });

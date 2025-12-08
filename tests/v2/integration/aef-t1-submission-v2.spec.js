@@ -1,7 +1,10 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { AefT1SubmissionV2, AefT1SubmissionV2Mirror } from '../../../src/models/v2/index.js';
+import { AefT1SubmissionV2, AefT1SubmissionV2Mirror, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
 
 describe('AEF-T1-Submission V2 Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -9,6 +12,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
   before(async function () {
     console.log('Setting up AEF-T1-Submission V2 test environment...');
     await prepareV2Db();
+    await createV2TestHomeOrg();
   });
 
   after(async function () {
@@ -365,6 +369,184 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
         const aefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
         expect(aefT1Submission.aefT1SubmissionVersion).to.equal(version);
       }
+    });
+  });
+
+  describe('POST /v2/aef-t1-submission (Create)', function () {
+    it('should create a new AEF-T1-Submission record via API', async function () {
+      const aefT1SubmissionData = {
+        aefT1SubmissionParty: 'API Test Party',
+        aefT1SubmissionVersion: '1.0',
+        aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-15',
+        aefT1SubmissionReviewStatus: 'Under Review',
+        aefT1SubmissionResultCheck: 'Passed',
+        aefT1SubmissionNdcFirstYear: 2020,
+        aefT1SubmissionNdcLastYear: 2030,
+        aefT1SubmissionReferenceReviewReport: 'https://example.com/api-review-report',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t1-submission')
+        .send(aefT1SubmissionData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T1-Submission staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustAefT1SubmissionId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      expect(response.body).to.have.property('uuid');
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('aef_t1_submission');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].aef_t1_submission_party).to.equal('API Test Party');
+      expect(stagedData[0].aef_t1_submission_version).to.equal('1.0');
+      expect(stagedData[0].aef_t1_submission_report_year).to.equal(2024);
+      expect(stagedData[0].cad_trust_aef_t1_submission_id).to.equal(response.body.cadTrustAefT1SubmissionId);
+    });
+
+    it('should reject AEF-T1-Submission with missing required fields', async function () {
+      const invalidData = {
+        aefT1SubmissionVersion: '1.0',
+        // Missing aefT1SubmissionParty
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t1-submission')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('aefT1SubmissionParty');
+    });
+
+    it('should reject AEF-T1-Submission with forbidden fields (createdAt, updatedAt, cadTrustAefT1SubmissionId)', async function () {
+      const aefT1SubmissionData = {
+        aefT1SubmissionParty: 'Test Party',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        cadTrustAefT1SubmissionId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t1-submission')
+        .send(aefT1SubmissionData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('PUT /v2/aef-t1-submission/:id (Update)', function () {
+    let createdAefT1SubmissionId;
+
+    before(async function () {
+      const aefT1SubmissionData = {
+        aefT1SubmissionParty: 'AEF-T1 to Update',
+        aefT1SubmissionVersion: '1.0',
+        aefT1SubmissionReportYear: 2024,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t1-submission')
+        .send(aefT1SubmissionData);
+
+      createdAefT1SubmissionId = response.body.cadTrustAefT1SubmissionId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+          where: { uuid: response.body.uuid },
+        });
+      }
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await AefT1SubmissionV2.create({
+          cadTrustAefT1SubmissionId: createdAefT1SubmissionId,
+          aefT1SubmissionParty: 'AEF-T1 to Update',
+          aefT1SubmissionVersion: '1.0',
+          aefT1SubmissionReportYear: 2024,
+        });
+      }
+    });
+
+    it('should update an AEF-T1-Submission via API', async function () {
+      const updateData = {
+        aefT1SubmissionParty: 'Updated Party',
+        aefT1SubmissionVersion: '2.0',
+        aefT1SubmissionReportYear: 2025,
+        aefT1SubmissionSubmissionDate: '2025-01-15',
+        aefT1SubmissionReviewStatus: 'Approved',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/aef-t1-submission/${createdAefT1SubmissionId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T1-Submission update staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/aef-t1-submission/:id (Delete)', function () {
+    let createdAefT1SubmissionId;
+
+    before(async function () {
+      const aefT1SubmissionData = {
+        aefT1SubmissionParty: 'AEF-T1 to Delete',
+        aefT1SubmissionVersion: '1.0',
+        aefT1SubmissionReportYear: 2024,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t1-submission')
+        .send(aefT1SubmissionData);
+
+      createdAefT1SubmissionId = response.body.cadTrustAefT1SubmissionId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+          where: { uuid: response.body.uuid },
+        });
+      }
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await AefT1SubmissionV2.create({
+          cadTrustAefT1SubmissionId: createdAefT1SubmissionId,
+          aefT1SubmissionParty: 'AEF-T1 to Delete',
+          aefT1SubmissionVersion: '1.0',
+          aefT1SubmissionReportYear: 2024,
+        });
+      }
+    });
+
+    it('should delete an AEF-T1-Submission via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/aef-t1-submission/${createdAefT1SubmissionId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T1-Submission delete staged successfully');
+      expect(response.body).to.have.property('success', true);
     });
   });
 });

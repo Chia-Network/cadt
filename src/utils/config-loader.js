@@ -12,18 +12,20 @@ import { migrateConfigFiles } from './config-migration.js';
 const loadConfigForVersion = (dataModelVersion) => {
   const chiaRoot = getChiaRoot();
 
-  // Use test config file when running tests
+  // Use test config file when running tests, UNLESS CHIA_ROOT is explicitly set
+  // (This allows migration tests to override the config location)
   const isTestMode = process.env.NODE_ENV === 'test';
+  const hasExplicitChiaRoot = !!process.env.CHIA_ROOT;
   let unifiedConfigFile;
   let unifiedConfigDir;
 
-  if (isTestMode) {
-    // Use test-specific config file in project directory
+  if (isTestMode && !hasExplicitChiaRoot) {
+    // Use test-specific config file in project directory (default test behavior)
     const projectRoot = path.resolve(process.cwd());
     unifiedConfigDir = path.resolve(`${projectRoot}/tests/v2/config`);
     unifiedConfigFile = path.resolve(`${unifiedConfigDir}/test-config.yaml`);
   } else {
-    // Use production config file
+    // Use production config file (or temp directory if CHIA_ROOT is set for migration tests)
     unifiedConfigDir = `${chiaRoot}/cadt`;
     unifiedConfigFile = path.resolve(`${unifiedConfigDir}/config.yaml`);
   }

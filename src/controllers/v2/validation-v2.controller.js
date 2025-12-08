@@ -71,7 +71,15 @@ export const create = async (req, res) => {
     }
 
     // Validate foreign key
-    await assertRecordExistanceOrStaged(ProjectV2, newRecord.cadTrustProjectId);
+    try {
+      await assertRecordExistanceOrStaged(ProjectV2, newRecord.cadTrustProjectId, 'ProjectV2 does not have a record');
+    } catch (err) {
+      return res.status(400).json({
+        message: 'Error creating new validation',
+        error: err.message,
+        success: false,
+      });
+    }
 
     // Generate UUID for staging
     const uuid = uuidv4();
@@ -120,10 +128,24 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit } = req.query;
+    const { page, limit, columns } = req.query;
     const pagination = paginationParams(page, limit);
 
+    // Build includes if columns parameter is provided
+    let includes = [];
+    if (columns) {
+      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+      if (columnsArray.includes('project') || columnsArray.includes('ProjectV2')) {
+        includes.push({
+          model: ProjectV2,
+          as: 'project',
+          required: false,
+        });
+      }
+    }
+
     const records = await ValidationV2.findAndCountAll({
+      include: includes.length > 0 ? includes : undefined,
       ...pagination,
     });
 
@@ -141,7 +163,24 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await ValidationV2.findByPk(id);
+    const { columns } = req.query;
+
+    // Build includes if columns parameter is provided
+    let includes = [];
+    if (columns) {
+      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+      if (columnsArray.includes('project') || columnsArray.includes('ProjectV2')) {
+        includes.push({
+          model: ProjectV2,
+          as: 'project',
+          required: false,
+        });
+      }
+    }
+
+    const record = await ValidationV2.findByPk(id, {
+      include: includes.length > 0 ? includes : undefined,
+    });
 
     if (!record) {
       return res.status(404).json({
@@ -203,7 +242,7 @@ export const update = async (req, res) => {
     }
 
     // Validate foreign key
-    await assertRecordExistanceOrStaged(ProjectV2, updateData.cadTrustProjectId);
+    await assertRecordExistanceOrStaged(ProjectV2, updateData.cadTrustProjectId, 'cadTrustProjectId');
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {

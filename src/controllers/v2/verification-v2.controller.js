@@ -71,10 +71,17 @@ export const create = async (req, res) => {
     }
 
     // Validate foreign keys
-    await assertRecordExistanceOrStaged(ProjectV2, newRecord.cadTrustProjectId);
-
-    if (newRecord.cadTrustValidationId) {
-      await assertRecordExistanceOrStaged(ValidationV2, newRecord.cadTrustValidationId);
+    try {
+      await assertRecordExistanceOrStaged(ProjectV2, newRecord.cadTrustProjectId, 'ProjectV2 does not have a record');
+      if (newRecord.cadTrustValidationId) {
+        await assertRecordExistanceOrStaged(ValidationV2, newRecord.cadTrustValidationId, 'ValidationV2 does not have a record');
+      }
+    } catch (err) {
+      return res.status(400).json({
+        message: 'Error creating new verification',
+        error: err.message,
+        success: false,
+      });
     }
 
     // Generate UUID for staging
@@ -123,10 +130,31 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit } = req.query;
+    const { page, limit, columns } = req.query;
     const pagination = paginationParams(page, limit);
 
+    // Build includes if columns parameter is provided
+    let includes = [];
+    if (columns) {
+      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+      if (columnsArray.includes('project') || columnsArray.includes('ProjectV2')) {
+        includes.push({
+          model: ProjectV2,
+          as: 'project',
+          required: false,
+        });
+      }
+      if (columnsArray.includes('validation') || columnsArray.includes('ValidationV2')) {
+        includes.push({
+          model: ValidationV2,
+          as: 'validation',
+          required: false,
+        });
+      }
+    }
+
     const records = await VerificationV2.findAndCountAll({
+      include: includes.length > 0 ? includes : undefined,
       ...pagination,
     });
 
@@ -144,7 +172,31 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await VerificationV2.findByPk(id);
+    const { columns } = req.query;
+
+    // Build includes if columns parameter is provided
+    let includes = [];
+    if (columns) {
+      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+      if (columnsArray.includes('project') || columnsArray.includes('ProjectV2')) {
+        includes.push({
+          model: ProjectV2,
+          as: 'project',
+          required: false,
+        });
+      }
+      if (columnsArray.includes('validation') || columnsArray.includes('ValidationV2')) {
+        includes.push({
+          model: ValidationV2,
+          as: 'validation',
+          required: false,
+        });
+      }
+    }
+
+    const record = await VerificationV2.findByPk(id, {
+      include: includes.length > 0 ? includes : undefined,
+    });
 
     if (!record) {
       return res.status(404).json({
@@ -206,10 +258,10 @@ export const update = async (req, res) => {
     }
 
     // Validate foreign keys
-    await assertRecordExistanceOrStaged(ProjectV2, updateData.cadTrustProjectId);
+    await assertRecordExistanceOrStaged(ProjectV2, updateData.cadTrustProjectId, 'cadTrustProjectId');
 
     if (updateData.cadTrustValidationId) {
-      await assertRecordExistanceOrStaged(ValidationV2, updateData.cadTrustValidationId);
+      await assertRecordExistanceOrStaged(ValidationV2, updateData.cadTrustValidationId, 'cadTrustValidationId');
     }
 
     // Convert camelCase API fields to snake_case DB fields for staging

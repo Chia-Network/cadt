@@ -78,10 +78,12 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
 
     it('should throw error when record not found in either location', async function () {
       try {
-        await assertRecordExistanceOrStaged(MetaV2, 99999, 'id');
+        await assertRecordExistanceOrStaged(MetaV2, 99999, null, 'id');
         expect.fail('Should have thrown an error');
       } catch (error) {
-        expect(error.message).to.include('MetaV2 does not have a record for 99999');
+        expect(error.message).to.include('id');
+        expect(error.message).to.include('99999');
+        expect(error.message).to.include('does not exist');
       }
     });
   });

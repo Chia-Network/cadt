@@ -1,6 +1,8 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { AefT2AuthorizationsV2, AefT2AuthorizationsV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, AefT5AuthorizedEntitiesV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2 } from '../../../src/models/v2/index.js';
+import { AefT2AuthorizationsV2, AefT2AuthorizationsV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, AefT5AuthorizedEntitiesV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -606,6 +608,187 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         expect(aefT2Authorizations.aefT2AuthorizationsActivityType).to.equal(types[i]);
         expect(aefT2Authorizations.aefT2AuthorizationsPurposesForAuthorization).to.equal(purposes[i]);
       }
+    });
+  });
+
+  describe('POST /v2/aef-t2-authorizations (Create)', function () {
+    it('should create a new AEF-T2-Authorizations record via API', async function () {
+      const aefT2AuthorizationsData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        aefT2AuthorizationsDate: '2024-01-15',
+        aefT2AuthorizationsMetric: 'tCO2e',
+        aefT2AuthorizationsSector: 'Energy',
+        aefT2AuthorizationsActivityType: 'Renewable Energy',
+        aefT2AuthorizationsPurposesForAuthorization: 'Mitigation',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t2-authorizations')
+        .send(aefT2AuthorizationsData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T2-Authorizations staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustAefT2AuthorizationsId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('aef_t2_authorizations');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].cad_trust_aef_t1_submission_id).to.equal(testAefT1SubmissionId);
+      expect(stagedData[0].cad_trust_unit_id).to.equal(testUnitId);
+      expect(stagedData[0].cad_trust_project_id).to.equal(testProjectId);
+      expect(stagedData[0].cad_trust_aef_t2_authorizations_id).to.equal(response.body.cadTrustAefT2AuthorizationsId);
+    });
+
+    it('should reject AEF-T2-Authorizations with invalid foreign key (non-existent)', async function () {
+      const aefT2AuthorizationsData = {
+        cadTrustAefT1SubmissionId: '550e8400-e29b-41d4-a716-446655440999',
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t2-authorizations')
+        .send(aefT2AuthorizationsData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustAefT1SubmissionId');
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('should reject AEF-T2-Authorizations with forbidden fields', async function () {
+      const aefT2AuthorizationsData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        cadTrustAefT2AuthorizationsId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t2-authorizations')
+        .send(aefT2AuthorizationsData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('PUT /v2/aef-t2-authorizations/:id (Update)', function () {
+    let createdAefT2AuthorizationsId;
+
+    before(async function () {
+      const aefT2AuthorizationsData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        aefT2AuthorizationsDate: '2024-01-15',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t2-authorizations')
+        .send(aefT2AuthorizationsData);
+
+      createdAefT2AuthorizationsId = response.body.cadTrustAefT2AuthorizationsId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await AefT2AuthorizationsV2.create({
+          cadTrustAefT2AuthorizationsId: createdAefT2AuthorizationsId,
+          cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+          cadTrustUnitId: testUnitId,
+          cadTrustProjectId: testProjectId,
+          aefT2AuthorizationsDate: '2024-01-15',
+        });
+      }
+    });
+
+    it('should update an AEF-T2-Authorizations via API', async function () {
+      const updateData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        aefT2AuthorizationsDate: '2024-12-31',
+        aefT2AuthorizationsMetric: 'tCO2e',
+        aefT2AuthorizationsSector: 'Energy',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/aef-t2-authorizations/${createdAefT2AuthorizationsId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T2-Authorizations update staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/aef-t2-authorizations/:id (Delete)', function () {
+    let createdAefT2AuthorizationsId;
+
+    before(async function () {
+      const aefT2AuthorizationsData = {
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/aef-t2-authorizations')
+        .send(aefT2AuthorizationsData);
+
+      createdAefT2AuthorizationsId = response.body.cadTrustAefT2AuthorizationsId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await AefT2AuthorizationsV2.create({
+          cadTrustAefT2AuthorizationsId: createdAefT2AuthorizationsId,
+          cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+          cadTrustUnitId: testUnitId,
+          cadTrustProjectId: testProjectId,
+        });
+      }
+    });
+
+    it('should delete an AEF-T2-Authorizations via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/aef-t2-authorizations/${createdAefT2AuthorizationsId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('AEF-T2-Authorizations delete staged successfully');
+      expect(response.body).to.have.property('success', true);
     });
   });
 });

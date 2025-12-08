@@ -1,35 +1,97 @@
 'use strict';
 
-import { AefT1SubmissionV2, AefT1SubmissionV2Mirror } from '../../models/v2/index.js';
+import _ from 'lodash';
+import { v4 as uuidv4 } from 'uuid';
+
+import { StagingV2, AefT1SubmissionV2 } from '../../models/v2/index.js';
 import { aefT1SubmissionV2Schema } from '../../validations/v2/aef-t1-submission-v2.validations.js';
+import {
+  assertV2IfReadOnlyMode,
+  assertV2HomeOrgExists,
+  assertNoPendingCommitsExcludingTransfers,
+} from '../../utils/v2-data-assertions.js';
+import { convertToSnakeCase } from '../../utils/v2-camel-to-snake.js';
+import { loggerV2 } from '../../config/logger.js';
 
 export const createAefT1SubmissionV2 = async (req, res) => {
   try {
-    // Validate request body
-    const { error, value } = aefT1SubmissionV2Schema.validate(req.body);
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
+    const newRecord = _.cloneDeep(req.body);
+
+    // Validate the request data
+    const { error } = aefT1SubmissionV2Schema.validate(newRecord, {
+      allowUnknown: false,
+      stripUnknown: false,
+    });
+
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
+        message: 'Error creating new AEF-T1-Submission',
+        error: errorMessage,
         success: false,
-        message: 'Validation error',
-        errors: error.details.map(detail => detail.message),
       });
     }
 
-    // Create AEF-T1-Submission in staging table
-    const aefT1Submission = await AefT1SubmissionV2Mirror.create(value);
+    // Check for forbidden fields
+    if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
+      return res.status(400).json({
+        message: 'Error creating new AEF-T1-Submission',
+        error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
+        success: false,
+      });
+    }
 
-    res.status(201).json({
-      success: true,
-      message: 'AEF-T1-Submission staged successfully',
-      cadTrustAefT1SubmissionId: aefT1Submission.cadTrustAefT1SubmissionId,
-      data: aefT1Submission,
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustAefT1SubmissionId')) {
+      return res.status(400).json({
+        message: 'Error creating new AEF-T1-Submission',
+        error: 'cadTrustAefT1SubmissionId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
+    // Generate UUID for staging
+    const uuid = uuidv4();
+
+    // Generate UUID for primary key
+    const cadTrustAefT1SubmissionId = uuidv4();
+
+    // Convert camelCase API fields to snake_case DB fields for staging
+    const dbRecord = {
+      cad_trust_aef_t1_submission_id: cadTrustAefT1SubmissionId,
+      ...convertToSnakeCase(_.omit(newRecord, ['cadTrustAefT1SubmissionId', 'createdAt', 'updatedAt'])),
+    };
+
+    // Stage the record
+    await StagingV2.create({
+      uuid,
+      table: 'aef_t1_submission',
+      action: 'INSERT',
+      data: JSON.stringify([dbRecord]),
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
     });
-  } catch (error) {
-    console.error('Error creating AEF-T1-Submission:', error);
-    res.status(500).json({
+
+    res.json({
+      message: 'AEF-T1-Submission staged successfully',
+      uuid,
+      cadTrustAefT1SubmissionId,
+      success: true,
+    });
+  } catch (err) {
+    loggerV2.error('[v2]: Error creating AEF-T1-Submission:', err);
+    res.status(400).json({
+      message: 'Error creating new AEF-T1-Submission',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
@@ -38,34 +100,22 @@ export const getAefT1SubmissionV2 = async (req, res) => {
   try {
     const { cadTrustAefT1SubmissionId } = req.params;
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!cadTrustAefT1SubmissionId.match(uuidRegex)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid AEF-T1-Submission ID format',
-      });
-    }
-
     const aefT1Submission = await AefT1SubmissionV2.findByPk(cadTrustAefT1SubmissionId);
 
     if (!aefT1Submission) {
       return res.status(404).json({
-        success: false,
         message: 'AEF-T1-Submission not found',
+        success: false,
       });
     }
 
-    res.status(200).json({
-      success: true,
-      data: aefT1Submission,
-    });
-  } catch (error) {
-    console.error('Error fetching AEF-T1-Submission:', error);
-    res.status(500).json({
+    res.status(200).json(aefT1Submission);
+  } catch (err) {
+    loggerV2.error('[v2]: Error fetching AEF-T1-Submission:', err);
+    res.status(400).json({
+      message: 'Error retrieving AEF-T1-Submission',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
@@ -81,101 +131,130 @@ export const getAllAefT1SubmissionsV2 = async (req, res) => {
       data: aefT1Submissions,
       count: aefT1Submissions.length,
     });
-  } catch (error) {
-    console.error('Error fetching AEF-T1-Submissions:', error);
-    res.status(500).json({
+  } catch (err) {
+    loggerV2.error('[v2]: Error fetching AEF-T1-Submissions:', err);
+    res.status(400).json({
+      message: 'Error retrieving AEF-T1-Submissions',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
 
 export const updateAefT1SubmissionV2 = async (req, res) => {
   try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
     const { cadTrustAefT1SubmissionId } = req.params;
+    const updateData = _.cloneDeep(req.body);
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!cadTrustAefT1SubmissionId.match(uuidRegex)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid AEF-T1-Submission ID format',
-      });
-    }
-
-    // Validate request body
-    const { error, value } = aefT1SubmissionV2Schema.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors: error.details.map(detail => detail.message),
-      });
-    }
-
-    // Check if AEF-T1-Submission exists
-    const existingAefT1Submission = await AefT1SubmissionV2Mirror.findByPk(cadTrustAefT1SubmissionId);
-    if (!existingAefT1Submission) {
+    // Verify record exists first (before validation)
+    const existingRecord = await AefT1SubmissionV2.findByPk(cadTrustAefT1SubmissionId);
+    if (!existingRecord) {
       return res.status(404).json({
-        success: false,
         message: 'AEF-T1-Submission not found',
+        success: false,
       });
     }
 
-    // Update AEF-T1-Submission in staging table
-    await existingAefT1Submission.update(value);
-
-    res.status(200).json({
-      success: true,
-      message: 'AEF-T1-Submission updated successfully',
-      data: existingAefT1Submission,
+    // Validate the request data
+    const { error } = aefT1SubmissionV2Schema.validate(updateData, {
+      allowUnknown: false,
+      stripUnknown: false,
     });
-  } catch (error) {
-    console.error('Error updating AEF-T1-Submission:', error);
-    res.status(500).json({
+
+    if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
+      return res.status(400).json({
+        message: 'Error updating AEF-T1-Submission',
+        error: errorMessage,
+        success: false,
+      });
+    }
+
+    // Check for forbidden fields
+    if (updateData.hasOwnProperty('createdAt') || updateData.hasOwnProperty('updatedAt')) {
+      return res.status(400).json({
+        message: 'Error updating AEF-T1-Submission',
+        error: 'createdAt and updatedAt fields are automatically managed and cannot be updated via API',
+        success: false,
+      });
+    }
+
+    // Convert camelCase API fields to snake_case DB fields for staging
+    const dbUpdateData = {
+      cad_trust_aef_t1_submission_id: cadTrustAefT1SubmissionId,
+      ...convertToSnakeCase(_.omit(updateData, ['cadTrustAefT1SubmissionId', 'createdAt', 'updatedAt'])),
+    };
+
+    // Stage the update
+    await StagingV2.create({
+      uuid: uuidv4(),
+      table: 'aef_t1_submission',
+      action: 'UPDATE',
+      data: JSON.stringify([dbUpdateData]),
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
+    });
+
+    res.json({
+      message: 'AEF-T1-Submission update staged successfully',
+      success: true,
+    });
+  } catch (err) {
+    loggerV2.error('[v2]: Error updating AEF-T1-Submission:', err);
+    res.status(400).json({
+      message: 'Error updating AEF-T1-Submission',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
 
 export const deleteAefT1SubmissionV2 = async (req, res) => {
   try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
     const { cadTrustAefT1SubmissionId } = req.params;
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!cadTrustAefT1SubmissionId.match(uuidRegex)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid AEF-T1-Submission ID format',
-      });
-    }
-
-    // Check if AEF-T1-Submission exists
-    const aefT1Submission = await AefT1SubmissionV2Mirror.findByPk(cadTrustAefT1SubmissionId);
-    if (!aefT1Submission) {
+    // Verify record exists
+    const existingRecord = await AefT1SubmissionV2.findByPk(cadTrustAefT1SubmissionId);
+    if (!existingRecord) {
       return res.status(404).json({
-        success: false,
         message: 'AEF-T1-Submission not found',
+        success: false,
       });
     }
 
-    // Delete AEF-T1-Submission from staging table
-    await aefT1Submission.destroy();
-
-    res.status(200).json({
-      success: true,
-      message: 'AEF-T1-Submission deleted successfully',
+    // Stage the delete
+    await StagingV2.create({
+      uuid: uuidv4(),
+      table: 'aef_t1_submission',
+      action: 'DELETE',
+      data: JSON.stringify([{ cad_trust_aef_t1_submission_id: cadTrustAefT1SubmissionId }]),
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
     });
-  } catch (error) {
-    console.error('Error deleting AEF-T1-Submission:', error);
-    res.status(500).json({
+
+    res.json({
+      message: 'AEF-T1-Submission delete staged successfully',
+      success: true,
+    });
+  } catch (err) {
+    loggerV2.error('[v2]: Error deleting AEF-T1-Submission:', err);
+    res.status(400).json({
+      message: 'Error deleting AEF-T1-Submission',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };

@@ -1,6 +1,8 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StakeholderProjectV2, StakeholderProjectV2Mirror, StakeholderV2, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { StakeholderProjectV2, StakeholderProjectV2Mirror, StakeholderV2, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -455,6 +457,167 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
       const stakeholderProject = await StakeholderProjectV2Mirror.create(stakeholderProjectData);
 
       expect(stakeholderProject.cadTrustStakeholderProjectId).to.equal(explicitUuid);
+    });
+  });
+
+  describe('POST /v2/stakeholder-projects (Create)', function () {
+    it('should create a new stakeholder-projects relationship via API', async function () {
+      const stakeholderProjectData = {
+        cadTrustStakeholderId: testStakeholderId,
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder-projects')
+        .send(stakeholderProjectData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Stakeholder-Project relationship staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustStakeholderProjectId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('stakeholder_projects');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].cad_trust_stakeholder_id).to.equal(testStakeholderId);
+      expect(stagedData[0].cad_trust_project_id).to.equal(testProjectId);
+      expect(stagedData[0].cad_trust_stakeholder_project_id).to.equal(response.body.cadTrustStakeholderProjectId);
+    });
+
+    it('should reject stakeholder-projects with invalid cadTrustStakeholderId (non-existent)', async function () {
+      const stakeholderProjectData = {
+        cadTrustStakeholderId: '550e8400-e29b-41d4-a716-446655440999',
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder-projects')
+        .send(stakeholderProjectData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustStakeholderId');
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('should reject stakeholder-projects with missing required fields', async function () {
+      const invalidData = {
+        cadTrustStakeholderId: testStakeholderId,
+        // Missing cadTrustProjectId
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder-projects')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustProjectId');
+    });
+  });
+
+  describe('PUT /v2/stakeholder-projects/:id (Update)', function () {
+    let createdStakeholderProjectId;
+
+    before(async function () {
+      const stakeholderProjectData = {
+        cadTrustStakeholderId: testStakeholderId,
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder-projects')
+        .send(stakeholderProjectData);
+
+      createdStakeholderProjectId = response.body.cadTrustStakeholderProjectId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await StakeholderProjectV2.create({
+          cadTrustStakeholderProjectId: createdStakeholderProjectId,
+          cadTrustStakeholderId: testStakeholderId,
+          cadTrustProjectId: testProjectId,
+        });
+      }
+    });
+
+    it('should update a stakeholder-projects relationship via API', async function () {
+      const updateData = {
+        cadTrustStakeholderId: testStakeholderId,
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/stakeholder-projects/${createdStakeholderProjectId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Stakeholder-Project relationship update staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/stakeholder-projects/:id (Delete)', function () {
+    let createdStakeholderProjectId;
+
+    before(async function () {
+      const stakeholderProjectData = {
+        cadTrustStakeholderId: testStakeholderId,
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder-projects')
+        .send(stakeholderProjectData);
+
+      createdStakeholderProjectId = response.body.cadTrustStakeholderProjectId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await StakeholderProjectV2.create({
+          cadTrustStakeholderProjectId: createdStakeholderProjectId,
+          cadTrustStakeholderId: testStakeholderId,
+          cadTrustProjectId: testProjectId,
+        });
+      }
+    });
+
+    it('should delete a stakeholder-projects relationship via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/stakeholder-projects/${createdStakeholderProjectId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Stakeholder-Project relationship delete staged successfully');
+      expect(response.body).to.have.property('success', true);
     });
   });
 });

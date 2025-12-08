@@ -1,6 +1,8 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { LabelV2, LabelV2Mirror } from '../../../src/models/v2/index.js';
+import { LabelV2, LabelV2Mirror, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 describe('Label V2 Endpoint Integration Tests', function () {
@@ -363,6 +365,176 @@ describe('Label V2 Endpoint Integration Tests', function () {
       expect(label1.labelName).to.equal(label2.labelName);
       expect(label1.labelType).to.equal(label2.labelType);
       expect(label1.cadTrustLabelId).to.not.equal(label2.cadTrustLabelId);
+    });
+  });
+
+  describe('POST /v2/label (Create)', function () {
+    it('should create a new label record via API', async function () {
+      const labelData = {
+        labelName: 'API Test Label',
+        labelType: 'Certification',
+        labelLink: 'https://example.com/api-label',
+        labelDate: '2024-01-01',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(labelData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Label staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustLabelId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      expect(response.body).to.have.property('uuid');
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('label');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].label_name).to.equal('API Test Label');
+      expect(stagedData[0].label_type).to.equal('Certification');
+      expect(stagedData[0].label_link).to.equal('https://example.com/api-label');
+      expect(stagedData[0].label_date).to.equal('2024-01-01');
+      expect(stagedData[0].cad_trust_label_id).to.equal(response.body.cadTrustLabelId);
+    });
+
+    it('should reject label with missing required fields', async function () {
+      const invalidData = {
+        labelType: 'Certification',
+        // Missing labelName
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('labelName');
+    });
+
+    it('should reject label with forbidden fields (createdAt, updatedAt, cadTrustLabelId)', async function () {
+      const labelData = {
+        labelName: 'Test Label',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        cadTrustLabelId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(labelData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('PUT /v2/label/:id (Update)', function () {
+    let createdLabelId;
+
+    before(async function () {
+      const labelData = {
+        labelName: 'Label to Update',
+        labelType: 'Certification',
+        cadTrustLabelId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(labelData);
+
+      createdLabelId = response.body.cadTrustLabelId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+          where: { uuid: response.body.uuid },
+        });
+      }
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await LabelV2.create({
+          cadTrustLabelId: createdLabelId,
+          labelName: 'Label to Update',
+          labelType: 'Certification',
+        });
+      }
+    });
+
+    it('should update a label via API', async function () {
+      const updateData = {
+        labelName: 'Updated Label Name',
+        labelType: 'Article 6 - Endorsement',
+        labelLink: 'https://example.com/updated-label',
+        labelDate: '2024-12-31',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/label/${createdLabelId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Label update staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/label/:id (Delete)', function () {
+    let createdLabelId;
+
+    before(async function () {
+      const labelData = {
+        labelName: 'Label to Delete',
+        labelType: 'Certification',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(labelData);
+
+      createdLabelId = response.body.cadTrustLabelId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+          where: { uuid: response.body.uuid },
+        });
+      }
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await LabelV2.create({
+          cadTrustLabelId: createdLabelId,
+          labelName: 'Label to Delete',
+          labelType: 'Certification',
+        });
+      }
+    });
+
+    it('should delete a label via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/label/${createdLabelId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Label delete staged successfully');
+      expect(response.body).to.have.property('success', true);
     });
   });
 });

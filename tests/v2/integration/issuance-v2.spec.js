@@ -140,9 +140,18 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       expect(response.body).to.have.property('success', true);
 
       // Verify record was staged
+      expect(response.body).to.have.property(\'uuid\');
+
+
       const stagingRecord = await StagingV2.findOne({
+
+
         where: { uuid: response.body.uuid },
+
+
       });
+
+
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('issuance');
       expect(stagingRecord.action).to.equal('INSERT');
@@ -249,7 +258,8 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('VerificationV2 does not have a record');
+      expect(response.body.error).to.include('cadTrustVerificationId');
+      expect(response.body.error).to.include('does not exist');
     });
 
     it('should accept issuance with valid cadTrustVerificationId', async function () {
@@ -280,7 +290,8 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('MethodologyV2 does not have a record');
+      expect(response.body.error).to.include('cadTrustMethodologyId');
+      expect(response.body.error).to.include('does not exist');
     });
 
     it('should accept issuance with valid cadTrustMethodologyId', async function () {

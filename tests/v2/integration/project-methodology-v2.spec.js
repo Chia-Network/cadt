@@ -1,6 +1,8 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { ProjectMethodologyV2, ProjectMethodologyV2Mirror, ProjectV2, ProgramV2, MethodologyV2 } from '../../../src/models/v2/index.js';
+import { ProjectMethodologyV2, ProjectMethodologyV2Mirror, ProjectV2, ProgramV2, MethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -524,6 +526,175 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       const projectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
 
       expect(projectMethodology.projectMethodologyDate).to.equal('2024-12-31');
+    });
+  });
+
+  describe('POST /v2/project-methodology (Create)', function () {
+    it('should create a new project-methodology relationship via API', async function () {
+      const projectMethodologyData = {
+        cadTrustProjectId: testProjectId,
+        cadTrustMethodologyId: testMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+        projectMethodologyDescription: 'API Test Project-Methodology Relationship',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project-methodology')
+        .send(projectMethodologyData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Project-Methodology relationship staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('project_methodology');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].cad_trust_project_id).to.equal(testProjectId);
+      expect(stagedData[0].cad_trust_methodology_id).to.equal(testMethodologyId);
+      expect(stagedData[0].project_methodology_date).to.equal('2024-01-01');
+      expect(stagedData[0].project_methodology_description).to.equal('API Test Project-Methodology Relationship');
+    });
+
+    it('should reject project-methodology with invalid cadTrustProjectId (non-existent)', async function () {
+      const projectMethodologyData = {
+        cadTrustProjectId: '550e8400-e29b-41d4-a716-446655440999',
+        cadTrustMethodologyId: testMethodologyId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project-methodology')
+        .send(projectMethodologyData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustProjectId');
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('should reject project-methodology with missing required fields', async function () {
+      const invalidData = {
+        cadTrustProjectId: testProjectId,
+        // Missing cadTrustMethodologyId
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project-methodology')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustMethodologyId');
+    });
+  });
+
+  describe('PUT /v2/project-methodology/project/:projectId/methodology/:methodologyId (Update)', function () {
+    let createdProjectId;
+    let createdMethodologyId;
+
+    before(async function () {
+      const projectMethodologyData = {
+        cadTrustProjectId: testProjectId,
+        cadTrustMethodologyId: testMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project-methodology')
+        .send(projectMethodologyData);
+
+      createdProjectId = testProjectId;
+      createdMethodologyId = testMethodologyId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await ProjectMethodologyV2.create({
+          cadTrustProjectId: createdProjectId,
+          cadTrustMethodologyId: createdMethodologyId,
+          projectMethodologyDate: '2024-01-01',
+        });
+      }
+    });
+
+    it('should update a project-methodology relationship via API', async function () {
+      const updateData = {
+        cadTrustProjectId: testProjectId,
+        cadTrustMethodologyId: testMethodologyId,
+        projectMethodologyDate: '2024-12-31',
+        projectMethodologyDescription: 'Updated Description',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/project-methodology/project/${createdProjectId}/methodology/${createdMethodologyId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Project-Methodology relationship update staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/project-methodology/project/:projectId/methodology/:methodologyId (Delete)', function () {
+    let createdProjectId;
+    let createdMethodologyId;
+
+    before(async function () {
+      const projectMethodologyData = {
+        cadTrustProjectId: testProjectId,
+        cadTrustMethodologyId: testMethodologyId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project-methodology')
+        .send(projectMethodologyData);
+
+      createdProjectId = testProjectId;
+      createdMethodologyId = testMethodologyId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await ProjectMethodologyV2.create({
+          cadTrustProjectId: createdProjectId,
+          cadTrustMethodologyId: createdMethodologyId,
+        });
+      }
+    });
+
+    it('should delete a project-methodology relationship via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/project-methodology/project/${createdProjectId}/methodology/${createdMethodologyId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Project-Methodology relationship delete staged successfully');
+      expect(response.body).to.have.property('success', true);
     });
   });
 });

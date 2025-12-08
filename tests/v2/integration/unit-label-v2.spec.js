@@ -1,6 +1,8 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { UnitLabelV2, UnitLabelV2Mirror, LabelV2, UnitV2, IssuanceV2, VerificationV2, ProjectV2, ProgramV2, MethodologyV2 } from '../../../src/models/v2/index.js';
+import { UnitLabelV2, UnitLabelV2Mirror, LabelV2, UnitV2, IssuanceV2, VerificationV2, ProjectV2, ProgramV2, MethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -604,6 +606,177 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
       expect(unitLabel.labelUnitDescription).to.equal(longDescription);
       expect(unitLabel.labelUnitDescription).to.have.length(1000);
+    });
+  });
+
+  describe('POST /v2/unit-label (Create)', function () {
+    it('should create a new unit-label relationship via API', async function () {
+      const unitLabelData = {
+        cadTrustLabelId: testLabelId,
+        cadTrustUnitId: testUnitId,
+        labelUnitDate: '2024-01-01',
+        labelUnitDescription: 'API Test Unit-Label Relationship',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit-label')
+        .send(unitLabelData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Unit-Label relationship staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('unit_label');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].cad_trust_label_id).to.equal(testLabelId);
+      expect(stagedData[0].cad_trust_unit_id).to.equal(testUnitId);
+      expect(stagedData[0].label_unit_date).to.equal('2024-01-01');
+      expect(stagedData[0].label_unit_description).to.equal('API Test Unit-Label Relationship');
+    });
+
+    it('should reject unit-label with invalid cadTrustLabelId (non-existent)', async function () {
+      const unitLabelData = {
+        cadTrustLabelId: '550e8400-e29b-41d4-a716-446655440999',
+        cadTrustUnitId: testUnitId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit-label')
+        .send(unitLabelData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustLabelId');
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('should reject unit-label with missing required fields', async function () {
+      const invalidData = {
+        cadTrustLabelId: testLabelId,
+        // Missing cadTrustUnitId
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit-label')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustUnitId');
+    });
+  });
+
+  describe('PUT /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId (Update)', function () {
+    let createdLabelId;
+    let createdUnitId;
+
+    before(async function () {
+      // Create via API
+      const unitLabelData = {
+        cadTrustLabelId: testLabelId,
+        cadTrustUnitId: testUnitId,
+        labelUnitDate: '2024-01-01',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit-label')
+        .send(unitLabelData);
+
+      createdLabelId = testLabelId;
+      createdUnitId = testUnitId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await UnitLabelV2.create({
+          cadTrustLabelId: createdLabelId,
+          cadTrustUnitId: createdUnitId,
+          labelUnitDate: '2024-01-01',
+        });
+      }
+    });
+
+    it('should update a unit-label relationship via API', async function () {
+      const updateData = {
+        cadTrustLabelId: testLabelId,
+        cadTrustUnitId: testUnitId,
+        labelUnitDate: '2024-12-31',
+        labelUnitDescription: 'Updated Description',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/unit-label/${createdLabelId}/${createdUnitId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Unit-Label relationship update staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId (Delete)', function () {
+    let createdLabelId;
+    let createdUnitId;
+
+    before(async function () {
+      // Create via API
+      const unitLabelData = {
+        cadTrustLabelId: testLabelId,
+        cadTrustUnitId: testUnitId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit-label')
+        .send(unitLabelData);
+
+      createdLabelId = testLabelId;
+      createdUnitId = testUnitId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await UnitLabelV2.create({
+          cadTrustLabelId: createdLabelId,
+          cadTrustUnitId: createdUnitId,
+        });
+      }
+    });
+
+    it('should delete a unit-label relationship via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/unit-label/${createdLabelId}/${createdUnitId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Unit-Label relationship delete staged successfully');
+      expect(response.body).to.have.property('success', true);
     });
   });
 });

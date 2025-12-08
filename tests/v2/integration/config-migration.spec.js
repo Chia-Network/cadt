@@ -31,14 +31,15 @@ describe('Config Migration', () => {
     process.env.CHIA_ROOT = testChiaRoot;
 
     // Clear memoization for all config-related functions
+    // IMPORTANT: Clear caches BEFORE setting CHIA_ROOT to ensure getChiaRoot picks up the new value
+    if (getChiaRoot.cache) {
+      getChiaRoot.cache.clear();
+    }
     if (getConfig.cache) {
       getConfig.cache.clear();
     }
     if (getConfigV2.cache) {
       getConfigV2.cache.clear();
-    }
-    if (getChiaRoot.cache) {
-      getChiaRoot.cache.clear();
     }
   });
 
@@ -229,6 +230,14 @@ describe('Config Migration', () => {
       // Run migration
       migrateConfigFiles();
 
+      // Clear caches to ensure fresh config load from migrated file
+      if (getChiaRoot.cache) {
+        getChiaRoot.cache.clear();
+      }
+      if (getConfig.cache) {
+        getConfig.cache.clear();
+      }
+
       // Load V1 config via getConfig()
       const configV1 = getConfig();
 
@@ -255,6 +264,14 @@ describe('Config Migration', () => {
 
       // Run migration
       migrateConfigFiles();
+
+      // Clear caches to ensure fresh config load from migrated file
+      if (getChiaRoot.cache) {
+        getChiaRoot.cache.clear();
+      }
+      if (getConfigV2.cache) {
+        getConfigV2.cache.clear();
+      }
 
       // Load V2 config via getConfigV2()
       const configV2 = getConfigV2();

@@ -101,9 +101,18 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       expect(response.body).to.have.property('success', true);
 
       // Verify record was staged
+      expect(response.body).to.have.property(\'uuid\');
+
+
       const stagingRecord = await StagingV2.findOne({
+
+
         where: { uuid: response.body.uuid },
+
+
       });
+
+
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('validation');
       expect(stagingRecord.action).to.equal('INSERT');
@@ -253,7 +262,8 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('ProjectV2 does not have a record');
+      expect(response.body.error).to.include('cadTrustProjectId');
+      expect(response.body.error).to.include('does not exist');
     });
 
     it('should accept validation with valid cadTrustProjectId', async function () {
@@ -323,7 +333,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       }));
 
       const response = await supertest(app)
-        .get('/v2/validation')
+        .get('/v2/validation?columns=project')
         .expect(200);
 
       expect(response.body).to.be.an('array');
@@ -355,7 +365,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       }));
 
       const response = await supertest(app)
-        .get(`/v2/validation/${validation.cadTrustValidationId}`)
+        .get(`/v2/validation/${validation.cadTrustValidationId}?columns=project`)
         .expect(200);
 
       expect(response.body.validationId).to.equal('Get Test Validation');

@@ -1,6 +1,8 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StakeholderV2, StakeholderV2Mirror } from '../../../src/models/v2/index.js';
+import { StakeholderV2, StakeholderV2Mirror, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 describe('Stakeholder V2 Endpoint Integration Tests', function () {
@@ -287,6 +289,171 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       expect(stakeholder1.stakeholderType).to.equal(stakeholder2.stakeholderType);
       expect(stakeholder1.stakeholderName).to.not.equal(stakeholder2.stakeholderName);
       expect(stakeholder1.cadTrustStakeholderId).to.not.equal(stakeholder2.cadTrustStakeholderId);
+    });
+  });
+
+  describe('POST /v2/stakeholder (Create)', function () {
+    it('should create a new stakeholder record via API', async function () {
+      const stakeholderData = {
+        stakeholderName: 'API Test Stakeholder',
+        stakeholderType: 'Owner',
+        stakeholderLink: 'https://example.com/api-stakeholder',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder')
+        .send(stakeholderData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Stakeholder staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustStakeholderId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('stakeholder');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].stakeholder_name).to.equal('API Test Stakeholder');
+      expect(stagedData[0].stakeholder_type).to.equal('Owner');
+      expect(stagedData[0].stakeholder_link).to.equal('https://example.com/api-stakeholder');
+      expect(stagedData[0].cad_trust_stakeholder_id).to.equal(response.body.cadTrustStakeholderId);
+    });
+
+    it('should reject stakeholder with missing required fields', async function () {
+      const invalidData = {
+        stakeholderType: 'Owner',
+        // Missing stakeholderName
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('stakeholderName');
+    });
+
+    it('should reject stakeholder with forbidden fields (createdAt, updatedAt, cadTrustStakeholderId)', async function () {
+      const stakeholderData = {
+        stakeholderName: 'Test Stakeholder',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        cadTrustStakeholderId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder')
+        .send(stakeholderData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('PUT /v2/stakeholder/:id (Update)', function () {
+    let createdStakeholderId;
+
+    before(async function () {
+      const stakeholderData = {
+        stakeholderName: 'Stakeholder to Update',
+        stakeholderType: 'Owner',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder')
+        .send(stakeholderData);
+
+      createdStakeholderId = response.body.cadTrustStakeholderId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await StakeholderV2.create({
+          cadTrustStakeholderId: createdStakeholderId,
+          stakeholderName: 'Stakeholder to Update',
+          stakeholderType: 'Owner',
+        });
+      }
+    });
+
+    it('should update a stakeholder via API', async function () {
+      const updateData = {
+        stakeholderName: 'Updated Stakeholder Name',
+        stakeholderType: 'Developer',
+        stakeholderLink: 'https://example.com/updated-stakeholder',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/stakeholder/${createdStakeholderId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Stakeholder update staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/stakeholder/:id (Delete)', function () {
+    let createdStakeholderId;
+
+    before(async function () {
+      const stakeholderData = {
+        stakeholderName: 'Stakeholder to Delete',
+        stakeholderType: 'Consultant',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder')
+        .send(stakeholderData);
+
+      createdStakeholderId = response.body.cadTrustStakeholderId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await StakeholderV2.create({
+          cadTrustStakeholderId: createdStakeholderId,
+          stakeholderName: 'Stakeholder to Delete',
+          stakeholderType: 'Consultant',
+        });
+      }
+    });
+
+    it('should delete a stakeholder via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/stakeholder/${createdStakeholderId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Stakeholder delete staged successfully');
+      expect(response.body).to.have.property('success', true);
     });
   });
 });

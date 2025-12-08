@@ -49,9 +49,13 @@ export const create = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error creating new unit',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }
@@ -84,7 +88,17 @@ export const create = async (req, res) => {
     }
 
     // Validate foreign keys
-    await assertRecordExistanceOrStaged(IssuanceV2, newRecord.cadTrustIssuanceId);
+    if (newRecord.cadTrustIssuanceId) {
+      try {
+        await assertRecordExistanceOrStaged(IssuanceV2, newRecord.cadTrustIssuanceId, 'cadTrustIssuanceId');
+      } catch (err) {
+        return res.status(400).json({
+          message: 'Error creating new unit',
+          error: err.message,
+          success: false,
+        });
+      }
+    }
 
     // Get home organization and set orgUid automatically
     const homeOrg = await OrganizationsV2.getHomeOrg(false);
@@ -146,7 +160,7 @@ export const create = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error creating unit:', err);
+    loggerV2.error('[v2]: Error creating unit:', err);
     res.status(400).json({
       message: 'Error creating new unit',
       error: err.message,
@@ -288,10 +302,17 @@ export const findAll = async (req, res) => {
       // Ensure columns is an array
       const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
 
+      // Valid association names
+      const validAssociationNames = [
+        'issuance', 'IssuanceV2', // Parent association
+        'unitLabels', 'UnitLabelV2', // Child associations
+      ];
+
       // Remove any unsupported columns
       const validColumns = columnsArray.filter((col) =>
         defaultColumns
           .concat(includes.map(formatModelAssociationName))
+          .concat(validAssociationNames)
           .includes(col),
       );
 
@@ -404,9 +425,13 @@ export const findAll = async (req, res) => {
     let fixedIncludes = [];
 
     if (normalizedColumns) {
-      // User requested specific columns - use columnsToInclude helper
-      const columnQuery = columnsToInclude(normalizedColumns, includes);
-      queryAttributes = columnQuery.attributes;
+      // Separate association names from regular columns
+      const associationNames = ['issuance', 'IssuanceV2', 'unitLabels', 'UnitLabelV2'];
+      const regularColumns = normalizedColumns.filter(col => !associationNames.includes(col));
+
+      // Use columnsToInclude helper only for regular columns
+      const columnQuery = regularColumns.length > 0 ? columnsToInclude(regularColumns, includes) : { attributes: [], include: [] };
+      queryAttributes = regularColumns.length > 0 ? columnQuery.attributes : undefined;
 
       // Build includes with correct V2 aliases based on requested columns
       const columnsArray = normalizedColumns;
@@ -469,7 +494,7 @@ export const findAll = async (req, res) => {
 
     res.json(response);
   } catch (err) {
-    logger.error('[v2]: Error retrieving units:', err);
+    loggerV2.error('[v2]: Error retrieving units:', err);
     res.status(400).json({
       message: 'Error retrieving units',
       error: err.message,
@@ -492,7 +517,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('[v2]: Error retrieving unit:', err);
+    loggerV2.error('[v2]: Error retrieving unit:', err);
     res.status(400).json({
       message: 'Error retrieving unit',
       error: err.message,
@@ -526,9 +551,13 @@ export const update = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error updating unit',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }
@@ -552,7 +581,15 @@ export const update = async (req, res) => {
     }
 
     // Validate foreign keys
-    await assertRecordExistanceOrStaged(IssuanceV2, updateData.cadTrustIssuanceId);
+    try {
+      await assertRecordExistanceOrStaged(IssuanceV2, updateData.cadTrustIssuanceId, 'cadTrustIssuanceId');
+    } catch (err) {
+      return res.status(400).json({
+        message: 'Error updating unit',
+        error: err.message,
+        success: false,
+      });
+    }
 
     // Get home organization and set orgUid automatically (for non-transfer updates)
     const homeOrg = await OrganizationsV2.getHomeOrg(false);
@@ -607,7 +644,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error updating unit:', err);
+    loggerV2.error('[v2]: Error updating unit:', err);
     res.status(400).json({
       message: 'Error updating unit',
       error: err.message,
@@ -649,7 +686,7 @@ export const destroy = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error deleting unit:', err);
+    loggerV2.error('[v2]: Error deleting unit:', err);
     res.status(400).json({
       message: 'Error deleting unit',
       error: err.message,
@@ -694,7 +731,7 @@ export const split = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error splitting unit:', error);
+    loggerV2.error('[v2]: Error splitting unit:', error);
     res.status(400).json({
       message: 'Error splitting unit',
       error: error.message,
@@ -729,7 +766,7 @@ export const updateFromXLS = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error updating units from XLSX:', error);
+    loggerV2.error('[v2]: Error updating units from XLSX:', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
@@ -765,7 +802,7 @@ export const batchUpload = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Batch Upload Failed.', error);
+    loggerV2.error('[v2]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,

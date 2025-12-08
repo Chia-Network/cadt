@@ -24,23 +24,31 @@ import { defaultConfig } from '../../../src/utils/defaultConfig.js';
 describe('V1/V2 Enable/Disable Functionality Tests', function () {
   this.timeout(30000);
 
-  const chiaRoot = getChiaRoot();
-  const unifiedConfigPath = path.resolve(`${chiaRoot}/cadt/config.yaml`);
+  // Use test config file location (same as config-loader.js uses in test mode)
+  const projectRoot = path.resolve(process.cwd());
+  const unifiedConfigDir = path.resolve(`${projectRoot}/tests/v2/config`);
+  const unifiedConfigPath = path.resolve(`${unifiedConfigDir}/test-config.yaml`);
   let originalUnifiedConfig = null;
 
   before(async function () {
-    // Backup original unified config
+    // Ensure test config directory exists
+    if (!fs.existsSync(unifiedConfigDir)) {
+      fs.mkdirSync(unifiedConfigDir, { recursive: true });
+    }
+
+    // Backup original test config if it exists
     if (fs.existsSync(unifiedConfigPath)) {
       originalUnifiedConfig = fs.readFileSync(unifiedConfigPath, 'utf8');
     }
   });
 
   after(async function () {
-    // Restore original unified config
+    // Restore original test config
     if (originalUnifiedConfig !== null) {
       fs.writeFileSync(unifiedConfigPath, originalUnifiedConfig, 'utf8');
     } else if (fs.existsSync(unifiedConfigPath)) {
-      fs.unlinkSync(unifiedConfigPath);
+      // If there was no original, restore to default config
+      fs.writeFileSync(unifiedConfigPath, yaml.dump(defaultConfig), 'utf8');
     }
 
     // Clear memoized configs
@@ -54,9 +62,9 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     const testConfig = { ...defaultConfig };
     testConfig.V1.ENABLE = v1Enable;
     testConfig.V2.ENABLE = v2Enable;
-    const configDir = path.dirname(unifiedConfigPath);
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
+    // Ensure directory exists
+    if (!fs.existsSync(unifiedConfigDir)) {
+      fs.mkdirSync(unifiedConfigDir, { recursive: true });
     }
     fs.writeFileSync(unifiedConfigPath, yaml.dump(testConfig), 'utf8');
   };

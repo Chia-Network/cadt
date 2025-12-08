@@ -90,7 +90,15 @@ export const create = async (req, res) => {
 
     // Validate foreign key if provided
     if (newRecord.cadTrustProgramId) {
-      await assertRecordExistanceOrStaged(ProgramV2, newRecord.cadTrustProgramId);
+      try {
+        await assertRecordExistanceOrStaged(ProgramV2, newRecord.cadTrustProgramId, 'ProgramV2 does not have a record');
+      } catch (err) {
+        return res.status(400).json({
+          message: 'Error creating new project',
+          error: err.message,
+          success: false,
+        });
+      }
     }
 
     // Get home organization and set orgUid automatically
@@ -242,10 +250,20 @@ export const findAll = async (req, res) => {
       // Ensure columns is an array
       const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
 
+      // Valid association names (parent and child models)
+      const validAssociationNames = [
+        'program', 'ProgramV2', // Parent association
+        'locations', 'LocationV2', // Child associations
+        'estimations', 'EstimationV2',
+        'ratings', 'RatingV2',
+        'coBenefits', 'CoBenefitV2',
+      ];
+
       // Remove any unsupported columns
       const validColumns = columnsArray.filter((col) =>
         defaultColumns
           .concat(includes.map(formatModelAssociationName))
+          .concat(validAssociationNames)
           .includes(col),
       );
 
@@ -332,9 +350,13 @@ export const findAll = async (req, res) => {
     let fixedIncludes = [];
 
     if (normalizedColumns) {
-      // User requested specific columns - use columnsToInclude helper
-      const columnQuery = columnsToInclude(normalizedColumns, includes);
-      queryAttributes = columnQuery.attributes;
+      // Separate association names from regular columns
+      const associationNames = ['program', 'ProgramV2', 'locations', 'LocationV2', 'estimations', 'EstimationV2', 'ratings', 'RatingV2', 'coBenefits', 'CoBenefitV2'];
+      const regularColumns = normalizedColumns.filter(col => !associationNames.includes(col));
+
+      // Use columnsToInclude helper only for regular columns
+      const columnQuery = regularColumns.length > 0 ? columnsToInclude(regularColumns, includes) : { attributes: [], include: [] };
+      queryAttributes = regularColumns.length > 0 ? columnQuery.attributes : undefined;
 
       // Build includes with correct V2 aliases based on requested columns
       const columnsArray = normalizedColumns;
@@ -433,7 +455,52 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await ProjectV2.findByPk(id);
+    const { columns } = req.query;
+
+    // Build includes if columns parameter is provided
+    let includes = [];
+    if (columns) {
+      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+      if (columnsArray.includes('program') || columnsArray.includes('ProgramV2')) {
+        includes.push({
+          model: ProgramV2,
+          as: 'program',
+          required: false,
+        });
+      }
+      if (columnsArray.includes('locations') || columnsArray.includes('LocationV2')) {
+        includes.push({
+          model: LocationV2,
+          as: 'locations',
+          required: false,
+        });
+      }
+      if (columnsArray.includes('estimations') || columnsArray.includes('EstimationV2')) {
+        includes.push({
+          model: EstimationV2,
+          as: 'estimations',
+          required: false,
+        });
+      }
+      if (columnsArray.includes('ratings') || columnsArray.includes('RatingV2')) {
+        includes.push({
+          model: RatingV2,
+          as: 'ratings',
+          required: false,
+        });
+      }
+      if (columnsArray.includes('coBenefits') || columnsArray.includes('CoBenefitV2')) {
+        includes.push({
+          model: CoBenefitV2,
+          as: 'coBenefits',
+          required: false,
+        });
+      }
+    }
+
+    const record = await ProjectV2.findByPk(id, {
+      include: includes.length > 0 ? includes : undefined,
+    });
 
     if (!record) {
       return res.status(404).json({
@@ -505,7 +572,7 @@ export const update = async (req, res) => {
 
     // Validate foreign key if provided
     if (updateData.cadTrustProgramId) {
-      await assertRecordExistanceOrStaged(ProgramV2, updateData.cadTrustProgramId);
+      await assertRecordExistanceOrStaged(ProgramV2, updateData.cadTrustProgramId, 'cadTrustProgramId');
     }
 
     // Get home organization and set orgUid automatically (for non-transfer updates)

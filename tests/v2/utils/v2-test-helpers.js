@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import yaml from 'js-yaml';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import datalayer from '../../../src/datalayer/index.js';
@@ -16,6 +17,61 @@ export const waitForV2DataLayerSync = () => {
       resolve();
     }, TEST_WAIT_TIME * 5);
   });
+};
+
+/**
+ * Safety check: Verify that test databases are being used
+ * This prevents accidental production database access during tests
+ * Should be called at the start of test suites
+ */
+export const verifyTestDatabaseConfiguration = async () => {
+  // Verify NODE_ENV is set to 'test'
+  if (process.env.NODE_ENV !== 'test') {
+    const errorMsg = `SAFETY CHECK FAILED: NODE_ENV is not set to 'test' (current value: '${process.env.NODE_ENV || 'undefined'}'). Tests must run with NODE_ENV=test to prevent accidental production database access. Always use npm test or npm run test:v2 commands.`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  // Verify V1 database configuration (if V1 is enabled)
+  try {
+    const { sequelize } = await import('../../../src/database/index.js');
+    const v1Storage = sequelize.options.storage;
+    if (v1Storage) {
+      // Check that it's a test database
+      if (!v1Storage.includes('test.sqlite3') && !v1Storage.includes('testMirror.sqlite3')) {
+        const errorMsg = `SAFETY CHECK FAILED: V1 database storage path '${v1Storage}' does not appear to be a test database. Expected path to include 'test.sqlite3'. This prevents accidental production database access.`;
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+      // Check that it's not in home directory
+      if (v1Storage.includes('~') || v1Storage.includes('/.chia/') || v1Storage.includes(os.homedir())) {
+        const errorMsg = `SAFETY CHECK FAILED: V1 database storage path '${v1Storage}' appears to be in home directory. Test databases must be in project root (relative paths like './test.sqlite3'). This prevents accidental production database access.`;
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+    }
+  } catch (err) {
+    // If V1 database isn't initialized, that's okay - we're focusing on V2 tests
+    if (!err.message.includes('SAFETY CHECK FAILED')) {
+      // Ignore other errors (V1 might not be enabled)
+    } else {
+      throw err;
+    }
+  }
+
+  // Verify V2 database configuration
+  const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
+  const v2Storage = sequelizeV2.options.storage;
+  if (!v2Storage || (!v2Storage.includes('test-v2.sqlite3') && !v2Storage.includes('testMirror-v2.sqlite3'))) {
+    const errorMsg = `SAFETY CHECK FAILED: V2 database storage path '${v2Storage}' does not appear to be a test database. Expected path to include 'test-v2.sqlite3'. This prevents accidental production database access.`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+  if (v2Storage.includes('~') || v2Storage.includes('/.chia/') || v2Storage.includes(os.homedir())) {
+    const errorMsg = `SAFETY CHECK FAILED: V2 database storage path '${v2Storage}' appears to be in home directory. Test databases must be in project root (relative paths like './test-v2.sqlite3'). This prevents accidental production database access.`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
 };
 
 // V2 staging table utilities

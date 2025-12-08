@@ -26,11 +26,12 @@ export const assertV2IfReadOnlyMode = async () => {
  *
  * @param {Model} Model - The Sequelize model to check
  * @param {string} pk - Primary key value to look for
- * @param {string} pkField - Primary key field name (defaults to model's primary key)
+ * @param {string} customErrorMessage - Optional custom error message (if provided, pkField should be null)
+ * @param {string} pkField - Primary key field name (defaults to model's primary key, ignored if customErrorMessage is provided)
  * @returns {Object} The found record
  * @throws {Error} If record is not found in either main table or staging
  */
-export const assertRecordExistanceOrStaged = async (Model, pk, pkField = null) => {
+export const assertRecordExistanceOrStaged = async (Model, pk, apiFieldName = null, pkField = null) => {
   // Determine the primary key field name (Sequelize attribute name)
   const primaryKeyAttribute = pkField || Model.primaryKeyAttribute;
 
@@ -78,7 +79,10 @@ export const assertRecordExistanceOrStaged = async (Model, pk, pkField = null) =
   }
 
   // Record not found in either main table or staging
-  throw new Error(`${primaryKeyAttribute} '${pk}' does not exist in main table or staging`);
+  // Generate specific, actionable error message
+  // Use API field name (camelCase) if provided, otherwise use primary key attribute
+  const fieldName = apiFieldName || primaryKeyAttribute;
+  throw new Error(`${fieldName} '${pk}' does not exist`);
 };
 
 /**

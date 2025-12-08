@@ -1,4 +1,5 @@
 import { Sequelize, QueryTypes } from 'sequelize';
+import os from 'os';
 import config from '../../config/config.js';
 import { loggerV2 } from '../../config/logger.js';
 import mysql from 'mysql2/promise';
@@ -10,7 +11,27 @@ import { seeders } from './seeders';
 import dotenv from 'dotenv';
 dotenv.config();
 
-export const sequelizeV2 = new Sequelize(config[process.env.NODE_ENV ? `v2${process.env.NODE_ENV.charAt(0).toUpperCase() + process.env.NODE_ENV.slice(1)}` : 'v2Local']);
+// possible values: local, test
+const nodeEnv = process.env.NODE_ENV;
+const dbConfigKey = nodeEnv ? `v2${nodeEnv.charAt(0).toUpperCase() + nodeEnv.slice(1)}` : 'v2Local';
+
+// Safety check: In test mode, ensure we're using test database configuration
+if (nodeEnv === 'test') {
+  const testConfig = config[dbConfigKey];
+  if (!testConfig || !testConfig.storage || !testConfig.storage.includes('test')) {
+    const errorMsg = `SAFETY CHECK FAILED: Test mode detected but V2 database config '${dbConfigKey}' does not appear to be a test database. Storage: ${testConfig?.storage || 'undefined'}. This prevents accidental production database access.`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+  // Additional check: test database should be in project root (relative path), not in home directory
+  if (testConfig.storage.includes('~') || testConfig.storage.includes(os.homedir())) {
+    const errorMsg = `SAFETY CHECK FAILED: V2 test database path appears to be in home directory: ${testConfig.storage}. Test databases must be in project root (relative paths like './test-v2.sqlite3').`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+}
+
+export const sequelizeV2 = new Sequelize(config[dbConfigKey]);
 
 const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'v2Mirror' : 'v2MirrorTest';

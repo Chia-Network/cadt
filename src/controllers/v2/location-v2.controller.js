@@ -33,7 +33,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
         }
 
         // Validate foreign key: cadTrustProjectId
-        await assertRecordExistanceOrStaged(ProjectV2, value.cadTrustProjectId);
+        await assertRecordExistanceOrStaged(ProjectV2, value.cadTrustProjectId, 'cadTrustProjectId');
 
         // Generate UUID for staging
         const uuid = uuidv4();
@@ -144,7 +144,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
         }
 
         // Validate foreign key: cadTrustProjectId
-        await assertRecordExistanceOrStaged(ProjectV2, value.cadTrustProjectId);
+        await assertRecordExistanceOrStaged(ProjectV2, value.cadTrustProjectId, 'cadTrustProjectId');
 
         // Check if location exists
         const existingLocation = await Model.findByPk(id);

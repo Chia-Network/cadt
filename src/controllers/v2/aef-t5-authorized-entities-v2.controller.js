@@ -1,82 +1,129 @@
 'use strict';
 
-import { AefT5AuthorizedEntitiesV2, AefT5AuthorizedEntitiesV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2 } from '../../models/v2/index.js';
+import _ from 'lodash';
+import { v4 as uuidv4 } from 'uuid';
+
+import { StagingV2, AefT5AuthorizedEntitiesV2, AefT1SubmissionV2, UnitV2, ProjectV2 } from '../../models/v2/index.js';
 import { aefT5AuthorizedEntitiesV2Schema } from '../../validations/v2/aef-t5-authorized-entities-v2.validations.js';
-import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
+import {
+  assertV2IfReadOnlyMode,
+  assertV2HomeOrgExists,
+  assertNoPendingCommitsExcludingTransfers,
+  assertRecordExistanceOrStaged,
+} from '../../utils/v2-data-assertions.js';
+import { convertToSnakeCase } from '../../utils/v2-camel-to-snake.js';
+import { loggerV2 } from '../../config/logger.js';
 
 export const createAefT5AuthorizedEntitiesV2 = async (req, res) => {
   try {
-    // Validate request body
-    const { error, value } = aefT5AuthorizedEntitiesV2Schema.validate(req.body);
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
+    const newRecord = _.cloneDeep(req.body);
+
+    // Validate the request data
+    const { error } = aefT5AuthorizedEntitiesV2Schema.validate(newRecord, {
+      allowUnknown: false,
+      stripUnknown: false,
+    });
+
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
+        message: 'Error creating new AEF-T5-Authorized-Entities',
+        error: errorMessage,
         success: false,
-        message: 'Validation error',
-        errors: error.details.map(detail => detail.message),
+      });
+    }
+
+    // Check for forbidden fields
+    if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
+      return res.status(400).json({
+        message: 'Error creating new AEF-T5-Authorized-Entities',
+        error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
+        success: false,
+      });
+    }
+
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustAefT5AuthorizedEntitiesId')) {
+      return res.status(400).json({
+        message: 'Error creating new AEF-T5-Authorized-Entities',
+        error: 'cadTrustAefT5AuthorizedEntitiesId is auto-generated and cannot be set via API',
+        success: false,
       });
     }
 
     // Validate foreign keys if provided
-    if (value.cadTrustAefT1SubmissionId) {
-      const aefT1SubmissionExists = await assertRecordExistanceOrStaged(
-        AefT1SubmissionV2,
-        value.cadTrustAefT1SubmissionId,
-        'AefT1SubmissionV2 does not have a record'
-      );
-      if (!aefT1SubmissionExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'Foreign key validation failed',
-          errors: ['AefT1SubmissionV2 does not have a record'],
-        });
+    try {
+      if (newRecord.cadTrustAefT1SubmissionId) {
+        await assertRecordExistanceOrStaged(
+          AefT1SubmissionV2,
+          newRecord.cadTrustAefT1SubmissionId,
+          `cadTrustAefT1SubmissionId '${newRecord.cadTrustAefT1SubmissionId}' does not exist. Please create the AEF-T1-Submission first or use a valid cadTrustAefT1SubmissionId.`
+        );
       }
+      if (newRecord.cadTrustUnitId) {
+        await assertRecordExistanceOrStaged(
+          UnitV2,
+          newRecord.cadTrustUnitId,
+          `cadTrustUnitId '${newRecord.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId.`
+        );
+      }
+      if (newRecord.cadTrustProjectId) {
+        await assertRecordExistanceOrStaged(
+          ProjectV2,
+          newRecord.cadTrustProjectId,
+          `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+        );
+      }
+    } catch (err) {
+      return res.status(400).json({
+        message: 'Error creating new AEF-T5-Authorized-Entities',
+        error: err.message,
+        success: false,
+      });
     }
 
-    if (value.cadTrustUnitId) {
-      const unitExists = await assertRecordExistanceOrStaged(
-        UnitV2,
-        value.cadTrustUnitId,
-        'UnitV2 does not have a record'
-      );
-      if (!unitExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'Foreign key validation failed',
-          errors: ['UnitV2 does not have a record'],
-        });
-      }
-    }
+    // Generate UUID for staging
+    const uuid = uuidv4();
 
-    if (value.cadTrustProjectId) {
-      const projectExists = await assertRecordExistanceOrStaged(
-        ProjectV2,
-        value.cadTrustProjectId,
-        'ProjectV2 does not have a record'
-      );
-      if (!projectExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'Foreign key validation failed',
-          errors: ['ProjectV2 does not have a record'],
-        });
-      }
-    }
+    // Generate UUID for primary key
+    const cadTrustAefT5AuthorizedEntitiesId = uuidv4();
 
-    // Create AEF-T5-Authorized-Entities in staging table
-    const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(value);
+    // Convert camelCase API fields to snake_case DB fields for staging
+    const dbRecord = {
+      cad_trust_aef_t5_authorized_entities_id: cadTrustAefT5AuthorizedEntitiesId,
+      ...convertToSnakeCase(_.omit(newRecord, ['cadTrustAefT5AuthorizedEntitiesId', 'createdAt', 'updatedAt'])),
+    };
 
-    res.status(201).json({
-      success: true,
-      message: 'AEF-T5-Authorized-Entities staged successfully',
-      cadTrustAefT5AuthorizedEntitiesId: aefT5AuthorizedEntities.cadTrustAefT5AuthorizedEntitiesId,
-      data: aefT5AuthorizedEntities,
+    // Stage the record
+    await StagingV2.create({
+      uuid,
+      table: 'aef_t5_authorized_entities',
+      action: 'INSERT',
+      data: JSON.stringify([dbRecord]),
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
     });
-  } catch (error) {
-    console.error('Error creating AEF-T5-Authorized-Entities:', error);
-    res.status(500).json({
+
+    res.json({
+      message: 'AEF-T5-Authorized-Entities staged successfully',
+      uuid,
+      cadTrustAefT5AuthorizedEntitiesId,
+      success: true,
+    });
+  } catch (err) {
+    loggerV2.error('[v2]: Error creating AEF-T5-Authorized-Entities:', err);
+    res.status(400).json({
+      message: 'Error creating new AEF-T5-Authorized-Entities',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
@@ -84,15 +131,6 @@ export const createAefT5AuthorizedEntitiesV2 = async (req, res) => {
 export const getAefT5AuthorizedEntitiesV2 = async (req, res) => {
   try {
     const { cadTrustAefT5AuthorizedEntitiesId } = req.params;
-
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!cadTrustAefT5AuthorizedEntitiesId.match(uuidRegex)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid AEF-T5-Authorized-Entities ID format',
-      });
-    }
 
     const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.findByPk(cadTrustAefT5AuthorizedEntitiesId, {
       include: [
@@ -116,21 +154,18 @@ export const getAefT5AuthorizedEntitiesV2 = async (req, res) => {
 
     if (!aefT5AuthorizedEntities) {
       return res.status(404).json({
-        success: false,
         message: 'AEF-T5-Authorized-Entities not found',
+        success: false,
       });
     }
 
-    res.status(200).json({
-      success: true,
-      data: aefT5AuthorizedEntities,
-    });
-  } catch (error) {
-    console.error('Error fetching AEF-T5-Authorized-Entities:', error);
-    res.status(500).json({
+    res.status(200).json(aefT5AuthorizedEntities);
+  } catch (err) {
+    loggerV2.error('[v2]: Error fetching AEF-T5-Authorized-Entities:', err);
+    res.status(400).json({
+      message: 'Error retrieving AEF-T5-Authorized-Entities',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
@@ -163,147 +198,161 @@ export const getAllAefT5AuthorizedEntitiesV2 = async (req, res) => {
       data: aefT5AuthorizedEntities,
       count: aefT5AuthorizedEntities.length,
     });
-  } catch (error) {
-    console.error('Error fetching AEF-T5-Authorized-Entities:', error);
-    res.status(500).json({
+  } catch (err) {
+    loggerV2.error('[v2]: Error fetching AEF-T5-Authorized-Entities:', err);
+    res.status(400).json({
+      message: 'Error retrieving AEF-T5-Authorized-Entities',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
 
 export const updateAefT5AuthorizedEntitiesV2 = async (req, res) => {
   try {
-    const { cadTrustAefT5AuthorizedEntitiesId } = req.params;
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!cadTrustAefT5AuthorizedEntitiesId.match(uuidRegex)) {
-      return res.status(400).json({
+    const { cadTrustAefT5AuthorizedEntitiesId } = req.params;
+    const updateData = _.cloneDeep(req.body);
+
+    // Verify record exists first (before validation)
+    const existingRecord = await AefT5AuthorizedEntitiesV2.findByPk(cadTrustAefT5AuthorizedEntitiesId);
+    if (!existingRecord) {
+      return res.status(404).json({
+        message: 'AEF-T5-Authorized-Entities not found',
         success: false,
-        message: 'Invalid AEF-T5-Authorized-Entities ID format',
       });
     }
 
-    // Validate request body
-    const { error, value } = aefT5AuthorizedEntitiesV2Schema.validate(req.body);
+    // Validate the request data
+    const { error } = aefT5AuthorizedEntitiesV2Schema.validate(updateData, {
+      allowUnknown: false,
+      stripUnknown: false,
+    });
+
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
+        message: 'Error updating AEF-T5-Authorized-Entities',
+        error: errorMessage,
         success: false,
-        message: 'Validation error',
-        errors: error.details.map(detail => detail.message),
+      });
+    }
+
+    // Check for forbidden fields
+    if (updateData.hasOwnProperty('createdAt') || updateData.hasOwnProperty('updatedAt')) {
+      return res.status(400).json({
+        message: 'Error updating AEF-T5-Authorized-Entities',
+        error: 'createdAt and updatedAt fields are automatically managed and cannot be updated via API',
+        success: false,
       });
     }
 
     // Validate foreign keys if provided
-    if (value.cadTrustAefT1SubmissionId) {
-      const aefT1SubmissionExists = await assertRecordExistanceOrStaged(
-        AefT1SubmissionV2,
-        value.cadTrustAefT1SubmissionId,
-        'AefT1SubmissionV2 does not have a record'
-      );
-      if (!aefT1SubmissionExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'Foreign key validation failed',
-          errors: ['AefT1SubmissionV2 does not have a record'],
-        });
+    try {
+      if (updateData.cadTrustAefT1SubmissionId) {
+        await assertRecordExistanceOrStaged(
+          AefT1SubmissionV2,
+          updateData.cadTrustAefT1SubmissionId,
+          `cadTrustAefT1SubmissionId '${updateData.cadTrustAefT1SubmissionId}' does not exist. Please create the AEF-T1-Submission first or use a valid cadTrustAefT1SubmissionId.`
+        );
       }
-    }
-
-    if (value.cadTrustUnitId) {
-      const unitExists = await assertRecordExistanceOrStaged(
-        UnitV2,
-        value.cadTrustUnitId,
-        'UnitV2 does not have a record'
-      );
-      if (!unitExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'Foreign key validation failed',
-          errors: ['UnitV2 does not have a record'],
-        });
+      if (updateData.cadTrustUnitId) {
+        await assertRecordExistanceOrStaged(
+          UnitV2,
+          updateData.cadTrustUnitId,
+          `cadTrustUnitId '${updateData.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId.`
+        );
       }
-    }
-
-    if (value.cadTrustProjectId) {
-      const projectExists = await assertRecordExistanceOrStaged(
-        ProjectV2,
-        value.cadTrustProjectId,
-        'ProjectV2 does not have a record'
-      );
-      if (!projectExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'Foreign key validation failed',
-          errors: ['ProjectV2 does not have a record'],
-        });
+      if (updateData.cadTrustProjectId) {
+        await assertRecordExistanceOrStaged(
+          ProjectV2,
+          updateData.cadTrustProjectId,
+          `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+        );
       }
-    }
-
-    // Check if AEF-T5-Authorized-Entities exists
-    const existingAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.findByPk(cadTrustAefT5AuthorizedEntitiesId);
-    if (!existingAefT5AuthorizedEntities) {
-      return res.status(404).json({
+    } catch (err) {
+      return res.status(400).json({
+        message: 'Error updating AEF-T5-Authorized-Entities',
+        error: err.message,
         success: false,
-        message: 'AEF-T5-Authorized-Entities not found',
       });
     }
 
-    // Update AEF-T5-Authorized-Entities in staging table
-    await existingAefT5AuthorizedEntities.update(value);
+    // Convert camelCase API fields to snake_case DB fields for staging
+    const dbUpdateData = {
+      cad_trust_aef_t5_authorized_entities_id: cadTrustAefT5AuthorizedEntitiesId,
+      ...convertToSnakeCase(_.omit(updateData, ['cadTrustAefT5AuthorizedEntitiesId', 'createdAt', 'updatedAt'])),
+    };
 
-    res.status(200).json({
-      success: true,
-      message: 'AEF-T5-Authorized-Entities updated successfully',
-      data: existingAefT5AuthorizedEntities,
+    // Stage the update
+    await StagingV2.create({
+      uuid: uuidv4(),
+      table: 'aef_t5_authorized_entities',
+      action: 'UPDATE',
+      data: JSON.stringify([dbUpdateData]),
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
     });
-  } catch (error) {
-    console.error('Error updating AEF-T5-Authorized-Entities:', error);
-    res.status(500).json({
+
+    res.json({
+      message: 'AEF-T5-Authorized-Entities update staged successfully',
+      success: true,
+    });
+  } catch (err) {
+    loggerV2.error('[v2]: Error updating AEF-T5-Authorized-Entities:', err);
+    res.status(400).json({
+      message: 'Error updating AEF-T5-Authorized-Entities',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };
 
 export const deleteAefT5AuthorizedEntitiesV2 = async (req, res) => {
   try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+    await assertNoPendingCommitsExcludingTransfers();
+
     const { cadTrustAefT5AuthorizedEntitiesId } = req.params;
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!cadTrustAefT5AuthorizedEntitiesId.match(uuidRegex)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid AEF-T5-Authorized-Entities ID format',
-      });
-    }
-
-    // Check if AEF-T5-Authorized-Entities exists
-    const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.findByPk(cadTrustAefT5AuthorizedEntitiesId);
-    if (!aefT5AuthorizedEntities) {
+    // Verify record exists
+    const existingRecord = await AefT5AuthorizedEntitiesV2.findByPk(cadTrustAefT5AuthorizedEntitiesId);
+    if (!existingRecord) {
       return res.status(404).json({
-        success: false,
         message: 'AEF-T5-Authorized-Entities not found',
+        success: false,
       });
     }
 
-    // Delete AEF-T5-Authorized-Entities from staging table
-    await aefT5AuthorizedEntities.destroy();
-
-    res.status(200).json({
-      success: true,
-      message: 'AEF-T5-Authorized-Entities deleted successfully',
+    // Stage the delete
+    await StagingV2.create({
+      uuid: uuidv4(),
+      table: 'aef_t5_authorized_entities',
+      action: 'DELETE',
+      data: JSON.stringify([{ cad_trust_aef_t5_authorized_entities_id: cadTrustAefT5AuthorizedEntitiesId }]),
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
     });
-  } catch (error) {
-    console.error('Error deleting AEF-T5-Authorized-Entities:', error);
-    res.status(500).json({
+
+    res.json({
+      message: 'AEF-T5-Authorized-Entities delete staged successfully',
+      success: true,
+    });
+  } catch (err) {
+    loggerV2.error('[v2]: Error deleting AEF-T5-Authorized-Entities:', err);
+    res.status(400).json({
+      message: 'Error deleting AEF-T5-Authorized-Entities',
+      error: err.message,
       success: false,
-      message: 'Internal server error',
-      error: error.message,
     });
   }
 };

@@ -4,7 +4,7 @@ import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
 
-import { StagingV2, IssuanceV2, VerificationV2, MethodologyV2, OrganizationsV2 } from '../../models/v2/index.js';
+import { StagingV2, IssuanceV2, VerificationV2, MethodologyV2, OrganizationsV2, ProjectV2, LocationV2 } from '../../models/v2/index.js';
 
 import {
   optionallyPaginatedResponse,
@@ -71,8 +71,16 @@ export const create = async (req, res) => {
     }
 
     // Validate foreign keys
-    await assertRecordExistanceOrStaged(VerificationV2, newRecord.cadTrustVerificationId);
-    await assertRecordExistanceOrStaged(MethodologyV2, newRecord.cadTrustMethodologyId);
+    try {
+      await assertRecordExistanceOrStaged(VerificationV2, newRecord.cadTrustVerificationId, 'cadTrustVerificationId');
+      await assertRecordExistanceOrStaged(MethodologyV2, newRecord.cadTrustMethodologyId, 'cadTrustMethodologyId');
+    } catch (err) {
+      return res.status(400).json({
+        message: 'Error creating new issuance',
+        error: err.message,
+        success: false,
+      });
+    }
 
     if (newRecord.cadTrustLocationId) {
       // Note: LocationV2 validation will be added when Location endpoint is implemented
@@ -145,7 +153,31 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await IssuanceV2.findByPk(id);
+    const { columns } = req.query;
+
+    // Build includes if columns parameter is provided
+    let includes = [];
+    if (columns) {
+      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
+      if (columnsArray.includes('project') || columnsArray.includes('ProjectV2')) {
+        includes.push({
+          model: ProjectV2,
+          as: 'project',
+          required: false,
+        });
+      }
+      if (columnsArray.includes('location') || columnsArray.includes('LocationV2')) {
+        includes.push({
+          model: LocationV2,
+          as: 'location',
+          required: false,
+        });
+      }
+    }
+
+    const record = await IssuanceV2.findByPk(id, {
+      include: includes.length > 0 ? includes : undefined,
+    });
 
     if (!record) {
       return res.status(404).json({
@@ -207,8 +239,8 @@ export const update = async (req, res) => {
     }
 
     // Validate foreign keys
-    await assertRecordExistanceOrStaged(VerificationV2, updateData.cadTrustVerificationId);
-    await assertRecordExistanceOrStaged(MethodologyV2, updateData.cadTrustMethodologyId);
+    await assertRecordExistanceOrStaged(VerificationV2, updateData.cadTrustVerificationId, 'cadTrustVerificationId');
+    await assertRecordExistanceOrStaged(MethodologyV2, updateData.cadTrustMethodologyId, 'cadTrustMethodologyId');
 
     if (updateData.cadTrustLocationId) {
       // Note: LocationV2 validation will be added when Location endpoint is implemented

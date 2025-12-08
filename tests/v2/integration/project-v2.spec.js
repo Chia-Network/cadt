@@ -12,6 +12,7 @@ import {
   createV2TestHomeOrg,
   getV2HomeOrgId,
   addUuidIfNeeded,
+  verifyTestDatabaseConfiguration,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Project API - Basic CRUD Tests', function () {
@@ -21,6 +22,9 @@ describe('V2 Project API - Basic CRUD Tests', function () {
   let homeOrg;
 
   before(async function () {
+    // Safety check: Verify test databases are being used
+    await verifyTestDatabaseConfiguration();
+
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
 
@@ -86,9 +90,18 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body).to.have.property('success', true);
 
       // Verify record was staged
+      expect(response.body).to.have.property(\'uuid\');
+
+
       const stagingRecord = await StagingV2.findOne({
+
+
         where: { uuid: response.body.uuid },
+
+
       });
+
+
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('project');
       expect(stagingRecord.action).to.equal('INSERT');
@@ -346,7 +359,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('ProgramV2 does not have a record');
+      expect(response.body.error).to.include('cadTrustProgramId');
+      expect(response.body.error).to.include('does not exist');
     });
 
     it('should accept project with valid cadTrustProgramId', async function () {
@@ -471,7 +485,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       }));
 
       const response = await supertest(app)
-        .get('/v2/project')
+        .get('/v2/project?columns=program')
         .expect(200);
 
       expect(response.body).to.be.an('array');
@@ -507,7 +521,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       }));
 
       const response = await supertest(app)
-        .get(`/v2/project/${project.cadTrustProjectId}`)
+        .get(`/v2/project/${project.cadTrustProjectId}?columns=program`)
         .expect(200);
 
       expect(response.body.projectName).to.equal('Get Test Project');

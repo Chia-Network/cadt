@@ -1,6 +1,8 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { CoBenefitV2, CoBenefitV2Mirror, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { CoBenefitV2, CoBenefitV2Mirror, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -358,6 +360,179 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
 
       expect(coBenefit1.coBenefitId).to.equal(coBenefit2.coBenefitId);
       expect(coBenefit1.cadTrustProjectId).to.not.equal(coBenefit2.cadTrustProjectId);
+    });
+  });
+
+  describe('POST /v2/co-benefit (Create)', function () {
+    it('should create a new co-benefit record via API', async function () {
+      const coBenefitData = {
+        coBenefitId: 'SDG 1 - No poverty',
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/co-benefit')
+        .send(coBenefitData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Co-Benefit staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustCoBenefitId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      expect(response.body).to.have.property('uuid');
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('co_benefit');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].co_benefit_id).to.equal('SDG 1 - No poverty');
+      expect(stagedData[0].cad_trust_project_id).to.equal(testProjectId);
+      expect(stagedData[0].cad_trust_co_benefit_id).to.equal(response.body.cadTrustCoBenefitId);
+    });
+
+    it('should reject co-benefit with invalid cadTrustProjectId (non-existent)', async function () {
+      const coBenefitData = {
+        coBenefitId: 'SDG 1 - No poverty',
+        cadTrustProjectId: '550e8400-e29b-41d4-a716-446655440999',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/co-benefit')
+        .send(coBenefitData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustProjectId');
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('should reject co-benefit with missing required fields', async function () {
+      const invalidData = {
+        // Missing coBenefitId and cadTrustProjectId
+      };
+
+      const response = await supertest(app)
+        .post('/v2/co-benefit')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('coBenefitId');
+    });
+
+    it('should reject co-benefit with forbidden fields', async function () {
+      const coBenefitData = {
+        coBenefitId: 'SDG 1 - No poverty',
+        cadTrustProjectId: testProjectId,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        cadTrustCoBenefitId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/co-benefit')
+        .send(coBenefitData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('PUT /v2/co-benefit/:id (Update)', function () {
+    let createdCoBenefitId;
+
+    before(async function () {
+      const coBenefitData = {
+        coBenefitId: 'SDG 2 - Zero hunger',
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/co-benefit')
+        .send(coBenefitData);
+
+      createdCoBenefitId = response.body.cadTrustCoBenefitId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+          where: { uuid: response.body.uuid },
+        });
+      }
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await CoBenefitV2.create({
+          cadTrustCoBenefitId: createdCoBenefitId,
+          coBenefitId: 'SDG 2 - Zero hunger',
+          cadTrustProjectId: testProjectId,
+        });
+      }
+    });
+
+    it('should update a co-benefit via API', async function () {
+      const updateData = {
+        coBenefitId: 'SDG 3 - Good health and well-being',
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/co-benefit/${createdCoBenefitId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body.message).to.equal('Co-Benefit update staged successfully');
+      expect(response.body.success).to.be.true;
+    });
+  });
+
+  describe('DELETE /v2/co-benefit/:id (Delete)', function () {
+    let createdCoBenefitId;
+
+    before(async function () {
+      const coBenefitData = {
+        coBenefitId: 'SDG 4 - Quality education',
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/co-benefit')
+        .send(coBenefitData);
+
+      createdCoBenefitId = response.body.cadTrustCoBenefitId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+          where: { uuid: response.body.uuid },
+        });
+      }
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await CoBenefitV2.create({
+          cadTrustCoBenefitId: createdCoBenefitId,
+          coBenefitId: 'SDG 4 - Quality education',
+          cadTrustProjectId: testProjectId,
+        });
+      }
+    });
+
+    it('should delete a co-benefit via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/co-benefit/${createdCoBenefitId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body.message).to.equal('Co-Benefit delete staged successfully');
+      expect(response.body.success).to.be.true;
     });
   });
 });

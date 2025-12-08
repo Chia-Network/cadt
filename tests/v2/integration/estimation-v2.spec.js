@@ -1,6 +1,8 @@
 import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { EstimationV2, EstimationV2Mirror, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { EstimationV2, EstimationV2Mirror, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -347,6 +349,263 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
       expect(estimation.estimationUnitCount).to.exist;
       // In SQLite, large decimals might be returned as numbers or Decimal objects
       expect(typeof estimation.estimationUnitCount).to.be.oneOf(['number', 'object']);
+    });
+  });
+
+  describe('POST /v2/estimation (Create)', function () {
+    it('should create a new estimation record via API', async function () {
+      const estimationData = {
+        estimationStartDate: '2024-01-01',
+        estimationEndDate: '2024-12-31',
+        estimationUnitCount: 1000.5,
+        estimationReferenceNo: 'EST-REF-001',
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/estimation')
+        .send(estimationData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Estimation staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustEstimationId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data'); // Should NOT have data field
+
+      // Verify record was staged
+      expect(response.body).to.have.property('uuid');
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('estimation');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].estimation_start_date).to.equal('2024-01-01');
+      expect(stagedData[0].estimation_end_date).to.equal('2024-12-31');
+      expect(stagedData[0].estimation_unit_count).to.equal(1000.5);
+      expect(stagedData[0].estimation_reference_no).to.equal('EST-REF-001');
+      expect(stagedData[0].cad_trust_project_id).to.equal(testProjectId);
+      expect(stagedData[0].cad_trust_estimation_id).to.equal(response.body.cadTrustEstimationId);
+    });
+
+    it('should reject estimation with invalid cadTrustProjectId (non-existent)', async function () {
+      const estimationData = {
+        estimationStartDate: '2024-01-01',
+        estimationEndDate: '2024-12-31',
+        cadTrustProjectId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent project
+      };
+
+      const response = await supertest(app)
+        .post('/v2/estimation')
+        .send(estimationData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cadTrustProjectId');
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('should reject estimation with missing required fields', async function () {
+      const invalidData = {
+        estimationUnitCount: 1000,
+        // Missing estimationStartDate, estimationEndDate, cadTrustProjectId
+      };
+
+      const response = await supertest(app)
+        .post('/v2/estimation')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('estimationStartDate');
+    });
+
+    it('should reject estimation with end date before start date', async function () {
+      const estimationData = {
+        estimationStartDate: '2024-12-31',
+        estimationEndDate: '2024-01-01', // End date before start date
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/estimation')
+        .send(estimationData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('estimationEndDate');
+    });
+
+    it('should reject estimation with forbidden fields (createdAt, updatedAt, cadTrustEstimationId)', async function () {
+      const estimationData = {
+        estimationStartDate: '2024-01-01',
+        estimationEndDate: '2024-12-31',
+        cadTrustProjectId: testProjectId,
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        cadTrustEstimationId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/estimation')
+        .send(estimationData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('PUT /v2/estimation/:id (Update)', function () {
+    let createdEstimationId;
+
+    before(async function () {
+      // Create an estimation via API for update tests
+      const estimationData = {
+        estimationStartDate: '2024-01-01',
+        estimationEndDate: '2024-12-31',
+        estimationUnitCount: 1000,
+        estimationReferenceNo: 'EST-UPDATE-TEST',
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/estimation')
+        .send(estimationData);
+
+      createdEstimationId = response.body.cadTrustEstimationId;
+
+      // Commit the staging record so it exists for update
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+          where: { uuid: response.body.uuid },
+        });
+      }
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        // Also create in main table for update test
+        await EstimationV2.create({
+          cadTrustEstimationId: createdEstimationId,
+          estimationStartDate: '2024-01-01',
+          estimationEndDate: '2024-12-31',
+          estimationUnitCount: 1000,
+          estimationReferenceNo: 'EST-UPDATE-TEST',
+          cadTrustProjectId: testProjectId,
+        });
+      }
+    });
+
+    it('should update an estimation via API', async function () {
+      const updateData = {
+        estimationStartDate: '2024-02-01',
+        estimationEndDate: '2024-11-30',
+        estimationUnitCount: 2000,
+        estimationReferenceNo: 'EST-UPDATE-TEST-UPDATED',
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/estimation/${createdEstimationId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Estimation update staged successfully');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data'); // Should NOT have data field
+
+      // Verify record was staged
+      const stagingRecords = await StagingV2.findAll({
+        where: {
+          table: 'estimation',
+          action: 'UPDATE',
+        },
+        order: [['created_at', 'DESC']],
+        limit: 1,
+      });
+
+      expect(stagingRecords.length).to.be.greaterThan(0);
+      const stagingRecord = stagingRecords[0];
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].estimation_start_date).to.equal('2024-02-01');
+      expect(stagedData[0].estimation_end_date).to.equal('2024-11-30');
+      expect(stagedData[0].estimation_unit_count).to.equal(2000);
+      expect(stagedData[0].estimation_reference_no).to.equal('EST-UPDATE-TEST-UPDATED');
+    });
+  });
+
+  describe('DELETE /v2/estimation/:id (Delete)', function () {
+    let createdEstimationId;
+
+    before(async function () {
+      // Create an estimation via API for delete tests
+      const estimationData = {
+        estimationStartDate: '2024-01-01',
+        estimationEndDate: '2024-12-31',
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/estimation')
+        .send(estimationData);
+
+      createdEstimationId = response.body.cadTrustEstimationId;
+
+      // Commit the staging record and create in main table for delete test
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await EstimationV2.create({
+          cadTrustEstimationId: createdEstimationId,
+          estimationStartDate: '2024-01-01',
+          estimationEndDate: '2024-12-31',
+          cadTrustProjectId: testProjectId,
+        });
+      }
+    });
+
+    it('should delete an estimation via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/estimation/${createdEstimationId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Estimation delete staged successfully');
+      expect(response.body).to.have.property('success', true);
+
+      // Verify record was staged for deletion
+      const stagingRecords = await StagingV2.findAll({
+        where: {
+          table: 'estimation',
+          action: 'DELETE',
+        },
+        order: [['created_at', 'DESC']],
+        limit: 1,
+      });
+
+      expect(stagingRecords.length).to.be.greaterThan(0);
+      const stagingRecord = stagingRecords[0];
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].cad_trust_estimation_id).to.equal(createdEstimationId);
     });
   });
 });
