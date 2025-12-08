@@ -133,11 +133,34 @@ export const commit = async (req, res) => {
     // await assertWalletIsSyncedV2();
     await assertNoPendingCommitsExcludingTransfers();
 
+    // Validate ids parameter if provided - must be an array to prevent DoS attacks
+    let ids = _.get(req, 'body.ids', []);
+    if (ids !== undefined && ids !== null) {
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({
+          message: 'Error committing staging table',
+          error: 'ids must be an array',
+          success: false,
+        });
+      }
+
+      // Limit array length to prevent DoS attacks
+      if (ids.length > 10000) {
+        return res.status(400).json({
+          message: 'Error committing staging table',
+          error: 'ids array exceeds maximum length of 10000',
+          success: false,
+        });
+      }
+    } else {
+      ids = [];
+    }
+
     await StagingV2.pushToDataLayer(
       _.get(req, 'query.table', null),
       _.get(req, 'body.comment', ''),
       _.get(req, 'body.author', ''),
-      _.get(req, 'body.ids', []),
+      ids,
     );
 
     res.json({
@@ -223,6 +246,32 @@ export const editRecord = async (req, res) => {
     await assertV2HomeOrgExists();
     // Note: assertStagingRecordExistsV2 doesn't exist yet
     // For now, we'll let the update fail naturally if UUID doesn't exist
+
+    // Validate that data is an array to prevent DoS attacks via malicious length property
+    if (!req.body.data) {
+      return res.status(400).json({
+        message: 'Staging Record can not be edited.',
+        error: 'data field is required',
+        success: false,
+      });
+    }
+
+    if (!Array.isArray(req.body.data)) {
+      return res.status(400).json({
+        message: 'Staging Record can not be edited.',
+        error: 'data must be an array',
+        success: false,
+      });
+    }
+
+    // Limit array length to prevent DoS attacks
+    if (req.body.data.length > 10000) {
+      return res.status(400).json({
+        message: 'Staging Record can not be edited.',
+        error: 'data array exceeds maximum length of 10000',
+        success: false,
+      });
+    }
 
     await StagingV2.update(
       { data: JSON.stringify(_.flatten([req.body.data])) },

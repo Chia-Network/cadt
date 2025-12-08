@@ -634,6 +634,11 @@ class ProjectV2 extends Model {
    */
   static async findAllSqliteFts(searchStr, pagination, columns = [], orgUid = null) {
     try {
+      // Validate columns parameter is an array to prevent type confusion attacks
+      if (!Array.isArray(columns)) {
+        throw new Error('columns parameter must be an array');
+      }
+
       const { offset, limit } = pagination;
 
       // Sanitize search query
@@ -660,6 +665,16 @@ class ProjectV2 extends Model {
 
       // Add orgUid filter if provided
       if (orgUid) {
+        // Validate orgUid is a string to prevent type confusion attacks
+        if (typeof orgUid !== 'string') {
+          throw new Error('orgUid parameter must be a string');
+        }
+
+        // Limit orgUid length to prevent DoS attacks
+        if (orgUid.length > 100) {
+          throw new Error('orgUid parameter exceeds maximum length of 100');
+        }
+
         whereClause += ' AND projects_v2_fts.org_uid = :orgUid';
         replacements.orgUid = orgUid;
       }
@@ -696,58 +711,53 @@ class ProjectV2 extends Model {
         fields += ', org_uid';
       }
       if (columns.length > 0) {
-        // Filter out invalid columns and map camelCase to snake_case if needed
+        // Whitelist of valid column names (camelCase) and their snake_case mappings
+        // This prevents SQL injection by only allowing predefined column names
+        const columnMap = {
+          cadTrustProjectId: 'cad_trust_project_id',
+          orgUid: 'org_uid',
+          projectRegistryName: 'project_registry_name',
+          projectId: 'project_id',
+          projectCreditingProgram: 'project_crediting_program',
+          projectName: 'project_name',
+          projectLink: 'project_link',
+          projectDescription: 'project_description',
+          projectSector: 'project_sector',
+          projectType: 'project_type',
+          projectSubtype: 'project_subtype',
+          projectStatus: 'project_status',
+          projectStatusDate: 'project_status_date',
+          projectUnitMetric: 'project_unit_metric',
+          cadTrustReferenceProjectId: 'cad_trust_reference_project_id',
+          cadTrustProgramId: 'cad_trust_program_id',
+        };
+
+        // Strict whitelist validation - only allow columns in the map
+        // This prevents SQL injection by rejecting any non-whitelisted column names
         const validColumns = columns
           .filter((col) => {
-            // Map common camelCase to snake_case
-            const columnMap = {
-              cadTrustProjectId: 'cad_trust_project_id',
-              orgUid: 'org_uid',
-              projectRegistryName: 'project_registry_name',
-              projectId: 'project_id',
-              projectCreditingProgram: 'project_crediting_program',
-              projectName: 'project_name',
-              projectLink: 'project_link',
-              projectDescription: 'project_description',
-              projectSector: 'project_sector',
-              projectType: 'project_type',
-              projectSubtype: 'project_subtype',
-              projectStatus: 'project_status',
-              projectStatusDate: 'project_status_date',
-              projectUnitMetric: 'project_unit_metric',
-              cadTrustReferenceProjectId: 'cad_trust_reference_project_id',
-              cadTrustProgramId: 'cad_trust_program_id',
-            };
-            return columnMap[col] || col;
+            // Type check: column name must be a string
+            if (typeof col !== 'string') {
+              return false;
+            }
+            // Only allow columns that exist in the whitelist
+            return columnMap.hasOwnProperty(col);
           })
-          .map((col) => {
-            const columnMap = {
-              cadTrustProjectId: 'cad_trust_project_id',
-              orgUid: 'org_uid',
-              projectRegistryName: 'project_registry_name',
-              projectId: 'project_id',
-              projectCreditingProgram: 'project_crediting_program',
-              projectName: 'project_name',
-              projectLink: 'project_link',
-              projectDescription: 'project_description',
-              projectSector: 'project_sector',
-              projectType: 'project_type',
-              projectSubtype: 'project_subtype',
-              projectStatus: 'project_status',
-              projectStatusDate: 'project_status_date',
-              projectUnitMetric: 'project_unit_metric',
-              cadTrustReferenceProjectId: 'cad_trust_reference_project_id',
-              cadTrustProgramId: 'cad_trust_program_id',
-            };
-            return columnMap[col] || col;
-          });
-        // Always include cad_trust_project_id for identification
-        const hasProjectId = validColumns.includes('cad_trust_project_id');
-        fields = hasProjectId
-          ? validColumns.join(', ')
-          : `cad_trust_project_id, ${validColumns.join(', ')}`;
+          .map((col) => columnMap[col]); // Map to snake_case
+
+        // If no valid columns after filtering, use default
+        if (validColumns.length === 0) {
+          fields = 'cad_trust_project_id';
+        } else {
+          // Always include cad_trust_project_id for identification
+          const hasProjectId = validColumns.includes('cad_trust_project_id');
+          fields = hasProjectId
+            ? validColumns.join(', ')
+            : `cad_trust_project_id, ${validColumns.join(', ')}`;
+        }
+
         // Ensure org_uid is included if filtering by orgUid and not already in columns
-        if (orgUid && !validColumns.includes('org_uid') && !columns.includes('orgUid')) {
+        if (orgUid && !fields.includes('org_uid')) {
           fields += ', org_uid';
         }
       }

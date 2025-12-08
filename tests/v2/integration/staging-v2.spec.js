@@ -902,6 +902,188 @@ describe('V2 Staging Integration Tests', function () {
       expect(parsedData[0].program_name).to.equal('Updated Name');
     });
 
+    it('should reject editRecord when data is not an array (DoS prevention)', async function () {
+      const programData = await generateV2ProgramData();
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData]),
+        committed: false,
+      });
+
+      // Send object instead of array
+      const response = await supertest(app)
+        .put('/v2/staging')
+        .send({
+          uuid: stagingUuid,
+          data: { length: 1e100, 0: programData }, // Malicious object with huge length
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('data must be an array');
+    });
+
+    it('should reject editRecord when data is missing', async function () {
+      const programData = await generateV2ProgramData();
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData]),
+        committed: false,
+      });
+
+      const response = await supertest(app)
+        .put('/v2/staging')
+        .send({
+          uuid: stagingUuid,
+          // data field missing
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('data field is required');
+    });
+
+    it('should reject editRecord when data array exceeds maximum length (DoS prevention)', async function () {
+      const programData = await generateV2ProgramData();
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData]),
+        committed: false,
+      });
+
+      // Create array with more than 10000 elements
+      const largeArray = Array(10001).fill(programData);
+
+      const response = await supertest(app)
+        .put('/v2/staging')
+        .send({
+          uuid: stagingUuid,
+          data: largeArray,
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('data array exceeds maximum length');
+    });
+
+    it('should accept editRecord with data array at maximum allowed length', async function () {
+      const programData = await generateV2ProgramData();
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData]),
+        committed: false,
+      });
+
+      // Create array with exactly 10000 elements (maximum allowed)
+      const maxArray = Array(10000).fill(programData);
+
+      const response = await supertest(app)
+        .put('/v2/staging')
+        .send({
+          uuid: stagingUuid,
+          data: maxArray,
+        })
+        .expect(200);
+
+      expect(response.body.message).to.include('successfully updated');
+    });
+
+    it('should reject commit when ids is not an array (DoS prevention)', async function () {
+      const programData = await generateV2ProgramData();
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData]),
+        committed: false,
+      });
+
+      // Send object with malicious length property instead of array
+      const response = await supertest(app)
+        .post('/v2/staging/commit')
+        .send({
+          comment: 'Test commit',
+          author: 'Test User',
+          ids: { length: 1e100, 0: stagingUuid }, // Malicious object
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('ids must be an array');
+    });
+
+    it('should reject commit when ids array exceeds maximum length (DoS prevention)', async function () {
+      const programData = await generateV2ProgramData();
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData]),
+        committed: false,
+      });
+
+      // Create array with more than 10000 elements
+      const largeIdsArray = Array(10001).fill(stagingUuid);
+
+      const response = await supertest(app)
+        .post('/v2/staging/commit')
+        .send({
+          comment: 'Test commit',
+          author: 'Test User',
+          ids: largeIdsArray,
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('ids array exceeds maximum length');
+    });
+
+    it('should accept commit with ids array at maximum allowed length', async function () {
+      const programData = await generateV2ProgramData();
+      const stagingUuid = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData]),
+        committed: false,
+      });
+
+      // Delete any existing committed records
+      await StagingV2.destroy({
+        where: { committed: true }
+      });
+
+      // Create array with exactly 10000 elements (maximum allowed)
+      const maxIdsArray = Array(10000).fill(stagingUuid);
+
+      const response = await supertest(app)
+        .post('/v2/staging/commit')
+        .send({
+          comment: 'Test commit',
+          author: 'Test User',
+          ids: maxIdsArray,
+        })
+        .expect(400); // Will fail because UUIDs don't exist, but validation passes
+
+      // Should fail on UUID validation, not length validation
+      expect(response.body.error).to.not.include('ids array exceeds maximum length');
+    });
+
     it('should retry failed commit record', async function () {
       const programData = await generateV2ProgramData();
       const stagingUuid = uuidv4();

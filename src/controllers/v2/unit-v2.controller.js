@@ -235,10 +235,35 @@ export const findAll = async (req, res) => {
 
     // Handle marketplaceIdentifiers filter
     if (marketplaceIdentifiers) {
-      // Parse comma-separated string or array
-      const idsArray = Array.isArray(marketplaceIdentifiers)
-        ? marketplaceIdentifiers
-        : marketplaceIdentifiers.split(',').map(id => id.trim());
+      // Type check: marketplaceIdentifiers must be an array or string to prevent DoS attacks
+      let idsArray;
+      if (Array.isArray(marketplaceIdentifiers)) {
+        // Limit array length to prevent DoS attacks
+        if (marketplaceIdentifiers.length > 10000) {
+          return res.status(400).json({
+            message: 'Error retrieving units',
+            error: 'marketplaceIdentifiers array exceeds maximum length of 10000',
+            success: false,
+          });
+        }
+        idsArray = marketplaceIdentifiers;
+      } else if (typeof marketplaceIdentifiers === 'string') {
+        idsArray = marketplaceIdentifiers.split(',').map(id => id.trim());
+        // Limit array length after splitting
+        if (idsArray.length > 10000) {
+          return res.status(400).json({
+            message: 'Error retrieving units',
+            error: 'marketplaceIdentifiers exceeds maximum length of 10000',
+            success: false,
+          });
+        }
+      } else {
+        return res.status(400).json({
+          message: 'Error retrieving units',
+          error: 'marketplaceIdentifiers must be an array or comma-separated string',
+          success: false,
+        });
+      }
       where.marketplaceIdentifier = {
         [Sequelize.Op.in]: idsArray,
       };
@@ -520,6 +545,15 @@ export const findAll = async (req, res) => {
         return res.status(400).json({
           message: 'Error retrieving units',
           error: 'Order parameter must be a string',
+          success: false,
+        });
+      }
+
+      // Limit input length to prevent ReDoS attacks
+      if (order.length > 200) {
+        return res.status(400).json({
+          message: 'Error retrieving units',
+          error: 'Order parameter exceeds maximum length',
           success: false,
         });
       }

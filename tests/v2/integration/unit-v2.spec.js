@@ -1385,6 +1385,33 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
         expect(response.body.error).to.include('Filter parameter must be a string');
       });
 
+      it('should ignore filter parameter with extra characters (anchored regex validation)', async function () {
+        // Anchored regex requires exact match - filter with extra characters won't match
+        // This is safe behavior: invalid filters are ignored rather than causing errors
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ filter: 'unitSerialId:Test:eq extra', page: 1, limit: 10 })
+          .expect(200);
+
+        // The filter won't match due to anchoring, so filter is ignored
+        // Response should still be valid (may return all results or empty if no units exist)
+        expect(response.body).to.have.property('data');
+        expect(response.body.data).to.be.an('array');
+      });
+
+      it('should accept valid filter parameter format (anchored regex)', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ filter: 'unitType:Avoidance - nature:eq', page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body.data).to.be.an('array');
+        // Filter should work correctly with anchored regex
+        response.body.data.forEach(unit => {
+          expect(unit.unitType).to.equal('Avoidance - nature');
+        });
+      });
+
       it('should reject order parameter when it is an array (type confusion prevention)', async function () {
         const response = await supertest(app)
           .get('/v2/unit')
@@ -1393,6 +1420,28 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
 
         expect(response.body.success).to.be.false;
         expect(response.body.error).to.include('Order parameter must be a string');
+      });
+
+      it('should reject order parameter exceeding maximum length (ReDoS prevention)', async function () {
+        const longOrder = 'a'.repeat(201) + ':ASC'; // Exceeds 200 character limit
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ order: longOrder, page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Order parameter exceeds maximum length');
+      });
+
+      it('should accept order parameter at maximum allowed length', async function () {
+        const maxLengthOrder = 'a'.repeat(190) + ':ASC'; // Within 200 character limit
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ order: maxLengthOrder, page: 1, limit: 10 })
+          .expect(400); // Will fail validation because column name is invalid, but length check passes
+
+        // Should fail on invalid column, not length
+        expect(response.body.error).to.include('Invalid sort column');
       });
     });
   });

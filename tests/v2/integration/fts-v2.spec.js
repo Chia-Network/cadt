@@ -1018,6 +1018,99 @@ describe('V2 FTS5 Integration Tests', function () {
       expect(results).to.have.property('count');
       expect(results.rows.length).to.be.at.most(100);
     });
+
+    it('should reject non-array columns parameter (SQL injection prevention)', async function () {
+      // Ensure FTS table is populated
+      await ProjectV2.rebuildFtsTable();
+
+      try {
+        await ProjectV2.findAllSqliteFts(
+          'project',
+          { offset: 0, limit: 10 },
+          { length: 1e100, 0: 'projectName' }, // Malicious object with huge length
+          null,
+        );
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).to.include('columns parameter must be an array');
+      }
+    });
+
+    it('should reject non-whitelisted column names (SQL injection prevention)', async function () {
+      // Ensure FTS table is populated
+      await ProjectV2.rebuildFtsTable();
+
+      // Try to inject SQL via column name
+      const results = await ProjectV2.findAllSqliteFts(
+        'project',
+        { offset: 0, limit: 10 },
+        ["projectName'; DROP TABLE project; --"], // SQL injection attempt
+        null,
+      );
+
+      // Should still work but only return whitelisted columns (injection attempt ignored)
+      expect(results).to.have.property('rows');
+      expect(results).to.have.property('count');
+      // Should default to cad_trust_project_id since injection column is rejected
+      expect(results.rows.length).to.be.at.least(0);
+    });
+
+    it('should accept only whitelisted column names', async function () {
+      // Ensure FTS table is populated
+      await ProjectV2.rebuildFtsTable();
+
+      const results = await ProjectV2.findAllSqliteFts(
+        'project',
+        { offset: 0, limit: 10 },
+        ['projectName', 'projectSector'], // Valid whitelisted columns
+        null,
+      );
+
+      expect(results).to.have.property('rows');
+      expect(results).to.have.property('count');
+      if (results.rows.length > 0) {
+        // Should have the requested columns (mapped to snake_case)
+        const firstRow = results.rows[0];
+        expect(firstRow).to.have.property('project_name');
+        expect(firstRow).to.have.property('project_sector');
+      }
+    });
+
+    it('should reject invalid orgUid type (SQL injection prevention)', async function () {
+      // Ensure FTS table is populated
+      await ProjectV2.rebuildFtsTable();
+
+      try {
+        await ProjectV2.findAllSqliteFts(
+          'project',
+          { offset: 0, limit: 10 },
+          [],
+          { length: 1e100 }, // Malicious object
+        );
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).to.include('orgUid parameter must be a string');
+      }
+    });
+
+    it('should reject orgUid exceeding maximum length (DoS prevention)', async function () {
+      // Ensure FTS table is populated
+      await ProjectV2.rebuildFtsTable();
+
+      const longOrgUid = 'x'.repeat(101); // Exceeds 100 character limit
+
+      try {
+        await ProjectV2.findAllSqliteFts(
+          'project',
+          { offset: 0, limit: 10 },
+          [],
+          longOrgUid,
+        );
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).to.include('orgUid parameter exceeds maximum length');
+      }
+    });
   });
 });
 

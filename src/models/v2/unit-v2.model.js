@@ -539,6 +539,11 @@ class UnitV2 extends Model {
    */
   static async findAllSqliteFts(searchStr, pagination, columns = [], includeProjectInfo = false, orgUid = null) {
     try {
+      // Validate columns parameter is an array to prevent type confusion attacks
+      if (!Array.isArray(columns)) {
+        throw new Error('columns parameter must be an array');
+      }
+
       loggerV2.info('[v2]: UnitV2.findAllSqliteFts called', {
         searchStr,
         pagination,
@@ -586,7 +591,8 @@ class UnitV2 extends Model {
         fields += ', org_uid';
       }
       if (columns.length > 0) {
-        // Map camelCase to snake_case for valid columns
+        // Whitelist of valid column names (camelCase) and their snake_case mappings
+        // This prevents SQL injection by only allowing predefined column names
         const columnMap = {
           cadTrustUnitId: 'cad_trust_unit_id',
           orgUid: 'org_uid',
@@ -608,12 +614,29 @@ class UnitV2 extends Model {
           unitItmosReferenceId: 'unit_itmos_reference_id',
           cadTrustIssuanceId: 'cad_trust_issuance_id',
         };
+
+        // Strict whitelist validation - only allow columns in the map
+        // This prevents SQL injection by rejecting any non-whitelisted column names
         const validColumns = columns
-          .filter((col) => columnMap[col] || col)
-          .map((col) => columnMap[col] || col);
-        fields = validColumns.join(', ');
+          .filter((col) => {
+            // Type check: column name must be a string
+            if (typeof col !== 'string') {
+              return false;
+            }
+            // Only allow columns that exist in the whitelist
+            return columnMap.hasOwnProperty(col);
+          })
+          .map((col) => columnMap[col]); // Map to snake_case
+
+        // If no valid columns after filtering, use default
+        if (validColumns.length === 0) {
+          fields = 'cad_trust_unit_id';
+        } else {
+          fields = validColumns.join(', ');
+        }
+
         // Ensure org_uid is included if filtering by orgUid
-        if (orgUid && !validColumns.includes('org_uid') && !columns.includes('orgUid')) {
+        if (orgUid && !fields.includes('org_uid')) {
           fields += ', org_uid';
         }
       } else if (orgUid && !fields.includes('org_uid')) {
@@ -625,6 +648,16 @@ class UnitV2 extends Model {
       let orgUidFilter = '';
       const replacements = {};
       if (orgUid) {
+        // Validate orgUid is a string to prevent type confusion attacks
+        if (typeof orgUid !== 'string') {
+          throw new Error('orgUid parameter must be a string');
+        }
+
+        // Limit orgUid length to prevent DoS attacks
+        if (orgUid.length > 100) {
+          throw new Error('orgUid parameter exceeds maximum length of 100');
+        }
+
         orgUidFilter = ' AND units_v2_fts.org_uid = :orgUid';
         replacements.orgUid = orgUid;
       }

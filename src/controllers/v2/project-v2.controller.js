@@ -224,7 +224,35 @@ export const findAll = async (req, res) => {
     // Handle projectIds filter (array of cadTrustProjectId)
     // Note: Sequelize uses camelCase for model attributes, but we need to check the actual field name
     if (projectIds) {
-      const idsArray = Array.isArray(projectIds) ? projectIds : projectIds.split(',').map(id => id.trim());
+      // Type check: projectIds must be an array or string to prevent DoS attacks
+      let idsArray;
+      if (Array.isArray(projectIds)) {
+        // Limit array length to prevent DoS attacks
+        if (projectIds.length > 10000) {
+          return res.status(400).json({
+            message: 'Error retrieving projects',
+            error: 'projectIds array exceeds maximum length of 10000',
+            success: false,
+          });
+        }
+        idsArray = projectIds;
+      } else if (typeof projectIds === 'string') {
+        idsArray = projectIds.split(',').map(id => id.trim());
+        // Limit array length after splitting
+        if (idsArray.length > 10000) {
+          return res.status(400).json({
+            message: 'Error retrieving projects',
+            error: 'projectIds exceeds maximum length of 10000',
+            success: false,
+          });
+        }
+      } else {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: 'projectIds must be an array or comma-separated string',
+          success: false,
+        });
+      }
       where.cadTrustProjectId = {
         [Sequelize.Op.in]: idsArray,
       };
@@ -462,6 +490,15 @@ export const findAll = async (req, res) => {
         return res.status(400).json({
           message: 'Error retrieving projects',
           error: 'Order parameter must be a string',
+          success: false,
+        });
+      }
+
+      // Limit input length to prevent ReDoS attacks
+      if (order.length > 200) {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: 'Order parameter exceeds maximum length',
           success: false,
         });
       }

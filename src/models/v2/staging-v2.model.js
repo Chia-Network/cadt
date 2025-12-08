@@ -259,10 +259,22 @@ class StagingV2 extends Model {
     try {
       // Stage 1: Build where clause and read staging records
       const stage1Start = Date.now();
+
+      // Validate ids is an array to prevent DoS attacks via malicious length property
+      // This is a defensive check in case the method is called directly
+      if (ids !== undefined && ids !== null && !Array.isArray(ids)) {
+        throw new Error('ids parameter must be an array');
+      }
+
+      // Limit array length to prevent DoS attacks
+      if (ids && ids.length > 10000) {
+        throw new Error('ids array exceeds maximum length of 10000');
+      }
+
       const whereClause = {
         committed: false,
         ...(tableToPush ? { table: tableToPush } : {}),
-        ...(ids.length ? { uuid: { [Op.in]: ids } } : {}),
+        ...(ids && Array.isArray(ids) && ids.length > 0 ? { uuid: { [Op.in]: ids } } : {}),
       };
 
       const stagedRecords = await StagingV2.findAll({

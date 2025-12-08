@@ -269,6 +269,15 @@ export const findAll = async (req, res) => {
         });
       }
 
+      // Limit input length to prevent ReDoS attacks
+      if (order.length > 200) {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: 'Order parameter exceeds maximum length',
+          success: false,
+        });
+      }
+
       if (order.match(genericSortColumnRegex)) {
         const matches = order.match(genericSortColumnRegex);
         resultOrder = [[matches[1], matches[2]]];
