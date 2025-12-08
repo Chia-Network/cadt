@@ -268,16 +268,6 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Update AEF-T1-Submission](#update-aef-t1-submission)
   - [DELETE Examples](#aef-t1-submission-delete-examples)
     - [Delete AEF-T1-Submission](#delete-aef-t1-submission)
-- [`aef-t5-authorized-entities`](#aef-t5-authorized-entities)
-  - [GET Examples](#aef-t5-authorized-entities-get-examples)
-    - [List all AEF-T5-Authorized-Entities](#list-all-aef-t5-authorized-entities)
-    - [Get single AEF-T5-Authorized-Entities](#get-single-aef-t5-authorized-entities)
-  - [POST Examples](#aef-t5-authorized-entities-post-examples)
-    - [Create AEF-T5-Authorized-Entities](#create-aef-t5-authorized-entities)
-  - [PUT Examples](#aef-t5-authorized-entities-put-examples)
-    - [Update AEF-T5-Authorized-Entities](#update-aef-t5-authorized-entities)
-  - [DELETE Examples](#aef-t5-authorized-entities-delete-examples)
-    - [Delete AEF-T5-Authorized-Entities](#delete-aef-t5-authorized-entities)
 - [`aef-t2-authorizations`](#aef-t2-authorizations)
   - [GET Examples](#aef-t2-authorizations-get-examples)
     - [List all AEF-T2-Authorizations](#list-all-aef-t2-authorizations)
@@ -288,6 +278,16 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Update AEF-T2-Authorizations](#update-aef-t2-authorizations)
   - [DELETE Examples](#aef-t2-authorizations-delete-examples)
     - [Delete AEF-T2-Authorizations](#delete-aef-t2-authorizations)
+- [`aef-t5-authorized-entities`](#aef-t5-authorized-entities)
+  - [GET Examples](#aef-t5-authorized-entities-get-examples)
+    - [List all AEF-T5-Authorized-Entities](#list-all-aef-t5-authorized-entities)
+    - [Get single AEF-T5-Authorized-Entities](#get-single-aef-t5-authorized-entities)
+  - [POST Examples](#aef-t5-authorized-entities-post-examples)
+    - [Create AEF-T5-Authorized-Entities](#create-aef-t5-authorized-entities)
+  - [PUT Examples](#aef-t5-authorized-entities-put-examples)
+    - [Update AEF-T5-Authorized-Entities](#update-aef-t5-authorized-entities)
+  - [DELETE Examples](#aef-t5-authorized-entities-delete-examples)
+    - [Delete AEF-T5-Authorized-Entities](#delete-aef-t5-authorized-entities)
 - [`aef-t3-actions`](#aef-t3-actions)
   - [GET Examples](#aef-t3-actions-get-examples)
     - [List all AEF-T3-Actions](#list-all-aef-t3-actions)
@@ -4529,173 +4529,6 @@ Response
 
 ---
 
-## `aef-t5-authorized-entities`
-
-Functionality: Create, read, update, and delete AEF-T5-Authorized-Entities records
-
-<a id="aef-t5-authorized-entities-get-examples"></a>
-### GET Examples
-
-#### List all AEF-T5-Authorized-Entities
-
-Request
-```shell
-curl --location --request GET 'localhost:31310/v2/aef-t5-authorized-entities?page=1&limit=10' --header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "page": 1,
-  "pageCount": 2,
-  "data": [
-    {
-      "cadTrustAefT5AuthorizedEntitiesId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-      "entityName": "Sample Entity",
-      "createdAt": "2022-03-11T05:17:55.427Z",
-      "updatedAt": "2022-03-11T05:17:55.427Z"
-    }
-  ]
-}
-```
-
----
-
-#### Get single AEF-T5-Authorized-Entities
-
-Request
-```shell
-curl --location --request GET 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' --header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "cadTrustAefT5AuthorizedEntitiesId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-  "entityName": "Sample Entity",
-  "createdAt": "2022-03-11T05:17:55.427Z",
-  "updatedAt": "2022-03-11T05:17:55.427Z"
-}
-```
-
----
-
-<a id="aef-t5-authorized-entities-post-examples"></a>
-### POST Examples
-
-#### Create AEF-T5-Authorized-Entities
-
-Fields:
-
-| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
-|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
-| aefT5AuthorizedEntitiesAuthorizationDate | Date | x | | Authorization date (ISO 8601 format) |
-| aefT5AuthorizedEntitiesName | String | x | | Name of the authorized entity (max 255 characters) |
-| aefT5AuthorizedEntitiesId | String | x | | Identifier of the authorized entity (max 255 characters) |
-| aefT5AuthorizedEntitiesCooperativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
-| aefT5AuthorizedEntitiesIncorporationCountry | String | | x | Incorporation country (can be null) |
-| aefT5AuthorizedEntitiesConditions | String | | | Conditions (can be null) |
-| aefT5AuthorizedEntitiesChangeConditions | String | | | Change conditions (can be null) |
-| aefT5AuthorizedEntitiesAdditionalInformation | String | | | Additional information (can be null) |
-| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
-| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
-| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
-| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
-
-**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
-
-Request
-```shell
-curl --location --request POST 'localhost:31310/v2/aef-t5-authorized-entities' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "aefT5AuthorizedEntitiesAuthorizationDate": "2024-02-01",
-  "aefT5AuthorizedEntitiesName": "Sample Entity",
-  "aefT5AuthorizedEntitiesId": "TEST-AE-001",
-  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001",
-  "aefT5AuthorizedEntitiesIncorporationCountry": "United States",
-  "aefT5AuthorizedEntitiesConditions": "Test conditions",
-  "aefT5AuthorizedEntitiesChangeConditions": "Test change conditions",
-  "aefT5AuthorizedEntitiesAdditionalInformation": "Test additional information",
-  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
-}'
-```
-
-Response
-```json
-{
-  "message": "AEF-T5-Authorized-Entities staged successfully",
-  "uuid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-  "cadTrustAefT5AuthorizedEntitiesId": "c8d9e0f1-a2b3-4567-89ab-cdef12345678",
-  "success": true
-}
-```
-
----
-
-<a id="aef-t5-authorized-entities-put-examples"></a>
-### PUT Examples
-
-#### Update AEF-T5-Authorized-Entities
-
-Fields are the same as POST (see above).
-
-**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
-
-Request
-```shell
-curl --location --request PUT 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "aefT5AuthorizedEntitiesAuthorizationDate": "2024-02-01",
-  "aefT5AuthorizedEntitiesName": "Updated Entity",
-  "aefT5AuthorizedEntitiesId": "TEST-AE-001",
-  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001",
-  "aefT5AuthorizedEntitiesIncorporationCountry": "United States",
-  "aefT5AuthorizedEntitiesConditions": "Updated conditions",
-  "aefT5AuthorizedEntitiesChangeConditions": "Updated change conditions",
-  "aefT5AuthorizedEntitiesAdditionalInformation": "Updated additional information",
-  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
-}'
-```
-
-Response
-```json
-{
-  "message": "AEF-T5-Authorized-Entities update added to staging",
-  "success": true
-}
-```
-
----
-
-<a id="aef-t5-authorized-entities-delete-examples"></a>
-### DELETE Examples
-
-#### Delete AEF-T5-Authorized-Entities
-
-Request
-```shell
-curl --location --request DELETE 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
---header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "message": "AEF-T5-Authorized-Entities deletion staged successfully",
-  "success": true
-}
-```
-
----
-
 ## `aef-t2-authorizations`
 
 Functionality: Create, read, update, and delete AEF-T2-Authorizations records
@@ -4889,6 +4722,173 @@ Response
 ```json
 {
   "message": "AEF-T2-Authorizations deletion staged successfully",
+  "success": true
+}
+```
+
+---
+
+## `aef-t5-authorized-entities`
+
+Functionality: Create, read, update, and delete AEF-T5-Authorized-Entities records
+
+<a id="aef-t5-authorized-entities-get-examples"></a>
+### GET Examples
+
+#### List all AEF-T5-Authorized-Entities
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/aef-t5-authorized-entities?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 2,
+  "data": [
+    {
+      "cadTrustAefT5AuthorizedEntitiesId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+      "entityName": "Sample Entity",
+      "createdAt": "2022-03-11T05:17:55.427Z",
+      "updatedAt": "2022-03-11T05:17:55.427Z"
+    }
+  ]
+}
+```
+
+---
+
+#### Get single AEF-T5-Authorized-Entities
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustAefT5AuthorizedEntitiesId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "entityName": "Sample Entity",
+  "createdAt": "2022-03-11T05:17:55.427Z",
+  "updatedAt": "2022-03-11T05:17:55.427Z"
+}
+```
+
+---
+
+<a id="aef-t5-authorized-entities-post-examples"></a>
+### POST Examples
+
+#### Create AEF-T5-Authorized-Entities
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT5AuthorizedEntitiesAuthorizationDate | Date | x | | Authorization date (ISO 8601 format) |
+| aefT5AuthorizedEntitiesName | String | x | | Name of the authorized entity (max 255 characters) |
+| aefT5AuthorizedEntitiesId | String | x | | Identifier of the authorized entity (max 255 characters) |
+| aefT5AuthorizedEntitiesCooperativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT5AuthorizedEntitiesIncorporationCountry | String | | x | Incorporation country (can be null) |
+| aefT5AuthorizedEntitiesConditions | String | | | Conditions (can be null) |
+| aefT5AuthorizedEntitiesChangeConditions | String | | | Change conditions (can be null) |
+| aefT5AuthorizedEntitiesAdditionalInformation | String | | | Additional information (can be null) |
+| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
+| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
+| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/aef-t5-authorized-entities' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "aefT5AuthorizedEntitiesAuthorizationDate": "2024-02-01",
+  "aefT5AuthorizedEntitiesName": "Sample Entity",
+  "aefT5AuthorizedEntitiesId": "TEST-AE-001",
+  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001",
+  "aefT5AuthorizedEntitiesIncorporationCountry": "United States",
+  "aefT5AuthorizedEntitiesConditions": "Test conditions",
+  "aefT5AuthorizedEntitiesChangeConditions": "Test change conditions",
+  "aefT5AuthorizedEntitiesAdditionalInformation": "Test additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
+}'
+```
+
+Response
+```json
+{
+  "message": "AEF-T5-Authorized-Entities staged successfully",
+  "uuid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustAefT5AuthorizedEntitiesId": "c8d9e0f1-a2b3-4567-89ab-cdef12345678",
+  "success": true
+}
+```
+
+---
+
+<a id="aef-t5-authorized-entities-put-examples"></a>
+### PUT Examples
+
+#### Update AEF-T5-Authorized-Entities
+
+Fields are the same as POST (see above).
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "aefT5AuthorizedEntitiesAuthorizationDate": "2024-02-01",
+  "aefT5AuthorizedEntitiesName": "Updated Entity",
+  "aefT5AuthorizedEntitiesId": "TEST-AE-001",
+  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001",
+  "aefT5AuthorizedEntitiesIncorporationCountry": "United States",
+  "aefT5AuthorizedEntitiesConditions": "Updated conditions",
+  "aefT5AuthorizedEntitiesChangeConditions": "Updated change conditions",
+  "aefT5AuthorizedEntitiesAdditionalInformation": "Updated additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
+}'
+```
+
+Response
+```json
+{
+  "message": "AEF-T5-Authorized-Entities update added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="aef-t5-authorized-entities-delete-examples"></a>
+### DELETE Examples
+
+#### Delete AEF-T5-Authorized-Entities
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "AEF-T5-Authorized-Entities deletion staged successfully",
   "success": true
 }
 ```
