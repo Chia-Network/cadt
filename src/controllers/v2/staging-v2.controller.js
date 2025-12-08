@@ -291,6 +291,45 @@ export const editRecord = async (req, res) => {
 };
 
 /**
+ * Reset committed records that are blocking new commits
+ * This is useful when a commit partially succeeded but then failed,
+ * leaving some records with committed: true that block future commits
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+export const resetCommittedRecords = async (req, res) => {
+  try {
+    await assertV2IfReadOnlyMode();
+    await assertV2HomeOrgExists();
+
+    // Reset all committed records that haven't failed (these are blocking new commits)
+    // This handles the case where a commit partially succeeded but then failed
+    const [affectedRows] = await StagingV2.update(
+      { committed: false },
+      {
+        where: {
+          committed: true,
+          failed_commit: false,
+          is_transfer: false,
+        },
+      },
+    );
+
+    res.json({
+      message: `Reset ${affectedRows} committed staging record(s). You can now retry your commit.`,
+      affectedRows,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error resetting committed records',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
+/**
  * Reset failed commit for retry
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object

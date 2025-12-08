@@ -116,9 +116,10 @@ class ProjectV2 extends Model {
     isUpdateComment,
     isUpdateAuthor,
   ) {
-    // PERFORMANCE: Early exit if no staged records for this model
+    // PERFORMANCE: Early exit if no staged records for this model or its child tables
+    // ProjectV2 handles child tables: location, estimation, rating, co_benefit
     const hasStagedData = stagedData.some(
-      (record) => record.table === 'project',
+      (record) => ['project', 'location', 'estimation', 'rating', 'co_benefit'].includes(record.table),
     );
     if (!hasStagedData) {
       return {

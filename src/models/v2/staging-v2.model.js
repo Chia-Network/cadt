@@ -322,6 +322,9 @@ class StagingV2 extends Model {
       const stage3Start = Date.now();
 
       // All V2 data models
+      // Note: CoBenefitV2, EstimationV2, and RatingV2 are child tables of ProjectV2
+      // and are handled by ProjectV2.generateChangeListFromStagedData(), so they should
+      // not be included in this list
       const allModels = [
         ProgramV2,
         MethodologyV2,
@@ -331,9 +334,6 @@ class StagingV2 extends Model {
         IssuanceV2,
         UnitV2,
         LocationV2,
-        EstimationV2,
-        RatingV2,
-        CoBenefitV2,
         ProjectMethodologyV2,
         StakeholderV2,
         StakeholderProjectV2,
@@ -347,6 +347,8 @@ class StagingV2 extends Model {
       ];
 
       // Map model class names to table names
+      // Note: co_benefit, estimation, and rating are child tables of project
+      // and are handled by ProjectV2.generateChangeListFromStagedData()
       const modelToTableMap = {
         ProgramV2: 'program',
         MethodologyV2: 'methodology',
@@ -356,9 +358,6 @@ class StagingV2 extends Model {
         IssuanceV2: 'issuance',
         UnitV2: 'unit',
         LocationV2: 'location',
-        EstimationV2: 'estimation',
-        RatingV2: 'rating',
-        CoBenefitV2: 'co_benefit',
         ProjectMethodologyV2: 'project_methodology',
         StakeholderV2: 'stakeholder',
         StakeholderProjectV2: 'stakeholder_projects',
@@ -558,6 +557,28 @@ class StagingV2 extends Model {
       }
     } catch (error) {
       const totalDuration = Date.now() - commitStartTime;
+
+      // Rollback committed status for records that were marked as committed but commit failed
+      // This handles cases where records are marked committed during processing but commit fails
+      try {
+        await StagingV2.update(
+          { committed: false },
+          {
+            where: {
+              uuid: { [Op.in]: stagedRecords.map(r => r.uuid) },
+              committed: true,
+            }
+          },
+        );
+        loggerV2.debug('[v2]: Rolled back committed status for failed commit', {
+          recordCount: stagedRecords.length,
+        });
+      } catch (rollbackError) {
+        loggerV2.error('[v2]: Failed to rollback committed status', {
+          rollbackError: rollbackError.message,
+        });
+      }
+
       loggerV2.error('[v2]: Commit failed with performance metrics', {
         duration: totalDuration,
         error: error.message,

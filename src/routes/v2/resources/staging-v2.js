@@ -52,5 +52,10 @@ StagingV2Router.post(
   },
 );
 
+// POST /v2/staging/reset-committed - resetCommittedRecords
+StagingV2Router.post('/reset-committed', (req, res) => {
+  return StagingV2Controller.resetCommittedRecords(req, res);
+});
+
 export { StagingV2Router };
 
