@@ -914,10 +914,10 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
           cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
           aefT3ActionsDate: '2024-01-15',
         });
-      }
-    });
-
-    it('should update an AEF-T3-Actions via API', async function () {
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
+       }
+    });it('should update an AEF-T3-Actions via API', async function () {
       const updateData = {
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
@@ -970,10 +970,10 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
           cadTrustProjectId: testProjectId,
           cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
         });
-      }
-    });
-
-    it('should delete an AEF-T3-Actions via API', async function () {
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
+       }
+    });it('should delete an AEF-T3-Actions via API', async function () {
       const response = await supertest(app)
         .delete(`/v2/aef-t3-actions/${createdAefT3ActionsId}`);
 

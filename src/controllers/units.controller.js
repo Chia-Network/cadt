@@ -311,11 +311,12 @@ export const findAll = async (req, res) => {
         const matches = order.match(genericSortColumnRegex);
         resultOrder = [[matches[1], matches[2]]];
       } else {
-      // backwards compatibility for old order usage
-      if (order && order === 'SERIALNUMBER') {
-        resultOrder = [['serialNumberBlock', 'ASC']];
-      } else if (order && order === 'ASC') {
-        resultOrder = [['timeStaged', 'ASC']];
+        // backwards compatibility for old order usage
+        if (order && order === 'SERIALNUMBER') {
+          resultOrder = [['serialNumberBlock', 'ASC']];
+        } else if (order && order === 'ASC') {
+          resultOrder = [['timeStaged', 'ASC']];
+        }
       }
     }
 

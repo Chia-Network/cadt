@@ -474,6 +474,8 @@ describe('Label V2 Endpoint Integration Tests', function () {
           labelName: 'Label to Update',
           labelType: 'Certification',
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 
@@ -524,6 +526,8 @@ describe('Label V2 Endpoint Integration Tests', function () {
           labelName: 'Label to Delete',
           labelType: 'Certification',
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 

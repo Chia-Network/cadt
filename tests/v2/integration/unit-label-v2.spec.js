@@ -610,6 +610,12 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
   });
 
   describe('POST /v2/unit-label (Create)', function () {
+    beforeEach(async function () {
+      // Clean up any existing unit-label relationships and staging records for test isolation
+      await UnitLabelV2.destroy({ where: { cadTrustLabelId: testLabelId, cadTrustUnitId: testUnitId } });
+      await StagingV2.destroy({ where: { table: 'unit_label' } });
+    });
+
     it('should create a new unit-label relationship via API', async function () {
       const unitLabelData = {
         cadTrustLabelId: testLabelId,
@@ -634,9 +640,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       expect(response.body).to.not.have.property('data');
 
       // Verify record was staged
-      let stagingRecord = null;
-      if (response.body.uuid) {
-        stagingRecord = await StagingV2.findOne({
+      const stagingRecord = await StagingV2.findOne({
         where: { uuid: response.body.uuid },
       });
       expect(stagingRecord).to.exist;
@@ -706,8 +710,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       let stagingRecord = null;
       if (response.body.uuid) {
         stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
+          where: { uuid: response.body.uuid },
+        });
+      }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await UnitLabelV2.create({
@@ -715,6 +720,8 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
           cadTrustUnitId: createdUnitId,
           labelUnitDate: '2024-01-01',
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 
@@ -758,14 +765,17 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       let stagingRecord = null;
       if (response.body.uuid) {
         stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
+          where: { uuid: response.body.uuid },
+        });
+      }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await UnitLabelV2.create({
           cadTrustLabelId: createdLabelId,
           cadTrustUnitId: createdUnitId,
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 

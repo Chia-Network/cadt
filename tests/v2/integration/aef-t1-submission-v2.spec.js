@@ -457,17 +457,29 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
     let createdAefT1SubmissionId;
 
     before(async function () {
+      // Clean up any existing AEF-T1 submissions for test isolation
+      await AefT1SubmissionV2.destroy({ where: {} });
+      await StagingV2.destroy({ where: { table: 'aef_t1_submission' } });
       const aefT1SubmissionData = {
         aefT1SubmissionParty: 'AEF-T1 to Update',
         aefT1SubmissionVersion: '1.0',
         aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-15',
       };
 
       const response = await supertest(app)
         .post('/v2/aef-t1-submission')
         .send(aefT1SubmissionData);
 
+      if (response.status !== 200) {
+        throw new Error(`POST request failed with status ${response.status}: ${JSON.stringify(response.body)}`);
+      }
+
       createdAefT1SubmissionId = response.body.cadTrustAefT1SubmissionId;
+
+      if (!createdAefT1SubmissionId) {
+        throw new Error(`POST response did not include cadTrustAefT1SubmissionId. Response: ${JSON.stringify(response.body)}`);
+      }
 
       let stagingRecord = null;
       if (response.body.uuid) {
@@ -482,7 +494,16 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
           aefT1SubmissionParty: 'AEF-T1 to Update',
           aefT1SubmissionVersion: '1.0',
           aefT1SubmissionReportYear: 2024,
+          aefT1SubmissionSubmissionDate: '2024-01-15',
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
+      }
+
+      // Verify record was created successfully
+      const verifyRecord = await AefT1SubmissionV2.findByPk(createdAefT1SubmissionId);
+      if (!verifyRecord) {
+        throw new Error(`Failed to create AEF-T1-Submission record with ID: ${createdAefT1SubmissionId}`);
       }
     });
 
@@ -510,17 +531,29 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
     let createdAefT1SubmissionId;
 
     before(async function () {
+      // Clean up any existing AEF-T1 submissions for test isolation
+      await AefT1SubmissionV2.destroy({ where: {} });
+      await StagingV2.destroy({ where: { table: 'aef_t1_submission' } });
       const aefT1SubmissionData = {
         aefT1SubmissionParty: 'AEF-T1 to Delete',
         aefT1SubmissionVersion: '1.0',
         aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-15',
       };
 
       const response = await supertest(app)
         .post('/v2/aef-t1-submission')
         .send(aefT1SubmissionData);
 
+      if (response.status !== 200) {
+        throw new Error(`POST request failed with status ${response.status}: ${JSON.stringify(response.body)}`);
+      }
+
       createdAefT1SubmissionId = response.body.cadTrustAefT1SubmissionId;
+
+      if (!createdAefT1SubmissionId) {
+        throw new Error(`POST response did not include cadTrustAefT1SubmissionId. Response: ${JSON.stringify(response.body)}`);
+      }
 
       let stagingRecord = null;
       if (response.body.uuid) {
@@ -535,7 +568,16 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
           aefT1SubmissionParty: 'AEF-T1 to Delete',
           aefT1SubmissionVersion: '1.0',
           aefT1SubmissionReportYear: 2024,
+          aefT1SubmissionSubmissionDate: '2024-01-15',
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
+      }
+
+      // Verify record was created successfully
+      const verifyRecord = await AefT1SubmissionV2.findByPk(createdAefT1SubmissionId);
+      if (!verifyRecord) {
+        throw new Error(`Failed to create AEF-T1-Submission record with ID: ${createdAefT1SubmissionId}`);
       }
     });
 

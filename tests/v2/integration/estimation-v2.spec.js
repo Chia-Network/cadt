@@ -503,6 +503,8 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
           estimationReferenceNo: 'EST-UPDATE-TEST',
           cadTrustProjectId: testProjectId,
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 
@@ -567,17 +569,11 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
 
       // Commit the staging record and create in main table for delete test
       let stagingRecord = null;
-
       if (response.body.uuid) {
-
         stagingRecord = await StagingV2.findOne({
-
           where: { uuid: response.body.uuid },
-
         });
-
       }
-
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await EstimationV2.create({
@@ -586,6 +582,8 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
           estimationEndDate: '2024-12-31',
           cadTrustProjectId: testProjectId,
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 

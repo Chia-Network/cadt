@@ -12,4 +12,5 @@ export const genericFilterRegex = /^(\w+):(.+):(in|eq|not|lt|gt|lte|gte|like)$/;
 export const isArrayRegex = /^\[.*\]$/;
 // Anchored regex to prevent ReDoS: matches column:direction format
 // Maximum reasonable length for order parameter is ~200 characters
-export const genericSortColumnRegex = /^(\w+):(ASC|DESC)$/;
+// Note: Column name validation happens separately via whitelist
+export const genericSortColumnRegex = /^([^:]+):(\w+)$/;

@@ -484,9 +484,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
       expect(response.body).to.not.have.property('data');
 
       // Verify record was staged
-      let stagingRecord = null;
-      if (response.body.uuid) {
-        stagingRecord = await StagingV2.findOne({
+      const stagingRecord = await StagingV2.findOne({
         where: { uuid: response.body.uuid },
       });
       expect(stagingRecord).to.exist;
@@ -537,6 +535,15 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
     let createdStakeholderProjectId;
 
     before(async function () {
+      // Clean up any existing stakeholder-project relationships for test isolation
+      await StakeholderProjectV2.destroy({
+        where: {
+          cadTrustStakeholderId: testStakeholderId,
+          cadTrustProjectId: testProjectId
+        }
+      });
+      await StagingV2.destroy({ where: { table: 'stakeholder_projects' } });
+
       const stakeholderProjectData = {
         cadTrustStakeholderId: testStakeholderId,
         cadTrustProjectId: testProjectId,
@@ -551,8 +558,9 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
       let stagingRecord = null;
       if (response.body.uuid) {
         stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
+          where: { uuid: response.body.uuid },
+        });
+      }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await StakeholderProjectV2.create({
@@ -560,6 +568,8 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
           cadTrustStakeholderId: testStakeholderId,
           cadTrustProjectId: testProjectId,
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 
@@ -584,6 +594,15 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
     let createdStakeholderProjectId;
 
     before(async function () {
+      // Clean up any existing stakeholder-project relationships for test isolation
+      await StakeholderProjectV2.destroy({
+        where: {
+          cadTrustStakeholderId: testStakeholderId,
+          cadTrustProjectId: testProjectId
+        }
+      });
+      await StagingV2.destroy({ where: { table: 'stakeholder_projects' } });
+
       const stakeholderProjectData = {
         cadTrustStakeholderId: testStakeholderId,
         cadTrustProjectId: testProjectId,
@@ -598,8 +617,9 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
       let stagingRecord = null;
       if (response.body.uuid) {
         stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
+          where: { uuid: response.body.uuid },
+        });
+      }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await StakeholderProjectV2.create({
@@ -607,6 +627,8 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
           cadTrustStakeholderId: testStakeholderId,
           cadTrustProjectId: testProjectId,
         });
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
       }
     });
 

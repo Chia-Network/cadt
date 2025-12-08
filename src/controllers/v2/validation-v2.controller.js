@@ -72,7 +72,7 @@ export const create = async (req, res) => {
 
     // Validate foreign key
     try {
-      await assertRecordExistanceOrStaged(ProjectV2, newRecord.cadTrustProjectId, 'ProjectV2 does not have a record');
+      await assertRecordExistanceOrStaged(ProjectV2, newRecord.cadTrustProjectId, 'cadTrustProjectId');
     } catch (err) {
       return res.status(400).json({
         message: 'Error creating new validation',

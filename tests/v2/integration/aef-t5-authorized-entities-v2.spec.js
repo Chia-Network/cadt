@@ -620,10 +620,10 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
           aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
           aefT5AuthorizedEntitiesName: 'AEF-T5 to Update',
         });
-      }
-    });
-
-    it('should update an AEF-T5-Authorized-Entities via API', async function () {
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
+       }
+    });it('should update an AEF-T5-Authorized-Entities via API', async function () {
       const updateData = {
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
@@ -676,10 +676,10 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
           cadTrustProjectId: testProjectId,
           aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
         });
-      }
-    });
-
-    it('should delete an AEF-T5-Authorized-Entities via API', async function () {
+        // Clean up committed staging record to avoid pending commits errors
+        await stagingRecord.destroy();
+       }
+    });it('should delete an AEF-T5-Authorized-Entities via API', async function () {
       const response = await supertest(app)
         .delete(`/v2/aef-t5-authorized-entities/${createdAefT5AuthorizedEntitiesId}`);
 

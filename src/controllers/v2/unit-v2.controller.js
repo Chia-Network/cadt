@@ -28,10 +28,10 @@ import {
 
 import { loggerV2 } from '../../config/logger.js';
 import { unitV2Schema } from '../../validations/v2/unit-v2.validations.js';
+import { genericSortColumnRegex } from '../../utils/string-utils.js';
 
 // Regex patterns for query parsing
 const genericFilterRegex = /^(\w+):(.+):(\w+)$/;
-const genericSortColumnRegex = /^(\w+):(ASC|DESC)$/i;
 const isArrayRegex = /^\[.*\]$/;
 
 export const create = async (req, res) => {
@@ -558,8 +558,17 @@ export const findAll = async (req, res) => {
         });
       }
 
-      if (order.match(genericSortColumnRegex)) {
-        const matches = order.match(genericSortColumnRegex);
+      const orderMatch = order.match(genericSortColumnRegex);
+      if (!orderMatch) {
+        // Reject order parameters that don't match the expected format
+        return res.status(400).json({
+          message: 'Error retrieving units',
+          error: `Invalid order format: ${order}. Expected format: columnName:ASC or columnName:DESC`,
+          success: false,
+        });
+      }
+
+      const matches = orderMatch;
       const fieldName = matches[1];
       const sortDirection = matches[2].toUpperCase();
 
@@ -586,7 +595,6 @@ export const findAll = async (req, res) => {
       const snakeCaseField = fieldName.replace(/([A-Z])/g, '_$1').toLowerCase();
       // Use Sequelize.literal with properly validated and escaped column name
       resultOrder = [[Sequelize.literal(`\`UnitV2\`.\`${snakeCaseField}\``), sortDirection]];
-      }
     }
 
     // Execute query
