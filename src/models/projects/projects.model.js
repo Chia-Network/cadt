@@ -187,7 +187,7 @@ class Project extends Model {
       return results.map((row) => row.warehouseProjectId);
     } catch (error) {
       // Handle errors
-      logger.error('Error in getProjectIds:', error);
+      logger.error('[v1]: Error in getProjectIds:', error);
       throw error;
     }
   }

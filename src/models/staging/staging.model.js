@@ -288,7 +288,7 @@ class Staging extends Model {
 
       return _.omit(offerResponse, ['success']);
     } catch (error) {
-      logger.error('Error in staging operation:', error);
+      logger.error('[v1]: Error in staging operation:', error);
       throw new Error(error.message);
     }
   };

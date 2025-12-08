@@ -7,7 +7,6 @@ import datalayer from '../../datalayer';
 import { keyValueToChangeList } from '../../utils/datalayer-utils';
 import { getConfig } from '../../utils/config-loader';
 import { logger } from '../../config/logger.js';
-import { getDataModelVersion } from '../../utils/helpers';
 import PickListStub from './governance.stub.js';
 
 const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
@@ -24,7 +23,7 @@ class Governance extends Model {
       );
     }
 
-    const dataModelVersion = getDataModelVersion();
+    const dataModelVersion = 'v1';
     const governanceBodyId = await datalayer.createDataLayerStore();
     const governanceVersionId = await datalayer.createDataLayerStore();
 
@@ -140,7 +139,8 @@ class Governance extends Model {
       // If on simulator or testnet, use the stubbed picklist data and return
       if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
         logger.info('SIMULATOR/TESTNET MODE: Using sample picklist');
-        Governance.upsert({
+        // Await the upsert to ensure transaction completes before returning
+        await Governance.upsert({
           metaKey: 'pickList',
           metaValue: JSON.stringify(PickListStub),
           confirmed: true,
@@ -171,7 +171,7 @@ class Governance extends Model {
       }
 
       // Check if the governance data for this version exists
-      const dataModelVersion = getDataModelVersion();
+      const dataModelVersion = 'v1';
       const versionedGovernanceStoreId = governanceData[dataModelVersion];
       if (versionedGovernanceStoreId) {
         logger.debug(

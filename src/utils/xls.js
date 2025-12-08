@@ -8,6 +8,7 @@ import { logger } from '../config/logger.js';
 import { Staging, Organization, LabelUnit, ModelKeys } from './../models';
 
 import { sequelize } from '../database';
+import { Sequelize } from 'sequelize';
 import { assertOrgIsHomeOrg } from './data-assertions';
 import { encodeHex } from './datalayer-utils';
 
@@ -623,10 +624,13 @@ export const transformFullXslsToChangeList = async (
   xsls,
   action,
   primaryKeyNames,
+  modelMap = null, // Optional: map of table names to model classes (for V2)
 ) => {
   try {
     const models = Object.keys(primaryKeyNames);
     const changeList = {};
+    // Use provided modelMap or fall back to V1 ModelKeys
+    const modelsToUse = modelMap || ModelKeys;
 
     await Promise.all(
       models.map(async (key) => {
@@ -641,7 +645,43 @@ export const transformFullXslsToChangeList = async (
             changeList[key] = [];
           }
 
-          // filter out the header row
+          // NEW: Collect all primary keys BEFORE processing rows
+          const primaryKeys = new Set();
+          if (primaryKeyIndex >= 0 && ['update', 'insert'].includes(action)) {
+            _.tail(sheet.data).forEach(row => {
+              const rows = checkArrayOfArrays(row) ? row : [row];
+              rows.forEach(r => {
+                if (r && r[primaryKeyIndex] != null) {
+                  primaryKeys.add(r[primaryKeyIndex]);
+                }
+              });
+            });
+          }
+
+          // NEW: Batch query all existing records at once
+          let existingRecordsMap = new Map();
+          if (['update', 'insert'].includes(action) && primaryKeys.size > 0) {
+            // Check if model exists in modelMap/ModelKeys
+            if (!modelsToUse[key]) {
+              logger.warn(`Model not found for key '${key}' in ModelKeys/modelMap. Skipping existing record check.`);
+            } else {
+              const existingRecords = await modelsToUse[key].findAll({
+                where: {
+                  [primaryKeyNames[key]]: {
+                    [Sequelize.Op.in]: Array.from(primaryKeys)
+                  }
+                },
+                raw: true
+              });
+
+              // Create lookup map: primaryKey -> record
+              existingRecordsMap = new Map(
+                existingRecords.map(record => [record[primaryKeyNames[key]], record])
+              );
+            }
+          }
+
+          // MODIFIED: Process rows using Map lookup instead of findByPk()
           await Promise.all(
             _.tail(sheet.data).map(async (row) => {
               const rows = checkArrayOfArrays(row) ? row : [row];
@@ -652,9 +692,9 @@ export const transformFullXslsToChangeList = async (
                   );
 
                   if (['update', 'insert'].includes(action)) {
-                    let isUpdate = await ModelKeys[key].findByPk(
-                      r[primaryKeyIndex],
-                    );
+                    // REPLACED: let isUpdate = await ModelKeys[key].findByPk(r[primaryKeyIndex])
+                    // WITH: Map lookup (O(1) instead of database query)
+                    const isUpdate = existingRecordsMap.get(r[primaryKeyIndex]);
 
                     if (isUpdate) {
                       const alreadyPushed = changeList[key].find(

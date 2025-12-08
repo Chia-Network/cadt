@@ -1,0 +1,20 @@
+// V2 Project Model Types
+export const ProjectV2Types = {
+  cadTrustProjectId: 'INTEGER',
+  projectRegistryName: 'STRING',
+  projectId: 'STRING',
+  projectCreditingProgram: 'STRING',
+  projectName: 'STRING',
+  projectLink: 'TEXT',
+  projectDescription: 'TEXT',
+  projectSector: 'STRING',
+  projectType: 'STRING',
+  projectSubtype: 'STRING',
+  projectStatus: 'STRING',
+  projectStatusDate: 'DATEONLY',
+  projectUnitMetric: 'STRING',
+  cadTrustReferenceProjectId: 'STRING',
+  cadTrustProgramId: 'INTEGER',
+  createdAt: 'DATE',
+  updatedAt: 'DATE',
+};

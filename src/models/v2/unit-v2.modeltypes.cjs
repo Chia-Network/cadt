@@ -1,0 +1,23 @@
+// V2 Unit Model Types
+export const UnitV2Types = {
+  cadTrustUnitId: 'INTEGER',
+  unitSerialId: 'STRING',
+  unitStartBlock: 'STRING',
+  unitEndBlock: 'STRING',
+  unitCount: 'DECIMAL',
+  unitType: 'STRING',
+  unitVintageYear: 'INTEGER',
+  unitStatus: 'STRING',
+  unitStatusReason: 'TEXT',
+  unitStatusDate: 'DATEONLY',
+  unitRetirementDetail: 'TEXT',
+  unitRetirementBeneficiary: 'STRING',
+  unitRetirementBeneficiaryId: 'STRING',
+  unitLink: 'TEXT',
+  unitMetric: 'STRING',
+  unitCurrentOwner: 'STRING',
+  unitItmosReferenceId: 'STRING',
+  cadTrustIssuanceId: 'INTEGER',
+  createdAt: 'DATE',
+  updatedAt: 'DATE',
+};

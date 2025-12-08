@@ -106,7 +106,7 @@ export const commit = async (req, res) => {
     );
 
     res.json({
-      message: 'Staging Table committed to full node',
+      message: 'Staging Table committing to full node',
       success: true,
     });
   } catch (error) {

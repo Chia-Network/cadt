@@ -43,6 +43,12 @@ const addMirror = async (storeId, url, force = false) => {
 };
 
 const waitForNewStoreToBeConfirmed = async (storeId, retry = 0) => {
+  // In simulator mode, stores are immediately confirmed
+  if (USE_SIMULATOR) {
+    logger.info(`StoreId: ${storeId} confirmed (simulator mode)`);
+    return;
+  }
+
   if (retry > 120) {
     throw new Error(
       `Creating storeId: ${storeId} timed out. Its possible the transaction is stuck.`,

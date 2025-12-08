@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import 'regenerator-runtime/runtime.js';
-import rootRouter from './routes';
+import rootRouter, { initializeDatabases } from './routes';
 import http from 'http';
 import { Server } from 'socket.io';
 import { connection } from './websocket';
@@ -20,13 +20,21 @@ const server = http.createServer(rootRouter);
 server.on('error', onError);
 server.on('listening', onListening);
 
-server.listen(port, bindAddress, () => {
-  console.log(`Server listening at http://${bindAddress}:${port}`);
-});
+// Wait for database migrations to complete before starting the server
+initializeDatabases()
+  .then(() => {
+    server.listen(port, bindAddress, () => {
+      console.log(`Server listening at http://${bindAddress}:${port}`);
+    });
 
-const io = new Server(server);
-io.of('/v1/ws').on('connection', connection);
-io.of('/v2/ws').on('connection', connection);
+    const io = new Server(server);
+    io.of('/v1/ws').on('connection', connection);
+    io.of('/v2/ws').on('connection', connection);
+  })
+  .catch((error) => {
+    logger.error('Failed to start server - database initialization failed:', error);
+    process.exit(1);
+  });
 
 function onError(error) {
   if (error.syscall !== 'listen') {

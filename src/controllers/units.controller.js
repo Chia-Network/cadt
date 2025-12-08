@@ -143,14 +143,42 @@ export const findAll = async (req, res) => {
         where = {};
       }
 
+      // Type check: filter must be a string to prevent type confusion attacks
+      if (typeof filter !== 'string') {
+        return res.status(400).json({
+          message: 'Error retrieving units',
+          error: 'Filter parameter must be a string',
+          success: false,
+        });
+      }
+
+      // Limit input length to prevent ReDoS attacks
+      if (filter.length > 10000) {
+        return res.status(400).json({
+          message: 'Error retrieving units',
+          error: 'Filter parameter exceeds maximum length',
+          success: false,
+        });
+      }
       const matches = filter.match(genericFilterRegex);
-      // check if the value param is an array so we can parse it
-      const valueMatches = matches[2].match(isArrayRegex);
-      where[matches[1]] = {
-        [Sequelize.Op[matches[3]]]: valueMatches
-          ? JSON.parse(matches[2])
-          : matches[2],
-      };
+      if (matches) {
+        const valueStr = matches[2];
+        // Additional length check on extracted value
+        if (valueStr.length > 5000) {
+          return res.status(400).json({
+            message: 'Error retrieving units',
+            error: 'Filter value exceeds maximum length',
+            success: false,
+          });
+        }
+        // check if the value param is an array so we can parse it
+        const valueMatches = valueStr.match(isArrayRegex);
+        where[matches[1]] = {
+          [Sequelize.Op[matches[3]]]: valueMatches
+            ? JSON.parse(valueStr)
+            : valueStr,
+        };
+      }
     }
 
     const includes = Unit.getAssociatedModels();
@@ -260,10 +288,29 @@ export const findAll = async (req, res) => {
     // default to DESC
     let resultOrder = [['timeStaged', 'DESC']];
 
-    if (order?.match(genericSortColumnRegex)) {
-      const matches = order.match(genericSortColumnRegex);
-      resultOrder = [[matches[1], matches[2]]];
-    } else {
+    if (order) {
+      // Type check: order must be a string to prevent type confusion attacks
+      if (typeof order !== 'string') {
+        return res.status(400).json({
+          message: 'Error retrieving units',
+          error: 'Order parameter must be a string',
+          success: false,
+        });
+      }
+
+      // Limit input length to prevent ReDoS attacks
+      if (order.length > 200) {
+        return res.status(400).json({
+          message: 'Error retrieving units',
+          error: 'Order parameter exceeds maximum length',
+          success: false,
+        });
+      }
+
+      if (order.match(genericSortColumnRegex)) {
+        const matches = order.match(genericSortColumnRegex);
+        resultOrder = [[matches[1], matches[2]]];
+      } else {
       // backwards compatibility for old order usage
       if (order && order === 'SERIALNUMBER') {
         resultOrder = [['serialNumberBlock', 'ASC']];
@@ -351,7 +398,7 @@ export const updateFromXLS = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Batch Upload Failed.', error);
+    logger.error('[v1]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
@@ -583,7 +630,7 @@ export const batchUpload = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Batch Upload Failed.', error);
+    logger.error('[v1]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,

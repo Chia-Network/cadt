@@ -115,7 +115,7 @@ export const addFileToFileStore = async (req, res) => {
       fileId: SHA256,
     });
   } catch (error) {
-    logger.error('Error adding file to file store:', error);
+    logger.error('[v1]: Error adding file to file store:', error);
     res.status(400).json({
       message: 'Can not add file to file store',
       error: error.message,

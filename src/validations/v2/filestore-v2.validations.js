@@ -1,0 +1,15 @@
+import Joi from 'joi';
+
+export const getFileSchema = Joi.object({
+  // Should be the SHA256 hash of the file you want to retrieve
+  fileId: Joi.string().required().messages({
+    'any.required': 'fileId is required',
+  }),
+});
+
+export const subscribedSchema = Joi.object({
+  orgUid: Joi.string().required().messages({
+    'any.required': 'orgUid is required',
+  }),
+});
+

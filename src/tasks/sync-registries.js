@@ -30,7 +30,7 @@ dotenv.config();
 const CONFIG = getConfig().APP;
 
 const task = new Task('sync-registries', async () => {
-  logger.debug('sync registries task invoked');
+  logger.debug('[v1]: sync registries task invoked');
   if (!syncRegistriesTaskMutex.isLocked()) {
     const releaseSyncTaskMutex = await syncRegistriesTaskMutex.acquire();
     try {
@@ -52,7 +52,7 @@ const task = new Task('sync-registries', async () => {
         await migrateToNewSync();
       }
     } catch (error) {
-      logger.error(`Error during datasync: ${error.message}`);
+      logger.error(`[v1]: Error during datasync: ${error.message}`);
 
       console.trace(error);
 
@@ -85,8 +85,8 @@ const processJob = async () => {
   await assertDataLayerAvailable();
   await assertWalletIsSynced();
 
-  logger.debug(`running sync-registries proccessJob()`);
-  logger.debug(`querying organization model`);
+  logger.debug(`[v1]: running sync-registries proccessJob()`);
+  logger.debug(`[v1]: querying organization model`);
   const organizations = await Organization.findAll({
     where: { subscribed: true },
     raw: true,
@@ -150,7 +150,7 @@ async function createAndProcessTransaction(callback, afterCommitCallbacks) {
   let transaction;
   let mirrorTransaction;
 
-  logger.info('Starting sequelize transaction and acquiring transaction mutex');
+  logger.info('[v1]: Starting sequelize transaction and acquiring transaction mutex');
   const releaseTransactionMutex =
     await processingSyncRegistriesTransactionMutex.acquire();
 
@@ -176,7 +176,7 @@ async function createAndProcessTransaction(callback, afterCommitCallbacks) {
       await afterCommitCallback();
     }
 
-    logger.info('Commited sequelize transaction');
+    logger.info('[v1]: Commited sequelize transaction');
 
     return true;
   } catch (error) {
@@ -202,7 +202,7 @@ const tryParseJSON = (jsonString, defaultValue) => {
 };
 
 const truncateStaging = async () => {
-  logger.info(`ATTEMPTING TO TRUNCATE STAGING TABLE`);
+  logger.info(`[v1]: ATTEMPTING TO TRUNCATE STAGING TABLE`);
 
   let success = false;
   let attempts = 0;
@@ -212,32 +212,32 @@ const truncateStaging = async () => {
     try {
       await Staging.truncate();
       success = true; // If truncate succeeds, set success to true to exit the loop
-      logger.info('STAGING TABLE TRUNCATED SUCCESSFULLY');
+      logger.info('[v1]: STAGING TABLE TRUNCATED SUCCESSFULLY');
     } catch (error) {
       attempts++;
       logger.error(
         `TRUNCATION FAILED ON ATTEMPT ${attempts}: ${error.message}`,
       );
       if (attempts < maxAttempts) {
-        logger.info('WAITING 1 SECOND BEFORE RETRYING...');
+        logger.info('[v1]: WAITING 1 SECOND BEFORE RETRYING...');
         await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
       } else {
-        logger.error('MAXIMUM TRUNCATION ATTEMPTS REACHED, GIVING UP');
+        logger.error('[v1]: MAXIMUM TRUNCATION ATTEMPTS REACHED, GIVING UP');
       }
     }
   }
 };
 
 const syncOrganizationAudit = async (organization) => {
-  logger.debug(`syncing organization audit for ${organization.name}`);
+  logger.debug(`[v1]: syncing organization audit for ${organization.name}`);
   try {
     let afterCommitCallbacks = [];
 
-    logger.debug(`querying organization model for home org`);
+    logger.debug(`[v1]: querying organization model for home org`);
     const homeOrg = await Organization.getHomeOrg();
-    logger.debug(`querying datalayer for ${organization.name} root history`);
+    logger.debug(`[v1]: querying datalayer for ${organization.name} root history`);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
-    logger.debug(`querying datalayer for ${organization.name} sync status`);
+    logger.debug(`[v1]: querying datalayer for ${organization.name} sync status`);
     const { sync_status } = await datalayer.getSyncStatus(
       organization.registryId,
     );
@@ -305,7 +305,7 @@ const syncOrganizationAudit = async (organization) => {
         `Syncing new registry ${organization.name} (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
       );
 
-      logger.debug(`creating 'CREATE REGISTRY' audit entry`);
+      logger.debug(`[v1]: creating 'CREATE REGISTRY' audit entry`);
       await Audit.create({
         orgUid: organization.orgUid,
         registryId: organization.registryId,
@@ -383,7 +383,7 @@ const syncOrganizationAudit = async (organization) => {
     );
 
     // Organization not synced, sync it
-    logger.info(' ');
+    logger.info('[v1]:  ');
     logger.info(
       `Syncing ${organization.name} generation index ${toBeProcessedDatalayerGenerationIndex} (orgUid ${organization.orgUid}, registryId ${organization.registryId})`,
     );
@@ -518,12 +518,12 @@ const syncOrganizationAudit = async (organization) => {
           author: '',
         };
 
-        logger.debug(`optimized kv diff is empty between ${organization.name} generation indices ${auditTableHighestProcessedGenerationIndex} and ${toBeProcessedDatalayerGenerationIndex}
+        logger.debug(`[v1]: optimized kv diff is empty between ${organization.name} generation indices ${auditTableHighestProcessedGenerationIndex} and ${toBeProcessedDatalayerGenerationIndex}
         (roots [generation ${lastRootSavedToAuditTable.generation}] ${lastProcessedRoot.root_hash} and [generation ${lastRootSavedToAuditTable.generation + 1}] ${rootToBeProcessed.root_hash})`);
-        logger.debug(`creating audit entry`);
+        logger.debug(`[v1]: creating audit entry`);
         await Audit.create(auditData, { transaction, mirrorTransaction });
       } else {
-        logger.debug(`processing optimized kv diff for ${organization.name} generation indices ${auditTableHighestProcessedGenerationIndex} and ${toBeProcessedDatalayerGenerationIndex}
+        logger.debug(`[v1]: processing optimized kv diff for ${organization.name} generation indices ${auditTableHighestProcessedGenerationIndex} and ${toBeProcessedDatalayerGenerationIndex}
         (roots [generation ${lastRootSavedToAuditTable.generation}] ${lastProcessedRoot.root_hash} and [generation ${lastRootSavedToAuditTable.generation + 1}] ${rootToBeProcessed.root_hash})`);
 
         for (const diff of optimizedKvDiff) {
@@ -564,7 +564,7 @@ const syncOrganizationAudit = async (organization) => {
               record[ModelKeys[modelKey].primaryKeyAttributes[0]];
 
             if (diff.type === 'INSERT') {
-              logger.verbose(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
+              logger.verbose(`[v1]: UPSERTING: ${modelKey} - ${primaryKeyValue}`);
 
               // Remove updatedAt fields if they exist
               // This is because the db will update this field automatically and its not allowed to be null
@@ -576,13 +576,13 @@ const syncOrganizationAudit = async (organization) => {
                 delete record.createdAt;
               }
 
-              logger.debug(`upserting diff record to ${modelKey} model`);
+              logger.debug(`[v1]: upserting diff record to ${modelKey} model`);
               await ModelKeys[modelKey].upsert(record, {
                 transaction,
                 mirrorTransaction,
               });
             } else if (diff.type === 'DELETE') {
-              logger.verbose(`DELETING: ${modelKey} - ${primaryKeyValue}`);
+              logger.verbose(`[v1]: DELETING: ${modelKey} - ${primaryKeyValue}`);
               await ModelKeys[modelKey].destroy({
                 where: {
                   [ModelKeys[modelKey].primaryKeyAttributes[0]]:
@@ -595,7 +595,7 @@ const syncOrganizationAudit = async (organization) => {
           }
 
           // Create the Audit record
-          logger.debug(`writing change record `);
+          logger.debug(`[v1]: writing change record `);
           await Audit.create(auditData, { transaction, mirrorTransaction });
         }
       }
@@ -627,7 +627,7 @@ const syncOrganizationAudit = async (organization) => {
       );
     }
   } catch (error) {
-    logger.error('Error syncing org audit', error);
+    logger.error('[v1]: Error syncing org audit', error);
   }
 };
 

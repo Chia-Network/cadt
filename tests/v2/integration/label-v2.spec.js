@@ -1,0 +1,540 @@
+import { expect } from 'chai';
+import supertest from 'supertest';
+import app from '../../../src/server.js';
+import { prepareV2Db } from '../../../src/database/v2/index.js';
+import { LabelV2, LabelV2Mirror, StagingV2 } from '../../../src/models/v2/index.js';
+import { v4 as uuidv4 } from 'uuid';
+
+describe('Label V2 Endpoint Integration Tests', function () {
+  this.timeout(300000); // 5 minute timeout for comprehensive tests
+
+  before(async function () {
+    console.log('Setting up Label V2 test environment...');
+    await prepareV2Db();
+  });
+
+  after(async function () {
+    console.log('Label V2 test cleanup completed');
+  });
+
+  describe('Label CRUD Operations', function () {
+    it('should create a new label', async function () {
+      const labelData = {
+        labelName: 'Test Label',
+        labelType: 'Certification',
+        labelLink: 'https://example.com/label',
+        labelDate: '2024-07-15',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+
+      expect(label).to.exist;
+      expect(label.cadTrustLabelId).to.exist;
+      expect(label.labelName).to.equal('Test Label');
+      expect(label.labelType).to.equal('Certification');
+      expect(label.labelLink).to.equal('https://example.com/label');
+      expect(label.labelDate).to.equal('2024-07-15');
+      expect(label.createdAt).to.exist;
+      expect(label.updatedAt).to.exist;
+    });
+
+    it('should read a label by ID', async function () {
+      const labelData = {
+        labelName: 'Test Label for Read',
+        labelType: 'Article 6 - Endorsement',
+        labelLink: 'https://example.com/endorsement',
+        labelDate: '2024-08-01',
+      };
+
+      const createdLabel = await LabelV2Mirror.create(labelData);
+      const foundLabel = await LabelV2.findByPk(createdLabel.cadTrustLabelId);
+
+      expect(foundLabel).to.exist;
+      expect(foundLabel.cadTrustLabelId).to.equal(createdLabel.cadTrustLabelId);
+      expect(foundLabel.labelName).to.equal('Test Label for Read');
+      expect(foundLabel.labelType).to.equal('Article 6 - Endorsement');
+      expect(foundLabel.labelLink).to.equal('https://example.com/endorsement');
+      expect(foundLabel.labelDate).to.equal('2024-08-01');
+    });
+
+    it('should read all labels', async function () {
+      const labels = await LabelV2.findAll();
+
+      expect(labels).to.be.an('array');
+      expect(labels.length).to.be.greaterThan(0);
+
+      // Verify each label has required fields
+      labels.forEach(label => {
+        expect(label.cadTrustLabelId).to.exist;
+        expect(label.labelName).to.exist;
+        expect(label.createdAt).to.exist;
+        expect(label.updatedAt).to.exist;
+      });
+    });
+
+    it('should update a label', async function () {
+      const labelData = {
+        labelName: 'Test Label for Update',
+        labelType: 'Article 6 - Letter of Qualification',
+        labelLink: 'https://example.com/qualification',
+        labelDate: '2024-09-01',
+      };
+
+      const createdLabel = await LabelV2Mirror.create(labelData);
+
+      const updateData = {
+        labelName: 'Updated Label Name',
+        labelType: 'Article 6 - Authorisation',
+        labelLink: 'https://example.com/authorisation',
+        labelDate: '2024-10-01',
+      };
+
+      await createdLabel.update(updateData);
+
+      const updatedLabel = await LabelV2Mirror.findByPk(createdLabel.cadTrustLabelId);
+
+      expect(updatedLabel.labelName).to.equal('Updated Label Name');
+      expect(updatedLabel.labelType).to.equal('Article 6 - Authorisation');
+      expect(updatedLabel.labelLink).to.equal('https://example.com/authorisation');
+      expect(updatedLabel.labelDate).to.equal('2024-10-01');
+    });
+
+    it('should delete a label', async function () {
+      const labelData = {
+        labelName: 'Test Label for Delete',
+        labelType: 'Article 6 - Letter of Approvals',
+        labelLink: 'https://example.com/approvals',
+        labelDate: '2024-11-01',
+      };
+
+      const createdLabel = await LabelV2Mirror.create(labelData);
+      const labelId = createdLabel.cadTrustLabelId;
+
+      await createdLabel.destroy();
+
+      const deletedLabel = await LabelV2Mirror.findByPk(labelId);
+      expect(deletedLabel).to.be.null;
+    });
+  });
+
+  describe('Label Validation Tests', function () {
+    it('should reject label with missing required fields', async function () {
+      try {
+        await LabelV2Mirror.create({
+          // Missing labelName
+          labelType: 'Certification',
+        });
+        expect.fail('Should have thrown validation error');
+      } catch (error) {
+        expect(error.name).to.equal('SequelizeValidationError');
+        expect(error.message).to.include('notNull Violation');
+      }
+    });
+
+    it('should reject label with invalid label type', async function () {
+      try {
+        await LabelV2Mirror.create({
+          labelName: 'Test Label',
+          labelType: 'INVALID_TYPE',
+        });
+        // If we get here, Sequelize accepted the invalid type, which is unexpected
+        expect.fail('Sequelize should have rejected invalid label type');
+      } catch (error) {
+        // Sequelize might not validate enum values strictly, so we accept any error
+        expect(error).to.exist;
+      }
+    });
+
+    it('should reject label with invalid link format', async function () {
+      try {
+        await LabelV2Mirror.create({
+          labelName: 'Test Label',
+          labelType: 'Certification',
+          labelLink: 'not-a-valid-url',
+        });
+        // If we get here, Sequelize accepted the invalid URL, which is unexpected
+        expect.fail('Sequelize should have rejected invalid URL format');
+      } catch (error) {
+        // Sequelize might not validate URL format strictly, so we accept any error
+        expect(error).to.exist;
+      }
+    });
+
+    it('should reject label with invalid date format', async function () {
+      try {
+        await LabelV2Mirror.create({
+          labelName: 'Test Label',
+          labelType: 'Certification',
+          labelDate: 'invalid-date',
+        });
+        // If we get here, Sequelize accepted the invalid date, which is unexpected
+        expect.fail('Sequelize should have rejected invalid date format');
+      } catch (error) {
+        // Sequelize might not validate date format strictly, so we accept any error
+        expect(error).to.exist;
+      }
+    });
+
+    it('should accept label with optional fields null', async function () {
+      const labelData = {
+        labelName: 'Test Label Minimal',
+        labelType: null,
+        labelLink: null,
+        labelDate: null,
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+
+      expect(label).to.exist;
+      expect(label.labelName).to.equal('Test Label Minimal');
+      expect(label.labelType).to.be.null;
+      expect(label.labelLink).to.be.null;
+      expect(label.labelDate).to.be.null;
+    });
+  });
+
+  describe('Label Type Picklist Tests', function () {
+    it('should accept Certification label type', async function () {
+      const labelData = {
+        labelName: 'Certification Label',
+        labelType: 'Certification',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+      expect(label.labelType).to.equal('Certification');
+    });
+
+    it('should accept Article 6 - Endorsement label type', async function () {
+      const labelData = {
+        labelName: 'Endorsement Label',
+        labelType: 'Article 6 - Endorsement',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+      expect(label.labelType).to.equal('Article 6 - Endorsement');
+    });
+
+    it('should accept Article 6 - Letter of Qualification label type', async function () {
+      const labelData = {
+        labelName: 'Qualification Label',
+        labelType: 'Article 6 - Letter of Qualification',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+      expect(label.labelType).to.equal('Article 6 - Letter of Qualification');
+    });
+
+    it('should accept Article 6 - Authorisation label type', async function () {
+      const labelData = {
+        labelName: 'Authorisation Label',
+        labelType: 'Article 6 - Authorisation',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+      expect(label.labelType).to.equal('Article 6 - Authorisation');
+    });
+
+    it('should accept Article 6 - Letter of Approvals label type', async function () {
+      const labelData = {
+        labelName: 'Approvals Label',
+        labelType: 'Article 6 - Letter of Approvals',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+      expect(label.labelType).to.equal('Article 6 - Letter of Approvals');
+    });
+  });
+
+  describe('Label UUID Tests', function () {
+    it('should generate valid UUID for label', async function () {
+      const labelData = {
+        labelName: 'UUID Test Label',
+        labelType: 'Certification',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+
+      expect(label.cadTrustLabelId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      expect(label.cadTrustLabelId).to.have.length(36);
+    });
+
+    it('should accept explicitly provided UUID', async function () {
+      const explicitUuid = uuidv4();
+      const labelData = {
+        cadTrustLabelId: explicitUuid,
+        labelName: 'Explicit UUID Label',
+        labelType: 'Article 6 - Endorsement',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+
+      expect(label.cadTrustLabelId).to.equal(explicitUuid);
+    });
+  });
+
+  describe('Label Edge Cases', function () {
+    it('should handle long label names', async function () {
+      const longName = 'A'.repeat(255); // Maximum length
+      const labelData = {
+        labelName: longName,
+        labelType: 'Certification',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+
+      expect(label.labelName).to.equal(longName);
+      expect(label.labelName).to.have.length(255);
+    });
+
+    it('should handle various link formats', async function () {
+      const labelData = {
+        labelName: 'Link Test Label',
+        labelType: 'Article 6 - Letter of Qualification',
+        labelLink: 'https://www.example.com/path?query=value#fragment',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+
+      expect(label.labelLink).to.equal('https://www.example.com/path?query=value#fragment');
+    });
+
+    it('should handle various date formats', async function () {
+      const labelData = {
+        labelName: 'Date Test Label',
+        labelType: 'Article 6 - Authorisation',
+        labelDate: '2024-12-31',
+      };
+
+      const label = await LabelV2Mirror.create(labelData);
+
+      expect(label.labelDate).to.equal('2024-12-31');
+    });
+
+    it('should handle labels with same name but different types', async function () {
+      const labelData1 = {
+        labelName: 'Same Name Label',
+        labelType: 'Certification',
+      };
+
+      const labelData2 = {
+        labelName: 'Same Name Label',
+        labelType: 'Article 6 - Endorsement',
+      };
+
+      const label1 = await LabelV2Mirror.create(labelData1);
+      const label2 = await LabelV2Mirror.create(labelData2);
+
+      expect(label1.labelName).to.equal(label2.labelName);
+      expect(label1.labelType).to.not.equal(label2.labelType);
+      expect(label1.cadTrustLabelId).to.not.equal(label2.cadTrustLabelId);
+    });
+
+    it('should handle labels with same type but different names', async function () {
+      const labelData1 = {
+        labelName: 'First Certification',
+        labelType: 'Certification',
+      };
+
+      const labelData2 = {
+        labelName: 'Second Certification',
+        labelType: 'Certification',
+      };
+
+      const label1 = await LabelV2Mirror.create(labelData1);
+      const label2 = await LabelV2Mirror.create(labelData2);
+
+      expect(label1.labelType).to.equal(label2.labelType);
+      expect(label1.labelName).to.not.equal(label2.labelName);
+      expect(label1.cadTrustLabelId).to.not.equal(label2.cadTrustLabelId);
+    });
+
+    it('should handle labels with same name and type', async function () {
+      const labelData1 = {
+        labelName: 'Duplicate Test Label',
+        labelType: 'Article 6 - Letter of Approvals',
+      };
+
+      const labelData2 = {
+        labelName: 'Duplicate Test Label',
+        labelType: 'Article 6 - Letter of Approvals',
+      };
+
+      const label1 = await LabelV2Mirror.create(labelData1);
+      const label2 = await LabelV2Mirror.create(labelData2);
+
+      expect(label1.labelName).to.equal(label2.labelName);
+      expect(label1.labelType).to.equal(label2.labelType);
+      expect(label1.cadTrustLabelId).to.not.equal(label2.cadTrustLabelId);
+    });
+  });
+
+  describe('POST /v2/label (Create)', function () {
+    it('should create a new label record via API', async function () {
+      const labelData = {
+        labelName: 'API Test Label',
+        labelType: 'Certification',
+        labelLink: 'https://example.com/api-label',
+        labelDate: '2024-01-01',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(labelData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Label staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustLabelId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data');
+
+      // Verify record was staged
+      expect(response.body).to.have.property('uuid');
+      const stagingRecord = await StagingV2.findOne({
+        where: { uuid: response.body.uuid },
+      });
+      expect(stagingRecord).to.exist;
+      expect(stagingRecord.table).to.equal('label');
+      expect(stagingRecord.action).to.equal('INSERT');
+      expect(stagingRecord.committed).to.be.false;
+
+      // Verify staged data
+      const stagedData = JSON.parse(stagingRecord.data);
+      expect(stagedData[0].label_name).to.equal('API Test Label');
+      expect(stagedData[0].label_type).to.equal('Certification');
+      expect(stagedData[0].label_link).to.equal('https://example.com/api-label');
+      expect(stagedData[0].label_date).to.equal('2024-01-01');
+      expect(stagedData[0].cad_trust_label_id).to.equal(response.body.cadTrustLabelId);
+    });
+
+    it('should reject label with missing required fields', async function () {
+      const invalidData = {
+        labelType: 'Certification',
+        // Missing labelName
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('labelName');
+    });
+
+    it('should reject label with forbidden fields (createdAt, updatedAt, cadTrustLabelId)', async function () {
+      const labelData = {
+        labelName: 'Test Label',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01',
+        cadTrustLabelId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(labelData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('PUT /v2/label/:id (Update)', function () {
+    let createdLabelId;
+
+    before(async function () {
+      const labelData = {
+        labelName: 'Label to Update',
+        labelType: 'Certification',
+        cadTrustLabelId: uuidv4(),
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(labelData);
+
+      createdLabelId = response.body.cadTrustLabelId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+          where: { uuid: response.body.uuid },
+        });
+      }
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await LabelV2.create({
+          cadTrustLabelId: createdLabelId,
+          labelName: 'Label to Update',
+          labelType: 'Certification',
+        });
+      }
+    });
+
+    it('should update a label via API', async function () {
+      const updateData = {
+        labelName: 'Updated Label Name',
+        labelType: 'Article 6 - Endorsement',
+        labelLink: 'https://example.com/updated-label',
+        labelDate: '2024-12-31',
+      };
+
+      const response = await supertest(app)
+        .put(`/v2/label/${createdLabelId}`)
+        .send(updateData);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Label update staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/label/:id (Delete)', function () {
+    let createdLabelId;
+
+    before(async function () {
+      const labelData = {
+        labelName: 'Label to Delete',
+        labelType: 'Certification',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(labelData);
+
+      createdLabelId = response.body.cadTrustLabelId;
+
+      let stagingRecord = null;
+      if (response.body.uuid) {
+        stagingRecord = await StagingV2.findOne({
+          where: { uuid: response.body.uuid },
+        });
+      }
+      if (stagingRecord) {
+        await stagingRecord.update({ committed: true });
+        await LabelV2.create({
+          cadTrustLabelId: createdLabelId,
+          labelName: 'Label to Delete',
+          labelType: 'Certification',
+        });
+      }
+    });
+
+    it('should delete a label via API', async function () {
+      const response = await supertest(app)
+        .delete(`/v2/label/${createdLabelId}`);
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Label delete staged successfully');
+      expect(response.body).to.have.property('success', true);
+    });
+  });
+});

@@ -21,7 +21,7 @@ const task = new Task('reset-audit-table', async () => {
       return;
     }
 
-    logger.info('performing audit table reset');
+    logger.info('[v1]: performing audit table reset');
 
     const where = { type: 'NO CHANGE' };
     const noChangeEntries = await Audit.findAll({ where });
@@ -50,7 +50,7 @@ const task = new Task('reset-audit-table', async () => {
       );
     }
   } catch (error) {
-    logger.error('Retrying in 600 seconds', error);
+    logger.error('[v1]: Retrying in 600 seconds', error);
   }
 });
 

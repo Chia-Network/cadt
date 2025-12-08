@@ -50,7 +50,12 @@ export const getStoreData = async (storeId) => {
             .update(result.value)
             .digest('hex');
           simulatedResult.atom = null;
-          simulatedResult.key = result.key;
+          // Strip storeId prefix from key (format: `${storeId}_${hexEncodedKey}`)
+          // The key stored is `${storeId}_${hexEncodedKey}`, but we need to return just the hex part
+          const keyPrefix = `${storeId}_`;
+          simulatedResult.key = result.key.startsWith(keyPrefix)
+            ? result.key.substring(keyPrefix.length)
+            : result.key;
           simulatedResult.value = result.value;
           return simulatedResult;
         }),

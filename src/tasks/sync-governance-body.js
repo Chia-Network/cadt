@@ -19,7 +19,7 @@ const task = new Task('sync-governance-meta', async () => {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    logger.info('Syncing governance data');
+    logger.info('[v1]: Syncing governance data');
     if (CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID) {
       logger.info(
         `Governance Config Found ${CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID}`,
@@ -31,7 +31,19 @@ const task = new Task('sync-governance-meta', async () => {
         _.get(myOrganization, 'orgUid', '') !==
         CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID
       ) {
-        Governance.sync();
+        // Await V1 governance sync to ensure it completes before continuing
+        await Governance.sync();
+
+        // Also sync V2 governance if V2 organizations exist
+        const { OrganizationsV2 } = await import('../models/v2/index.js');
+        const v2HomeOrg = await OrganizationsV2.findOne({
+          where: { is_home: true },
+          raw: true,
+        });
+        if (v2HomeOrg) {
+          const { GovernanceV2 } = await import('../models/v2/index.js');
+          await GovernanceV2.sync();
+        }
       }
     }
   } catch (error) {
