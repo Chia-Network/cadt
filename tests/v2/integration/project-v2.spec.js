@@ -1203,6 +1203,26 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
 
         expect(response.body).to.have.property('data');
       });
+
+      it('should reject filter parameter when it is an array (type confusion prevention)', async function () {
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ filter: ['field:value:eq', 'field2:value2:eq'], page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Filter parameter must be a string');
+      });
+
+      it('should reject order parameter when it is an array (type confusion prevention)', async function () {
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ order: ['projectName:ASC', 'projectName:DESC'], page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Order parameter must be a string');
+      });
     });
   });
 });

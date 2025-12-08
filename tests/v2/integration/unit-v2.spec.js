@@ -1374,6 +1374,26 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
 
         expect(response.body).to.have.property('data');
       });
+
+      it('should reject filter parameter when it is an array (type confusion prevention)', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ filter: ['field:value:eq', 'field2:value2:eq'], page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Filter parameter must be a string');
+      });
+
+      it('should reject order parameter when it is an array (type confusion prevention)', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ order: ['unitSerialId:ASC', 'unitSerialId:DESC'], page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Order parameter must be a string');
+      });
     });
   });
 });

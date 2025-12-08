@@ -137,6 +137,15 @@ export const findAll = async (req, res) => {
         where = {};
       }
 
+      // Type check: filter must be a string to prevent type confusion attacks
+      if (typeof filter !== 'string') {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: 'Filter parameter must be a string',
+          success: false,
+        });
+      }
+
       // Limit input length to prevent ReDoS attacks
       if (filter.length > 10000) {
         return res.status(400).json({
@@ -250,9 +259,20 @@ export const findAll = async (req, res) => {
     // default to DESC
     let resultOrder = [['timeStaged', 'DESC']];
 
-    if (order?.match(genericSortColumnRegex)) {
-      const matches = order.match(genericSortColumnRegex);
-      resultOrder = [[matches[1], matches[2]]];
+    if (order) {
+      // Type check: order must be a string to prevent type confusion attacks
+      if (typeof order !== 'string') {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: 'Order parameter must be a string',
+          success: false,
+        });
+      }
+
+      if (order.match(genericSortColumnRegex)) {
+        const matches = order.match(genericSortColumnRegex);
+        resultOrder = [[matches[1], matches[2]]];
+      }
     }
 
     const results = await Project.findAndCountAll({

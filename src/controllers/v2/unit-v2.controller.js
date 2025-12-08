@@ -190,6 +190,15 @@ export const findAll = async (req, res) => {
 
     // Handle generic filter (e.g., filter=field:value:eq)
     if (filter) {
+      // Type check: filter must be a string to prevent type confusion attacks
+      if (typeof filter !== 'string') {
+        return res.status(400).json({
+          message: 'Error retrieving units',
+          error: 'Filter parameter must be a string',
+          success: false,
+        });
+      }
+
       // Limit input length to prevent ReDoS attacks
       if (filter.length > 10000) {
         return res.status(400).json({
@@ -505,8 +514,18 @@ export const findAll = async (req, res) => {
     // Use Sequelize.literal with snake_case column name for consistent behavior
     let resultOrder = [[Sequelize.literal('`UnitV2`.`created_at`'), 'DESC']];
 
-    if (order?.match(genericSortColumnRegex)) {
-      const matches = order.match(genericSortColumnRegex);
+    if (order) {
+      // Type check: order must be a string to prevent type confusion attacks
+      if (typeof order !== 'string') {
+        return res.status(400).json({
+          message: 'Error retrieving units',
+          error: 'Order parameter must be a string',
+          success: false,
+        });
+      }
+
+      if (order.match(genericSortColumnRegex)) {
+        const matches = order.match(genericSortColumnRegex);
       const fieldName = matches[1];
       const sortDirection = matches[2].toUpperCase();
 
@@ -533,6 +552,7 @@ export const findAll = async (req, res) => {
       const snakeCaseField = fieldName.replace(/([A-Z])/g, '_$1').toLowerCase();
       // Use Sequelize.literal with properly validated and escaped column name
       resultOrder = [[Sequelize.literal(`\`UnitV2\`.\`${snakeCaseField}\``), sortDirection]];
+      }
     }
 
     // Execute query
