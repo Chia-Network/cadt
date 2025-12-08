@@ -72,15 +72,7 @@ export const getRatingV2 = async (req, res) => {
       });
     }
 
-    const rating = await RatingV2.findByPk(id, {
-      include: [
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectRegistryName'],
-        },
-      ],
-    });
+    const rating = await RatingV2.findByPk(id);
 
     if (!rating) {
       return res.status(404).json({
@@ -106,13 +98,6 @@ export const getRatingV2 = async (req, res) => {
 export const getAllRatingsV2 = async (req, res) => {
   try {
     const ratings = await RatingV2.findAll({
-      include: [
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectRegistryName'],
-        },
-      ],
       order: [['createdAt', 'DESC']],
     });
 

@@ -82,15 +82,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
     // Get all locations
     async findAll(req, res) {
       try {
-        const locations = await Model.findAll({
-          include: [
-            {
-              model: Model.sequelize.models.ProjectV2,
-              as: 'project',
-              attributes: ['cadTrustProjectId', 'projectName', 'projectRegistryName'],
-            },
-          ],
-        });
+        const locations = await Model.findAll();
 
         res.json({
           message: 'Locations retrieved successfully',
@@ -111,15 +103,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
     async findOne(req, res) {
       try {
         const { id } = req.params;
-        const location = await Model.findByPk(id, {
-          include: [
-            {
-              model: Model.sequelize.models.ProjectV2,
-              as: 'project',
-              attributes: ['cadTrustProjectId', 'projectName', 'projectRegistryName'],
-            },
-          ],
-        });
+        const location = await Model.findByPk(id);
 
         if (!location) {
           return res.status(404).json({

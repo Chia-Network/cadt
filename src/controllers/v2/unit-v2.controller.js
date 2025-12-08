@@ -401,13 +401,7 @@ export const findAll = async (req, res) => {
     // Build query with column selection and includes
     // Consistent with other V2 controllers: if no columns specified, don't set attributes
     let queryAttributes = undefined;
-    let fixedIncludes = [
-      {
-        model: IssuanceV2,
-        as: 'issuance',
-        required: false,
-      },
-    ];
+    let fixedIncludes = [];
 
     if (normalizedColumns) {
       // User requested specific columns - use columnsToInclude helper
@@ -416,6 +410,13 @@ export const findAll = async (req, res) => {
 
       // Build includes with correct V2 aliases based on requested columns
       const columnsArray = normalizedColumns;
+      if (columnsArray.includes('issuance') || columnsArray.includes('IssuanceV2')) {
+        fixedIncludes.push({
+          model: IssuanceV2,
+          as: 'issuance',
+          required: false,
+        });
+      }
       if (columnsArray.includes('unitLabels') || columnsArray.includes('UnitLabelV2')) {
         fixedIncludes.push({
           model: UnitLabelV2,
@@ -480,15 +481,7 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await UnitV2.findByPk(id, {
-      include: [
-        {
-          model: IssuanceV2,
-          as: 'issuance',
-          required: false,
-        },
-      ],
-    });
+    const record = await UnitV2.findByPk(id);
 
     if (!record) {
       return res.status(404).json({

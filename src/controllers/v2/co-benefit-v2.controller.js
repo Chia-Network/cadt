@@ -69,15 +69,7 @@ export const getCoBenefitV2 = async (req, res) => {
       });
     }
 
-    const coBenefit = await CoBenefitV2.findByPk(id, {
-      include: [
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectRegistryName'],
-        },
-      ],
-    });
+    const coBenefit = await CoBenefitV2.findByPk(id);
 
     if (!coBenefit) {
       return res.status(404).json({
@@ -103,13 +95,6 @@ export const getCoBenefitV2 = async (req, res) => {
 export const getAllCoBenefitsV2 = async (req, res) => {
   try {
     const coBenefits = await CoBenefitV2.findAll({
-      include: [
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectRegistryName'],
-        },
-      ],
       order: [['createdAt', 'DESC']],
     });
 

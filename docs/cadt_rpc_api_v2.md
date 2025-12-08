@@ -1527,6 +1527,8 @@ Response
 }
 ```
 
+**Note**: By default, GET requests return only project data. To include associated models, use the `columns` parameter. For example, to include program data: `GET /v2/project/{id}?columns=program`
+
 ---
 
 <a id="program-post-examples"></a>
@@ -1633,7 +1635,7 @@ Query string options:
 | cadTrustProjectId | String  | Only display projects matching this cadTrustProjectId                                                               |
 |       orgUid       | String  | Only display projects matching this orgUid                                                                           |
 |       search       | String  | Display all projects that contain the specified query (case insensitive)                                             |
-|      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns                                   |
+|      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns. Can also include associated models (e.g., `columns=issuance` to include issuance data in unit responses)                                   |
 |       limit        | Number  | (Conditionally Required) Limit the number of projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
 |        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
 |        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |
@@ -1686,6 +1688,8 @@ Response
 ```
 
 **Note**: The `orgUid` field is automatically set from the home organization when creating or updating projects. It cannot be provided in POST or PUT requests and will be rejected if included.
+
+**Note**: By default, GET requests return only project data. To include associated models (e.g., program, locations, estimations, ratings, coBenefits), use the `columns` parameter (e.g., `?columns=program` or `?columns=program&columns=locations`).
 
 ---
 
@@ -1769,6 +1773,49 @@ Response
       "projectStatus":"Listed"
     }
   ]
+}
+```
+
+---
+
+#### Get project with associated program data
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/project/51ca9638-22b0-4e14-ae7a-c09d23b37b58?columns=program' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+  "projectRegistryName":"Gold Standard",
+  "projectId":"555",
+  "projectCreditingProgram":"Gold Standard Program",
+  "projectName":"Stop Deforestation",
+  "projectLink":"http://testurl.com",
+  "projectDescription":"A project to stop deforestation",
+  "projectSector":"Agriculture, forestry and other land use (AFOLU)",
+  "projectType":"Afforestation",
+  "projectSubtype":"Soil Carbon",
+  "projectStatus":"Listed",
+  "projectStatusDate":"2022-03-02T00:00:00.000Z",
+  "projectUnitMetric":"tCO2e",
+  "cadTrustReferenceProjectId":"REF-555",
+  "cadTrustProgramId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "createdAt":"2022-03-11T05:17:55.422Z",
+  "updatedAt":"2022-03-11T05:17:55.422Z",
+  "program": {
+    "cadTrustProgramId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+    "programName":"Gold Standard Program",
+    "programRegistry":"Gold Standard",
+    "programRegistryActivityId":"GS-001",
+    "programRegistryProgramId":"PROG-001",
+    "programDescription":"A carbon crediting program",
+    "createdAt":"2022-03-11T05:17:55.420Z",
+    "updatedAt":"2022-03-11T05:17:55.420Z"
+  }
 }
 ```
 
@@ -2007,6 +2054,8 @@ Response
 
 Functionality: Create, read, update, and delete validation records
 
+**Note**: By default, GET requests return only validation data. Associated models (project) are not included unless explicitly requested via query parameters.
+
 <a id="validation-get-examples"></a>
 ### GET Examples
 
@@ -2171,6 +2220,8 @@ Response
 
 Functionality: Create, read, update, and delete verification records
 
+**Note**: By default, GET requests return only verification data. Associated models (project, validation) are not included unless explicitly requested via query parameters.
+
 <a id="verification-get-examples"></a>
 ### GET Examples
 
@@ -2329,6 +2380,8 @@ Response
 ## `location`
 
 Functionality: Create, read, update, and delete location records
+
+**Note**: By default, GET requests return only location data. Associated models (project) are not included unless explicitly requested via query parameters.
 
 <a id="location-get-examples"></a>
 ### GET Examples
@@ -2489,6 +2542,8 @@ Response
 
 Functionality: Create, read, update, and delete issuance records
 
+**Note**: By default, GET requests return only issuance data. Associated models (verification, methodology, location) are not included unless explicitly requested via query parameters.
+
 <a id="issuance-get-examples"></a>
 ### GET Examples
 
@@ -2641,6 +2696,8 @@ Response
 
 Functionality: Create, read, update, delete, and manage unit records with advanced query features
 
+**Note**: By default, GET requests return only unit data. Associated models (issuance, unitLabels) are not included unless explicitly requested via the `columns` parameter (e.g., `?columns=issuance`).
+
 Query string options:
 
 |        Key         |  Type   | Description                                                                                                                     |
@@ -2649,7 +2706,7 @@ Query string options:
 | cadTrustUnitId | String  | Only display units matching this cadTrustUnitId                                                               |
 |       orgUid       | String  | Only display units matching this orgUid                                                                           |
 |       search       | String  | Display all units that contain the specified query (case insensitive)                                             |
-|      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns                                   |
+|      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns. Can also include associated models (e.g., `columns=issuance` to include issuance data in unit responses)                                   |
 |       limit        | Number  | (Conditionally Required) Limit the number of units to be displayed (must be used with page, eg `?page=5&limit=2`) |
 |        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
 |        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |

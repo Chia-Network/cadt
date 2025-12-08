@@ -433,15 +433,7 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await ProjectV2.findByPk(id, {
-      include: [
-        {
-          model: ProgramV2,
-          as: 'program',
-          required: false,
-        },
-      ],
-    });
+    const record = await ProjectV2.findByPk(id);
 
     if (!record) {
       return res.status(404).json({

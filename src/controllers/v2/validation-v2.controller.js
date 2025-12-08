@@ -125,13 +125,6 @@ export const findAll = async (req, res) => {
 
     const records = await ValidationV2.findAndCountAll({
       ...pagination,
-      include: [
-        {
-          model: ProjectV2,
-          as: 'project',
-          required: false,
-        },
-      ],
     });
 
     res.json(optionallyPaginatedResponse(records, page, limit));
@@ -148,15 +141,7 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await ValidationV2.findByPk(id, {
-      include: [
-        {
-          model: ProjectV2,
-          as: 'project',
-          required: false,
-        },
-      ],
-    });
+    const record = await ValidationV2.findByPk(id);
 
     if (!record) {
       return res.status(404).json({

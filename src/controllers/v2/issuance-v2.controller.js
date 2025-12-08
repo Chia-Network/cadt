@@ -129,19 +129,6 @@ export const findAll = async (req, res) => {
 
     const records = await IssuanceV2.findAndCountAll({
       ...pagination,
-      include: [
-        {
-          model: VerificationV2,
-          as: 'verification',
-          required: false,
-        },
-        {
-          model: MethodologyV2,
-          as: 'methodology',
-          required: false,
-        },
-        // Note: LocationV2 include will be added when Location endpoint is implemented
-      ],
     });
 
     res.json(optionallyPaginatedResponse(records, page, limit));
@@ -158,21 +145,7 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await IssuanceV2.findByPk(id, {
-      include: [
-        {
-          model: VerificationV2,
-          as: 'verification',
-          required: false,
-        },
-        {
-          model: MethodologyV2,
-          as: 'methodology',
-          required: false,
-        },
-        // Note: LocationV2 include will be added when Location endpoint is implemented
-      ],
-    });
+    const record = await IssuanceV2.findByPk(id);
 
     if (!record) {
       return res.status(404).json({

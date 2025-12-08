@@ -72,15 +72,7 @@ export const getEstimationV2 = async (req, res) => {
       });
     }
 
-    const estimation = await EstimationV2.findByPk(id, {
-      include: [
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectRegistry'],
-        },
-      ],
-    });
+    const estimation = await EstimationV2.findByPk(id);
 
     if (!estimation) {
       return res.status(404).json({
@@ -106,13 +98,6 @@ export const getEstimationV2 = async (req, res) => {
 export const getAllEstimationsV2 = async (req, res) => {
   try {
     const estimations = await EstimationV2.findAll({
-      include: [
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectRegistry'],
-        },
-      ],
       order: [['createdAt', 'DESC']],
     });
 
