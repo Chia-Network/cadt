@@ -122,28 +122,63 @@ class IssuanceV2 extends Model {
           })
         : null;
 
+    // Map sheet names from model.name (e.g., "IssuanceV2") to table name (e.g., "issuance")
+    // This is needed because createXlsFromSequelizeResults uses model.name as the key,
+    // but transformFullXslsToChangeList expects keys matching primaryKeyMap
+    // Also map child table sheet names if they exist
+    const mapSheetNames = (xslsSheets, modelName, tableName) => {
+      if (!xslsSheets) {
+        return xslsSheets;
+      }
+      const mapped = { ...xslsSheets };
+      if (mapped[modelName]) {
+        mapped[tableName] = mapped[modelName];
+        delete mapped[modelName];
+      }
+      // Map child table names if they exist
+      const childMappings = {
+        UnitV2: 'unit',
+      };
+      Object.keys(childMappings).forEach((childModelName) => {
+        if (mapped[childModelName]) {
+          mapped[childMappings[childModelName]] = mapped[childModelName];
+          delete mapped[childModelName];
+        }
+      });
+      return mapped;
+    };
+
     // Convert Excel to changelist (only if Excel sheets were created)
+    // Pass V2 model map for checking existing records (including child tables)
+    const modelMap = {
+      issuance: IssuanceV2,
+      unit: UnitV2,
+    };
+
     const insertChangeList = insertXslsSheets
       ? await transformFullXslsToChangeList(
-          insertXslsSheets,
+          mapSheetNames(insertXslsSheets, IssuanceV2.name, 'issuance'),
           'insert',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 
     const updateChangeList = updateXslsSheets
       ? await transformFullXslsToChangeList(
-          updateXslsSheets,
+          mapSheetNames(updateXslsSheets, IssuanceV2.name, 'issuance'),
           'update',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 
     const deletedAssociationsChangeList = deleteXslsSheets
       ? await transformFullXslsToChangeList(
-          deleteXslsSheets,
+          mapSheetNames(deleteXslsSheets, IssuanceV2.name, 'issuance'),
           'delete',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 

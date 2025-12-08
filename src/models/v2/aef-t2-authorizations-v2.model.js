@@ -70,20 +70,40 @@ class AefT2AuthorizationsV2 extends Model {
           })
         : null;
 
+    // Map sheet names from model.name (e.g., "AefT2AuthorizationsV2") to table name (e.g., "aef_t2_authorizations")
+    // This is needed because createXlsFromSequelizeResults uses model.name as the key,
+    // but transformFullXslsToChangeList expects keys matching primaryKeyMap
+    const mapSheetNames = (xslsSheets, modelName, tableName) => {
+      if (!xslsSheets || !xslsSheets[modelName]) {
+        return xslsSheets;
+      }
+      const mapped = { ...xslsSheets };
+      mapped[tableName] = mapped[modelName];
+      delete mapped[modelName];
+      return mapped;
+    };
+
     // Convert Excel to changelist (only if Excel sheets were created)
+    // Pass V2 model map for checking existing records
+    const modelMap = {
+      aef_t2_authorizations: AefT2AuthorizationsV2,
+    };
+
     const insertChangeList = insertXslsSheets
       ? await transformFullXslsToChangeList(
-          insertXslsSheets,
+          mapSheetNames(insertXslsSheets, AefT2AuthorizationsV2.name, 'aef_t2_authorizations'),
           'insert',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 
     const updateChangeList = updateXslsSheets
       ? await transformFullXslsToChangeList(
-          updateXslsSheets,
+          mapSheetNames(updateXslsSheets, AefT2AuthorizationsV2.name, 'aef_t2_authorizations'),
           'update',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 

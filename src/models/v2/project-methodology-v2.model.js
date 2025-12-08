@@ -70,20 +70,40 @@ class ProjectMethodologyV2 extends Model {
           })
         : null;
 
+    // Map sheet names from model.name (e.g., "ProjectMethodologyV2") to table name (e.g., "project_methodology")
+    // This is needed because createXlsFromSequelizeResults uses model.name as the key,
+    // but transformFullXslsToChangeList expects keys matching primaryKeyMap
+    const mapSheetNames = (xslsSheets, modelName, tableName) => {
+      if (!xslsSheets || !xslsSheets[modelName]) {
+        return xslsSheets;
+      }
+      const mapped = { ...xslsSheets };
+      mapped[tableName] = mapped[modelName];
+      delete mapped[modelName];
+      return mapped;
+    };
+
     // Convert Excel to changelist (only if Excel sheets were created)
+    // Pass V2 model map for checking existing records
+    const modelMap = {
+      project_methodology: ProjectMethodologyV2,
+    };
+
     const insertChangeList = insertXslsSheets
       ? await transformFullXslsToChangeList(
-          insertXslsSheets,
+          mapSheetNames(insertXslsSheets, ProjectMethodologyV2.name, 'project_methodology'),
           'insert',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 
     const updateChangeList = updateXslsSheets
       ? await transformFullXslsToChangeList(
-          updateXslsSheets,
+          mapSheetNames(updateXslsSheets, ProjectMethodologyV2.name, 'project_methodology'),
           'update',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 

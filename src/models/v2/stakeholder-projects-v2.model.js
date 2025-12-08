@@ -70,20 +70,40 @@ class StakeholderProjectV2 extends Model {
           })
         : null;
 
+    // Map sheet names from model.name (e.g., "StakeholderProjectV2") to table name (e.g., "stakeholder_projects")
+    // This is needed because createXlsFromSequelizeResults uses model.name as the key,
+    // but transformFullXslsToChangeList expects keys matching primaryKeyMap
+    const mapSheetNames = (xslsSheets, modelName, tableName) => {
+      if (!xslsSheets || !xslsSheets[modelName]) {
+        return xslsSheets;
+      }
+      const mapped = { ...xslsSheets };
+      mapped[tableName] = mapped[modelName];
+      delete mapped[modelName];
+      return mapped;
+    };
+
     // Convert Excel to changelist (only if Excel sheets were created)
+    // Pass V2 model map for checking existing records
+    const modelMap = {
+      stakeholder_projects: StakeholderProjectV2,
+    };
+
     const insertChangeList = insertXslsSheets
       ? await transformFullXslsToChangeList(
-          insertXslsSheets,
+          mapSheetNames(insertXslsSheets, StakeholderProjectV2.name, 'stakeholder_projects'),
           'insert',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 
     const updateChangeList = updateXslsSheets
       ? await transformFullXslsToChangeList(
-          updateXslsSheets,
+          mapSheetNames(updateXslsSheets, StakeholderProjectV2.name, 'stakeholder_projects'),
           'update',
           primaryKeyMap,
+          modelMap,
         )
       : {};
 

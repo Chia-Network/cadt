@@ -744,6 +744,47 @@ class StagingV2 extends Model {
         unitLabels: 'id', // Join table uses 'id' as primary key
       };
 
+      // Map sheet names from model.name to table name
+      const mapSheetNames = (xslsSheets, modelName, tableName) => {
+        if (!xslsSheets) {
+          return xslsSheets;
+        }
+        const mapped = { ...xslsSheets };
+        if (mapped[modelName]) {
+          mapped[tableName] = mapped[modelName];
+          delete mapped[modelName];
+        }
+        // Map child table names if they exist
+        const childMappings = {
+          LocationV2: 'locations',
+          EstimationV2: 'estimations',
+          RatingV2: 'ratings',
+          CoBenefitV2: 'coBenefits',
+          UnitLabelV2: 'unitLabels',
+        };
+        Object.keys(childMappings).forEach((childModelName) => {
+          if (mapped[childModelName]) {
+            mapped[childMappings[childModelName]] = mapped[childModelName];
+            delete mapped[childModelName];
+          }
+        });
+        return mapped;
+      };
+
+      // Model maps for checking existing records
+      const projectModelMap = {
+        project: ProjectV2,
+        locations: LocationV2,
+        estimations: EstimationV2,
+        ratings: RatingV2,
+        coBenefits: CoBenefitV2,
+      };
+
+      const unitModelMap = {
+        unit: UnitV2,
+        unitLabels: UnitLabelV2,
+      };
+
       const takerProjectXslsSheets = createXlsFromSequelizeResults({
         rows: [takerProjectPlain],
         model: ProjectV2,
@@ -772,27 +813,31 @@ class StagingV2 extends Model {
       });
 
       const makerProjectInclusions = await transformFullXslsToChangeList(
-        makerProjectXslsSheets,
+        mapSheetNames(makerProjectXslsSheets, ProjectV2.name, 'project'),
         'insert',
         primaryProjectKeyMap,
+        projectModelMap,
       );
 
       const takerProjectInclusions = await transformFullXslsToChangeList(
-        takerProjectXslsSheets,
+        mapSheetNames(takerProjectXslsSheets, ProjectV2.name, 'project'),
         'insert',
         primaryProjectKeyMap,
+        projectModelMap,
       );
 
       const takerUnitInclusions = await transformFullXslsToChangeList(
-        takerUnitXslsSheets,
+        mapSheetNames(takerUnitXslsSheets, UnitV2.name, 'unit'),
         'insert',
         primaryUnitKeyMap,
+        unitModelMap,
       );
 
       const makerUnitInclusions = await transformFullXslsToChangeList(
-        makerUnitXslsSheets,
+        mapSheetNames(makerUnitXslsSheets, UnitV2.name, 'unit'),
         'insert',
         primaryUnitKeyMap,
+        unitModelMap,
       );
 
       const formatForOfferTransfer = (record) => {
