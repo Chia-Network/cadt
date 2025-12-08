@@ -2326,6 +2326,165 @@ Response
 
 ---
 
+## `location`
+
+Functionality: Create, read, update, and delete location records
+
+<a id="location-get-examples"></a>
+### GET Examples
+
+#### List all locations
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/location?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
+      "locationCountry": "Latvia",
+      "locationRegion": "Vidzeme",
+      "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+      "locationMapType": "geojson",
+      "locationMapFileLink": "https://example.com/map.geojson",
+      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "createdAt": "2022-03-11T05:17:55.425Z",
+      "updatedAt": "2022-03-11T05:17:55.425Z"
+    }
+  ]
+}
+```
+
+---
+
+#### Get single location
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
+  "locationCountry": "Latvia",
+  "locationRegion": "Vidzeme",
+  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+  "locationMapType": "geojson",
+  "locationMapFileLink": "https://example.com/map.geojson",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "createdAt": "2022-03-11T05:17:55.425Z",
+  "updatedAt": "2022-03-11T05:17:55.425Z"
+}
+```
+
+---
+
+<a id="location-post-examples"></a>
+### POST Examples
+
+#### Create location
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| locationCountry | String | | x | Country of the location |
+| locationRegion | String | | | Region of the location (max 255 characters) |
+| locationGis | String | | | GIS data for the location (max 10000 characters) |
+| locationMapType | String | | | Type of map (max 100 characters) |
+| locationMapFileLink | String | | | URL link to the map file. Must be a valid URI (max 500 characters) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/location' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "locationCountry": "Latvia",
+  "locationRegion": "Vidzeme",
+  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+  "locationMapType": "geojson",
+  "locationMapFileLink": "https://example.com/map.geojson",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
+}'
+```
+
+Response
+```json
+{
+  "message": "Location staged successfully",
+  "uuid": "8182100d-7794-4df7-b3b3-758391d13011",
+  "cadTrustLocationId": "a0b1c2d3-e4f5-6789-0123-4567890abcde",
+  "success": true
+}
+```
+
+---
+
+<a id="location-put-examples"></a>
+### PUT Examples
+
+#### Update location
+
+Fields are the same as POST (see above).
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`. Update requests must include ALL fields, not just the ones being changed.
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "locationCountry": "Latvia",
+  "locationRegion": "Region A",
+  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+  "locationMapType": "geojson",
+  "locationMapFileLink": "https://example.com/updated-map.geojson",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
+}'
+```
+
+Response
+```json
+{
+  "message": "Location update added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="location-delete-examples"></a>
+### DELETE Examples
+
+#### Delete location
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Location deletion staged successfully",
+  "success": true
+}
+```
+
+---
+
 ## `issuance`
 
 Functionality: Create, read, update, and delete issuance records
@@ -2981,166 +3140,6 @@ Response
 - Advanced query features: search, orgUid filtering, column selection, xls export, generic filtering, sorting
 
 ---
-
-## `location`
-
-Functionality: Create, read, update, and delete location records
-
-<a id="location-get-examples"></a>
-### GET Examples
-
-#### List all locations
-
-Request
-```shell
-curl --location --request GET 'localhost:31310/v2/location?page=1&limit=10' --header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "page": 1,
-  "pageCount": 5,
-  "data": [
-    {
-      "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
-      "locationCountry": "Latvia",
-      "locationRegion": "Vidzeme",
-      "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
-      "locationMapType": "geojson",
-      "locationMapFileLink": "https://example.com/map.geojson",
-      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-      "createdAt": "2022-03-11T05:17:55.425Z",
-      "updatedAt": "2022-03-11T05:17:55.425Z"
-    }
-  ]
-}
-```
-
----
-
-#### Get single location
-
-Request
-```shell
-curl --location --request GET 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' --header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
-  "locationCountry": "Latvia",
-  "locationRegion": "Vidzeme",
-  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
-  "locationMapType": "geojson",
-  "locationMapFileLink": "https://example.com/map.geojson",
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
-  "createdAt": "2022-03-11T05:17:55.425Z",
-  "updatedAt": "2022-03-11T05:17:55.425Z"
-}
-```
-
----
-
-<a id="location-post-examples"></a>
-### POST Examples
-
-#### Create location
-
-Fields:
-
-| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
-|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
-| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
-| locationCountry | String | | x | Country of the location |
-| locationRegion | String | | | Region of the location (max 255 characters) |
-| locationGis | String | | | GIS data for the location (max 10000 characters) |
-| locationMapType | String | | | Type of map (max 100 characters) |
-| locationMapFileLink | String | | | URL link to the map file. Must be a valid URI (max 500 characters) |
-
-**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
-
-Request
-```shell
-curl --location --request POST 'localhost:31310/v2/location' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "locationCountry": "Latvia",
-  "locationRegion": "Vidzeme",
-  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
-  "locationMapType": "geojson",
-  "locationMapFileLink": "https://example.com/map.geojson",
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
-}'
-```
-
-Response
-```json
-{
-  "message": "Location staged successfully",
-  "uuid": "8182100d-7794-4df7-b3b3-758391d13011",
-  "cadTrustLocationId": "a0b1c2d3-e4f5-6789-0123-4567890abcde",
-  "success": true
-}
-```
-
----
-
-<a id="location-put-examples"></a>
-### PUT Examples
-
-#### Update location
-
-Fields are the same as POST (see above).
-
-**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`. Update requests must include ALL fields, not just the ones being changed.
-
-Request
-```shell
-curl --location --request PUT 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "locationCountry": "Latvia",
-  "locationRegion": "Region A",
-  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
-  "locationMapType": "geojson",
-  "locationMapFileLink": "https://example.com/updated-map.geojson",
-  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
-}'
-```
-
-Response
-```json
-{
-  "message": "Location update added to staging",
-  "success": true
-}
-```
-
----
-
-<a id="location-delete-examples"></a>
-### DELETE Examples
-
-#### Delete location
-
-Request
-```shell
-curl --location --request DELETE 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' \
---header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "message": "Location deletion staged successfully",
-  "success": true
-}
-```
-
----
-
 
 ## `estimation`
 

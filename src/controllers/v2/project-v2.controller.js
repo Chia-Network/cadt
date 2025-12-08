@@ -329,13 +329,7 @@ export const findAll = async (req, res) => {
     // Consistent with other V2 controllers: if no columns specified, don't set attributes
     // This lets Sequelize automatically include all fields including timestamps
     let queryAttributes = undefined;
-    let fixedIncludes = [
-      {
-        model: ProgramV2,
-        as: 'program',
-        required: false,
-      },
-    ];
+    let fixedIncludes = [];
 
     if (normalizedColumns) {
       // User requested specific columns - use columnsToInclude helper
@@ -344,6 +338,13 @@ export const findAll = async (req, res) => {
 
       // Build includes with correct V2 aliases based on requested columns
       const columnsArray = normalizedColumns;
+      if (columnsArray.includes('program') || columnsArray.includes('ProgramV2')) {
+        fixedIncludes.push({
+          model: ProgramV2,
+          as: 'program',
+          required: false,
+        });
+      }
       if (columnsArray.includes('locations') || columnsArray.includes('LocationV2')) {
         fixedIncludes.push({
           model: LocationV2,
