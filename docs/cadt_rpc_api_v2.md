@@ -4448,7 +4448,10 @@ Request
 curl --location --request POST 'localhost:31310/v2/aef-t1-submission' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "submissionDate": "2022-01-15"
+  "aefT1SubmissionParty": "Sample Party",
+  "aefT1SubmissionVersion": "1.0",
+  "aefT1SubmissionReportYear": 2022,
+  "aefT1SubmissionSubmissionDate": "2022-01-15"
 }'
 ```
 
@@ -4478,7 +4481,10 @@ Request
 curl --location --request PUT 'localhost:31310/v2/aef-t1-submission/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "submissionDate": "2022-01-20"
+  "aefT1SubmissionParty": "Sample Party",
+  "aefT1SubmissionVersion": "1.0",
+  "aefT1SubmissionReportYear": 2022,
+  "aefT1SubmissionSubmissionDate": "2022-01-20"
 }'
 ```
 
@@ -4593,7 +4599,10 @@ Request
 curl --location --request POST 'localhost:31310/v2/aef-t5-authorized-entities' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "entityName": "Sample Entity"
+  "aefT5AuthorizedEntitiesAuthorizationDate": "2024-02-01",
+  "aefT5AuthorizedEntitiesName": "Sample Entity",
+  "aefT5AuthorizedEntitiesId": "TEST-AE-001",
+  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001"
 }'
 ```
 
@@ -4623,7 +4632,10 @@ Request
 curl --location --request PUT 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "entityName": "Updated Entity"
+  "aefT5AuthorizedEntitiesAuthorizationDate": "2024-02-01",
+  "aefT5AuthorizedEntitiesName": "Updated Entity",
+  "aefT5AuthorizedEntitiesId": "TEST-AE-001",
+  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001"
 }'
 ```
 
@@ -4749,7 +4761,10 @@ Request
 curl --location --request POST 'localhost:31310/v2/aef-t2-authorizations' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "authorizationDate": "2022-02-01"
+  "aefT2AuthorizationsId": "TEST-AUTH-001",
+  "aefT2AuthorizationsDate": "2022-02-01",
+  "aefT2AuthorizationsCooperativeApproachId": "TEST-CA-001",
+  "aefT2AuthorizationsAuthorizedPartyId": "TEST-PARTY-001"
 }'
 ```
 
@@ -4778,7 +4793,10 @@ Request
 curl --location --request PUT 'localhost:31310/v2/aef-t2-authorizations/c3d4e5f6-a7b8-9012-cdef-345678901234' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "authorizationDate": "2022-02-05"
+  "aefT2AuthorizationsId": "TEST-AUTH-001",
+  "aefT2AuthorizationsDate": "2022-02-05",
+  "aefT2AuthorizationsCooperativeApproachId": "TEST-CA-001",
+  "aefT2AuthorizationsAuthorizedPartyId": "TEST-PARTY-001"
 }'
 ```
 
@@ -4912,7 +4930,20 @@ Request
 curl --location --request POST 'localhost:31310/v2/aef-t3-actions' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "actionDate": "2022-03-01"
+  "aefT3ActionsDate": "2022-03-01",
+  "aefT3ActionsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT3ActionsAuthorizationId": "TEST-AUTH-001",
+  "aefT3ActionsFirstTransferringPartyId": "TEST-PARTY-001",
+  "aefT3ActionsPartyItmoRegistryId": "TEST-REGISTRY-001",
+  "aefT3ActionsItmoFirstId": "ITMO-001",
+  "aefT3ActionsItmoLastId": "ITMO-100",
+  "aefT3ActionsUnitRegistryId": "UNIT-REGISTRY-001",
+  "aefT3ActionsUnitFirstId": "UNIT-001",
+  "aefT3ActionsUnitLastId": "UNIT-100",
+  "aefT3ActionsQuantityTCo2": 1000.5,
+  "aefT3ActionsVintageYear": 2022,
+  "aefT3ActionsTransferringPartyId": "TEST-TRANSFER-001",
+  "aefT3ActionsAcquiringPartyId": "TEST-ACQUIRE-001"
 }'
 ```
 
@@ -4942,7 +4973,20 @@ Request
 curl --location --request PUT 'localhost:31310/v2/aef-t3-actions/d4e5f6a7-b8c9-0123-def4-456789012345' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "actionDate": "2022-03-05"
+  "aefT3ActionsDate": "2022-03-05",
+  "aefT3ActionsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT3ActionsAuthorizationId": "TEST-AUTH-001",
+  "aefT3ActionsFirstTransferringPartyId": "TEST-PARTY-001",
+  "aefT3ActionsPartyItmoRegistryId": "TEST-REGISTRY-001",
+  "aefT3ActionsItmoFirstId": "ITMO-001",
+  "aefT3ActionsItmoLastId": "ITMO-100",
+  "aefT3ActionsUnitRegistryId": "UNIT-REGISTRY-001",
+  "aefT3ActionsUnitFirstId": "UNIT-001",
+  "aefT3ActionsUnitLastId": "UNIT-100",
+  "aefT3ActionsQuantityTCo2": 1000.5,
+  "aefT3ActionsVintageYear": 2022,
+  "aefT3ActionsTransferringPartyId": "TEST-TRANSFER-001",
+  "aefT3ActionsAcquiringPartyId": "TEST-ACQUIRE-001"
 }'
 ```
 
@@ -5065,7 +5109,17 @@ Request
 curl --location --request POST 'localhost:31310/v2/aef-t4-holdings' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "holdingDate": "2022-04-01"
+  "aefT4HoldingsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT4HoldingsAuthorizationId": "TEST-AUTH-001",
+  "aefT4HoldingsFirstTransferringPartyId": "TEST-PARTY-001",
+  "aefT4HoldingsPartyItmoRegistryId": "TEST-REGISTRY-001",
+  "aefT4HoldingsItmoFirstId": "ITMO-001",
+  "aefT4HoldingsItmoLastId": "ITMO-100",
+  "aefT4HoldingsUnitRegistryId": "UNIT-REGISTRY-001",
+  "aefT4HoldingsUnitFirstId": "UNIT-001",
+  "aefT4HoldingsUnitLastId": "UNIT-100",
+  "aefT4HoldingsQuantityTCo2": 1000.5,
+  "aefT4HoldingsVintageYear": 2022
 }'
 ```
 
@@ -5095,7 +5149,17 @@ Request
 curl --location --request PUT 'localhost:31310/v2/aef-t4-holdings/e5f6a7b8-c9d0-1234-ef56-567890123456' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "holdingDate": "2022-04-05"
+  "aefT4HoldingsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT4HoldingsAuthorizationId": "TEST-AUTH-001",
+  "aefT4HoldingsFirstTransferringPartyId": "TEST-PARTY-001",
+  "aefT4HoldingsPartyItmoRegistryId": "TEST-REGISTRY-001",
+  "aefT4HoldingsItmoFirstId": "ITMO-001",
+  "aefT4HoldingsItmoLastId": "ITMO-100",
+  "aefT4HoldingsUnitRegistryId": "UNIT-REGISTRY-001",
+  "aefT4HoldingsUnitFirstId": "UNIT-001",
+  "aefT4HoldingsUnitLastId": "UNIT-100",
+  "aefT4HoldingsQuantityTCo2": 1000.5,
+  "aefT4HoldingsVintageYear": 2022
 }'
 ```
 
