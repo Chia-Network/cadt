@@ -99,9 +99,12 @@ export const create = async (req, res) => {
     // Generate UUID for staging
     const uuid = uuidv4();
 
+    // Generate UUID for primary key
+    const cadTrustUnitId = uuidv4();
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
-      cad_trust_unit_id: uuidv4(), // Generate UUID for primary key
+      cad_trust_unit_id: cadTrustUnitId,
       org_uid: homeOrg.org_uid, // Automatically set from home organization
       unit_serial_id: newRecord.unitSerialId,
       unit_start_block: newRecord.unitStartBlock,
@@ -139,6 +142,7 @@ export const create = async (req, res) => {
     res.json({
       message: 'Unit staged successfully',
       uuid,
+      cadTrustUnitId,
       success: true,
     });
   } catch (err) {

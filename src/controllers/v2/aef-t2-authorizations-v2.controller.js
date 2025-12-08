@@ -83,6 +83,7 @@ export const createAefT2AuthorizationsV2 = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'AEF-T2-Authorizations staged successfully',
+      cadTrustAefT2AuthorizationsId: aefT2Authorizations.cadTrustAefT2AuthorizationsId,
       data: aefT2Authorizations,
     });
   } catch (error) {

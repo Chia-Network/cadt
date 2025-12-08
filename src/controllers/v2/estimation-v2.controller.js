@@ -32,11 +32,11 @@ export const createEstimationV2 = async (req, res) => {
     }
 
     // Generate UUID for the estimation
-    const estimationId = uuidv4();
+    const cadTrustEstimationId = uuidv4();
 
     // Create estimation in staging table
     const estimation = await EstimationV2Mirror.create({
-      cadTrustEstimationId: estimationId,
+      cadTrustEstimationId,
       estimationStartDate: value.estimationStartDate,
       estimationEndDate: value.estimationEndDate,
       estimationUnitCount: value.estimationUnitCount,
@@ -47,6 +47,7 @@ export const createEstimationV2 = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Estimation created successfully',
+      cadTrustEstimationId,
       data: estimation,
     });
   } catch (error) {

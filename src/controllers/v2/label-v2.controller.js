@@ -17,11 +17,11 @@ export const createLabelV2 = async (req, res) => {
     }
 
     // Generate UUID for the label
-    const labelId = uuidv4();
+    const cadTrustLabelId = uuidv4();
 
     // Create label in staging table
     const label = await LabelV2Mirror.create({
-      cadTrustLabelId: labelId,
+      cadTrustLabelId,
       labelName: value.labelName,
       labelType: value.labelType,
       labelLink: value.labelLink,
@@ -31,6 +31,7 @@ export const createLabelV2 = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Label created successfully',
+      cadTrustLabelId,
       data: label,
     });
   } catch (error) {

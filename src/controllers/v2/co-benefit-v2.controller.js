@@ -32,11 +32,11 @@ export const createCoBenefitV2 = async (req, res) => {
     }
 
     // Generate UUID for the co-benefit
-    const coBenefitId = uuidv4();
+    const cadTrustCoBenefitId = uuidv4();
 
     // Create co-benefit in staging table
     const coBenefit = await CoBenefitV2Mirror.create({
-      cadTrustCoBenefitId: coBenefitId,
+      cadTrustCoBenefitId,
       coBenefitId: value.coBenefitId,
       cadTrustProjectId: value.cadTrustProjectId,
     });
@@ -44,6 +44,7 @@ export const createCoBenefitV2 = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Co-Benefit created successfully',
+      cadTrustCoBenefitId,
       data: coBenefit,
     });
   } catch (error) {

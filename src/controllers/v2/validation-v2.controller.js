@@ -76,9 +76,12 @@ export const create = async (req, res) => {
     // Generate UUID for staging
     const uuid = uuidv4();
 
+    // Generate UUID for primary key
+    const cadTrustValidationId = uuidv4();
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
-      cad_trust_validation_id: uuidv4(), // Generate UUID for primary key
+      cad_trust_validation_id: cadTrustValidationId,
       validation_id: newRecord.validationId,
       validation_type: newRecord.validationType,
       validation_body: newRecord.validationBody,
@@ -102,6 +105,7 @@ export const create = async (req, res) => {
     res.json({
       message: 'Validation staged successfully',
       uuid,
+      cadTrustValidationId,
       success: true,
     });
   } catch (err) {

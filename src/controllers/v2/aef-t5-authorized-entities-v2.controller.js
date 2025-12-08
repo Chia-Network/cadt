@@ -68,6 +68,7 @@ export const createAefT5AuthorizedEntitiesV2 = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'AEF-T5-Authorized-Entities staged successfully',
+      cadTrustAefT5AuthorizedEntitiesId: aefT5AuthorizedEntities.cadTrustAefT5AuthorizedEntitiesId,
       data: aefT5AuthorizedEntities,
     });
   } catch (error) {

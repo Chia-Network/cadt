@@ -83,6 +83,7 @@ export const createAefT4HoldingsV2 = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'AEF-T4-Holdings staged successfully',
+      cadTrustAefT4HoldingsId: aefT4Holdings.cadTrustAefT4HoldingsId,
       data: aefT4Holdings,
     });
   } catch (error) {

@@ -32,11 +32,11 @@ export const createRatingV2 = async (req, res) => {
     }
 
     // Generate UUID for the rating
-    const ratingId = uuidv4();
+    const cadTrustRatingId = uuidv4();
 
     // Create rating in staging table
     const rating = await RatingV2Mirror.create({
-      cadTrustRatingId: ratingId,
+      cadTrustRatingId,
       ratingType: value.ratingType,
       ratingName: value.ratingName,
       ratingValue: value.ratingValue,
@@ -47,6 +47,7 @@ export const createRatingV2 = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Rating created successfully',
+      cadTrustRatingId,
       data: rating,
     });
   } catch (error) {

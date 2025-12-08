@@ -1409,6 +1409,7 @@ Response
 {
   "message": "Methodology staged successfully",
   "uuid": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustMethodologyId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "success": true
 }
 ```
@@ -1866,6 +1867,7 @@ Response
 {
   "message": "Project staged successfully",
   "uuid": "9a29f826-ea60-489f-a290-c734e8fd57f1",
+  "cadTrustProjectId": "03a3a558-b4c0-4522-8a65-1452e7501307",
   "success": true
 }
 ```
@@ -2103,6 +2105,7 @@ Response
 {
   "message": "Validation staged successfully",
   "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustValidationId": "24a8de31-fcb7-40bb-a047-7a40d1cc2fe0",
   "success": true
 }
 ```
@@ -2262,6 +2265,7 @@ Response
 {
   "message": "Verification staged successfully",
   "uuid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustVerificationId": "c1b9e87c-b8c7-4f2f-bfaf-9b2cee91cc65",
   "success": true
 }
 ```
@@ -2414,6 +2418,7 @@ Response
 {
   "message": "Issuance staged successfully",
   "uuid": "d9f58b08-af25-461c-88eb-403bb02b135e",
+  "cadTrustIssuanceId": "e8f9a0b1-c2d3-4567-8901-234567890abc",
   "success": true
 }
 ```
@@ -2794,6 +2799,7 @@ Response
 {
   "message":"Unit staged successfully",
   "uuid":"9a29f826-ea60-489f-a290-c734e8fd57f1",
+  "cadTrustUnitId":"f9a0b1c2-d3e4-5678-9012-34567890abcd",
   "success":true
 }
 ```
@@ -2822,6 +2828,7 @@ Response
 {
   "message":"Unit staged successfully",
   "uuid":"9a29f826-ea60-489f-a290-c734e8fd57f1",
+  "cadTrustUnitId":"f9a0b1c2-d3e4-5678-9012-34567890abcd",
   "success":true
 }
 ```
@@ -3073,6 +3080,7 @@ Response
 {
   "message": "Location staged successfully",
   "uuid": "8182100d-7794-4df7-b3b3-758391d13011",
+  "cadTrustLocationId": "a0b1c2d3-e4f5-6789-0123-4567890abcde",
   "success": true
 }
 ```
@@ -3226,6 +3234,7 @@ Response
 {
   "message": "Estimation staged successfully",
   "uuid": "c73fb4e7-3bd0-4449-8a57-6137b7c95a1f",
+  "cadTrustEstimationId": "b1c2d3e4-f5a6-7890-1234-567890abcdef",
   "success": true
 }
 ```
@@ -3377,6 +3386,7 @@ Response
 {
   "message": "Rating staged successfully",
   "uuid": "d31c3c75-b944-498d-9557-315f9005f478",
+  "cadTrustRatingId": "c2d3e4f5-a6b7-8901-2345-67890abcdef1",
   "success": true
 }
 ```
@@ -3516,6 +3526,7 @@ Response
 {
   "message": "Co-benefit staged successfully",
   "uuid": "73cfbe9c-8cea-4aca-94d8-f1641e686787",
+  "cadTrustCoBenefitId": "d3e4f5a6-b7c8-9012-3456-7890abcdef12",
   "success": true
 }
 ```
@@ -3778,6 +3789,7 @@ Response
 {
   "message": "Stakeholder staged successfully",
   "uuid": "e880047e-cdf4-45bb-a9df-e706fa427713",
+  "cadTrustStakeholderId": "e4f5a6b7-c8d9-0123-4567-890abcdef123",
   "success": true
 }
 ```
@@ -3908,6 +3920,7 @@ Response
 {
   "message": "Stakeholder-project relationship staged successfully",
   "uuid": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
+  "cadTrustStakeholderProjectId": "f5a6b7c8-d9e0-1234-5678-90abcdef1234",
   "success": true
 }
 ```
@@ -4333,6 +4346,7 @@ Response
 {
   "message": "AEF-T1-Submission staged successfully",
   "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustAefT1SubmissionId": "b7c8d9e0-f1a2-3456-789a-bcdef1234567",
   "success": true
 }
 ```
@@ -4477,6 +4491,7 @@ Response
 {
   "message": "AEF-T5-Authorized-Entities staged successfully",
   "uuid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustAefT5AuthorizedEntitiesId": "c8d9e0f1-a2b3-4567-89ab-cdef12345678",
   "success": true
 }
 ```
@@ -4795,6 +4810,7 @@ Response
 {
   "message": "AEF-T3-Actions staged successfully",
   "uuid": "d4e5f6a7-b8c9-0123-def4-456789012345",
+  "cadTrustAefT3ActionsId": "e0f1a2b3-c4d5-6789-abcd-ef123456789a",
   "success": true
 }
 ```
@@ -4947,6 +4963,7 @@ Response
 {
   "message": "AEF-T4-Holdings staged successfully",
   "uuid": "e5f6a7b8-c9d0-1234-ef56-567890123456",
+  "cadTrustAefT4HoldingsId": "f1a2b3c4-d5e6-789a-bcde-f123456789ab",
   "success": true
 }
 ```

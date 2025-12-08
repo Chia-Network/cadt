@@ -60,13 +60,15 @@ export const create = async (req, res) => {
       });
     }
 
-    // Generate UUID for primary key
+    // Generate UUID for staging
     const uuid = uuidv4();
-    newRecord.cadTrustMethodologyId = uuid;
+
+    // Generate UUID for primary key
+    const cadTrustMethodologyId = uuidv4();
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
-      cad_trust_methodology_id: uuid,
+      cad_trust_methodology_id: cadTrustMethodologyId,
       methodology_code: newRecord.methodologyCode,
       methodology_name: newRecord.methodologyName,
       methodology_version: newRecord.methodologyVersion,
@@ -89,6 +91,7 @@ export const create = async (req, res) => {
     res.json({
       message: 'Methodology staged successfully',
       uuid,
+      cadTrustMethodologyId,
       success: true,
     });
   } catch (err) {

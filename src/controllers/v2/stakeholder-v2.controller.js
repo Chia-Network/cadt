@@ -17,11 +17,11 @@ export const createStakeholderV2 = async (req, res) => {
     }
 
     // Generate UUID for the stakeholder
-    const stakeholderId = uuidv4();
+    const cadTrustStakeholderId = uuidv4();
 
     // Create stakeholder in staging table
     const stakeholder = await StakeholderV2Mirror.create({
-      cadTrustStakeholderId: stakeholderId,
+      cadTrustStakeholderId,
       stakeholderName: value.stakeholderName,
       stakeholderType: value.stakeholderType,
       stakeholderLink: value.stakeholderLink,
@@ -30,6 +30,7 @@ export const createStakeholderV2 = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Stakeholder created successfully',
+      cadTrustStakeholderId,
       data: stakeholder,
     });
   } catch (error) {

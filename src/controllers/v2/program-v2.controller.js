@@ -63,9 +63,12 @@ export const create = async (req, res) => {
     // Generate UUID for staging
     const uuid = uuidv4();
 
+    // Generate UUID for primary key
+    const cadTrustProgramId = uuidv4();
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
-      cad_trust_program_id: uuidv4(), // Generate UUID for primary key
+      cad_trust_program_id: cadTrustProgramId,
       program_name: newRecord.programName,
       program_registry: newRecord.programRegistry,
       program_registry_activity_id: newRecord.programRegistryActivityId,
@@ -87,6 +90,7 @@ export const create = async (req, res) => {
     res.json({
       message: 'Program staged successfully',
       uuid,
+      cadTrustProgramId,
       success: true,
     });
   } catch (err) {

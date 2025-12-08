@@ -35,9 +35,15 @@ const createLocationController = (Model, ModelMirror, schema) => {
         // Validate foreign key: cadTrustProjectId
         await assertRecordExistanceOrStaged(ProjectV2, value.cadTrustProjectId);
 
+        // Generate UUID for staging
+        const uuid = uuidv4();
+
+        // Generate UUID for primary key
+        const cadTrustLocationId = uuidv4();
+
         // Convert camelCase to snake_case for database
         const dbRecord = {
-          cad_trust_location_id: uuidv4(),
+          cad_trust_location_id: cadTrustLocationId,
           location_country: value.locationCountry,
           location_region: value.locationRegion,
           location_gis: value.locationGis,
@@ -45,9 +51,6 @@ const createLocationController = (Model, ModelMirror, schema) => {
           location_map_file_link: value.locationMapFileLink,
           cad_trust_project_id: value.cadTrustProjectId,
         };
-
-        // Generate UUID for staging
-        const uuid = uuidv4();
 
         // Stage the record
         await StagingV2.create({
@@ -63,6 +66,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
         res.json({
           message: 'Location staged successfully',
           uuid,
+          cadTrustLocationId,
           success: true,
         });
       } catch (err) {

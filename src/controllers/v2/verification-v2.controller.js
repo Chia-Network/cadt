@@ -80,9 +80,12 @@ export const create = async (req, res) => {
     // Generate UUID for staging
     const uuid = uuidv4();
 
+    // Generate UUID for primary key
+    const cadTrustVerificationId = uuidv4();
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
-      cad_trust_verification_id: uuidv4(), // Generate UUID for primary key
+      cad_trust_verification_id: cadTrustVerificationId,
       verification_id: newRecord.verificationId,
       verification_start_date: newRecord.verificationStartDate,
       verification_end_date: newRecord.verificationEndDate,
@@ -105,6 +108,7 @@ export const create = async (req, res) => {
     res.json({
       message: 'Verification staged successfully',
       uuid,
+      cadTrustVerificationId,
       success: true,
     });
   } catch (err) {

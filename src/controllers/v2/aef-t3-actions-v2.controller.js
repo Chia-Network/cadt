@@ -83,6 +83,7 @@ export const createAefT3ActionsV2 = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'AEF-T3-Actions staged successfully',
+      cadTrustAefT3ActionsId: aefT3Actions.cadTrustAefT3ActionsId,
       data: aefT3Actions,
     });
   } catch (error) {
