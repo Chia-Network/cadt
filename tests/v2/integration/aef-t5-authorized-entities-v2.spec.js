@@ -534,9 +534,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
       expect(response.body).to.not.have.property('data');
 
       // Verify record was staged
-      let stagingRecord = null;
-      if (response.body.uuid) {
-        stagingRecord = await StagingV2.findOne({
+      const stagingRecord = await StagingV2.findOne({
         where: { uuid: response.body.uuid },
       });
       expect(stagingRecord).to.exist;
@@ -609,8 +607,9 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
       let stagingRecord = null;
       if (response.body.uuid) {
         stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
+          where: { uuid: response.body.uuid },
+        });
+      }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await AefT5AuthorizedEntitiesV2.create({
@@ -665,8 +664,9 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
       let stagingRecord = null;
       if (response.body.uuid) {
         stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
+          where: { uuid: response.body.uuid },
+        });
+      }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await AefT5AuthorizedEntitiesV2.create({

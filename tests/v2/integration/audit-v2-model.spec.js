@@ -192,6 +192,109 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
       expect(result.count).to.equal(1);
       expect(result.rows).to.have.length(1);
     });
+
+    it('should throw error for invalid limit value (too large)', async function () {
+      try {
+        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10001, 1);
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).to.include('Invalid limit value');
+      }
+    });
+
+    it('should throw error for invalid limit value (negative)', async function () {
+      try {
+        await AuditV2.findAuditHistory(testOrgUid, 'DESC', -1, 1);
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).to.include('Invalid limit value');
+      }
+    });
+
+    it('should throw error for invalid limit value (non-numeric)', async function () {
+      try {
+        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 'not-a-number', 1);
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).to.include('Invalid limit value');
+      }
+    });
+
+    it('should throw error for invalid page value (too large)', async function () {
+      try {
+        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10, 100001);
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).to.include('Invalid page value');
+      }
+    });
+
+    it('should throw error for invalid page value (negative)', async function () {
+      try {
+        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10, -1);
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).to.include('Invalid page value');
+      }
+    });
+
+    it('should throw error for invalid page value (non-numeric)', async function () {
+      try {
+        await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10, 'not-a-number');
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).to.include('Invalid page value');
+      }
+    });
+
+    it('should accept valid limit and page at maximum bounds', async function () {
+      const now = Math.floor(Date.now() / 1000).toString();
+      await AuditV2.bulkCreate([
+        {
+          org_uid: testOrgUid,
+          registry_id: 'test-registry-1',
+          root_hash: 'hash1',
+          type: 'insert',
+          change: '{"test": "data1"}',
+          table: 'project',
+          onchain_confirmation_time_stamp: now,
+          generation: 1,
+        },
+      ]);
+
+      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
+      expect(result.count).to.equal(1);
+    });
+
+    it('should default to DESC for invalid order value', async function () {
+      const now = Math.floor(Date.now() / 1000).toString();
+      await AuditV2.bulkCreate([
+        {
+          org_uid: testOrgUid,
+          registry_id: 'test-registry-1',
+          root_hash: 'hash1',
+          type: 'insert',
+          change: '{"test": "data1"}',
+          table: 'project',
+          onchain_confirmation_time_stamp: now,
+          generation: 1,
+        },
+        {
+          org_uid: testOrgUid,
+          registry_id: 'test-registry-1',
+          root_hash: 'hash2',
+          type: 'update',
+          change: '{"test": "data2"}',
+          table: 'project',
+          onchain_confirmation_time_stamp: (parseInt(now) + 1).toString(),
+          generation: 2,
+        },
+      ]);
+
+      // Invalid order should default to DESC
+      const result = await AuditV2.findAuditHistory(testOrgUid, 'INVALID', 10, 1);
+      expect(result.rows[0].generation).to.equal(2); // DESC order
+    });
   });
 
   describe('findConflicts', function () {

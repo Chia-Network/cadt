@@ -90,18 +90,10 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body).to.have.property('success', true);
 
       // Verify record was staged
-      expect(response.body).to.have.property(\'uuid\');
-
-
+      expect(response.body).to.have.property('uuid');
       const stagingRecord = await StagingV2.findOne({
-
-
         where: { uuid: response.body.uuid },
-
-
       });
-
-
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('project');
       expect(stagingRecord.action).to.equal('INSERT');
@@ -1145,6 +1137,71 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
         expect(response.body.data.length).to.equal(1);
         expect(response.body.data[0].cadTrustProjectId).to.equal(projectId);
         expect(response.body.data[0]).to.have.property('projectName');
+      });
+
+      it('should reject invalid order column name (SQL injection prevention)', async function () {
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ order: 'invalidColumn:ASC', page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Invalid sort column');
+        expect(response.body.error).to.include('invalidColumn');
+      });
+
+      it('should reject SQL injection attempt in order column name', async function () {
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ order: "projectName'; DROP TABLE project; --:ASC", page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Invalid sort column');
+      });
+
+      it('should reject invalid sort direction', async function () {
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ order: 'projectName:INVALID', page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Invalid sort direction');
+        expect(response.body.error).to.include('Must be ASC or DESC');
+      });
+
+      it('should reject filter parameter exceeding maximum length (ReDoS prevention)', async function () {
+        const longFilter = 'projectName:' + 'x'.repeat(10001) + ':eq';
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ filter: longFilter, page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Filter parameter exceeds maximum length');
+      });
+
+      it('should reject filter value exceeding maximum length (ReDoS prevention)', async function () {
+        const longValue = 'x'.repeat(5001);
+        const filter = `projectName:${longValue}:eq`;
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ filter, page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Filter value exceeds maximum length');
+      });
+
+      it('should accept filter parameter at maximum allowed length', async function () {
+        const maxLengthFilter = 'projectName:' + 'x'.repeat(5000) + ':eq';
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ filter: maxLengthFilter, page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body).to.have.property('data');
       });
     });
   });

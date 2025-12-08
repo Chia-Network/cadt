@@ -758,11 +758,32 @@ class ProjectV2 extends Model {
         WHERE ${whereClause}
       `;
 
+      // Validate and sanitize limit and offset to prevent SQL injection
+      // Ensure they are integers and within reasonable bounds
+      let safeLimit = limit;
+      let safeOffset = offset;
+
+      if (limit !== undefined) {
+        safeLimit = parseInt(limit, 10);
+        if (isNaN(safeLimit) || safeLimit < 0 || safeLimit > 10000) {
+          safeLimit = 100; // Default safe limit
+          loggerV2.warn('[v2]: Invalid limit value, using default', { providedLimit: limit, safeLimit });
+        }
+      }
+
+      if (offset !== undefined) {
+        safeOffset = parseInt(offset, 10);
+        if (isNaN(safeOffset) || safeOffset < 0 || safeOffset > 1000000) {
+          safeOffset = 0; // Default safe offset
+          loggerV2.warn('[v2]: Invalid offset value, using default', { providedOffset: offset, safeOffset });
+        }
+      }
+
       // Add ordering and pagination
-      if (limit !== undefined && offset !== undefined) {
+      if (safeLimit !== undefined && safeOffset !== undefined) {
         sql += ` ORDER BY bm25(projects_v2_fts) ASC LIMIT :limit OFFSET :offset`;
-        replacements.limit = limit;
-        replacements.offset = offset;
+        replacements.limit = safeLimit;
+        replacements.offset = safeOffset;
       } else {
         sql += ` ORDER BY bm25(projects_v2_fts) ASC`;
       }

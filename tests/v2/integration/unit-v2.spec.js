@@ -1309,6 +1309,71 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
         expect(response.body.data[0].cadTrustUnitId).to.equal(unitId);
         expect(response.body.data[0]).to.have.property('unitSerialId');
       });
+
+      it('should reject invalid order column name (SQL injection prevention)', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ order: 'invalidColumn:ASC', page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Invalid sort column');
+        expect(response.body.error).to.include('invalidColumn');
+      });
+
+      it('should reject SQL injection attempt in order column name', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ order: "unitSerialId'; DROP TABLE unit; --:ASC", page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Invalid sort column');
+      });
+
+      it('should reject invalid sort direction', async function () {
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ order: 'unitSerialId:INVALID', page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Invalid sort direction');
+        expect(response.body.error).to.include('Must be ASC or DESC');
+      });
+
+      it('should reject filter parameter exceeding maximum length (ReDoS prevention)', async function () {
+        const longFilter = 'unitSerialId:' + 'x'.repeat(10001) + ':eq';
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ filter: longFilter, page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Filter parameter exceeds maximum length');
+      });
+
+      it('should reject filter value exceeding maximum length (ReDoS prevention)', async function () {
+        const longValue = 'x'.repeat(5001);
+        const filter = `unitSerialId:${longValue}:eq`;
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ filter, page: 1, limit: 10 })
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.error).to.include('Filter value exceeds maximum length');
+      });
+
+      it('should accept filter parameter at maximum allowed length', async function () {
+        const maxLengthFilter = 'unitSerialId:' + 'x'.repeat(5000) + ':eq';
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ filter: maxLengthFilter, page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body).to.have.property('data');
+      });
     });
   });
 });

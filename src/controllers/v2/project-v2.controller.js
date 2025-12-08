@@ -183,14 +183,31 @@ export const findAll = async (req, res) => {
 
     // Handle generic filter (e.g., filter=field:value:eq)
     if (filter) {
+      // Limit input length to prevent ReDoS attacks
+      if (filter.length > 10000) {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: 'Filter parameter exceeds maximum length',
+          success: false,
+        });
+      }
       const matches = filter.match(genericFilterRegex);
       if (matches) {
-        // Check if the value param is an array so we can parse it
-        const valueMatches = matches[2].match(isArrayRegex);
+        const valueStr = matches[2];
+        // Additional length check on extracted value
+        if (valueStr.length > 5000) {
+          return res.status(400).json({
+            message: 'Error retrieving projects',
+            error: 'Filter value exceeds maximum length',
+            success: false,
+          });
+        }
+        // Check if the value param is an array using safer anchored regex
+        const valueMatches = valueStr.match(isArrayRegex);
         where[matches[1]] = {
           [Sequelize.Op[matches[3]]]: valueMatches
-            ? JSON.parse(matches[2])
-            : matches[2],
+            ? JSON.parse(valueStr)
+            : valueStr,
         };
       }
     }
@@ -404,6 +421,27 @@ export const findAll = async (req, res) => {
     };
 
     // Handle sorting (default to createdAt DESC)
+    // Whitelist of valid column names for ordering (camelCase as used in API)
+    const validOrderColumns = [
+      'cadTrustProjectId',
+      'projectRegistryName',
+      'projectId',
+      'projectCreditingProgram',
+      'projectName',
+      'projectLink',
+      'projectDescription',
+      'projectSector',
+      'projectType',
+      'projectSubtype',
+      'projectStatus',
+      'projectStatusDate',
+      'projectUnitMetric',
+      'cadTrustReferenceProjectId',
+      'cadTrustProgramId',
+      'createdAt',
+      'updatedAt',
+    ];
+
     // Note: Sequelize maps camelCase attributes to snake_case for SELECT when underscored: true
     // But ORDER BY needs explicit mapping when attributes are specified
     // Use Sequelize.literal with snake_case column name for consistent behavior
@@ -412,10 +450,32 @@ export const findAll = async (req, res) => {
     if (order?.match(genericSortColumnRegex)) {
       const matches = order.match(genericSortColumnRegex);
       const fieldName = matches[1];
+      const sortDirection = matches[2].toUpperCase();
+
+      // Validate fieldName against whitelist to prevent SQL injection
+      if (!validOrderColumns.includes(fieldName)) {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: `Invalid sort column: ${fieldName}. Valid columns are: ${validOrderColumns.join(', ')}`,
+          success: false,
+        });
+      }
+
+      // Validate sort direction
+      if (sortDirection !== 'ASC' && sortDirection !== 'DESC') {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: `Invalid sort direction: ${sortDirection}. Must be ASC or DESC`,
+          success: false,
+        });
+      }
+
       // Map camelCase to snake_case for ordering (consistent with model field mappings)
       // Convert camelCase to snake_case: projectName -> project_name, createdAt -> created_at
+      // Only alphanumeric and underscore characters are allowed after validation
       const snakeCaseField = fieldName.replace(/([A-Z])/g, '_$1').toLowerCase();
-      resultOrder = [[Sequelize.literal(`\`ProjectV2\`.\`${snakeCaseField}\``), matches[2]]];
+      // Use Sequelize.literal with properly validated and escaped column name
+      resultOrder = [[Sequelize.literal(`\`ProjectV2\`.\`${snakeCaseField}\``), sortDirection]];
     }
 
     // Execute query

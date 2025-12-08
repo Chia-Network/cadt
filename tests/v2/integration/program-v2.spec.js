@@ -55,7 +55,7 @@ describe('V2 Program API - Basic CRUD Tests', function () {
       expect(response.body).to.have.property('success', true);
 
       // Verify record was staged
-      expect(response.body).to.have.property(\'uuid\');
+      expect(response.body).to.have.property('uuid');
 
 
       const stagingRecord = await StagingV2.findOne({

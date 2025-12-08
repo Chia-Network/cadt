@@ -912,5 +912,112 @@ describe('V2 FTS5 Integration Tests', function () {
       expect(whitespaceResults.count).to.equal(0);
     });
   });
+
+  describe('FTS Security - Input Validation', function () {
+    it('should handle invalid limit value (too large) by using default', async function () {
+      // Ensure FTS table is populated
+      await ProjectV2.rebuildFtsTable();
+
+      // Invalid limit should be clamped to default (100)
+      const results = await ProjectV2.findAllSqliteFts(
+        'project',
+        { offset: 0, limit: 10001 }, // Exceeds maximum
+        [],
+        null,
+      );
+
+      // Should still return results (with default limit)
+      expect(results).to.have.property('rows');
+      expect(results).to.have.property('count');
+      // Results should be limited (not more than default of 100)
+      expect(results.rows.length).to.be.at.most(100);
+    });
+
+    it('should handle invalid limit value (negative) by using default', async function () {
+      // Ensure FTS table is populated
+      await ProjectV2.rebuildFtsTable();
+
+      // Invalid limit should be clamped to default (100)
+      const results = await ProjectV2.findAllSqliteFts(
+        'project',
+        { offset: 0, limit: -1 }, // Negative
+        [],
+        null,
+      );
+
+      // Should still return results (with default limit)
+      expect(results).to.have.property('rows');
+      expect(results).to.have.property('count');
+    });
+
+    it('should handle invalid offset value (too large) by using default', async function () {
+      // Ensure FTS table is populated
+      await ProjectV2.rebuildFtsTable();
+
+      // Invalid offset should be clamped to default (0)
+      const results = await ProjectV2.findAllSqliteFts(
+        'project',
+        { offset: 1000001, limit: 10 }, // Exceeds maximum
+        [],
+        null,
+      );
+
+      // Should still return results (with default offset of 0)
+      expect(results).to.have.property('rows');
+      expect(results).to.have.property('count');
+    });
+
+    it('should handle invalid offset value (negative) by using default', async function () {
+      // Ensure FTS table is populated
+      await ProjectV2.rebuildFtsTable();
+
+      // Invalid offset should be clamped to default (0)
+      const results = await ProjectV2.findAllSqliteFts(
+        'project',
+        { offset: -1, limit: 10 }, // Negative
+        [],
+        null,
+      );
+
+      // Should still return results (with default offset of 0)
+      expect(results).to.have.property('rows');
+      expect(results).to.have.property('count');
+    });
+
+    it('should accept valid limit and offset at maximum bounds', async function () {
+      // Ensure FTS table is populated
+      await ProjectV2.rebuildFtsTable();
+
+      // Maximum allowed values should work
+      const results = await ProjectV2.findAllSqliteFts(
+        'project',
+        { offset: 1000000, limit: 10000 }, // Maximum allowed
+        [],
+        null,
+      );
+
+      expect(results).to.have.property('rows');
+      expect(results).to.have.property('count');
+    });
+
+    it('should handle invalid limit/offset for Unit FTS', async function () {
+      // Ensure FTS table is populated
+      await UnitV2.rebuildFtsTable();
+
+      // Invalid limit should be clamped to default
+      const results = await UnitV2.findAllSqliteFts(
+        'unit',
+        { offset: 0, limit: 10001 }, // Exceeds maximum
+        [],
+        false,
+        null,
+      );
+
+      // Should still return results (with default limit)
+      expect(results).to.have.property('rows');
+      expect(results).to.have.property('count');
+      expect(results.rows.length).to.be.at.most(100);
+    });
+  });
 });
 

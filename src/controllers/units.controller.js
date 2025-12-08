@@ -143,14 +143,33 @@ export const findAll = async (req, res) => {
         where = {};
       }
 
+      // Limit input length to prevent ReDoS attacks
+      if (filter.length > 10000) {
+        return res.status(400).json({
+          message: 'Error retrieving units',
+          error: 'Filter parameter exceeds maximum length',
+          success: false,
+        });
+      }
       const matches = filter.match(genericFilterRegex);
-      // check if the value param is an array so we can parse it
-      const valueMatches = matches[2].match(isArrayRegex);
-      where[matches[1]] = {
-        [Sequelize.Op[matches[3]]]: valueMatches
-          ? JSON.parse(matches[2])
-          : matches[2],
-      };
+      if (matches) {
+        const valueStr = matches[2];
+        // Additional length check on extracted value
+        if (valueStr.length > 5000) {
+          return res.status(400).json({
+            message: 'Error retrieving units',
+            error: 'Filter value exceeds maximum length',
+            success: false,
+          });
+        }
+        // check if the value param is an array so we can parse it
+        const valueMatches = valueStr.match(isArrayRegex);
+        where[matches[1]] = {
+          [Sequelize.Op[matches[3]]]: valueMatches
+            ? JSON.parse(valueStr)
+            : valueStr,
+        };
+      }
     }
 
     const includes = Unit.getAssociatedModels();

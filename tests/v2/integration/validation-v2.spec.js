@@ -101,18 +101,10 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       expect(response.body).to.have.property('success', true);
 
       // Verify record was staged
-      expect(response.body).to.have.property(\'uuid\');
-
-
+      expect(response.body).to.have.property('uuid');
       const stagingRecord = await StagingV2.findOne({
-
-
         where: { uuid: response.body.uuid },
-
-
       });
-
-
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('validation');
       expect(stagingRecord.action).to.equal('INSERT');

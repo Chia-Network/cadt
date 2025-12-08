@@ -415,6 +415,216 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
 
       expect(response.body.success).to.be.false;
     });
+  });
+
+  describe('Security - Input validation for pagination and ordering', function () {
+    it('should reject invalid limit value (too large)', async function () {
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({
+          orgUid: testOrgUid,
+          page: 1,
+          limit: 10001, // Exceeds maximum of 10000
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Invalid limit value');
+    });
+
+    it('should reject invalid limit value (negative)', async function () {
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({
+          orgUid: testOrgUid,
+          page: 1,
+          limit: -1,
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Invalid limit value');
+    });
+
+    it('should reject invalid limit value (non-numeric)', async function () {
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({
+          orgUid: testOrgUid,
+          page: 1,
+          limit: 'not-a-number',
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Invalid limit value');
+    });
+
+    it('should reject invalid page value (too large)', async function () {
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({
+          orgUid: testOrgUid,
+          page: 100001, // Exceeds maximum of 100000
+          limit: 10,
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Invalid page value');
+    });
+
+    it('should reject invalid page value (negative)', async function () {
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({
+          orgUid: testOrgUid,
+          page: -1,
+          limit: 10,
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Invalid page value');
+    });
+
+    it('should reject invalid page value (non-numeric)', async function () {
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({
+          orgUid: testOrgUid,
+          page: 'not-a-number',
+          limit: 10,
+        })
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('Invalid page value');
+    });
+
+    it('should accept valid limit and page values at maximum bounds', async function () {
+      const now = Math.floor(Date.now() / 1000).toString();
+      await AuditV2.bulkCreate([
+        {
+          org_uid: testOrgUid,
+          registry_id: 'test-registry-1',
+          root_hash: 'hash1',
+          type: 'insert',
+          change: '{"test": "data1"}',
+          table: 'project',
+          onchain_confirmation_time_stamp: now,
+          generation: 1,
+        },
+      ]);
+
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({
+          orgUid: testOrgUid,
+          page: 1,
+          limit: 10000, // Maximum allowed
+        })
+        .expect(200);
+
+      expect(response.body.success).to.not.equal(false);
+    });
+
+    it('should accept valid order values (ASC)', async function () {
+      const now = Math.floor(Date.now() / 1000).toString();
+      await AuditV2.bulkCreate([
+        {
+          org_uid: testOrgUid,
+          registry_id: 'test-registry-1',
+          root_hash: 'hash1',
+          type: 'insert',
+          change: '{"test": "data1"}',
+          table: 'project',
+          onchain_confirmation_time_stamp: now,
+          generation: 1,
+        },
+      ]);
+
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({
+          orgUid: testOrgUid,
+          page: 1,
+          limit: 10,
+          order: 'ASC',
+        })
+        .expect(200);
+
+      expect(response.body.success).to.not.equal(false);
+    });
+
+    it('should accept valid order values (DESC)', async function () {
+      const now = Math.floor(Date.now() / 1000).toString();
+      await AuditV2.bulkCreate([
+        {
+          org_uid: testOrgUid,
+          registry_id: 'test-registry-1',
+          root_hash: 'hash1',
+          type: 'insert',
+          change: '{"test": "data1"}',
+          table: 'project',
+          onchain_confirmation_time_stamp: now,
+          generation: 1,
+        },
+      ]);
+
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({
+          orgUid: testOrgUid,
+          page: 1,
+          limit: 10,
+          order: 'DESC',
+        })
+        .expect(200);
+
+      expect(response.body.success).to.not.equal(false);
+    });
+
+    it('should default to DESC for invalid order value', async function () {
+      const now = Math.floor(Date.now() / 1000).toString();
+      await AuditV2.bulkCreate([
+        {
+          org_uid: testOrgUid,
+          registry_id: 'test-registry-1',
+          root_hash: 'hash1',
+          type: 'insert',
+          change: '{"test": "data1"}',
+          table: 'project',
+          onchain_confirmation_time_stamp: now,
+          generation: 1,
+        },
+        {
+          org_uid: testOrgUid,
+          registry_id: 'test-registry-1',
+          root_hash: 'hash2',
+          type: 'update',
+          change: '{"test": "data2"}',
+          table: 'project',
+          onchain_confirmation_time_stamp: (parseInt(now) + 1).toString(),
+          generation: 2,
+        },
+      ]);
+
+      // Invalid order should default to DESC
+      const response = await supertest(app)
+        .get('/v2/audit')
+        .query({
+          orgUid: testOrgUid,
+          page: 1,
+          limit: 10,
+          order: 'INVALID',
+        })
+        .expect(200);
+
+      // Should still return results, ordered DESC by default
+      expect(response.body.data).to.have.length(2);
+      expect(response.body.data[0].generation).to.equal(2); // DESC order
+    });
 
     it('should return error when generation is missing in POST /v2/audit/resetToGeneration', async function () {
       const response = await supertest(app)

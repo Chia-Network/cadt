@@ -39,15 +39,35 @@ class AuditV2 extends Model {
 
     const where = orgUid ? { org_uid: orgUid } : {};
 
+    // Validate order parameter to prevent SQL injection
+    const safeOrder = (order && (order.toUpperCase() === 'ASC' || order.toUpperCase() === 'DESC'))
+      ? order.toUpperCase()
+      : 'DESC'; // Default to DESC if invalid
+
     const queryOptions = {
       where,
-      order: [['onchain_confirmation_time_stamp', order]],
+      order: [['onchain_confirmation_time_stamp', safeOrder]],
     };
 
     // Add pagination if limit and page are provided
+    // Validate and sanitize limit and page to prevent SQL injection
     if (limit && page) {
-      const offset = (page - 1) * limit;
-      queryOptions.limit = limit;
+      // Validate limit is a safe integer
+      const safeLimit = parseInt(limit, 10);
+      if (isNaN(safeLimit) || safeLimit < 1 || safeLimit > 10000) {
+        loggerV2.warn('[v2]: Invalid limit value in findAuditHistory', { providedLimit: limit });
+        throw new Error('Invalid limit value. Must be between 1 and 10000');
+      }
+
+      // Validate page is a safe integer
+      const safePage = parseInt(page, 10);
+      if (isNaN(safePage) || safePage < 1 || safePage > 100000) {
+        loggerV2.warn('[v2]: Invalid page value in findAuditHistory', { providedPage: page });
+        throw new Error('Invalid page value. Must be between 1 and 100000');
+      }
+
+      const offset = (safePage - 1) * safeLimit;
+      queryOptions.limit = safeLimit;
       queryOptions.offset = offset;
     }
 

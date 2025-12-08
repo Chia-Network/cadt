@@ -566,9 +566,18 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
       createdEstimationId = response.body.cadTrustEstimationId;
 
       // Commit the staging record and create in main table for delete test
-      const stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
+      let stagingRecord = null;
+
+      if (response.body.uuid) {
+
+        stagingRecord = await StagingV2.findOne({
+
+          where: { uuid: response.body.uuid },
+
+        });
+
+      }
+
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await EstimationV2.create({

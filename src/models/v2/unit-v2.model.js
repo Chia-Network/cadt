@@ -752,60 +752,61 @@ class UnitV2 extends Model {
       // Add error handling to debug SQL issues
       let countResult;
       try {
-        // Try to manually construct SQL to see what Sequelize might be doing
-        let manualSql = countSql;
-        for (const [key, value] of Object.entries(replacements)) {
-          manualSql = manualSql.replace(`:${key}`, `'${value}'`);
-        }
         loggerV2.info('[v2]: Executing FTS count query', {
-          countSql,
-          replacements: JSON.stringify(replacements),
-          manualSqlPreview: manualSql.substring(0, 500),
+          countSql: countSql.substring(0, 500) + '...',
+          replacementKeys: Object.keys(replacements),
         });
-
-        // Enable Sequelize logging temporarily to see actual SQL
-        const originalLogging = sequelizeV2.options.logging;
-        sequelizeV2.options.logging = (sql) => {
-          loggerV2.info('[v2]: Sequelize executing SQL', { sql: sql.substring(0, 1000) });
-        };
 
         countResult = await sequelizeV2.query(countSql, {
           replacements,
           type: Sequelize.QueryTypes.SELECT,
-          logging: false, // Don't double-log
         });
-
-        // Restore original logging
-        sequelizeV2.options.logging = originalLogging;
 
         loggerV2.info('[v2]: FTS count query succeeded', { count: countResult[0]?.count || 0 });
       } catch (error) {
         loggerV2.error('[v2]: FTS count query failed', {
           error: error.message,
           errorStack: error.stack,
-          sql: countSql,
-          replacements: JSON.stringify(replacements),
-          searchStr,
-          finalSearch,
-          sanitizedSearch,
-          // Try to construct what the SQL might look like
-          attemptedSql: countSql.replace(/:search/g, `'${finalSearch}'`).replace(/:search2/g, `'0x${finalSearch}'`).substring(0, 500),
+          sql: countSql.substring(0, 500) + '...',
+          replacementKeys: Object.keys(replacements),
+          searchStr: searchStr?.substring(0, 100), // Log truncated search string for debugging
         });
         throw error;
       }
 
       const count = countResult[0]?.count || 0;
 
+      // Validate and sanitize limit and offset to prevent SQL injection
+      // Ensure they are integers and within reasonable bounds
+      let safeLimit = limit;
+      let safeOffset = offset;
+
+      if (limit !== undefined) {
+        safeLimit = parseInt(limit, 10);
+        if (isNaN(safeLimit) || safeLimit < 0 || safeLimit > 10000) {
+          safeLimit = 100; // Default safe limit
+          loggerV2.warn('[v2]: Invalid limit value, using default', { providedLimit: limit, safeLimit });
+        }
+      }
+
+      if (offset !== undefined) {
+        safeOffset = parseInt(offset, 10);
+        if (isNaN(safeOffset) || safeOffset < 0 || safeOffset > 1000000) {
+          safeOffset = 0; // Default safe offset
+          loggerV2.warn('[v2]: Invalid offset value, using default', { providedOffset: offset, safeOffset });
+        }
+      }
+
       // Add ordering and pagination to main query
       // Use subquery to properly order UNION results by BM25 relevance
-      if (limit !== undefined && offset !== undefined) {
+      if (safeLimit !== undefined && safeOffset !== undefined) {
         sql = `
           SELECT * FROM (
             ${sql}
           ) ORDER BY relevance ASC LIMIT :limit OFFSET :offset
         `;
-        replacements.limit = limit;
-        replacements.offset = offset;
+        replacements.limit = safeLimit;
+        replacements.offset = safeOffset;
       } else {
         sql = `
           SELECT * FROM (
@@ -816,7 +817,7 @@ class UnitV2 extends Model {
 
       loggerV2.info('[v2]: Executing FTS main query', {
         sql: sql.substring(0, 300) + '...',
-        replacements: JSON.stringify(replacements),
+        replacementKeys: Object.keys(replacements),
       });
       const rows = await sequelizeV2.query(sql, {
         replacements,

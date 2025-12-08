@@ -511,9 +511,18 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       createdRatingId = response.body.cadTrustRatingId;
 
       // Commit the staging record so it exists for update
-      const stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
+      let stagingRecord = null;
+
+      if (response.body.uuid) {
+
+        stagingRecord = await StagingV2.findOne({
+
+          where: { uuid: response.body.uuid },
+
+        });
+
+      }
+
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         // Also create in main table for update test
