@@ -4451,7 +4451,12 @@ curl --location --request POST 'localhost:31310/v2/aef-t1-submission' \
   "aefT1SubmissionParty": "Sample Party",
   "aefT1SubmissionVersion": "1.0",
   "aefT1SubmissionReportYear": 2022,
-  "aefT1SubmissionSubmissionDate": "2022-01-15"
+  "aefT1SubmissionSubmissionDate": "2022-01-15",
+  "aefT1SubmissionReviewStatus": "Under Review",
+  "aefT1SubmissionResultCheck": "Passed",
+  "aefT1SubmissionNdcFirstYear": 2020,
+  "aefT1SubmissionNdcLastYear": 2030,
+  "aefT1SubmissionReferenceReviewReport": "https://example.com/review-report"
 }'
 ```
 
@@ -4484,7 +4489,12 @@ curl --location --request PUT 'localhost:31310/v2/aef-t1-submission/a1b2c3d4-e5f
   "aefT1SubmissionParty": "Sample Party",
   "aefT1SubmissionVersion": "1.0",
   "aefT1SubmissionReportYear": 2022,
-  "aefT1SubmissionSubmissionDate": "2022-01-20"
+  "aefT1SubmissionSubmissionDate": "2022-01-20",
+  "aefT1SubmissionReviewStatus": "Approved",
+  "aefT1SubmissionResultCheck": "Passed with conditions",
+  "aefT1SubmissionNdcFirstYear": 2021,
+  "aefT1SubmissionNdcLastYear": 2025,
+  "aefT1SubmissionReferenceReviewReport": "https://example.com/updated-review-report"
 }'
 ```
 
@@ -4602,7 +4612,15 @@ curl --location --request POST 'localhost:31310/v2/aef-t5-authorized-entities' \
   "aefT5AuthorizedEntitiesAuthorizationDate": "2024-02-01",
   "aefT5AuthorizedEntitiesName": "Sample Entity",
   "aefT5AuthorizedEntitiesId": "TEST-AE-001",
-  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001"
+  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001",
+  "aefT5AuthorizedEntitiesIncorporationCountry": "United States",
+  "aefT5AuthorizedEntitiesConditions": "Test conditions",
+  "aefT5AuthorizedEntitiesChangeConditions": "Test change conditions",
+  "aefT5AuthorizedEntitiesAdditionalInformation": "Test additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -4635,7 +4653,15 @@ curl --location --request PUT 'localhost:31310/v2/aef-t5-authorized-entities/b2c
   "aefT5AuthorizedEntitiesAuthorizationDate": "2024-02-01",
   "aefT5AuthorizedEntitiesName": "Updated Entity",
   "aefT5AuthorizedEntitiesId": "TEST-AE-001",
-  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001"
+  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001",
+  "aefT5AuthorizedEntitiesIncorporationCountry": "United States",
+  "aefT5AuthorizedEntitiesConditions": "Updated conditions",
+  "aefT5AuthorizedEntitiesChangeConditions": "Updated change conditions",
+  "aefT5AuthorizedEntitiesAdditionalInformation": "Updated additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -4764,7 +4790,26 @@ curl --location --request POST 'localhost:31310/v2/aef-t2-authorizations' \
   "aefT2AuthorizationsId": "TEST-AUTH-001",
   "aefT2AuthorizationsDate": "2022-02-01",
   "aefT2AuthorizationsCooperativeApproachId": "TEST-CA-001",
-  "aefT2AuthorizationsAuthorizedPartyId": "TEST-PARTY-001"
+  "aefT2AuthorizationsAuthorizedPartyId": "TEST-PARTY-001",
+  "aefT2AuthorizationsVersion": "1.0",
+  "aefT2AuthorizationsQuantity": 1000.5,
+  "aefT2AuthorizationsMetric": "tCO2e",
+  "aefT2AuthorizationsGwpValue": "1.0",
+  "aefT2AuthorizationsApplicableNonGhgMetric": "Test metric",
+  "aefT2AuthorizationsSector": "Energy industries (renewable-/ non renewable sources)",
+  "aefT2AuthorizationsActivityType": "Energy efficiency",
+  "aefT2AuthorizationsPurposesForAuthorization": "Test purpose",
+  "aefT2AuthorizationsAuthoziedEntityId": "TEST-ENTITY-001",
+  "aefT2AuthorizationsOimpAuthorizedParty": "Test OIMP Party",
+  "aefT2AuthorizationsAuthorizedTimeframe": "2024-2025",
+  "aefT2AuthorizationsAuthorizationTerms": "Test terms",
+  "aefT2AuthorizationsAuthorizationDocumentation": "<p>Test documentation</p>",
+  "aefT2AuthorizationsFirstTransferDefinitionOimp": "Test transfer definition",
+  "aefT2AuthorizationsAdditionalInformation": "Test additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT5AuthorizedEntitiesId": "e5f6a7b8-c9d0-1234-ef56-567890123456"
 }'
 ```
 
@@ -4796,7 +4841,26 @@ curl --location --request PUT 'localhost:31310/v2/aef-t2-authorizations/c3d4e5f6
   "aefT2AuthorizationsId": "TEST-AUTH-001",
   "aefT2AuthorizationsDate": "2022-02-05",
   "aefT2AuthorizationsCooperativeApproachId": "TEST-CA-001",
-  "aefT2AuthorizationsAuthorizedPartyId": "TEST-PARTY-001"
+  "aefT2AuthorizationsAuthorizedPartyId": "TEST-PARTY-001",
+  "aefT2AuthorizationsVersion": "1.1",
+  "aefT2AuthorizationsQuantity": 1500.75,
+  "aefT2AuthorizationsMetric": "tCO2e",
+  "aefT2AuthorizationsGwpValue": "1.0",
+  "aefT2AuthorizationsApplicableNonGhgMetric": "Updated metric",
+  "aefT2AuthorizationsSector": "Energy industries (renewable-/ non renewable sources)",
+  "aefT2AuthorizationsActivityType": "Energy efficiency",
+  "aefT2AuthorizationsPurposesForAuthorization": "Updated purpose",
+  "aefT2AuthorizationsAuthoziedEntityId": "TEST-ENTITY-001",
+  "aefT2AuthorizationsOimpAuthorizedParty": "Updated OIMP Party",
+  "aefT2AuthorizationsAuthorizedTimeframe": "2024-2026",
+  "aefT2AuthorizationsAuthorizationTerms": "Updated terms",
+  "aefT2AuthorizationsAuthorizationDocumentation": "<p>Updated documentation</p>",
+  "aefT2AuthorizationsFirstTransferDefinitionOimp": "Updated transfer definition",
+  "aefT2AuthorizationsAdditionalInformation": "Updated additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT5AuthorizedEntitiesId": "e5f6a7b8-c9d0-1234-ef56-567890123456"
 }'
 ```
 
@@ -4943,7 +5007,24 @@ curl --location --request POST 'localhost:31310/v2/aef-t3-actions' \
   "aefT3ActionsQuantityTCo2": 1000.5,
   "aefT3ActionsVintageYear": 2022,
   "aefT3ActionsTransferringPartyId": "TEST-TRANSFER-001",
-  "aefT3ActionsAcquiringPartyId": "TEST-ACQUIRE-001"
+  "aefT3ActionsAcquiringPartyId": "TEST-ACQUIRE-001",
+  "aefT3ActionsType": "Energy efficiency",
+  "aefT3ActionsSubtype": "Test Subtype",
+  "aefT3ActionsMetric": "tCO2e",
+  "aefT3ActionsGwpValue": "1.0",
+  "aefT3ActionsApplicableNonGhgMetric": "Test metric",
+  "aefT3ActionsQuantityNonGhg": "100 units",
+  "aefT3ActionsMitigationType": "Energy efficiency",
+  "aefT3ActionsPurposeOfUseOimp": "Test purpose",
+  "aefT3ActionsUsingParticipatingPartyId": "TEST-PARTICIPATING-001",
+  "aefT3ActionsUsingAuthorizedEntityId": "TEST-AUTHORIZED-ENTITY-001",
+  "aefT3ActionsItmoUsedYear": 2021,
+  "aefT3ActionsConsistencyCheckResult": "Passed",
+  "aefT3ActionsAdditionalInformation": "Test additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -4983,10 +5064,27 @@ curl --location --request PUT 'localhost:31310/v2/aef-t3-actions/d4e5f6a7-b8c9-0
   "aefT3ActionsUnitRegistryId": "UNIT-REGISTRY-001",
   "aefT3ActionsUnitFirstId": "UNIT-001",
   "aefT3ActionsUnitLastId": "UNIT-100",
-  "aefT3ActionsQuantityTCo2": 1000.5,
+  "aefT3ActionsQuantityTCo2": 1500.75,
   "aefT3ActionsVintageYear": 2022,
   "aefT3ActionsTransferringPartyId": "TEST-TRANSFER-001",
-  "aefT3ActionsAcquiringPartyId": "TEST-ACQUIRE-001"
+  "aefT3ActionsAcquiringPartyId": "TEST-ACQUIRE-001",
+  "aefT3ActionsType": "Energy efficiency",
+  "aefT3ActionsSubtype": "Updated Subtype",
+  "aefT3ActionsMetric": "tCO2e",
+  "aefT3ActionsGwpValue": "1.0",
+  "aefT3ActionsApplicableNonGhgMetric": "Updated metric",
+  "aefT3ActionsQuantityNonGhg": "150 units",
+  "aefT3ActionsMitigationType": "Energy efficiency",
+  "aefT3ActionsPurposeOfUseOimp": "Updated purpose",
+  "aefT3ActionsUsingParticipatingPartyId": "TEST-PARTICIPATING-001",
+  "aefT3ActionsUsingAuthorizedEntityId": "TEST-AUTHORIZED-ENTITY-001",
+  "aefT3ActionsItmoUsedYear": 2021,
+  "aefT3ActionsConsistencyCheckResult": "Passed with conditions",
+  "aefT3ActionsAdditionalInformation": "Updated additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -5119,7 +5217,16 @@ curl --location --request POST 'localhost:31310/v2/aef-t4-holdings' \
   "aefT4HoldingsUnitFirstId": "UNIT-001",
   "aefT4HoldingsUnitLastId": "UNIT-100",
   "aefT4HoldingsQuantityTCo2": 1000.5,
-  "aefT4HoldingsVintageYear": 2022
+  "aefT4HoldingsVintageYear": 2022,
+  "aefT4HoldingsMetric": "tCO2e",
+  "aefT4HoldingsGwpValue": "1.0",
+  "aefT4HoldingsApplicableNonGhgMetric": "Test metric",
+  "aefT4HoldingsQuantityNonGhg": "100 units",
+  "aefT4HoldingsMitigationType": "Energy efficiency",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -5158,8 +5265,17 @@ curl --location --request PUT 'localhost:31310/v2/aef-t4-holdings/e5f6a7b8-c9d0-
   "aefT4HoldingsUnitRegistryId": "UNIT-REGISTRY-001",
   "aefT4HoldingsUnitFirstId": "UNIT-001",
   "aefT4HoldingsUnitLastId": "UNIT-100",
-  "aefT4HoldingsQuantityTCo2": 1000.5,
-  "aefT4HoldingsVintageYear": 2022
+  "aefT4HoldingsQuantityTCo2": 1500.75,
+  "aefT4HoldingsVintageYear": 2022,
+  "aefT4HoldingsMetric": "tCO2e",
+  "aefT4HoldingsGwpValue": "1.0",
+  "aefT4HoldingsApplicableNonGhgMetric": "Updated metric",
+  "aefT4HoldingsQuantityNonGhg": "150 units",
+  "aefT4HoldingsMitigationType": "Energy efficiency",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
