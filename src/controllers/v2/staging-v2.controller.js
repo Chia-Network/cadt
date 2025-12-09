@@ -16,6 +16,7 @@ import {
   assertV2HomeOrgExists,
   assertNoPendingCommitsExcludingTransfers,
 } from '../../utils/v2-data-assertions.js';
+import { loggerV2 } from '../../config/logger.js';
 
 // Note: assertWalletIsSyncedV2 doesn't exist yet, will need to be implemented
 // For now, we'll skip wallet sync check or use V1 assertion if compatible
@@ -168,10 +169,12 @@ export const commit = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    console.trace(error);
+    loggerV2.error('[v2]: Error committing staging table:', error);
+    const table = _.get(req, 'query.table', 'all tables');
+    const ids = _.get(req, 'body.ids', []);
     res.status(400).json({
       message: 'Error committing staging table',
-      error: error.message,
+      error: error.message || `An internal error occurred while committing staging table${table !== 'all tables' ? ` '${table}'` : ''}${ids.length > 0 ? ` with ${ids.length} record(s)` : ''}`,
       success: false,
     });
   }
@@ -198,9 +201,11 @@ export const destroy = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    loggerV2.error('[v2]: Error removing staging record:', error);
+    const uuid = req.body?.uuid || 'unknown';
     res.status(400).json({
-      message: 'Staging Record can not be removed.',
-      error: error.message,
+      message: 'Cannot remove staging record',
+      error: error.message || `An internal error occurred while removing staging record with uuid '${uuid}'`,
       success: false,
     });
   }
@@ -228,8 +233,10 @@ export const clean = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    loggerV2.error('[v2]: Error cleaning staging table:', error);
     res.status(400).json({
-      message: error.message,
+      message: 'Error cleaning staging table',
+      error: error.message || 'An internal error occurred while cleaning the staging table',
       success: false,
     });
   }
@@ -282,9 +289,11 @@ export const editRecord = async (req, res) => {
       message: 'Staging Record successfully updated.',
     });
   } catch (error) {
+    loggerV2.error('[v2]: Error editing staging record:', error);
+    const uuid = req.body?.uuid || 'unknown';
     res.status(400).json({
-      message: 'Staging Record can not be edited.',
-      error: error.message,
+      message: 'Cannot edit staging record',
+      error: error.message || `An internal error occurred while editing staging record with uuid '${uuid}'`,
       success: false,
     });
   }
@@ -389,9 +398,11 @@ export const retryRecord = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    loggerV2.error('[v2]: Error restaging record:', error);
+    const uuid = req.body?.uuid || 'unknown';
     res.status(400).json({
-      message: 'Staging Record can not be restaged.',
-      error: error.message,
+      message: 'Cannot restage staging record',
+      error: error.message || `An internal error occurred while restaging record with uuid '${uuid}'`,
       success: false,
     });
   }
@@ -414,10 +425,10 @@ export const generateOfferFile = async (req, res) => {
     const offerFile = await StagingV2.generateOfferFile();
     res.json(offerFile);
   } catch (error) {
-    console.trace(error);
+    loggerV2.error('[v2]: Error generating offer file:', error);
     res.status(400).json({
-      message: 'Error generating offer file.',
-      error: error.message,
+      message: 'Error generating offer file',
+      error: error.message || 'An internal error occurred while generating the offer file',
       success: false,
     });
   }

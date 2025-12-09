@@ -16,7 +16,7 @@ export const assertV2IfReadOnlyMode = async () => {
   const config = getConfigV2();
   const READ_ONLY = config.READ_ONLY;
   if (READ_ONLY) {
-    throw new Error('You can not use this API in read-only mode');
+    throw new Error('Cannot use this API in read-only mode. The system is currently configured as read-only.');
   }
 };
 
@@ -170,7 +170,7 @@ export const getStagedRecords = async (Model) => {
 export const assertStagingTableNotEmpty = async () => {
   const stagingCount = await StagingV2.count();
   if (stagingCount === 0) {
-    throw new Error('Staging table is empty');
+    throw new Error('Staging table is empty. There are no records to commit.');
   }
 };
 
@@ -182,7 +182,7 @@ export const assertStagingTableNotEmpty = async () => {
 export const assertStagingTableIsEmpty = async () => {
   const stagingCount = await StagingV2.count();
   if (stagingCount > 0) {
-    throw new Error('Staging table is not empty');
+    throw new Error(`Staging table is not empty. There are ${stagingCount} record(s) in the staging table. Please commit or remove them before proceeding.`);
   }
 };
 
@@ -204,7 +204,7 @@ export const assertNoPendingCommitsExcludingTransfers = async () => {
   });
 
   if (pendingCommits > 0) {
-    throw new Error('There are pending commits in staging table');
+    throw new Error(`There are ${pendingCommits} pending commit(s) in the staging table (excluding transfers). Please wait for them to complete or reset them before creating new records.`);
   }
 };
 
@@ -224,7 +224,7 @@ export const assertNoPendingCommits = async () => {
   });
 
   if (pendingCommits > 0) {
-    throw new Error('There are pending commits in staging table');
+    throw new Error(`There are ${pendingCommits} pending commit(s) in the staging table. Please wait for them to complete or reset them before proceeding.`);
   }
 };
 
@@ -313,7 +313,7 @@ export const assertV2OrgIsHomeOrg = async (orgUid) => {
 
   if (!homeOrg || homeOrg.org_uid !== orgUid) {
     throw new Error(
-      `Restricted data: can not modify this record with orgUid ${orgUid}`,
+      `Restricted data: cannot modify this record with orgUid '${orgUid}'. Only the home organization can modify this record.`,
     );
   }
 };
@@ -331,7 +331,7 @@ export const assertCanBeGovernanceBodyV2 = async () => {
   const IS_GOVERNANCE_BODY = config.IS_GOVERNANCE_BODY;
   if (!IS_GOVERNANCE_BODY) {
     throw new Error(
-      'You are not an governance body and can not use this functionality',
+      'You are not a governance body and cannot use this functionality',
     );
   }
 };
@@ -349,7 +349,7 @@ export const assertIsActiveGovernanceBodyV2 = async () => {
 
   if (!governanceBodyIsSetUp) {
     throw new Error(
-      'You are not an governance body and can not use this functionality',
+      'You are not a governance body and cannot use this functionality',
     );
   }
 };

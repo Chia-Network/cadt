@@ -21,7 +21,7 @@ export const subscribeToFileStore = async (req, res) => {
 
     if (!orgUid) {
       return res.status(400).json({
-        message: 'Can not subscribe to file store',
+        message: 'Cannot subscribe to file store',
         error: 'orgUid is required',
         success: false,
       });
@@ -56,7 +56,7 @@ export const unsubscribeFromFileStore = async (req, res) => {
 
     if (!orgUid) {
       return res.status(400).json({
-        message: 'Can not unsubscribe from file store',
+        message: 'Cannot unsubscribe from file store',
         error: 'orgUid is required',
         success: false,
       });
@@ -91,7 +91,7 @@ export const getFileList = async (req, res) => {
   } catch (error) {
     loggerV2.error('[v2]: Error retrieving file list:', error);
     res.status(400).json({
-      message: 'Can not retrieve file list from filestore',
+      message: 'Cannot retrieve file list from filestore',
       error: error.message,
       success: false,
     });
@@ -111,7 +111,7 @@ export const deleteFile = async (req, res) => {
 
     if (!fileId) {
       return res.status(400).json({
-        message: 'Can not delete file from filestore',
+        message: 'Cannot delete file from filestore',
         error: 'fileId is required',
         success: false,
       });
@@ -146,7 +146,7 @@ export const getFile = async (req, res) => {
 
     if (!fileId) {
       return res.status(400).json({
-        message: 'Can not retrieve file from filestore',
+        message: 'Cannot retrieve file from filestore',
         error: 'fileId is required',
         success: false,
       });
@@ -190,8 +190,8 @@ export const addFile = async (req, res) => {
 
     if (!req.file) {
       return res.status(400).json({
-        message: 'Can not add file to file store',
-        error: 'Missing file data, can not upload file.',
+        message: 'Cannot add file to file store',
+        error: 'Missing file data. Cannot upload file without file data.',
         success: false,
       });
     }
@@ -200,8 +200,8 @@ export const addFile = async (req, res) => {
 
     if (!fileName) {
       return res.status(400).json({
-        message: 'Can not add file to file store',
-        error: 'Missing file name, can not upload file',
+        message: 'Cannot add file to file store',
+        error: 'Missing file name. Cannot upload file without a file name.',
         success: false,
       });
     }

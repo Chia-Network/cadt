@@ -65,6 +65,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
   - [POST Examples](#staging-post-examples)
     - [Commit staged records](#commit-staged-records)
     - [Retry failed commit](#retry-failed-commit)
+    - [Reset committed records](#reset-committed-records)
   - [PUT Examples](#staging-put-examples)
     - [Edit staged record](#edit-staged-record)
   - [DELETE Examples](#staging-delete-examples)
@@ -880,10 +881,39 @@ curl --location --request POST 'localhost:31310/v2/staging/retry' \
 Response
 ```json
 {
-  "message": "Staging record re-staged",
+  "message": "Staging record re-staged successfully. Please retry your staging commit using POST /v2/staging/commit.",
   "success": true
 }
 ```
+
+---
+
+#### Reset committed records
+
+Resets staging records that have `committed: true` and `failed_commit: false` back to `committed: false`. This is useful when a commit partially succeeded but then failed, leaving some records in a committed state that blocks future commits.
+
+**Note:** This endpoint only resets non-transfer records. Transfer records (`is_transfer: true`) are excluded from the reset operation.
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/staging/reset-committed' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Reset 2 committed staging record(s). You can now retry your commit.",
+  "affectedRows": 2,
+  "success": true
+}
+```
+
+**Fields**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| (none) | - | - | This endpoint does not require any request body parameters |
 
 ---
 
@@ -964,6 +994,7 @@ Response
 - GET `/v2/staging/pending` - Check if there are pending commits
 - POST `/v2/staging/commit` - Commit staged records to the datalayer
 - POST `/v2/staging/retry` - Retry committing a failed staging record
+- POST `/v2/staging/reset-committed` - Reset committed records that are blocking new commits
 - PUT `/v2/staging` - Update a staged record
 - DELETE `/v2/staging` - Delete a specific staged record
 - DELETE `/v2/staging/clean` - Delete all staged records

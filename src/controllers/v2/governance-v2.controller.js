@@ -25,9 +25,10 @@ export const findAll = async (req, res) => {
     const results = await GovernanceV2.findAll();
     return res.json(results);
   } catch (error) {
+    loggerV2.error('[v2]: Error retrieving governance data:', error);
     res.status(400).json({
-      message: 'Can not retreive Governance Data',
-      error: error.message,
+      message: 'Cannot retrieve Governance Data',
+      error: error.message || 'An internal error occurred while retrieving governance data',
       success: false,
     });
   }
@@ -59,9 +60,10 @@ export const isCreated = async (req, res) => {
       });
     }
   } catch (error) {
+    loggerV2.error('[v2]: Error retrieving governance data:', error);
     res.status(400).json({
-      message: 'Can not retreive Governance Data',
-      error: error.message,
+      message: 'Cannot retrieve Governance Data',
+      error: error.message || 'An internal error occurred while retrieving governance data',
       success: false,
     });
   }
@@ -81,9 +83,10 @@ export const findOrgList = async (req, res) => {
     });
     return res.json(JSON.parse(_.get(results, 'meta_value', '{}')));
   } catch (error) {
+    loggerV2.error('[v2]: Error retrieving governance data:', error);
     res.status(400).json({
-      message: 'Can not retreive Governance Data',
-      error: error.message,
+      message: 'Cannot retrieve Governance Data',
+      error: error.message || 'An internal error occurred while retrieving governance data',
       success: false,
     });
   }
@@ -114,9 +117,10 @@ export const findGlossary = async (req, res) => {
 
     return res.json(JSON.parse(results.meta_value));
   } catch (error) {
+    loggerV2.error('[v2]: Error retrieving governance data:', error);
     res.status(400).json({
-      message: 'Can not retreive Governance Data',
-      error: error.message,
+      message: 'Cannot retrieve Governance Data',
+      error: error.message || 'An internal error occurred while retrieving governance data',
       success: false,
     });
   }
@@ -147,9 +151,10 @@ export const findPickList = async (req, res) => {
 
     return res.json(JSON.parse(results.meta_value));
   } catch (error) {
+    loggerV2.error('[v2]: Error retrieving governance data:', error);
     res.status(400).json({
-      message: 'Can not retreive Governance Data',
-      error: error.message,
+      message: 'Cannot retrieve Governance Data',
+      error: error.message || 'An internal error occurred while retrieving governance data',
       success: false,
     });
   }
@@ -172,7 +177,7 @@ export const createGoveranceBody = async (req, res) => {
     const { GOVERNANCE_BODY_ID } = getConfigV2().GOVERNANCE;
     if (GOVERNANCE_BODY_ID && GOVERNANCE_BODY_ID !== '') {
       return res.status(400).json({
-        message: 'Cant create V2 Governance Body',
+        message: 'Cannot create V2 Governance Body',
         error:
           'You are already listening to another governance body. Please clear GOVERNANCE_BODY_ID from your V2 config and try again',
         success: false,
@@ -226,7 +231,7 @@ export const setDefaultOrgList = async (req, res) => {
   } catch (error) {
     loggerV2.error('[v2]: Error updating default orgs:', error);
     res.status(400).json({
-      message: 'Cant update default orgs',
+      message: 'Cannot update default orgs',
       error: error.message,
       success: false,
     });
@@ -259,7 +264,7 @@ export const setPickList = async (req, res) => {
   } catch (error) {
     loggerV2.error('[v2]: Error updating picklist:', error);
     res.status(400).json({
-      message: 'Cant update picklist',
+      message: 'Cannot update picklist',
       error: error.message,
       success: false,
     });
@@ -291,7 +296,7 @@ export const setGlossary = async (req, res) => {
   } catch (error) {
     loggerV2.error('[v2]: Error updating glossary:', error);
     res.status(400).json({
-      message: 'Cant update glossary',
+      message: 'Cannot update glossary',
       error: error.message,
       success: false,
     });
@@ -315,7 +320,7 @@ export const sync = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({
-      message: 'Cant Sync V2 Governance Body',
+      message: 'Cannot sync V2 Governance Body',
       error: error.message,
       success: false,
     });

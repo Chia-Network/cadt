@@ -33,7 +33,7 @@ export const findAll = async (req, res) => {
     return res.json(optionallyPaginatedResponse(auditResults, page, limit));
   } catch (error) {
     res.status(400).json({
-      message: 'Can not retrieve audit data',
+      message: 'Cannot retrieve audit data',
       error: error.message,
       success: false,
     });
@@ -54,7 +54,7 @@ export const findConflicts = async (req, res) => {
     return res.json(conflicts);
   } catch (error) {
     res.status(400).json({
-      message: 'Can not retrieve audit data',
+      message: 'Cannot retrieve audit data',
       error: error.message,
       success: false,
     });

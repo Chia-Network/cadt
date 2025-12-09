@@ -36,9 +36,13 @@ export const create = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error creating new verification',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }
@@ -72,9 +76,17 @@ export const create = async (req, res) => {
 
     // Validate foreign keys
     try {
-      await assertRecordExistanceOrStaged(ProjectV2, newRecord.cadTrustProjectId, 'cadTrustProjectId');
+      await assertRecordExistanceOrStaged(
+        ProjectV2,
+        newRecord.cadTrustProjectId,
+        `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`,
+      );
       if (newRecord.cadTrustValidationId) {
-        await assertRecordExistanceOrStaged(ValidationV2, newRecord.cadTrustValidationId, 'cadTrustValidationId');
+        await assertRecordExistanceOrStaged(
+          ValidationV2,
+          newRecord.cadTrustValidationId,
+          `cadTrustValidationId '${newRecord.cadTrustValidationId}' does not exist. Please create the validation first or use a valid cadTrustValidationId`,
+        );
       }
     } catch (err) {
       return res.status(400).json({
@@ -241,9 +253,13 @@ export const update = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error updating verification',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }
@@ -258,10 +274,26 @@ export const update = async (req, res) => {
     }
 
     // Validate foreign keys
-    await assertRecordExistanceOrStaged(ProjectV2, updateData.cadTrustProjectId, 'cadTrustProjectId');
+    try {
+      await assertRecordExistanceOrStaged(
+        ProjectV2,
+        updateData.cadTrustProjectId,
+        `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`,
+      );
 
-    if (updateData.cadTrustValidationId) {
-      await assertRecordExistanceOrStaged(ValidationV2, updateData.cadTrustValidationId, 'cadTrustValidationId');
+      if (updateData.cadTrustValidationId) {
+        await assertRecordExistanceOrStaged(
+          ValidationV2,
+          updateData.cadTrustValidationId,
+          `cadTrustValidationId '${updateData.cadTrustValidationId}' does not exist. Please create the validation first or use a valid cadTrustValidationId`,
+        );
+      }
+    } catch (err) {
+      return res.status(400).json({
+        message: 'Error updating verification',
+        error: err.message,
+        success: false,
+      });
     }
 
     // Convert camelCase API fields to snake_case DB fields for staging

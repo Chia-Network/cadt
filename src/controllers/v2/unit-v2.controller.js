@@ -90,7 +90,11 @@ export const create = async (req, res) => {
     // Validate foreign keys
     if (newRecord.cadTrustIssuanceId) {
       try {
-        await assertRecordExistanceOrStaged(IssuanceV2, newRecord.cadTrustIssuanceId, 'cadTrustIssuanceId');
+        await assertRecordExistanceOrStaged(
+          IssuanceV2,
+          newRecord.cadTrustIssuanceId,
+          `cadTrustIssuanceId '${newRecord.cadTrustIssuanceId}' does not exist. Please create the issuance first or use a valid cadTrustIssuanceId`,
+        );
       } catch (err) {
         return res.status(400).json({
           message: 'Error creating new unit',
@@ -709,14 +713,20 @@ export const update = async (req, res) => {
     }
 
     // Validate foreign keys
-    try {
-      await assertRecordExistanceOrStaged(IssuanceV2, updateData.cadTrustIssuanceId, 'cadTrustIssuanceId');
-    } catch (err) {
-      return res.status(400).json({
-        message: 'Error updating unit',
-        error: err.message,
-        success: false,
-      });
+    if (updateData.cadTrustIssuanceId) {
+      try {
+        await assertRecordExistanceOrStaged(
+          IssuanceV2,
+          updateData.cadTrustIssuanceId,
+          `cadTrustIssuanceId '${updateData.cadTrustIssuanceId}' does not exist. Please create the issuance first or use a valid cadTrustIssuanceId`,
+        );
+      } catch (err) {
+        return res.status(400).json({
+          message: 'Error updating unit',
+          error: err.message,
+          success: false,
+        });
+      }
     }
 
     // Get home organization and set orgUid automatically (for non-transfer updates)

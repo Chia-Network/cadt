@@ -35,9 +35,13 @@ export const create = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error creating new methodology',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }
@@ -172,9 +176,13 @@ export const update = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error updating methodology',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }

@@ -840,7 +840,7 @@ describe('V2 Governance Model Tests', function () {
           expect(response.status).to.equal(400);
           expect(response.body).to.have.property('success', false);
           expect(response.body.error).to.include(
-            'You are not an governance body',
+            'You are not a governance body',
           );
         },
         {

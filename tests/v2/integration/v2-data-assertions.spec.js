@@ -176,7 +176,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
         await assertStagingTableNotEmpty();
         expect.fail('Should have thrown an error');
       } catch (error) {
-        expect(error.message).to.equal('Staging table is empty');
+        expect(error.message).to.include('Staging table is empty');
       }
     });
 
@@ -204,7 +204,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
         await assertStagingTableIsEmpty();
         expect.fail('Should have thrown an error');
       } catch (error) {
-        expect(error.message).to.equal('Staging table is not empty');
+        expect(error.message).to.include('Staging table is not empty');
       }
     });
 
@@ -232,7 +232,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
         await assertNoPendingCommitsExcludingTransfers();
         expect.fail('Should have thrown an error');
       } catch (error) {
-        expect(error.message).to.equal('There are pending commits in staging table');
+        expect(error.message).to.include('pending commit');
       }
     });
 
@@ -267,7 +267,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
               await assertCanBeGovernanceBodyV2();
               expect.fail('Should have thrown an error when IS_GOVERNANCE_BODY is false');
             } catch (error) {
-              expect(error.message).to.include('You are not an governance body');
+              expect(error.message).to.include('You are not a governance body');
             }
           },
           { V2: { IS_GOVERNANCE_BODY: false } }
@@ -310,7 +310,7 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
           await assertIsActiveGovernanceBodyV2();
           expect.fail('Should have thrown an error');
         } catch (error) {
-          expect(error.message).to.include('You are not an governance body');
+          expect(error.message).to.include('You are not a governance body');
         }
       });
     });

@@ -371,7 +371,7 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.message).to.include('Can not retrieve audit data');
+      expect(response.body.message).to.include('Cannot retrieve audit data');
       expect(response.body.error).to.include('is not in the list of subscribed organizations');
     });
 
