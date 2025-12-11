@@ -448,7 +448,7 @@ describe('V2 Staging Integration Tests', function () {
       ];
 
       const [insertRecords, updateRecords, deleteChangeList] =
-        StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'program');
+        await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'program');
 
       expect(insertRecords).to.be.an('array');
       expect(insertRecords.length).to.equal(1);
@@ -480,7 +480,7 @@ describe('V2 Staging Integration Tests', function () {
       ];
 
       const [insertRecords, updateRecords, deleteChangeList] =
-        StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'program');
+        await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'program');
 
       expect(insertRecords.length).to.equal(1);
       expect(insertRecords[0].cad_trust_program_id).to.equal(programData.cad_trust_program_id);
@@ -1077,11 +1077,12 @@ describe('V2 Staging Integration Tests', function () {
           comment: 'Test commit',
           author: 'Test User',
           ids: maxIdsArray,
-        })
-        .expect(400); // Will fail because UUIDs don't exist, but validation passes
+        });
 
-      // Should fail on UUID validation, not length validation
-      expect(response.body.error).to.not.include('ids array exceeds maximum length');
+      // Should succeed - validation passes and UUID exists
+      // The test verifies that the length validation doesn't incorrectly reject valid arrays at the limit
+      expect(response.status).to.equal(200);
+      expect(response.body.success).to.be.true;
     });
 
     it('should retry failed commit record', async function () {
@@ -1270,11 +1271,16 @@ describe('V2 Staging Integration Tests', function () {
 
       // Verify that the record was NOT left in committed: true state
       // The rollback logic should have reset it back to committed: false
+      // Note: Records are marked as committed during processing (line 87-90 in staging-v2.model.js)
+      // With our fix, updates are awaited, so records are marked committed before processing
+      // If commit fails, rollback sets committed: false (line 571-579 in staging-v2.model.js)
       const failedRecord = await StagingV2.findOne({
         where: { uuid: stagingUuid },
       });
       expect(failedRecord).to.exist;
-      // After rollback, committed should be false so it doesn't block future commits
+      // Rollback should have set committed to false
+      // Note: failed_commit is only set if datalayer push succeeds but then fails,
+      // which doesn't happen in this test case (error occurs during data processing)
       expect(failedRecord.committed).to.be.false;
 
       // Verify we can now retry the commit after fixing the data
@@ -1612,7 +1618,7 @@ describe('V2 Staging Integration Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('pending commits');
+      expect(response.body.error).to.include('pending commit');
     });
 
     it('should store activeOfferTradeId in MetaV2 after generating offer', async function () {

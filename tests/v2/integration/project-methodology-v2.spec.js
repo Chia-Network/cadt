@@ -531,6 +531,20 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
   describe('POST /v2/project-methodology (Create)', function () {
     it('should create a new project-methodology relationship via API', async function () {
+      // Clean up any existing project-methodology relationships for test isolation
+      await ProjectMethodologyV2.destroy({
+        where: {
+          cadTrustProjectId: testProjectId,
+          cadTrustMethodologyId: testMethodologyId,
+        },
+      });
+      // Also clean up staging records
+      await StagingV2.destroy({
+        where: {
+          table: 'project_methodology',
+        },
+      });
+
       const projectMethodologyData = {
         cadTrustProjectId: testProjectId,
         cadTrustMethodologyId: testMethodologyId,
@@ -607,6 +621,20 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
     let createdMethodologyId;
 
     before(async function () {
+      // Clean up any existing project-methodology relationships for test isolation
+      await ProjectMethodologyV2.destroy({
+        where: {
+          cadTrustProjectId: testProjectId,
+          cadTrustMethodologyId: testMethodologyId,
+        },
+      });
+      // Also clean up staging records
+      await StagingV2.destroy({
+        where: {
+          table: 'project_methodology',
+        },
+      });
+
       const projectMethodologyData = {
         cadTrustProjectId: testProjectId,
         cadTrustMethodologyId: testMethodologyId,

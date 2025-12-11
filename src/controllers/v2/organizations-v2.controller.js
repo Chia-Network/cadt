@@ -186,29 +186,25 @@ export const upgrade = async (req, res) => {
       });
     }
 
-    // Check if V2 home org already exists
-    const existingV2Org = await OrganizationsV2.findOne({
-      where: { is_home: true },
-      raw: true,
-    });
-
-    if (existingV2Org) {
-      return res.status(400).json({
-        message: 'V2 home organization already exists. Already upgraded.',
-        success: false,
-      });
-    }
+    // Note: Don't check for existing V2 org here - let upgradeFromV1 handle it
+    // This allows the model to detect and recover from partial upgrades
+    // (where V2 org exists but singleton is missing v2 key)
 
     // Get name and icon from V1 org
     const name = v1Org.name || '';
     const icon = v1Org.icon || '';
 
-    // Call upgradeFromV1
-    const orgUid = await OrganizationsV2.upgradeFromV1(name, icon);
+    // Call upgradeFromV1 asynchronously (don't await)
+    // This allows the HTTP request to return immediately while upgrade happens in background
+    OrganizationsV2.upgradeFromV1(name, icon).catch((error) => {
+      loggerV2.error(
+        `[v2]: Error upgrading V2 organization in background: ${error.message}`,
+      );
+    });
 
-    res.json({
-      message: 'V2 organization upgraded successfully from V1',
-      orgUid,
+    return res.json({
+      message:
+        'V2 organization upgrade is currently being processed. It can take up to 30 mins. Please do not interrupt this process.',
       success: true,
     });
   } catch (error) {

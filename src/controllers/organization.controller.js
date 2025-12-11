@@ -141,6 +141,19 @@ export const create = async (req, res) => {
       });
     } else {
       const { name, icon } = req.body;
+
+      // Validate name is required
+      if (!name) {
+        return res.status(400).json({
+          message: 'Organization name is required',
+          success: false,
+        });
+      }
+
+      // Icon is optional - use provided value or default to empty string
+      // Icon can be any string (URL, base64-encoded data, etc.) or empty
+      const iconValue = icon !== undefined && icon !== null ? icon : '';
+
       const dataModelVersion = 'v1';
 
       return res.json({
@@ -148,7 +161,7 @@ export const create = async (req, res) => {
         success: true,
         orgId: await Organization.createHomeOrganization(
           name,
-          icon,
+          iconValue,
           dataModelVersion,
         ),
       });

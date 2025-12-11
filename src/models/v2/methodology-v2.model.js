@@ -41,7 +41,7 @@ class MethodologyV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'methodology');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'methodology');
 
     loggerV2.debug('[v2]: MethodologyV2 changelist generation', {
       insertRecordsCount: insertRecords.length,

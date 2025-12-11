@@ -146,11 +146,11 @@ const runMirrorCheckV2 = async () => {
       try {
         await OrganizationsV2.addMirror(orgData.org_uid, mirrorUrl, true);
         loggerV2.debug(
-          `[v2]: [MIRROR_DEBUG] Added mirror for org_uid: ${orgData.org_uid}`,
+          `[v2]: [MIRROR_DEBUG] Mirror ensured for org_uid: ${orgData.org_uid}`,
         );
       } catch (error) {
         loggerV2.error(
-          `[v2]: [MIRROR_DEBUG] Failed to add mirror for org_uid ${orgData.org_uid}: ${error.message}`,
+          `[v2]: [MIRROR_DEBUG] Failed to ensure mirror for org_uid ${orgData.org_uid}: ${error.message}`,
         );
       }
 
@@ -162,11 +162,11 @@ const runMirrorCheckV2 = async () => {
             true,
           );
           loggerV2.debug(
-            `[v2]: [MIRROR_DEBUG] Added mirror for data_model_version_store_id: ${orgData.data_model_version_store_id}`,
+            `[v2]: [MIRROR_DEBUG] Mirror ensured for data_model_version_store_id: ${orgData.data_model_version_store_id}`,
           );
         } catch (error) {
           loggerV2.error(
-            `[v2]: [MIRROR_DEBUG] Failed to add mirror for data_model_version_store_id ${orgData.data_model_version_store_id}: ${error.message}`,
+            `[v2]: [MIRROR_DEBUG] Failed to ensure mirror for data_model_version_store_id ${orgData.data_model_version_store_id}: ${error.message}`,
           );
         }
       } else {
@@ -179,11 +179,11 @@ const runMirrorCheckV2 = async () => {
         try {
           await OrganizationsV2.addMirror(orgData.registry_id, mirrorUrl, true);
           loggerV2.debug(
-            `[v2]: [MIRROR_DEBUG] Added mirror for registry_id: ${orgData.registry_id}`,
+            `[v2]: [MIRROR_DEBUG] Mirror ensured for registry_id: ${orgData.registry_id}`,
           );
         } catch (error) {
           loggerV2.error(
-            `[v2]: [MIRROR_DEBUG] Failed to add mirror for registry_id ${orgData.registry_id}: ${error.message}`,
+            `[v2]: [MIRROR_DEBUG] Failed to ensure mirror for registry_id ${orgData.registry_id}: ${error.message}`,
           );
         }
       } else {

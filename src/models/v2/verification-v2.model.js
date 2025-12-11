@@ -56,7 +56,7 @@ class VerificationV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'verification');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'verification');
 
     const primaryKeyMap = {
       verification: 'cad_trust_verification_id',

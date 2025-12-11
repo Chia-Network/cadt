@@ -50,7 +50,7 @@ class ValidationV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'validation');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'validation');
 
     const primaryKeyMap = {
       validation: 'cad_trust_validation_id',

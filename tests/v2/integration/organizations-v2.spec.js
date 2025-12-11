@@ -359,8 +359,8 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         .expect(200);
 
       expect(response.body.success).to.be.true;
-      expect(response.body.orgUid).to.exist;
-      expect(response.body.message).to.include('upgraded successfully');
+      expect(response.body.message).to.include('currently being processed');
+      // Upgrade happens asynchronously, so orgUid won't be in response yet
 
       await waitForOrgCreation();
 
@@ -453,7 +453,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       ).to.be.true;
     });
 
-    it('should error if V2 org already exists', async function () {
+    it('should error if V2 org already exists and singleton has v2 key', async function () {
       // Create V1 org
       const v1Org = await Organization.create({
         orgUid: 'test-v1-org-error',
@@ -467,6 +467,15 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         fileStoreId: 'test-filestore',
       });
 
+      // Create singleton with both v1 and v2 keys (simulating completed upgrade)
+      await datalayer.syncDataLayer(
+        v1Org.dataModelVersionStoreId,
+        {
+          v1: v1Org.registryId,
+          v2: 'test-registry-v2', // v2 key already exists
+        },
+      );
+
       // Create V2 org
       const v2Org = await OrganizationsV2.create({
         org_uid: 'test-v2-org-error',
@@ -475,21 +484,134 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         is_home: true,
         subscribed: true,
         registry_id: 'test-registry-v2',
-        data_model_version_store_id: 'test-singleton',
+        data_model_version_store_id: v1Org.dataModelVersionStoreId,
         file_store_subscribed: 'test-filestore-v2',
       });
 
-      // Try to upgrade again - should error
+      await waitForOrgCreation();
+
+      // Try to upgrade again - should error (already fully upgraded)
       const response = await supertest(app)
         .post('/v2/organizations/upgrade')
         .expect(400);
 
       expect(response.body.success).to.be.false;
       expect(
-        (response.body.message?.includes('already exists') || response.body.error?.includes('already exists')) &&
-        (response.body.message?.includes('Already upgraded') || response.body.error?.includes('Already upgraded'))
+        response.body.message?.includes('already exists') ||
+        response.body.message?.includes('already complete') ||
+        response.body.error?.includes('already exists') ||
+        response.body.error?.includes('already complete')
       ).to.be.true;
     });
+
+    it('should complete partial upgrade if V2 org exists but singleton missing v2 key', async function () {
+      // Create V1 org
+      const v1OrgUid = USE_SIMULATOR ? 'test-v1-partial' : await datalayer.createDataLayerStore();
+      const v1RegistryId = USE_SIMULATOR ? 'test-registry-partial' : await datalayer.createDataLayerStore();
+      const v1DataModelVersionStoreId = USE_SIMULATOR ? 'test-singleton-partial' : await datalayer.createDataLayerStore();
+      const v1FileStoreId = USE_SIMULATOR ? 'test-filestore-partial' : await datalayer.createDataLayerStore();
+
+      const v1Org = await Organization.create({
+        orgUid: v1OrgUid,
+        name: 'Test V1 Org Partial',
+        icon: 'test-icon',
+        isHome: true,
+        subscribed: true,
+        synced: true,
+        registryId: v1RegistryId,
+        dataModelVersionStoreId: v1DataModelVersionStoreId,
+        fileStoreId: v1FileStoreId,
+      });
+
+      // Create singleton with ONLY v1 key (simulating partial upgrade failure)
+      await datalayer.syncDataLayer(
+        v1DataModelVersionStoreId,
+        { v1: v1RegistryId }, // Only v1 key - v2 key missing
+      );
+
+      // Set up V1 orgUid store
+      await datalayer.syncDataLayer(
+        v1OrgUid,
+        {
+          registryId: v1DataModelVersionStoreId,
+          fileStoreId: v1FileStoreId,
+          name: v1Org.name,
+          icon: v1Org.icon,
+        },
+      );
+
+      await waitForOrgCreation();
+
+      // Create V2 org (simulating partial upgrade - org created but singleton update failed)
+      const v2OrgUid = USE_SIMULATOR ? 'test-v2-org-partial' : await datalayer.createDataLayerStore();
+      const v2RegistryId = USE_SIMULATOR ? 'test-registry-v2-partial' : await datalayer.createDataLayerStore();
+      const v2FileStoreId = USE_SIMULATOR ? 'test-filestore-v2-partial' : await datalayer.createDataLayerStore();
+
+      const v2Org = await OrganizationsV2.create({
+        org_uid: v2OrgUid,
+        name: v1Org.name,
+        icon: v1Org.icon,
+        is_home: true,
+        subscribed: true,
+        registry_id: v2RegistryId,
+        data_model_version_store_id: v1DataModelVersionStoreId, // Shared singleton
+        file_store_subscribed: v2FileStoreId,
+      });
+
+      // Set up V2 orgUid store
+      await datalayer.syncDataLayer(
+        v2OrgUid,
+        {
+          registryId: v1DataModelVersionStoreId,
+          fileStoreId: v2FileStoreId,
+          name: v1Org.name,
+          icon: v1Org.icon,
+        },
+      );
+
+      await waitForOrgCreation();
+
+      // Verify singleton only has v1 key before recovery
+      const singletonDataBefore = await getStoreDataForTest(v1DataModelVersionStoreId);
+      const decodedSingletonBefore = decodeDataLayerResponse(singletonDataBefore);
+      const singletonMapBefore = {};
+      decodedSingletonBefore.forEach(({ key, value }) => {
+        singletonMapBefore[key] = value;
+      });
+      expect(singletonMapBefore.v1).to.equal(v1RegistryId);
+      expect(singletonMapBefore.v2).to.be.undefined; // v2 key missing
+
+      // Re-run upgrade - should complete the partial upgrade
+      const response = await supertest(app)
+        .post('/v2/organizations/upgrade')
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.message).to.include('currently being processed');
+
+      await waitForOrgCreation();
+
+      // Verify singleton now has BOTH v1 and v2 keys
+      const singletonDataAfter = await getStoreDataForTest(v1DataModelVersionStoreId);
+      const decodedSingletonAfter = decodeDataLayerResponse(singletonDataAfter);
+      const singletonMapAfter = {};
+      decodedSingletonAfter.forEach(({ key, value }) => {
+        singletonMapAfter[key] = value;
+      });
+
+      expect(singletonMapAfter.v1).to.equal(v1RegistryId);
+      expect(singletonMapAfter.v2).to.equal(v2RegistryId); // v2 key now added
+
+      // Verify V2 org still exists and is unchanged
+      const v2OrgAfter = await OrganizationsV2.findOne({
+        where: { org_uid: v2OrgUid },
+        raw: true,
+      });
+
+      expect(v2OrgAfter).to.exist;
+      expect(v2OrgAfter.org_uid).to.equal(v2OrgUid);
+      expect(v2OrgAfter.registry_id).to.equal(v2RegistryId);
+    }).timeout(TEST_WAIT_TIME * 15);
   });
 
   describe('Singleton Structure Verification', function () {

@@ -76,7 +76,7 @@ class IssuanceV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'issuance');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'issuance');
 
     const primaryKeyMap = {
       issuance: 'cad_trust_issuance_id',

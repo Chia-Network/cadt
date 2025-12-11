@@ -457,7 +457,10 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('Invalid limit value');
+      // Joi validation runs before controller, so we get "Data Validation error" format
+      expect(response.body.message).to.equal('Data Validation error');
+      expect(response.body.errors).to.be.an('array');
+      expect(response.body.errors.length).to.be.greaterThan(0);
     });
 
     it('should reject invalid page value (too large)', async function () {
@@ -499,7 +502,10 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('Invalid page value');
+      // Joi validation runs before controller, so we get "Data Validation error" format
+      expect(response.body.message).to.equal('Data Validation error');
+      expect(response.body.errors).to.be.an('array');
+      expect(response.body.errors.length).to.be.greaterThan(0);
     });
 
     it('should accept valid limit and page values at maximum bounds', async function () {

@@ -78,6 +78,11 @@ app.use(async function (req, res, next) {
     await assertWalletIsAvailable();
     next();
   } catch (err) {
+    if (res.headersSent) {
+      logger.warn('[middleware]: Response already sent, cannot send Chia exception');
+      return next(err);
+    }
+
     res.status(400).json({
       message: 'Chia Exception',
       error: err.message,
@@ -400,6 +405,11 @@ if (enableV2) {
 
 app.use((err, req, res, next) => {
   if (err) {
+    if (res.headersSent) {
+      logger.warn('[middleware]: Response already sent, cannot handle error');
+      return next(err);
+    }
+
     if (_.get(err, 'error.details')) {
       // format Joi validation errors
       return res.status(400).json({
@@ -407,6 +417,15 @@ app.use((err, req, res, next) => {
         errors: err.error.details.map((detail) => {
           return _.get(detail, 'context.message', detail.message);
         }),
+        success: false,
+      });
+    }
+
+    // If err is an Error object, it won't serialize well - extract message
+    if (err instanceof Error) {
+      return res.status(err?.status || 400).json({
+        message: err.message || 'An error occurred',
+        error: err.message,
         success: false,
       });
     }

@@ -5,7 +5,8 @@ export const auditGetSchema = Joi.object()
     page: Joi.number().required(),
     limit: Joi.number().required(),
     orgUid: Joi.string().required(),
-    order: Joi.string().valid('ASC', 'DESC').optional(),
+    // Allow any string for order - controller will default invalid values to DESC
+    order: Joi.string().optional(),
   })
   .with('page', 'limit')
   .with('limit', 'page');

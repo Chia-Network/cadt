@@ -132,7 +132,7 @@ class ProjectV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'project');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'project');
 
     const primaryKeyMap = {
       project: 'cad_trust_project_id',

@@ -96,7 +96,7 @@ class UnitV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'unit');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'unit');
 
     const primaryKeyMap = {
       unit: 'cad_trust_unit_id',

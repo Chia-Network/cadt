@@ -40,7 +40,7 @@ class StakeholderV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'stakeholder');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'stakeholder');
 
     const primaryKeyMap = {
       stakeholder: 'cad_trust_stakeholder_id',

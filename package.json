@@ -17,6 +17,7 @@
     "test:v2:aef": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/aef-*.spec.js --reporter spec --exit --timeout 300000",
     "test:v2:core": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js 'tests/v2/integration/co-benefit-v2.spec.js' 'tests/v2/integration/estimation-v2.spec.js' 'tests/v2/integration/rating-v2.spec.js' 'tests/v2/integration/label-v2.spec.js' 'tests/v2/integration/stakeholder-v2.spec.js' --reporter spec --exit --timeout 300000",
     "test:v2:joins": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js 'tests/v2/integration/project-methodology-v2.spec.js' 'tests/v2/integration/stakeholder-projects-v2.spec.js' 'tests/v2/integration/unit-label-v2.spec.js' --reporter spec --exit --timeout 300000",
+    "test:v2:live:validation": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/methodology-validation.spec.js' --reporter spec --exit --timeout 600000",
     "release": "npx standard-version",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3 && rm -f ./test-v2.sqlite3 && rm -f ./testMirror-v2.sqlite3",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",

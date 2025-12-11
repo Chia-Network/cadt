@@ -846,7 +846,17 @@ export const transfer = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error transferring project:', err);
+    loggerV2.error('[v2]: Error transferring project', {
+      error: err.message,
+      stack: err.stack,
+      headersSent: res.headersSent,
+    });
+
+    if (res.headersSent) {
+      loggerV2.error('[v2]: Response already sent, cannot send error response');
+      return;
+    }
+
     res.status(400).json({
       message: 'Error transferring project',
       error: err.message,

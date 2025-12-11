@@ -614,13 +614,16 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
   describe('POST /v2/aef-t2-authorizations (Create)', function () {
     it('should create a new AEF-T2-Authorizations record via API', async function () {
       const aefT2AuthorizationsData = {
+        aefT2AuthorizationsId: 'TEST-AUTH-API-001',
+        aefT2AuthorizationsDate: '2024-01-15',
+        aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-API-001',
+        aefT2AuthorizationsAuthorizedPartyId: 'TEST-PARTY-API-001',
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
-        aefT2AuthorizationsDate: '2024-01-15',
         aefT2AuthorizationsMetric: 'tCO2e',
-        aefT2AuthorizationsSector: 'Energy',
-        aefT2AuthorizationsActivityType: 'Renewable Energy',
+        aefT2AuthorizationsSector: 'Energy industries (renewable-/ non renewable sources)',
+        aefT2AuthorizationsActivityType: 'Energy efficiency',
         aefT2AuthorizationsPurposesForAuthorization: 'Mitigation',
       };
 
@@ -660,6 +663,10 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
 
     it('should reject AEF-T2-Authorizations with invalid foreign key (non-existent)', async function () {
       const aefT2AuthorizationsData = {
+        aefT2AuthorizationsId: 'TEST-AUTH-FK-001',
+        aefT2AuthorizationsDate: '2024-01-15',
+        aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-FK-001',
+        aefT2AuthorizationsAuthorizedPartyId: 'TEST-PARTY-FK-001',
         cadTrustAefT1SubmissionId: '550e8400-e29b-41d4-a716-446655440999',
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
@@ -698,10 +705,13 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
 
     before(async function () {
       const aefT2AuthorizationsData = {
+        aefT2AuthorizationsId: 'TEST-AUTH-UPDATE-001',
+        aefT2AuthorizationsDate: '2024-01-15',
+        aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-UPDATE-001',
+        aefT2AuthorizationsAuthorizedPartyId: 'TEST-PARTY-UPDATE-001',
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
-        aefT2AuthorizationsDate: '2024-01-15',
       };
 
       const response = await supertest(app)
@@ -720,22 +730,28 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         await stagingRecord.update({ committed: true });
         await AefT2AuthorizationsV2.create({
           cadTrustAefT2AuthorizationsId: createdAefT2AuthorizationsId,
+          aefT2AuthorizationsId: 'TEST-AUTH-UPDATE-001',
+          aefT2AuthorizationsDate: '2024-01-15',
+          aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-UPDATE-001',
+          aefT2AuthorizationsAuthorizedPartyId: 'TEST-PARTY-UPDATE-001',
           cadTrustAefT1SubmissionId: testAefT1SubmissionId,
           cadTrustUnitId: testUnitId,
           cadTrustProjectId: testProjectId,
-          aefT2AuthorizationsDate: '2024-01-15',
         });
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();
        }
-    });it('should update an AEF-T2-Authorizations via API', async function () {
+    });    it('should update an AEF-T2-Authorizations via API', async function () {
       const updateData = {
+        aefT2AuthorizationsId: 'TEST-AUTH-UPDATE-001',
+        aefT2AuthorizationsDate: '2024-12-31',
+        aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-UPDATE-001',
+        aefT2AuthorizationsAuthorizedPartyId: 'TEST-PARTY-UPDATE-001',
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
-        aefT2AuthorizationsDate: '2024-12-31',
         aefT2AuthorizationsMetric: 'tCO2e',
-        aefT2AuthorizationsSector: 'Energy',
+        aefT2AuthorizationsSector: 'Energy industries (renewable-/ non renewable sources)',
       };
 
       const response = await supertest(app)
@@ -754,6 +770,10 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
 
     before(async function () {
       const aefT2AuthorizationsData = {
+        aefT2AuthorizationsId: 'TEST-AUTH-DELETE-001',
+        aefT2AuthorizationsDate: '2024-01-15',
+        aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-DELETE-001',
+        aefT2AuthorizationsAuthorizedPartyId: 'TEST-PARTY-DELETE-001',
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
@@ -775,6 +795,10 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         await stagingRecord.update({ committed: true });
         await AefT2AuthorizationsV2.create({
           cadTrustAefT2AuthorizationsId: createdAefT2AuthorizationsId,
+          aefT2AuthorizationsId: 'TEST-AUTH-DELETE-001',
+          aefT2AuthorizationsDate: '2024-01-15',
+          aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-DELETE-001',
+          aefT2AuthorizationsAuthorizedPartyId: 'TEST-PARTY-DELETE-001',
           cadTrustAefT1SubmissionId: testAefT1SubmissionId,
           cadTrustUnitId: testUnitId,
           cadTrustProjectId: testProjectId,

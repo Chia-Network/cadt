@@ -20,17 +20,53 @@ export const findAll = async (req, res) => {
   try {
     const { page, limit, orgUid, order } = req.query;
 
-    const pagination = paginationParams(page, limit);
+    // Validate pagination parameters BEFORE normalization to catch invalid values
+    // This prevents normalization from masking validation errors
+    // Security: Validate using parseInt() which is safe - values are used in Sequelize parameterized queries
+    let validatedLimit = limit;
+    let validatedPage = page;
+
+    if (limit !== undefined && limit !== null && limit !== '') {
+      const safeLimit = parseInt(limit, 10);
+      if (isNaN(safeLimit) || safeLimit < 1 || safeLimit > 10000) {
+        return res.status(400).json({
+          message: 'Cannot retrieve audit data',
+          error: 'Invalid limit value. Must be between 1 and 10000',
+          success: false,
+        });
+      }
+      validatedLimit = safeLimit;
+    }
+
+    if (page !== undefined && page !== null && page !== '') {
+      const safePage = parseInt(page, 10);
+      if (isNaN(safePage) || safePage < 1 || safePage > 100000) {
+        return res.status(400).json({
+          message: 'Cannot retrieve audit data',
+          error: 'Invalid page value. Must be between 1 and 100000',
+          success: false,
+        });
+      }
+      validatedPage = safePage;
+    }
+
+    // Now normalize validated values for pagination calculation
+    const pagination = paginationParams(validatedPage, validatedLimit);
 
     // Use findAuditHistory (renamed from findAll to avoid Sequelize conflict)
+    // Pass validated values - findAuditHistory will use them directly (validation already done)
+    // Default invalid order values to DESC
+    const validatedOrder = (order && (order.toUpperCase() === 'ASC' || order.toUpperCase() === 'DESC'))
+      ? order.toUpperCase()
+      : 'DESC';
     const auditResults = await AuditV2.findAuditHistory(
       orgUid,
-      order || 'DESC',
+      validatedOrder,
       pagination.limit,
-      page,
+      validatedPage,
     );
 
-    return res.json(optionallyPaginatedResponse(auditResults, page, limit));
+    return res.json(optionallyPaginatedResponse(auditResults, validatedPage, validatedLimit));
   } catch (error) {
     res.status(400).json({
       message: 'Cannot retrieve audit data',

@@ -462,6 +462,20 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
 
   describe('POST /v2/stakeholder-projects (Create)', function () {
     it('should create a new stakeholder-projects relationship via API', async function () {
+      // Clean up any existing stakeholder-project relationships for test isolation
+      await StakeholderProjectV2.destroy({
+        where: {
+          cadTrustStakeholderId: testStakeholderId,
+          cadTrustProjectId: testProjectId,
+        },
+      });
+      // Also clean up staging records
+      await StagingV2.destroy({
+        where: {
+          table: 'stakeholder_projects',
+        },
+      });
+
       const stakeholderProjectData = {
         cadTrustStakeholderId: testStakeholderId,
         cadTrustProjectId: testProjectId,
