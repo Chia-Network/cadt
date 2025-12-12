@@ -70,11 +70,6 @@ AefT5AuthorizedEntitiesV2Mirror.init(
       allowNull: true,
       field: 'cad_trust_project_id',
     },
-    cadTrustAefT2AuthorizationsId: {
-      type: Sequelize.UUID,
-      allowNull: true,
-      field: 'cad_trust_aef_t2_authorizations_id',
-    },
     createdAt: {
       type: Sequelize.DATE,
       allowNull: false,

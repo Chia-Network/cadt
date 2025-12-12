@@ -151,7 +151,33 @@ export const checkForV2Migrations = async (db) => {
           replacements: { name: notCompleted.name },
         });
       } catch (e) {
-        loggerV2.error('V2 Migration not completed', e);
+        // Check if error is "already exists" - this is OK for idempotent migrations
+        const errorMessage = e.message || e.toString();
+        const isAlreadyExistsError =
+          errorMessage.includes('already exists') ||
+          errorMessage.includes('duplicate column name') ||
+          (e.parent && (
+            e.parent.code === 'SQLITE_ERROR' &&
+            (e.parent.message?.includes('already exists') || e.parent.message?.includes('duplicate')
+          )));
+
+        if (isAlreadyExistsError) {
+          loggerV2.warn(`V2 Migration ${notCompleted.name} encountered "already exists" error, marking as complete:`, errorMessage);
+          // Mark migration as complete even if some parts already exist
+          try {
+            await db.query('INSERT INTO `SequelizeMetaV2` (name) VALUES(:name)', {
+              type: Sequelize.QueryTypes.INSERT,
+              replacements: { name: notCompleted.name },
+            });
+          } catch (insertError) {
+            // Ignore if already in meta table
+            if (!insertError.message?.includes('UNIQUE constraint')) {
+              loggerV2.error('Error marking migration as complete', insertError);
+            }
+          }
+        } else {
+          loggerV2.error('V2 Migration not completed', e);
+        }
       }
     }
   } catch (error) {

@@ -234,11 +234,17 @@ export const updateAefT4HoldingsV2 = async (req, res) => {
     const { cadTrustAefT4HoldingsId } = req.params;
     const updateData = _.cloneDeep(req.body);
 
-    // Verify record exists first (before validation)
-    const existingRecord = await AefT4HoldingsV2.findByPk(cadTrustAefT4HoldingsId);
-    if (!existingRecord) {
+    // Verify record exists first (before validation) - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        AefT4HoldingsV2,
+        cadTrustAefT4HoldingsId,
+        `AEF-T4-Holdings with ID '${cadTrustAefT4HoldingsId}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'AEF-T4-Holdings not found',
+        error: err.message,
         success: false,
       });
     }
@@ -347,11 +353,17 @@ export const deleteAefT4HoldingsV2 = async (req, res) => {
 
     const { cadTrustAefT4HoldingsId } = req.params;
 
-    // Verify record exists
-    const existingRecord = await AefT4HoldingsV2.findByPk(cadTrustAefT4HoldingsId);
-    if (!existingRecord) {
+    // Verify record exists - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        AefT4HoldingsV2,
+        cadTrustAefT4HoldingsId,
+        `AEF-T4-Holdings with ID '${cadTrustAefT4HoldingsId}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'AEF-T4-Holdings not found',
+        error: err.message,
         success: false,
       });
     }

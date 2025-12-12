@@ -666,6 +666,12 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-API',
         aefT4HoldingsAuthorizationId: 'TEST-AUTH-API',
         aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-API',
+        aefT4HoldingsPartyItmoRegistryId: 'TEST-ITMO-REG',
+        aefT4HoldingsItmoFirstId: 'ITMO-FIRST-001',
+        aefT4HoldingsItmoLastId: 'ITMO-LAST-001',
+        aefT4HoldingsUnitRegistryId: 'TEST-UNIT-REG',
+        aefT4HoldingsUnitFirstId: 'UNIT-FIRST-001',
+        aefT4HoldingsUnitLastId: 'UNIT-LAST-001',
         aefT4HoldingsQuantityTCo2: 1000.0,
         aefT4HoldingsVintageYear: 2024,
       };
@@ -710,6 +716,17 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
         cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
+        aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-API',
+        aefT4HoldingsAuthorizationId: 'TEST-AUTH-API',
+        aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-API',
+        aefT4HoldingsPartyItmoRegistryId: 'TEST-ITMO-REG',
+        aefT4HoldingsItmoFirstId: 'ITMO-FIRST-001',
+        aefT4HoldingsItmoLastId: 'ITMO-LAST-001',
+        aefT4HoldingsUnitRegistryId: 'TEST-UNIT-REG',
+        aefT4HoldingsUnitFirstId: 'UNIT-FIRST-001',
+        aefT4HoldingsUnitLastId: 'UNIT-LAST-001',
+        aefT4HoldingsQuantityTCo2: 1000.0,
+        aefT4HoldingsVintageYear: 2024,
       };
 
       const response = await supertest(app)

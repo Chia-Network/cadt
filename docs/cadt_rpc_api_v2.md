@@ -4830,7 +4830,6 @@ Fields:
 | cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
 | cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
 | cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
-| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
 
 **Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
@@ -4850,7 +4849,6 @@ curl --location --request POST 'localhost:31310/v2/aef-t5-authorized-entities' \
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -4891,7 +4889,6 @@ curl --location --request PUT 'localhost:31310/v2/aef-t5-authorized-entities/b2c
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -5016,7 +5013,6 @@ Fields:
 | cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
 | cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
 | cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
-| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
 
 **Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
@@ -5055,7 +5051,6 @@ curl --location --request POST 'localhost:31310/v2/aef-t3-actions' \
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -5115,7 +5110,6 @@ curl --location --request PUT 'localhost:31310/v2/aef-t3-actions/d4e5f6a7-b8c9-0
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -5229,7 +5223,6 @@ Fields:
 | cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
 | cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
 | cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
-| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
 
 **Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
@@ -5257,7 +5250,6 @@ curl --location --request POST 'localhost:31310/v2/aef-t4-holdings' \
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -5306,7 +5298,6 @@ curl --location --request PUT 'localhost:31310/v2/aef-t4-holdings/e5f6a7b8-c9d0-
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 

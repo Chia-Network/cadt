@@ -806,8 +806,16 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         aefT3ActionsCoopoerativeApproachId: 'TEST-CA-API',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-API',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-API',
+        aefT3ActionsPartyItmoRegistryId: 'TEST-ITMO-REG',
+        aefT3ActionsItmoFirstId: 'ITMO-FIRST-001',
+        aefT3ActionsItmoLastId: 'ITMO-LAST-001',
+        aefT3ActionsUnitRegistryId: 'TEST-UNIT-REG',
+        aefT3ActionsUnitFirstId: 'UNIT-FIRST-001',
+        aefT3ActionsUnitLastId: 'UNIT-LAST-001',
         aefT3ActionsQuantityTCo2: 1000.0,
         aefT3ActionsVintageYear: 2024,
+        aefT3ActionsTransferringPartyId: 'TRANSFER-PARTY-001',
+        aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-001',
       };
 
       const response = await supertest(app)
@@ -850,6 +858,20 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
         cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
+        aefT3ActionsDate: '2024-01-15',
+        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-API',
+        aefT3ActionsAuthorizationId: 'TEST-AUTH-API',
+        aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-API',
+        aefT3ActionsPartyItmoRegistryId: 'TEST-ITMO-REG',
+        aefT3ActionsItmoFirstId: 'ITMO-FIRST-001',
+        aefT3ActionsItmoLastId: 'ITMO-LAST-001',
+        aefT3ActionsUnitRegistryId: 'TEST-UNIT-REG',
+        aefT3ActionsUnitFirstId: 'UNIT-FIRST-001',
+        aefT3ActionsUnitLastId: 'UNIT-LAST-001',
+        aefT3ActionsQuantityTCo2: 1000.0,
+        aefT3ActionsVintageYear: 2024,
+        aefT3ActionsTransferringPartyId: 'TRANSFER-PARTY-001',
+        aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-001',
       };
 
       const response = await supertest(app)

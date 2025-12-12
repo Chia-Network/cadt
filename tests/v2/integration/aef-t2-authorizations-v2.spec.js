@@ -614,10 +614,13 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
   describe('POST /v2/aef-t2-authorizations (Create)', function () {
     it('should create a new AEF-T2-Authorizations record via API', async function () {
       const aefT2AuthorizationsData = {
+        aefT2AuthorizationsId: 'AEF-T2-001',
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
         aefT2AuthorizationsDate: '2024-01-15',
+        aefT2AuthorizationsCooperativeApproachId: 'COOP-001',
+        aefT2AuthorizationsAuthorizedPartyId: 'PARTY-001',
         aefT2AuthorizationsMetric: 'tCO2e',
         aefT2AuthorizationsSector: 'Energy',
         aefT2AuthorizationsActivityType: 'Renewable Energy',
@@ -660,9 +663,13 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
 
     it('should reject AEF-T2-Authorizations with invalid foreign key (non-existent)', async function () {
       const aefT2AuthorizationsData = {
+        aefT2AuthorizationsId: 'AEF-T2-002',
         cadTrustAefT1SubmissionId: '550e8400-e29b-41d4-a716-446655440999',
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
+        aefT2AuthorizationsDate: '2024-01-15',
+        aefT2AuthorizationsCooperativeApproachId: 'COOP-002',
+        aefT2AuthorizationsAuthorizedPartyId: 'PARTY-002',
       };
 
       const response = await supertest(app)

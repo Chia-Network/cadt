@@ -234,11 +234,17 @@ export const updateAefT3ActionsV2 = async (req, res) => {
     const { cadTrustAefT3ActionsId } = req.params;
     const updateData = _.cloneDeep(req.body);
 
-    // Verify record exists first (before validation)
-    const existingRecord = await AefT3ActionsV2.findByPk(cadTrustAefT3ActionsId);
-    if (!existingRecord) {
+    // Verify record exists first (before validation) - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        AefT3ActionsV2,
+        cadTrustAefT3ActionsId,
+        `AEF-T3-Actions with ID '${cadTrustAefT3ActionsId}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'AEF-T3-Actions not found',
+        error: err.message,
         success: false,
       });
     }
@@ -347,11 +353,17 @@ export const deleteAefT3ActionsV2 = async (req, res) => {
 
     const { cadTrustAefT3ActionsId } = req.params;
 
-    // Verify record exists
-    const existingRecord = await AefT3ActionsV2.findByPk(cadTrustAefT3ActionsId);
-    if (!existingRecord) {
+    // Verify record exists - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        AefT3ActionsV2,
+        cadTrustAefT3ActionsId,
+        `AEF-T3-Actions with ID '${cadTrustAefT3ActionsId}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'AEF-T3-Actions not found',
+        error: err.message,
         success: false,
       });
     }

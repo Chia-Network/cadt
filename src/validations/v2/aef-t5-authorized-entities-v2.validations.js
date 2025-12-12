@@ -60,10 +60,6 @@ export const aefT5AuthorizedEntitiesV2Schema = Joi.object({
     'string.guid': 'cadTrustProjectId must be a valid UUID',
   }),
 
-  cadTrustAefT2AuthorizationsId: Joi.string().uuid().allow(null).messages({
-    'string.guid': 'cadTrustAefT2AuthorizationsId must be a valid UUID',
-  }),
-
   // Timestamps - forbidden in requests
   createdAt: Joi.date().forbidden().messages({
     'any.unknown': 'createdAt is automatically managed and cannot be set via API',

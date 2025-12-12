@@ -60,11 +60,6 @@ export default {
         allowNull: true,
         comment: 'Foreign key to project'
       },
-      cad_trust_aef_t2_authorizations_id: {
-        type: Sequelize.UUID,
-        allowNull: true,
-        comment: 'Foreign key to aef_t2_authorizations'
-      },
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -84,7 +79,6 @@ export default {
     await queryInterface.addIndex('aef_t5_authorized_entities', ['cad_trust_aef_t1_submission_id']);
     await queryInterface.addIndex('aef_t5_authorized_entities', ['cad_trust_unit_id']);
     await queryInterface.addIndex('aef_t5_authorized_entities', ['cad_trust_project_id']);
-    await queryInterface.addIndex('aef_t5_authorized_entities', ['cad_trust_aef_t2_authorizations_id']);
   },
 
   async down(queryInterface, Sequelize) {
