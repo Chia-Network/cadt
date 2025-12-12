@@ -217,11 +217,17 @@ export const updateAefT5AuthorizedEntitiesV2 = async (req, res) => {
     const { cadTrustAefT5AuthorizedEntitiesId } = req.params;
     const updateData = _.cloneDeep(req.body);
 
-    // Verify record exists first (before validation)
-    const existingRecord = await AefT5AuthorizedEntitiesV2.findByPk(cadTrustAefT5AuthorizedEntitiesId);
-    if (!existingRecord) {
+    // Verify record exists first (before validation) - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        AefT5AuthorizedEntitiesV2,
+        cadTrustAefT5AuthorizedEntitiesId,
+        `AEF-T5-Authorized-Entities with ID '${cadTrustAefT5AuthorizedEntitiesId}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'AEF-T5-Authorized-Entities not found',
+        error: err.message,
         success: false,
       });
     }
@@ -323,11 +329,17 @@ export const deleteAefT5AuthorizedEntitiesV2 = async (req, res) => {
 
     const { cadTrustAefT5AuthorizedEntitiesId } = req.params;
 
-    // Verify record exists
-    const existingRecord = await AefT5AuthorizedEntitiesV2.findByPk(cadTrustAefT5AuthorizedEntitiesId);
-    if (!existingRecord) {
+    // Verify record exists - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        AefT5AuthorizedEntitiesV2,
+        cadTrustAefT5AuthorizedEntitiesId,
+        `AEF-T5-Authorized-Entities with ID '${cadTrustAefT5AuthorizedEntitiesId}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'AEF-T5-Authorized-Entities not found',
+        error: err.message,
         success: false,
       });
     }

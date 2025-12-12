@@ -415,7 +415,6 @@ updated_at timestamp [note: 'generated']
 cad_trust_aef_t1_submission_id varchar
 cad_trust_unit_id varchar
 cad_trust_project_id varchar
-cad_trust_aef_t2_authorizations_id varchar
 }
 
 // project references
@@ -461,7 +460,6 @@ Ref: unit.cad_trust_unit_id < aef_t5_authorized_entities.cad_trust_unit_id
 
 Ref: aef_t2_authorizations.cad_trust_aef_t2_authorizations_id < aef_t3_actions.cad_trust_aef_t2_authorizations_id
 Ref: aef_t2_authorizations.cad_trust_aef_t2_authorizations_id < aef_t4_holdings.cad_trust_aef_t2_authorizations_id
-Ref: aef_t2_authorizations.cad_trust_aef_t2_authorizations_id < aef_t5_authorized_entities.cad_trust_aef_t2_authorizations_id
 
 Ref: aef_t5_authorized_entities.cad_trust_aef_t5_authorized_entities_id < aef_t2_authorizations.cad_trust_aef_t5_authorized_entities_id
 

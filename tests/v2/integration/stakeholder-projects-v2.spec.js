@@ -462,22 +462,16 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
 
   describe('POST /v2/stakeholder-projects (Create)', function () {
     it('should create a new stakeholder-projects relationship via API', async function () {
-      // Clean up any existing stakeholder-project relationships for test isolation
-      await StakeholderProjectV2.destroy({
-        where: {
-          cadTrustStakeholderId: testStakeholderId,
-          cadTrustProjectId: testProjectId,
-        },
-      });
-      // Also clean up staging records
-      await StagingV2.destroy({
-        where: {
-          table: 'stakeholder_projects',
-        },
+      // Create a new stakeholder for this test to avoid conflicts with previous tests
+      const newStakeholder = await StakeholderV2.create({
+        cadTrustStakeholderId: uuidv4(),
+        stakeholderName: 'Test Stakeholder for API Test',
+        stakeholderType: 'Developer',
+        stakeholderLink: 'https://example.com/api-stakeholder',
       });
 
       const stakeholderProjectData = {
-        cadTrustStakeholderId: testStakeholderId,
+        cadTrustStakeholderId: newStakeholder.cadTrustStakeholderId,
         cadTrustProjectId: testProjectId,
       };
 
@@ -508,7 +502,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
 
       // Verify staged data
       const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].cad_trust_stakeholder_id).to.equal(testStakeholderId);
+      expect(stagedData[0].cad_trust_stakeholder_id).to.equal(newStakeholder.cadTrustStakeholderId);
       expect(stagedData[0].cad_trust_project_id).to.equal(testProjectId);
       expect(stagedData[0].cad_trust_stakeholder_project_id).to.equal(response.body.cadTrustStakeholderProjectId);
     });

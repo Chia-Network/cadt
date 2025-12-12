@@ -291,7 +291,6 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         cadTrustAefT1SubmissionId: null,
         cadTrustUnitId: null,
         cadTrustProjectId: null,
-        cadTrustAefT2AuthorizationsId: null,
       };
 
       const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
@@ -307,7 +306,6 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
       expect(aefT5AuthorizedEntities.cadTrustAefT1SubmissionId).to.be.null;
       expect(aefT5AuthorizedEntities.cadTrustUnitId).to.be.null;
       expect(aefT5AuthorizedEntities.cadTrustProjectId).to.be.null;
-      expect(aefT5AuthorizedEntities.cadTrustAefT2AuthorizationsId).to.be.null;
     });
   });
 

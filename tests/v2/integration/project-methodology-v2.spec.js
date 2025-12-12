@@ -531,23 +531,18 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
   describe('POST /v2/project-methodology (Create)', function () {
     it('should create a new project-methodology relationship via API', async function () {
-      // Clean up any existing project-methodology relationships for test isolation
-      await ProjectMethodologyV2.destroy({
-        where: {
-          cadTrustProjectId: testProjectId,
-          cadTrustMethodologyId: testMethodologyId,
-        },
-      });
-      // Also clean up staging records
-      await StagingV2.destroy({
-        where: {
-          table: 'project_methodology',
-        },
+      // Create a new methodology for this test to avoid conflicts with previous tests
+      const newMethodology = await MethodologyV2.create({
+        cadTrustMethodologyId: uuidv4(),
+        methodologyName: 'Test Methodology for API Test',
+        methodologyCode: 'TEST-METH-API-001',
+        methodologyType: 'Methodology for API test',
+        methodologyDescription: 'Test methodology description for API test',
       });
 
       const projectMethodologyData = {
         cadTrustProjectId: testProjectId,
-        cadTrustMethodologyId: testMethodologyId,
+        cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
         projectMethodologyDate: '2024-01-01',
         projectMethodologyDescription: 'API Test Project-Methodology Relationship',
       };
@@ -579,7 +574,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       // Verify staged data
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].cad_trust_project_id).to.equal(testProjectId);
-      expect(stagedData[0].cad_trust_methodology_id).to.equal(testMethodologyId);
+      expect(stagedData[0].cad_trust_methodology_id).to.equal(newMethodology.cadTrustMethodologyId);
       expect(stagedData[0].project_methodology_date).to.equal('2024-01-01');
       expect(stagedData[0].project_methodology_description).to.equal('API Test Project-Methodology Relationship');
     });
@@ -621,23 +616,18 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
     let createdMethodologyId;
 
     before(async function () {
-      // Clean up any existing project-methodology relationships for test isolation
-      await ProjectMethodologyV2.destroy({
-        where: {
-          cadTrustProjectId: testProjectId,
-          cadTrustMethodologyId: testMethodologyId,
-        },
-      });
-      // Also clean up staging records
-      await StagingV2.destroy({
-        where: {
-          table: 'project_methodology',
-        },
+      // Create a new methodology for this test to avoid conflicts
+      const newMethodology = await MethodologyV2.create({
+        cadTrustMethodologyId: uuidv4(),
+        methodologyName: 'Test Methodology for Update Test',
+        methodologyCode: 'TEST-METH-UPDATE-001',
+        methodologyType: 'Methodology for update test',
+        methodologyDescription: 'Test methodology description for update test',
       });
 
       const projectMethodologyData = {
         cadTrustProjectId: testProjectId,
-        cadTrustMethodologyId: testMethodologyId,
+        cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
         projectMethodologyDate: '2024-01-01',
       };
 
@@ -646,7 +636,11 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         .send(projectMethodologyData);
 
       createdProjectId = testProjectId;
-      createdMethodologyId = testMethodologyId;
+      createdMethodologyId = newMethodology.cadTrustMethodologyId;
+
+      if (!response.body.uuid) {
+        throw new Error('Failed to create project-methodology relationship for update test');
+      }
 
       const stagingRecord = await StagingV2.findOne({
         where: { uuid: response.body.uuid },
@@ -665,8 +659,8 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
     it('should update a project-methodology relationship via API', async function () {
       const updateData = {
-        cadTrustProjectId: testProjectId,
-        cadTrustMethodologyId: testMethodologyId,
+        cadTrustProjectId: createdProjectId,
+        cadTrustMethodologyId: createdMethodologyId,
         projectMethodologyDate: '2024-12-31',
         projectMethodologyDescription: 'Updated Description',
       };

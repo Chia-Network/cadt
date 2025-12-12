@@ -128,7 +128,12 @@ export const create = async (req, res) => {
     // Extract name and icon from request
     // Support both JSON body and file upload for icon
     const name = req.body.name || '';
-    const icon = req.body.icon || req.file?.buffer?.toString('base64') || '';
+    let icon = req.body.icon || '';
+
+    // Handle file upload for icon
+    if (req.file && req.file.buffer) {
+      icon = `data:image/png;base64,${req.file.buffer.toString('base64')}`;
+    }
 
     if (!name) {
       return res.status(400).json({
@@ -137,19 +142,43 @@ export const create = async (req, res) => {
       });
     }
 
-    // Call createHomeOrganization asynchronously (don't await)
-    // This allows the HTTP request to return immediately while creation happens in background
-    OrganizationsV2.createHomeOrganization(name, icon, 'v2').catch((error) => {
-      loggerV2.error(
-        `[v2]: Error creating V2 home organization in background: ${error.message}`,
-      );
-    });
+    const { USE_SIMULATOR } = getConfig().APP;
 
-    return res.json({
-      message:
-        'New V2 organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.',
-      success: true,
-    });
+    // In simulator mode, await creation and return orgUid immediately
+    // In production mode, return immediately and create in background
+    if (USE_SIMULATOR) {
+      try {
+        const orgUid = await OrganizationsV2.createHomeOrganization(name, icon, 'v2');
+        return res.json({
+          message: 'V2 organization created successfully',
+          orgUid,
+          success: true,
+        });
+      } catch (error) {
+        loggerV2.error(
+          `[v2]: Error creating V2 home organization: ${error.message}`,
+        );
+        return res.status(400).json({
+          message: 'Error creating V2 home organization',
+          error: error.message,
+          success: false,
+        });
+      }
+    } else {
+      // Call createHomeOrganization asynchronously (don't await)
+      // This allows the HTTP request to return immediately while creation happens in background
+      OrganizationsV2.createHomeOrganization(name, icon, 'v2').catch((error) => {
+        loggerV2.error(
+          `[v2]: Error creating V2 home organization in background: ${error.message}`,
+        );
+      });
+
+      return res.json({
+        message:
+          'New V2 organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.',
+        success: true,
+      });
+    }
   } catch (error) {
     loggerV2.error(`[v2]: Error creating V2 home organization: ${error.message}`);
     res.status(400).json({

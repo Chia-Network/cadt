@@ -234,11 +234,17 @@ export const updateAefT2AuthorizationsV2 = async (req, res) => {
     const { cadTrustAefT2AuthorizationsId } = req.params;
     const updateData = _.cloneDeep(req.body);
 
-    // Verify record exists first (before validation)
-    const existingRecord = await AefT2AuthorizationsV2.findByPk(cadTrustAefT2AuthorizationsId);
-    if (!existingRecord) {
+    // Verify record exists first (before validation) - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        AefT2AuthorizationsV2,
+        cadTrustAefT2AuthorizationsId,
+        `AEF-T2-Authorizations with ID '${cadTrustAefT2AuthorizationsId}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'AEF-T2-Authorizations not found',
+        error: err.message,
         success: false,
       });
     }
@@ -347,11 +353,17 @@ export const deleteAefT2AuthorizationsV2 = async (req, res) => {
 
     const { cadTrustAefT2AuthorizationsId } = req.params;
 
-    // Verify record exists
-    const existingRecord = await AefT2AuthorizationsV2.findByPk(cadTrustAefT2AuthorizationsId);
-    if (!existingRecord) {
+    // Verify record exists - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        AefT2AuthorizationsV2,
+        cadTrustAefT2AuthorizationsId,
+        `AEF-T2-Authorizations with ID '${cadTrustAefT2AuthorizationsId}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'AEF-T2-Authorizations not found',
+        error: err.message,
         success: false,
       });
     }
