@@ -591,7 +591,7 @@ describe('V2 Governance Model Tests', function () {
           expect(mainGovernanceBodyIdRecord).to.exist;
           expect(mainGovernanceBodyIdRecord.meta_value).to.be.a('string');
         },
-        { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+        { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
       );
     });
 
@@ -636,7 +636,7 @@ describe('V2 Governance Model Tests', function () {
           expect(v2GovernanceBodyId).to.exist;
           expect(v2GovernanceBodyId.meta_value).to.equal(governanceVersionId);
         },
-        { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+        { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
       );
     });
   });
@@ -973,7 +973,7 @@ describe('V2 Governance Model Tests', function () {
             expect(record.confirmed).to.equal(true);
           }
         },
-        { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+        { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
       );
     });
 
@@ -1021,7 +1021,7 @@ describe('V2 Governance Model Tests', function () {
             statuses: ['active'],
           });
         },
-        { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+        { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
       );
     });
 
@@ -1056,7 +1056,7 @@ describe('V2 Governance Model Tests', function () {
             orgs: ['updated'],
           });
         },
-        { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+        { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
       );
     });
   });
@@ -1103,7 +1103,7 @@ describe('V2 Governance Model Tests', function () {
             expect(parsedData).to.be.an('array');
             expect(parsedData).to.have.length(2);
           },
-          { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+          { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
         );
       });
 
@@ -1119,10 +1119,10 @@ describe('V2 Governance Model Tests', function () {
             expect(response.body).to.have.property('success', false);
             // The assertion checks for active governance body first
             expect(response.body.error).to.include(
-              'You are not an governance body',
+              'You are not a governance body',
             );
           },
-          { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+          { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
         );
       });
     });
@@ -1183,7 +1183,7 @@ describe('V2 Governance Model Tests', function () {
             expect(parsedData).to.have.property('projectSector');
             expect(parsedData.projectSector).to.include('Agriculture');
           },
-          { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+          { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
         );
       });
 
@@ -1208,7 +1208,7 @@ describe('V2 Governance Model Tests', function () {
             expect(response.status).to.equal(400);
             // Validation error should be returned
           },
-          { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+          { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
         );
       });
     });
@@ -1246,7 +1246,7 @@ describe('V2 Governance Model Tests', function () {
             expect(parsedData).to.have.property('term1', 'definition1');
             expect(parsedData).to.have.property('term2', 'definition2');
           },
-          { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+          { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
         );
       });
     });
@@ -1436,7 +1436,7 @@ describe('V2 Governance Model Tests', function () {
           expect(v1OrgList.metaKey).to.equal('orgList'); // V1 uses camelCase
           expect(v2OrgList.meta_key).to.equal('orgList'); // V2 uses snake_case
         },
-        { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+        { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
       );
     });
 
@@ -1574,7 +1574,7 @@ describe('V2 Governance Model Tests', function () {
           // If V1 governance doesn't exist, this should be null
           // This demonstrates version isolation
         },
-        { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+        { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
       );
     });
   });
