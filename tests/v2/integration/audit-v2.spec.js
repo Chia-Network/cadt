@@ -429,7 +429,13 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('Invalid limit value');
+      // Joi validation catches this before controller, returns errors array format
+      if (response.body.errors) {
+        expect(response.body.errors).to.be.an('array');
+        expect(response.body.errors.some(err => err.includes('Invalid limit value'))).to.be.true;
+      } else {
+        expect(response.body.error).to.include('Invalid limit value');
+      }
     });
 
     it('should reject invalid limit value (negative)', async function () {
@@ -443,7 +449,13 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('Invalid limit value');
+      // Joi validation catches this before controller, returns errors array format
+      if (response.body.errors) {
+        expect(response.body.errors).to.be.an('array');
+        expect(response.body.errors.some(err => err.includes('Invalid limit value'))).to.be.true;
+      } else {
+        expect(response.body.error).to.include('Invalid limit value');
+      }
     });
 
     it('should reject invalid limit value (non-numeric)', async function () {
@@ -474,7 +486,13 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('Invalid page value');
+      // Joi validation catches this before controller, returns errors array format
+      if (response.body.errors) {
+        expect(response.body.errors).to.be.an('array');
+        expect(response.body.errors.some(err => err.includes('Invalid page value'))).to.be.true;
+      } else {
+        expect(response.body.error).to.include('Invalid page value');
+      }
     });
 
     it('should reject invalid page value (negative)', async function () {
@@ -488,7 +506,13 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('Invalid page value');
+      // Joi validation catches this before controller, returns errors array format
+      if (response.body.errors) {
+        expect(response.body.errors).to.be.an('array');
+        expect(response.body.errors.some(err => err.includes('Invalid page value'))).to.be.true;
+      } else {
+        expect(response.body.error).to.include('Invalid page value');
+      }
     });
 
     it('should reject invalid page value (non-numeric)', async function () {

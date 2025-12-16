@@ -12,6 +12,14 @@ export const methodologyV2Schema = Joi.object({
   methodologyType: Joi.string()
     .custom(pickListValidationV2('methodologyType'))
     .optional(),
-  // Note: createdAt and updatedAt are automatically managed by Sequelize
-  // Note: cadTrustMethodologyId is auto-generated UUID
-});
+  // Forbidden fields - automatically managed or auto-generated
+  createdAt: Joi.any().forbidden().messages({
+    'any.unknown': 'createdAt is automatically managed and cannot be set via API',
+  }),
+  updatedAt: Joi.any().forbidden().messages({
+    'any.unknown': 'updatedAt is automatically managed and cannot be set via API',
+  }),
+  cadTrustMethodologyId: Joi.any().forbidden().messages({
+    'any.unknown': 'cadTrustMethodologyId is auto-generated and cannot be set via API',
+  }),
+}).unknown(false);

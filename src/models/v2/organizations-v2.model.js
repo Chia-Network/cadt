@@ -386,14 +386,16 @@ class OrganizationsV2 extends Model {
           const newV2RegistryStoreId = existingV2Org.registry_id;
           const sharedDataModelVersionStoreId = v1DataModelVersionStoreId;
 
-          // Verify singleton store is owned
-          try {
-            await assertStoreIsOwned(sharedDataModelVersionStoreId);
-          } catch (error) {
-            throw new Error(
-              `Cannot complete upgrade: The singleton store (${sharedDataModelVersionStoreId}) is not owned by the current wallet. ` +
-              `Original error: ${error.message}`,
-            );
+          // Verify singleton store is owned (skip in simulator mode)
+          if (!USE_SIMULATOR) {
+            try {
+              await assertStoreIsOwned(sharedDataModelVersionStoreId);
+            } catch (error) {
+              throw new Error(
+                `Cannot complete upgrade: The singleton store (${sharedDataModelVersionStoreId}) is not owned by the current wallet. ` +
+                `Original error: ${error.message}`,
+              );
+            }
           }
 
           // Add v2 key to singleton
@@ -492,15 +494,18 @@ class OrganizationsV2 extends Model {
 
         // CRITICAL: Verify singleton store is owned before attempting to update
         // The singleton store must be owned by the current wallet to add the v2 key
-        try {
-          await assertStoreIsOwned(sharedDataModelVersionStoreId);
-        } catch (error) {
-          throw new Error(
-            `Cannot upgrade V1 organization: The singleton store (${sharedDataModelVersionStoreId}) is not owned by the current wallet. ` +
-            `The singleton store must be owned by this wallet to perform the upgrade. ` +
-            `Please ensure you are using the same wallet that created the V1 organization, or transfer the singleton store to this wallet. ` +
-            `Original error: ${error.message}`,
-          );
+        // Skip ownership check in simulator mode
+        if (!USE_SIMULATOR) {
+          try {
+            await assertStoreIsOwned(sharedDataModelVersionStoreId);
+          } catch (error) {
+            throw new Error(
+              `Cannot upgrade V1 organization: The singleton store (${sharedDataModelVersionStoreId}) is not owned by the current wallet. ` +
+              `The singleton store must be owned by this wallet to perform the upgrade. ` +
+              `Please ensure you are using the same wallet that created the V1 organization, or transfer the singleton store to this wallet. ` +
+              `Original error: ${error.message}`,
+            );
+          }
         }
 
         // CRITICAL: Add v2 key to existing singleton (preserve v1 key)

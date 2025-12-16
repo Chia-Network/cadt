@@ -8,11 +8,13 @@ export default {
       cad_trust_label_id: {
         type: Sequelize.UUID,
         allowNull: false,
+        primaryKey: true,
         comment: 'Foreign key to label table'
       },
       cad_trust_unit_id: {
         type: Sequelize.UUID,
         allowNull: false,
+        primaryKey: true,
         comment: 'Foreign key to unit table'
       },
       label_unit_date: {
@@ -33,13 +35,6 @@ export default {
         allowNull: false,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
       },
-    });
-
-    // Add composite primary key
-    await queryInterface.addConstraint('unit_label', {
-      fields: ['cad_trust_label_id', 'cad_trust_unit_id'],
-      type: 'primary key',
-      name: 'unit_label_pkey'
     });
 
     // Add indexes for better performance

@@ -20,7 +20,7 @@ export const getV2PrimaryKeyField = (modelKey) => {
     co_benefit: 'cad_trust_co_benefit_id',
     project_methodology: 'id',
     stakeholder: 'cad_trust_stakeholder_id',
-    stakeholder_projects: 'id',
+    stakeholder_projects: 'cad_trust_stakeholder_project_id',
     label: 'cad_trust_label_id',
     unit_label: 'id',
     aef_t1_submission: 'cad_trust_aef_t1_submission_id',

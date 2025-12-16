@@ -437,7 +437,7 @@ const syncOrganizationAuditV2 = async (organization) => {
             root_hash: rootToBeProcessed.root_hash,
             type: diff.type,
             table: modelKey,
-            change: decodeHex(diff.value),
+            change: diff.value ? decodeHex(diff.value) : null, // DELETE operations don't have a value field
             onchain_confirmation_time_stamp: rootToBeProcessed.timestamp?.toString() || Math.floor(Date.now() / 1000).toString(),
             generation: toBeProcessedDatalayerGenerationIndex,
             comment: _.get(
@@ -457,18 +457,19 @@ const syncOrganizationAuditV2 = async (organization) => {
           };
 
           if (modelKey && Object.keys(ModelKeysV2).includes(modelKey)) {
-            const record = JSON.parse(decodeHex(diff.value));
             const primaryKeyField = getV2PrimaryKeyField(modelKey);
-            // Convert snake_case field names from datalayer to camelCase for Sequelize
-            // V2 models use underscored: true, which means Sequelize expects camelCase in JS
-            const camelCaseRecord = _.mapKeys(record, (_value, key) => {
-              // Convert snake_case to camelCase
-              return _.camelCase(key);
-            });
             const primaryKeyFieldCamelCase = _.camelCase(primaryKeyField);
-            const primaryKeyValue = camelCaseRecord[primaryKeyFieldCamelCase] || record[primaryKeyField];
 
             if (diff.type === 'INSERT') {
+              const record = JSON.parse(decodeHex(diff.value));
+              // Convert snake_case field names from datalayer to camelCase for Sequelize
+              // V2 models use underscored: true, which means Sequelize expects camelCase in JS
+              const camelCaseRecord = _.mapKeys(record, (_value, key) => {
+                // Convert snake_case to camelCase
+                return _.camelCase(key);
+              });
+              const primaryKeyValue = camelCaseRecord[primaryKeyFieldCamelCase] || record[primaryKeyField];
+
               loggerV2.verbose(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
 
               // Remove updatedAt/updated_at fields if they exist
@@ -513,12 +514,56 @@ const syncOrganizationAuditV2 = async (organization) => {
                 throw upsertError;
               }
             } else if (diff.type === 'DELETE') {
+              // For DELETE operations, extract primary key value from the key field
+              // Key format is: "project|{uuid}" or "co_benefit|{uuid}" or "project_methodology|{projectId}-{methodologyId}"
+              const keyParts = key.split('|');
+              if (keyParts.length < 2) {
+                loggerV2.error(`Invalid DELETE key format: ${key}. Expected format: "table|id"`);
+                continue;
+              }
+              const primaryKeyValue = keyParts.slice(1).join('|'); // Handle cases where UUID might contain '|'
+
               loggerV2.verbose(`DELETING: ${modelKey} - ${primaryKeyValue}`);
-              // For DELETE, use camelCase primary key field name
-              await ModelKeysV2[modelKey].destroy({
-                where: {
+
+              // Handle composite keys (virtual 'id' field)
+              let whereClause;
+              if (primaryKeyField === 'id') {
+                // Composite key tables: split the composite key value
+                if (modelKey === 'project_methodology') {
+                  const compositeParts = primaryKeyValue.split('-');
+                  if (compositeParts.length !== 2) {
+                    loggerV2.error(`Invalid composite key format for ${modelKey}: ${primaryKeyValue}. Expected format: "{projectId}-{methodologyId}"`);
+                    continue;
+                  }
+                  const [projectId, methodologyId] = compositeParts;
+                  whereClause = {
+                    cadTrustProjectId: projectId,
+                    cadTrustMethodologyId: methodologyId,
+                  };
+                } else if (modelKey === 'unit_label') {
+                  const compositeParts = primaryKeyValue.split('-');
+                  if (compositeParts.length !== 2) {
+                    loggerV2.error(`Invalid composite key format for ${modelKey}: ${primaryKeyValue}. Expected format: "{labelId}-{unitId}"`);
+                    continue;
+                  }
+                  const [labelId, unitId] = compositeParts;
+                  whereClause = {
+                    cadTrustLabelId: labelId,
+                    cadTrustUnitId: unitId,
+                  };
+                } else {
+                  loggerV2.error(`Unknown composite key table: ${modelKey}`);
+                  continue;
+                }
+              } else {
+                // Single primary key: use the field directly
+                whereClause = {
                   [primaryKeyFieldCamelCase]: primaryKeyValue,
-                },
+                };
+              }
+
+              await ModelKeysV2[modelKey].destroy({
+                where: whereClause,
                 transaction,
               });
             }

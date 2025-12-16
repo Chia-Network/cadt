@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { prepareV2Db } from '../../src/database/v2/index.js';
+import { prepareV2Db } from '../../../src/database/v2/index.js';
 import {
   setupV2TestEnvironment,
   cleanupV2TestEnvironment,
@@ -12,7 +12,7 @@ import {
   validateV2OrganizationRecord,
   getV2TableCount,
   getV2TableSchema
-} from './test-fixtures/v2-fixtures.js';
+} from '../test-fixtures/v2-fixtures.js';
 
 describe('V2 Infrastructure - Smoke Test', function () {
   this.timeout(30000); // 30 second timeout for smoke test
@@ -30,7 +30,7 @@ describe('V2 Infrastructure - Smoke Test', function () {
 
   describe('V2 Database Connection', function () {
     it('should connect to V2 database successfully', async function () {
-      const { sequelizeV2 } = await import('../../src/database/v2/index.js');
+      const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
       await sequelizeV2.authenticate();
       expect(sequelizeV2).to.exist;
     });
@@ -78,7 +78,7 @@ describe('V2 Infrastructure - Smoke Test', function () {
 
   describe('V2 Models Loading', function () {
     it('should load all V2 system models without errors', async function () {
-      const V2Models = await import('../../src/models/v2/index.js');
+      const V2Models = await import('../../../src/models/v2/index.js');
 
       expect(V2Models.StagingV2).to.exist;
       expect(V2Models.OrganizationsV2).to.exist;
@@ -89,7 +89,7 @@ describe('V2 Infrastructure - Smoke Test', function () {
     });
 
     it('should create V2 model instances successfully', async function () {
-      const { StagingV2, OrganizationsV2, MetaV2, GovernanceV2, SimulatorV2 } = await import('../../src/models/v2/index.js');
+      const { StagingV2, OrganizationsV2, MetaV2, GovernanceV2, SimulatorV2 } = await import('../../../src/models/v2/index.js');
 
       // Test that models can be instantiated
       expect(StagingV2).to.be.a('function');
@@ -169,7 +169,7 @@ describe('V2 Infrastructure - Smoke Test', function () {
   describe('V2 API Routes', function () {
     it('should have V2 health endpoint accessible', async function () {
       const supertest = (await import('supertest')).default;
-      const app = (await import('../../src/server.js')).default;
+      const app = (await import('../../../src/server.js')).default;
 
       const response = await supertest(app)
         .get('/v2/health')
@@ -224,8 +224,8 @@ describe('V2 Infrastructure - Smoke Test', function () {
   describe('V2 System Integration', function () {
     it('should maintain V1/V2 isolation', async function () {
       // Verify V2 database is separate from V1
-      const { sequelizeV2 } = await import('../../src/database/v2/index.js');
-      const { sequelize } = await import('../../src/database/index.js');
+      const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
+      const { sequelize } = await import('../../../src/database/index.js');
 
       expect(sequelizeV2).to.not.equal(sequelize);
 
@@ -245,7 +245,7 @@ describe('V2 Infrastructure - Smoke Test', function () {
     });
 
     it('should have proper V2 database configuration', async function () {
-      const { sequelizeV2 } = await import('../../src/database/v2/index.js');
+      const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
 
       // Verify V2 database configuration
       expect(sequelizeV2.options.dialect).to.equal('sqlite');

@@ -1,170 +1,419 @@
+# [DRAFT] CADT RPC API V2 Guide
+
+
+
+This page lists commands and examples from the Climate Warehouse RPC API V2.
+
+When using this guide, it is important to understand the workflow CADT employs for managing climate data updates via RPCs.
+The CADT paradigm ensures that all updates first go into local "staging", which is private and not shared with
+the rest of the world. This staging process serves as an intermediate step where climate data records changes remain
+isolated from the data committed to the blockchain datalayer until explicitly committed.
+
+When editing or adding climate data records users should first use POST changes to the appropriate data model
+resources (e.g., `project`, `unit`, `methodology`, etc.). These POST requests populate the local staging table, allowing
+for updates to be collected and reviewed in a controlled, private environment. Once reviewed users can then use `staging`
+RPCs to commit or delete the staged record changes. Committing the data in staging using the CADT RPC's commits the data
+to the blockchain, making it publicly visible.
+
+It is essential to remember that the staging process is distinct from the commit phase. The initial use of data model
+RPCs prepares the data, while `staging` RPCs finalize the transition to the blockchain. This workflow ensures a clear
+separation between temporary updates and permanent, public changes, maintaining both data integrity and transparency.
+
+**V2 Features:**
+- V2 operations are isolated from V1 - V2 data does not affect V1 data and vice versa
+- V1 and V2 can run simultaneously
+- V2 supports upgrading existing V1 organizations to V2. This will not migrate the data, but simply create a new store for V2 alongside the existing V1 store.
+
+Please also see the following related documents:
+
+- [CADT installation/configuration guide](/README.md)
+- [CADT RPC API V1 Guide](/docs/cadt_rpc_api.md)
+- [Chia Data Layer CLI](https://docs.chia.net/datalayer-cli) reference
+- [Chia Data Layer RPC API](https://docs.chia.net/datalayer-rpc) reference
+
+The CADT RPC API V2 is exposed by default on port 31310. This document will give examples to access the RPC API using `http://localhost:31310/v2`.
+
+If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.
+
+## Commands
+
+- [`organizations`](#organizations)
+  - [GET Examples](#organizations-get-examples)
+    - [List all organizations](#list-all-organizations)
+    - [Get organization status](#get-organization-status)
+    - [Get organization metadata](#get-organization-metadata)
+  - [POST Examples](#organizations-post-examples)
+    - [Create a V2 organization](#create-a-v2-organization)
+    - [Upgrade V1 organization to V2](#upgrade-v1-organization-to-v2)
+    - [Add organization metadata](#add-organization-metadata)
+    - [Sync organization metadata](#sync-organization-metadata)
+    - [Add mirror for a store](#add-mirror-for-a-store)
+    - [Remove mirror for a store](#remove-mirror-for-a-store)
+  - [PUT Examples](#organizations-put-examples)
+    - [Edit home organization](#edit-home-organization)
+    - [Import organization from datalayer](#import-organization-from-datalayer)
+    - [Subscribe to organization](#subscribe-to-organization)
+    - [Unsubscribe from organization](#unsubscribe-from-organization)
+    - [Resync organization](#resync-organization)
+  - [DELETE Examples](#organizations-delete-examples)
+    - [Delete organization](#delete-organization)
+  - [Additional organizations resources](#additional-organizations-resources)
+- [`staging`](#staging)
+  - [GET Examples](#staging-get-examples)
+    - [List all staged records](#list-all-staged-records)
+    - [Check for pending commits](#check-for-pending-commits)
+  - [POST Examples](#staging-post-examples)
+    - [Commit staged records](#commit-staged-records)
+    - [Retry failed commit](#retry-failed-commit)
+    - [Reset committed records](#reset-committed-records)
+  - [PUT Examples](#staging-put-examples)
+    - [Edit staged record](#edit-staged-record)
+  - [DELETE Examples](#staging-delete-examples)
+    - [Delete staged record](#delete-staged-record)
+    - [Clean all staged records](#clean-all-staged-records)
+  - [Additional staging resources](#additional-staging-resources)
+- [`governance`](#governance)
+  - [GET Examples](#governance-get-examples)
+    - [Get all governance data](#get-all-governance-data)
+    - [Check if governance body exists](#check-if-governance-body-exists)
+    - [Sync governance data](#sync-governance-data)
+    - [Get picklist data](#get-picklist-data)
+    - [Get the UID's of all organizations registered in governance data](#get-the-uids-of-all-organizations-registered-in-governance-data)
+    - [Get glossary data](#get-glossary-data)
+  - [POST Examples](#governance-post-examples)
+    - [Create governance body](#create-governance-body)
+    - [Set organization list](#set-organization-list)
+    - [Set picklist data](#set-picklist-data)
+    - [Set glossary data](#set-glossary-data)
+    - [Subscribe to governance body](#subscribe-to-governance-body)
+  - [Additional Governance Resources](#additional-governance-resources)
+- [`methodology`](#methodology)
+  - [GET Examples](#methodology-get-examples)
+    - [List all methodologies](#list-all-methodologies)
+    - [Get single methodology](#get-single-methodology)
+  - [POST Examples](#methodology-post-examples)
+    - [Create methodology](#create-methodology)
+  - [PUT Examples](#methodology-put-examples)
+    - [Update methodology](#update-methodology)
+  - [DELETE Examples](#methodology-delete-examples)
+    - [Delete methodology](#delete-methodology)
+- [`program`](#program)
+  - [GET Examples](#program-get-examples)
+    - [List all programs](#list-all-programs)
+    - [Get single program](#get-single-program)
+  - [POST Examples](#program-post-examples)
+    - [Create program](#create-program)
+  - [PUT Examples](#program-put-examples)
+    - [Update program](#update-program)
+  - [DELETE Examples](#program-delete-examples)
+    - [Delete program](#delete-program)
+- [`project`](#project)
+  - [GET Examples](#project-get-examples)
+    - [List all projects](#list-all-projects)
+    - [Get single project](#get-single-project)
+    - [List projects with advanced query features](#list-projects-with-advanced-query-features)
+    - [Export projects to Excel](#export-projects-to-excel)
+  - [POST Examples](#project-post-examples)
+    - [Create project](#create-project)
+    - [Batch upload projects from CSV](#batch-upload-projects-from-csv)
+  - [PUT Examples](#project-put-examples)
+    - [Update project](#update-project)
+    - [Transfer project between organizations](#transfer-project-between-organizations)
+    - [Update projects from XLSX file](#update-projects-from-xlsx-file)
+  - [DELETE Examples](#project-delete-examples)
+    - [Delete project](#delete-project)
+  - [Additional projects resources](#additional-projects-resources)
+- [`validation`](#validation)
+  - [GET Examples](#validation-get-examples)
+    - [List all validations](#list-all-validations)
+    - [Get single validation](#get-single-validation)
+  - [POST Examples](#validation-post-examples)
+    - [Create validation](#create-validation)
+  - [PUT Examples](#validation-put-examples)
+    - [Update validation](#update-validation)
+  - [DELETE Examples](#validation-delete-examples)
+    - [Delete validation](#delete-validation)
+- [`verification`](#verification)
+  - [GET Examples](#verification-get-examples)
+    - [List all verifications](#list-all-verifications)
+    - [Get single verification](#get-single-verification)
+  - [POST Examples](#verification-post-examples)
+    - [Create verification](#create-verification)
+  - [PUT Examples](#verification-put-examples)
+    - [Update verification](#update-verification)
+  - [DELETE Examples](#verification-delete-examples)
+    - [Delete verification](#delete-verification)
+- [`issuance`](#issuance)
+  - [GET Examples](#issuance-get-examples)
+    - [List all issuances](#list-all-issuances)
+    - [Get single issuance](#get-single-issuance)
+  - [POST Examples](#issuance-post-examples)
+    - [Create issuance](#create-issuance)
+  - [PUT Examples](#issuance-put-examples)
+    - [Update issuance](#update-issuance)
+  - [DELETE Examples](#issuance-delete-examples)
+    - [Delete issuance](#delete-issuance)
+- [`unit`](#unit)
+  - [GET Examples](#unit-get-examples)
+    - [List all units](#list-all-units)
+    - [Get single unit](#get-single-unit)
+    - [List units with advanced query features](#list-units-with-advanced-query-features)
+    - [Export units to Excel](#export-units-to-excel)
+  - [POST Examples](#unit-post-examples)
+    - [Create unit](#create-unit)
+    - [Split unit into multiple units](#split-unit-into-multiple-units)
+    - [Batch upload units from CSV](#batch-upload-units-from-csv)
+  - [PUT Examples](#unit-put-examples)
+    - [Update unit](#update-unit)
+    - [Update units from XLSX file](#update-units-from-xlsx-file)
+  - [DELETE Examples](#unit-delete-examples)
+    - [Delete unit](#delete-unit)
+  - [Additional Units Resources](#additional-units-resources)
+- [`location`](#location)
+  - [GET Examples](#location-get-examples)
+    - [List all locations](#list-all-locations)
+    - [Get single location](#get-single-location)
+  - [POST Examples](#location-post-examples)
+    - [Create location](#create-location)
+  - [PUT Examples](#location-put-examples)
+    - [Update location](#update-location)
+  - [DELETE Examples](#location-delete-examples)
+    - [Delete location](#delete-location)
+- [`estimation`](#estimation)
+  - [GET Examples](#estimation-get-examples)
+    - [List all estimations](#list-all-estimations)
+    - [Get single estimation](#get-single-estimation)
+  - [POST Examples](#estimation-post-examples)
+    - [Create estimation](#create-estimation)
+  - [PUT Examples](#estimation-put-examples)
+    - [Update estimation](#update-estimation)
+  - [DELETE Examples](#estimation-delete-examples)
+    - [Delete estimation](#delete-estimation)
+- [`rating`](#rating)
+  - [GET Examples](#rating-get-examples)
+    - [List all ratings](#list-all-ratings)
+    - [Get single rating](#get-single-rating)
+  - [POST Examples](#rating-post-examples)
+    - [Create rating](#create-rating)
+  - [PUT Examples](#rating-put-examples)
+    - [Update rating](#update-rating)
+  - [DELETE Examples](#rating-delete-examples)
+    - [Delete rating](#delete-rating)
+- [`co-benefit`](#co-benefit)
+  - [GET Examples](#co-benefit-get-examples)
+    - [List all co-benefits](#list-all-co-benefits)
+    - [Get single co-benefit](#get-single-co-benefit)
+  - [POST Examples](#co-benefit-post-examples)
+    - [Create co-benefit](#create-co-benefit)
+  - [PUT Examples](#co-benefit-put-examples)
+    - [Update co-benefit](#update-co-benefit)
+  - [DELETE Examples](#co-benefit-delete-examples)
+    - [Delete co-benefit](#delete-co-benefit)
+- [`project-methodology`](#project-methodology)
+  - [GET Examples](#project-methodology-get-examples)
+    - [List all project-methodology relationships](#list-all-project-methodology-relationships)
+    - [Get single project-methodology relationship](#get-single-project-methodology-relationship)
+  - [POST Examples](#project-methodology-post-examples)
+    - [Create project-methodology relationship](#create-project-methodology-relationship)
+  - [PUT Examples](#project-methodology-put-examples)
+    - [Update project-methodology relationship](#update-project-methodology-relationship)
+  - [DELETE Examples](#project-methodology-delete-examples)
+    - [Delete project-methodology relationship](#delete-project-methodology-relationship)
+- [`stakeholder`](#stakeholder)
+  - [GET Examples](#stakeholder-get-examples)
+    - [List all stakeholders](#list-all-stakeholders)
+    - [Get single stakeholder](#get-single-stakeholder)
+  - [POST Examples](#stakeholder-post-examples)
+    - [Create stakeholder](#create-stakeholder)
+  - [PUT Examples](#stakeholder-put-examples)
+    - [Update stakeholder](#update-stakeholder)
+  - [DELETE Examples](#stakeholder-delete-examples)
+    - [Delete stakeholder](#delete-stakeholder)
+- [`stakeholder-projects`](#stakeholder-projects)
+  - [GET Examples](#stakeholder-projects-get-examples)
+    - [List all stakeholder-project relationships](#list-all-stakeholder-project-relationships)
+    - [Get single stakeholder-project relationship](#get-single-stakeholder-project-relationship)
+  - [POST Examples](#stakeholder-projects-post-examples)
+    - [Create stakeholder-project relationship](#create-stakeholder-project-relationship)
+  - [PUT Examples](#stakeholder-projects-put-examples)
+    - [Update stakeholder-project relationship](#update-stakeholder-project-relationship)
+  - [DELETE Examples](#stakeholder-projects-delete-examples)
+    - [Delete stakeholder-project relationship](#delete-stakeholder-project-relationship)
+- [`label`](#label)
+  - [GET Examples](#label-get-examples)
+    - [List all labels](#list-all-labels)
+    - [Get single label](#get-single-label)
+  - [POST Examples](#label-post-examples)
+    - [Create label](#create-label)
+  - [PUT Examples](#label-put-examples)
+    - [Update label](#update-label)
+  - [DELETE Examples](#label-delete-examples)
+    - [Delete label](#delete-label)
+- [`unit-label`](#unit-label)
+  - [GET Examples](#unit-label-get-examples)
+    - [List all unit-label relationships](#list-all-unit-label-relationships)
+    - [Get single unit-label relationship](#get-single-unit-label-relationship)
+  - [POST Examples](#unit-label-post-examples)
+    - [Create unit-label relationship](#create-unit-label-relationship)
+  - [PUT Examples](#unit-label-put-examples)
+    - [Update unit-label relationship](#update-unit-label-relationship)
+  - [DELETE Examples](#unit-label-delete-examples)
+    - [Delete unit-label relationship](#delete-unit-label-relationship)
+- [`aef-t1-submission`](#aef-t1-submission)
+  - [GET Examples](#aef-t1-submission-get-examples)
+    - [List all AEF-T1-Submissions](#list-all-aef-t1-submissions)
+    - [Get single AEF-T1-Submission](#get-single-aef-t1-submission)
+  - [POST Examples](#aef-t1-submission-post-examples)
+    - [Create AEF-T1-Submission](#create-aef-t1-submission)
+  - [PUT Examples](#aef-t1-submission-put-examples)
+    - [Update AEF-T1-Submission](#update-aef-t1-submission)
+  - [DELETE Examples](#aef-t1-submission-delete-examples)
+    - [Delete AEF-T1-Submission](#delete-aef-t1-submission)
+- [`aef-t2-authorizations`](#aef-t2-authorizations)
+  - [GET Examples](#aef-t2-authorizations-get-examples)
+    - [List all AEF-T2-Authorizations](#list-all-aef-t2-authorizations)
+    - [Get single AEF-T2-Authorizations](#get-single-aef-t2-authorizations)
+  - [POST Examples](#aef-t2-authorizations-post-examples)
+    - [Create AEF-T2-Authorizations](#create-aef-t2-authorizations)
+  - [PUT Examples](#aef-t2-authorizations-put-examples)
+    - [Update AEF-T2-Authorizations](#update-aef-t2-authorizations)
+  - [DELETE Examples](#aef-t2-authorizations-delete-examples)
+    - [Delete AEF-T2-Authorizations](#delete-aef-t2-authorizations)
+- [`aef-t5-authorized-entities`](#aef-t5-authorized-entities)
+  - [GET Examples](#aef-t5-authorized-entities-get-examples)
+    - [List all AEF-T5-Authorized-Entities](#list-all-aef-t5-authorized-entities)
+    - [Get single AEF-T5-Authorized-Entities](#get-single-aef-t5-authorized-entities)
+  - [POST Examples](#aef-t5-authorized-entities-post-examples)
+    - [Create AEF-T5-Authorized-Entities](#create-aef-t5-authorized-entities)
+  - [PUT Examples](#aef-t5-authorized-entities-put-examples)
+    - [Update AEF-T5-Authorized-Entities](#update-aef-t5-authorized-entities)
+  - [DELETE Examples](#aef-t5-authorized-entities-delete-examples)
+    - [Delete AEF-T5-Authorized-Entities](#delete-aef-t5-authorized-entities)
+- [`aef-t3-actions`](#aef-t3-actions)
+  - [GET Examples](#aef-t3-actions-get-examples)
+    - [List all AEF-T3-Actions](#list-all-aef-t3-actions)
+    - [Get single AEF-T3-Actions](#get-single-aef-t3-actions)
+  - [POST Examples](#aef-t3-actions-post-examples)
+    - [Create AEF-T3-Actions](#create-aef-t3-actions)
+  - [PUT Examples](#aef-t3-actions-put-examples)
+    - [Update AEF-T3-Actions](#update-aef-t3-actions)
+  - [DELETE Examples](#aef-t3-actions-delete-examples)
+    - [Delete AEF-T3-Actions](#delete-aef-t3-actions)
+- [`aef-t4-holdings`](#aef-t4-holdings)
+  - [GET Examples](#aef-t4-holdings-get-examples)
+    - [List all AEF-T4-Holdings](#list-all-aef-t4-holdings)
+    - [Get single AEF-T4-Holdings](#get-single-aef-t4-holdings)
+  - [POST Examples](#aef-t4-holdings-post-examples)
+    - [Create AEF-T4-Holdings](#create-aef-t4-holdings)
+  - [PUT Examples](#aef-t4-holdings-put-examples)
+    - [Update AEF-T4-Holdings](#update-aef-t4-holdings)
+  - [DELETE Examples](#aef-t4-holdings-delete-examples)
+    - [Delete AEF-T4-Holdings](#delete-aef-t4-holdings)
+- [`audit`](#audit)
+  - [GET Examples](#audit-get-examples)
+    - [Show the complete history of an organization](#show-the-complete-history-of-an-organization)
+    - [Find conflicts in organization data](#find-conflicts-in-organization-data)
+  - [POST Examples](#audit-post-examples)
+    - [Reset organization to specific generation](#reset-organization-to-specific-generation)
+    - [Reset organization to specific date](#reset-organization-to-specific-date)
+- [`offer`](#offer)
+  - [GET Examples](#offer-get-examples)
+    - [Generate and download a datalayer offer file](#generate-and-download-a-datalayer-offer-file)
+    - [Get the details of the currently uploaded offer file](#get-the-details-of-the-currently-uploaded-offer-file)
+  - [POST Examples](#offer-post-examples)
+    - [Upload an offer file](#upload-an-offer-file)
+    - [Commit imported offer](#commit-imported-offer)
+  - [DELETE Examples](#offer-delete-examples)
+    - [Cancel the currently active offer](#cancel-the-currently-active-offer)
+    - [Reject the currently imported transfer offer file](#reject-the-currently-imported-transfer-offer-file)
+  - [Additional offer resources](#additional-offer-resources)
+- [`filestore`](#filestore)
+  - [GET Examples](#filestore-get-examples)
+    - [Get file from filestore](#get-file-from-filestore)
+    - [Get file list from filestore](#get-file-list-from-filestore)
+  - [POST Examples](#filestore-post-examples)
+    - [Add file to filestore](#add-file-to-filestore)
+    - [Subscribe to filestore](#subscribe-to-filestore)
+    - [Unsubscribe from filestore](#unsubscribe-from-filestore)
+  - [DELETE Examples](#filestore-delete-examples)
+    - [Delete file from filestore](#delete-file-from-filestore)
+- [`health`](#health)
+  - [GET Examples](#health-get-examples)
+    - [Health check](#health-check)
 ---
-description: CADT RPC API v2 Documentation
----
 
-# CADT RPC API v2
+## Reference
 
-This document describes the v2 API endpoints for CADT (Carbon Asset Data Trust).
+## `organizations`
 
-## Table of Contents
+Functionality: Use GET, POST, PUT, and DELETE to list, create, update, and manage V2 organizations
 
-- [Organizations](#organizations)
-- [Methodology](#methodology)
-- [Program](#program)
-- [Project](#project)
-- [Unit](#unit)
-- [Issuance](#issuance)
-- [Verification](#verification)
-- [Validation](#validation)
-- [Rating](#rating)
-- [Co-Benefit](#co-benefit)
-- [Estimation](#estimation)
-- [Stakeholder](#stakeholder)
-- [Stakeholder Projects](#stakeholder-projects)
-- [Project Methodology](#project-methodology)
-- [Unit Label](#unit-label)
-- [AEF T1 Submission](#aef-t1-submission)
-- [AEF T2 Authorizations](#aef-t2-authorizations)
-- [AEF T3 Actions](#aef-t3-actions)
-- [AEF T4 Holdings](#aef-t4-holdings)
-- [AEF T5 Authorized Entities](#aef-t5-authorized-entities)
-- [Audit](#audit)
-- [File Store](#file-store)
-- [Governance](#governance)
+GET Options:
 
----
+|  Key   |  Type   |                         Description                          |
+|:------:|:--------:|:------------------------------------------------------------:|
+| None (default) | N/A | List all organizations |
+| orgUid | String | (Optional) Get metadata for specific organization |
 
-## Organizations
+<a id="organizations-get-examples"></a>
+### GET Examples
 
-Organizations represent the top-level entity in the CADT system. Each organization has its own set of projects, methodologies, and other data.
+#### List all organizations
 
-### Endpoints
-
-- `GET /v2/organizations` - List all organizations
-- `GET /v2/organizations/status` - Get home org sync status
-- `GET /v2/organizations/metadata` - Get metadata (with orgUid query param)
-- `POST /v2/organizations` - Create V2 home org (new users) - supports both JSON body and file upload
-- `POST /v2/organizations/upgrade` - Upgrade from V1 to V2 (existing users)
-- `POST /v2/organizations/metadata` - Add metadata to home organization
-- `POST /v2/organizations/sync` - Sync organization metadata
-- `POST /v2/organizations/mirror` - Add mirror for a store
-- `POST /v2/organizations/remove-mirror` - Remove mirror for a store
-- `PUT /v2/organizations/edit` - Edit home organization (name and/or icon) - supports file upload
-- `PUT /v2/organizations` - Import organization from datalayer
-- `PUT /v2/organizations/subscribe` - Subscribe to organization
-- `PUT /v2/organizations/unsubscribe` - Unsubscribe from organization
-- `PUT /v2/organizations/resync` - Resync organization
-- `DELETE /v2/organizations/:orgUid` - Delete organization
-
-<a id="organizations-get"></a>
-### GET /v2/organizations
-
-Get all organizations.
-
-#### Query Parameters
-
-| Parameter | Type    | Required | Description                                                                    |
-|:---------:|:-------:|:-------:|:------------------------------------------------------------------------------:|
-| orgUid    | String  | No      | (Optional) Get metadata for specific organization                              |
-
-#### Response
-
-```json
-{
-  "success": true,
-  "organizations": {
-    "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9": {
-      "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-      "name": "Example Organization",
-      "icon": "",
-      "isHome": true,
-      "subscribed": true,
-      "synced": true,
-      "registryId": "xfy7oofvb31bg07stafbqxcug7mmmjzxg0gi8r1nwkv63u3pxwy85s5xpgs204bk",
-      "dataModelVersionStoreId": "xfy7oofvb31bg07stafbqxcug7mmmjzxg0gi8r1nwkv63u3pxwy85s5xpgs204bk",
-      "fileStoreSubscribed": "xfy7oofvb31bg07stafbqxcug7mmmjzxg0gi8r1nwkv63u3pxwy85s5xpgs204bk",
-      "xchAddress": "xch1rgmkvffgzsjtynnu3vnkg4ywr0w06r69fy76cpx5yldwedslg20qfjsssv",
-      "balance": 4.99999997358
-    }
-  }
-}
-```
-
-#### Example
-
+Request
 ```sh
 curl --location --request GET 'localhost:31310/v2/organizations' --header 'Content-Type: application/json'
 ```
 
-Response:
-
+Response
 ```json
 {
-  "success": true,
-  "organizations": {
+  "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9":{
     "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
-    "name": "Example Organization",
-    "icon": "",
-    "isHome": true,
-    "subscribed": true,
+    "orgHash": "0x14d8ea0f809c73c649827837cada5ec4d931153839383008a28c59fd1de86d2e",
+    "name":"Org Test",
+    "icon":"https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg",
+    "isHome":true,
+    "subscribed":true,
     "synced": true,
+    "fileStoreSubscribed": "0",
     "registryId": "xfy7oofvb31bg07stafbqxcug7mmmjzxg0gi8r1nwkv63u3pxwy85s5xpgs204bk",
-    "dataModelVersionStoreId": "xfy7oofvb31bg07stafbqxcug7mmmjzxg0gi8r1nwkv63u3pxwy85s5xpgs204bk",
-    "fileStoreSubscribed": "xfy7oofvb31bg07stafbqxcug7mmmjzxg0gi8r1nwkv63u3pxwy85s5xpgs204bk"
+    "registryHash": "0x34c4671f721ff0132b4eb80a8e0d46ffb446ec8f03ed87368adcd29415cdbac4",
+    "sync_remaining": 0
   }
 }
 ```
 
-<a id="organizations-status"></a>
-### GET /v2/organizations/status
+---
 
-Get the sync status of the home organization.
+#### Get organization status
 
-#### Query Parameters
-
-| Parameter | Type   | Required | Description                                                                    |
-|:---------:|:------:|:-------:|:------------------------------------------------------------------------------:|
-| orgUid    | String | No      | (Optional) Get status for specific organization                                |
-
-#### Example
-
+Request
 ```sh
 curl --location --request GET 'localhost:31310/v2/organizations/status?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9' --header 'Content-Type: application/json'
 ```
 
-Response:
-
+Response
 ```json
 {
-  "success": true,
   "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
   "synced": true,
-  "syncRemaining": 0
+  "sync_remaining": 0
 }
 ```
 
-<a id="organizations-metadata-get"></a>
-### GET /v2/organizations/metadata
+---
 
-Get metadata for an organization.
+#### Get organization metadata
 
-#### Query Parameters
-
-| Parameter | Type   | Required | Description                                                                    |
-|:---------:|:------:|:-------:|:------------------------------------------------------------------------------:|
-| orgUid    | String | No      | (Optional) Get metadata for specific organization                              |
-
-#### Example
-
+Request
 ```sh
 curl --location --request GET 'localhost:31310/v2/organizations/metadata?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9' --header 'Content-Type: application/json'
 ```
 
-Response:
-
+Response
 ```json
 {
-  "success": true,
   "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
   "metadata": {
     "key1": "value1",
@@ -173,10 +422,7 @@ Response:
 }
 ```
 
-<a id="organizations-post"></a>
-### POST /v2/organizations
-
-Create a new V2 home organization. This endpoint is for new users who don't have a V1 organization.
+---
 
 POST Options:
 
@@ -225,7 +471,7 @@ curl --location -g --request POST 'localhost:31310/v2/organizations' \
 Response
 ```json
 {
-    "message": "New V2 organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.",
+    "message": "New organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.",
     "success": true
 }
 ```
@@ -236,18 +482,27 @@ Response
 
 - This endpoint allows existing V1 organizations to be upgraded to V2.
 - The upgrade process migrates V1 organization data to V2 format while maintaining V1/V2 isolation.
-- **Note**: No request body is required. The endpoint automatically detects and uses the existing V1 home organization (`isHome: true`).
+- **Note**: The request body is optional. The endpoint automatically detects and uses the existing V1 home organization.
+
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| orgUid | String | | V1 organization UID (optional, currently not used - endpoint automatically detects V1 home org) |
 
 Request
 ```sh
 curl --location -g --request POST 'localhost:31310/v2/organizations/upgrade' \
-     --header 'Content-Type: application/json'
+     --header 'Content-Type: application/json' \
+     --data-raw '{
+        "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+}'
 ```
 
 Response
 ```json
 {
-    "message": "V2 organization upgrade is currently being processed. It can take up to 30 mins. Please do not interrupt this process.",
+    "message": "Organization upgrade initiated successfully",
     "success": true
 }
 ```
@@ -326,7 +581,8 @@ Request
 curl --location -g --request POST 'localhost:31310/v2/organizations/remove-mirror' \
      --header 'Content-Type: application/json' \
      --data-raw '{
-        "storeId": "xfy7oofvb31bg07stafbqxcug7mmmjzxg0gi8r1nwkv63u3pxwy85s5xpgs204bk"
+        "storeId": "xfy7oofvb31bg07stafbqxcug7mmmjzxg0gi8r1nwkv63u3pxwy85s5xpgs204bk",
+        "coinId": "0x1234567890abcdef"
 }'
 ```
 
@@ -340,23 +596,45 @@ Response
 
 ---
 
+PUT Options:
+
+|  Key   |  Type   |                                      Description                                      |
+|:------:|:-------:|:-------------------------------------------------------------------------------------:|
+| orgUid | String  |                 (Required) OrgUid of the organization to import                  |
+| isHome | Boolean |  (Optional) Specify true if the specified orgUid should be imported as the home org   |
+
+<a id="organizations-put-examples"></a>
+### PUT Examples
+
 #### Edit home organization
+
+- V2 organizations can be edited with either a JSON body or by uploading a file containing organization data.
+
+**Using JSON body:**
 
 Request
 ```sh
-curl --location -g --request PUT 'localhost:31310/v2/organizations/edit' \
-     --header 'Content-Type: application/json' \
-     --data-raw '{
-        "name": "Updated Organization Name",
-        "icon": "https://example.com/new-icon.png"
+curl --location -g --request PUT 'http://localhost:31310/v2/organizations/edit' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "name": "Updated Org Name",
+  "icon": "https://www.chia.net/wp-content/uploads/2023/01/chia-logo-light.svg"
 }'
+```
+
+**Using file upload:**
+
+Request
+```sh
+curl --location -g --request PUT 'http://localhost:31310/v2/organizations/edit' \
+--form 'file=@"./organization-update.json"'
 ```
 
 Response
 ```json
 {
-    "message": "Organization updated successfully",
-    "success": true
+  "success": true,
+  "message": "Organization updated successfully"
 }
 ```
 
@@ -366,19 +644,18 @@ Response
 
 Request
 ```sh
-curl --location -g --request PUT 'localhost:31310/v2/organizations' \
-     --header 'Content-Type: application/json' \
-     --data-raw '{
-        "orgUid": "foobar"
+curl --location -g --request PUT 'http://localhost:31310/v2/organizations/' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "orgUid": "foobar"
 }'
 ```
 
 Response
 ```json
 {
-    "message": "Organization imported successfully",
-    "success": true,
-    "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+  "success": true,
+  "message": "Successfully imported organization. CADT will begin syncing data from datalayer shortly"
 }
 ```
 
@@ -388,18 +665,18 @@ Response
 
 Request
 ```sh
-curl --location -g --request PUT 'localhost:31310/v2/organizations/subscribe' \
-     --header 'Content-Type: application/json' \
-     --data-raw '{
-        "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+curl --location -g --request PUT 'http://localhost:31310/v2/organizations/subscribe' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
 }'
 ```
 
 Response
 ```json
 {
-    "message": "Subscribed to organization successfully",
-    "success": true
+  "success": true,
+  "message": "Successfully subscribed to organization"
 }
 ```
 
@@ -409,18 +686,18 @@ Response
 
 Request
 ```sh
-curl --location -g --request PUT 'localhost:31310/v2/organizations/unsubscribe' \
-     --header 'Content-Type: application/json' \
-     --data-raw '{
-        "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+curl --location -g --request PUT 'http://localhost:31310/v2/organizations/unsubscribe' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
 }'
 ```
 
 Response
 ```json
 {
-    "message": "Unsubscribed from organization successfully",
-    "success": true
+  "success": true,
+  "message": "Successfully unsubscribed from organization"
 }
 ```
 
@@ -430,36 +707,2545 @@ Response
 
 Request
 ```sh
-curl --location -g --request PUT 'localhost:31310/v2/organizations/resync' \
-     --header 'Content-Type: application/json' \
-     --data-raw '{
-        "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+curl --location -g --request PUT 'http://localhost:31310/v2/organizations/resync' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "orgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
 }'
 ```
 
 Response
 ```json
 {
-    "message": "Organization resync initiated",
-    "success": true
+  "success": true,
+  "message": "Organization resync initiated"
 }
 ```
 
 ---
 
+DELETE Options: None
+
+<a id="organizations-delete-examples"></a>
+### DELETE Examples
+
 #### Delete organization
 
 Request
 ```sh
-curl --location -g --request DELETE 'localhost:31310/v2/organizations/77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9' \
+curl --location --request DELETE \
+'http://localhost:31310/v2/organizations/c9661d1ce77194c9e82311418aa4d370e25e10961d74d586636354746bc9ad65'
+```
+
+Response
+```json
+{
+  "message": "Removed all organization records for organization ${orgUid} and unsubscribed from organization datalayer stores. cadt will not sync the organizations data from datalayer",
+  "success": true
+}
+```
+
+### Additional Organizations Resources
+
+- All organization endpoints support V2-specific operations
+- V2 organizations maintain isolation from V1 organizations
+- V2 organizations use snake_case for database fields and camelCase for API fields
+
+---
+
+## `staging`
+
+Functionality: List, modify, commit, and delete records in the staging table
+
+Query string options:
+
+|        Key         |  Type   | Description                                                                                                                     |
+|:------------------:|:-------:|:--------------------------------------------------------------------------------------------------------------------------------|
+|   None (default)   |   N/A   | Display all staged records                                                                                                 |
+|       type         | String  | Filter by type: `staged` (uncommitted), `pending` (committed but not confirmed), or `failed` (failed commits)                                                               |
+|       table        | String  | Filter by table name (e.g., `project`, `unit`, `methodology`)                                                                           |
+|       limit        | Number  | (Conditionally Required) Limit the number of records to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+
+POST body options (for commit):
+
+|        Key         |  Type   | Description                                                                                                                     |
+|:------------------:|:-------:|:--------------------------------------------------------------------------------------------------------------------------------|
+|       ids          | Array   | (Optional) Array of UUIDs to commit. If not provided, all staged records will be committed                                                                                                 |
+|       author       | String  | (Optional) Author name for the commit                                                                           |
+|       comment      | String  | (Optional) Comment for the commit                                                                           |
+
+<a id="staging-get-examples"></a>
+### GET Examples
+
+#### List all staged records
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/staging?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "id": 1,
+      "uuid": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "table": "methodology",
+      "action": "INSERT",
+      "committed": false,
+      "failed_commit": false,
+      "created_at": "2022-03-11T05:17:55.427Z",
+      "updated_at": "2022-03-11T05:17:55.427Z",
+      "diff": {
+        "original": {},
+        "change": {
+          "methodologyCode": "ACR-001",
+          "methodologyName": "Truck Stop Electrification",
+          "methodologyType": "Reduction - technical"
+        }
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### Check for pending commits
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/staging/pending' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "confirmed": false,
+  "message": "There are currently pending commits",
+  "success": true
+}
+```
+
+---
+
+<a id="staging-post-examples"></a>
+### POST Examples
+
+#### Commit staged records
+
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| author | String | | Author name for the commit |
+| comment | String | | Comment describing the commit |
+| ids | Array of Strings | | Array of staging UUIDs to commit (max 10000 items). If not provided, all staged records will be committed |
+| table | String | | Table name filter. Valid values: Projects, Units (currently not used in V2) |
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/staging/commit' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "author": "John Doe",
+  "comment": "Committing methodology updates"
+}'
+```
+
+Response
+```json
+{
+  "message": "Staging Table committing to full node",
+  "success": true
+}
+```
+
+---
+
+#### Retry failed commit
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/staging/retry' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "uuid": "9b9bb857-c71b-4649-b805-a289db27dc1c"
+}'
+```
+
+Response
+```json
+{
+  "message": "Staging record re-staged successfully. Please retry your staging commit using POST /v2/staging/commit.",
+  "success": true
+}
+```
+
+---
+
+#### Reset committed records
+
+Resets staging records that have `committed: true` and `failed_commit: false` back to `committed: false`. This is useful when a commit partially succeeded but then failed, leaving some records in a committed state that blocks future commits.
+
+**Note:** This endpoint only resets non-transfer records. Transfer records (`is_transfer: true`) are excluded from the reset operation.
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/staging/reset-committed' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Reset 2 committed staging record(s). You can now retry your commit.",
+  "affectedRows": 2,
+  "success": true
+}
+```
+
+**Fields**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| (none) | - | - | This endpoint does not require any request body parameters |
+
+---
+
+<a id="staging-put-examples"></a>
+### PUT Examples
+
+#### Edit staged record
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/staging' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "uuid": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "data": {
+    "methodologyCode": "ACR-001",
+    "methodologyName": "Truck Stop Electrification - Updated",
+    "methodologyType": "Reduction - technical"
+  }
+}'
+```
+
+Response
+```json
+{
+  "message": "Staging record updated",
+  "success": true
+}
+```
+
+---
+
+<a id="staging-delete-examples"></a>
+### DELETE Examples
+
+#### Delete staged record
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/staging' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "uuid": "9b9bb857-c71b-4649-b805-a289db27dc1c"
+}'
+```
+
+Response
+```json
+{
+  "message": "Deleted from staging",
+  "success": true
+}
+```
+
+---
+
+#### Clean all staged records
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/staging/clean' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Staging Data Cleaned",
+  "success": true
+}
+```
+
+---
+
+### Additional Staging Resources
+
+- GET `/v2/staging` - List all staged records with pagination and filtering
+- GET `/v2/staging/pending` - Check if there are pending commits
+- POST `/v2/staging/commit` - Commit staged records to the datalayer
+- POST `/v2/staging/retry` - Retry committing a failed staging record
+- POST `/v2/staging/reset-committed` - Reset committed records that are blocking new commits
+- PUT `/v2/staging` - Update a staged record
+- DELETE `/v2/staging` - Delete a specific staged record
+- DELETE `/v2/staging/clean` - Delete all staged records
+
+---
+
+## `governance`
+
+Functionality for most users: read and sync governance values
+Functionality for climate project development: create and manage governance data
+
+Most users will never use these endpoints.
+
+<a id="governance-get-examples"></a>
+### GET Examples
+
+#### Get all governance data
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/governance' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "id": 1,
+  "pickList": "...",
+  "orgList": "...",
+  "glossary": "...",
+  "createdAt": "2022-03-13T03:08:15.156Z",
+  "updatedAt": "2022-03-13T03:08:15.156Z"
+}
+```
+
+---
+
+#### Check if governance body exists
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/governance/exists' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "exists": true
+}
+```
+
+---
+
+#### Sync governance data
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/governance/sync' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Governance data synced successfully",
+  "success": true
+}
+```
+
+---
+
+#### Get picklist data
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/governance/meta/pickList' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "registries": [
+    "American Carbon Registry (ACR)",
+    "Article 6.4 Mechanism Registry",
+    "Biocarbon Registry S.A.S",
+    "Carbon Assets Trading System (CATS)",
+    "Switzerland National Registry",
+    "UNFCCC",
+    "Verra"
+  ],
+  "projectSector": [
+    "Accommodation and food service activities",
+    "Activities of extraterritorial organizations and bodies",
+    "Not elsewhere classified"
+  ],
+  "projectType": [
+    "Afforestation",
+    "Avoided Conversion",
+    "Reforestation",
+    "Soil Enrichment",
+    "Technical Removal"
+  ],
+  "coveredByNDC": [
+    "Inside NDC",
+    "Outside NDC",
+    "Unknown"
+  ],
+  "projectStatusValues": [
+    "Listed",
+    "Validated",
+    "Registered",
+    "Approved",
+    "Authorized",
+    "Completed",
+    "Inactive",
+    "Withdrawn",
+    "Rejected",
+    "De-registered"
+  ],
+  "unitMetric": [
+    "tCO2e"
+  ],
+  "methodology": [
+    "ACR - Truck Stop Electrification",
+    "ACR - Advanced Refrigeration Systems",
+    "VCS - VM0043"
+  ],
+  "validationBody": [
+    "350 Solutions",
+    "4K Earth Science Private Limited",
+    "VKU Certification Private Limited"
+  ],
+  "countries": [
+    "Afghanistan",
+    "Albania",
+    "Zimbabwe",
+    "Not Specified"
+  ],
+  "ratingType": [
+    "CDP",
+    "CCQI"
+  ],
+  "unitType": [
+    "Avoidance",
+    "Reduction - nature",
+    "Reduction - technical",
+    "Removal - nature",
+    "Removal - technical",
+    "Not Determined"
+  ],
+  "unitStatus": [
+    "Held",
+    "Retired",
+    "Cancelled",
+    "Expired",
+    "Inactive",
+    "Buffer",
+    "Exported",
+    "Rejected",
+    "Pending Export"
+  ],
+  "correspondingAdjustmentDeclaration": [
+    "Committed",
+    "Not Required",
+    "Unknown"
+  ],
+  "correspondingAdjustmentStatus": [
+    "Not Applicable",
+    "Not Started",
+    "Pending",
+    "Completed"
+  ],
+  "labelType": [
+    "Endorsement",
+    "Letter of Qualification",
+    "Certification"
+  ],
+  "verificationBody": [
+    "350 Solutions",
+    "4K Earth Science Private Limited",
+    "VKU Certification Private Limited"
+  ],
+  "projectTags": [
+    " "
+  ],
+  "unitTags": [
+    " "
+  ],
+  "coBenefits": [
+    "SDG 1 - No poverty",
+    "SDG 2 - Zero hunger",
+    "SDG 3 - Good health and well-being",
+    "SDG 16 - Peace and justice strong institutions",
+    "SDG 17 - Partnerships for the goals"
+  ]
+}
+```
+
+---
+
+#### Get the UID's of all organizations registered in governance data
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/governance/meta/orgList' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+[
+  {
+    "orgUid": "a9d374baa8ced8b7a4add2a23f35f430fd7a3c99d1480d762e0b40572db4b024"
+  },
+  {
+    "orgUid": "fa47700cb693529602c3eab47a5d681ffe0145dabeee6c69cabdd7869537b917"
+  },
+  {
+    "orgUid": "6cde6a6e4e997952ca01500d830904a084267e2390008d2ae5ca46ed549373ef"
+  }
+]
+```
+
+---
+
+#### Get glossary data
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/governance/meta/glossary' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "term1": "Definition 1",
+  "term2": "Definition 2"
+}
+```
+
+---
+
+<a id="governance-post-examples"></a>
+### POST Examples
+
+#### Create governance body
+
+**Note**: Creating a governance body does not require any body parameters. The request body is optional and currently not used by the endpoint.
+
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| name | String | | Governance body name (currently not used, optional) |
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/governance' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "name": "Sample Governance Body"
+}'
+```
+
+Response
+```json
+{
+  "message": "Governance body created successfully",
+  "success": true
+}
+```
+
+---
+
+#### Set the governance organization list
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/governance/meta/orgList' --header 'Content-Type: application/json' \
+--data-raw '[
+  {
+    "orgUid": "a9d374baa8ced8b7a4add2a23f35f430fd7a3c99d1480d762e0b40572db4b024"
+  },
+  {
+    "orgUid": "fa47700cb693529602c3eab47a5d681ffe0145dabeee6c69cabdd7869537b917"
+  }
+]'
+```
+
+Response
+```json
+{
+  "message": "Committed this new organization list to the datalayer",
+  "success": true
+}
+```
+
+---
+
+#### Set picklist data
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/governance/meta/pickList' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "registries": ["ACR", "Verra"],
+  "projectSector": ["Agriculture", "Energy"]
+}'
+```
+
+Response
+```json
+{
+  "message": "Picklist data updated successfully",
+  "success": true
+}
+```
+
+---
+
+#### Set glossary data
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/governance/meta/glossary' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "term1": "Definition 1",
+  "term2": "Definition 2"
+}'
+```
+
+Response
+```json
+{
+  "message": "Glossary data updated successfully",
+  "success": true
+}
+```
+
+---
+
+#### Subscribe to governance body
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/governance/subscribe' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "governanceBodyId": "xfy7oofvb31bg07stafbqxcug7mmmjzxg0gi8r1nwkv63u3pxwy85s5xpgs204bk"
+}'
+```
+
+Response
+```json
+{
+  "message": "Subscribed to governance body",
+  "success": true
+}
+```
+
+---
+
+### Additional Governance Resources
+
+- GET `/v2/governance/exists` - determine if the instance is a governance body
+- GET `/v2/governance` - get all governance data. picklist orgList, pickList, and glossary data stringified in the metaValue attribute
+- GET `/v2/governance/sync` - sync governance data from other governance bodies
+- GET `/v2/governance/meta/picklist` - get governance picklist data
+- GET `/v2/governance/meta/glossary` - get governance glossary data
+- GET `/v2/governance/meta/orglist` - get governance organization data
+- POST `/v2/governance` - create a governance body on the current node
+- POST `/v2/governance/meta/picklist` - set the governance picklist data returned by GET `/v2/governance/meta/picklist`
+- POST `/v2/governance/meta/glossary` - set the governance glossary data returned by GET `/v2/governance/meta/glossary`
+- POST `/v2/governance/meta/orglist` - set the governance organization list data returned by GET `/v2/governance/meta/orglist`
+- POST `/v2/governance/subscribe` - subscribe to a governance body's datalayer store
+
+---
+
+## `methodology`
+
+Functionality: Create, read, update, and delete methodology records
+
+<a id="methodology-get-examples"></a>
+### GET Examples
+
+#### List all methodologies
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/methodology?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "methodologyCode": "ACR-001",
+      "methodologyName": "Truck Stop Electrification",
+      "methodologyVersion": "1.0.0",
+      "methodologyDate": "2022-01-01T00:00:00.000Z",
+      "methodologyLink": "https://example.com/methodology",
+      "methodologyType": "Reduction - technical",
+      "createdAt": "2022-03-11T05:17:55.427Z",
+      "updatedAt": "2022-03-11T05:17:55.427Z"
+    }
+  ]
+}
+```
+
+---
+
+#### Get single methodology
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/methodology/9b9bb857-c71b-4649-b805-a289db27dc1c' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "methodologyCode": "ACR-001",
+  "methodologyName": "Truck Stop Electrification",
+  "methodologyVersion": "1.0.0",
+  "methodologyDate": "2022-01-01T00:00:00.000Z",
+  "methodologyLink": "https://example.com/methodology",
+  "methodologyType": "Reduction - technical",
+  "createdAt": "2022-03-11T05:17:55.427Z",
+  "updatedAt": "2022-03-11T05:17:55.427Z"
+}
+```
+
+---
+
+<a id="methodology-post-examples"></a>
+### POST Examples
+
+#### Create methodology
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| methodologyCode | String | x | | Code identifying the methodology |
+| methodologyName | String | x | | Name of the methodology |
+| methodologyVersion | String | | | Version of the methodology |
+| methodologyDate | Date | | | Date of the methodology (ISO 8601 format) |
+| methodologyLink | String | | | URL link to the methodology. Must be a valid URI |
+| methodologyType | String | | x | Type of methodology |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/methodology' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "methodologyCode": "ACR-001",
+  "methodologyName": "Truck Stop Electrification",
+  "methodologyVersion": "1.0.0",
+  "methodologyDate": "2022-01-01",
+  "methodologyLink": "https://example.com/methodology",
+  "methodologyType": "Reduction - technical"
+}'
+```
+
+Response
+```json
+{
+  "message": "Methodology staged successfully",
+  "uuid": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustMethodologyId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "success": true
+}
+```
+
+---
+
+<a id="methodology-put-examples"></a>
+### PUT Examples
+
+#### Update methodology
+
+Fields are the same as POST (see above).
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/methodology/9b9bb857-c71b-4649-b805-a289db27dc1c' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "methodologyCode": "ACR-001",
+  "methodologyName": "Truck Stop Electrification - Updated",
+  "methodologyVersion": "1.0.0",
+  "methodologyDate": "2022-01-01",
+  "methodologyLink": "https://example.com/methodology",
+  "methodologyType": "Reduction - technical"
+}'
+```
+
+Response
+```json
+{
+  "message": "Methodology update added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="methodology-delete-examples"></a>
+### DELETE Examples
+
+#### Delete methodology
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/methodology/9b9bb857-c71b-4649-b805-a289db27dc1c' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Methodology deletion staged successfully",
+  "success": true
+}
+```
+
+---
+
+## `program`
+
+Functionality: Create, read, update, and delete program records
+
+<a id="program-get-examples"></a>
+### GET Examples
+
+#### List all programs
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/program?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 3,
+  "data": [
+    {
+      "cadTrustProgramId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+      "programName": "Gold Standard Program",
+      "programRegistry": "Gold Standard",
+      "programRegistryActivityId": "GS-001",
+      "programRegistryProgramId": "PROG-001",
+      "programDescription": "A carbon crediting program",
+      "createdAt": "2022-03-11T05:17:55.422Z",
+      "updatedAt": "2022-03-11T05:17:55.422Z"
+    }
+  ]
+}
+```
+
+---
+
+#### Get single program
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/program/51ca9638-22b0-4e14-ae7a-c09d23b37b58' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustProgramId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "programName": "Gold Standard Program",
+  "programRegistry": "Gold Standard",
+  "programRegistryActivityId": "GS-001",
+  "programRegistryProgramId": "PROG-001",
+  "programDescription": "A carbon crediting program",
+  "createdAt": "2022-03-11T05:17:55.422Z",
+  "updatedAt": "2022-03-11T05:17:55.422Z"
+}
+```
+
+**Note**: By default, GET requests return only project data. To include associated models, use the `columns` parameter. For example, to include program data: `GET /v2/project/{id}?columns=program`
+
+---
+
+<a id="program-post-examples"></a>
+### POST Examples
+
+#### Create program
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| programName | String | x | | Name of the program |
+| programRegistry | String | x | | Registry name for the program |
+| programRegistryActivityId | String | x | | Registry activity identifier |
+| programRegistryProgramId | String | | | Registry program identifier |
+| programDescription | String | | | Description of the program |
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/program' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "programName": "Gold Standard Program",
+  "programRegistry": "Gold Standard",
+  "programRegistryActivityId": "GS-001",
+  "programRegistryProgramId": "PROG-001",
+  "programDescription": "A carbon crediting program"
+}'
+```
+
+Response
+```json
+{
+  "message": "Program staged successfully",
+  "uuid": "51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "success": true
+}
+```
+
+---
+
+<a id="program-put-examples"></a>
+### PUT Examples
+
+#### Update program
+
+Fields are the same as POST (see above).
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/program/51ca9638-22b0-4e14-ae7a-c09d23b37b58' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "programName": "Gold Standard Program - Updated",
+  "programRegistry": "Gold Standard",
+  "programRegistryActivityId": "GS-001",
+  "programRegistryProgramId": "PROG-001",
+  "programDescription": "An updated carbon crediting program"
+}'
+```
+
+Response
+```json
+{
+  "message": "Program update added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="program-delete-examples"></a>
+### DELETE Examples
+
+#### Delete program
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/program/51ca9638-22b0-4e14-ae7a-c09d23b37b58' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Program deletion staged successfully",
+  "success": true
+}
+```
+
+---
+
+## `project`
+
+Functionality: Create, read, update, delete, and manage project records with advanced query features
+
+Query string options:
+
+|        Key         |  Type   | Description                                                                                                                     |
+|:------------------:|:-------:|:--------------------------------------------------------------------------------------------------------------------------------|
+|   None (default)   |   N/A   | Display all projects                                                                                                 |
+| cadTrustProjectId | String  | Only display projects matching this cadTrustProjectId                                                               |
+|       orgUid       | String  | Only display projects matching this orgUid                                                                           |
+|       search       | String  | Display all projects that contain the specified query (case insensitive)                                             |
+|      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns. Can also include associated models (e.g., `columns=issuance` to include issuance data in unit responses)                                   |
+|       limit        | Number  | (Conditionally Required) Limit the number of projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+|        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |
+|   projectIds       | String  | Filter by comma-separated list of project IDs                                                                   |
+|       filter       | String  | Generic filter (e.g., `filter=field:value:eq`)                                                                   |
+|       order        | String  | Sort order (e.g., `order=field:DESC`)                                                                   |
+| onlyMarketplaceProjects | Boolean | Filter projects that have at least one unit listed on a marketplace (`true` = projects with marketplace units only) |
+
+<a id="project-get-examples"></a>
+### GET Examples
+
+#### List all projects
+
+- Pagination is required when not filtering by cadTrustProjectId
+
+Request
+```shell
+curl --location --request GET 'http://localhost:31310/v2/project?page=1&limit=10' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 18,
+  "data": [
+    {
+      "cadTrustProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "projectRegistryName":"Sweden National Registry",
+      "projectId":"789",
+      "projectCreditingProgram":"Gold Standard",
+      "projectName":"Stop Desertification",
+      "projectLink":"https://desertificationtest.com",
+      "projectDescription":"A project to stop desertification",
+      "projectSector":"Fugitive emissions from fuel (solid, oil and gas)",
+      "projectType":"Coal bed/mine methane",
+      "projectSubtype":"Methane Capture",
+      "projectStatus":"Registered",
+      "projectStatusDate":"2022-02-02T00:00:00.000Z",
+      "projectUnitMetric":"tCO2e",
+      "cadTrustReferenceProjectId":"REF-001",
+      "cadTrustProgramId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+      "createdAt":"2022-03-11T05:17:55.427Z",
+      "updatedAt":"2022-03-11T05:17:55.427Z"
+    }
+  ]
+}
+```
+
+**Note**: The `orgUid` field is automatically set from the home organization when creating or updating projects. It cannot be provided in POST or PUT requests and will be rejected if included.
+
+**Note**: By default, GET requests return only project data. To include associated models (e.g., program, locations, estimations, ratings, coBenefits), use the `columns` parameter (e.g., `?columns=program` or `?columns=program&columns=locations`).
+
+---
+
+#### Get single project
+
+- Pagination is not required when providing a cadTrustProjectId
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/project/51ca9638-22b0-4e14-ae7a-c09d23b37b58' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+  "projectRegistryName":"Gold Standard",
+  "projectId":"555",
+  "projectCreditingProgram":"Gold Standard Program",
+  "projectName":"Stop Deforestation",
+  "projectLink":"http://testurl.com",
+  "projectDescription":"A project to stop deforestation",
+  "projectSector":"Agriculture, forestry and other land use (AFOLU)",
+  "projectType":"Afforestation",
+  "projectSubtype":"Soil Carbon",
+  "projectStatus":"Listed",
+  "projectStatusDate":"2022-03-02T00:00:00.000Z",
+  "projectUnitMetric":"tCO2e",
+  "cadTrustReferenceProjectId":"REF-555",
+  "cadTrustProgramId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "createdAt":"2022-03-11T05:17:55.422Z",
+  "updatedAt":"2022-03-11T05:17:55.422Z"
+}
+```
+
+---
+
+#### List projects by orgUid
+
+- Filter projects by organization UID. Pagination is required when filtering by orgUid.
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/project?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "cadTrustProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "projectName":"Stop Desertification",
+      "projectStatus":"Registered"
+    }
+  ]
+}
+```
+
+---
+
+#### List projects with advanced query features
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/project?page=1&limit=10&search=forestry&columns=projectName&columns=projectStatus&filter=projectSector:Agriculture:eq&order=projectName:ASC' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "projectName":"Stop Deforestation",
+      "projectStatus":"Listed"
+    }
+  ]
+}
+```
+
+---
+
+#### Get project with associated program data
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/project/51ca9638-22b0-4e14-ae7a-c09d23b37b58?columns=program' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustProjectId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+  "projectRegistryName":"Gold Standard",
+  "projectId":"555",
+  "projectCreditingProgram":"Gold Standard Program",
+  "projectName":"Stop Deforestation",
+  "projectLink":"http://testurl.com",
+  "projectDescription":"A project to stop deforestation",
+  "projectSector":"Agriculture, forestry and other land use (AFOLU)",
+  "projectType":"Afforestation",
+  "projectSubtype":"Soil Carbon",
+  "projectStatus":"Listed",
+  "projectStatusDate":"2022-03-02T00:00:00.000Z",
+  "projectUnitMetric":"tCO2e",
+  "cadTrustReferenceProjectId":"REF-555",
+  "cadTrustProgramId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "createdAt":"2022-03-11T05:17:55.422Z",
+  "updatedAt":"2022-03-11T05:17:55.422Z",
+  "program": {
+    "cadTrustProgramId":"51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+    "programName":"Gold Standard Program",
+    "programRegistry":"Gold Standard",
+    "programRegistryActivityId":"GS-001",
+    "programRegistryProgramId":"PROG-001",
+    "programDescription":"A carbon crediting program",
+    "createdAt":"2022-03-11T05:17:55.420Z",
+    "updatedAt":"2022-03-11T05:17:55.420Z"
+  }
+}
+```
+
+---
+
+#### Filter projects with marketplace units
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/project?onlyMarketplaceProjects=true&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 3,
+  "data": [
+    {
+      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "projectName": "Stop Desertification",
+      "projectStatus": "Registered"
+    }
+  ]
+}
+```
+
+**Note**: This filter returns projects that have at least one unit with a `marketplaceIdentifier` set (not null and not empty). This includes both regular marketplace listings and tokenized units.
+
+---
+
+#### Export projects to Excel
+
+Request
+```sh
+curl --location --request GET 'localhost:31310/v2/project?xls=true' --header 'Content-Type: application/json' > projects.xlsx
+```
+
+Response:
+
+Download stream to download the XLS file of project records.
+
+---
+
+### POST Examples
+
+#### Create project
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| projectRegistryName | String | x | | Name of the project registry |
+| projectId | String | x | | Unique identifier for the project |
+| projectName | String | x | | Name of the project |
+| projectCreditingProgram | String | | | Name of the crediting program |
+| projectLink | String | | | URL link to the project. Must be a valid URI |
+| projectDescription | String | | | Description of the project |
+| projectSector | String | | x | Project sector |
+| projectType | String | | x | Type of project |
+| projectSubtype | String | | | Subtype of the project |
+| projectStatus | String | | x | Status of the project |
+| projectStatusDate | Date | | | Date when the project status was set (ISO 8601 format) |
+| projectUnitMetric | String | | x | Unit metric for the project |
+| cadTrustReferenceProjectId | String | | | CAD Trust reference project identifier |
+| cadTrustProgramId | String | | | CAD Trust program identifier. Must be a valid UUID |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```sh
+curl --location --request POST 'localhost:31310/v2/project' \
+     --header 'Content-Type: application/json' \
+     --data-raw '{
+        "projectRegistryName": "UNFCCC",
+        "projectId": "c9d147e2-bc07-4e68-a76d-43424fa8cd4e",
+        "projectName": "POST sample",
+        "projectLink": "http://testurl.com",
+        "projectDescription": "Sample project description",
+        "projectCreditingProgram": "Gold Standard Program",
+        "projectSector": "Manufacturing industries",
+        "projectType": "Reforestation",
+        "projectSubtype": "Forest Conservation",
+        "projectStatus": "Registered",
+        "projectStatusDate": "2022-03-12",
+        "projectUnitMetric": "tCO2e",
+        "cadTrustReferenceProjectId": "REF-001",
+        "cadTrustProgramId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58"
+}'
+```
+
+Response
+```json
+{
+  "message": "Project staged successfully",
+  "uuid": "9a29f826-ea60-489f-a290-c734e8fd57f1",
+  "cadTrustProjectId": "03a3a558-b4c0-4522-8a65-1452e7501307",
+  "success": true
+}
+```
+
+---
+
+#### Batch upload projects from CSV
+
+Request
+```shell
+curl --location --request POST 'http://localhost:31310/v2/project/batch' --form 'csv=@"./createProject.csv"'
+```
+
+Response
+```json
+{
+  "message":"CSV processing complete, your records have been added to the staging table.",
+  "success": true
+}
+```
+
+---
+
+<a id="project-put-examples"></a>
+### PUT Examples
+
+#### Update project
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
+
+Fields are the same as POST (see above).
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```sh
+curl --location -g --request PUT 'http://localhost:31310/v2/project/51ca9638-22b0-4e14-ae7a-c09d23b37b58' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "projectRegistryName": "Verra",
+    "projectId": "987",
+    "projectName": "Stop Deforestation",
+    "projectLink": "http://testurl.com",
+    "projectDescription": "Updated project description",
+    "projectCreditingProgram": "Verra Program",
+    "projectSector": "Mining/mineral production",
+    "projectType": "Afforestation",
+    "projectSubtype": "Reforestation",
+    "projectStatus": "Listed",
+    "projectStatusDate": "2022-03-19",
+    "projectUnitMetric": "tCO2e",
+    "cadTrustReferenceProjectId": "REF-987",
+    "cadTrustProgramId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58"
+}'
+```
+
+Response
+```json
+{
+  "message": "Project update added to staging",
+  "success": true
+}
+```
+
+---
+
+#### Transfer project between organizations
+
+Request
+```shell
+curl --location -g --request PUT 'http://localhost:31310/v2/project/transfer' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "cadTrustProjectId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+    "targetOrgUid": "77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9"
+}'
+```
+
+Response
+```json
+{
+  "message": "Project transfer staged successfully",
+  "success": true
+}
+```
+
+---
+
+#### Update projects from XLSX file
+
+Request
+```shell
+curl --location -g --request PUT 'http://localhost:31310/v2/project/xlsx' --form 'xlsx=@"./cw_query.xlsx"'
+```
+
+Response
+```json
+{
+  "message": "Updates from xlsx added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="project-delete-examples"></a>
+### DELETE Examples
+
+#### Delete project
+
+Request
+```shell
+curl --location -g --request DELETE 'http://localhost:31310/v2/project/693d37f6-318e-4d8b-9e14-3d2328b569be' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Project deletion staged successfully",
+  "success": true
+}
+```
+
+---
+
+### Additional Projects Resources
+
+- PUT `project/transfer` - stage the transfer of a project from another CADT organization to the instance home organization
+- PUT `project/xlsx` - update projects from XLSX file
+- POST `project/batch` - batch upload projects from CSV file
+- Advanced query features: search, orgUid filtering, column selection, xls export, generic filtering, sorting
+
+---
+
+## `validation`
+
+Functionality: Create, read, update, and delete validation records
+
+**Note**: By default, GET requests return only validation data. Associated models (project) are not included unless explicitly requested via query parameters.
+
+<a id="validation-get-examples"></a>
+### GET Examples
+
+#### List all validations
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/validation?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 3,
+  "data": [
+    {
+      "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "validationId": "VAL-001",
+      "validationType": "Validation of Project Design Document",
+      "validationBody": "SCS Global Services",
+      "validationDate": "2022-01-15T00:00:00.000Z",
+      "validationCreditPeriodStartDate": "2022-01-01T00:00:00.000Z",
+      "validationCreditPeriodEndDate": "2022-12-31T00:00:00.000Z",
+      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "createdAt": "2022-03-11T05:17:55.427Z",
+      "updatedAt": "2022-03-11T05:17:55.427Z"
+    }
+  ]
+}
+```
+
+---
+
+#### Get single validation
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/validation/a1b2c3d4-e5f6-7890-abcd-ef1234567890' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "validationId": "VAL-001",
+  "validationType": "Validation of Project Design Document",
+  "validationBody": "SCS Global Services",
+  "validationDate": "2022-01-15T00:00:00.000Z",
+  "validationCreditPeriodStartDate": "2022-01-01T00:00:00.000Z",
+  "validationCreditPeriodEndDate": "2022-12-31T00:00:00.000Z",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "createdAt": "2022-03-11T05:17:55.427Z",
+  "updatedAt": "2022-03-11T05:17:55.427Z"
+}
+```
+
+---
+
+<a id="validation-post-examples"></a>
+### POST Examples
+
+#### Create validation
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| validationId | String | x | | Unique identifier for the validation |
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| validationType | String | | x | Type of validation |
+| validationBody | String | | x | Validation body |
+| validationDate | Date | | | Date of the validation (ISO 8601 format) |
+| validationCreditPeriodStartDate | Date | | | Start date of the credit period (ISO 8601 format) |
+| validationCreditPeriodEndDate | Date | | | End date of the credit period (ISO 8601 format) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/validation' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "validationId": "VAL-001",
+  "validationType": "Validation of Project Design Document",
+  "validationBody": "SCS Global Services",
+  "validationDate": "2022-01-15",
+  "validationCreditPeriodStartDate": "2022-01-01",
+  "validationCreditPeriodEndDate": "2022-12-31",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
+}'
+```
+
+Response
+```json
+{
+  "message": "Validation staged successfully",
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustValidationId": "24a8de31-fcb7-40bb-a047-7a40d1cc2fe0",
+  "success": true
+}
+```
+
+---
+
+<a id="validation-put-examples"></a>
+### PUT Examples
+
+#### Update validation
+
+Fields are the same as POST (see above).
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/validation/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "validationId": "VAL-001",
+  "validationType": "Validation of Project Design Document",
+  "validationBody": "AENOR International S.A.U.",
+  "validationDate": "2022-01-15",
+  "validationCreditPeriodStartDate": "2022-01-01",
+  "validationCreditPeriodEndDate": "2022-12-31",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
+}'
+```
+
+Response
+```json
+{
+  "message": "Validation update added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="validation-delete-examples"></a>
+### DELETE Examples
+
+#### Delete validation
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/validation/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Validation deletion staged successfully",
+  "success": true
+}
+```
+
+---
+
+## `verification`
+
+Functionality: Create, read, update, and delete verification records
+
+**Note**: By default, GET requests return only verification data. Associated models (project, validation) are not included unless explicitly requested via query parameters.
+
+<a id="verification-get-examples"></a>
+### GET Examples
+
+#### List all verifications
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/verification?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 3,
+  "data": [
+    {
+      "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+      "verificationId": "VER-001",
+      "verificationStartDate": "2022-02-01T00:00:00.000Z",
+      "verificationEndDate": "2022-02-20T00:00:00.000Z",
+      "verificationBody": "AENOR International S.A.U.",
+      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "createdAt": "2022-03-11T05:17:55.427Z",
+      "updatedAt": "2022-03-11T05:17:55.427Z"
+    }
+  ]
+}
+```
+
+---
+
+#### Get single verification
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/verification/b2c3d4e5-f6a7-8901-bcde-f23456789012' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "verificationId": "VER-001",
+  "verificationStartDate": "2022-02-01T00:00:00.000Z",
+  "verificationEndDate": "2022-02-20T00:00:00.000Z",
+  "verificationBody": "AENOR International S.A.U.",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "createdAt": "2022-03-11T05:17:55.427Z",
+  "updatedAt": "2022-03-11T05:17:55.427Z"
+}
+```
+
+---
+
+<a id="verification-post-examples"></a>
+### POST Examples
+
+#### Create verification
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| verificationId | String | x | | Unique identifier for the verification |
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| verificationStartDate | Date | | | Start date of the verification (ISO 8601 format) |
+| verificationEndDate | Date | | | End date of the verification (ISO 8601 format) |
+| verificationBody | String | | x | Verification body |
+| cadTrustValidationId | String | | | CAD Trust validation identifier. Must be a valid UUID |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/verification' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "verificationId": "VER-001",
+  "verificationStartDate": "2022-02-01",
+  "verificationEndDate": "2022-02-20",
+  "verificationBody": "AENOR International S.A.U.",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}'
+```
+
+Response
+```json
+{
+  "message": "Verification staged successfully",
+  "uuid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustVerificationId": "c1b9e87c-b8c7-4f2f-bfaf-9b2cee91cc65",
+  "success": true
+}
+```
+
+---
+
+<a id="verification-put-examples"></a>
+### PUT Examples
+
+#### Update verification
+
+Fields are the same as POST (see above).
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/verification/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "verificationId": "VER-001",
+  "verificationStartDate": "2022-02-01",
+  "verificationEndDate": "2022-02-20",
+  "verificationBody": "SCS Global Services",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustValidationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}'
+```
+
+Response
+```json
+{
+  "message": "Verification update added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="verification-delete-examples"></a>
+### DELETE Examples
+
+#### Delete verification
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/verification/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Verification deletion staged successfully",
+  "success": true
+}
+```
+
+---
+
+## `location`
+
+Functionality: Create, read, update, and delete location records
+
+**Note**: By default, GET requests return only location data. Associated models (project) are not included unless explicitly requested via query parameters.
+
+<a id="location-get-examples"></a>
+### GET Examples
+
+#### List all locations
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/location?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
+      "locationCountry": "Latvia",
+      "locationRegion": "Vidzeme",
+      "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+      "locationMapType": "geojson",
+      "locationMapFileLink": "https://example.com/map.geojson",
+      "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "createdAt": "2022-03-11T05:17:55.425Z",
+      "updatedAt": "2022-03-11T05:17:55.425Z"
+    }
+  ]
+}
+```
+
+---
+
+#### Get single location
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
+  "locationCountry": "Latvia",
+  "locationRegion": "Vidzeme",
+  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+  "locationMapType": "geojson",
+  "locationMapFileLink": "https://example.com/map.geojson",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "createdAt": "2022-03-11T05:17:55.425Z",
+  "updatedAt": "2022-03-11T05:17:55.425Z"
+}
+```
+
+---
+
+<a id="location-post-examples"></a>
+### POST Examples
+
+#### Create location
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
+| locationCountry | String | | x | Country of the location |
+| locationRegion | String | | | Region of the location (max 255 characters) |
+| locationGis | String | | | GIS data for the location (max 10000 characters) |
+| locationMapType | String | | | Type of map (max 100 characters) |
+| locationMapFileLink | String | | | URL link to the map file. Must be a valid URI (max 500 characters) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/location' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "locationCountry": "Latvia",
+  "locationRegion": "Vidzeme",
+  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+  "locationMapType": "geojson",
+  "locationMapFileLink": "https://example.com/map.geojson",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
+}'
+```
+
+Response
+```json
+{
+  "message": "Location staged successfully",
+  "uuid": "8182100d-7794-4df7-b3b3-758391d13011",
+  "cadTrustLocationId": "a0b1c2d3-e4f5-6789-0123-4567890abcde",
+  "success": true
+}
+```
+
+---
+
+<a id="location-put-examples"></a>
+### PUT Examples
+
+#### Update location
+
+Fields are the same as POST (see above).
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`. Update requests must include ALL fields, not just the ones being changed.
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "locationCountry": "Latvia",
+  "locationRegion": "Region A",
+  "locationGis": "{\"lat\": 56.8796, \"lng\": 24.6032}",
+  "locationMapType": "geojson",
+  "locationMapFileLink": "https://example.com/updated-map.geojson",
+  "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c"
+}'
+```
+
+Response
+```json
+{
+  "message": "Location update added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="location-delete-examples"></a>
+### DELETE Examples
+
+#### Delete location
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Location deletion staged successfully",
+  "success": true
+}
+```
+
+---
+
+## `issuance`
+
+Functionality: Create, read, update, and delete issuance records
+
+**Note**: By default, GET requests return only issuance data. Associated models (verification, methodology, location) are not included unless explicitly requested via query parameters.
+
+<a id="issuance-get-examples"></a>
+### GET Examples
+
+#### List all issuances
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/issuance?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "cadTrustIssuanceId": "d9f58b08-af25-461c-88eb-403bb02b135e",
+      "issuanceId": "ISS-001",
+      "issuanceDate": "2022-01-02T00:00:00.000Z",
+      "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+      "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
+      "createdAt": "2022-03-12T08:58:43.271Z",
+      "updatedAt": "2022-03-12T08:58:43.271Z"
+    }
+  ]
+}
+```
+
+---
+
+#### Get single issuance
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/issuance/d9f58b08-af25-461c-88eb-403bb02b135e' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustIssuanceId": "d9f58b08-af25-461c-88eb-403bb02b135e",
+  "issuanceId": "ISS-001",
+  "issuanceDate": "2022-01-02T00:00:00.000Z",
+  "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
+  "createdAt": "2022-03-12T08:58:43.271Z",
+  "updatedAt": "2022-03-12T08:58:43.271Z"
+}
+```
+
+---
+
+<a id="issuance-post-examples"></a>
+### POST Examples
+
+#### Create issuance
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| issuanceId | String | x | | Unique identifier for the issuance |
+| cadTrustVerificationId | String | x | | CAD Trust verification identifier. Must be a valid UUID |
+| cadTrustMethodologyId | String | x | | CAD Trust methodology identifier |
+| issuanceDate | Date | | | Date of the issuance (ISO 8601 format) |
+| cadTrustLocationId | String | | | CAD Trust location identifier. Must be a valid UUID |
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/issuance' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "issuanceId": "ISS-001",
+  "issuanceDate": "2022-01-02",
+  "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011"
+}'
+```
+
+Response
+```json
+{
+  "message": "Issuance staged successfully",
+  "uuid": "d9f58b08-af25-461c-88eb-403bb02b135e",
+  "cadTrustIssuanceId": "e8f9a0b1-c2d3-4567-8901-234567890abc",
+  "success": true
+}
+```
+
+---
+
+<a id="issuance-put-examples"></a>
+### PUT Examples
+
+#### Update issuance
+
+Fields are the same as POST (see above).
+
+**Note**: Update requests must include ALL fields, not just the ones being changed.
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/issuance/d9f58b08-af25-461c-88eb-403bb02b135e' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "issuanceId": "ISS-001",
+  "issuanceDate": "2022-01-02",
+  "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011"
+}'
+```
+
+Response
+```json
+{
+  "message": "Issuance update added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="issuance-delete-examples"></a>
+### DELETE Examples
+
+#### Delete issuance
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/issuance/d9f58b08-af25-461c-88eb-403bb02b135e' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Issuance deletion staged successfully",
+  "success": true
+}
+```
+
+---
+
+## `unit`
+
+Functionality: Create, read, update, delete, and manage unit records with advanced query features
+
+**Note**: By default, GET requests return only unit data. Associated models (issuance, unitLabels) are not included unless explicitly requested via the `columns` parameter (e.g., `?columns=issuance`).
+
+Query string options:
+
+|        Key         |  Type   | Description                                                                                                                     |
+|:------------------:|:-------:|:--------------------------------------------------------------------------------------------------------------------------------|
+|   None (default)   |   N/A   | Display all units                                                                                                 |
+| cadTrustUnitId | String  | Only display units matching this cadTrustUnitId                                                               |
+|       orgUid       | String  | Only display units matching this orgUid                                                                           |
+|       search       | String  | Display all units that contain the specified query (case insensitive)                                             |
+|      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns. Can also include associated models (e.g., `columns=issuance` to include issuance data in unit responses)                                   |
+|       limit        | Number  | (Conditionally Required) Limit the number of units to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+|        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |
+|       filter       | String  | Generic filter (e.g., `filter=field:value:eq`)                                                                   |
+|       order        | String  | Sort order (e.g., `order=field:DESC`)                                                                   |
+| marketplaceIdentifiers | String/Array | Filter units by specific marketplace identifiers (comma-separated or array) |
+| hasMarketplaceIdentifier | Boolean | Filter units based on whether they have a marketplace identifier (`true` = with identifier, `false` = without identifier) |
+| onlyTokenizedUnits | Boolean | Filter units that have been tokenized on Chia blockchain (`true` = tokenized units only, `false` = non-tokenized units only) |
+
+<a id="unit-get-examples"></a>
+### GET Examples
+
+#### List all units
+
+- Pagination is required when not filtering by cadTrustUnitId
+
+Request
+```shell
+curl --location -g --request GET 'localhost:31310/v2/unit?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 3134,
+  "data": [
+    {
+      "cadTrustUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "unitSerialId":"UNIT-001",
+      "unitStartBlock":"A345",
+      "unitEndBlock":"B567",
+      "unitCount":222,
+      "unitVintageYear":2014,
+      "unitType":"Reduction - technical",
+      "unitStatus":"Buffer",
+      "unitStatusReason":"Issued and active",
+      "unitStatusDate":"2024-01-01T00:00:00.000Z",
+      "unitLink":"https://example.com/unit",
+      "unitMetric":"tCO2e",
+      "unitCurrentOwner":"Sample Owner",
+      "unitItmosReferenceId":"ITMO-001",
+      "marketplace":"Demo Marketplace",
+      "marketplaceLink":"http://climateWarehouse.com/myMarketplace",
+      "marketplaceIdentifier":"AKFEE3",
+      "cadTrustIssuanceId":"d9f58b08-af25-461c-88eb-403bb02b135e",
+      "createdAt":"2022-03-13T05:29:39.647Z",
+      "updatedAt":"2022-03-13T05:29:39.647Z"
+    }
+  ]
+}
+```
+
+**Note**: The `orgUid` field is automatically set from the home organization when creating or updating units. It cannot be provided in POST or PUT requests and will be rejected if included.
+
+---
+
+#### Get single unit
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/unit/89d7a102-a5a6-4f80-bc67-d28eba4952f3' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+  "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+  "unitSerialId":"UNIT-001",
+  "unitStartBlock":"A345",
+  "unitEndBlock":"B567",
+  "unitCount":222,
+  "unitVintageYear":2014,
+  "unitType":"Reduction - technical",
+  "unitStatus":"Buffer",
+  "unitStatusReason":"Issued and active",
+  "unitStatusDate":"2024-01-01T00:00:00.000Z",
+  "unitLink":"https://example.com/unit",
+  "unitMetric":"tCO2e",
+  "unitCurrentOwner":"Sample Owner",
+  "unitItmosReferenceId":"ITMO-001",
+  "marketplace":"Demo Marketplace",
+  "marketplaceLink":"http://climateWarehouse.com/myMarketplace",
+  "marketplaceIdentifier":"AKFEE3",
+  "cadTrustIssuanceId":"d9f58b08-af25-461c-88eb-403bb02b135e",
+  "createdAt":"2022-03-13T05:29:39.647Z",
+  "updatedAt":"2022-03-13T05:29:39.647Z"
+}
+```
+
+---
+
+#### List units by orgUid
+
+- Filter units by organization UID. Pagination is required when filtering by orgUid.
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/unit?orgUid=77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 7,
+  "data": [
+    {
+      "cadTrustUnitId":"89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
+      "unitSerialId":"TEST-UNIT-001",
+      "unitStartBlock":"A345",
+      "unitEndBlock":"B567",
+      "unitCount":222,
+      "unitVintageYear":2014,
+      "unitType":"Reduction - technical",
+      "unitStatus":"Buffer"
+    }
+  ]
+}
+```
+
+---
+
+#### List units with advanced query features
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/unit?page=1&limit=10&search=renewable&columns=unitCurrentOwner&columns=unitStatus&filter=unitVintageYear:2014:eq&order=unitCurrentOwner:ASC' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "unitCurrentOwner":"Sample Owner",
+      "unitStatus":"Buffer"
+    }
+  ]
+}
+```
+
+---
+
+#### Export units to Excel
+
+Request
+```sh
+curl --location --request GET 'localhost:31310/v2/unit?xls=true' --header 'Content-Type: application/json' > units.xlsx
+```
+
+Response:
+
+Download stream to download the XLS file of unit records.
+
+---
+
+#### Filter units by marketplace identifiers
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/unit?marketplaceIdentifiers=AKFEE3,XYZ123&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 2,
+  "data": [
+    {
+      "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "unitSerialId": "UNIT-001",
+      "marketplace": "Demo Marketplace",
+      "marketplaceLink": "http://climateWarehouse.com/myMarketplace",
+      "marketplaceIdentifier": "AKFEE3",
+      "unitVintageYear": 2024
+    }
+  ]
+}
+```
+
+---
+
+#### Filter units with marketplace identifier
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/unit?hasMarketplaceIdentifier=true&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 15,
+  "data": [
+    {
+      "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "unitSerialId": "UNIT-001",
+      "marketplace": "Demo Marketplace",
+      "marketplaceIdentifier": "AKFEE3",
+      "unitVintageYear": 2024
+    }
+  ]
+}
+```
+
+---
+
+#### Filter tokenized units
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/unit?onlyTokenizedUnits=true&page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [
+    {
+      "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "unitSerialId": "UNIT-001",
+      "marketplace": "Tokenized on Chia",
+      "marketplaceIdentifier": "CHIA-TOKEN-12345",
+      "unitVintageYear": 2024
+    }
+  ]
+}
+```
+
+**Note**: Tokenized units must have `marketplace='Tokenized on Chia'` AND `marketplaceIdentifier` set (not null and not empty).
+
+---
+
+### POST Examples
+
+#### Create unit
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
+
+**Marketplace Fields**: The `marketplace`, `marketplaceLink`, and `marketplaceIdentifier` fields are optional. If provided, `marketplaceIdentifier` cannot be an empty string (must be null or a valid identifier).
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| unitSerialId | String | x | | Serial identifier for the unit |
+| unitStartBlock | String | x | | Start block identifier |
+| unitEndBlock | String | x | | End block identifier |
+| unitVintageYear | Number | x | | Vintage year (must be between 1900 and 2100) |
+| cadTrustIssuanceId | String | x | | CAD Trust issuance identifier. Must be a valid UUID |
+| unitCount | Number | | | Count of units (must be >= 0) |
+| unitType | String | | x | Type of unit |
+| unitStatus | String | | x | Status of the unit |
+| unitStatusReason | String | | | Reason for the unit status |
+| unitStatusDate | Date | | | Date when the unit status was set (ISO 8601 format) |
+| unitRetirementDetail | String | | | Details about unit retirement |
+| unitRetirementBeneficiary | String | | | Beneficiary of unit retirement |
+| unitRetirementBeneficiaryId | String | | | Beneficiary identifier for unit retirement |
+| unitLink | String | | | URL link to the unit. Must be a valid URI |
+| unitMetric | String | | x | Unit metric |
+| unitCurrentOwner | String | | | Current owner of the unit |
+| unitItmosReferenceId | String | | | ITMOS reference identifier |
+| marketplace | String | | | Marketplace name (can be null) |
+| marketplaceLink | String | | | Marketplace link (can be null) |
+| marketplaceIdentifier | String | | | Marketplace identifier (can be null, but cannot be empty string) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location -g --request POST 'localhost:31310/v2/unit' \
+     --header 'Content-Type: application/json' \
+     --data-raw '{
+       "unitSerialId": "UNIT-001",
+       "unitStartBlock": "abc123",
+       "unitEndBlock": "bcd456",
+       "unitVintageYear": 1998,
+       "unitCount": 200,
+       "unitType": "Removal - technical",
+       "unitStatus": "Held",
+       "unitStatusReason": "Issued and active",
+       "unitStatusDate": "2024-01-01",
+       "unitLink": "http://climateWarehouse.com/myRegistry",
+       "unitMetric": "tCO2e",
+       "unitCurrentOwner": "Chia",
+       "unitItmosReferenceId": "ITMO-001",
+       "marketplace": "Demo Marketplace",
+       "marketplaceLink": "http://climateWarehouse.com/myMarketplace",
+       "marketplaceIdentifier": "AKFEE3",
+       "cadTrustIssuanceId": "d9f58b08-af25-461c-88eb-403bb02b135e"
+}'
+```
+
+Response
+```json
+{
+  "message":"Unit staged successfully",
+  "uuid":"9a29f826-ea60-489f-a290-c734e8fd57f1",
+  "cadTrustUnitId":"f9a0b1c2-d3e4-5678-9012-34567890abcd",
+  "success":true
+}
+```
+
+---
+
+#### Create tokenized unit on Chia
+
+Request
+```shell
+curl --location -g --request POST 'localhost:31310/v2/unit' \
+     --header 'Content-Type: application/json' \
+     --data-raw '{
+       "unitSerialId": "UNIT-TOKENIZED-001",
+       "unitStartBlock": "BLK001",
+       "unitEndBlock": "BLK010",
+       "unitVintageYear": 2024,
+       "cadTrustIssuanceId": "issuance-uuid-here",
+       "marketplace": "Tokenized on Chia",
+       "marketplaceIdentifier": "CHIA-TOKEN-12345"
+}'
+```
+
+Response
+```json
+{
+  "message":"Unit staged successfully",
+  "uuid":"9a29f826-ea60-489f-a290-c734e8fd57f1",
+  "cadTrustUnitId":"f9a0b1c2-d3e4-5678-9012-34567890abcd",
+  "success":true
+}
+```
+
+**Note**: To mark a unit as tokenized on Chia, set `marketplace='Tokenized on Chia'` and provide a `marketplaceIdentifier`. The unit can then be queried using `onlyTokenizedUnits=true`.
+
+---
+
+#### Split unit into multiple units
+
+Request
+```shell
+curl --location -g --request POST 'localhost:31310/v2/unit/split' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "cadTrustUnitId": "5c3a952b-108e-4245-9e02-8fd8e3023a13",
+  "records": [
+    {
+      "unitCount": 10,
+      "unitBlockStart": "A001",
+      "unitBlockEnd": "A010",
+      "unitOwner": "New Owner 1",
+      "unitStatus": "Issued",
+      "countryJurisdictionOfOwner": "Bhutan"
+    },
+    {
+      "unitCount": 5,
+      "unitBlockStart": "B001",
+      "unitBlockEnd": "B005",
+      "unitStatus": "Held",
+      "countryJurisdictionOfOwner": "Canada"
+    }
+  ]
+}'
+```
+
+Response
+```json
+{
+  "message": "Unit split successful",
+  "success": true
+}
+```
+
+---
+
+#### Batch upload units from CSV
+
+Request
+```shell
+curl --location --request POST 'http://localhost:31310/v2/unit/batch' --form 'csv=@"./createUnit.csv"'
+```
+
+Response
+```json
+{
+  "message":"CSV processing complete, your records have been added to the staging table.",
+  "success": true
+}
+```
+
+---
+
+<a id="unit-put-examples"></a>
+### PUT Examples
+
+#### Update unit
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be provided in the request body. If included, the request will be rejected with an error.
+
+Fields are the same as POST (see above).
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location -g --request PUT 'localhost:31310/v2/unit/9a5def49-7af6-428a-9958-a1e88d74bf58' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "unitSerialId": "UNIT-001",
+    "unitStartBlock": "QWERTY9800",
+    "unitEndBlock": "ASDFGH9850",
+    "unitVintageYear": 2002,
+    "unitCount": 200,
+    "unitType": "Removal - technical",
+    "unitStatus": "Held",
+    "unitStatusReason": "Updated status",
+    "unitStatusDate": "2024-01-01",
+    "unitLink": "http://climateWarehouse.com/myRegistry",
+    "unitMetric": "tCO2e",
+    "unitCurrentOwner": "New Owner",
+    "unitItmosReferenceId": "ITMO-002",
+    "cadTrustIssuanceId": "d9f58b08-af25-461c-88eb-403bb02b135e"
+}'
+```
+
+Response
+```json
+{
+  "message": "Unit update added to staging",
+  "success": true
+}
+```
+
+---
+
+#### Update units from XLSX file
+
+Request
+```shell
+curl --location -g --request PUT 'http://localhost:31310/v2/unit/xlsx' --form 'xlsx=@"./cw_query.xlsx"'
+```
+
+Response
+```json
+{
+  "message": "Updates from xlsx added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="unit-delete-examples"></a>
+### DELETE Examples
+
+#### Delete unit
+
+Request
+```shell
+curl --location -g --request DELETE 'localhost:31310/v2/unit/104b082c-b112-4c39-9249-a52c6c53282b' \
      --header 'Content-Type: application/json'
 ```
 
 Response
 ```json
 {
-    "message": "Removed all organization records for organization ${orgUid} and unsubscribed from organization datalayer stores. cadt will not sync the organizations data from datalayer",
-    "success": true
+  "message": "Unit deletion staged successfully",
+  "success": true
 }
 ```
 
@@ -2044,6 +4830,7 @@ Fields:
 | cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
 | cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
 | cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
 
 **Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
@@ -2063,6 +4850,7 @@ curl --location --request POST 'localhost:31310/v2/aef-t5-authorized-entities' \
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -2103,6 +4891,7 @@ curl --location --request PUT 'localhost:31310/v2/aef-t5-authorized-entities/b2c
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -2227,6 +5016,7 @@ Fields:
 | cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
 | cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
 | cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
 
 **Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
@@ -2265,6 +5055,7 @@ curl --location --request POST 'localhost:31310/v2/aef-t3-actions' \
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -2324,6 +5115,7 @@ curl --location --request PUT 'localhost:31310/v2/aef-t3-actions/d4e5f6a7-b8c9-0
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -2437,6 +5229,7 @@ Fields:
 | cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
 | cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
 | cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
 
 **Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
@@ -2464,6 +5257,7 @@ curl --location --request POST 'localhost:31310/v2/aef-t4-holdings' \
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -2512,6 +5306,7 @@ curl --location --request PUT 'localhost:31310/v2/aef-t4-holdings/e5f6a7b8-c9d0-
   "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
   "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -2982,5 +5777,3 @@ Response
 ```
 
 ---
-
-## Methodology

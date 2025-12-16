@@ -421,9 +421,7 @@ class StagingV2 extends Model {
       const stage3Start = Date.now();
 
       // All V2 data models
-      // Note: CoBenefitV2, EstimationV2, and RatingV2 are child tables of ProjectV2
-      // and are handled by ProjectV2.generateChangeListFromStagedData(), so they should
-      // not be included in this list
+      // Each model processes its own table independently
       const allModels = [
         ProgramV2,
         MethodologyV2,
@@ -433,6 +431,9 @@ class StagingV2 extends Model {
         IssuanceV2,
         UnitV2,
         LocationV2,
+        EstimationV2,
+        RatingV2,
+        CoBenefitV2,
         ProjectMethodologyV2,
         StakeholderV2,
         StakeholderProjectV2,
@@ -446,8 +447,6 @@ class StagingV2 extends Model {
       ];
 
       // Map model class names to table names
-      // Note: co_benefit, estimation, and rating are child tables of project
-      // and are handled by ProjectV2.generateChangeListFromStagedData()
       const modelToTableMap = {
         ProgramV2: 'program',
         MethodologyV2: 'methodology',
@@ -457,6 +456,9 @@ class StagingV2 extends Model {
         IssuanceV2: 'issuance',
         UnitV2: 'unit',
         LocationV2: 'location',
+        EstimationV2: 'estimation',
+        RatingV2: 'rating',
+        CoBenefitV2: 'co_benefit',
         ProjectMethodologyV2: 'project_methodology',
         StakeholderV2: 'stakeholder',
         StakeholderProjectV2: 'stakeholder_projects',
@@ -470,6 +472,7 @@ class StagingV2 extends Model {
       };
 
       // PERFORMANCE: Filter models that have staged data before processing
+      // Each model processes only its own table
       const modelsToProcess = allModels.filter((ModelClass) => {
         const tableName = modelToTableMap[ModelClass.name];
         return stagedRecords.some((record) => record.table === tableName);

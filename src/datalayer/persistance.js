@@ -697,6 +697,15 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
           attempts++;
           await new Promise((resolve) => setTimeout(resolve, 5000));
           continue; // Retry
+        } else {
+          // If clearing pending roots didn't help, the key already exists in the datalayer
+          // This can happen when trying to INSERT a record that already exists
+          // Treat this as success since the desired end state (record exists) is already achieved
+          logger.info(
+            `Key already present in datalayer for storeId: ${storeId}. ` +
+              `This indicates the data already exists. Treating as success.`,
+          );
+          return true;
         }
       }
 

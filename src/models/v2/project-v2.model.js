@@ -116,18 +116,13 @@ class ProjectV2 extends Model {
     isUpdateComment,
     isUpdateAuthor,
   ) {
-    // PERFORMANCE: Early exit if no staged records for this model or its child tables
-    // ProjectV2 handles child tables: location, estimation, rating, co_benefit
+    // PERFORMANCE: Early exit if no staged records for this model
     const hasStagedData = stagedData.some(
-      (record) => ['project', 'location', 'estimation', 'rating', 'co_benefit'].includes(record.table),
+      (record) => record.table === 'project',
     );
     if (!hasStagedData) {
       return {
         project: [],
-        location: [],
-        estimation: [],
-        rating: [],
-        co_benefit: [],
       };
     }
 
@@ -136,10 +131,6 @@ class ProjectV2 extends Model {
 
     const primaryKeyMap = {
       project: 'cad_trust_project_id',
-      location: 'cad_trust_location_id',
-      estimation: 'cad_trust_estimation_id',
-      rating: 'cad_trust_rating_id',
-      co_benefit: 'cad_trust_co_benefit_id',
     };
 
     // PERFORMANCE: Only call getDeletedItems() if UPDATE records exist
@@ -184,40 +175,20 @@ class ProjectV2 extends Model {
     // Map sheet names from model.name (e.g., "ProjectV2") to table name (e.g., "project")
     // This is needed because createXlsFromSequelizeResults uses model.name as the key,
     // but transformFullXslsToChangeList expects keys matching primaryKeyMap
-    // Also map child table sheet names if they exist
     const mapSheetNames = (xslsSheets, modelName, tableName) => {
-      if (!xslsSheets) {
+      if (!xslsSheets || !xslsSheets[modelName]) {
         return xslsSheets;
       }
       const mapped = { ...xslsSheets };
-      if (mapped[modelName]) {
-        mapped[tableName] = mapped[modelName];
-        delete mapped[modelName];
-      }
-      // Map child table names if they exist (LocationV2 -> location, etc.)
-      const childMappings = {
-        LocationV2: 'location',
-        EstimationV2: 'estimation',
-        RatingV2: 'rating',
-        CoBenefitV2: 'co_benefit',
-      };
-      Object.keys(childMappings).forEach((childModelName) => {
-        if (mapped[childModelName]) {
-          mapped[childMappings[childModelName]] = mapped[childModelName];
-          delete mapped[childModelName];
-        }
-      });
+      mapped[tableName] = mapped[modelName];
+      delete mapped[modelName];
       return mapped;
     };
 
     // Convert Excel to changelist (only if Excel sheets were created)
-    // Pass V2 model map for checking existing records (including child tables)
+    // Pass V2 model map for checking existing records
     const modelMap = {
       project: ProjectV2,
-      location: LocationV2,
-      estimation: EstimationV2,
-      rating: RatingV2,
-      co_benefit: CoBenefitV2,
     };
 
     const insertChangeList = insertXslsSheets
@@ -266,26 +237,6 @@ class ProjectV2 extends Model {
         ..._.get(insertChangeList, 'project', []),
         ..._.get(updateChangeList, 'project', []),
         ...deleteChangeList,
-      ],
-      location: [
-        ..._.get(insertChangeList, 'location', []),
-        ..._.get(updateChangeList, 'location', []),
-        ..._.get(deletedAssociationsChangeList, 'location', []),
-      ],
-      estimation: [
-        ..._.get(insertChangeList, 'estimation', []),
-        ..._.get(updateChangeList, 'estimation', []),
-        ..._.get(deletedAssociationsChangeList, 'estimation', []),
-      ],
-      rating: [
-        ..._.get(insertChangeList, 'rating', []),
-        ..._.get(updateChangeList, 'rating', []),
-        ..._.get(deletedAssociationsChangeList, 'rating', []),
-      ],
-      co_benefit: [
-        ..._.get(insertChangeList, 'co_benefit', []),
-        ..._.get(updateChangeList, 'co_benefit', []),
-        ..._.get(deletedAssociationsChangeList, 'co_benefit', []),
       ],
       comment: commentChangeList,
       author: authorChangeList,

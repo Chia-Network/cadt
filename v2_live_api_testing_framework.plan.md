@@ -17,568 +17,101 @@ Create a completely separate test suite (`tests/v2/live-api/`) that tests the re
 - Test with large datasets
 - Clean up all created data at the end using DELETE endpoints
 
-## Structure
+## Test Structure and Execution
 
-### Directory Structure
+**CRITICAL**: Tests are organized into three separate suites that can run independently or together:
 
-```
-tests/v2/live-api/
-├── helpers/
-│   ├── live-api-helpers.js    # Helper functions for live API tests
-│   └── shared-state.js         # Track created IDs across tests
-├── data/
-│   └── test-data-generators.js # Functions to generate test data
-├── methodology-live.spec.js
-├── program-live.spec.js
-├── project-live.spec.js
-├── validation-live.spec.js
-├── verification-live.spec.js
-├── issuance-live.spec.js
-├── unit-live.spec.js
-├── location-live.spec.js
-├── estimation-live.spec.js
-├── rating-live.spec.js
-├── co-benefit-live.spec.js
-├── label-live.spec.js
-├── stakeholder-live.spec.js
-├── project-methodology-live.spec.js
-├── stakeholder-projects-live.spec.js
-├── unit-label-live.spec.js
-├── aef-t1-submission-live.spec.js
-├── aef-t2-authorizations-live.spec.js
-├── aef-t3-actions-live.spec.js
-├── aef-t4-holdings-live.spec.js
-├── aef-t5-authorized-entities-live.spec.js
-└── cleanup-live.spec.js        # Final cleanup test (runs last)
-```
+### Test Suites
 
-## Implementation Details
+1. **Organization Creation** (`test:v2:live:organization:create`):
+   - File: `tests/v2/live-api/organization/organization-create.spec.js`
+   - Creates V2 organization → saves UID to state file
+   - Creates V1 organization → saves UID to state file
+   - Upgrades V1 to V2 → saves upgraded V2 UID to state file
+   - State file location: `tests/v2/.organization-state.json` (root of v2 tests directory)
+   - Timeout: 120 minutes (multiple 30-minute operations)
 
-### 1. Live API Helper (`tests/v2/live-api/helpers/live-api-helpers.js`)
+2. **Data Tests** (`test:v2:live:data`):
+   - Files: `tests/v2/live-api/data/*-validation.spec.js` (methodology-validation.spec.js, etc.)
+   - Tests CRUD operations on resources (methodology, project, etc.)
+   - Assumes organizations already exist (from create step)
+   - Timeout: 10 minutes per test file
 
-**Key Functions:**
+3. **Organization Deletion** (`test:v2:live:organization:delete`):
+   - File: `tests/v2/live-api/organization/organization-delete.spec.js`
+   - Reads organization UIDs from state file
+   - Deletes all created organizations
+   - Clears state file after deletion
+   - Timeout: 10 minutes
 
-- `getLiveApiConfig()` - Reads production config from `~/.chia/mainnet/cadt/config.yaml` (not test config)
-  - Uses `getChiaRoot()` to find config location
-  - Reads `CW_PORT` from `APP.CW_PORT` (default: 31310)
-  - Returns `{ baseUrl: 'http://localhost:{port}', port: {port} }`
-- `createLiveApiRequest()` - Creates supertest instance pointing to localhost
-  - Returns `supertest('http://localhost:{port}')`
-- `waitForServer()` - Checks if server is running (health check)
-  - Makes GET request to `/v2/health`
-  - Retries with timeout if server not ready
-- `getHomeOrgId()` - Gets home organization ID (assumes it exists)
-  - Makes GET `/v2/organizations` and finds home org
-- `commitStagedRecords(uuids)` - Helper to commit multiple staged records (batch commit)
-  - Takes array of UUIDs
-  - Makes POST `/v2/staging/commit` for each UUID
-  - Returns array of commit responses
-- `waitForDataToAppear(request, type, id, maxWaitTime = 600000)` - Waits for data to appear in database after commit
-  - Polls GET `/v2/{type}/{id}` until record exists (or timeout)
-  - Uses exponential backoff: start with 5 second intervals, increase to 30 seconds after 2 minutes
-  - Throws error if data doesn't appear within maxWaitTime (default 10 minutes)
-  - Blockchain transactions typically take 2-5 minutes, plus CADT polling time
-- `waitForBatchToAppear(request, records, maxWaitTime = 600000)` - Waits for multiple records to appear
-  - Takes array of `{type, id}` objects
-  - Polls all records in parallel until all exist or timeout
-  - More efficient than waiting for each individually
-  - Returns when all records are found, or throws error if timeout
+4.  **Utilities**
+   - Files: `tests/v2/live-api/utilities`
+   - These utilities can have individual commands in package.json, like `test:v2:delete-test-data`
+   - Should not be included in any test suites
 
-**Important:** This helper must NOT use `NODE_ENV=test` when reading config, or must explicitly read production config.
+## Background
 
-### 2. Test Data Generators (`tests/v2/live-api/data/test-data-generators.js`)
+In `tests/old-live-api`, there's some old tests that we have abandoned.  This can be used for reference if needed, but we are creating a whole new test suite and we do not want to recreate what we have here.  Follow the directions of this plan, not the example in `tests/old-live-api`, however, some of the code in this directory may be useful for re-use or reference.
 
-**Functions to generate realistic test data:**
+## What to build
 
-Each resource generator should have multiple variants:
+We are building a test suite that makes real API calls to a running CADT API.  The test suite assumes the API is already running, it does not run the API itself.
 
-- `generate{Resource}()` - Creates standard test data with all fields populated
-- `generate{Resource}Minimal()` - Creates minimal test data with only required fields
-- `generate{Resource}Maximal()` - Creates maximal test data with all fields including optional ones
-- `generate{Resource}LongStrings()` - Creates test data with very long string values (1000+ characters)
-- `generate{Resource}InvalidPicklist()` - Creates test data with invalid picklist values (for error testing)
-- `generate{Resource}InvalidForeignKey()` - Creates test data with non-existent foreign key IDs (for error testing)
-- `generate{Resource}ForbiddenFields()` - Creates test data that includes forbidden fields like createdAt, updatedAt, ID fields (for error testing)
+## Architecture Decisions
 
-**Resource generators needed:**
+Based on clarifying questions, the following architectural decisions have been made:
 
-- Methodology
-- Program
-- Project
-- Validation
-- Verification
-- Issuance
-- Unit
-- Location
-- Estimation
-- Rating
-- CoBenefit
-- Label
-- Stakeholder
-- AefT1Submission
-- AefT2Authorizations
-- AefT3Actions
-- AefT4Holdings
-- AefT5AuthorizedEntities
+- **State file location**: `tests/v2/.organization-state.json` (root of v2 tests directory, not in live-api subdirectory)
+- **Test data storage**: Single shared file `tests/v2/live-api/data/test-data-generators.js` containing all fake test data generators
+- **Helper files structure**:
+  - `tests/v2/live-api/helpers/live-api-helpers.js` - Contains functions for:
+    - Reading production config and creating supertest request instance
+    - Getting home organization ID
+    - Checking if database is empty
+    - Committing staged records
+    - Waiting for organization sync
+    - Validating data appears in database after sync
+    - Clearing staging table
+  - `tests/v2/live-api/helpers/api-request-helpers.js` - Contains functions for:
+    - Making POST/PUT/DELETE requests to endpoints
+    - Handling responses and extracting IDs (with special handling for project-methodology and unit-label)
+    - Logging request URIs to stdout
+- **Extended vs Short mode**: Separate orchestration files (`tests/v2/live-api/data-extended.js` and `tests/v2/live-api/data-short.js`) that import and call individual test files
+- **Validation failure handling**: Batch clear all staging records at the end of the validation phase (step 3), not immediately after each failure
+- **Endpoint list**: Extract list of data endpoints from `docs/cadt_rpc_api_v2.md` documentation
 
-**Helper functions:**
+### Data tests
 
-- `generateLargeDataset(resourceType, count, variant = 'standard')` - Generates arrays of test data for bulk operations
-- `getLongString(length = 1000)` - Helper to generate long strings for testing
-- `getInvalidPicklistValue(fieldName)` - Helper to generate invalid picklist values
-- `getNonExistentId()` - Helper to generate UUIDs that don't exist (for foreign key error testing)
+First, build tests that test all of the data endpoints.  These tests assume a home organization exists.
 
-### 3. Test Pattern for Each Resource
+When making write requests (POST, PUT, DELETE) to any endpoint, the test should output the command that is being made to stdout.  Don't include the data, just the URI / path that is being requested
 
-Each test file follows this pattern with **batched commits**:
+Here's the steps we want to test in the order we want to test them.
 
-```javascript
-import { expect } from 'chai';
-import { getLiveApiRequest, getHomeOrgId, commitStagedRecords, waitForBatchToAppear } from '../helpers/live-api-helpers.js';
-import { addCreatedId } from '../helpers/shared-state.js';
-import { generate{Resource} } from '../data/test-data-generators.js';
+1.  Test that ensures a home organization owned by us (GET request to `v2/organizations` endpoint, with `is_home` = `true`) exists.  Fail tests and exit here if one doesn't exist.
 
-describe('{Resource} Live API Tests', function () {
-  this.timeout(600000); // 10 minute timeout (longer due to blockchain waits)
+2.  Check all endpoints that the database is empty.  If it is not empty, fail and exit tests here with a clear error message.
 
-  let request;
-  let homeOrgId;
-  const createdIds = []; // Track all created IDs for cleanup
-  const stagedUuids = []; // Track staged UUIDs for batch commit
+3.  At this stage, test write requests (PUT, POST) we expect to fail.  For example, we shouldn't be able to write a POST or PUT to any endpoint with the "created at" or "updated at" fields as those are auto-generated.  We also should be able to specify an ID like the cadTrustLabelId or cadTrustLabelId in the initial POST request as those are auto generated.  Look at each endpoint and find the things we validate and test if the endpoint works with something that doesn't match our validation.  Test that responses not in the picklist don't work (use a random string to be sure it isn't in the picklist), test that it fails if you don't include the required fields.  Test strings that are too long, test "not null" requirements.  **Validation failure handling**: If any of these validation tests fail, batch clear all staging records at the end of the validation phase (not immediately after each failure).  Clearing the staging table is documented in `docs/cadt_rpc_api_v2.md`.
 
-  before(async function () {
-    request = getLiveApiRequest();
-    homeOrgId = await getHomeOrgId(request);
-    // Optional: Check database is empty (warns if not, doesn't fail)
-    await checkDatabaseEmpty(request);
-  });
+4.  Test doing a POST request to add data to every data endpoint (excluding organizations).  **Endpoint list**: Extract the list of data endpoints from `docs/cadt_rpc_api_v2.md` (methodology, program, project, unit, issuance, verification, validation, rating, co-benefit, estimation, stakeholder, stakeholder-projects, project-methodology, unit-label, location, label, and all AEF endpoints).  **Test data storage**: Generate fake example data for each endpoint and store it in a single shared file `tests/v2/live-api/data/test-data-generators.js` for reuse across tests.  We should do 3 POST requests for each endpoint.  One with typical data, similar to what the example in `docs/cadt_rpc_api_v2.md` shows, one with only the minimal fields, and one with all fields with lots of data in each field. For the typical data, add 10 typical records.  **API request helper**: Create a single shared helper file `tests/v2/live-api/helpers/api-request-helpers.js` with functions for making API requests.  This file should accept the endpoint and JSON data to submit.  When we submit a POST request, the response from the API will tell us a UUID that we should save to use when we make PUT or DELETE requests in the future.  Saving these IDs will let us keep track of what we've created.  These are fields in the response JSON such as `cadTrustValidationId` and `cadTrustMethodologyId`.  The endpoints for `project-methodology` and `unit-label` don't return an ID, so these 2 will need special handling - pass a flag to the API request helper to indicate not to expect a returned ID.  Pay attention to what order we do the POST requests in as some API endpoints require the ID from other endpoints to work.
 
-  describe('POST /v2/{resource}', function () {
-    it('should create multiple {resource}s and batch commit', async function () {
-      const dataArray = generateLargeDataset(10);
-      const recordsToWaitFor = [];
+These POST requests should create a record in the staging table.  Before calling success on the POST request, do a GET request to the staging table and look for the record in the staging table with the correct data.
 
-      // Stage all records without committing
-      for (const data of dataArray) {
-        const response = await request
-          .post('/v2/{resource}')
-          .send(data)
-          .expect(200);
+5.  **Staging commit helper**: Create a shared helper function in `tests/v2/live-api/helpers/live-api-helpers.js` to handle committing the staging table (`POST` request to `/v2/staging/commit`).  When we commit the stage table, don't provide IDs, just commit everything in the table.  **Extended vs Short test modes**: We need 2 test commands - `npm run test:v2:live:data:extended` and `test:v2:live:data:short`.  **Orchestration files**: Create separate orchestration files that call the individual test files:
+   - `tests/v2/live-api/data-extended.js` - For extended mode: calls commit function after every endpoint POST request and waits for validation before moving to the next endpoint
+   - `tests/v2/live-api/data-short.js` - For short mode: does all POST requests first, then does 1 single commit of all POST data
+   These orchestrators should import and call the individual test files in the correct order.
 
-        expect(response.body.success).to.be.true;
-        expect(response.body.cadTrust{Resource}Id).to.exist;
+6.  **Validation helper**: Create shared validation functions in `tests/v2/live-api/helpers/live-api-helpers.js` to handle validation.  This checks if the data has made it through the write (POST, PUT, or DELETE), then the staging commit, write to datalayer, and then finally make it through the sync and into the correct table in the database.  This sync process can take up to 10 minutes from when the staging table is committed.  Time out if it takes longer.  So after the staging table is committed, start looking for the specific data we wrote to show up in the database tables with GET requests.  Once the data syncs, the staging table should be truncated and all records in staging should be cleared.  Probably best to query the staging table after the commit happens, and if there's still records (any records) in the staging table, then wait 10 seconds and try again.  When a GET to the staging endpoint returns no records, then make GET requests to all the endpoints we updated and validate that the data we added (or changed if we're testing PUTs) is correctly returned.
 
-        createdIds.push(response.body.cadTrust{Resource}Id);
-        addCreatedId('{resource}', response.body.cadTrust{Resource}Id);
-        stagedUuids.push(response.body.uuid);
-        recordsToWaitFor.push({
-          type: '{resource}',
-          id: response.body.cadTrust{Resource}Id
-        });
-      }
+7.  After the POST requests are validated as correct, do a single PUT request to each API endpoint changing one of the records we created in the POST commands.  Follow the same extended and short test format, orchestrating via the files `tests/v2/live-api/data-short.js` and `tests/v2/live-api/data-extended.js`.  For the short tests, do a single commit to staging after all PUT requests are staged.  For extended tests, do a commit after each PUT request is made and wait for validation.  Do a validation step after committing to staging, using the same validation helper functions as described in step 6 above.
 
-      // Batch commit all staged records
-      await commitStagedRecords(request, stagedUuids);
-      stagedUuids.length = 0; // Clear array
+8.  While we have data in the database, we need to run GET request tests against the endpoints testing all the different ways we return data.  Run tests to make sure things like pagination work (with various options on page and limit), searches work, and any other GET features you find in the `docs/cadt_rpc_api_v2.md` that we can test.
 
-      // Wait for blockchain transaction and data to appear in database
-      await waitForBatchToAppear(request, recordsToWaitFor);
+9.  Following the same process as with PUT and POST described in steps 4 to 6 for the DELETE test.  The DELETE requests should delete all data we have created in the database (organizations table and endpoint excluded) leaving empty data tables.  It should follow the same process of staging and validation using the shared helpers as already discussed.
 
-      // Verify all records are now in the database
-      for (const record of recordsToWaitFor) {
-        const getResponse = await request
-          .get(`/v2/${record.type}/${record.id}`)
-          .expect(200);
-        expect(getResponse.body.cadTrust{Resource}Id).to.equal(record.id);
-      }
-    });
-  });
+10.  If all tests have validated, then the test were successful.  If one did not validate, please output error information and clearly indicate which test did not pass.
 
-  describe('GET /v2/{resource}', function () {
-    it('should list all {resource}s', async function () {
-      const response = await request
-        .get('/v2/{resource}')
-        .expect(200);
+These tests aren't meant to work in isolation - they are meant to test the API calls a real user would do, so each test should use IDs reported by the tests from before it, the same way a real user would use the APIs.  Don't create records just to be a prerequisite for other API requests - use the records from previous tests.  Put the records in the right order so prerequisites are created by previous requests in previous endpoint tests.
 
-      expect(response.body).to.be.an('array');
-      expect(response.body.length).to.be.greaterThan(0);
-    });
-
-    it('should get a specific {resource} by ID', async function () {
-      // Use an ID from createdIds (must have been committed and synced)
-      const id = createdIds[0];
-      const response = await request
-        .get(`/v2/{resource}/${id}`)
-        .expect(200);
-
-      expect(response.body.cadTrust{Resource}Id).to.equal(id);
-    });
-  });
-
-  describe('PUT /v2/{resource}/:id', function () {
-    it('should update a {resource} and batch commit', async function () {
-      const id = createdIds[0];
-      const updateData = generate{Resource}(); // New data
-      const response = await request
-        .put(`/v2/{resource}/${id}`)
-        .send(updateData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-
-      // Stage the update
-      stagedUuids.push(response.body.uuid);
-
-      // Commit and wait for sync
-      await commitStagedRecords(request, stagedUuids);
-      stagedUuids.length = 0;
-      await waitForBatchToAppear(request, [{ type: '{resource}', id }]);
-
-      // Verify update
-      const getResponse = await request
-        .get(`/v2/{resource}/${id}`)
-        .expect(200);
-      // Verify updated fields match updateData
-    });
-  });
-
-  describe('DELETE /v2/{resource}/:id', function () {
-    it('should delete a {resource} and batch commit', async function () {
-      const id = createdIds[createdIds.length - 1]; // Delete last one
-      const response = await request
-        .delete(`/v2/{resource}/${id}`)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-
-      // Stage the delete
-      stagedUuids.push(response.body.uuid);
-
-      // Commit and wait for sync
-      await commitStagedRecords(request, stagedUuids);
-      stagedUuids.length = 0;
-
-      // Wait a bit for delete to sync, then verify record is gone
-      await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
-
-      const getResponse = await request
-        .get(`/v2/{resource}/${id}`)
-        .expect(404); // Should be deleted
-
-      createdIds.pop(); // Remove from tracking
-    });
-  });
-
-  // Clean up any remaining staged records before moving to next test file
-  after(async function () {
-    if (stagedUuids.length > 0) {
-      await commitStagedRecords(request, stagedUuids);
-    }
-  });
-});
-```
-
-### 4. Cleanup Test (`tests/v2/live-api/cleanup-live.spec.js`)
-
-This test runs last and deletes all data created during the test run using **batched commits**:
-
-```javascript
-import { expect } from 'chai';
-import { getLiveApiRequest, commitStagedRecords, waitForBatchToAppear } from './helpers/live-api-helpers.js';
-import { getAllCreatedIds } from './helpers/shared-state.js';
-
-describe('Live API Cleanup', function () {
-  this.timeout(600000); // 10 minute timeout
-
-  let request;
-  const stagedUuids = [];
-
-  before(async function () {
-    request = getLiveApiRequest();
-  });
-
-  it('should delete all created test data in batches', async function () {
-    const allIds = getAllCreatedIds(); // Already in reverse dependency order
-
-    // Stage all deletes first
-    for (const { type, id } of allIds) {
-      const response = await request
-        .delete(`/v2/${type}/${id}`)
-        .expect(200);
-
-      stagedUuids.push(response.body.uuid);
-    }
-
-    // Batch commit all deletes
-    await commitStagedRecords(request, stagedUuids);
-
-    // Wait for deletes to sync (may take several minutes)
-    // Note: We can't easily verify deletes are gone since GET will 404,
-    // but we can wait a reasonable time for sync
-    await new Promise(resolve => setTimeout(resolve, 120000)); // Wait 2 minutes
-
-    // Verify records are deleted by attempting to GET them
-    let deletedCount = 0;
-    for (const { type, id } of allIds) {
-      try {
-        await request.get(`/v2/${type}/${id}`).expect(404);
-        deletedCount++;
-      } catch (error) {
-        // If we get 200, record still exists (may need more time)
-        console.warn(`Record ${type}/${id} still exists after delete`);
-      }
-    }
-
-    console.log(`Deleted ${deletedCount} of ${allIds.length} records`);
-  });
-});
-```
-
-### 5. Shared State Helper (`tests/v2/live-api/helpers/shared-state.js`)
-
-Tracks all created IDs across test files:
-
-```javascript
-const createdIds = {
-  methodology: [],
-  program: [],
-  project: [],
-  validation: [],
-  verification: [],
-  issuance: [],
-  unit: [],
-  location: [],
-  estimation: [],
-  rating: [],
-  coBenefit: [],
-  label: [],
-  stakeholder: [],
-  'project-methodology': [],
-  'stakeholder-projects': [],
-  'unit-label': [],
-  'aef-t1-submission': [],
-  'aef-t2-authorizations': [],
-  'aef-t3-actions': [],
-  'aef-t4-holdings': [],
-  'aef-t5-authorized-entities': [],
-};
-
-export const addCreatedId = (type, id) => {
-  if (!createdIds[type]) {
-    createdIds[type] = [];
-  }
-  createdIds[type].push(id);
-};
-
-export const getAllCreatedIds = () => {
-  const all = [];
-  // Delete in reverse dependency order
-  const deleteOrder = [
-    'unit-label',
-    'stakeholder-projects',
-    'project-methodology',
-    'unit',
-    'issuance',
-    'verification',
-    'validation',
-    'aef-t4-holdings',
-    'aef-t3-actions',
-    'aef-t2-authorizations',
-    'aef-t5-authorized-entities',
-    'aef-t1-submission',
-    'co-benefit',
-    'estimation',
-    'rating',
-    'label',
-    'stakeholder',
-    'project',
-    'program',
-    'methodology',
-    'location',
-  ];
-
-  for (const type of deleteOrder) {
-    if (createdIds[type] && createdIds[type].length > 0) {
-      for (const id of createdIds[type]) {
-        all.push({ type, id });
-      }
-    }
-  }
-
-  return all;
-};
-```
-
-### 6. Package.json Script
-
-Add new script to run live API tests:
-
-```json
-"test:v2:live": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/**/*.spec.js' --reporter spec --exit --timeout 300000"
-```
-
-**Note:** Uses `NODE_ENV=production` so config loader reads production config, not test config. However, we may need to explicitly read production config regardless of NODE_ENV.
-
-## Key Implementation Points
-
-1. **Config Reading**: Helper must read from `~/.chia/mainnet/cadt/config.yaml` (production config), not test config. May need to explicitly set CHIA_ROOT or read config directly.
-2. **Server Assumption**: Tests assume server is already running - helper checks with health endpoint
-3. **Data Accumulation**: Each test adds to shared state, data persists across tests
-4. **Batched Commits**: All POST/PUT/DELETE operations stage data, but commits are batched to minimize blockchain wait times
-
-   - Stage multiple operations (e.g., create 10 records)
-   - Commit all at once
-   - Wait for blockchain transaction to complete and data to sync into database
-   - Then verify with GET requests
-
-5. **Blockchain Wait**: After committing, must wait for:
-
-   - Chia datalayer transaction to be submitted
-   - Transaction to be confirmed on blockchain (takes minutes)
-   - CADT to poll datalayer and see the transaction
-   - CADT to download and insert data into database
-   - Data to be available via GET requests
-
-6. **Cleanup Order**: Delete in reverse dependency order (units → issuances → verifications → validations → projects → programs → methodologies)
-7. **Large Dataset Testing**: Include tests that create 50-100+ records to test performance - batch commit all at once
-8. **Error Handling**: Tests should handle cases where server is not running gracefully
-9. **Timeout Management**: Tests need longer timeouts (10+ minutes) due to blockchain wait times
-
-## Files to Create
-
-1. `tests/v2/live-api/helpers/live-api-helpers.js`
-2. `tests/v2/live-api/helpers/shared-state.js`
-3. `tests/v2/live-api/data/test-data-generators.js`
-4. Individual test files for each resource type (20+ files)
-5. `tests/v2/live-api/cleanup-live.spec.js`
-6. Update `package.json` with new test script
-
-## Testing Strategy
-
-- **Sequential Execution**: Tests run in order, data accumulates
-- **Dependency Handling**: Tests that depend on other resources (e.g., project-methodology) run after base resources
-- **Cleanup Verification**: After cleanup, verify all created records are gone
-- **Error Scenarios**: Test invalid data, missing fields, etc.
-- **Large Data**: Create tests with 100+ records to test API performance
-
-## Implementation Phases
-
-### Phase 1: Validation Test (Start Here)
-
-Create a minimal test to validate the entire process works before building the full suite.
-
-**Important:** This phase assumes a V2 organization already exists. The organization should be created manually or via Phase 0 (which will be built after Phase 1 validation is complete).
-
-**Phase 1 Todos:**
-
-1. Create `tests/v2/live-api/helpers/live-api-helpers.js` with core functions:
-
-   - Read production config from `~/.chia/mainnet/cadt/config.yaml`
-   - Create supertest instance pointing to `http://localhost:{port}`
-   - Check server health (`/v2/health`)
-   - Get home org ID from `/v2/organizations` (assumes org already exists)
-   - Batch commit staged records (`commitStagedRecords`)
-   - Wait for data to appear in database (`waitForDataToAppear`, `waitForBatchToAppear`)
-
-2. Create `tests/v2/live-api/helpers/shared-state.js` - simple version to track created IDs
-
-3. Create `tests/v2/live-api/data/test-data-generators.js` - start with methodology resource:
-
-   - `generateMethodology()` - standard with all fields
-   - `generateMethodologyMinimal()` - only required fields
-   - `generateMethodologyMaximal()` - all fields including optional
-   - `generateMethodologyLongStrings()` - with 1000+ char strings
-   - `generateMethodologyInvalidPicklist()` - invalid picklist values
-   - `generateMethodologyInvalidForeignKey()` - non-existent foreign key IDs
-   - `generateMethodologyForbiddenFields()` - includes createdAt, updatedAt, ID fields
-   - Helper functions: `getLongString()`, `getInvalidPicklistValue()`, `getNonExistentId()`
-
-4. Create `tests/v2/live-api/methodology-validation.spec.js` - comprehensive test:
-
-**Happy Path Tests:**
-
-   - Create 3 methodologies with standard data (stage only, no commit yet)
-   - Create 1 methodology with minimal required fields only
-   - Create 1 methodology with all fields populated (maximal)
-   - Create 1 methodology with long string values
-   - Batch commit all 5
-   - Wait for blockchain sync and data to appear
-   - Verify all 5 appear via GET requests
-   - Verify long strings are preserved correctly
-   - Update one methodology with new data
-   - Commit update
-   - Wait and verify update
-   - Delete one methodology
-   - Commit delete
-   - Wait and verify deletion (404)
-
-**Error Case Tests (should NOT commit, just verify errors):**
-
-   - Test missing required fields → expect 400 with specific error message
-   - Test invalid picklist values → expect 400 with validation error
-   - Test non-existent foreign key IDs → expect 400 with foreign key error
-   - Test forbidden fields (createdAt, updatedAt) → expect 400 with "cannot be set via API" message
-   - Test forbidden ID field (cadTrustMethodologyId) → expect 400 with "auto-generated" message
-   - Test unknown fields → expect 400 with validation error about unknown fields
-   - Test invalid data types → expect 400 with type validation error
-
-5. Add `test:v2:live:validation` script to package.json
-
-6. Run validation test and verify entire flow works
-
-**Success Criteria for Phase 1:**
-
-- Config reads correctly from production location
-- Server connection works
-- Organization exists and can be retrieved via `getHomeOrgId()` (assumes org already exists)
-- Database empty check works (warns if not empty, doesn't fail)
-- Staging works (POST returns UUID)
-- Batch commit works (multiple UUIDs committed)
-- Wait functions work (data appears after blockchain sync)
-- GET requests work after sync with exact count verification
-- Updates work (PUT + commit + wait + verify)
-- Deletes work (DELETE + commit + wait + verify 404)
-- Edge cases work:
-  - Minimal fields (only required) → creates successfully
-  - Maximal fields (all fields) → creates successfully
-  - Long strings (1000+ chars) → preserved correctly
-- Error cases return correct errors:
-  - Missing required fields → 400 with field name in error
-  - Invalid picklist values → 400 with validation error
-  - Non-existent foreign keys → 400 with foreign key error
-  - Forbidden fields (createdAt, updatedAt) → 400 with "cannot be set via API"
-  - Forbidden ID fields → 400 with "auto-generated" message
-  - Unknown fields → 400 with validation error
-  - Invalid data types → 400 with type validation error
-
-### Phase 0: Organization Setup (Build After Phase 1 Validation)
-
-Once Phase 1 validation is complete and the testing approach is validated, build Phase 0 to automate organization creation and setup.
-
-**Note:** The full Phase 0 content (organization creation, upgrade, and verification tests) will be added here after Phase 1 validation is successful.
-
-### Phase 2: Full Test Suite (After Phase 1 Validation)
-
-Once Phase 1 is validated, build out the complete test suite:
-
-**Phase 2 Todos:**
-
-1. Expand `test-data-generators.js` with all resource types
-
-2. Create live API test files for core resources: methodology, program, project, validation, verification, issuance, unit, location
-
-   - Each test file should batch stage operations, commit in batches, wait for sync, then verify
-
-3. Create live API test files for tier 1 dependencies: estimation, rating, co-benefit, label, stakeholder
-
-   - These depend on core resources, so they run after core resources are committed and synced
-
-4. Create live API test files for join tables: project-methodology, stakeholder-projects, unit-label
-
-   - These depend on both core resources and tier 1 resources
-
-5. Create live API test files for AEF resources: aef-t1-submission, aef-t2-authorizations, aef-t3-actions, aef-t4-holdings, aef-t5-authorized-entities
-
-6. Create cleanup-live.spec.js that deletes all created test data in reverse dependency order using batched commits
-
-7. Add `test:v2:live` script to package.json to run full test suite

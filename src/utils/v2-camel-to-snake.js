@@ -16,8 +16,3 @@ export const convertToSnakeCase = (obj) => {
   return result;
 };
 
-
-
-
-
-

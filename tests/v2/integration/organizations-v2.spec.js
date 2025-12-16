@@ -359,10 +359,13 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         .expect(200);
 
       expect(response.body.success).to.be.true;
-      expect(response.body.message).to.include('currently being processed');
-      // Upgrade happens asynchronously, so orgUid won't be in response yet
-
-      await waitForOrgCreation();
+      // In simulator mode, upgrade completes synchronously
+      if (USE_SIMULATOR) {
+        expect(response.body.message).to.include('completed successfully');
+      } else {
+        expect(response.body.message).to.include('currently being processed');
+        await waitForOrgCreation();
+      }
 
       // Verify V2 org created
       const v2Org = await OrganizationsV2.findOne({
@@ -587,9 +590,13 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         .expect(200);
 
       expect(response.body.success).to.be.true;
-      expect(response.body.message).to.include('currently being processed');
-
-      await waitForOrgCreation();
+      // In simulator mode, upgrade completes synchronously
+      if (USE_SIMULATOR) {
+        expect(response.body.message).to.include('completed successfully');
+      } else {
+        expect(response.body.message).to.include('currently being processed');
+        await waitForOrgCreation();
+      }
 
       // Verify singleton now has BOTH v1 and v2 keys
       const singletonDataAfter = await getStoreDataForTest(v1DataModelVersionStoreId);

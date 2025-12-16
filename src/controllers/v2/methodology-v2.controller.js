@@ -28,6 +28,25 @@ export const create = async (req, res) => {
 
     const newRecord = _.cloneDeep(req.body);
 
+    // Check for forbidden fields BEFORE Joi validation
+    // This ensures we return custom error messages instead of Joi's "not allowed" message
+    if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
+      return res.status(400).json({
+        message: 'Error creating new methodology',
+        error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
+        success: false,
+      });
+    }
+
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustMethodologyId')) {
+      return res.status(400).json({
+        message: 'Error creating new methodology',
+        error: 'cadTrustMethodologyId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Validate the request data
     const { error } = methodologyV2Schema.validate(newRecord, {
       allowUnknown: false,
@@ -42,24 +61,6 @@ export const create = async (req, res) => {
       return res.status(400).json({
         message: 'Error creating new methodology',
         error: errorMessage,
-        success: false,
-      });
-    }
-
-    // Check for forbidden fields
-    if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
-      return res.status(400).json({
-        message: 'Error creating new methodology',
-        error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
-        success: false,
-      });
-    }
-
-    // Check for forbidden ID field
-    if (newRecord.hasOwnProperty('cadTrustMethodologyId')) {
-      return res.status(400).json({
-        message: 'Error creating new methodology',
-        error: 'cadTrustMethodologyId is auto-generated and cannot be set via API',
         success: false,
       });
     }

@@ -142,8 +142,8 @@ export const checkForV2Migrations = async (db) => {
     }
 
     for (let i = 0; i < notCompletedMigrations.length; i++) {
+      const notCompleted = notCompletedMigrations[i];
       try {
-        const notCompleted = notCompletedMigrations[i];
         loggerV2.info(`V2 MIGRATING: ${notCompleted.name}`);
         await notCompleted.migration.up(db.queryInterface, Sequelize);
         await db.query('INSERT INTO `SequelizeMetaV2` (name) VALUES(:name)', {

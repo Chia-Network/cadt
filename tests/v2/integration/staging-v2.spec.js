@@ -442,7 +442,7 @@ describe('V2 Staging Integration Tests', function () {
           uuid: uuidv4(),
           table: 'program',
           action: 'DELETE',
-          data: '{}',
+          data: JSON.stringify([{ cad_trust_program_id: uuidv4() }]),
           committed: false,
         },
       ];

@@ -11,13 +11,15 @@
   "scripts": {
     "start": "npx cross-env NODE_ENV=local node --import=extensionless/register --no-warnings ./src/server.js",
     "test": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/**/*.spec.js --reporter spec --exit --timeout 300000",
-    "test:v2": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js 'tests/v2/**/*.spec.js' --reporter spec --exit --timeout 300000",
-    "test:v2:integration": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/ --reporter spec --exit --timeout 300000",
-    "test:v2:smoke": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/smoke-v2-only.spec.js --reporter spec --exit --timeout 300000",
-    "test:v2:aef": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js tests/v2/integration/aef-*.spec.js --reporter spec --exit --timeout 300000",
-    "test:v2:core": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js 'tests/v2/integration/co-benefit-v2.spec.js' 'tests/v2/integration/estimation-v2.spec.js' 'tests/v2/integration/rating-v2.spec.js' 'tests/v2/integration/label-v2.spec.js' 'tests/v2/integration/stakeholder-v2.spec.js' --reporter spec --exit --timeout 300000",
-    "test:v2:joins": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js 'tests/v2/integration/project-methodology-v2.spec.js' 'tests/v2/integration/stakeholder-projects-v2.spec.js' 'tests/v2/integration/unit-label-v2.spec.js' --reporter spec --exit --timeout 300000",
-    "test:v2:live:validation": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/methodology-validation.spec.js' --reporter spec --exit --timeout 600000",
+    "test:v2": "npm run resetTestDb && npx cross-env NODE_ENV=test USE_SIMULATOR=true mocha --loader node_modules/extensionless/src/register.js 'tests/v2/integration/**/*.spec.js' --reporter spec --exit --timeout 300000",
+    "test:v2:live:organization": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/organization-validation.spec.js' --reporter spec --exit --timeout 7200000",
+    "test:v2:live:organization:create": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/organization/organization-create.spec.js' --reporter spec --exit --timeout 7200000",
+    "test:v2:live:data": "node --import=extensionless/register tests/v2/live-api/data-extended.js",
+    "test:v2:live:data:extended": "node --import=extensionless/register tests/v2/live-api/data-extended.js",
+    "test:v2:live:data:short": "node --import=extensionless/register tests/v2/live-api/data-short.js",
+    "test:v2:live:organization:delete": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/organization/organization-delete.spec.js' --reporter spec --exit --timeout 600000",
+    "test:v2:delete-test-data": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/utilities/delete-all-data.spec.js' --reporter spec --exit --timeout 600000",
+    "test:v2:live:all": "npm run test:v2:live:organization:create && npm run test:v2:live:data && npm run test:v2:live:organization:delete",
     "release": "npx standard-version",
     "resetTestDb": "rm -f ./test.sqlite3 && rm -f ./testMirror.sqlite3 && rm -f ./test-v2.sqlite3 && rm -f ./testMirror-v2.sqlite3",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
@@ -82,6 +84,7 @@
     "@eslint/js": "^9.37.0",
     "@yao-pkg/pkg": "^6.8.0",
     "babel-plugin-module-resolver": "^5.0.2",
+    "better-sqlite3": "^12.5.0",
     "chai": "^6.2.0",
     "chai-http": "^5.1.2",
     "cross-env": "^10.1.0",
@@ -116,5 +119,3 @@
     "Brad Jodoin <jodoinb@gmail.com>"
   ]
 }
-
-
