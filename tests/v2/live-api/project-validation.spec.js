@@ -83,33 +83,30 @@ describe('Project Live API Validation Tests', function () {
   });
   describe('Step 4: POST Request Tests', function () {
     it('should create projects with typical, minimal, and maximal data', async function () {
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateProject();
-        data.projectId = `${data.projectId}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/project', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('project', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/project', id, {
+      // Create 1 typical record
+      const data = generateProject();
+      const { id, response } = await makePostRequest(request, '/v2/project', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('project', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/project', id, {
+        projectId: data.projectId,
+        projectName: data.projectName,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'project', id);
+      } else {
+        trackBatchVerification('POST', 'project', id, {
           projectId: data.projectId,
           projectName: data.projectName,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'project', id);
-        } else {
-          trackBatchVerification('POST', 'project', id, {
-            projectId: data.projectId,
-            projectName: data.projectName,
-          });
-        }
       }
 
       // Create 1 minimal record

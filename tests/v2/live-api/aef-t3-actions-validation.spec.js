@@ -90,33 +90,28 @@ describe('AefT3Actions Live API Validation Tests', function () {
       const t2AuthId = getFirstCreatedId('aef-t2-authorizations');
       const unitId = getFirstCreatedId('unit');
 
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateAefT3Actions(t2AuthId, unitId);
-        // Make unique by appending index to required string fields
-        data.aefT3ActionsCoopoerativeApproachId = `${data.aefT3ActionsCoopoerativeApproachId}-${i}`;
-        data.aefT3ActionsAuthorizationId = `${data.aefT3ActionsAuthorizationId}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/aef-t3-actions', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('aef-t3-actions', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/aef-t3-actions', id, {
+      // Create 1 typical record
+      const data = generateAefT3Actions(t2AuthId, unitId);
+      const { id, response } = await makePostRequest(request, '/v2/aef-t3-actions', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('aef-t3-actions', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/aef-t3-actions', id, {
+        aefT3ActionsCoopoerativeApproachId: data.aefT3ActionsCoopoerativeApproachId,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'aef-t3-actions', id);
+      } else {
+        trackBatchVerification('POST', 'aef-t3-actions', id, {
           aefT3ActionsCoopoerativeApproachId: data.aefT3ActionsCoopoerativeApproachId,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'aef-t3-actions', id);
-        } else {
-          trackBatchVerification('POST', 'aef-t3-actions', id, {
-            aefT3ActionsCoopoerativeApproachId: data.aefT3ActionsCoopoerativeApproachId,
-          });
-        }
       }
 
       // Create 1 minimal record

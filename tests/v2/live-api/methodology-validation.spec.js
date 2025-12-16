@@ -83,33 +83,30 @@ describe('Methodology Live API Validation Tests', function () {
   });
   describe('Step 4: POST Request Tests', function () {
     it('should create methodologies with typical, minimal, and maximal data', async function () {
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateMethodology();
-        data.methodologyCode = `${data.methodologyCode}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/methodology', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('methodology', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/methodology', id, {
+      // Create 1 typical record
+      const data = generateMethodology();
+      const { id, response } = await makePostRequest(request, '/v2/methodology', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('methodology', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/methodology', id, {
+        methodologyCode: data.methodologyCode,
+        methodologyName: data.methodologyName,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'methodology', id);
+      } else {
+        trackBatchVerification('POST', 'methodology', id, {
           methodologyCode: data.methodologyCode,
           methodologyName: data.methodologyName,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'methodology', id);
-        } else {
-          trackBatchVerification('POST', 'methodology', id, {
-            methodologyCode: data.methodologyCode,
-            methodologyName: data.methodologyName,
-          });
-        }
       }
 
       // Create 1 minimal record

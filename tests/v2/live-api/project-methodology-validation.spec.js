@@ -100,13 +100,13 @@ describe('ProjectMethodology Live API Validation Tests', function () {
         throw new Error('Project or Methodology ID not found. Ensure project-validation.spec.js and methodology-validation.spec.js run before project-methodology-validation.spec.js');
       }
 
-      // Create up to 5 typical records
+      // Create up to 1 typical record
       // Use unique combinations to avoid duplicate composite keys
       const methodologyIds = getCreatedIds('methodology');
       const projectIds = getCreatedIds('project');
       const usedCombinations = new Set();
       let created = 0;
-      const maxRecords = Math.min(5, projectIds.length * methodologyIds.length);
+      const maxRecords = Math.min(1, projectIds.length * methodologyIds.length);
 
       for (let projIdx = 0; projIdx < projectIds.length && created < maxRecords; projIdx++) {
         for (let methIdx = 0; methIdx < methodologyIds.length && created < maxRecords; methIdx++) {

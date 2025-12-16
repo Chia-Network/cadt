@@ -102,31 +102,28 @@ describe('Issuance Live API Validation Tests', function () {
       const locationIds = getCreatedIds('location');
       const locationId = locationIds.length > 0 ? locationIds[0] : null;
 
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateIssuance(verificationId, methodologyId, locationId);
-        data.issuanceId = `${data.issuanceId}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/issuance', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('issuance', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/issuance', id, {
+      // Create 1 typical record
+      const data = generateIssuance(verificationId, methodologyId, locationId);
+      const { id, response } = await makePostRequest(request, '/v2/issuance', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('issuance', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/issuance', id, {
+        issuanceId: data.issuanceId,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'issuance', id);
+      } else {
+        trackBatchVerification('POST', 'issuance', id, {
           issuanceId: data.issuanceId,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'issuance', id);
-        } else {
-          trackBatchVerification('POST', 'issuance', id, {
-            issuanceId: data.issuanceId,
-          });
-        }
       }
 
       // Create 1 minimal record

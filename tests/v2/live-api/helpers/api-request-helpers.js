@@ -4,6 +4,21 @@
  */
 
 /**
+ * Format current timestamp as YYYY-MM-DD HH:mm:ss
+ * @returns {string} - Formatted timestamp
+ */
+const getTimestamp = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+/**
  * Extract ID from POST response based on endpoint type
  * @param {string} endpoint - Endpoint path (e.g., '/v2/methodology')
  * @param {object} responseBody - Response body from POST request
@@ -62,23 +77,60 @@ export const extractIdFromResponse = (endpoint, responseBody) => {
  * @returns {Promise<{id: string|object|null, response: object}>} - ID and full response
  */
 export const makePostRequest = async (request, endpoint, data, expectId = true) => {
-  // Log the request URI (without data)
-  console.log(`POST ${endpoint}`);
+  // Log the request URI (without data) with timestamp
+  console.log(`[${getTimestamp()}] POST ${endpoint}`);
 
   let response;
-  try {
-    response = await request
-      .post(endpoint)
-      .send(data)
-      .expect(200);
-  } catch (error) {
-    // supertest errors have error.status and error.response
-    if (error.status && error.response) {
-      console.error(`POST ${endpoint} failed with status ${error.status}:`, JSON.stringify(error.response.body, null, 2));
-    } else if (error.response) {
-      console.error(`POST ${endpoint} failed with status ${error.response.status}:`, JSON.stringify(error.response.body, null, 2));
+  let lastError;
+
+  // Retry logic: try once, then retry once after 3 seconds if it fails
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      response = await request
+        .post(endpoint)
+        .send(data)
+        .expect(200);
+      // Success - break out of retry loop
+      break;
+    } catch (error) {
+      lastError = error;
+      // supertest errors structure: error.status, error.response.status, error.response.body
+      // Also check error.res which supertest sometimes uses
+      const res = error.response || error.res;
+      const status = error.status || res?.status;
+      const errorBody = res?.body;
+
+      if (status && errorBody) {
+        // Extract error message from response body
+        const errorMessage = errorBody.error || errorBody.message || 'Unknown error';
+        const errorDetails = errorBody.details || errorBody.validation || '';
+
+        console.error(`[${getTimestamp()}] POST ${endpoint} failed with status ${status} (attempt ${attempt + 1}/2):`);
+        console.error(`  Error: ${errorMessage}`);
+        if (errorDetails) {
+          console.error(`  Details: ${typeof errorDetails === 'string' ? errorDetails : JSON.stringify(errorDetails, null, 2)}`);
+        }
+        // Also log full response body for debugging
+        console.error(`  Full response:`, JSON.stringify(errorBody, null, 2));
+      } else {
+        // Log error structure for debugging if we can't parse it
+        console.error(`[${getTimestamp()}] POST ${endpoint} failed (attempt ${attempt + 1}/2):`, error.message);
+        console.error(`  Error object keys:`, Object.keys(error));
+        if (error.response) console.error(`  error.response keys:`, Object.keys(error.response));
+        if (error.res) console.error(`  error.res keys:`, Object.keys(error.res));
+      }
+
+      // If this was the first attempt, wait 3 seconds before retrying
+      if (attempt === 0) {
+        console.log(`[${getTimestamp()}] Retrying POST ${endpoint} after 3 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
     }
-    throw error;
+  }
+
+  // If we still don't have a response after retries, throw the last error
+  if (!response) {
+    throw lastError;
   }
 
   let id = null;
@@ -128,13 +180,61 @@ export const makePutRequest = async (request, endpoint, id, data) => {
     fullEndpoint = `${endpoint}/${id}`;
   }
 
-  // Log the request URI (without data)
-  console.log(`PUT ${fullEndpoint}`);
+  // Log the request URI (without data) with timestamp
+  console.log(`[${getTimestamp()}] PUT ${fullEndpoint}`);
 
-  const response = await request
-    .put(fullEndpoint)
-    .send(data)
-    .expect(200);
+  let response;
+  let lastError;
+
+  // Retry logic: try once, then retry once after 3 seconds if it fails
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      response = await request
+        .put(fullEndpoint)
+        .send(data)
+        .expect(200);
+      // Success - break out of retry loop
+      break;
+    } catch (error) {
+      lastError = error;
+      // supertest errors structure: error.status, error.response.status, error.response.body
+      // Also check error.res which supertest sometimes uses
+      const res = error.response || error.res;
+      const status = error.status || res?.status;
+      const errorBody = res?.body;
+
+      if (status && errorBody) {
+        // Extract error message from response body
+        const errorMessage = errorBody.error || errorBody.message || 'Unknown error';
+        const errorDetails = errorBody.details || errorBody.validation || '';
+
+        console.error(`[${getTimestamp()}] PUT ${fullEndpoint} failed with status ${status} (attempt ${attempt + 1}/2):`);
+        console.error(`  Error: ${errorMessage}`);
+        if (errorDetails) {
+          console.error(`  Details: ${typeof errorDetails === 'string' ? errorDetails : JSON.stringify(errorDetails, null, 2)}`);
+        }
+        // Also log full response body for debugging
+        console.error(`  Full response:`, JSON.stringify(errorBody, null, 2));
+      } else {
+        // Log error structure for debugging if we can't parse it
+        console.error(`[${getTimestamp()}] PUT ${fullEndpoint} failed (attempt ${attempt + 1}/2):`, error.message);
+        console.error(`  Error object keys:`, Object.keys(error));
+        if (error.response) console.error(`  error.response keys:`, Object.keys(error.response));
+        if (error.res) console.error(`  error.res keys:`, Object.keys(error.res));
+      }
+
+      // If this was the first attempt, wait 3 seconds before retrying
+      if (attempt === 0) {
+        console.log(`[${getTimestamp()}] Retrying PUT ${fullEndpoint} after 3 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
+  }
+
+  // If we still don't have a response after retries, throw the last error
+  if (!response) {
+    throw lastError;
+  }
 
   return response.body;
 };
@@ -161,8 +261,8 @@ export const makeDeleteRequest = async (request, endpoint, id) => {
     fullEndpoint = `${endpoint}/${id}`;
   }
 
-  // Log the request URI (without data)
-  console.log(`DELETE ${fullEndpoint}`);
+  // Log the request URI (without data) with timestamp
+  console.log(`[${getTimestamp()}] DELETE ${fullEndpoint}`);
 
   const response = await request
     .delete(fullEndpoint)

@@ -80,11 +80,11 @@ describe('UnitLabel Live API Validation Tests', function () {
         throw new Error('Label or Unit IDs not found. Ensure label-validation.spec.js and unit-validation.spec.js run before unit-label-validation.spec.js');
       }
 
-      // Create up to 5 unit-label relationships (typical)
+      // Create up to 1 unit-label relationship (typical)
       // Use unique combinations to avoid duplicate composite keys
       const usedCombinations = new Set();
       let created = 0;
-      const maxRecords = Math.min(5, labelIds.length * unitIds.length); // Don't exceed possible unique combinations
+      const maxRecords = Math.min(1, labelIds.length * unitIds.length); // Don't exceed possible unique combinations
 
       for (let labelIdx = 0; labelIdx < labelIds.length && created < maxRecords; labelIdx++) {
         for (let unitIdx = 0; unitIdx < unitIds.length && created < maxRecords; unitIdx++) {

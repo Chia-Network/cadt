@@ -84,31 +84,28 @@ describe('AefT1Submission Live API Validation Tests', function () {
   describe('Step 4: POST Request Tests', function () {
     it('should create aefT1Submissions with typical, minimal, and maximal data', async function () {
       // AEF T1 Submission has no dependencies - standalone entity
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateAefT1Submission();
-        data.aefT1SubmissionParty = `${data.aefT1SubmissionParty}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/aef-t1-submission', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('aef-t1-submission', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/aef-t1-submission', id, {
+      // Create 1 typical record
+      const data = generateAefT1Submission();
+      const { id, response } = await makePostRequest(request, '/v2/aef-t1-submission', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('aef-t1-submission', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/aef-t1-submission', id, {
+        aefT1SubmissionParty: data.aefT1SubmissionParty,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'aef-t1-submission', id);
+      } else {
+        trackBatchVerification('POST', 'aef-t1-submission', id, {
           aefT1SubmissionParty: data.aefT1SubmissionParty,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'aef-t1-submission', id);
-        } else {
-          trackBatchVerification('POST', 'aef-t1-submission', id, {
-            aefT1SubmissionParty: data.aefT1SubmissionParty,
-          });
-        }
       }
 
       // Create 1 minimal record

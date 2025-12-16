@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
- * Orchestration file for short test mode (batch commits)
- * Runs all POST requests first, then commits, then PUT requests, then commits, then DELETE requests, then commits
- * Based on run-batched-tests.js but adapted for new structure
+ * Utility to run only POST request tests without committing staging records
+ * Useful for testing POST endpoints without actually committing data to datalayer
  */
 
 import { spawn } from 'child_process';
@@ -11,6 +10,9 @@ import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Get parent directory (tests/v2/live-api)
+const liveApiDir = join(__dirname, '..');
 
 // Test files ordered by dependency: prerequisites must come before dependents
 // Order matches natural user workflow: create base entities first, then relationships
@@ -47,23 +49,22 @@ const testFiles = [
   'aef-t5-authorized-entities-validation.spec.js',
 ];
 
-async function runMochaTests(grepPattern, phaseName) {
+async function runPostTests() {
   return new Promise((resolve, reject) => {
-    const testPaths = testFiles.map(f => join(__dirname, f));
+    const testPaths = testFiles.map(f => join(liveApiDir, f));
     const args = [
       '--loader', 'node_modules/extensionless/src/register.js',
-      '--require', join(__dirname, 'helpers/mocha-setup.js'),
+      '--require', join(liveApiDir, 'helpers/mocha-setup.js'),
       ...testPaths,
-      '--grep', grepPattern,
+      '--grep', 'Step 4: POST Request Tests',
       '--reporter', 'spec',
       '--timeout', '3600000',
       '--exit',
     ];
 
-    const method = phaseName.includes('POST') ? 'POST' : phaseName.includes('PUT') ? 'PUT' : 'DELETE';
-    console.log(`\n=== Phase: ${phaseName} ===`);
-    console.log(`Running tests matching: ${grepPattern}\n`);
+    console.log(`\n=== Running POST Request Tests Only (No Commits) ===\n`);
 
+    // Use TEST_MODE=short to prevent auto-commits, but we won't call commitAndWait
     const mocha = spawn('npx', ['cross-env', 'NODE_ENV=production', 'TEST_MODE=short', 'mocha', ...args], {
       stdio: 'inherit',
       shell: false,
@@ -83,42 +84,12 @@ async function runMochaTests(grepPattern, phaseName) {
   });
 }
 
-async function commitAndWait(phase) {
-  const { getLiveApiRequest, commitStagedRecords, waitForPendingCommits, waitForStagingEmpty, waitForBatchToAppear } = await import('./helpers/live-api-helpers.js');
-  const { getAllCreatedIds, getBatchVerificationRecords, clearBatchVerificationRecords } = await import('./helpers/shared-state.js');
-
-  const request = await getLiveApiRequest();
-
-  console.log(`\n=== Committing all staged records for ${phase} phase ===`);
-  await commitStagedRecords(request, [], true); // force = true
-  await waitForPendingCommits(request);
-  await waitForStagingEmpty(request);
-
-  // Wait for all created records to appear after batch commit
-  const recordsToWaitFor = getAllCreatedIds();
-  if (recordsToWaitFor.length > 0) {
-    const waitTimestamp = new Date().toISOString();
-    console.log(`[${waitTimestamp}] Waiting for ${recordsToWaitFor.length} record(s) to appear after batch commit...`);
-    request._forceWait = true;
-    await waitForBatchToAppear(request, recordsToWaitFor);
-    request._forceWait = false;
-  }
-
-  // Verify records
-  const verificationRecords = getBatchVerificationRecords();
-  console.log(`[${timestamp}] Verifying ${phase} operations...`);
-  // Verification logic would go here
-
-  clearBatchVerificationRecords();
-  console.log(`[${timestamp}] ✓ ${phase} phase complete\n`);
-}
-
 async function main() {
   try {
-    console.log('\n=== Short Test Mode (Batch Commits) ===\n');
+    console.log('\n=== POST Only Test Mode (No Commits) ===\n');
 
     // Clear staging table before starting tests
-    const { getLiveApiRequest, clearStagingTable } = await import('./helpers/live-api-helpers.js');
+    const { getLiveApiRequest, clearStagingTable } = await import('../helpers/live-api-helpers.js');
     const request = await getLiveApiRequest();
     console.log('Clearing staging table before tests...');
     await clearStagingTable(request);
@@ -126,21 +97,14 @@ async function main() {
 
     // Note: Shared setup runs via --require flag in mocha, so it executes once before all tests
 
-    // Phase 1: POST tests
-    await runMochaTests('Step 4: POST Request Tests', 'POST Operations');
-    await commitAndWait('POST');
+    // Run POST tests only (no commits)
+    await runPostTests();
 
-    // Phase 2: PUT tests
-    await runMochaTests('Step 7: PUT Request Tests', 'PUT Operations');
-    await commitAndWait('PUT');
-
-    // Phase 3: DELETE tests
-    await runMochaTests('Step 9: DELETE Request Tests', 'DELETE Operations');
-    await commitAndWait('DELETE');
-
-    console.log('\n=== All phases complete ===\n');
+    console.log('\n=== POST tests complete (staging records NOT committed) ===\n');
+    console.log('Note: All POST requests created staging records, but no commits were performed.');
+    console.log('Use POST /v2/staging/commit to commit when ready, or DELETE /v2/staging/clean to clear.\n');
   } catch (error) {
-    console.error('Error running short mode tests:', error);
+    console.error('Error running POST only tests:', error);
     process.exit(1);
   }
 }

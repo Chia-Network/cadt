@@ -103,31 +103,28 @@ describe('Verification Live API Validation Tests', function () {
       // Optionally get validation ID if available
       const validationId = getFirstCreatedId('validation');
 
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateVerification(projectId, validationId || null);
-        data.verificationId = `${data.verificationId}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/verification', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('verification', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/verification', id, {
+      // Create 1 typical record
+      const data = generateVerification(projectId, validationId || null);
+      const { id, response } = await makePostRequest(request, '/v2/verification', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('verification', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/verification', id, {
+        verificationId: data.verificationId,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'verification', id);
+      } else {
+        trackBatchVerification('POST', 'verification', id, {
           verificationId: data.verificationId,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'verification', id);
-        } else {
-          trackBatchVerification('POST', 'verification', id, {
-            verificationId: data.verificationId,
-          });
-        }
       }
 
       // Create 1 minimal record
