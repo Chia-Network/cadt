@@ -17,7 +17,7 @@ testMirror-v2.sqlite3
 
 # testing
 /coverage
-tests/v2/live-api/.organization-state.json
+tests/v2/*/.organization-state.json
 
 # production
 /build
