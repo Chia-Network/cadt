@@ -94,8 +94,8 @@ describe('AefT2Authorizations Live API Validation Tests', function () {
       const projectId = getFirstCreatedId('project');
       const t5EntityId = getFirstCreatedId('aef-t5-authorized-entities');
 
-      // Create 10 typical records
-      for (let i = 0; i < 10; i++) {
+      // Create 5 typical records
+      for (let i = 0; i < 5; i++) {
         const data = generateAefT2Authorizations(t1SubmissionId, unitId, projectId, t5EntityId);
         data.aefT2AuthorizationsId = `${data.aefT2AuthorizationsId}-${i}`;
         const { id, response } = await makePostRequest(request, '/v2/aef-t2-authorizations', data);

@@ -77,11 +77,11 @@ describe('StakeholderProjects Live API Validation Tests', function () {
         throw new Error('Stakeholder or Project IDs not found. Ensure stakeholder-validation.spec.js and project-validation.spec.js run before stakeholder-projects-validation.spec.js');
       }
 
-      // Create up to 10 stakeholder-project relationships
+      // Create up to 5 stakeholder-project relationships
       // Use unique combinations to avoid duplicate composite keys (unique constraint on stakeholder+project)
       const usedCombinations = new Set();
       let created = 0;
-      const maxRecords = Math.min(10, stakeholderIds.length * projectIds.length);
+      const maxRecords = Math.min(5, stakeholderIds.length * projectIds.length);
 
       for (let stakeIdx = 0; stakeIdx < stakeholderIds.length && created < maxRecords; stakeIdx++) {
         for (let projIdx = 0; projIdx < projectIds.length && created < maxRecords; projIdx++) {

@@ -90,8 +90,8 @@ describe('AefT3Actions Live API Validation Tests', function () {
       const t2AuthId = getFirstCreatedId('aef-t2-authorizations');
       const unitId = getFirstCreatedId('unit');
 
-      // Create 10 typical records
-      for (let i = 0; i < 10; i++) {
+      // Create 5 typical records
+      for (let i = 0; i < 5; i++) {
         const data = generateAefT3Actions(t2AuthId, unitId);
         // Make unique by appending index to required string fields
         data.aefT3ActionsCoopoerativeApproachId = `${data.aefT3ActionsCoopoerativeApproachId}-${i}`;

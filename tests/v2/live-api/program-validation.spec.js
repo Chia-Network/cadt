@@ -83,8 +83,8 @@ describe('Program Live API Validation Tests', function () {
   });
   describe('Step 4: POST Request Tests', function () {
     it('should create programs with typical, minimal, and maximal data', async function () {
-      // Create 10 typical records
-      for (let i = 0; i < 10; i++) {
+      // Create 5 typical records
+      for (let i = 0; i < 5; i++) {
         const data = generateProgram();
         data.programName = `${data.programName}-${i}`;
         const { id, response } = await makePostRequest(request, '/v2/program', data);

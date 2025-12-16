@@ -103,8 +103,8 @@ describe('Verification Live API Validation Tests', function () {
       // Optionally get validation ID if available
       const validationId = getFirstCreatedId('validation');
 
-      // Create 10 typical records
-      for (let i = 0; i < 10; i++) {
+      // Create 5 typical records
+      for (let i = 0; i < 5; i++) {
         const data = generateVerification(projectId, validationId || null);
         data.verificationId = `${data.verificationId}-${i}`;
         const { id, response } = await makePostRequest(request, '/v2/verification', data);

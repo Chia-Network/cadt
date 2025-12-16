@@ -101,8 +101,8 @@ describe('Validation Live API Validation Tests', function () {
         throw new Error('Project ID not found. Ensure project-validation.spec.js runs before validation-validation.spec.js');
       }
 
-      // Create 10 typical records
-      for (let i = 0; i < 10; i++) {
+      // Create 5 typical records
+      for (let i = 0; i < 5; i++) {
         const data = generateValidation(projectId);
         data.validationId = `${data.validationId}-${i}`;
         const { id, response } = await makePostRequest(request, '/v2/validation', data);

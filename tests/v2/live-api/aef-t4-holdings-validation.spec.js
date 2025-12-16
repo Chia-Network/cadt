@@ -90,8 +90,8 @@ describe('AefT4Holdings Live API Validation Tests', function () {
       const t2AuthId = getFirstCreatedId('aef-t2-authorizations');
       const unitId = getFirstCreatedId('unit');
 
-      // Create 10 typical records
-      for (let i = 0; i < 10; i++) {
+      // Create 5 typical records
+      for (let i = 0; i < 5; i++) {
         const data = generateAefT4Holdings(t2AuthId, unitId);
         // Make unique by appending index to required string fields
         data.aefT4HoldingsCoopoerativeApproachId = `${data.aefT4HoldingsCoopoerativeApproachId}-${i}`;

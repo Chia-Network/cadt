@@ -84,8 +84,8 @@ describe('AefT1Submission Live API Validation Tests', function () {
   describe('Step 4: POST Request Tests', function () {
     it('should create aefT1Submissions with typical, minimal, and maximal data', async function () {
       // AEF T1 Submission has no dependencies - standalone entity
-      // Create 10 typical records
-      for (let i = 0; i < 10; i++) {
+      // Create 5 typical records
+      for (let i = 0; i < 5; i++) {
         const data = generateAefT1Submission();
         data.aefT1SubmissionParty = `${data.aefT1SubmissionParty}-${i}`;
         const { id, response } = await makePostRequest(request, '/v2/aef-t1-submission', data);

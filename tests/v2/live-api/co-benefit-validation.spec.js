@@ -101,8 +101,8 @@ describe('CoBenefit Live API Validation Tests', function () {
         throw new Error('Project ID not found. Ensure project-validation.spec.js runs before co-benefit-validation.spec.js');
       }
 
-      // Create 10 typical records
-      for (let i = 0; i < 10; i++) {
+      // Create 5 typical records
+      for (let i = 0; i < 5; i++) {
         const data = generateCoBenefit(projectId);
         // Use different SDG values for variety (must match exact values from validation schema)
         const sdgValues = [

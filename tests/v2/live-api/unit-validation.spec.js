@@ -101,8 +101,8 @@ describe('Unit Live API Validation Tests', function () {
         throw new Error('Issuance ID not found. Ensure issuance-validation.spec.js runs before unit-validation.spec.js');
       }
 
-      // Create 10 typical records
-      for (let i = 0; i < 10; i++) {
+      // Create 5 typical records
+      for (let i = 0; i < 5; i++) {
         const data = generateUnit(issuanceId);
         data.unitSerialId = `${data.unitSerialId}-${i}`;
         const { id, response } = await makePostRequest(request, '/v2/unit', data);

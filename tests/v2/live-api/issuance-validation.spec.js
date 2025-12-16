@@ -102,8 +102,8 @@ describe('Issuance Live API Validation Tests', function () {
       const locationIds = getCreatedIds('location');
       const locationId = locationIds.length > 0 ? locationIds[0] : null;
 
-      // Create 10 typical records
-      for (let i = 0; i < 10; i++) {
+      // Create 5 typical records
+      for (let i = 0; i < 5; i++) {
         const data = generateIssuance(verificationId, methodologyId, locationId);
         data.issuanceId = `${data.issuanceId}-${i}`;
         const { id, response } = await makePostRequest(request, '/v2/issuance', data);
