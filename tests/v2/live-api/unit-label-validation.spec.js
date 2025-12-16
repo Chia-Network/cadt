@@ -135,18 +135,23 @@ describe('UnitLabel Live API Validation Tests', function () {
       const minCombinationKey = `${minLabelId}-${minUnitId}`;
       if (usedCombinations.has(minCombinationKey)) {
         // Find an unused combination
-        for (let i = 0; i < labelIds.length; i++) {
-          for (let j = 0; j < unitIds.length; j++) {
+        let found = false;
+        for (let i = 0; i < labelIds.length && !found; i++) {
+          for (let j = 0; j < unitIds.length && !found; j++) {
             const testKey = `${labelIds[i]}-${unitIds[j]}`;
             if (!usedCombinations.has(testKey)) {
               minLabelId = labelIds[i];
               minUnitId = unitIds[j];
-              break;
+              found = true;
             }
           }
-          if (!usedCombinations.has(`${minLabelId}-${minUnitId}`)) break;
         }
       }
+      const finalMinKey = `${minLabelId}-${minUnitId}`;
+      if (usedCombinations.has(finalMinKey)) {
+        throw new Error(`Cannot create minimal record: all combinations are already used`);
+      }
+      usedCombinations.add(finalMinKey);
       const minimalData = generateUnitLabelMinimal(minLabelId, minUnitId);
       const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/unit-label', minimalData);
       expect(minResponse.success).to.be.true;
@@ -166,9 +171,29 @@ describe('UnitLabel Live API Validation Tests', function () {
         });
       }
 
-      // Create 1 maximal record
-      const maxLabelId = labelIds[1];
-      const maxUnitId = unitIds[1];
+      // Create 1 maximal record - use a combination that hasn't been used yet
+      let maxLabelId = labelIds.length > 1 ? labelIds[1] : labelIds[0];
+      let maxUnitId = unitIds.length > 1 ? unitIds[1] : unitIds[0];
+      const maxCombinationKey = `${maxLabelId}-${maxUnitId}`;
+      if (usedCombinations.has(maxCombinationKey)) {
+        // Find an unused combination
+        let found = false;
+        for (let i = 0; i < labelIds.length && !found; i++) {
+          for (let j = 0; j < unitIds.length && !found; j++) {
+            const testKey = `${labelIds[i]}-${unitIds[j]}`;
+            if (!usedCombinations.has(testKey)) {
+              maxLabelId = labelIds[i];
+              maxUnitId = unitIds[j];
+              found = true;
+            }
+          }
+        }
+      }
+      const finalMaxKey = `${maxLabelId}-${maxUnitId}`;
+      if (usedCombinations.has(finalMaxKey)) {
+        throw new Error(`Cannot create maximal record: all combinations are already used`);
+      }
+      usedCombinations.add(finalMaxKey);
       const maximalData = generateUnitLabelMaximal(maxLabelId, maxUnitId);
       const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/unit-label', maximalData);
       expect(maxResponse.success).to.be.true;

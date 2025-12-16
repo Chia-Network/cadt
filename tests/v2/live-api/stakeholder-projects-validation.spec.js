@@ -77,34 +77,50 @@ describe('StakeholderProjects Live API Validation Tests', function () {
         throw new Error('Stakeholder or Project IDs not found. Ensure stakeholder-validation.spec.js and project-validation.spec.js run before stakeholder-projects-validation.spec.js');
       }
 
-      // Create 10 stakeholder-project relationships
-      for (let i = 0; i < 10; i++) {
-        const stakeholderId = stakeholderIds[i % stakeholderIds.length];
-        const projectId = projectIds[i % projectIds.length];
-        const data = generateStakeholderProjects(stakeholderId, projectId);
-        const { id, response } = await makePostRequest(request, '/v2/stakeholder-projects', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        // Stakeholder-projects uses single ID (cadTrustStakeholderProjectId), not composite
-        createdIds.push(id);
-        addCreatedId('stakeholder-projects', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/stakeholder-projects', id, {
-          cadTrustStakeholderId: data.cadTrustStakeholderId,
-          cadTrustProjectId: data.cadTrustProjectId,
-        });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'stakeholder-projects', id);
-        } else {
-          trackBatchVerification('POST', 'stakeholder-projects', id, {
+      // Create up to 10 stakeholder-project relationships
+      // Use unique combinations to avoid duplicate composite keys (unique constraint on stakeholder+project)
+      const usedCombinations = new Set();
+      let created = 0;
+      const maxRecords = Math.min(10, stakeholderIds.length * projectIds.length);
+
+      for (let stakeIdx = 0; stakeIdx < stakeholderIds.length && created < maxRecords; stakeIdx++) {
+        for (let projIdx = 0; projIdx < projectIds.length && created < maxRecords; projIdx++) {
+          const stakeholderId = stakeholderIds[stakeIdx];
+          const projectId = projectIds[projIdx];
+          const combinationKey = `${stakeholderId}-${projectId}`;
+
+          // Skip if we've already used this combination
+          if (usedCombinations.has(combinationKey)) {
+            continue;
+          }
+
+          usedCombinations.add(combinationKey);
+          const data = generateStakeholderProjects(stakeholderId, projectId);
+          const { id, response } = await makePostRequest(request, '/v2/stakeholder-projects', data);
+          expect(response.success).to.be.true;
+          expect(id).to.exist;
+          // Stakeholder-projects has unique constraint on stakeholder+project combination
+          createdIds.push(id);
+          addCreatedId('stakeholder-projects', id);
+          // Check record is in staging table
+          const inStaging = await checkRecordInStaging(request, '/v2/stakeholder-projects', id, {
             cadTrustStakeholderId: data.cadTrustStakeholderId,
             cadTrustProjectId: data.cadTrustProjectId,
           });
+          expect(inStaging).to.be.true;
+          // Commit if in extended mode
+          if (shouldAutoCommit()) {
+            await commitStagedRecords(request, []);
+            await waitForPendingCommits(request);
+            await waitForStagingEmpty(request);
+            await waitForDataToAppear(request, 'stakeholder-projects', id);
+          } else {
+            trackBatchVerification('POST', 'stakeholder-projects', id, {
+              cadTrustStakeholderId: data.cadTrustStakeholderId,
+              cadTrustProjectId: data.cadTrustProjectId,
+            });
+          }
+          created++;
         }
       }
     });

@@ -156,19 +156,23 @@ describe('ProjectMethodology Live API Validation Tests', function () {
       const minCombinationKey = `${minProjectId}-${minMethodologyId}`;
       if (usedCombinations.has(minCombinationKey)) {
         // Find an unused combination
-        for (let i = 0; i < projectIds.length; i++) {
-          for (let j = 0; j < methodologyIds.length; j++) {
+        let found = false;
+        for (let i = 0; i < projectIds.length && !found; i++) {
+          for (let j = 0; j < methodologyIds.length && !found; j++) {
             const testKey = `${projectIds[i]}-${methodologyIds[j]}`;
             if (!usedCombinations.has(testKey)) {
               minProjectId = projectIds[i];
               minMethodologyId = methodologyIds[j];
-              break;
+              found = true;
             }
           }
-          if (!usedCombinations.has(`${minProjectId}-${minMethodologyId}`)) break;
         }
       }
-      usedCombinations.add(`${minProjectId}-${minMethodologyId}`);
+      const finalMinKey = `${minProjectId}-${minMethodologyId}`;
+      if (usedCombinations.has(finalMinKey)) {
+        throw new Error(`Cannot create minimal record: all combinations are already used`);
+      }
+      usedCombinations.add(finalMinKey);
       const minimalData = generateProjectMethodologyMinimal(minProjectId, minMethodologyId);
       const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/project-methodology', minimalData);
       expect(minResponse.success).to.be.true;
@@ -183,8 +187,8 @@ describe('ProjectMethodology Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'project-methodology', minCompositeId);
       } else {
         trackBatchVerification('POST', 'project-methodology', minCompositeId, {
-          cadTrustProjectId: projectId,
-          cadTrustMethodologyId: methodologyId,
+          cadTrustProjectId: minProjectId,
+          cadTrustMethodologyId: minMethodologyId,
         });
       }
 
@@ -194,19 +198,23 @@ describe('ProjectMethodology Live API Validation Tests', function () {
       const maxCombinationKey = `${maxProjectId}-${maxMethodologyId}`;
       if (usedCombinations.has(maxCombinationKey)) {
         // Find an unused combination
-        for (let i = 0; i < projectIds.length; i++) {
-          for (let j = 0; j < methodologyIds.length; j++) {
+        let found = false;
+        for (let i = 0; i < projectIds.length && !found; i++) {
+          for (let j = 0; j < methodologyIds.length && !found; j++) {
             const testKey = `${projectIds[i]}-${methodologyIds[j]}`;
             if (!usedCombinations.has(testKey)) {
               maxProjectId = projectIds[i];
               maxMethodologyId = methodologyIds[j];
-              break;
+              found = true;
             }
           }
-          if (!usedCombinations.has(`${maxProjectId}-${maxMethodologyId}`)) break;
         }
       }
-      usedCombinations.add(`${maxProjectId}-${maxMethodologyId}`);
+      const finalMaxKey = `${maxProjectId}-${maxMethodologyId}`;
+      if (usedCombinations.has(finalMaxKey)) {
+        throw new Error(`Cannot create maximal record: all combinations are already used`);
+      }
+      usedCombinations.add(finalMaxKey);
       const maximalData = generateProjectMethodologyMaximal(maxProjectId, maxMethodologyId);
       const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/project-methodology', maximalData);
       expect(maxResponse.success).to.be.true;
