@@ -239,7 +239,7 @@ export const checkRecordInStaging = async (request, endpoint, id, expectedData) 
         } else {
           // For single keys, find the ID field (primary key field is cad_trust_{table}_id)
           // Try both camelCase and snake_case ID field names
-          const idFieldSnake = `cad_trust_${tableName.replace(/_/g, '_')}_id`;
+          const idFieldSnake = `cad_trust_${tableName}_id`;
           const idFieldCamel = `cadTrust${tableName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}Id`;
 
           // Handle special cases
