@@ -84,9 +84,10 @@ class UnitV2 extends Model {
     isUpdateComment,
     isUpdateAuthor,
   ) {
-    // PERFORMANCE: Early exit if no staged records for this model
+    // PERFORMANCE: Early exit if no staged records for this model or its child tables
+    // UnitV2 handles child table: unit_label
     const hasStagedData = stagedData.some(
-      (record) => record.table === 'unit',
+      (record) => ['unit', 'unit_label'].includes(record.table),
     );
     if (!hasStagedData) {
       return {
@@ -96,7 +97,7 @@ class UnitV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'unit');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'unit');
 
     const primaryKeyMap = {
       unit: 'cad_trust_unit_id',

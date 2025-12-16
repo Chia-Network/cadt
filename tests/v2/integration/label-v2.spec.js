@@ -452,14 +452,19 @@ describe('Label V2 Endpoint Integration Tests', function () {
       const labelData = {
         labelName: 'Label to Update',
         labelType: 'Certification',
-        cadTrustLabelId: uuidv4(),
       };
 
       const response = await supertest(app)
         .post('/v2/label')
         .send(labelData);
 
+      if (response.status !== 200) {
+        console.log('Error creating label:', response.body);
+        throw new Error(`Failed to create label: ${JSON.stringify(response.body)}`);
+      }
+
       createdLabelId = response.body.cadTrustLabelId;
+      expect(createdLabelId).to.exist;
 
       let stagingRecord = null;
       if (response.body.uuid) {

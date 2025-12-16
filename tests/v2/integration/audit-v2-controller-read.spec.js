@@ -204,7 +204,7 @@ describe('Phase 17.2: AuditV2 Controller Read Endpoints', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.message).to.include('Can not retrieve audit data');
+      expect(response.body.message).to.include('Cannot retrieve audit data');
       expect(response.body.error).to.include('is not in the list of subscribed organizations');
     });
 

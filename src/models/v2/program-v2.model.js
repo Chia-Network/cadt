@@ -47,7 +47,7 @@ class ProgramV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'program');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'program');
 
     const primaryKeyMap = {
       program: 'cad_trust_program_id',

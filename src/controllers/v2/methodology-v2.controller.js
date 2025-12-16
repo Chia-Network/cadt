@@ -28,21 +28,8 @@ export const create = async (req, res) => {
 
     const newRecord = _.cloneDeep(req.body);
 
-    // Validate the request data
-    const { error } = methodologyV2Schema.validate(newRecord, {
-      allowUnknown: false,
-      stripUnknown: false,
-    });
-
-    if (error) {
-      return res.status(400).json({
-        message: 'Error creating new methodology',
-        error: error.details[0].message,
-        success: false,
-      });
-    }
-
-    // Check for forbidden fields
+    // Check for forbidden fields BEFORE Joi validation
+    // This ensures we return custom error messages instead of Joi's "not allowed" message
     if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
       return res.status(400).json({
         message: 'Error creating new methodology',
@@ -56,6 +43,24 @@ export const create = async (req, res) => {
       return res.status(400).json({
         message: 'Error creating new methodology',
         error: 'cadTrustMethodologyId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
+    // Validate the request data
+    const { error } = methodologyV2Schema.validate(newRecord, {
+      allowUnknown: false,
+      stripUnknown: false,
+    });
+
+    if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
+      return res.status(400).json({
+        message: 'Error creating new methodology',
+        error: errorMessage,
         success: false,
       });
     }
@@ -172,9 +177,13 @@ export const update = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error updating methodology',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }

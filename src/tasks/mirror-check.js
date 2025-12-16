@@ -146,11 +146,11 @@ const runMirrorCheck = async () => {
       try {
         await Organization.addMirror(orgData.orgUid, mirrorUrl, true);
         logger.debug(
-          `[MIRROR_DEBUG] Added mirror for orgUid: ${orgData.orgUid}`,
+          `[MIRROR_DEBUG] Mirror ensured for orgUid: ${orgData.orgUid}`,
         );
       } catch (error) {
         logger.error(
-          `[MIRROR_DEBUG] Failed to add mirror for orgUid ${orgData.orgUid}: ${error.message}`,
+          `[MIRROR_DEBUG] Failed to ensure mirror for orgUid ${orgData.orgUid}: ${error.message}`,
         );
       }
 
@@ -162,11 +162,11 @@ const runMirrorCheck = async () => {
             true,
           );
           logger.debug(
-            `[MIRROR_DEBUG] Added mirror for dataModelVersionStoreId: ${orgData.dataModelVersionStoreId}`,
+            `[MIRROR_DEBUG] Mirror ensured for dataModelVersionStoreId: ${orgData.dataModelVersionStoreId}`,
           );
         } catch (error) {
           logger.error(
-            `[MIRROR_DEBUG] Failed to add mirror for dataModelVersionStoreId ${orgData.dataModelVersionStoreId}: ${error.message}`,
+            `[MIRROR_DEBUG] Failed to ensure mirror for dataModelVersionStoreId ${orgData.dataModelVersionStoreId}: ${error.message}`,
           );
         }
       } else {
@@ -179,11 +179,11 @@ const runMirrorCheck = async () => {
         try {
           await Organization.addMirror(orgData.registryId, mirrorUrl, true);
           logger.debug(
-            `[MIRROR_DEBUG] Added mirror for registryId: ${orgData.registryId}`,
+            `[MIRROR_DEBUG] Mirror ensured for registryId: ${orgData.registryId}`,
           );
         } catch (error) {
           logger.error(
-            `[MIRROR_DEBUG] Failed to add mirror for registryId ${orgData.registryId}: ${error.message}`,
+            `[MIRROR_DEBUG] Failed to ensure mirror for registryId ${orgData.registryId}: ${error.message}`,
           );
         }
       } else {

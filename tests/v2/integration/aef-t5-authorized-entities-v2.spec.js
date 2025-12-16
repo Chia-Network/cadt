@@ -291,7 +291,6 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         cadTrustAefT1SubmissionId: null,
         cadTrustUnitId: null,
         cadTrustProjectId: null,
-        cadTrustAefT2AuthorizationsId: null,
       };
 
       const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
@@ -307,7 +306,6 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
       expect(aefT5AuthorizedEntities.cadTrustAefT1SubmissionId).to.be.null;
       expect(aefT5AuthorizedEntities.cadTrustUnitId).to.be.null;
       expect(aefT5AuthorizedEntities.cadTrustProjectId).to.be.null;
-      expect(aefT5AuthorizedEntities.cadTrustAefT2AuthorizationsId).to.be.null;
     });
   });
 
@@ -552,10 +550,13 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
 
     it('should reject AEF-T5-Authorized-Entities with invalid foreign key (non-existent)', async function () {
       const aefT5AuthorizedEntitiesData = {
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+        aefT5AuthorizedEntitiesName: 'Test Entity FK',
+        aefT5AuthorizedEntitiesId: 'TEST-AE-FK',
+        aefT5AuthorizedEntitiesCooperativeApproachId: 'TEST-CA-FK',
         cadTrustAefT1SubmissionId: '550e8400-e29b-41d4-a716-446655440999',
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
-        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
       };
 
       const response = await supertest(app)
@@ -591,11 +592,13 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
 
     before(async function () {
       const aefT5AuthorizedEntitiesData = {
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+        aefT5AuthorizedEntitiesName: 'AEF-T5 to Update',
+        aefT5AuthorizedEntitiesId: 'TEST-AE-UPDATE',
+        aefT5AuthorizedEntitiesCooperativeApproachId: 'TEST-CA-UPDATE',
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
-        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
-        aefT5AuthorizedEntitiesName: 'AEF-T5 to Update',
       };
 
       const response = await supertest(app)
@@ -614,23 +617,26 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         await stagingRecord.update({ committed: true });
         await AefT5AuthorizedEntitiesV2.create({
           cadTrustAefT5AuthorizedEntitiesId: createdAefT5AuthorizedEntitiesId,
+          aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+          aefT5AuthorizedEntitiesName: 'AEF-T5 to Update',
+          aefT5AuthorizedEntitiesId: 'TEST-AE-UPDATE',
+          aefT5AuthorizedEntitiesCooperativeApproachId: 'TEST-CA-UPDATE',
           cadTrustAefT1SubmissionId: testAefT1SubmissionId,
           cadTrustUnitId: testUnitId,
           cadTrustProjectId: testProjectId,
-          aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
-          aefT5AuthorizedEntitiesName: 'AEF-T5 to Update',
         });
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();
        }
-    });it('should update an AEF-T5-Authorized-Entities via API', async function () {
+    });    it('should update an AEF-T5-Authorized-Entities via API', async function () {
       const updateData = {
-        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
-        cadTrustUnitId: testUnitId,
-        cadTrustProjectId: testProjectId,
         aefT5AuthorizedEntitiesAuthorizationDate: '2024-12-31',
         aefT5AuthorizedEntitiesName: 'Updated Entity Name',
         aefT5AuthorizedEntitiesId: 'TEST-AE-UPDATED',
+        aefT5AuthorizedEntitiesCooperativeApproachId: 'TEST-CA-UPDATE',
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
       };
 
       const response = await supertest(app)
@@ -649,10 +655,13 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
 
     before(async function () {
       const aefT5AuthorizedEntitiesData = {
+        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+        aefT5AuthorizedEntitiesName: 'AEF-T5 to Delete',
+        aefT5AuthorizedEntitiesId: 'TEST-AE-DELETE',
+        aefT5AuthorizedEntitiesCooperativeApproachId: 'TEST-CA-DELETE',
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
-        aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
       };
 
       const response = await supertest(app)
@@ -671,10 +680,13 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         await stagingRecord.update({ committed: true });
         await AefT5AuthorizedEntitiesV2.create({
           cadTrustAefT5AuthorizedEntitiesId: createdAefT5AuthorizedEntitiesId,
+          aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
+          aefT5AuthorizedEntitiesName: 'AEF-T5 to Delete',
+          aefT5AuthorizedEntitiesId: 'TEST-AE-DELETE',
+          aefT5AuthorizedEntitiesCooperativeApproachId: 'TEST-CA-DELETE',
           cadTrustAefT1SubmissionId: testAefT1SubmissionId,
           cadTrustUnitId: testUnitId,
           cadTrustProjectId: testProjectId,
-          aefT5AuthorizedEntitiesAuthorizationDate: '2024-01-15',
         });
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();

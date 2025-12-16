@@ -442,13 +442,13 @@ describe('V2 Staging Integration Tests', function () {
           uuid: uuidv4(),
           table: 'program',
           action: 'DELETE',
-          data: '{}',
+          data: JSON.stringify([{ cad_trust_program_id: uuidv4() }]),
           committed: false,
         },
       ];
 
       const [insertRecords, updateRecords, deleteChangeList] =
-        StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'program');
+        await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'program');
 
       expect(insertRecords).to.be.an('array');
       expect(insertRecords.length).to.equal(1);
@@ -480,7 +480,7 @@ describe('V2 Staging Integration Tests', function () {
       ];
 
       const [insertRecords, updateRecords, deleteChangeList] =
-        StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'program');
+        await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'program');
 
       expect(insertRecords.length).to.equal(1);
       expect(insertRecords[0].cad_trust_program_id).to.equal(programData.cad_trust_program_id);
@@ -1077,11 +1077,12 @@ describe('V2 Staging Integration Tests', function () {
           comment: 'Test commit',
           author: 'Test User',
           ids: maxIdsArray,
-        })
-        .expect(400); // Will fail because UUIDs don't exist, but validation passes
+        });
 
-      // Should fail on UUID validation, not length validation
-      expect(response.body.error).to.not.include('ids array exceeds maximum length');
+      // Should succeed - validation passes and UUID exists
+      // The test verifies that the length validation doesn't incorrectly reject valid arrays at the limit
+      expect(response.status).to.equal(200);
+      expect(response.body.success).to.be.true;
     });
 
     it('should retry failed commit record', async function () {
@@ -1110,6 +1111,199 @@ describe('V2 Staging Integration Tests', function () {
       expect(retriedRecord).to.exist;
       expect(retriedRecord.failed_commit).to.be.false;
       expect(retriedRecord.committed).to.be.false;
+    });
+
+    it('should reset committed records that are blocking new commits', async function () {
+      // Create records with committed: true, failed_commit: false (blocking state)
+      const programData1 = await generateV2ProgramData();
+      const stagingUuid1 = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid1,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData1]),
+        committed: true,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const programData2 = await generateV2ProgramData();
+      const stagingUuid2 = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid2,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData2]),
+        committed: true,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      // Create one uncommitted record (should not be affected)
+      const programData3 = await generateV2ProgramData();
+      const stagingUuid3 = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid3,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData3]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      // Create one transfer record (should not be affected)
+      const programData4 = await generateV2ProgramData();
+      const stagingUuid4 = uuidv4();
+      await StagingV2.create({
+        uuid: stagingUuid4,
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData4]),
+        committed: true,
+        failed_commit: false,
+        is_transfer: true, // Transfer records should not be reset
+      });
+
+      // Call reset endpoint
+      const response = await supertest(app)
+        .post('/v2/staging/reset-committed')
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.affectedRows).to.equal(2); // Only the 2 non-transfer committed records
+
+      // Verify committed records were reset
+      const resetRecord1 = await StagingV2.findOne({
+        where: { uuid: stagingUuid1 },
+      });
+      expect(resetRecord1.committed).to.be.false;
+
+      const resetRecord2 = await StagingV2.findOne({
+        where: { uuid: stagingUuid2 },
+      });
+      expect(resetRecord2.committed).to.be.false;
+
+      // Verify uncommitted record was not affected
+      const uncommittedRecord = await StagingV2.findOne({
+        where: { uuid: stagingUuid3 },
+      });
+      expect(uncommittedRecord.committed).to.be.false;
+
+      // Verify transfer record was not affected
+      const transferRecord = await StagingV2.findOne({
+        where: { uuid: stagingUuid4 },
+      });
+      expect(transferRecord.committed).to.be.true; // Transfer records should remain committed
+    });
+
+    it('should handle reset when no committed records exist', async function () {
+      // Create only uncommitted records
+      const programData = await generateV2ProgramData();
+      await StagingV2.create({
+        uuid: uuidv4(),
+        table: 'program',
+        action: 'INSERT',
+        data: JSON.stringify([programData]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const response = await supertest(app)
+        .post('/v2/staging/reset-committed')
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.affectedRows).to.equal(0);
+    });
+
+    it('should rollback committed status when commit fails', async function () {
+      // This test verifies that when a commit fails, records marked as committed
+      // during processing are rolled back to committed: false
+      // We'll simulate a failure by using invalid data that causes an error during processing
+
+      const programDataSnake = await generateV2ProgramData();
+      const programData = {
+        programName: programDataSnake.program_name,
+        programRegistry: programDataSnake.program_registry,
+        programRegistryActivityId: programDataSnake.program_registry_activity_id,
+        programRegistryProgramId: programDataSnake.program_registry_program_id,
+        programDescription: programDataSnake.program_description,
+      };
+
+      // Create staging record via API
+      const createResponse = await supertest(app)
+        .post('/v2/program')
+        .send(programData)
+        .expect(200);
+
+      // Get the staging UUID
+      const stagingRecords = await StagingV2.findAll({
+        where: { committed: false },
+      });
+      expect(stagingRecords.length).to.equal(1);
+      const stagingUuid = stagingRecords[0].uuid;
+
+      // Delete any existing committed records to avoid "pending commits" error
+      await StagingV2.destroy({
+        where: { committed: true }
+      });
+
+      // Corrupt the staging data to cause a processing error
+      // This simulates a failure during commit processing (e.g., invalid JSON)
+      await StagingV2.update(
+        { data: 'invalid json{' }, // Invalid JSON will cause parse error
+        { where: { uuid: stagingUuid } }
+      );
+
+      // Attempt commit - should fail
+      const commitResponse = await supertest(app)
+        .post('/v2/staging/commit')
+        .send({
+          comment: 'Test commit',
+          author: 'Test User',
+        });
+
+      // Commit should fail (400 or 500)
+      expect([400, 500]).to.include(commitResponse.status);
+      expect(commitResponse.body.success).to.be.false;
+
+      // Verify that the record was NOT left in committed: true state
+      // The rollback logic should have reset it back to committed: false
+      // Note: Records are marked as committed during processing (line 87-90 in staging-v2.model.js)
+      // With our fix, updates are awaited, so records are marked committed before processing
+      // If commit fails, rollback sets committed: false (line 571-579 in staging-v2.model.js)
+      const failedRecord = await StagingV2.findOne({
+        where: { uuid: stagingUuid },
+      });
+      expect(failedRecord).to.exist;
+      // Rollback should have set committed to false
+      // Note: failed_commit is only set if datalayer push succeeds but then fails,
+      // which doesn't happen in this test case (error occurs during data processing)
+      expect(failedRecord.committed).to.be.false;
+
+      // Verify we can now retry the commit after fixing the data
+      // Fix the data
+      await StagingV2.update(
+        { data: JSON.stringify([programDataSnake]) },
+        { where: { uuid: stagingUuid } }
+      );
+
+      // Should be able to commit again (after clearing any other committed records)
+      await StagingV2.destroy({
+        where: { committed: true }
+      });
+
+      const retryCommitResponse = await supertest(app)
+        .post('/v2/staging/commit')
+        .send({
+          comment: 'Retry commit after rollback',
+          author: 'Test User',
+        })
+        .expect(200);
+
+      expect(retryCommitResponse.body.success).to.be.true;
     });
   });
 
@@ -1424,7 +1618,7 @@ describe('V2 Staging Integration Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('pending commits');
+      expect(response.body.error).to.include('pending commit');
     });
 
     it('should store activeOfferTradeId in MetaV2 after generating offer', async function () {

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { prepareV2Db } from '../../src/database/v2/index.js';
+import { prepareV2Db } from '../../../src/database/v2/index.js';
 
 describe('V2 Infrastructure - Isolated Smoke Test', function () {
   this.timeout(30000); // 30 second timeout for smoke test
@@ -15,13 +15,13 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
 
   describe('V2 Database Connection', function () {
     it('should connect to V2 database successfully', async function () {
-      const { sequelizeV2 } = await import('../../src/database/v2/index.js');
+      const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
       await sequelizeV2.authenticate();
       expect(sequelizeV2).to.exist;
     });
 
     it('should have V2 database configuration correct', async function () {
-      const { sequelizeV2 } = await import('../../src/database/v2/index.js');
+      const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
 
       expect(sequelizeV2.options.dialect).to.equal('sqlite');
       // In test mode, database path may be different, just verify it's a sqlite file
@@ -31,7 +31,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
 
   describe('V2 System Tables', function () {
     it('should have all V2 system tables created', async function () {
-      const { sequelizeV2 } = await import('../../src/database/v2/index.js');
+      const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
 
       const tables = await sequelizeV2.query(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
@@ -47,7 +47,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
     });
 
     it('should have correct V2 staging table schema', async function () {
-      const { sequelizeV2 } = await import('../../src/database/v2/index.js');
+      const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
 
       const columns = await sequelizeV2.query(
         "PRAGMA table_info(staging)",
@@ -70,7 +70,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
     });
 
     it('should have correct V2 organizations table schema', async function () {
-      const { sequelizeV2 } = await import('../../src/database/v2/index.js');
+      const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
 
       const columns = await sequelizeV2.query(
         "PRAGMA table_info(organizations)",
@@ -93,7 +93,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
 
   describe('V2 Models Loading', function () {
     it('should load all V2 system models without errors', async function () {
-      const V2Models = await import('../../src/models/v2/index.js');
+      const V2Models = await import('../../../src/models/v2/index.js');
 
       expect(V2Models.StagingV2).to.exist;
       expect(V2Models.OrganizationsV2).to.exist;
@@ -104,7 +104,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
     });
 
     it('should load V2 methodology, program, project, validation, verification, issuance, unit, location, estimation, rating, co-benefit, project-methodology, stakeholder, stakeholder-projects, label, unit-label, aef-t1-submission, aef-t5-authorized-entities, aef-t2-authorizations, aef-t3-actions, and aef-t4-holdings models', async function () {
-      const V2Models = await import('../../src/models/v2/index.js');
+      const V2Models = await import('../../../src/models/v2/index.js');
 
       expect(V2Models.MethodologyV2).to.exist;
       expect(V2Models.MethodologyV2Mirror).to.exist;
@@ -153,7 +153,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
 
   describe('V2 Basic CRUD Operations', function () {
     it('should create and read V2 staging records', async function () {
-      const { StagingV2 } = await import('../../src/models/v2/index.js');
+      const { StagingV2 } = await import('../../../src/models/v2/index.js');
 
       const testData = {
         uuid: 'test-uuid-smoke',
@@ -178,7 +178,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
     });
 
     it('should create and read V2 organization records', async function () {
-      const { OrganizationsV2 } = await import('../../src/models/v2/index.js');
+      const { OrganizationsV2 } = await import('../../../src/models/v2/index.js');
 
       const orgData = {
         org_uid: 'test-org-smoke-v2',
@@ -201,7 +201,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
     });
 
     it('should create and read V2 meta records', async function () {
-      const { MetaV2 } = await import('../../src/models/v2/index.js');
+      const { MetaV2 } = await import('../../../src/models/v2/index.js');
 
       const metaRecord = await MetaV2.create({
         meta_key: 'test_meta_key_v2',
@@ -218,7 +218,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
     });
 
     it('should create and read V2 governance records', async function () {
-      const { GovernanceV2 } = await import('../../src/models/v2/index.js');
+      const { GovernanceV2 } = await import('../../../src/models/v2/index.js');
 
       const governanceRecord = await GovernanceV2.create({
         meta_key: 'test_gov_key_v2',
@@ -237,7 +237,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
     });
 
     it('should create and read V2 simulator records', async function () {
-      const { SimulatorV2 } = await import('../../src/models/v2/index.js');
+      const { SimulatorV2 } = await import('../../../src/models/v2/index.js');
 
       const simulatorRecord = await SimulatorV2.create({
         key: 'test_sim_key_v2',
@@ -256,7 +256,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
 
   describe('V2 Snake Case Validation', function () {
     it('should use snake_case for all V2 database columns', async function () {
-      const { sequelizeV2 } = await import('../../src/database/v2/index.js');
+      const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
 
       const tables = ['staging', 'organizations', 'meta', 'governance', 'simulator'];
 
@@ -279,8 +279,8 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
   describe('V2 Isolation', function () {
     it('should maintain V1/V2 isolation', async function () {
       // Verify V2 database is separate from V1
-      const { sequelizeV2 } = await import('../../src/database/v2/index.js');
-      const { sequelize } = await import('../../src/database/index.js');
+      const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
+      const { sequelize } = await import('../../../src/database/index.js');
 
       expect(sequelizeV2).to.not.equal(sequelize);
 

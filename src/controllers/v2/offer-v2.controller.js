@@ -61,7 +61,7 @@ export const cancelActiveOffer = async (req, res) => {
   } catch (error) {
     loggerV2.error('[v2]: Error canceling active offer:', error);
     res.status(400).json({
-      message: 'Can not cancel active offer',
+      message: 'Cannot cancel active offer',
       error: error.message,
       success: false,
     });
@@ -93,7 +93,7 @@ export const importOfferFile = async (req, res) => {
   } catch (error) {
     loggerV2.error('[v2]: Error importing offer file:', error);
     res.status(400).json({
-      message: 'Can not import offer file.',
+      message: 'Cannot import offer file',
       error: error.message,
       success: false,
     });
@@ -121,7 +121,7 @@ export const commitImportedOffer = async (req, res) => {
   } catch (error) {
     loggerV2.error('[v2]: Error committing imported offer:', error);
     res.status(400).json({
-      message: 'Can not commit offer.',
+      message: 'Cannot commit offer',
       error: error.message,
       success: false,
     });
@@ -143,7 +143,7 @@ export const cancelImportedOffer = async (req, res) => {
   } catch (error) {
     loggerV2.error('[v2]: Error canceling imported offer:', error);
     res.status(400).json({
-      message: 'Can not cancel offer.',
+      message: 'Cannot cancel offer',
       error: error.message,
       success: false,
     });
@@ -227,7 +227,7 @@ export const getCurrentOfferInfo = async (req, res) => {
   } catch (error) {
     loggerV2.error('[v2]: Error getting offer info:', error);
     res.status(400).json({
-      message: 'Can not get offer.',
+      message: 'Cannot get offer',
       error: error.message,
       success: false,
     });

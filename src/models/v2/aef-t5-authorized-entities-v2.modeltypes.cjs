@@ -50,10 +50,6 @@ module.exports = {
     type: Sequelize.UUID,
     allowNull: true,
   },
-  cadTrustAefT2AuthorizationsId: {
-    type: Sequelize.UUID,
-    allowNull: true,
-  },
   createdAt: {
     type: Sequelize.DATE,
     allowNull: false,

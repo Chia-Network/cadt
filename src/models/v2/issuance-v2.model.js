@@ -9,7 +9,7 @@ import {
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
-import { UnitV2 } from './unit-v2.model.js';
+import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
 
 class IssuanceV2 extends Model {
   static associate(models) {
@@ -71,16 +71,14 @@ class IssuanceV2 extends Model {
     if (!hasStagedData) {
       return {
         issuance: [],
-        unit: [],
       };
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'issuance');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'issuance');
 
     const primaryKeyMap = {
       issuance: 'cad_trust_issuance_id',
-      unit: 'cad_trust_unit_id',
     };
 
     // PERFORMANCE: Only call getDeletedItems() if UPDATE records exist
@@ -135,24 +133,13 @@ class IssuanceV2 extends Model {
         mapped[tableName] = mapped[modelName];
         delete mapped[modelName];
       }
-      // Map child table names if they exist
-      const childMappings = {
-        UnitV2: 'unit',
-      };
-      Object.keys(childMappings).forEach((childModelName) => {
-        if (mapped[childModelName]) {
-          mapped[childMappings[childModelName]] = mapped[childModelName];
-          delete mapped[childModelName];
-        }
-      });
       return mapped;
     };
 
     // Convert Excel to changelist (only if Excel sheets were created)
-    // Pass V2 model map for checking existing records (including child tables)
+    // Pass V2 model map for checking existing records
     const modelMap = {
       issuance: IssuanceV2,
-      unit: UnitV2,
     };
 
     const insertChangeList = insertXslsSheets
@@ -182,17 +169,28 @@ class IssuanceV2 extends Model {
         )
       : {};
 
+    // PERFORMANCE: Use passed-in metadata instead of fetching
+    // Generate comment and author changelist (only from first model that processes it)
+    const commentChangeList = keyValueToChangeList(
+      'comment',
+      `{"comment": "${comment}"}`,
+      isUpdateComment,
+    );
+
+    const authorChangeList = keyValueToChangeList(
+      'author',
+      `{"author": "${author}"}`,
+      isUpdateAuthor,
+    );
+
     return {
       issuance: [
         ..._.get(insertChangeList, 'issuance', []),
         ..._.get(updateChangeList, 'issuance', []),
         ...deleteChangeList,
       ],
-      unit: [
-        ..._.get(insertChangeList, 'unit', []),
-        ..._.get(updateChangeList, 'unit', []),
-        ..._.get(deletedAssociationsChangeList, 'unit', []),
-      ],
+      comment: commentChangeList,
+      author: authorChangeList,
     };
   }
 }

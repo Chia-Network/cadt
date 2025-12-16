@@ -36,9 +36,13 @@ export const create = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error creating new issuance',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }
@@ -72,8 +76,16 @@ export const create = async (req, res) => {
 
     // Validate foreign keys
     try {
-      await assertRecordExistanceOrStaged(VerificationV2, newRecord.cadTrustVerificationId, 'cadTrustVerificationId');
-      await assertRecordExistanceOrStaged(MethodologyV2, newRecord.cadTrustMethodologyId, 'cadTrustMethodologyId');
+      await assertRecordExistanceOrStaged(
+        VerificationV2,
+        newRecord.cadTrustVerificationId,
+        `cadTrustVerificationId '${newRecord.cadTrustVerificationId}' does not exist. Please create the verification first or use a valid cadTrustVerificationId`,
+      );
+      await assertRecordExistanceOrStaged(
+        MethodologyV2,
+        newRecord.cadTrustMethodologyId,
+        `cadTrustMethodologyId '${newRecord.cadTrustMethodologyId}' does not exist. Please create the methodology first or use a valid cadTrustMethodologyId`,
+      );
     } catch (err) {
       return res.status(400).json({
         message: 'Error creating new issuance',
@@ -222,9 +234,13 @@ export const update = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error updating issuance',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }
@@ -239,8 +255,24 @@ export const update = async (req, res) => {
     }
 
     // Validate foreign keys
-    await assertRecordExistanceOrStaged(VerificationV2, updateData.cadTrustVerificationId, 'cadTrustVerificationId');
-    await assertRecordExistanceOrStaged(MethodologyV2, updateData.cadTrustMethodologyId, 'cadTrustMethodologyId');
+    try {
+      await assertRecordExistanceOrStaged(
+        VerificationV2,
+        updateData.cadTrustVerificationId,
+        `cadTrustVerificationId '${updateData.cadTrustVerificationId}' does not exist. Please create the verification first or use a valid cadTrustVerificationId`,
+      );
+      await assertRecordExistanceOrStaged(
+        MethodologyV2,
+        updateData.cadTrustMethodologyId,
+        `cadTrustMethodologyId '${updateData.cadTrustMethodologyId}' does not exist. Please create the methodology first or use a valid cadTrustMethodologyId`,
+      );
+    } catch (err) {
+      return res.status(400).json({
+        message: 'Error updating issuance',
+        error: err.message,
+        success: false,
+      });
+    }
 
     if (updateData.cadTrustLocationId) {
       // Note: LocationV2 validation will be added when Location endpoint is implemented

@@ -58,6 +58,15 @@ class OrganizationsV2 extends Model {
     try {
       loggerV2.info('[v2]: Creating New V2 Organization, This could take a while.');
 
+      // Ensure name is provided
+      if (!name) {
+        throw new Error('Organization name is required');
+      }
+
+      // Icon is optional - use provided value or default to empty string
+      // Icon can be any string (URL, base64-encoded data, etc.) or empty
+      const iconValue = icon !== undefined && icon !== null ? icon : '';
+
       // Check for existing V2 home org
       const existingV2Org = await OrganizationsV2.findOne({
         where: { is_home: true },
@@ -178,7 +187,7 @@ class OrganizationsV2 extends Model {
           registryId: dataModelVersionStoreId, // Points to singleton
           fileStoreId,
           name,
-          icon,
+          icon: iconValue,
         },
         revertOrganizationIfFailed,
       );
@@ -222,7 +231,7 @@ class OrganizationsV2 extends Model {
           subscribed: USE_SIMULATOR,
           file_store_subscribed: fileStoreId,
           name,
-          icon,
+          icon: iconValue,
         }),
         OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } }),
       ]);
@@ -285,18 +294,6 @@ class OrganizationsV2 extends Model {
         );
       }
 
-      // CRITICAL: Check if V2 home org already exists
-      const existingV2Org = await OrganizationsV2.findOne({
-        where: { is_home: true },
-        raw: true,
-      });
-
-      if (existingV2Org) {
-        throw new Error(
-          'V2 home organization already exists. Cannot upgrade again.',
-        );
-      }
-
       // Get V1 org data
       const v1OrgUid = v1Org.orgUid;
       const v1RegistryId = v1Org.registryId;
@@ -310,33 +307,112 @@ class OrganizationsV2 extends Model {
       }
 
       // CRITICAL: Read current singleton data from datalayer
-      const singletonData = await getStoreDataPromise(
-        v1DataModelVersionStoreId,
-      );
+      // Use getSubscribedStoreData in production mode to ensure store is subscribed and synced
+      let singletonData = null;
 
-      if (!singletonData || !singletonData.keys_values) {
+      if (USE_SIMULATOR) {
+        // In simulator mode, use getStoreDataPromise directly (no subscription needed)
+        const storeData = await getStoreDataPromise(v1DataModelVersionStoreId);
+        if (storeData && storeData.keys_values) {
+          const decodedData = decodeDataLayerResponse(storeData);
+          singletonData = decodedData.reduce((obj, current) => {
+            obj[current.key] = current.value;
+            return obj;
+          }, {});
+        } else {
+          throw new Error(
+            'Cannot read V1 singleton data from datalayer. Cannot upgrade.',
+          );
+        }
+      } else {
+        // In production mode, use getSubscribedStoreData with timeout
+        const timeout = Date.now() + 600000; // 10 minutes
+
+        while (!singletonData) {
+          try {
+            singletonData = await datalayer.getSubscribedStoreData(
+              v1DataModelVersionStoreId,
+              undefined,
+              true, // wait for sync
+            );
+            break;
+          } catch (error) {
+            if (Date.now() > timeout) {
+              throw new Error(
+                `Timeout reading V1 singleton data from datalayer: ${error.message}. Cannot upgrade.`,
+              );
+            }
+            loggerV2.debug(`[v2]: ${error.message}. RETRYING`);
+            await new Promise((resolve) => setTimeout(resolve, 10000));
+          }
+        }
+      }
+
+      if (!singletonData) {
         throw new Error(
           'Cannot read V1 singleton data from datalayer. Cannot upgrade.',
         );
       }
 
-      // Decode singleton to get v1 registry store ID
-      const decodedSingleton = {};
-      singletonData.keys_values.forEach((kv) => {
-        try {
-          const decodedKey = decodeHex(kv.key);
-          const decodedValue = decodeHex(kv.value);
-          decodedSingleton[decodedKey] = decodedValue;
-        } catch (error) {
-          loggerV2.warn(`[v2]: Failed to decode singleton key/value: ${error.message}`);
-        }
-      });
-
-      const v1RegistryStoreId = decodedSingleton.v1;
+      const v1RegistryStoreId = singletonData.v1;
       if (!v1RegistryStoreId) {
         throw new Error(
           'V1 singleton missing v1 key. Cannot upgrade without v1 registry store ID.',
         );
+      }
+
+      // CRITICAL: Check if V2 home org already exists
+      const existingV2Org = await OrganizationsV2.findOne({
+        where: { is_home: true },
+        raw: true,
+      });
+
+      // Check if singleton already has v2 key
+      const singletonHasV2Key = singletonData.v2 !== undefined;
+
+      if (existingV2Org) {
+        // V2 org exists - check if singleton has v2 key
+        if (singletonHasV2Key) {
+          // Both exist - upgrade already complete
+          throw new Error(
+            'V2 home organization already exists and singleton has v2 key. Upgrade already complete.',
+          );
+        } else {
+          // V2 org exists but singleton missing v2 key - this is a partial upgrade
+          // We'll use the existing V2 org's registry ID to complete the singleton update
+          loggerV2.warn(
+            '[v2]: V2 organization exists but singleton missing v2 key. Completing partial upgrade.',
+          );
+          const newV2RegistryStoreId = existingV2Org.registry_id;
+          const sharedDataModelVersionStoreId = v1DataModelVersionStoreId;
+
+          // Verify singleton store is owned (skip in simulator mode)
+          if (!USE_SIMULATOR) {
+            try {
+              await assertStoreIsOwned(sharedDataModelVersionStoreId);
+            } catch (error) {
+              throw new Error(
+                `Cannot complete upgrade: The singleton store (${sharedDataModelVersionStoreId}) is not owned by the current wallet. ` +
+                `Original error: ${error.message}`,
+              );
+            }
+          }
+
+          // Add v2 key to singleton
+          await datalayer.syncDataLayer(
+            sharedDataModelVersionStoreId,
+            { v2: newV2RegistryStoreId },
+            null, // No revert callback needed - org already exists
+          );
+
+          if (!USE_SIMULATOR) {
+            await new Promise((resolve) => setTimeout(() => resolve(), 30000));
+            await datalayer.waitForAllTransactionsToConfirm();
+          }
+
+          loggerV2.info('[v2]: Singleton v2 key added successfully. Upgrade complete.');
+          return existingV2Org.org_uid;
+        }
       }
 
       // Create new V2 stores (completely new store IDs, different from V1)
@@ -402,21 +478,45 @@ class OrganizationsV2 extends Model {
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
-      loggerV2.info(
-        `[v2]: updating shared data model version store ${sharedDataModelVersionStoreId} to add v2 key`,
-      );
+      // CRITICAL: Check if singleton already has v2 key (idempotent upgrade)
+      // singletonHasV2Key was already declared above - reuse it here
+      // Re-check singleton data in case it was updated (though unlikely at this point)
+      const currentSingletonHasV2Key = singletonData.v2 !== undefined;
 
-      // CRITICAL: Add v2 key to existing singleton (preserve v1 key)
-      const updatedSingleton = {
-        ...decodedSingleton, // Preserve existing keys (v1)
-        v2: newV2RegistryStoreId, // Add v2 key
-      };
+      if (currentSingletonHasV2Key) {
+        loggerV2.info(
+          `[v2]: Singleton store ${sharedDataModelVersionStoreId} already has v2 key. Skipping singleton update.`,
+        );
+      } else {
+        loggerV2.info(
+          `[v2]: updating shared data model version store ${sharedDataModelVersionStoreId} to add v2 key`,
+        );
 
-      await datalayer.syncDataLayer(
-        sharedDataModelVersionStoreId,
-        updatedSingleton,
-        revertUpgradeIfFailed,
-      );
+        // CRITICAL: Verify singleton store is owned before attempting to update
+        // The singleton store must be owned by the current wallet to add the v2 key
+        // Skip ownership check in simulator mode
+        if (!USE_SIMULATOR) {
+          try {
+            await assertStoreIsOwned(sharedDataModelVersionStoreId);
+          } catch (error) {
+            throw new Error(
+              `Cannot upgrade V1 organization: The singleton store (${sharedDataModelVersionStoreId}) is not owned by the current wallet. ` +
+              `The singleton store must be owned by this wallet to perform the upgrade. ` +
+              `Please ensure you are using the same wallet that created the V1 organization, or transfer the singleton store to this wallet. ` +
+              `Original error: ${error.message}`,
+            );
+          }
+        }
+
+        // CRITICAL: Add v2 key to existing singleton (preserve v1 key)
+        // Only insert the new v2 key - don't re-insert existing keys (v1 already exists)
+        // syncDataLayer always uses 'insert' action, so re-inserting v1 would cause KeyAlreadyPresentError
+        await datalayer.syncDataLayer(
+          sharedDataModelVersionStoreId,
+          { v2: newV2RegistryStoreId }, // Only insert the new v2 key
+          revertUpgradeIfFailed,
+        );
+      }
 
       if (!USE_SIMULATOR) {
         loggerV2.info(
@@ -450,13 +550,16 @@ class OrganizationsV2 extends Model {
 
       if (!USE_SIMULATOR) {
         loggerV2.info('[v2]: Waiting for V2 Organization upgrade to be confirmed');
-        await getStoreDataPromise(
+        // In non-simulator mode, use callback-based getStoreData to wait for confirmation
+        datalayer.getStoreData(
           newV2OrgUid,
           onConfirm,
           revertUpgradeIfFailed,
         );
       } else {
-        onConfirm();
+        // In simulator mode, data is immediately available
+        // Await the update to ensure it completes before returning
+        await onConfirm();
       }
 
       return newV2OrgUid;

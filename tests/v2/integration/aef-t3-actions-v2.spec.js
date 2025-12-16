@@ -798,16 +798,24 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
   describe('POST /v2/aef-t3-actions (Create)', function () {
     it('should create a new AEF-T3-Actions record via API', async function () {
       const aefT3ActionsData = {
-        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
-        cadTrustUnitId: testUnitId,
-        cadTrustProjectId: testProjectId,
-        cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
         aefT3ActionsDate: '2024-01-15',
         aefT3ActionsCoopoerativeApproachId: 'TEST-CA-API',
         aefT3ActionsAuthorizationId: 'TEST-AUTH-API',
         aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-API',
+        aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-API',
+        aefT3ActionsItmoFirstId: 'ITMO-API-001',
+        aefT3ActionsItmoLastId: 'ITMO-API-100',
+        aefT3ActionsUnitRegistryId: 'UNIT-REGISTRY-API',
+        aefT3ActionsUnitFirstId: 'UNIT-API-001',
+        aefT3ActionsUnitLastId: 'UNIT-API-100',
         aefT3ActionsQuantityTCo2: 1000.0,
         aefT3ActionsVintageYear: 2024,
+        aefT3ActionsTransferringPartyId: 'TRANSFER-PARTY-API',
+        aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-API',
+        cadTrustAefT1SubmissionId: testAefT1SubmissionId,
+        cadTrustUnitId: testUnitId,
+        cadTrustProjectId: testProjectId,
+        cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
       };
 
       const response = await supertest(app)
@@ -846,6 +854,20 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
 
     it('should reject AEF-T3-Actions with invalid foreign key (non-existent)', async function () {
       const aefT3ActionsData = {
+        aefT3ActionsDate: '2024-01-15',
+        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-FK',
+        aefT3ActionsAuthorizationId: 'TEST-AUTH-FK',
+        aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-FK',
+        aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-FK',
+        aefT3ActionsItmoFirstId: 'ITMO-FK-001',
+        aefT3ActionsItmoLastId: 'ITMO-FK-100',
+        aefT3ActionsUnitRegistryId: 'UNIT-REGISTRY-FK',
+        aefT3ActionsUnitFirstId: 'UNIT-FK-001',
+        aefT3ActionsUnitLastId: 'UNIT-FK-100',
+        aefT3ActionsQuantityTCo2: 1000.0,
+        aefT3ActionsVintageYear: 2024,
+        aefT3ActionsTransferringPartyId: 'TRANSFER-PARTY-FK',
+        aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-FK',
         cadTrustAefT1SubmissionId: '550e8400-e29b-41d4-a716-446655440999',
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
@@ -885,11 +907,24 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
 
     before(async function () {
       const aefT3ActionsData = {
+        aefT3ActionsDate: '2024-01-15',
+        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-UPDATE',
+        aefT3ActionsAuthorizationId: 'TEST-AUTH-UPDATE',
+        aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-UPDATE',
+        aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-UPDATE',
+        aefT3ActionsItmoFirstId: 'ITMO-UPDATE-001',
+        aefT3ActionsItmoLastId: 'ITMO-UPDATE-100',
+        aefT3ActionsUnitRegistryId: 'UNIT-REGISTRY-UPDATE',
+        aefT3ActionsUnitFirstId: 'UNIT-UPDATE-001',
+        aefT3ActionsUnitLastId: 'UNIT-UPDATE-100',
+        aefT3ActionsQuantityTCo2: 1000.0,
+        aefT3ActionsVintageYear: 2024,
+        aefT3ActionsTransferringPartyId: 'TRANSFER-PARTY-UPDATE',
+        aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-UPDATE',
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
         cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
-        aefT3ActionsDate: '2024-01-15',
       };
 
       const response = await supertest(app)
@@ -908,23 +943,48 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         await stagingRecord.update({ committed: true });
         await AefT3ActionsV2.create({
           cadTrustAefT3ActionsId: createdAefT3ActionsId,
+          aefT3ActionsDate: '2024-01-15',
+          aefT3ActionsCoopoerativeApproachId: 'TEST-CA-UPDATE',
+          aefT3ActionsAuthorizationId: 'TEST-AUTH-UPDATE',
+          aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-UPDATE',
+          aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-UPDATE',
+          aefT3ActionsItmoFirstId: 'ITMO-UPDATE-001',
+          aefT3ActionsItmoLastId: 'ITMO-UPDATE-100',
+          aefT3ActionsUnitRegistryId: 'UNIT-REGISTRY-UPDATE',
+          aefT3ActionsUnitFirstId: 'UNIT-UPDATE-001',
+          aefT3ActionsUnitLastId: 'UNIT-UPDATE-100',
+          aefT3ActionsQuantityTCo2: 1000.0,
+          aefT3ActionsVintageYear: 2024,
+          aefT3ActionsTransferringPartyId: 'TRANSFER-PARTY-UPDATE',
+          aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-UPDATE',
           cadTrustAefT1SubmissionId: testAefT1SubmissionId,
           cadTrustUnitId: testUnitId,
           cadTrustProjectId: testProjectId,
           cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
-          aefT3ActionsDate: '2024-01-15',
         });
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();
        }
-    });it('should update an AEF-T3-Actions via API', async function () {
+    });    it('should update an AEF-T3-Actions via API', async function () {
       const updateData = {
+        aefT3ActionsDate: '2024-12-31',
+        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-UPDATE',
+        aefT3ActionsAuthorizationId: 'TEST-AUTH-UPDATE',
+        aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-UPDATE',
+        aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-UPDATE',
+        aefT3ActionsItmoFirstId: 'ITMO-UPDATE-001',
+        aefT3ActionsItmoLastId: 'ITMO-UPDATE-100',
+        aefT3ActionsUnitRegistryId: 'UNIT-REGISTRY-UPDATE',
+        aefT3ActionsUnitFirstId: 'UNIT-UPDATE-001',
+        aefT3ActionsUnitLastId: 'UNIT-UPDATE-100',
+        aefT3ActionsQuantityTCo2: 2000.0,
+        aefT3ActionsVintageYear: 2024,
+        aefT3ActionsTransferringPartyId: 'TRANSFER-PARTY-UPDATE',
+        aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-UPDATE',
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
         cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
-        aefT3ActionsDate: '2024-12-31',
-        aefT3ActionsQuantityTCo2: 2000.0,
       };
 
       const response = await supertest(app)
@@ -943,6 +1003,20 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
 
     before(async function () {
       const aefT3ActionsData = {
+        aefT3ActionsDate: '2024-01-15',
+        aefT3ActionsCoopoerativeApproachId: 'TEST-CA-DELETE',
+        aefT3ActionsAuthorizationId: 'TEST-AUTH-DELETE',
+        aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-DELETE',
+        aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-DELETE',
+        aefT3ActionsItmoFirstId: 'ITMO-DELETE-001',
+        aefT3ActionsItmoLastId: 'ITMO-DELETE-100',
+        aefT3ActionsUnitRegistryId: 'UNIT-REGISTRY-DELETE',
+        aefT3ActionsUnitFirstId: 'UNIT-DELETE-001',
+        aefT3ActionsUnitLastId: 'UNIT-DELETE-100',
+        aefT3ActionsQuantityTCo2: 1000.0,
+        aefT3ActionsVintageYear: 2024,
+        aefT3ActionsTransferringPartyId: 'TRANSFER-PARTY-DELETE',
+        aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-DELETE',
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
@@ -965,6 +1039,20 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         await stagingRecord.update({ committed: true });
         await AefT3ActionsV2.create({
           cadTrustAefT3ActionsId: createdAefT3ActionsId,
+          aefT3ActionsDate: '2024-01-15',
+          aefT3ActionsCoopoerativeApproachId: 'TEST-CA-DELETE',
+          aefT3ActionsAuthorizationId: 'TEST-AUTH-DELETE',
+          aefT3ActionsFirstTransferringPartyId: 'TEST-PARTY-DELETE',
+          aefT3ActionsPartyItmoRegistryId: 'TEST-REGISTRY-DELETE',
+          aefT3ActionsItmoFirstId: 'ITMO-DELETE-001',
+          aefT3ActionsItmoLastId: 'ITMO-DELETE-100',
+          aefT3ActionsUnitRegistryId: 'UNIT-REGISTRY-DELETE',
+          aefT3ActionsUnitFirstId: 'UNIT-DELETE-001',
+          aefT3ActionsUnitLastId: 'UNIT-DELETE-100',
+          aefT3ActionsQuantityTCo2: 1000.0,
+          aefT3ActionsVintageYear: 2024,
+          aefT3ActionsTransferringPartyId: 'TRANSFER-PARTY-DELETE',
+          aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-DELETE',
           cadTrustAefT1SubmissionId: testAefT1SubmissionId,
           cadTrustUnitId: testUnitId,
           cadTrustProjectId: testProjectId,

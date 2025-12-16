@@ -17,6 +17,7 @@ import {
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
+import { getV2PrimaryKeyField } from '../../utils/v2-primary-key-utils.js';
 
 import ModelTypes from './staging-v2.modeltypes.cjs';
 
@@ -75,76 +76,174 @@ class StagingV2 extends Model {
    * @example
    * const [inserts, updates, deletes] = StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'project');
    */
-  static seperateStagingDataIntoActionGroups = (stagedData, table) => {
+  static seperateStagingDataIntoActionGroups = async (stagedData, table) => {
     const insertRecords = [];
     const updateRecords = [];
     const deleteChangeList = [];
+    const updatePromises = [];
 
-    stagedData
-      .filter((stagingRecord) => stagingRecord.table === table)
-      .forEach((stagingRecord) => {
-        // Mark records as committed during processing
+    const filteredRecords = stagedData.filter((stagingRecord) => stagingRecord.table === table);
+
+    // First, mark all records as committed and await the updates
+    // This ensures records are marked committed before any processing that might fail
+    for (const stagingRecord of filteredRecords) {
+      updatePromises.push(
         StagingV2.update(
           { committed: true },
           { where: { uuid: stagingRecord.uuid } },
-        );
+        )
+      );
+    }
 
-        if (stagingRecord.action === 'INSERT') {
-          loggerV2.debug('[v2]: Processing INSERT staging record', {
+    // Await all update operations BEFORE processing data
+    // This ensures rollback logic can properly detect committed records if processing fails
+    await Promise.all(updatePromises);
+
+    // Now process the data (parsing JSON, etc.) - if this fails, rollback will work correctly
+    for (const stagingRecord of filteredRecords) {
+      if (stagingRecord.action === 'INSERT') {
+        loggerV2.debug('[v2]: Processing INSERT staging record', {
+          table,
+          uuid: stagingRecord.uuid,
+          dataType: typeof stagingRecord.data,
+          dataLength: stagingRecord.data?.length,
+          dataPreview: stagingRecord.data?.substring(0, 200),
+        });
+        try {
+          const parsedData = JSON.parse(stagingRecord.data);
+          loggerV2.debug('[v2]: Parsed INSERT data', {
             table,
             uuid: stagingRecord.uuid,
-            dataType: typeof stagingRecord.data,
-            dataLength: stagingRecord.data?.length,
-            dataPreview: stagingRecord.data?.substring(0, 200),
+            parsedDataType: Array.isArray(parsedData) ? 'array' : typeof parsedData,
+            parsedDataLength: Array.isArray(parsedData) ? parsedData.length : 'N/A',
+            parsedDataSample: Array.isArray(parsedData) && parsedData.length > 0 ? parsedData[0] : parsedData,
           });
-          try {
-            const parsedData = JSON.parse(stagingRecord.data);
-            loggerV2.debug('[v2]: Parsed INSERT data', {
-              table,
-              uuid: stagingRecord.uuid,
-              parsedDataType: Array.isArray(parsedData) ? 'array' : typeof parsedData,
-              parsedDataLength: Array.isArray(parsedData) ? parsedData.length : 'N/A',
-              parsedDataSample: Array.isArray(parsedData) && parsedData.length > 0 ? parsedData[0] : parsedData,
-            });
-            insertRecords.push(...(Array.isArray(parsedData) ? parsedData : [parsedData]));
-          } catch (error) {
-            loggerV2.error('[v2]: Failed to parse staging record data', {
-              table,
-              uuid: stagingRecord.uuid,
-              error: error.message,
-              data: stagingRecord.data,
-            });
-            throw error;
-          }
-        } else if (stagingRecord.action === 'UPDATE') {
-          // V2 uses snake_case table names directly (no need for hacky fix)
-          const tablePrefix = table.toLowerCase();
-
-          // Generate delete changelist item for UPDATE
-          // The UUID in staging record is the primary key of the record being updated
-          deleteChangeList.push({
-            action: 'delete',
-            key: encodeHex(`${tablePrefix}|${stagingRecord.uuid}`),
+          insertRecords.push(...(Array.isArray(parsedData) ? parsedData : [parsedData]));
+        } catch (error) {
+          loggerV2.error('[v2]: Failed to parse staging record data', {
+            table,
+            uuid: stagingRecord.uuid,
+            error: error.message,
+            data: stagingRecord.data,
           });
-
-          // TODO: Child table records are getting orphaned in the datalayer,
-          // because we need to generate a delete action for each one
-
-          updateRecords.push(...JSON.parse(stagingRecord.data));
-        } else if (stagingRecord.action === 'DELETE') {
-          // V2 uses snake_case table names directly (no need for hacky fix)
-          const tablePrefix = table.toLowerCase();
-
-          // Generate delete changelist item for DELETE
-          deleteChangeList.push({
-            action: 'delete',
-            key: encodeHex(`${tablePrefix}|${stagingRecord.uuid}`),
-          });
-
-          // TODO: Child table records are getting orphaned in the datalayer,
-          // because we need to generate a delete action for each one
+          throw error;
         }
-      });
+      } else if (stagingRecord.action === 'UPDATE') {
+        // V2 uses snake_case table names directly (no need for hacky fix)
+        const tablePrefix = table.toLowerCase();
+
+        // Parse the data to get the primary key value
+        const parsedData = JSON.parse(stagingRecord.data);
+        const recordData = Array.isArray(parsedData) ? parsedData[0] : parsedData;
+
+        // Get the primary key field name for this table
+        const primaryKeyField = getV2PrimaryKeyField(table);
+        if (!primaryKeyField) {
+          throw new Error(`Unknown primary key field for table: ${table}`);
+        }
+
+        // Handle composite keys (virtual 'id' field)
+        let primaryKeyValue;
+        if (primaryKeyField === 'id') {
+          // Composite key tables: construct the virtual id from component fields
+          if (table === 'project_methodology') {
+            const projectId = recordData.cad_trust_project_id || recordData.cadTrustProjectId;
+            const methodologyId = recordData.cad_trust_methodology_id || recordData.cadTrustMethodologyId;
+            if (!projectId || !methodologyId) {
+              throw new Error(`Composite key fields not found in UPDATE staging data for table ${table}`);
+            }
+            primaryKeyValue = `${projectId}-${methodologyId}`;
+          } else if (table === 'unit_label') {
+            const labelId = recordData.cad_trust_label_id || recordData.cadTrustLabelId;
+            const unitId = recordData.cad_trust_unit_id || recordData.cadTrustUnitId;
+            if (!labelId || !unitId) {
+              throw new Error(`Composite key fields not found in UPDATE staging data for table ${table}`);
+            }
+            primaryKeyValue = `${labelId}-${unitId}`;
+          } else {
+            throw new Error(`Unknown composite key table: ${table}`);
+          }
+        } else {
+          // Single primary key: extract directly from record data
+          primaryKeyValue = recordData[primaryKeyField];
+          if (!primaryKeyValue) {
+            // Try camelCase version
+            const camelCaseField = primaryKeyField.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+            primaryKeyValue = recordData[camelCaseField];
+          }
+          if (!primaryKeyValue) {
+            throw new Error(`Primary key field ${primaryKeyField} not found in UPDATE staging data for table ${table}`);
+          }
+        }
+
+        // Generate delete changelist item for UPDATE using the actual primary key
+        deleteChangeList.push({
+          action: 'delete',
+          key: encodeHex(`${tablePrefix}|${primaryKeyValue}`),
+        });
+
+        // TODO: Child table records are getting orphaned in the datalayer,
+        // because we need to generate a delete action for each one
+
+        updateRecords.push(...(Array.isArray(parsedData) ? parsedData : [parsedData]));
+      } else if (stagingRecord.action === 'DELETE') {
+        // V2 uses snake_case table names directly (no need for hacky fix)
+        const tablePrefix = table.toLowerCase();
+
+        // Parse the data to get the primary key value
+        const parsedData = JSON.parse(stagingRecord.data);
+        const recordData = Array.isArray(parsedData) ? parsedData[0] : parsedData;
+
+        // Get the primary key field name for this table
+        const primaryKeyField = getV2PrimaryKeyField(table);
+        if (!primaryKeyField) {
+          throw new Error(`Unknown primary key field for table: ${table}`);
+        }
+
+        // Handle composite keys (virtual 'id' field)
+        let primaryKeyValue;
+        if (primaryKeyField === 'id') {
+          // Composite key tables: construct the virtual id from component fields
+          if (table === 'project_methodology') {
+            const projectId = recordData.cad_trust_project_id || recordData.cadTrustProjectId;
+            const methodologyId = recordData.cad_trust_methodology_id || recordData.cadTrustMethodologyId;
+            if (!projectId || !methodologyId) {
+              throw new Error(`Composite key fields not found in DELETE staging data for table ${table}`);
+            }
+            primaryKeyValue = `${projectId}-${methodologyId}`;
+          } else if (table === 'unit_label') {
+            const labelId = recordData.cad_trust_label_id || recordData.cadTrustLabelId;
+            const unitId = recordData.cad_trust_unit_id || recordData.cadTrustUnitId;
+            if (!labelId || !unitId) {
+              throw new Error(`Composite key fields not found in DELETE staging data for table ${table}`);
+            }
+            primaryKeyValue = `${labelId}-${unitId}`;
+          } else {
+            throw new Error(`Unknown composite key table: ${table}`);
+          }
+        } else {
+          // Single primary key: extract directly from record data
+          primaryKeyValue = recordData[primaryKeyField];
+          if (!primaryKeyValue) {
+            // Try camelCase version
+            const camelCaseField = primaryKeyField.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+            primaryKeyValue = recordData[camelCaseField];
+          }
+          if (!primaryKeyValue) {
+            throw new Error(`Primary key field ${primaryKeyField} not found in DELETE staging data for table ${table}`);
+          }
+        }
+
+        // Generate delete changelist item for DELETE using the actual primary key
+        deleteChangeList.push({
+          action: 'delete',
+          key: encodeHex(`${tablePrefix}|${primaryKeyValue}`),
+        });
+
+        // TODO: Child table records are getting orphaned in the datalayer,
+        // because we need to generate a delete action for each one
+      }
+    }
 
     return [insertRecords, updateRecords, deleteChangeList];
   };
@@ -322,6 +421,7 @@ class StagingV2 extends Model {
       const stage3Start = Date.now();
 
       // All V2 data models
+      // Each model processes its own table independently
       const allModels = [
         ProgramV2,
         MethodologyV2,
@@ -372,6 +472,7 @@ class StagingV2 extends Model {
       };
 
       // PERFORMANCE: Filter models that have staged data before processing
+      // Each model processes only its own table
       const modelsToProcess = allModels.filter((ModelClass) => {
         const tableName = modelToTableMap[ModelClass.name];
         return stagedRecords.some((record) => record.table === tableName);
@@ -558,6 +659,48 @@ class StagingV2 extends Model {
       }
     } catch (error) {
       const totalDuration = Date.now() - commitStartTime;
+
+      // Rollback committed status for records that were marked as committed but commit failed
+      // This handles cases where records are marked committed during processing but commit fails
+      try {
+        // stagedRecords might not be defined if error occurred before it was set
+        // In that case, rollback all records that were marked committed during this commit attempt
+        if (typeof stagedRecords !== 'undefined' && stagedRecords && stagedRecords.length > 0) {
+          await StagingV2.update(
+            { committed: false },
+            {
+              where: {
+                uuid: { [Op.in]: stagedRecords.map(r => r.uuid) },
+                committed: true,
+              }
+            },
+          );
+          loggerV2.debug('[v2]: Rolled back committed status for failed commit', {
+            recordCount: stagedRecords.length,
+          });
+        } else {
+          // If stagedRecords is not available, rollback any records marked committed recently
+          // This is a fallback for cases where error occurs before stagedRecords is defined
+          // We use a time-based approach: rollback records committed in the last few seconds
+          const recentTime = new Date(Date.now() - 5000); // 5 seconds ago
+          await StagingV2.update(
+            { committed: false },
+            {
+              where: {
+                committed: true,
+                updated_at: { [Op.gte]: recentTime },
+              }
+            },
+          );
+          loggerV2.debug('[v2]: Rolled back committed status using time-based fallback');
+        }
+      } catch (rollbackError) {
+        loggerV2.error('[v2]: Failed to rollback committed status', {
+          rollbackError: rollbackError.message,
+          stagedRecordsDefined: typeof stagedRecords !== 'undefined',
+        });
+      }
+
       loggerV2.error('[v2]: Commit failed with performance metrics', {
         duration: totalDuration,
         error: error.message,

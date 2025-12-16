@@ -40,7 +40,7 @@ class LabelV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'label');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'label');
 
     const primaryKeyMap = {
       label: 'cad_trust_label_id',

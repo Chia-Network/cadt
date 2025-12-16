@@ -91,7 +91,11 @@ export const create = async (req, res) => {
     // Validate foreign key if provided
     if (newRecord.cadTrustProgramId) {
       try {
-        await assertRecordExistanceOrStaged(ProgramV2, newRecord.cadTrustProgramId, 'ProgramV2 does not have a record');
+        await assertRecordExistanceOrStaged(
+          ProgramV2,
+          newRecord.cadTrustProgramId,
+          `cadTrustProgramId '${newRecord.cadTrustProgramId}' does not exist. Please create the program first or use a valid cadTrustProgramId`,
+        );
       } catch (err) {
         return res.status(400).json({
           message: 'Error creating new project',
@@ -670,9 +674,13 @@ export const update = async (req, res) => {
     });
 
     if (error) {
+      loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+      const errorMessage = error.details && error.details.length > 0
+        ? error.details[0].message
+        : error.message || 'Validation error';
       return res.status(400).json({
         message: 'Error updating project',
-        error: error.details[0].message,
+        error: errorMessage,
         success: false,
       });
     }
@@ -697,7 +705,19 @@ export const update = async (req, res) => {
 
     // Validate foreign key if provided
     if (updateData.cadTrustProgramId) {
-      await assertRecordExistanceOrStaged(ProgramV2, updateData.cadTrustProgramId, 'cadTrustProgramId');
+      try {
+        await assertRecordExistanceOrStaged(
+          ProgramV2,
+          updateData.cadTrustProgramId,
+          `cadTrustProgramId '${updateData.cadTrustProgramId}' does not exist. Please create the program first or use a valid cadTrustProgramId`,
+        );
+      } catch (err) {
+        return res.status(400).json({
+          message: 'Error updating project',
+          error: err.message,
+          success: false,
+        });
+      }
     }
 
     // Get home organization and set orgUid automatically (for non-transfer updates)
@@ -826,7 +846,17 @@ export const transfer = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error transferring project:', err);
+    loggerV2.error('[v2]: Error transferring project', {
+      error: err.message,
+      stack: err.stack,
+      headersSent: res.headersSent,
+    });
+
+    if (res.headersSent) {
+      loggerV2.error('[v2]: Response already sent, cannot send error response');
+      return;
+    }
+
     res.status(400).json({
       message: 'Error transferring project',
       error: err.message,

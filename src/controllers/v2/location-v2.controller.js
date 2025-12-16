@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { LocationV2, LocationV2Mirror, ProjectV2, StagingV2 } from '../../models/v2/index.js';
 import { locationV2Schema } from '../../validations/v2/location-v2.validations.js';
 import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
+import { loggerV2 } from '../../config/logger.js';
 
 // Generic CRUD controller factory for LocationV2
 const createLocationController = (Model, ModelMirror, schema) => {
@@ -25,9 +26,13 @@ const createLocationController = (Model, ModelMirror, schema) => {
         // Validate request body
         const { error, value } = schema.validate(newRecord);
         if (error) {
+          loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+          const errorMessage = error.details && error.details.length > 0
+            ? error.details[0].message
+            : error.message || 'Validation error';
           return res.status(400).json({
             message: 'Error creating location',
-            error: error.details[0].message,
+            error: errorMessage,
             success: false,
           });
         }
@@ -136,9 +141,13 @@ const createLocationController = (Model, ModelMirror, schema) => {
         // Validate request body
         const { error, value } = schema.validate(updateData);
         if (error) {
+          loggerV2.debug('[v2]: Validation error details:', { error, details: error.details });
+          const errorMessage = error.details && error.details.length > 0
+            ? error.details[0].message
+            : error.message || 'Validation error';
           return res.status(400).json({
             message: 'Error updating location',
-            error: error.details[0].message,
+            error: errorMessage,
             success: false,
           });
         }

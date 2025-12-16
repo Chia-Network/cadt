@@ -64,21 +64,21 @@ export const createAefT5AuthorizedEntitiesV2 = async (req, res) => {
         await assertRecordExistanceOrStaged(
           AefT1SubmissionV2,
           newRecord.cadTrustAefT1SubmissionId,
-          `cadTrustAefT1SubmissionId '${newRecord.cadTrustAefT1SubmissionId}' does not exist. Please create the AEF-T1-Submission first or use a valid cadTrustAefT1SubmissionId.`
+          `cadTrustAefT1SubmissionId '${newRecord.cadTrustAefT1SubmissionId}' does not exist. Please create the AEF-T1-Submission first or use a valid cadTrustAefT1SubmissionId`
         );
       }
       if (newRecord.cadTrustUnitId) {
         await assertRecordExistanceOrStaged(
           UnitV2,
           newRecord.cadTrustUnitId,
-          `cadTrustUnitId '${newRecord.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId.`
+          `cadTrustUnitId '${newRecord.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId`
         );
       }
       if (newRecord.cadTrustProjectId) {
         await assertRecordExistanceOrStaged(
           ProjectV2,
           newRecord.cadTrustProjectId,
-          `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+          `cadTrustProjectId '${newRecord.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`
         );
       }
     } catch (err) {
@@ -217,11 +217,17 @@ export const updateAefT5AuthorizedEntitiesV2 = async (req, res) => {
     const { cadTrustAefT5AuthorizedEntitiesId } = req.params;
     const updateData = _.cloneDeep(req.body);
 
-    // Verify record exists first (before validation)
-    const existingRecord = await AefT5AuthorizedEntitiesV2.findByPk(cadTrustAefT5AuthorizedEntitiesId);
-    if (!existingRecord) {
+    // Verify record exists first (before validation) - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        AefT5AuthorizedEntitiesV2,
+        cadTrustAefT5AuthorizedEntitiesId,
+        `AEF-T5-Authorized-Entities with ID '${cadTrustAefT5AuthorizedEntitiesId}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'AEF-T5-Authorized-Entities not found',
+        error: err.message,
         success: false,
       });
     }
@@ -259,21 +265,21 @@ export const updateAefT5AuthorizedEntitiesV2 = async (req, res) => {
         await assertRecordExistanceOrStaged(
           AefT1SubmissionV2,
           updateData.cadTrustAefT1SubmissionId,
-          `cadTrustAefT1SubmissionId '${updateData.cadTrustAefT1SubmissionId}' does not exist. Please create the AEF-T1-Submission first or use a valid cadTrustAefT1SubmissionId.`
+          `cadTrustAefT1SubmissionId '${updateData.cadTrustAefT1SubmissionId}' does not exist. Please create the AEF-T1-Submission first or use a valid cadTrustAefT1SubmissionId`
         );
       }
       if (updateData.cadTrustUnitId) {
         await assertRecordExistanceOrStaged(
           UnitV2,
           updateData.cadTrustUnitId,
-          `cadTrustUnitId '${updateData.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId.`
+          `cadTrustUnitId '${updateData.cadTrustUnitId}' does not exist. Please create the unit first or use a valid cadTrustUnitId`
         );
       }
       if (updateData.cadTrustProjectId) {
         await assertRecordExistanceOrStaged(
           ProjectV2,
           updateData.cadTrustProjectId,
-          `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId.`
+          `cadTrustProjectId '${updateData.cadTrustProjectId}' does not exist. Please create the project first or use a valid cadTrustProjectId`
         );
       }
     } catch (err) {
@@ -323,11 +329,17 @@ export const deleteAefT5AuthorizedEntitiesV2 = async (req, res) => {
 
     const { cadTrustAefT5AuthorizedEntitiesId } = req.params;
 
-    // Verify record exists
-    const existingRecord = await AefT5AuthorizedEntitiesV2.findByPk(cadTrustAefT5AuthorizedEntitiesId);
-    if (!existingRecord) {
+    // Verify record exists - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        AefT5AuthorizedEntitiesV2,
+        cadTrustAefT5AuthorizedEntitiesId,
+        `AEF-T5-Authorized-Entities with ID '${cadTrustAefT5AuthorizedEntitiesId}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'AEF-T5-Authorized-Entities not found',
+        error: err.message,
         success: false,
       });
     }

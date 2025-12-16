@@ -40,7 +40,7 @@ class UnitLabelV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'unit_label');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'unit_label');
 
     const primaryKeyMap = {
       unit_label: 'id', // Virtual field for composite key

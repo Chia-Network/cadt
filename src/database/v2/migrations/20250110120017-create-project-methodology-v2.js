@@ -8,11 +8,13 @@ export default {
       cad_trust_project_id: {
         type: Sequelize.UUID,
         allowNull: false,
+        primaryKey: true,
         comment: 'Foreign key to project table'
       },
       cad_trust_methodology_id: {
         type: Sequelize.UUID,
         allowNull: false,
+        primaryKey: true,
         comment: 'references methodology UUID'
       },
       project_methodology_date: {
@@ -33,13 +35,6 @@ export default {
         allowNull: false,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
       },
-    });
-
-    // Add composite primary key
-    await queryInterface.addConstraint('project_methodology', {
-      fields: ['cad_trust_project_id', 'cad_trust_methodology_id'],
-      type: 'primary key',
-      name: 'project_methodology_pkey'
     });
 
     // Add indexes for better performance

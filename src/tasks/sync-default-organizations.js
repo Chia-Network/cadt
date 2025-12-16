@@ -4,18 +4,50 @@ import {
   assertWalletIsSynced,
 } from '../utils/data-assertions.js';
 import { getDefaultOrganizationList } from '../utils/data-loaders.js';
-import { Meta, Organization } from '../models/index.js';
+import { Meta, Organization, Governance } from '../models/index.js';
 import { logger } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader.js';
+import _ from 'lodash';
 
-const CONFIG = getConfig().APP;
+const CONFIG = getConfig();
 
 const task = new Task('sync-default-organizations', async () => {
   try {
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
-    if (!CONFIG.USE_SIMULATOR) {
+    if (!CONFIG.APP.USE_SIMULATOR) {
+      // Check if governance data exists, and if not, trigger a governance sync
+      // This ensures that once the wallet syncs, governance data will be synced
+      // within the retry interval of this task (5 minutes) instead of waiting
+      // for the governance sync task (24 hours)
+      const governanceData = await Governance.findOne({
+        where: { metaKey: 'orgList' },
+        raw: true,
+      });
+
+      if (!governanceData && CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID) {
+        const myOrganization = await Organization.getHomeOrg();
+        if (
+          _.get(myOrganization, 'orgUid', '') !==
+          CONFIG.GOVERNANCE.GOVERNANCE_BODY_ID
+        ) {
+          logger.info(
+            '[v1]: Governance data not found, triggering governance sync before checking default organizations',
+          );
+          try {
+            await Governance.sync();
+            logger.info('[v1]: Governance sync completed successfully');
+          } catch (syncError) {
+            logger.warn(
+              `[v1]: Governance sync failed, will retry on next run: ${syncError.message}`,
+            );
+            // Don't throw here - let the task continue and retry governance sync on next run
+            // This allows the task to proceed if governance sync fails but data exists
+          }
+        }
+      }
+
       const defaultOrgRecords = await getDefaultOrganizationList();
       const userDeletedOrgs = await Meta.getUserDeletedOrgUids();
 
@@ -50,7 +82,7 @@ const task = new Task('sync-default-organizations', async () => {
   } catch (error) {
     logger.error(
       `failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300} seconds`,
+        `Retrying in ${CONFIG?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300} seconds`,
     );
   }
 });

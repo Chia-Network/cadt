@@ -2,7 +2,7 @@ import Joi from 'joi';
 
 export const newOrganizationWithIconSchema = Joi.object({
   name: Joi.string().required(),
-  icon: Joi.string().required(),
+  icon: Joi.string().allow('').optional(), // Icon is optional, can be any string (URL, base64, etc.) or empty
 });
 
 export const importOrganizationSchema = Joi.object({

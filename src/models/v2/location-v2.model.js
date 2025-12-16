@@ -50,7 +50,7 @@ class LocationV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'location');
+      await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'location');
 
     const primaryKeyMap = {
       location: 'cad_trust_location_id',

@@ -40,7 +40,7 @@ class AefT1SubmissionV2 extends Model {
     }
 
     const [insertRecords, updateRecords, deleteChangeList] =
-      StagingV2.seperateStagingDataIntoActionGroups(
+      await StagingV2.seperateStagingDataIntoActionGroups(
         stagedData,
         'aef_t1_submission',
       );

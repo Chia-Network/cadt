@@ -128,7 +128,12 @@ export const create = async (req, res) => {
     // Extract name and icon from request
     // Support both JSON body and file upload for icon
     const name = req.body.name || '';
-    const icon = req.body.icon || req.file?.buffer?.toString('base64') || '';
+    let icon = req.body.icon || '';
+
+    // Handle file upload for icon
+    if (req.file && req.file.buffer) {
+      icon = `data:image/png;base64,${req.file.buffer.toString('base64')}`;
+    }
 
     if (!name) {
       return res.status(400).json({
@@ -137,19 +142,43 @@ export const create = async (req, res) => {
       });
     }
 
-    // Call createHomeOrganization asynchronously (don't await)
-    // This allows the HTTP request to return immediately while creation happens in background
-    OrganizationsV2.createHomeOrganization(name, icon, 'v2').catch((error) => {
-      loggerV2.error(
-        `[v2]: Error creating V2 home organization in background: ${error.message}`,
-      );
-    });
+    const { USE_SIMULATOR } = getConfig().APP;
 
-    return res.json({
-      message:
-        'New V2 organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.',
-      success: true,
-    });
+    // In simulator mode, await creation and return orgUid immediately
+    // In production mode, return immediately and create in background
+    if (USE_SIMULATOR) {
+      try {
+        const orgUid = await OrganizationsV2.createHomeOrganization(name, icon, 'v2');
+        return res.json({
+          message: 'V2 organization created successfully',
+          orgUid,
+          success: true,
+        });
+      } catch (error) {
+        loggerV2.error(
+          `[v2]: Error creating V2 home organization: ${error.message}`,
+        );
+        return res.status(400).json({
+          message: 'Error creating V2 home organization',
+          error: error.message,
+          success: false,
+        });
+      }
+    } else {
+      // Call createHomeOrganization asynchronously (don't await)
+      // This allows the HTTP request to return immediately while creation happens in background
+      OrganizationsV2.createHomeOrganization(name, icon, 'v2').catch((error) => {
+        loggerV2.error(
+          `[v2]: Error creating V2 home organization in background: ${error.message}`,
+        );
+      });
+
+      return res.json({
+        message:
+          'New V2 organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.',
+        success: true,
+      });
+    }
   } catch (error) {
     loggerV2.error(`[v2]: Error creating V2 home organization: ${error.message}`);
     res.status(400).json({
@@ -186,31 +215,74 @@ export const upgrade = async (req, res) => {
       });
     }
 
-    // Check if V2 home org already exists
+    // Check if V2 org already exists and upgrade is complete
     const existingV2Org = await OrganizationsV2.findOne({
       where: { is_home: true },
       raw: true,
     });
 
-    if (existingV2Org) {
-      return res.status(400).json({
-        message: 'V2 home organization already exists. Already upgraded.',
-        success: false,
-      });
+    if (existingV2Org && v1Org.dataModelVersionStoreId) {
+      // Check if singleton has v2 key (indicating upgrade is complete)
+      try {
+        const singletonData = await getStoreDataPromise(v1Org.dataModelVersionStoreId);
+        if (singletonData && !(singletonData instanceof Error) && singletonData.keys_values) {
+          const decodedData = decodeDataLayerResponse(singletonData);
+          const singletonMap = decodedData.reduce((obj, current) => {
+            obj[current.key] = current.value;
+            return obj;
+          }, {});
+
+          if (singletonMap.v2 !== undefined) {
+            // Both V2 org exists and singleton has v2 key - upgrade already complete
+            return res.status(400).json({
+              message: 'V2 home organization already exists and upgrade is already complete.',
+              success: false,
+            });
+          }
+        }
+      } catch (error) {
+        // If we can't check singleton, proceed with upgrade attempt (might be partial upgrade)
+        loggerV2.debug(`[v2]: Failed to check singleton for v2 key: ${error.message}`);
+      }
     }
 
     // Get name and icon from V1 org
     const name = v1Org.name || '';
     const icon = v1Org.icon || '';
 
-    // Call upgradeFromV1
-    const orgUid = await OrganizationsV2.upgradeFromV1(name, icon);
+    // In simulator mode, await the upgrade since there are no blockchain waits
+    // In production mode, call asynchronously to return immediately
+    if (USE_SIMULATOR) {
+      try {
+        await OrganizationsV2.upgradeFromV1(name, icon);
+        return res.json({
+          message: 'V2 organization upgrade completed successfully.',
+          success: true,
+        });
+      } catch (error) {
+        loggerV2.error(`[v2]: Error upgrading V2 organization: ${error.message}`);
+        return res.status(400).json({
+          message: 'Error upgrading to V2 organization',
+          error: error.message,
+          success: false,
+        });
+      }
+    } else {
+      // Call upgradeFromV1 asynchronously (don't await) in production mode
+      // This allows the HTTP request to return immediately while upgrade happens in background
+      // upgradeFromV1 will handle partial upgrades (V2 org exists but singleton missing v2 key)
+      OrganizationsV2.upgradeFromV1(name, icon).catch((error) => {
+        loggerV2.error(
+          `[v2]: Error upgrading V2 organization in background: ${error.message}`,
+        );
+      });
 
-    res.json({
-      message: 'V2 organization upgraded successfully from V1',
-      orgUid,
-      success: true,
-    });
+      return res.json({
+        message:
+          'V2 organization upgrade is currently being processed. It can take up to 30 mins. Please do not interrupt this process.',
+        success: true,
+      });
+    }
   } catch (error) {
     loggerV2.error(`[v2]: Error upgrading to V2 organization: ${error.message}`);
     res.status(400).json({

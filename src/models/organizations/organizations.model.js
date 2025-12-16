@@ -125,6 +125,16 @@ class Organization extends Model {
   static async createHomeOrganization(name, icon, dataVersion = 'v1') {
     try {
       logger.info('[v1]: Creating New Organization, This could take a while.');
+
+      // Ensure name is provided
+      if (!name) {
+        throw new Error('Organization name is required');
+      }
+
+      // Icon is optional - use provided value or default to empty string
+      // Icon can be any string (URL, base64-encoded data, etc.) or empty
+      const iconValue = icon !== undefined && icon !== null ? icon : '';
+
       const myOrganization = await Organization.getHomeOrg();
 
       if (myOrganization) {
@@ -187,7 +197,7 @@ class Organization extends Model {
           registryId: dataModelVersionStoreId, // registryId is the key named here, but this the DATA MODEL VERSION store id
           fileStoreId,
           name,
-          icon,
+          icon: iconValue,
         },
         revertOrganizationIfFailed,
       );
@@ -227,7 +237,7 @@ class Organization extends Model {
           subscribed: USE_SIMULATOR,
           fileStoreId,
           name,
-          icon,
+          icon: iconValue,
         }),
         Organization.destroy({ where: { orgUid: 'PENDING' } }),
       ]);

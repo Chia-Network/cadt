@@ -65,6 +65,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
   - [POST Examples](#staging-post-examples)
     - [Commit staged records](#commit-staged-records)
     - [Retry failed commit](#retry-failed-commit)
+    - [Reset committed records](#reset-committed-records)
   - [PUT Examples](#staging-put-examples)
     - [Edit staged record](#edit-staged-record)
   - [DELETE Examples](#staging-delete-examples)
@@ -268,16 +269,6 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Update AEF-T1-Submission](#update-aef-t1-submission)
   - [DELETE Examples](#aef-t1-submission-delete-examples)
     - [Delete AEF-T1-Submission](#delete-aef-t1-submission)
-- [`aef-t5-authorized-entities`](#aef-t5-authorized-entities)
-  - [GET Examples](#aef-t5-authorized-entities-get-examples)
-    - [List all AEF-T5-Authorized-Entities](#list-all-aef-t5-authorized-entities)
-    - [Get single AEF-T5-Authorized-Entities](#get-single-aef-t5-authorized-entities)
-  - [POST Examples](#aef-t5-authorized-entities-post-examples)
-    - [Create AEF-T5-Authorized-Entities](#create-aef-t5-authorized-entities)
-  - [PUT Examples](#aef-t5-authorized-entities-put-examples)
-    - [Update AEF-T5-Authorized-Entities](#update-aef-t5-authorized-entities)
-  - [DELETE Examples](#aef-t5-authorized-entities-delete-examples)
-    - [Delete AEF-T5-Authorized-Entities](#delete-aef-t5-authorized-entities)
 - [`aef-t2-authorizations`](#aef-t2-authorizations)
   - [GET Examples](#aef-t2-authorizations-get-examples)
     - [List all AEF-T2-Authorizations](#list-all-aef-t2-authorizations)
@@ -288,6 +279,16 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Update AEF-T2-Authorizations](#update-aef-t2-authorizations)
   - [DELETE Examples](#aef-t2-authorizations-delete-examples)
     - [Delete AEF-T2-Authorizations](#delete-aef-t2-authorizations)
+- [`aef-t5-authorized-entities`](#aef-t5-authorized-entities)
+  - [GET Examples](#aef-t5-authorized-entities-get-examples)
+    - [List all AEF-T5-Authorized-Entities](#list-all-aef-t5-authorized-entities)
+    - [Get single AEF-T5-Authorized-Entities](#get-single-aef-t5-authorized-entities)
+  - [POST Examples](#aef-t5-authorized-entities-post-examples)
+    - [Create AEF-T5-Authorized-Entities](#create-aef-t5-authorized-entities)
+  - [PUT Examples](#aef-t5-authorized-entities-put-examples)
+    - [Update AEF-T5-Authorized-Entities](#update-aef-t5-authorized-entities)
+  - [DELETE Examples](#aef-t5-authorized-entities-delete-examples)
+    - [Delete AEF-T5-Authorized-Entities](#delete-aef-t5-authorized-entities)
 - [`aef-t3-actions`](#aef-t3-actions)
   - [GET Examples](#aef-t3-actions-get-examples)
     - [List all AEF-T3-Actions](#list-all-aef-t3-actions)
@@ -442,6 +443,13 @@ POST Options:
 
 **Using JSON body:**
 
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| name | String | x | Organization name |
+| icon | String | | Organization icon URL or base64-encoded image data |
+
 Request
 ```sh
 curl --location -g --request POST 'localhost:31310/v2/organizations' \
@@ -474,6 +482,13 @@ Response
 
 - This endpoint allows existing V1 organizations to be upgraded to V2.
 - The upgrade process migrates V1 organization data to V2 format while maintaining V1/V2 isolation.
+- **Note**: The request body is optional. The endpoint automatically detects and uses the existing V1 home organization.
+
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| orgUid | String | | V1 organization UID (optional, currently not used - endpoint automatically detects V1 home org) |
 
 Request
 ```sh
@@ -823,6 +838,15 @@ Response
 
 #### Commit staged records
 
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| author | String | | Author name for the commit |
+| comment | String | | Comment describing the commit |
+| ids | Array of Strings | | Array of staging UUIDs to commit (max 10000 items). If not provided, all staged records will be committed |
+| table | String | | Table name filter. Valid values: Projects, Units (currently not used in V2) |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/staging/commit' \
@@ -857,10 +881,39 @@ curl --location --request POST 'localhost:31310/v2/staging/retry' \
 Response
 ```json
 {
-  "message": "Staging record re-staged",
+  "message": "Staging record re-staged successfully. Please retry your staging commit using POST /v2/staging/commit.",
   "success": true
 }
 ```
+
+---
+
+#### Reset committed records
+
+Resets staging records that have `committed: true` and `failed_commit: false` back to `committed: false`. This is useful when a commit partially succeeded but then failed, leaving some records in a committed state that blocks future commits.
+
+**Note:** This endpoint only resets non-transfer records. Transfer records (`is_transfer: true`) are excluded from the reset operation.
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/staging/reset-committed' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "Reset 2 committed staging record(s). You can now retry your commit.",
+  "affectedRows": 2,
+  "success": true
+}
+```
+
+**Fields**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| (none) | - | - | This endpoint does not require any request body parameters |
 
 ---
 
@@ -941,6 +994,7 @@ Response
 - GET `/v2/staging/pending` - Check if there are pending commits
 - POST `/v2/staging/commit` - Commit staged records to the datalayer
 - POST `/v2/staging/retry` - Retry committing a failed staging record
+- POST `/v2/staging/reset-committed` - Reset committed records that are blocking new commits
 - PUT `/v2/staging` - Update a staged record
 - DELETE `/v2/staging` - Delete a specific staged record
 - DELETE `/v2/staging/clean` - Delete all staged records
@@ -1185,6 +1239,14 @@ Response
 ### POST Examples
 
 #### Create governance body
+
+**Note**: Creating a governance body does not require any body parameters. The request body is optional and currently not used by the endpoint.
+
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| name | String | | Governance body name (currently not used, optional) |
 
 Request
 ```shell
@@ -3376,7 +3438,7 @@ Response
       "ratingType": "CCQI",
       "ratingName": "Quality Assessment Rating",
       "ratingValue": "97",
-      "ratingLink": "testlink.com",
+      "ratingLink": "https://www.example.com/rating-report",
       "createdAt": "2022-03-11T05:17:55.427Z",
       "updatedAt": "2022-03-11T05:17:55.427Z"
     }
@@ -3400,9 +3462,9 @@ Response
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "ratingType": "CCQI",
   "ratingName": "Quality Assessment Rating",
-  "ratingValue": "97",
-  "ratingLink": "testlink.com",
-  "createdAt": "2022-03-11T05:17:55.427Z",
+      "ratingValue": "97",
+      "ratingLink": "https://www.example.com/rating-report",
+      "createdAt": "2022-03-11T05:17:55.427Z",
   "updatedAt": "2022-03-11T05:17:55.427Z"
 }
 ```
@@ -3433,7 +3495,7 @@ curl --location --request POST 'localhost:31310/v2/rating' \
   "ratingType": "CCQI",
   "ratingName": "Quality Assessment Rating",
   "ratingValue": "97",
-  "ratingLink": "testlink.com"
+  "ratingLink": "https://www.example.com/rating-report"
 }'
 ```
 
@@ -3467,7 +3529,7 @@ curl --location --request PUT 'localhost:31310/v2/rating/d31c3c75-b944-498d-9557
   "ratingType": "CCQI",
   "ratingName": "Updated Quality Assessment Rating",
   "ratingValue": "98",
-  "ratingLink": "testlink.com"
+  "ratingLink": "https://www.example.com/rating-report"
 }'
 ```
 
@@ -3696,6 +3758,15 @@ Response
 
 #### Create project-methodology relationship
 
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustProjectId | String (UUID) | x | CAD Trust project identifier. Must be a valid UUID |
+| cadTrustMethodologyId | String (UUID) | x | CAD Trust methodology identifier. Must be a valid UUID |
+| projectMethodologyDate | String (ISO Date) | | Date of the project-methodology relationship (YYYY-MM-DD format) |
+| projectMethodologyDescription | String | | Description of the project-methodology relationship (max 10000 characters) |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/project-methodology' \
@@ -3829,6 +3900,14 @@ Response
 
 #### Create stakeholder
 
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| stakeholderName | String | x | | Stakeholder name (max 255 characters) |
+| stakeholderType | String | | x | Stakeholder type. Must be one of: Owner, Developer, Consultant |
+| stakeholderLink | String | | | URL link to the stakeholder. Must be a valid URI |
+
 Request
 ```shell
 curl --location --request POST 'localhost:31310/v2/stakeholder' \
@@ -3960,6 +4039,13 @@ Response
 ### POST Examples
 
 #### Create stakeholder-project relationship
+
+Fields:
+
+| Field | Type | Required | Description |
+|:------:|:--------:|:--------:|:------------------------------------------------------------|
+| cadTrustStakeholderId | String (UUID) | x | CAD Trust stakeholder identifier. Must be a valid UUID |
+| cadTrustProjectId | String (UUID) | x | CAD Trust project identifier. Must be a valid UUID |
 
 Request
 ```shell
@@ -4393,7 +4479,15 @@ Request
 curl --location --request POST 'localhost:31310/v2/aef-t1-submission' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "submissionDate": "2022-01-15"
+  "aefT1SubmissionParty": "Sample Party",
+  "aefT1SubmissionVersion": "1.0",
+  "aefT1SubmissionReportYear": 2022,
+  "aefT1SubmissionSubmissionDate": "2022-01-15",
+  "aefT1SubmissionReviewStatus": "Under Review",
+  "aefT1SubmissionResultCheck": "Passed",
+  "aefT1SubmissionNdcFirstYear": 2020,
+  "aefT1SubmissionNdcLastYear": 2030,
+  "aefT1SubmissionReferenceReviewReport": "https://example.com/review-report"
 }'
 ```
 
@@ -4423,7 +4517,15 @@ Request
 curl --location --request PUT 'localhost:31310/v2/aef-t1-submission/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "submissionDate": "2022-01-20"
+  "aefT1SubmissionParty": "Sample Party",
+  "aefT1SubmissionVersion": "1.0",
+  "aefT1SubmissionReportYear": 2022,
+  "aefT1SubmissionSubmissionDate": "2022-01-20",
+  "aefT1SubmissionReviewStatus": "Approved",
+  "aefT1SubmissionResultCheck": "Passed with conditions",
+  "aefT1SubmissionNdcFirstYear": 2021,
+  "aefT1SubmissionNdcLastYear": 2025,
+  "aefT1SubmissionReferenceReviewReport": "https://example.com/updated-review-report"
 }'
 ```
 
@@ -4452,151 +4554,6 @@ Response
 ```json
 {
   "message": "AEF-T1-Submission deletion staged successfully",
-  "success": true
-}
-```
-
----
-
-## `aef-t5-authorized-entities`
-
-Functionality: Create, read, update, and delete AEF-T5-Authorized-Entities records
-
-<a id="aef-t5-authorized-entities-get-examples"></a>
-### GET Examples
-
-#### List all AEF-T5-Authorized-Entities
-
-Request
-```shell
-curl --location --request GET 'localhost:31310/v2/aef-t5-authorized-entities?page=1&limit=10' --header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "page": 1,
-  "pageCount": 2,
-  "data": [
-    {
-      "cadTrustAefT5AuthorizedEntitiesId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-      "entityName": "Sample Entity",
-      "createdAt": "2022-03-11T05:17:55.427Z",
-      "updatedAt": "2022-03-11T05:17:55.427Z"
-    }
-  ]
-}
-```
-
----
-
-#### Get single AEF-T5-Authorized-Entities
-
-Request
-```shell
-curl --location --request GET 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' --header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "cadTrustAefT5AuthorizedEntitiesId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-  "entityName": "Sample Entity",
-  "createdAt": "2022-03-11T05:17:55.427Z",
-  "updatedAt": "2022-03-11T05:17:55.427Z"
-}
-```
-
----
-
-<a id="aef-t5-authorized-entities-post-examples"></a>
-### POST Examples
-
-#### Create AEF-T5-Authorized-Entities
-
-Fields:
-
-| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
-|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
-| aefT5AuthorizedEntitiesAuthorizationDate | Date | x | | Authorization date (ISO 8601 format) |
-| aefT5AuthorizedEntitiesName | String | x | | Name of the authorized entity (max 255 characters) |
-| aefT5AuthorizedEntitiesId | String | x | | Identifier of the authorized entity (max 255 characters) |
-| aefT5AuthorizedEntitiesCooperativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
-| aefT5AuthorizedEntitiesIncorporationCountry | String | | x | Incorporation country (can be null) |
-| aefT5AuthorizedEntitiesConditions | String | | | Conditions (can be null) |
-| aefT5AuthorizedEntitiesChangeConditions | String | | | Change conditions (can be null) |
-| aefT5AuthorizedEntitiesAdditionalInformation | String | | | Additional information (can be null) |
-| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
-| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
-| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
-| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
-
-**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
-
-Request
-```shell
-curl --location --request POST 'localhost:31310/v2/aef-t5-authorized-entities' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "entityName": "Sample Entity"
-}'
-```
-
-Response
-```json
-{
-  "message": "AEF-T5-Authorized-Entities staged successfully",
-  "uuid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-  "cadTrustAefT5AuthorizedEntitiesId": "c8d9e0f1-a2b3-4567-89ab-cdef12345678",
-  "success": true
-}
-```
-
----
-
-<a id="aef-t5-authorized-entities-put-examples"></a>
-### PUT Examples
-
-#### Update AEF-T5-Authorized-Entities
-
-Fields are the same as POST (see above).
-
-**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
-
-Request
-```shell
-curl --location --request PUT 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "entityName": "Updated Entity"
-}'
-```
-
-Response
-```json
-{
-  "message": "AEF-T5-Authorized-Entities update added to staging",
-  "success": true
-}
-```
-
----
-
-<a id="aef-t5-authorized-entities-delete-examples"></a>
-### DELETE Examples
-
-#### Delete AEF-T5-Authorized-Entities
-
-Request
-```shell
-curl --location --request DELETE 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
---header 'Content-Type: application/json'
-```
-
-Response
-```json
-{
-  "message": "AEF-T5-Authorized-Entities deletion staged successfully",
   "success": true
 }
 ```
@@ -4694,7 +4651,29 @@ Request
 curl --location --request POST 'localhost:31310/v2/aef-t2-authorizations' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "authorizationDate": "2022-02-01"
+  "aefT2AuthorizationsId": "TEST-AUTH-001",
+  "aefT2AuthorizationsDate": "2022-02-01",
+  "aefT2AuthorizationsCooperativeApproachId": "TEST-CA-001",
+  "aefT2AuthorizationsAuthorizedPartyId": "TEST-PARTY-001",
+  "aefT2AuthorizationsVersion": "1.0",
+  "aefT2AuthorizationsQuantity": 1000.5,
+  "aefT2AuthorizationsMetric": "tCO2e",
+  "aefT2AuthorizationsGwpValue": "1.0",
+  "aefT2AuthorizationsApplicableNonGhgMetric": "Test metric",
+  "aefT2AuthorizationsSector": "Energy industries (renewable-/ non renewable sources)",
+  "aefT2AuthorizationsActivityType": "Energy efficiency",
+  "aefT2AuthorizationsPurposesForAuthorization": "Test purpose",
+  "aefT2AuthorizationsAuthoziedEntityId": "TEST-ENTITY-001",
+  "aefT2AuthorizationsOimpAuthorizedParty": "Test OIMP Party",
+  "aefT2AuthorizationsAuthorizedTimeframe": "2024-2025",
+  "aefT2AuthorizationsAuthorizationTerms": "Test terms",
+  "aefT2AuthorizationsAuthorizationDocumentation": "<p>Test documentation</p>",
+  "aefT2AuthorizationsFirstTransferDefinitionOimp": "Test transfer definition",
+  "aefT2AuthorizationsAdditionalInformation": "Test additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT5AuthorizedEntitiesId": "e5f6a7b8-c9d0-1234-ef56-567890123456"
 }'
 ```
 
@@ -4723,7 +4702,29 @@ Request
 curl --location --request PUT 'localhost:31310/v2/aef-t2-authorizations/c3d4e5f6-a7b8-9012-cdef-345678901234' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "authorizationDate": "2022-02-05"
+  "aefT2AuthorizationsId": "TEST-AUTH-001",
+  "aefT2AuthorizationsDate": "2022-02-05",
+  "aefT2AuthorizationsCooperativeApproachId": "TEST-CA-001",
+  "aefT2AuthorizationsAuthorizedPartyId": "TEST-PARTY-001",
+  "aefT2AuthorizationsVersion": "1.1",
+  "aefT2AuthorizationsQuantity": 1500.75,
+  "aefT2AuthorizationsMetric": "tCO2e",
+  "aefT2AuthorizationsGwpValue": "1.0",
+  "aefT2AuthorizationsApplicableNonGhgMetric": "Updated metric",
+  "aefT2AuthorizationsSector": "Energy industries (renewable-/ non renewable sources)",
+  "aefT2AuthorizationsActivityType": "Energy efficiency",
+  "aefT2AuthorizationsPurposesForAuthorization": "Updated purpose",
+  "aefT2AuthorizationsAuthoziedEntityId": "TEST-ENTITY-001",
+  "aefT2AuthorizationsOimpAuthorizedParty": "Updated OIMP Party",
+  "aefT2AuthorizationsAuthorizedTimeframe": "2024-2026",
+  "aefT2AuthorizationsAuthorizationTerms": "Updated terms",
+  "aefT2AuthorizationsAuthorizationDocumentation": "<p>Updated documentation</p>",
+  "aefT2AuthorizationsFirstTransferDefinitionOimp": "Updated transfer definition",
+  "aefT2AuthorizationsAdditionalInformation": "Updated additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT5AuthorizedEntitiesId": "e5f6a7b8-c9d0-1234-ef56-567890123456"
 }'
 ```
 
@@ -4752,6 +4753,173 @@ Response
 ```json
 {
   "message": "AEF-T2-Authorizations deletion staged successfully",
+  "success": true
+}
+```
+
+---
+
+## `aef-t5-authorized-entities`
+
+Functionality: Create, read, update, and delete AEF-T5-Authorized-Entities records
+
+<a id="aef-t5-authorized-entities-get-examples"></a>
+### GET Examples
+
+#### List all AEF-T5-Authorized-Entities
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/aef-t5-authorized-entities?page=1&limit=10' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "page": 1,
+  "pageCount": 2,
+  "data": [
+    {
+      "cadTrustAefT5AuthorizedEntitiesId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+      "entityName": "Sample Entity",
+      "createdAt": "2022-03-11T05:17:55.427Z",
+      "updatedAt": "2022-03-11T05:17:55.427Z"
+    }
+  ]
+}
+```
+
+---
+
+#### Get single AEF-T5-Authorized-Entities
+
+Request
+```shell
+curl --location --request GET 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' --header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "cadTrustAefT5AuthorizedEntitiesId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "entityName": "Sample Entity",
+  "createdAt": "2022-03-11T05:17:55.427Z",
+  "updatedAt": "2022-03-11T05:17:55.427Z"
+}
+```
+
+---
+
+<a id="aef-t5-authorized-entities-post-examples"></a>
+### POST Examples
+
+#### Create AEF-T5-Authorized-Entities
+
+Fields:
+
+| Field | Type | Required | [Picklist](#get-picklist-data) | Description |
+|:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
+| aefT5AuthorizedEntitiesAuthorizationDate | Date | x | | Authorization date (ISO 8601 format) |
+| aefT5AuthorizedEntitiesName | String | x | | Name of the authorized entity (max 255 characters) |
+| aefT5AuthorizedEntitiesId | String | x | | Identifier of the authorized entity (max 255 characters) |
+| aefT5AuthorizedEntitiesCooperativeApproachId | String | x | | Cooperative approach identifier (max 255 characters) |
+| aefT5AuthorizedEntitiesIncorporationCountry | String | | x | Incorporation country (can be null) |
+| aefT5AuthorizedEntitiesConditions | String | | | Conditions (can be null) |
+| aefT5AuthorizedEntitiesChangeConditions | String | | | Change conditions (can be null) |
+| aefT5AuthorizedEntitiesAdditionalInformation | String | | | Additional information (can be null) |
+| cadTrustAefT1SubmissionId | String | | | CAD Trust AEF T1 submission identifier. Must be a valid UUID (can be null) |
+| cadTrustUnitId | String | | | CAD Trust unit identifier. Must be a valid UUID (can be null) |
+| cadTrustProjectId | String | | | CAD Trust project identifier. Must be a valid UUID (can be null) |
+| cadTrustAefT2AuthorizationsId | String | | | CAD Trust AEF T2 authorizations identifier. Must be a valid UUID (can be null) |
+
+**Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request POST 'localhost:31310/v2/aef-t5-authorized-entities' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "aefT5AuthorizedEntitiesAuthorizationDate": "2024-02-01",
+  "aefT5AuthorizedEntitiesName": "Sample Entity",
+  "aefT5AuthorizedEntitiesId": "TEST-AE-001",
+  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001",
+  "aefT5AuthorizedEntitiesIncorporationCountry": "United States",
+  "aefT5AuthorizedEntitiesConditions": "Test conditions",
+  "aefT5AuthorizedEntitiesChangeConditions": "Test change conditions",
+  "aefT5AuthorizedEntitiesAdditionalInformation": "Test additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
+}'
+```
+
+Response
+```json
+{
+  "message": "AEF-T5-Authorized-Entities staged successfully",
+  "uuid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustAefT5AuthorizedEntitiesId": "c8d9e0f1-a2b3-4567-89ab-cdef12345678",
+  "success": true
+}
+```
+
+---
+
+<a id="aef-t5-authorized-entities-put-examples"></a>
+### PUT Examples
+
+#### Update AEF-T5-Authorized-Entities
+
+Fields are the same as POST (see above).
+
+**Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+Request
+```shell
+curl --location --request PUT 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "aefT5AuthorizedEntitiesAuthorizationDate": "2024-02-01",
+  "aefT5AuthorizedEntitiesName": "Updated Entity",
+  "aefT5AuthorizedEntitiesId": "TEST-AE-001",
+  "aefT5AuthorizedEntitiesCooperativeApproachId": "TEST-CA-001",
+  "aefT5AuthorizedEntitiesIncorporationCountry": "United States",
+  "aefT5AuthorizedEntitiesConditions": "Updated conditions",
+  "aefT5AuthorizedEntitiesChangeConditions": "Updated change conditions",
+  "aefT5AuthorizedEntitiesAdditionalInformation": "Updated additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
+}'
+```
+
+Response
+```json
+{
+  "message": "AEF-T5-Authorized-Entities update added to staging",
+  "success": true
+}
+```
+
+---
+
+<a id="aef-t5-authorized-entities-delete-examples"></a>
+### DELETE Examples
+
+#### Delete AEF-T5-Authorized-Entities
+
+Request
+```shell
+curl --location --request DELETE 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
+--header 'Content-Type: application/json'
+```
+
+Response
+```json
+{
+  "message": "AEF-T5-Authorized-Entities deletion staged successfully",
   "success": true
 }
 ```
@@ -4857,7 +5025,37 @@ Request
 curl --location --request POST 'localhost:31310/v2/aef-t3-actions' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "actionDate": "2022-03-01"
+  "aefT3ActionsDate": "2022-03-01",
+  "aefT3ActionsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT3ActionsAuthorizationId": "TEST-AUTH-001",
+  "aefT3ActionsFirstTransferringPartyId": "TEST-PARTY-001",
+  "aefT3ActionsPartyItmoRegistryId": "TEST-REGISTRY-001",
+  "aefT3ActionsItmoFirstId": "ITMO-001",
+  "aefT3ActionsItmoLastId": "ITMO-100",
+  "aefT3ActionsUnitRegistryId": "UNIT-REGISTRY-001",
+  "aefT3ActionsUnitFirstId": "UNIT-001",
+  "aefT3ActionsUnitLastId": "UNIT-100",
+  "aefT3ActionsQuantityTCo2": 1000.5,
+  "aefT3ActionsVintageYear": 2022,
+  "aefT3ActionsTransferringPartyId": "TEST-TRANSFER-001",
+  "aefT3ActionsAcquiringPartyId": "TEST-ACQUIRE-001",
+  "aefT3ActionsType": "Energy efficiency",
+  "aefT3ActionsSubtype": "Test Subtype",
+  "aefT3ActionsMetric": "tCO2e",
+  "aefT3ActionsGwpValue": "1.0",
+  "aefT3ActionsApplicableNonGhgMetric": "Test metric",
+  "aefT3ActionsQuantityNonGhg": "100 units",
+  "aefT3ActionsMitigationType": "Energy efficiency",
+  "aefT3ActionsPurposeOfUseOimp": "Test purpose",
+  "aefT3ActionsUsingParticipatingPartyId": "TEST-PARTICIPATING-001",
+  "aefT3ActionsUsingAuthorizedEntityId": "TEST-AUTHORIZED-ENTITY-001",
+  "aefT3ActionsItmoUsedYear": 2021,
+  "aefT3ActionsConsistencyCheckResult": "Passed",
+  "aefT3ActionsAdditionalInformation": "Test additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -4887,7 +5085,37 @@ Request
 curl --location --request PUT 'localhost:31310/v2/aef-t3-actions/d4e5f6a7-b8c9-0123-def4-456789012345' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "actionDate": "2022-03-05"
+  "aefT3ActionsDate": "2022-03-05",
+  "aefT3ActionsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT3ActionsAuthorizationId": "TEST-AUTH-001",
+  "aefT3ActionsFirstTransferringPartyId": "TEST-PARTY-001",
+  "aefT3ActionsPartyItmoRegistryId": "TEST-REGISTRY-001",
+  "aefT3ActionsItmoFirstId": "ITMO-001",
+  "aefT3ActionsItmoLastId": "ITMO-100",
+  "aefT3ActionsUnitRegistryId": "UNIT-REGISTRY-001",
+  "aefT3ActionsUnitFirstId": "UNIT-001",
+  "aefT3ActionsUnitLastId": "UNIT-100",
+  "aefT3ActionsQuantityTCo2": 1500.75,
+  "aefT3ActionsVintageYear": 2022,
+  "aefT3ActionsTransferringPartyId": "TEST-TRANSFER-001",
+  "aefT3ActionsAcquiringPartyId": "TEST-ACQUIRE-001",
+  "aefT3ActionsType": "Energy efficiency",
+  "aefT3ActionsSubtype": "Updated Subtype",
+  "aefT3ActionsMetric": "tCO2e",
+  "aefT3ActionsGwpValue": "1.0",
+  "aefT3ActionsApplicableNonGhgMetric": "Updated metric",
+  "aefT3ActionsQuantityNonGhg": "150 units",
+  "aefT3ActionsMitigationType": "Energy efficiency",
+  "aefT3ActionsPurposeOfUseOimp": "Updated purpose",
+  "aefT3ActionsUsingParticipatingPartyId": "TEST-PARTICIPATING-001",
+  "aefT3ActionsUsingAuthorizedEntityId": "TEST-AUTHORIZED-ENTITY-001",
+  "aefT3ActionsItmoUsedYear": 2021,
+  "aefT3ActionsConsistencyCheckResult": "Passed with conditions",
+  "aefT3ActionsAdditionalInformation": "Updated additional information",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -5010,7 +5238,26 @@ Request
 curl --location --request POST 'localhost:31310/v2/aef-t4-holdings' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "holdingDate": "2022-04-01"
+  "aefT4HoldingsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT4HoldingsAuthorizationId": "TEST-AUTH-001",
+  "aefT4HoldingsFirstTransferringPartyId": "TEST-PARTY-001",
+  "aefT4HoldingsPartyItmoRegistryId": "TEST-REGISTRY-001",
+  "aefT4HoldingsItmoFirstId": "ITMO-001",
+  "aefT4HoldingsItmoLastId": "ITMO-100",
+  "aefT4HoldingsUnitRegistryId": "UNIT-REGISTRY-001",
+  "aefT4HoldingsUnitFirstId": "UNIT-001",
+  "aefT4HoldingsUnitLastId": "UNIT-100",
+  "aefT4HoldingsQuantityTCo2": 1000.5,
+  "aefT4HoldingsVintageYear": 2022,
+  "aefT4HoldingsMetric": "tCO2e",
+  "aefT4HoldingsGwpValue": "1.0",
+  "aefT4HoldingsApplicableNonGhgMetric": "Test metric",
+  "aefT4HoldingsQuantityNonGhg": "100 units",
+  "aefT4HoldingsMitigationType": "Energy efficiency",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -5040,7 +5287,26 @@ Request
 curl --location --request PUT 'localhost:31310/v2/aef-t4-holdings/e5f6a7b8-c9d0-1234-ef56-567890123456' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "holdingDate": "2022-04-05"
+  "aefT4HoldingsCoopoerativeApproachId": "TEST-CA-001",
+  "aefT4HoldingsAuthorizationId": "TEST-AUTH-001",
+  "aefT4HoldingsFirstTransferringPartyId": "TEST-PARTY-001",
+  "aefT4HoldingsPartyItmoRegistryId": "TEST-REGISTRY-001",
+  "aefT4HoldingsItmoFirstId": "ITMO-001",
+  "aefT4HoldingsItmoLastId": "ITMO-100",
+  "aefT4HoldingsUnitRegistryId": "UNIT-REGISTRY-001",
+  "aefT4HoldingsUnitFirstId": "UNIT-001",
+  "aefT4HoldingsUnitLastId": "UNIT-100",
+  "aefT4HoldingsQuantityTCo2": 1500.75,
+  "aefT4HoldingsVintageYear": 2022,
+  "aefT4HoldingsMetric": "tCO2e",
+  "aefT4HoldingsGwpValue": "1.0",
+  "aefT4HoldingsApplicableNonGhgMetric": "Updated metric",
+  "aefT4HoldingsQuantityNonGhg": "150 units",
+  "aefT4HoldingsMitigationType": "Energy efficiency",
+  "cadTrustAefT1SubmissionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+  "cadTrustProjectId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "cadTrustAefT2AuthorizationsId": "d4e5f6a7-b8c9-0123-def4-456789012345"
 }'
 ```
 
@@ -5511,4 +5777,3 @@ Response
 ```
 
 ---
-

@@ -9,6 +9,7 @@ import {
   assertV2IfReadOnlyMode,
   assertV2HomeOrgExists,
   assertNoPendingCommitsExcludingTransfers,
+  assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 import { loggerV2 } from '../../config/logger.js';
 
@@ -152,11 +153,17 @@ export const updateLabelV2 = async (req, res) => {
     const { id } = req.params;
     const updateData = _.cloneDeep(req.body);
 
-    // Verify record exists first (before validation)
-    const existingRecord = await LabelV2.findByPk(id);
-    if (!existingRecord) {
+    // Verify record exists first (before validation) - check both main table and staging
+    try {
+      await assertRecordExistanceOrStaged(
+        LabelV2,
+        id,
+        `Label with ID '${id}' does not exist`
+      );
+    } catch (err) {
       return res.status(404).json({
         message: 'Label not found',
+        error: err.message,
         success: false,
       });
     }
