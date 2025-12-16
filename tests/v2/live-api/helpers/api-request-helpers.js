@@ -251,12 +251,21 @@ export const checkRecordInStaging = async (request, endpoint, id, expectedData) 
             // This is a composite key table, shouldn't reach here
             continue;
           } else {
-            // Try to find the ID field
+            // Try to find the ID field - check exact matches first
             actualIdField = Object.keys(changeData).find(key =>
-              key.toLowerCase() === idFieldSnake.toLowerCase() ||
-              key === idFieldCamel ||
-              (key.toLowerCase().includes('id') && changeData[key] === id)
+              key === idFieldSnake || // Exact snake_case match
+              key === idFieldCamel || // Exact camelCase match
+              (key.toLowerCase() === idFieldSnake.toLowerCase() && changeData[key] === id) // Case-insensitive match with value check
             );
+
+            // If not found, try a broader search
+            if (!actualIdField) {
+              actualIdField = Object.keys(changeData).find(key =>
+                key.toLowerCase().includes('cad_trust') &&
+                key.toLowerCase().includes('_id') &&
+                changeData[key] === id
+              );
+            }
           }
 
           if (actualIdField && changeData[actualIdField] === id) {
@@ -267,14 +276,22 @@ export const checkRecordInStaging = async (request, endpoint, id, expectedData) 
         if (idMatches) {
           // Verify data matches expected data
           // Convert camelCase expectedData keys to snake_case for comparison
+          let allDataMatches = true;
           for (const [key, value] of Object.entries(expectedData)) {
             const snakeKey = camelToSnake(key);
             // Check both camelCase and snake_case versions
-            if (changeData[key] !== value && changeData[snakeKey] !== value) {
-              return false; // Data doesn't match
+            const camelMatch = changeData[key] === value;
+            const snakeMatch = changeData[snakeKey] === value;
+
+            if (!camelMatch && !snakeMatch) {
+              allDataMatches = false;
+              break;
             }
           }
-          return true; // Found matching record
+          if (allDataMatches) {
+            return true; // Found matching record with all expected data
+          }
+          // If ID matches but data doesn't, continue searching (might be wrong record)
         }
       }
     }
