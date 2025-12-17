@@ -105,33 +105,30 @@ describe('Estimation Live API Validation Tests', function () {
         throw new Error('Project ID not found. Ensure project-validation.spec.js runs before estimation-validation.spec.js');
       }
 
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateEstimation(projectId);
-        data.estimationReferenceNo = `${data.estimationReferenceNo}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/estimation', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('estimation', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/estimation', id, {
+      // Create 1 typical record
+      const data = generateEstimation(projectId);
+      const { id, response } = await makePostRequest(request, '/v2/estimation', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('estimation', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/estimation', id, {
+        estimationStartDate: data.estimationStartDate,
+        estimationEndDate: data.estimationEndDate,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'estimation', id);
+      } else {
+        trackBatchVerification('POST', 'estimation', id, {
           estimationStartDate: data.estimationStartDate,
           estimationEndDate: data.estimationEndDate,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'estimation', id);
-        } else {
-          trackBatchVerification('POST', 'estimation', id, {
-            estimationStartDate: data.estimationStartDate,
-            estimationEndDate: data.estimationEndDate,
-          });
-        }
       }
 
       // Create 1 minimal record

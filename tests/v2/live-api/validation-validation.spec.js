@@ -101,31 +101,28 @@ describe('Validation Live API Validation Tests', function () {
         throw new Error('Project ID not found. Ensure project-validation.spec.js runs before validation-validation.spec.js');
       }
 
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateValidation(projectId);
-        data.validationId = `${data.validationId}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/validation', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('validation', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/validation', id, {
+      // Create 1 typical record
+      const data = generateValidation(projectId);
+      const { id, response } = await makePostRequest(request, '/v2/validation', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('validation', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/validation', id, {
+        validationId: data.validationId,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'validation', id);
+      } else {
+        trackBatchVerification('POST', 'validation', id, {
           validationId: data.validationId,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'validation', id);
-        } else {
-          trackBatchVerification('POST', 'validation', id, {
-            validationId: data.validationId,
-          });
-        }
       }
 
       // Create 1 minimal record

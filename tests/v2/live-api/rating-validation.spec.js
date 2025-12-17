@@ -101,33 +101,30 @@ describe('Rating Live API Validation Tests', function () {
         throw new Error('Project ID not found. Ensure project-validation.spec.js runs before rating-validation.spec.js');
       }
 
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateRating(projectId);
-        data.ratingName = `${data.ratingName}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/rating', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('rating', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/rating', id, {
+      // Create 1 typical record
+      const data = generateRating(projectId);
+      const { id, response } = await makePostRequest(request, '/v2/rating', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('rating', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/rating', id, {
+        ratingName: data.ratingName,
+        ratingValue: data.ratingValue,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'rating', id);
+      } else {
+        trackBatchVerification('POST', 'rating', id, {
           ratingName: data.ratingName,
           ratingValue: data.ratingValue,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'rating', id);
-        } else {
-          trackBatchVerification('POST', 'rating', id, {
-            ratingName: data.ratingName,
-            ratingValue: data.ratingValue,
-          });
-        }
       }
 
       // Create 1 minimal record

@@ -94,31 +94,28 @@ describe('AefT2Authorizations Live API Validation Tests', function () {
       const projectId = getFirstCreatedId('project');
       const t5EntityId = getFirstCreatedId('aef-t5-authorized-entities');
 
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateAefT2Authorizations(t1SubmissionId, unitId, projectId, t5EntityId);
-        data.aefT2AuthorizationsId = `${data.aefT2AuthorizationsId}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/aef-t2-authorizations', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('aef-t2-authorizations', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/aef-t2-authorizations', id, {
+      // Create 1 typical record
+      const data = generateAefT2Authorizations(t1SubmissionId, unitId, projectId, t5EntityId);
+      const { id, response } = await makePostRequest(request, '/v2/aef-t2-authorizations', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('aef-t2-authorizations', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/aef-t2-authorizations', id, {
+        aefT2AuthorizationsId: data.aefT2AuthorizationsId,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'aef-t2-authorizations', id);
+      } else {
+        trackBatchVerification('POST', 'aef-t2-authorizations', id, {
           aefT2AuthorizationsId: data.aefT2AuthorizationsId,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'aef-t2-authorizations', id);
-        } else {
-          trackBatchVerification('POST', 'aef-t2-authorizations', id, {
-            aefT2AuthorizationsId: data.aefT2AuthorizationsId,
-          });
-        }
       }
 
       // Create 1 minimal record

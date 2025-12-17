@@ -5,6 +5,21 @@ import path from 'path';
 import { getChiaRoot } from '../../../../src/utils/chia-root.js';
 import { shouldAutoCommit, trackTestEndpoint } from './shared-state.js';
 
+/**
+ * Format current timestamp as YYYY-MM-DD HH:mm:ss
+ * @returns {string} - Formatted timestamp
+ */
+const getTimestamp = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
 // Cache config to avoid reading file multiple times
 let cachedConfig = null;
 
@@ -195,12 +210,11 @@ export const commitStagedRecords = async (request, uuids = [], force = false) =>
     author: 'Test User',
   };
 
-  const timestamp = new Date().toISOString();
   if (uuids && uuids.length > 0) {
     body.ids = uuids;
-    console.log(`[${timestamp}] Committing ${uuids.length} staged record(s) with specific UUIDs`);
+    console.log(`[${getTimestamp()}] POST /v2/staging/commit (${uuids.length} UUIDs)`);
   } else {
-    console.log(`[${timestamp}] Committing all uncommitted staged records`);
+    console.log(`[${getTimestamp()}] POST /v2/staging/commit`);
   }
 
   // Commit UUIDs if provided, otherwise commit all uncommitted records (no ids field)
@@ -449,11 +463,12 @@ export const waitForBatchToAppear = async (request, records, maxWaitTime = 60000
 
 /**
  * Clear staging table
- * Makes DELETE request to /v2/staging endpoint
+ * Makes DELETE request to /v2/staging/clean endpoint to delete all staged records
  */
 export const clearStagingTable = async (request) => {
   try {
-    const response = await request.delete('/v2/staging');
+    console.log(`[${getTimestamp()}] DELETE /v2/staging/clean`);
+    const response = await request.delete('/v2/staging/clean');
     if (response.status === 200) {
       console.log('✓ Staging table cleared');
       return true;

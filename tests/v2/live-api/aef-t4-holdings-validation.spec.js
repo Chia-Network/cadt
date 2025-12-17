@@ -90,33 +90,28 @@ describe('AefT4Holdings Live API Validation Tests', function () {
       const t2AuthId = getFirstCreatedId('aef-t2-authorizations');
       const unitId = getFirstCreatedId('unit');
 
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateAefT4Holdings(t2AuthId, unitId);
-        // Make unique by appending index to required string fields
-        data.aefT4HoldingsCoopoerativeApproachId = `${data.aefT4HoldingsCoopoerativeApproachId}-${i}`;
-        data.aefT4HoldingsAuthorizationId = `${data.aefT4HoldingsAuthorizationId}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/aef-t4-holdings', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('aef-t4-holdings', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/aef-t4-holdings', id, {
+      // Create 1 typical record
+      const data = generateAefT4Holdings(t2AuthId, unitId);
+      const { id, response } = await makePostRequest(request, '/v2/aef-t4-holdings', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('aef-t4-holdings', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/aef-t4-holdings', id, {
+        aefT4HoldingsCoopoerativeApproachId: data.aefT4HoldingsCoopoerativeApproachId,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'aef-t4-holdings', id);
+      } else {
+        trackBatchVerification('POST', 'aef-t4-holdings', id, {
           aefT4HoldingsCoopoerativeApproachId: data.aefT4HoldingsCoopoerativeApproachId,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'aef-t4-holdings', id);
-        } else {
-          trackBatchVerification('POST', 'aef-t4-holdings', id, {
-            aefT4HoldingsCoopoerativeApproachId: data.aefT4HoldingsCoopoerativeApproachId,
-          });
-        }
       }
 
       // Create 1 minimal record

@@ -160,6 +160,13 @@ class StagingV2 extends Model {
               throw new Error(`Composite key fields not found in UPDATE staging data for table ${table}`);
             }
             primaryKeyValue = `${labelId}-${unitId}`;
+          } else if (table === 'stakeholder_projects') {
+            // stakeholder_projects uses 'id' as primary key field name but has UUID primary key
+            // Use the actual UUID field instead of constructing a composite key
+            primaryKeyValue = recordData.cad_trust_stakeholder_project_id || recordData.cadTrustStakeholderProjectId;
+            if (!primaryKeyValue) {
+              throw new Error(`Primary key field cad_trust_stakeholder_project_id not found in UPDATE staging data for table ${table}`);
+            }
           } else {
             throw new Error(`Unknown composite key table: ${table}`);
           }

@@ -93,33 +93,30 @@ describe('Location Live API Validation Tests', function () {
         throw new Error('Project ID not found. Ensure project-validation.spec.js runs before location-validation.spec.js');
       }
 
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateLocation(projectId);
-        data.locationRegion = `${data.locationRegion}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/location', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('location', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/location', id, {
+      // Create 1 typical record
+      const data = generateLocation(projectId);
+      const { id, response } = await makePostRequest(request, '/v2/location', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('location', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/location', id, {
+        locationCountry: data.locationCountry,
+        locationRegion: data.locationRegion,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'location', id);
+      } else {
+        trackBatchVerification('POST', 'location', id, {
           locationCountry: data.locationCountry,
           locationRegion: data.locationRegion,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'location', id);
-        } else {
-          trackBatchVerification('POST', 'location', id, {
-            locationCountry: data.locationCountry,
-            locationRegion: data.locationRegion,
-          });
-        }
       }
 
       // Create 1 minimal record

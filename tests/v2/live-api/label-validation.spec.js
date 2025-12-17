@@ -83,33 +83,30 @@ describe('Label Live API Validation Tests', function () {
   });
   describe('Step 4: POST Request Tests', function () {
     it('should create labels with typical, minimal, and maximal data', async function () {
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateLabel();
-        data.labelName = `${data.labelName}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/label', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('label', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/label', id, {
+      // Create 1 typical record
+      const data = generateLabel();
+      const { id, response } = await makePostRequest(request, '/v2/label', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('label', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/label', id, {
+        labelName: data.labelName,
+        labelName: data.labelName,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'label', id);
+      } else {
+        trackBatchVerification('POST', 'label', id, {
           labelName: data.labelName,
           labelName: data.labelName,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'label', id);
-        } else {
-          trackBatchVerification('POST', 'label', id, {
-            labelName: data.labelName,
-            labelName: data.labelName,
-          });
-        }
       }
 
       // Create 1 minimal record

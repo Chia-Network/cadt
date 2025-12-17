@@ -1,5 +1,20 @@
 import { v4 as uuidv4 } from 'uuid';
 
+// Counter to ensure uniqueness even when multiple records are created in the same millisecond
+let uniqueCounter = 0;
+
+/**
+ * Generate a unique identifier combining timestamp with a counter and random component
+ * This ensures uniqueness even when multiple records are created in rapid succession
+ * @returns {string} - Unique identifier string
+ */
+export const getUniqueId = () => {
+  uniqueCounter++;
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 10000);
+  return `${timestamp}-${uniqueCounter}-${random}`;
+};
+
 /**
  * Helper function to generate long strings for testing
  * @param {number} length - Desired string length
@@ -16,7 +31,7 @@ export const getLongString = (length = 1000) => {
  */
 export const getInvalidPicklistValue = (fieldName) => {
   // Return a value that definitely won't be in any picklist
-  return `INVALID_PICKLIST_VALUE_${fieldName}_${Date.now()}`;
+  return `INVALID_PICKLIST_VALUE_${fieldName}_${getUniqueId()}`;
 };
 
 /**
@@ -32,7 +47,7 @@ export const getNonExistentId = () => {
  */
 export const generateMethodology = () => {
   return {
-    methodologyCode: `TEST-METHOD-${Date.now()}`,
+    methodologyCode: `TEST-METHOD-${getUniqueId()}`,
     methodologyName: 'Test Methodology Standard',
     methodologyVersion: '1.0',
     methodologyDate: '2024-01-15',
@@ -46,7 +61,7 @@ export const generateMethodology = () => {
  */
 export const generateMethodologyMinimal = () => {
   return {
-    methodologyCode: `MIN-METHOD-${Date.now()}`,
+    methodologyCode: `MIN-METHOD-${getUniqueId()}`,
     methodologyName: 'Minimal Methodology',
   };
 };
@@ -56,7 +71,7 @@ export const generateMethodologyMinimal = () => {
  */
 export const generateMethodologyMaximal = () => {
   return {
-    methodologyCode: `MAX-METHOD-${Date.now()}`,
+    methodologyCode: `MAX-METHOD-${getUniqueId()}`,
     methodologyName: 'Maximal Methodology with All Fields',
     methodologyVersion: '2.5.3-beta',
     methodologyDate: '2024-12-31',
@@ -84,7 +99,7 @@ export const generateMethodologyLongStrings = () => {
  */
 export const generateMethodologyInvalidPicklist = () => {
   return {
-    methodologyCode: `INVALID-PICKLIST-${Date.now()}`,
+    methodologyCode: `INVALID-PICKLIST-${getUniqueId()}`,
     methodologyName: 'Invalid Picklist Methodology',
     methodologyType: getInvalidPicklistValue('methodologyType'), // Invalid picklist value
   };
@@ -105,7 +120,7 @@ export const generateMethodologyInvalidForeignKey = () => {
  */
 export const generateMethodologyForbiddenFields = () => {
   return {
-    methodologyCode: `FORBIDDEN-${Date.now()}`,
+    methodologyCode: `FORBIDDEN-${getUniqueId()}`,
     methodologyName: 'Forbidden Fields Methodology',
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
@@ -118,30 +133,37 @@ export const generateMethodologyForbiddenFields = () => {
 // ============================================================================
 
 export const generateProgram = (cadTrustProgramId = null) => {
+  const uniqueId = getUniqueId();
   const data = {
-    programName: `Test Program ${Date.now()}`,
+    programName: `Test Program ${uniqueId}`,
     programRegistry: 'VCS',
-    programRegistryActivityId: `ACT-${Date.now()}`,
-    programRegistryProgramId: `PROG-${Date.now()}`,
+    programRegistryActivityId: `ACT-${uniqueId}`,
+    programRegistryProgramId: `PROG-${uniqueId}`,
     programDescription: 'Test program description',
   };
   if (cadTrustProgramId) data.cadTrustProgramId = cadTrustProgramId;
   return data;
 };
 
-export const generateProgramMinimal = () => ({
-  programName: `Min Program ${Date.now()}`,
-  programRegistry: 'CAR',
-  programRegistryActivityId: `MIN-ACT-${Date.now()}`,
-});
+export const generateProgramMinimal = () => {
+  const uniqueId = getUniqueId();
+  return {
+    programName: `Min Program ${uniqueId}`,
+    programRegistry: 'CAR',
+    programRegistryActivityId: `MIN-ACT-${uniqueId}`,
+  };
+};
 
-export const generateProgramMaximal = () => ({
-  programName: `Max Program ${Date.now()}`,
-  programRegistry: 'Gold Standard',
-  programRegistryActivityId: `MAX-ACT-${Date.now()}`,
-  programRegistryProgramId: `MAX-PROG-${Date.now()}`,
-  programDescription: getLongString(500),
-});
+export const generateProgramMaximal = () => {
+  const uniqueId = getUniqueId();
+  return {
+    programName: `Max Program ${uniqueId}`,
+    programRegistry: 'Gold Standard',
+    programRegistryActivityId: `MAX-ACT-${uniqueId}`,
+    programRegistryProgramId: `MAX-PROG-${uniqueId}`,
+    programDescription: getLongString(500),
+  };
+};
 
 export const generateProgramLongStrings = () => ({
   programName: getLongString(500),
@@ -151,14 +173,17 @@ export const generateProgramLongStrings = () => ({
   programDescription: getLongString(2000),
 });
 
-export const generateProgramForbiddenFields = () => ({
-  programName: `FORBIDDEN-${Date.now()}`,
-  programRegistry: 'VCS',
-  programRegistryActivityId: `ACT-${Date.now()}`,
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-  cadTrustProgramId: uuidv4(),
-});
+export const generateProgramForbiddenFields = () => {
+  const uniqueId = getUniqueId();
+  return {
+    programName: `FORBIDDEN-${uniqueId}`,
+    programRegistry: 'VCS',
+    programRegistryActivityId: `ACT-${uniqueId}`,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    cadTrustProgramId: uuidv4(),
+  };
+};
 
 // ============================================================================
 // LOCATION GENERATORS
@@ -213,10 +238,11 @@ export const generateLocationForbiddenFields = (cadTrustProjectId) => ({
 // ============================================================================
 
 export const generateProject = (cadTrustProgramId = null) => {
+  const uniqueId = getUniqueId();
   const data = {
     projectRegistryName: 'VCS',
-    projectId: `PROJ-${Date.now()}`,
-    projectName: `Test Project ${Date.now()}`,
+    projectId: `PROJ-${uniqueId}`,
+    projectName: `Test Project ${uniqueId}`,
     projectLink: 'https://example.com/project',
     projectDescription: 'Test project description',
     projectSector: 'Energy demand',
@@ -230,18 +256,22 @@ export const generateProject = (cadTrustProgramId = null) => {
   return data;
 };
 
-export const generateProjectMinimal = () => ({
-  projectRegistryName: 'CAR',
-  projectId: `MIN-PROJ-${Date.now()}`,
-  projectName: `Min Project ${Date.now()}`,
-});
+export const generateProjectMinimal = () => {
+  const uniqueId = getUniqueId();
+  return {
+    projectRegistryName: 'CAR',
+    projectId: `MIN-PROJ-${uniqueId}`,
+    projectName: `Min Project ${uniqueId}`,
+  };
+};
 
 export const generateProjectMaximal = (cadTrustProgramId = null) => {
+  const uniqueId = getUniqueId();
   const data = {
     projectRegistryName: 'Gold Standard',
-    projectId: `MAX-PROJ-${Date.now()}`,
+    projectId: `MAX-PROJ-${uniqueId}`,
     projectCreditingProgram: 'Test Crediting Program',
-    projectName: `Max Project ${Date.now()}`,
+    projectName: `Max Project ${uniqueId}`,
     projectLink: `https://example.com/project/${getLongString(200)}`,
     projectDescription: getLongString(1000),
     projectSector: 'Afforestation and reforestation',
@@ -265,14 +295,14 @@ export const generateProjectLongStrings = () => ({
 
 export const generateProjectInvalidForeignKey = () => ({
   projectRegistryName: 'VCS',
-  projectId: `PROJ-${Date.now()}`,
+  projectId: `PROJ-${getUniqueId()}`,
   projectName: 'Invalid FK Project',
   cadTrustProgramId: getNonExistentId(),
 });
 
 export const generateProjectForbiddenFields = () => ({
   projectRegistryName: 'VCS',
-  projectId: `FORBIDDEN-${Date.now()}`,
+  projectId: `FORBIDDEN-${getUniqueId()}`,
   projectName: 'Forbidden Fields Project',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
@@ -287,7 +317,7 @@ export const generateEstimation = (cadTrustProjectId) => ({
   estimationStartDate: '2024-01-01',
   estimationEndDate: '2024-12-31',
   estimationUnitCount: 1000.5,
-  estimationReferenceNo: `EST-REF-${Date.now()}`,
+  estimationReferenceNo: `EST-REF-${getUniqueId()}`,
   cadTrustProjectId,
 });
 
@@ -339,21 +369,21 @@ export const generateEstimationForbiddenFields = (cadTrustProjectId) => ({
 
 export const generateRating = (cadTrustProjectId) => ({
   ratingType: 'CDP',
-  ratingName: `Test Rating ${Date.now()}`,
+  ratingName: `Test Rating ${getUniqueId()}`,
   ratingValue: 'A',
   ratingLink: 'https://example.com/rating',
   cadTrustProjectId,
 });
 
 export const generateRatingMinimal = (cadTrustProjectId) => ({
-  ratingName: `Min Rating ${Date.now()}`,
+  ratingName: `Min Rating ${getUniqueId()}`,
   ratingValue: 'B',
   cadTrustProjectId,
 });
 
 export const generateRatingMaximal = (cadTrustProjectId) => ({
   ratingType: 'CCQI',
-  ratingName: `Max Rating ${Date.now()}`,
+  ratingName: `Max Rating ${getUniqueId()}`,
   ratingValue: getLongString(255),
   ratingLink: `https://example.com/rating/${getLongString(200)}`,
   cadTrustProjectId,
@@ -430,17 +460,17 @@ export const generateCoBenefitForbiddenFields = (cadTrustProjectId) => ({
 // ============================================================================
 
 export const generateStakeholder = () => ({
-  stakeholderName: `Test Stakeholder ${Date.now()}`,
+  stakeholderName: `Test Stakeholder ${getUniqueId()}`,
   stakeholderType: 'Owner',
   stakeholderLink: 'https://example.com/stakeholder',
 });
 
 export const generateStakeholderMinimal = () => ({
-  stakeholderName: `Min Stakeholder ${Date.now()}`,
+  stakeholderName: `Min Stakeholder ${getUniqueId()}`,
 });
 
 export const generateStakeholderMaximal = () => ({
-  stakeholderName: `Max Stakeholder ${Date.now()}`,
+  stakeholderName: `Max Stakeholder ${getUniqueId()}`,
   stakeholderType: 'Consultant',
   stakeholderLink: `https://example.com/stakeholder/${getLongString(200)}`,
 });
@@ -467,18 +497,18 @@ export const generateStakeholderForbiddenFields = () => ({
 // ============================================================================
 
 export const generateLabel = () => ({
-  labelName: `Test Label ${Date.now()}`,
+  labelName: `Test Label ${getUniqueId()}`,
   labelType: 'Certification',
   labelLink: 'https://example.com/label',
   labelDate: '2024-01-15',
 });
 
 export const generateLabelMinimal = () => ({
-  labelName: `Min Label ${Date.now()}`,
+  labelName: `Min Label ${getUniqueId()}`,
 });
 
 export const generateLabelMaximal = () => ({
-  labelName: `Max Label ${Date.now()}`,
+  labelName: `Max Label ${getUniqueId()}`,
   labelType: 'Article 6 - Authorisation',
   labelLink: `https://example.com/label/${getLongString(200)}`,
   labelDate: '2024-12-31',
@@ -599,7 +629,7 @@ export const generateUnitLabelForbiddenFields = (cadTrustLabelId, cadTrustUnitId
 
 export const generateIssuance = (cadTrustVerificationId, cadTrustMethodologyId, cadTrustLocationId = null) => {
   const data = {
-    issuanceId: `ISS-${Date.now()}`,
+    issuanceId: `ISS-${getUniqueId()}`,
     issuanceDate: '2024-01-15',
     cadTrustVerificationId,
     cadTrustMethodologyId,
@@ -609,13 +639,13 @@ export const generateIssuance = (cadTrustVerificationId, cadTrustMethodologyId, 
 };
 
 export const generateIssuanceMinimal = (cadTrustVerificationId, cadTrustMethodologyId) => ({
-  issuanceId: `MIN-ISS-${Date.now()}`,
+  issuanceId: `MIN-ISS-${getUniqueId()}`,
   cadTrustVerificationId,
   cadTrustMethodologyId,
 });
 
 export const generateIssuanceMaximal = (cadTrustVerificationId, cadTrustMethodologyId, cadTrustLocationId) => ({
-  issuanceId: `MAX-ISS-${Date.now()}`,
+  issuanceId: `MAX-ISS-${getUniqueId()}`,
   issuanceDate: '2024-12-31',
   cadTrustVerificationId,
   cadTrustMethodologyId,
@@ -643,7 +673,7 @@ export const generateIssuanceForbiddenFields = (cadTrustVerificationId, cadTrust
 
 export const generateVerification = (cadTrustProjectId, cadTrustValidationId = null) => {
   const data = {
-    verificationId: `VER-${Date.now()}`,
+    verificationId: `VER-${getUniqueId()}`,
     verificationStartDate: '2024-01-01',
     verificationEndDate: '2024-12-31',
     verificationBody: 'AENOR International S.A.U.',
@@ -654,12 +684,12 @@ export const generateVerification = (cadTrustProjectId, cadTrustValidationId = n
 };
 
 export const generateVerificationMinimal = (cadTrustProjectId) => ({
-  verificationId: `MIN-VER-${Date.now()}`,
+  verificationId: `MIN-VER-${getUniqueId()}`,
   cadTrustProjectId,
 });
 
 export const generateVerificationMaximal = (cadTrustProjectId, cadTrustValidationId) => ({
-  verificationId: `MAX-VER-${Date.now()}`,
+  verificationId: `MAX-VER-${getUniqueId()}`,
   verificationStartDate: '2024-01-01',
   verificationEndDate: '2024-12-31',
   verificationBody: 'SCS Global Services',
@@ -685,7 +715,7 @@ export const generateVerificationForbiddenFields = (cadTrustProjectId) => ({
 // ============================================================================
 
 export const generateValidation = (cadTrustProjectId) => ({
-  validationId: `VAL-${Date.now()}`,
+  validationId: `VAL-${getUniqueId()}`,
   validationType: 'Validation of Project Design Document',
   validationBody: 'SCS Global Services',
   validationDate: '2024-01-15',
@@ -695,12 +725,12 @@ export const generateValidation = (cadTrustProjectId) => ({
 });
 
 export const generateValidationMinimal = (cadTrustProjectId) => ({
-  validationId: `MIN-VAL-${Date.now()}`,
+  validationId: `MIN-VAL-${getUniqueId()}`,
   cadTrustProjectId,
 });
 
 export const generateValidationMaximal = (cadTrustProjectId) => ({
-  validationId: `MAX-VAL-${Date.now()}`,
+  validationId: `MAX-VAL-${getUniqueId()}`,
   validationType: 'Validation of Renewal of Credit Period',
   validationBody: 'AENOR International S.A.U.',
   validationDate: '2024-12-31',
@@ -727,7 +757,7 @@ export const generateValidationForbiddenFields = (cadTrustProjectId) => ({
 // ============================================================================
 
 export const generateUnit = (cadTrustIssuanceId) => ({
-  unitSerialId: `UNIT-${Date.now()}`,
+  unitSerialId: `UNIT-${getUniqueId()}`,
   unitStartBlock: '1000',
   unitEndBlock: '2000',
   unitCount: 1000,
@@ -750,7 +780,7 @@ export const generateUnit = (cadTrustIssuanceId) => ({
 });
 
 export const generateUnitMinimal = (cadTrustIssuanceId) => ({
-  unitSerialId: `MIN-UNIT-${Date.now()}`,
+  unitSerialId: `MIN-UNIT-${getUniqueId()}`,
   unitStartBlock: '1000',
   unitEndBlock: '2000',
   unitVintageYear: 2024,
@@ -758,7 +788,7 @@ export const generateUnitMinimal = (cadTrustIssuanceId) => ({
 });
 
 export const generateUnitMaximal = (cadTrustIssuanceId) => ({
-  unitSerialId: `MAX-UNIT-${Date.now()}`,
+  unitSerialId: `MAX-UNIT-${getUniqueId()}`,
   unitStartBlock: '1000',
   unitEndBlock: '2000',
   unitCount: 999999.99,
@@ -899,7 +929,7 @@ export const generateLargeDataset = (resourceType, count, variant = 'standard', 
 // ============================================================================
 
 export const generateAefT1Submission = () => ({
-  aefT1SubmissionParty: `Test Party ${Date.now()}`,
+  aefT1SubmissionParty: `Test Party ${getUniqueId()}`,
   aefT1SubmissionVersion: '1.0',
   aefT1SubmissionReportYear: 2022,
   aefT1SubmissionSubmissionDate: '2022-01-15',
@@ -911,7 +941,7 @@ export const generateAefT1Submission = () => ({
 });
 
 export const generateAefT1SubmissionMinimal = () => ({
-  aefT1SubmissionParty: `Min Party ${Date.now()}`,
+  aefT1SubmissionParty: `Min Party ${getUniqueId()}`,
   aefT1SubmissionVersion: '1.0',
   aefT1SubmissionReportYear: 2022,
   aefT1SubmissionSubmissionDate: '2022-01-15',
@@ -944,11 +974,12 @@ export const generateAefT1SubmissionForbiddenFields = () => ({
 // ============================================================================
 
 export const generateAefT2Authorizations = (cadTrustAefT1SubmissionId = null, cadTrustUnitId = null, cadTrustProjectId = null, cadTrustAefT5AuthorizedEntitiesId = null) => {
+  const uniqueId = getUniqueId();
   const data = {
-    aefT2AuthorizationsId: `TEST-AUTH-${Date.now()}`,
+    aefT2AuthorizationsId: `TEST-AUTH-${uniqueId}`,
     aefT2AuthorizationsDate: '2022-02-01',
-    aefT2AuthorizationsCooperativeApproachId: `TEST-CA-${Date.now()}`,
-    aefT2AuthorizationsAuthorizedPartyId: `TEST-PARTY-${Date.now()}`,
+    aefT2AuthorizationsCooperativeApproachId: `TEST-CA-${uniqueId}`,
+    aefT2AuthorizationsAuthorizedPartyId: `TEST-PARTY-${uniqueId}`,
     aefT2AuthorizationsVersion: '1.0',
     aefT2AuthorizationsQuantity: 1000.5,
     aefT2AuthorizationsMetric: 'tCO2e',
@@ -957,7 +988,7 @@ export const generateAefT2Authorizations = (cadTrustAefT1SubmissionId = null, ca
     aefT2AuthorizationsSector: 'Energy industries (renewable-/ non renewable sources)',
     aefT2AuthorizationsActivityType: 'Energy efficiency',
     aefT2AuthorizationsPurposesForAuthorization: 'Test purpose',
-    aefT2AuthorizationsAuthoziedEntityId: `TEST-ENTITY-${Date.now()}`,
+    aefT2AuthorizationsAuthoziedEntityId: `TEST-ENTITY-${uniqueId}`,
     aefT2AuthorizationsOimpAuthorizedParty: 'Test OIMP Party',
     aefT2AuthorizationsAuthorizedTimeframe: '2024-2025',
     aefT2AuthorizationsAuthorizationTerms: 'Test terms',
@@ -972,12 +1003,15 @@ export const generateAefT2Authorizations = (cadTrustAefT1SubmissionId = null, ca
   return data;
 };
 
-export const generateAefT2AuthorizationsMinimal = () => ({
-  aefT2AuthorizationsId: `MIN-AUTH-${Date.now()}`,
-  aefT2AuthorizationsDate: '2022-02-01',
-  aefT2AuthorizationsCooperativeApproachId: `MIN-CA-${Date.now()}`,
-  aefT2AuthorizationsAuthorizedPartyId: `MIN-PARTY-${Date.now()}`,
-});
+export const generateAefT2AuthorizationsMinimal = () => {
+  const uniqueId = getUniqueId();
+  return {
+    aefT2AuthorizationsId: `MIN-AUTH-${uniqueId}`,
+    aefT2AuthorizationsDate: '2022-02-01',
+    aefT2AuthorizationsCooperativeApproachId: `MIN-CA-${uniqueId}`,
+    aefT2AuthorizationsAuthorizedPartyId: `MIN-PARTY-${uniqueId}`,
+  };
+};
 
 export const generateAefT2AuthorizationsMaximal = (cadTrustAefT1SubmissionId = null, cadTrustUnitId = null, cadTrustProjectId = null, cadTrustAefT5AuthorizedEntitiesId = null) => {
   const data = {
@@ -1008,57 +1042,66 @@ export const generateAefT2AuthorizationsMaximal = (cadTrustAefT1SubmissionId = n
   return data;
 };
 
-export const generateAefT2AuthorizationsInvalidPicklist = () => ({
-  aefT2AuthorizationsId: `INVALID-${Date.now()}`,
-  aefT2AuthorizationsDate: '2022-02-01',
-  aefT2AuthorizationsCooperativeApproachId: `CA-${Date.now()}`,
-  aefT2AuthorizationsAuthorizedPartyId: `PARTY-${Date.now()}`,
-  aefT2AuthorizationsMetric: getInvalidPicklistValue('aefT2AuthorizationsMetric'),
-  aefT2AuthorizationsSector: getInvalidPicklistValue('aefT2AuthorizationsSector'),
-});
+export const generateAefT2AuthorizationsInvalidPicklist = () => {
+  const uniqueId = getUniqueId();
+  return {
+    aefT2AuthorizationsId: `INVALID-${uniqueId}`,
+    aefT2AuthorizationsDate: '2022-02-01',
+    aefT2AuthorizationsCooperativeApproachId: `CA-${uniqueId}`,
+    aefT2AuthorizationsAuthorizedPartyId: `PARTY-${uniqueId}`,
+    aefT2AuthorizationsMetric: getInvalidPicklistValue('aefT2AuthorizationsMetric'),
+    aefT2AuthorizationsSector: getInvalidPicklistValue('aefT2AuthorizationsSector'),
+  };
+};
 
-export const generateAefT2AuthorizationsInvalidForeignKey = () => ({
-  aefT2AuthorizationsId: `INVALID-FK-${Date.now()}`,
-  aefT2AuthorizationsDate: '2022-02-01',
-  aefT2AuthorizationsCooperativeApproachId: `CA-${Date.now()}`,
-  aefT2AuthorizationsAuthorizedPartyId: `PARTY-${Date.now()}`,
-  cadTrustAefT1SubmissionId: getNonExistentId(),
-  cadTrustUnitId: getNonExistentId(),
-  cadTrustProjectId: getNonExistentId(),
-  cadTrustAefT5AuthorizedEntitiesId: getNonExistentId(),
-});
+export const generateAefT2AuthorizationsInvalidForeignKey = () => {
+  const uniqueId = getUniqueId();
+  return {
+    aefT2AuthorizationsId: `INVALID-FK-${uniqueId}`,
+    aefT2AuthorizationsDate: '2022-02-01',
+    aefT2AuthorizationsCooperativeApproachId: `CA-${uniqueId}`,
+    aefT2AuthorizationsAuthorizedPartyId: `PARTY-${uniqueId}`,
+    cadTrustAefT1SubmissionId: getNonExistentId(),
+    cadTrustUnitId: getNonExistentId(),
+    cadTrustProjectId: getNonExistentId(),
+    cadTrustAefT5AuthorizedEntitiesId: getNonExistentId(),
+  };
+};
 
-export const generateAefT2AuthorizationsForbiddenFields = () => ({
-  aefT2AuthorizationsId: `FORBIDDEN-${Date.now()}`,
-  aefT2AuthorizationsDate: '2022-02-01',
-  aefT2AuthorizationsCooperativeApproachId: `CA-${Date.now()}`,
-  aefT2AuthorizationsAuthorizedPartyId: `PARTY-${Date.now()}`,
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-  cadTrustAefT2AuthorizationId: uuidv4(),
-});
+export const generateAefT2AuthorizationsForbiddenFields = () => {
+  const uniqueId = getUniqueId();
+  return {
+    aefT2AuthorizationsId: `FORBIDDEN-${uniqueId}`,
+    aefT2AuthorizationsDate: '2022-02-01',
+    aefT2AuthorizationsCooperativeApproachId: `CA-${uniqueId}`,
+    aefT2AuthorizationsAuthorizedPartyId: `PARTY-${uniqueId}`,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    cadTrustAefT2AuthorizationId: uuidv4(),
+  };
+};
 
 // ============================================================================
 // AEF T3 ACTIONS GENERATORS
 // ============================================================================
 
 export const generateAefT3Actions = (cadTrustAefT2AuthorizationsId = null, cadTrustUnitId = null) => {
-  const timestamp = Date.now();
+  const uniqueId = getUniqueId();
   const data = {
     aefT3ActionsDate: '2022-03-01',
-    aefT3ActionsCoopoerativeApproachId: `TEST-CA-${timestamp}`,
-    aefT3ActionsAuthorizationId: `TEST-AUTH-${timestamp}`,
-    aefT3ActionsFirstTransferringPartyId: `TEST-FIRST-${timestamp}`,
-    aefT3ActionsPartyItmoRegistryId: `TEST-ITMO-REG-${timestamp}`,
-    aefT3ActionsItmoFirstId: `TEST-ITMO-FIRST-${timestamp}`,
-    aefT3ActionsItmoLastId: `TEST-ITMO-LAST-${timestamp}`,
-    aefT3ActionsUnitRegistryId: `TEST-UNIT-REG-${timestamp}`,
-    aefT3ActionsUnitFirstId: `TEST-UNIT-FIRST-${timestamp}`,
-    aefT3ActionsUnitLastId: `TEST-UNIT-LAST-${timestamp}`,
+    aefT3ActionsCoopoerativeApproachId: `TEST-CA-${uniqueId}`,
+    aefT3ActionsAuthorizationId: `TEST-AUTH-${uniqueId}`,
+    aefT3ActionsFirstTransferringPartyId: `TEST-FIRST-${uniqueId}`,
+    aefT3ActionsPartyItmoRegistryId: `TEST-ITMO-REG-${uniqueId}`,
+    aefT3ActionsItmoFirstId: `TEST-ITMO-FIRST-${uniqueId}`,
+    aefT3ActionsItmoLastId: `TEST-ITMO-LAST-${uniqueId}`,
+    aefT3ActionsUnitRegistryId: `TEST-UNIT-REG-${uniqueId}`,
+    aefT3ActionsUnitFirstId: `TEST-UNIT-FIRST-${uniqueId}`,
+    aefT3ActionsUnitLastId: `TEST-UNIT-LAST-${uniqueId}`,
     aefT3ActionsQuantityTCo2: 500.25,
     aefT3ActionsVintageYear: 2022,
-    aefT3ActionsTransferringPartyId: `TEST-TRANSFER-${timestamp}`,
-    aefT3ActionsAcquiringPartyId: `TEST-ACQUIRE-${timestamp}`,
+    aefT3ActionsTransferringPartyId: `TEST-TRANSFER-${uniqueId}`,
+    aefT3ActionsAcquiringPartyId: `TEST-ACQUIRE-${uniqueId}`,
     // Optional fields
     aefT3ActionsType: 'Energy efficiency',
     aefT3ActionsSubtype: 'Test subtype',
@@ -1068,8 +1111,8 @@ export const generateAefT3Actions = (cadTrustAefT2AuthorizationsId = null, cadTr
     aefT3ActionsQuantityNonGhg: '100',
     aefT3ActionsMitigationType: 'Energy efficiency',
     aefT3ActionsPurposeOfUseOimp: 'Test purpose',
-    aefT3ActionsUsingParticipatingPartyId: `TEST-USE-PARTY-${timestamp}`,
-    aefT3ActionsUsingAuthorizedEntityId: `TEST-USE-ENTITY-${timestamp}`,
+    aefT3ActionsUsingParticipatingPartyId: `TEST-USE-PARTY-${uniqueId}`,
+    aefT3ActionsUsingAuthorizedEntityId: `TEST-USE-ENTITY-${uniqueId}`,
     aefT3ActionsItmoUsedYear: 2022,
     aefT3ActionsConsistencyCheckResult: 'Passed',
     aefT3ActionsAdditionalInformation: 'Test additional information',
@@ -1080,27 +1123,27 @@ export const generateAefT3Actions = (cadTrustAefT2AuthorizationsId = null, cadTr
 };
 
 export const generateAefT3ActionsMinimal = () => {
-  const timestamp = Date.now();
+  const uniqueId = getUniqueId();
   return {
     aefT3ActionsDate: '2022-03-01',
-    aefT3ActionsCoopoerativeApproachId: `MIN-CA-${timestamp}`,
-    aefT3ActionsAuthorizationId: `MIN-AUTH-${timestamp}`,
-    aefT3ActionsFirstTransferringPartyId: `MIN-FIRST-${timestamp}`,
-    aefT3ActionsPartyItmoRegistryId: `MIN-ITMO-REG-${timestamp}`,
-    aefT3ActionsItmoFirstId: `MIN-ITMO-FIRST-${timestamp}`,
-    aefT3ActionsItmoLastId: `MIN-ITMO-LAST-${timestamp}`,
-    aefT3ActionsUnitRegistryId: `MIN-UNIT-REG-${timestamp}`,
-    aefT3ActionsUnitFirstId: `MIN-UNIT-FIRST-${timestamp}`,
-    aefT3ActionsUnitLastId: `MIN-UNIT-LAST-${timestamp}`,
+    aefT3ActionsCoopoerativeApproachId: `MIN-CA-${uniqueId}`,
+    aefT3ActionsAuthorizationId: `MIN-AUTH-${uniqueId}`,
+    aefT3ActionsFirstTransferringPartyId: `MIN-FIRST-${uniqueId}`,
+    aefT3ActionsPartyItmoRegistryId: `MIN-ITMO-REG-${uniqueId}`,
+    aefT3ActionsItmoFirstId: `MIN-ITMO-FIRST-${uniqueId}`,
+    aefT3ActionsItmoLastId: `MIN-ITMO-LAST-${uniqueId}`,
+    aefT3ActionsUnitRegistryId: `MIN-UNIT-REG-${uniqueId}`,
+    aefT3ActionsUnitFirstId: `MIN-UNIT-FIRST-${uniqueId}`,
+    aefT3ActionsUnitLastId: `MIN-UNIT-LAST-${uniqueId}`,
     aefT3ActionsQuantityTCo2: 100.0,
     aefT3ActionsVintageYear: 2022,
-    aefT3ActionsTransferringPartyId: `MIN-TRANSFER-${timestamp}`,
-    aefT3ActionsAcquiringPartyId: `MIN-ACQUIRE-${timestamp}`,
+    aefT3ActionsTransferringPartyId: `MIN-TRANSFER-${uniqueId}`,
+    aefT3ActionsAcquiringPartyId: `MIN-ACQUIRE-${uniqueId}`,
   };
 };
 
 export const generateAefT3ActionsMaximal = (cadTrustAefT2AuthorizationsId = null, cadTrustUnitId = null) => {
-  const timestamp = Date.now();
+  const uniqueId = getUniqueId();
   const data = {
     aefT3ActionsDate: '2099-12-31',
     aefT3ActionsCoopoerativeApproachId: getLongString(255),
@@ -1137,14 +1180,14 @@ export const generateAefT3ActionsMaximal = (cadTrustAefT2AuthorizationsId = null
 };
 
 export const generateAefT3ActionsInvalidForeignKey = () => ({
-  aefT3ActionsId: `INVALID-FK-${Date.now()}`,
+  aefT3ActionsId: `INVALID-FK-${getUniqueId()}`,
   aefT3ActionsDate: '2022-03-01',
   cadTrustAefT2AuthorizationsId: getNonExistentId(),
   cadTrustUnitId: getNonExistentId(),
 });
 
 export const generateAefT3ActionsForbiddenFields = () => ({
-  aefT3ActionsId: `FORBIDDEN-${Date.now()}`,
+  aefT3ActionsId: `FORBIDDEN-${getUniqueId()}`,
   aefT3ActionsDate: '2022-03-01',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
@@ -1156,17 +1199,17 @@ export const generateAefT3ActionsForbiddenFields = () => ({
 // ============================================================================
 
 export const generateAefT4Holdings = (cadTrustAefT2AuthorizationsId = null, cadTrustUnitId = null) => {
-  const timestamp = Date.now();
+  const uniqueId = getUniqueId();
   const data = {
-    aefT4HoldingsCoopoerativeApproachId: `TEST-CA-${timestamp}`,
-    aefT4HoldingsAuthorizationId: `TEST-AUTH-${timestamp}`,
-    aefT4HoldingsFirstTransferringPartyId: `TEST-FIRST-${timestamp}`,
-    aefT4HoldingsPartyItmoRegistryId: `TEST-ITMO-REG-${timestamp}`,
-    aefT4HoldingsItmoFirstId: `TEST-ITMO-FIRST-${timestamp}`,
-    aefT4HoldingsItmoLastId: `TEST-ITMO-LAST-${timestamp}`,
-    aefT4HoldingsUnitRegistryId: `TEST-UNIT-REG-${timestamp}`,
-    aefT4HoldingsUnitFirstId: `TEST-UNIT-FIRST-${timestamp}`,
-    aefT4HoldingsUnitLastId: `TEST-UNIT-LAST-${timestamp}`,
+    aefT4HoldingsCoopoerativeApproachId: `TEST-CA-${uniqueId}`,
+    aefT4HoldingsAuthorizationId: `TEST-AUTH-${uniqueId}`,
+    aefT4HoldingsFirstTransferringPartyId: `TEST-FIRST-${uniqueId}`,
+    aefT4HoldingsPartyItmoRegistryId: `TEST-ITMO-REG-${uniqueId}`,
+    aefT4HoldingsItmoFirstId: `TEST-ITMO-FIRST-${uniqueId}`,
+    aefT4HoldingsItmoLastId: `TEST-ITMO-LAST-${uniqueId}`,
+    aefT4HoldingsUnitRegistryId: `TEST-UNIT-REG-${uniqueId}`,
+    aefT4HoldingsUnitFirstId: `TEST-UNIT-FIRST-${uniqueId}`,
+    aefT4HoldingsUnitLastId: `TEST-UNIT-LAST-${uniqueId}`,
     aefT4HoldingsQuantityTCo2: 750.5,
     aefT4HoldingsVintageYear: 2022,
     // Optional fields
@@ -1182,24 +1225,24 @@ export const generateAefT4Holdings = (cadTrustAefT2AuthorizationsId = null, cadT
 };
 
 export const generateAefT4HoldingsMinimal = () => {
-  const timestamp = Date.now();
+  const uniqueId = getUniqueId();
   return {
-    aefT4HoldingsCoopoerativeApproachId: `MIN-CA-${timestamp}`,
-    aefT4HoldingsAuthorizationId: `MIN-AUTH-${timestamp}`,
-    aefT4HoldingsFirstTransferringPartyId: `MIN-FIRST-${timestamp}`,
-    aefT4HoldingsPartyItmoRegistryId: `MIN-ITMO-REG-${timestamp}`,
-    aefT4HoldingsItmoFirstId: `MIN-ITMO-FIRST-${timestamp}`,
-    aefT4HoldingsItmoLastId: `MIN-ITMO-LAST-${timestamp}`,
-    aefT4HoldingsUnitRegistryId: `MIN-UNIT-REG-${timestamp}`,
-    aefT4HoldingsUnitFirstId: `MIN-UNIT-FIRST-${timestamp}`,
-    aefT4HoldingsUnitLastId: `MIN-UNIT-LAST-${timestamp}`,
+    aefT4HoldingsCoopoerativeApproachId: `MIN-CA-${uniqueId}`,
+    aefT4HoldingsAuthorizationId: `MIN-AUTH-${uniqueId}`,
+    aefT4HoldingsFirstTransferringPartyId: `MIN-FIRST-${uniqueId}`,
+    aefT4HoldingsPartyItmoRegistryId: `MIN-ITMO-REG-${uniqueId}`,
+    aefT4HoldingsItmoFirstId: `MIN-ITMO-FIRST-${uniqueId}`,
+    aefT4HoldingsItmoLastId: `MIN-ITMO-LAST-${uniqueId}`,
+    aefT4HoldingsUnitRegistryId: `MIN-UNIT-REG-${uniqueId}`,
+    aefT4HoldingsUnitFirstId: `MIN-UNIT-FIRST-${uniqueId}`,
+    aefT4HoldingsUnitLastId: `MIN-UNIT-LAST-${uniqueId}`,
     aefT4HoldingsQuantityTCo2: 100.0,
     aefT4HoldingsVintageYear: 2022,
   };
 };
 
 export const generateAefT4HoldingsMaximal = (cadTrustAefT2AuthorizationsId = null, cadTrustUnitId = null) => {
-  const timestamp = Date.now();
+  const uniqueId = getUniqueId();
   const data = {
     aefT4HoldingsCoopoerativeApproachId: getLongString(255),
     aefT4HoldingsAuthorizationId: getLongString(255),
@@ -1225,14 +1268,14 @@ export const generateAefT4HoldingsMaximal = (cadTrustAefT2AuthorizationsId = nul
 };
 
 export const generateAefT4HoldingsInvalidForeignKey = () => ({
-  aefT4HoldingsId: `INVALID-FK-${Date.now()}`,
+  aefT4HoldingsId: `INVALID-FK-${getUniqueId()}`,
   aefT4HoldingsDate: '2022-04-01',
   cadTrustAefT2AuthorizationsId: getNonExistentId(),
   cadTrustUnitId: getNonExistentId(),
 });
 
 export const generateAefT4HoldingsForbiddenFields = () => ({
-  aefT4HoldingsId: `FORBIDDEN-${Date.now()}`,
+  aefT4HoldingsId: `FORBIDDEN-${getUniqueId()}`,
   aefT4HoldingsDate: '2022-04-01',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
@@ -1243,23 +1286,29 @@ export const generateAefT4HoldingsForbiddenFields = () => ({
 // AEF T5 AUTHORIZED ENTITIES GENERATORS
 // ============================================================================
 
-export const generateAefT5AuthorizedEntities = () => ({
-  aefT5AuthorizedEntitiesId: `TEST-ENTITY-${Date.now()}`,
-  aefT5AuthorizedEntitiesName: `Test Entity ${Date.now()}`,
-  aefT5AuthorizedEntitiesAuthorizationDate: '2022-01-15',
-  aefT5AuthorizedEntitiesCooperativeApproachId: `TEST-CA-${Date.now()}`,
-  aefT5AuthorizedEntitiesIncorporationCountry: 'United States of America',
-  aefT5AuthorizedEntitiesConditions: 'Test conditions',
-  aefT5AuthorizedEntitiesChangeConditions: 'Test change conditions',
-  aefT5AuthorizedEntitiesAdditionalInformation: 'Test additional information',
-});
+export const generateAefT5AuthorizedEntities = () => {
+  const uniqueId = getUniqueId();
+  return {
+    aefT5AuthorizedEntitiesId: `TEST-ENTITY-${uniqueId}`,
+    aefT5AuthorizedEntitiesName: `Test Entity ${uniqueId}`,
+    aefT5AuthorizedEntitiesAuthorizationDate: '2022-01-15',
+    aefT5AuthorizedEntitiesCooperativeApproachId: `TEST-CA-${uniqueId}`,
+    aefT5AuthorizedEntitiesIncorporationCountry: 'United States of America',
+    aefT5AuthorizedEntitiesConditions: 'Test conditions',
+    aefT5AuthorizedEntitiesChangeConditions: 'Test change conditions',
+    aefT5AuthorizedEntitiesAdditionalInformation: 'Test additional information',
+  };
+};
 
-export const generateAefT5AuthorizedEntitiesMinimal = () => ({
-  aefT5AuthorizedEntitiesId: `MIN-ENTITY-${Date.now()}`,
-  aefT5AuthorizedEntitiesName: `Min Entity ${Date.now()}`,
-  aefT5AuthorizedEntitiesAuthorizationDate: '2022-01-15',
-  aefT5AuthorizedEntitiesCooperativeApproachId: `MIN-CA-${Date.now()}`,
-});
+export const generateAefT5AuthorizedEntitiesMinimal = () => {
+  const uniqueId = getUniqueId();
+  return {
+    aefT5AuthorizedEntitiesId: `MIN-ENTITY-${uniqueId}`,
+    aefT5AuthorizedEntitiesName: `Min Entity ${uniqueId}`,
+    aefT5AuthorizedEntitiesAuthorizationDate: '2022-01-15',
+    aefT5AuthorizedEntitiesCooperativeApproachId: `MIN-CA-${uniqueId}`,
+  };
+};
 
 export const generateAefT5AuthorizedEntitiesMaximal = () => ({
   aefT5AuthorizedEntitiesId: getLongString(255),
@@ -1273,7 +1322,7 @@ export const generateAefT5AuthorizedEntitiesMaximal = () => ({
 });
 
 export const generateAefT5AuthorizedEntitiesForbiddenFields = () => ({
-  aefT5AuthorizedEntitiesId: `FORBIDDEN-${Date.now()}`,
+  aefT5AuthorizedEntitiesId: `FORBIDDEN-${getUniqueId()}`,
   aefT5AuthorizedEntitiesName: 'Forbidden Entity',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',

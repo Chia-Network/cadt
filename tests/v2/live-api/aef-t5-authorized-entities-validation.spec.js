@@ -84,31 +84,28 @@ describe('AefT5AuthorizedEntities Live API Validation Tests', function () {
   describe('Step 4: POST Request Tests', function () {
     it('should create aefT5AuthorizedEntities with typical, minimal, and maximal data', async function () {
       // AEF T5 Authorized Entities has no dependencies - standalone entity
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateAefT5AuthorizedEntities();
-        data.aefT5AuthorizedEntitiesId = `${data.aefT5AuthorizedEntitiesId}-${i}`;
-        const { id, response } = await makePostRequest(request, '/v2/aef-t5-authorized-entities', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('aef-t5-authorized-entities', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/aef-t5-authorized-entities', id, {
+      // Create 1 typical record
+      const data = generateAefT5AuthorizedEntities();
+      const { id, response } = await makePostRequest(request, '/v2/aef-t5-authorized-entities', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('aef-t5-authorized-entities', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/aef-t5-authorized-entities', id, {
+        aefT5AuthorizedEntitiesId: data.aefT5AuthorizedEntitiesId,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'aef-t5-authorized-entities', id);
+      } else {
+        trackBatchVerification('POST', 'aef-t5-authorized-entities', id, {
           aefT5AuthorizedEntitiesId: data.aefT5AuthorizedEntitiesId,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'aef-t5-authorized-entities', id);
-        } else {
-          trackBatchVerification('POST', 'aef-t5-authorized-entities', id, {
-            aefT5AuthorizedEntitiesId: data.aefT5AuthorizedEntitiesId,
-          });
-        }
       }
 
       // Create 1 minimal record

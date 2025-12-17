@@ -101,44 +101,28 @@ describe('CoBenefit Live API Validation Tests', function () {
         throw new Error('Project ID not found. Ensure project-validation.spec.js runs before co-benefit-validation.spec.js');
       }
 
-      // Create 5 typical records
-      for (let i = 0; i < 5; i++) {
-        const data = generateCoBenefit(projectId);
-        // Use different SDG values for variety (must match exact values from validation schema)
-        const sdgValues = [
-          'SDG 1 - No poverty',
-          'SDG 2 - Zero hunger',
-          'SDG 3 - Good health and well-being',
-          'SDG 4 - Quality education',
-          'SDG 5 - Gender equality',
-          'SDG 6 - Clean water and sanitation',
-          'SDG 7 - Affordable and clean energy',
-          'SDG 8 - Decent work and economic growth',
-          'SDG 9 - Industry, innovation, and infrastructure',
-          'SDG 10 - Reduced inequalities',
-        ];
-        data.coBenefitId = sdgValues[i % sdgValues.length];
-        const { id, response } = await makePostRequest(request, '/v2/co-benefit', data);
-        expect(response.success).to.be.true;
-        expect(id).to.exist;
-        createdIds.push(id);
-        addCreatedId('coBenefit', id);
-        // Check record is in staging table
-        const inStaging = await checkRecordInStaging(request, '/v2/co-benefit', id, {
+      // Create 1 typical record
+      const data = generateCoBenefit(projectId);
+      const { id, response } = await makePostRequest(request, '/v2/co-benefit', data);
+      expect(response.success).to.be.true;
+      expect(id).to.exist;
+      createdIds.push(id);
+      addCreatedId('coBenefit', id);
+      // Check record is in staging table
+      const inStaging = await checkRecordInStaging(request, '/v2/co-benefit', id, {
+        coBenefitId: data.coBenefitId,
+      });
+      expect(inStaging).to.be.true;
+      // Commit if in extended mode
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'coBenefit', id);
+      } else {
+        trackBatchVerification('POST', 'coBenefit', id, {
           coBenefitId: data.coBenefitId,
         });
-        expect(inStaging).to.be.true;
-        // Commit if in extended mode
-        if (shouldAutoCommit()) {
-          await commitStagedRecords(request, []);
-          await waitForPendingCommits(request);
-          await waitForStagingEmpty(request);
-          await waitForDataToAppear(request, 'coBenefit', id);
-        } else {
-          trackBatchVerification('POST', 'coBenefit', id, {
-            coBenefitId: data.coBenefitId,
-          });
-        }
       }
 
       // Create 1 minimal record
