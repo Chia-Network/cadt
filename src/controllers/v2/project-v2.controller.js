@@ -401,63 +401,67 @@ export const findAll = async (req, res) => {
       // Note: orgUid filtering is handled in FTS query, so don't add it to where clause again
     }
 
-    // Build query with column selection and includes
+    // Build query with column selection and associations
     // Consistent with other V2 controllers: if no columns specified, don't set attributes
     // This lets Sequelize automatically include all fields including timestamps
     let queryAttributes = undefined;
-    let fixedIncludes = [];
+    let queryIncludes = [];
 
     if (normalizedColumns) {
-      // Separate association names from regular columns
+      // Association names that can be included
       const associationNames = ['program', 'ProgramV2', 'locations', 'LocationV2', 'estimations', 'EstimationV2', 'ratings', 'RatingV2', 'coBenefits', 'CoBenefitV2'];
       const regularColumns = normalizedColumns.filter(col => !associationNames.includes(col));
 
-      // Use columnsToInclude helper only for regular columns
-      const columnQuery = regularColumns.length > 0 ? columnsToInclude(regularColumns, includes) : { attributes: [], include: [] };
-      queryAttributes = regularColumns.length > 0 ? columnQuery.attributes : undefined;
+      // Check if associations are requested
+      const requestedAssociations = normalizedColumns.filter(col => associationNames.includes(col));
 
-      // Build includes with correct V2 aliases based on requested columns
-      const columnsArray = normalizedColumns;
-      if (columnsArray.includes('program') || columnsArray.includes('ProgramV2')) {
-        fixedIncludes.push({
+      // Build include array for requested associations
+      if (requestedAssociations.includes('program') || requestedAssociations.includes('ProgramV2')) {
+        queryIncludes.push({
           model: ProgramV2,
           as: 'program',
-          required: false,
+          required: false, // LEFT JOIN
         });
       }
-      if (columnsArray.includes('locations') || columnsArray.includes('LocationV2')) {
-        fixedIncludes.push({
+      if (requestedAssociations.includes('locations') || requestedAssociations.includes('LocationV2')) {
+        queryIncludes.push({
           model: LocationV2,
           as: 'locations',
           required: false,
         });
       }
-      if (columnsArray.includes('estimations') || columnsArray.includes('EstimationV2')) {
-        fixedIncludes.push({
+      if (requestedAssociations.includes('estimations') || requestedAssociations.includes('EstimationV2')) {
+        queryIncludes.push({
           model: EstimationV2,
           as: 'estimations',
           required: false,
         });
       }
-      if (columnsArray.includes('ratings') || columnsArray.includes('RatingV2')) {
-        fixedIncludes.push({
+      if (requestedAssociations.includes('ratings') || requestedAssociations.includes('RatingV2')) {
+        queryIncludes.push({
           model: RatingV2,
           as: 'ratings',
           required: false,
         });
       }
-      if (columnsArray.includes('coBenefits') || columnsArray.includes('CoBenefitV2')) {
-        fixedIncludes.push({
+      if (requestedAssociations.includes('coBenefits') || requestedAssociations.includes('CoBenefitV2')) {
+        queryIncludes.push({
           model: CoBenefitV2,
           as: 'coBenefits',
           required: false,
         });
       }
+
+      // Use columnsToInclude helper only for regular columns
+      if (regularColumns.length > 0) {
+        const columnQuery = columnsToInclude(regularColumns, []);
+        queryAttributes = columnQuery.attributes;
+      }
     }
 
     const query = {
       attributes: queryAttributes, // undefined = include all fields (consistent with other V2 controllers)
-      include: fixedIncludes,
+      include: queryIncludes.length > 0 ? queryIncludes : undefined,
       ...pagination,
     };
 
@@ -586,40 +590,40 @@ export const findOne = async (req, res) => {
     const { id } = req.params;
     const { columns } = req.query;
 
-    // Build includes if columns parameter is provided
-    let includes = [];
+    // Handle association includes
+    let queryIncludes = [];
     if (columns) {
       const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
       if (columnsArray.includes('program') || columnsArray.includes('ProgramV2')) {
-        includes.push({
+        queryIncludes.push({
           model: ProgramV2,
           as: 'program',
           required: false,
         });
       }
       if (columnsArray.includes('locations') || columnsArray.includes('LocationV2')) {
-        includes.push({
+        queryIncludes.push({
           model: LocationV2,
           as: 'locations',
           required: false,
         });
       }
       if (columnsArray.includes('estimations') || columnsArray.includes('EstimationV2')) {
-        includes.push({
+        queryIncludes.push({
           model: EstimationV2,
           as: 'estimations',
           required: false,
         });
       }
       if (columnsArray.includes('ratings') || columnsArray.includes('RatingV2')) {
-        includes.push({
+        queryIncludes.push({
           model: RatingV2,
           as: 'ratings',
           required: false,
         });
       }
       if (columnsArray.includes('coBenefits') || columnsArray.includes('CoBenefitV2')) {
-        includes.push({
+        queryIncludes.push({
           model: CoBenefitV2,
           as: 'coBenefits',
           required: false,
@@ -628,7 +632,7 @@ export const findOne = async (req, res) => {
     }
 
     const record = await ProjectV2.findByPk(id, {
-      include: includes.length > 0 ? includes : undefined,
+      include: queryIncludes.length > 0 ? queryIncludes : undefined,
     });
 
     if (!record) {

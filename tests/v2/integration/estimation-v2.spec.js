@@ -481,9 +481,14 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
 
       const response = await supertest(app)
         .post('/v2/estimation')
-        .send(estimationData);
+        .send(estimationData)
+        .expect(200);
 
-      createdEstimationId = response.body.cadTrustEstimationId;
+      createdEstimationId = response.body.cadTrustEstimationId || response.body.uuid;
+
+      if (!createdEstimationId) {
+        throw new Error('Failed to get estimation ID from POST response');
+      }
 
       // Commit the staging record so it exists for update
       let stagingRecord = null;

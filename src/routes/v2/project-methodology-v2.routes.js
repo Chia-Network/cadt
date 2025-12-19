@@ -12,11 +12,10 @@ import {
 const router = express.Router();
 
 // Project-Methodology CRUD routes
-// Note: For join tables, we use composite primary keys
 router.post('/', createProjectMethodologyV2);
 router.get('/', getAllProjectMethodologiesV2);
-router.get('/project/:projectId/methodology/:methodologyId', getProjectMethodologyV2);
-router.put('/project/:projectId/methodology/:methodologyId', updateProjectMethodologyV2);
-router.delete('/project/:projectId/methodology/:methodologyId', deleteProjectMethodologyV2);
+router.get('/:cadTrustProjectMethodologyId', getProjectMethodologyV2);
+router.put('/:cadTrustProjectMethodologyId', updateProjectMethodologyV2);
+router.delete('/:cadTrustProjectMethodologyId', deleteProjectMethodologyV2);
 
 export default router;

@@ -15,7 +15,7 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateAefT1Submission,
   generateAefT1SubmissionMinimal,
@@ -168,20 +168,29 @@ describe('AefT1Submission Live API Validation Tests', function () {
   });
   describe('Step 7: PUT Request Tests', function () {
     it('should update a aefT1Submission', async function () {
-      const id = createdIds[0];
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'aef-t1-submission');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
       const currentRecord = await request.get(`/v2/aef-t1-submission/${id}`).expect(200);
+      const record = currentRecord.body.data || currentRecord.body;
       // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
-        aefT1SubmissionParty: currentRecord.body.aefT1SubmissionParty,
-        aefT1SubmissionVersion: currentRecord.body.aefT1SubmissionVersion,
-        aefT1SubmissionReportYear: currentRecord.body.aefT1SubmissionReportYear,
-        aefT1SubmissionSubmissionDate: currentRecord.body.aefT1SubmissionSubmissionDate,
-        aefT1SubmissionReviewStatus: currentRecord.body.aefT1SubmissionReviewStatus || null,
-        aefT1SubmissionResultCheck: currentRecord.body.aefT1SubmissionResultCheck || null,
-        aefT1SubmissionNdcFirstYear: currentRecord.body.aefT1SubmissionNdcFirstYear || null,
-        aefT1SubmissionNdcLastYear: currentRecord.body.aefT1SubmissionNdcLastYear || null,
-        aefT1SubmissionReferenceReviewReport: currentRecord.body.aefT1SubmissionReferenceReviewReport || null,
+        aefT1SubmissionParty: record.aefT1SubmissionParty,
+        aefT1SubmissionVersion: record.aefT1SubmissionVersion,
+        aefT1SubmissionReportYear: record.aefT1SubmissionReportYear,
+        aefT1SubmissionSubmissionDate: record.aefT1SubmissionSubmissionDate,
+        aefT1SubmissionReviewStatus: record.aefT1SubmissionReviewStatus ?? null,
+        aefT1SubmissionResultCheck: record.aefT1SubmissionResultCheck ?? null,
+        aefT1SubmissionNdcFirstYear: record.aefT1SubmissionNdcFirstYear ?? null,
+        aefT1SubmissionNdcLastYear: record.aefT1SubmissionNdcLastYear ?? null,
+        aefT1SubmissionReferenceReviewReport: record.aefT1SubmissionReferenceReviewReport ?? null,
       };
       const response = await makePutRequest(request, '/v2/aef-t1-submission', id, updateData);
       expect(response.success).to.be.true;
@@ -230,9 +239,21 @@ describe('AefT1Submission Live API Validation Tests', function () {
   });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created aef-t1-submissions', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'aef-t1-submission');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
         const response = await makeDeleteRequest(request, '/v2/aef-t1-submission', id);
         expect(response.success).to.be.true;
 
@@ -245,12 +266,6 @@ describe('AefT1Submission Live API Validation Tests', function () {
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 

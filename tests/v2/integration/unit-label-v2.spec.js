@@ -130,7 +130,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
   describe('Unit-Label CRUD Operations', function () {
     it('should create a new unit-label relationship', async function () {
+      const unitLabelId = uuidv4();
       const unitLabelData = {
+        cadTrustUnitLabelId: unitLabelId,
         cadTrustLabelId: testLabelId,
         cadTrustUnitId: testUnitId,
         labelUnitDate: '2024-08-01',
@@ -140,6 +142,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       const unitLabel = await UnitLabelV2Mirror.create(unitLabelData);
 
       expect(unitLabel).to.exist;
+      expect(unitLabel.cadTrustUnitLabelId).to.equal(unitLabelId);
       expect(unitLabel.cadTrustLabelId).to.equal(testLabelId);
       expect(unitLabel.cadTrustUnitId).to.equal(testUnitId);
       expect(unitLabel.labelUnitDate).to.equal('2024-08-01');
@@ -148,7 +151,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       expect(unitLabel.updatedAt).to.exist;
     });
 
-    it('should read a unit-label relationship by composite key', async function () {
+    it('should read a unit-label relationship by UUID', async function () {
       // Create a new label for this test to avoid conflicts
       const newLabel = await LabelV2.create({
         cadTrustLabelId: uuidv4(),
@@ -158,7 +161,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelDate: '2024-08-01',
       });
 
+      const unitLabelId = uuidv4();
       const unitLabelData = {
+        cadTrustUnitLabelId: unitLabelId,
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
         labelUnitDate: '2024-09-01',
@@ -168,12 +173,12 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       const createdUnitLabel = await UnitLabelV2Mirror.create(unitLabelData);
       const foundUnitLabel = await UnitLabelV2.findOne({
         where: {
-          cadTrustLabelId: newLabel.cadTrustLabelId,
-          cadTrustUnitId: testUnitId,
+          cadTrustUnitLabelId: unitLabelId,
         },
       });
 
       expect(foundUnitLabel).to.exist;
+      expect(foundUnitLabel.cadTrustUnitLabelId).to.equal(unitLabelId);
       expect(foundUnitLabel.cadTrustLabelId).to.equal(newLabel.cadTrustLabelId);
       expect(foundUnitLabel.cadTrustUnitId).to.equal(testUnitId);
       expect(foundUnitLabel.labelUnitDate).to.equal('2024-09-01');
@@ -205,7 +210,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelDate: '2024-09-01',
       });
 
+      const unitLabelId = uuidv4();
       const unitLabelData = {
+        cadTrustUnitLabelId: unitLabelId,
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
         labelUnitDate: '2024-10-01',
@@ -225,12 +232,12 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
       const updatedUnitLabel = await UnitLabelV2Mirror.findOne({
         where: {
-          cadTrustLabelId: createdUnitLabel.cadTrustLabelId,
-          cadTrustUnitId: createdUnitLabel.cadTrustUnitId,
+          cadTrustUnitLabelId: unitLabelId,
         },
       });
 
       expect(updatedUnitLabel).to.exist;
+      expect(updatedUnitLabel.cadTrustUnitLabelId).to.equal(unitLabelId);
       expect(updatedUnitLabel.cadTrustLabelId).to.equal(createdUnitLabel.cadTrustLabelId);
       expect(updatedUnitLabel.cadTrustUnitId).to.equal(createdUnitLabel.cadTrustUnitId);
       expect(updatedUnitLabel.labelUnitDate).to.equal('2024-11-01');
@@ -247,7 +254,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelDate: '2024-11-01',
       });
 
+      const unitLabelId = uuidv4();
       const unitLabelData = {
+        cadTrustUnitLabelId: unitLabelId,
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
         labelUnitDate: '2024-12-01',
@@ -260,8 +269,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
       const deletedUnitLabel = await UnitLabelV2Mirror.findOne({
         where: {
-          cadTrustLabelId: newLabel.cadTrustLabelId,
-          cadTrustUnitId: testUnitId,
+          cadTrustUnitLabelId: unitLabelId,
         },
       });
       expect(deletedUnitLabel).to.be.null;
@@ -335,7 +343,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelDate: null,
       });
 
+      const unitLabelId = uuidv4();
       const unitLabelData = {
+        cadTrustUnitLabelId: unitLabelId,
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
         labelUnitDate: null,
@@ -345,6 +355,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       const unitLabel = await UnitLabelV2Mirror.create(unitLabelData);
 
       expect(unitLabel).to.exist;
+      expect(unitLabel.cadTrustUnitLabelId).to.equal(unitLabelId);
       expect(unitLabel.cadTrustLabelId).to.equal(newLabel.cadTrustLabelId);
       expect(unitLabel.cadTrustUnitId).to.equal(testUnitId);
       expect(unitLabel.labelUnitDate).to.be.null;
@@ -394,7 +405,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelLink: 'https://example.com/validfk',
       });
 
+      const unitLabelId = uuidv4();
       const unitLabelData = {
+        cadTrustUnitLabelId: unitLabelId,
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
       };
@@ -402,6 +415,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       const unitLabel = await UnitLabelV2Mirror.create(unitLabelData);
 
       expect(unitLabel).to.exist;
+      expect(unitLabel.cadTrustUnitLabelId).to.equal(unitLabelId);
       expect(unitLabel.cadTrustLabelId).to.equal(newLabel.cadTrustLabelId);
       expect(unitLabel.cadTrustUnitId).to.equal(testUnitId);
     });
@@ -417,7 +431,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelLink: 'https://example.com/association',
       });
 
+      const unitLabelId = uuidv4();
       const unitLabelData = {
+        cadTrustUnitLabelId: unitLabelId,
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
       };
@@ -426,8 +442,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
       const unitLabelWithAssociations = await UnitLabelV2.findOne({
         where: {
-          cadTrustLabelId: newLabel.cadTrustLabelId,
-          cadTrustUnitId: testUnitId,
+          cadTrustUnitLabelId: unitLabelId,
         },
         include: [
           {
@@ -453,8 +468,8 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
     });
   });
 
-  describe('Unit-Label Composite Primary Key Tests', function () {
-    it('should enforce uniqueness of composite primary key', async function () {
+  describe('Unit-Label Primary Key Tests', function () {
+    it('should enforce uniqueness of primary key', async function () {
       // Create a new label for this test to avoid conflicts
       const newLabel = await LabelV2.create({
         cadTrustLabelId: uuidv4(),
@@ -463,7 +478,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelLink: 'https://example.com/uniqueness',
       });
 
+      const unitLabelId = uuidv4();
       const unitLabelData = {
+        cadTrustUnitLabelId: unitLabelId,
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
         labelUnitDate: '2024-07-15',
@@ -473,7 +490,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       // Create first relationship
       await UnitLabelV2Mirror.create(unitLabelData);
 
-      // Try to create duplicate relationship
+      // Try to create duplicate with same UUID (should fail)
       try {
         await UnitLabelV2Mirror.create(unitLabelData);
         expect.fail('Should have thrown unique constraint error');
@@ -515,11 +532,13 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       });
 
       const unitLabelData1 = {
+        cadTrustUnitLabelId: uuidv4(),
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
       };
 
       const unitLabelData2 = {
+        cadTrustUnitLabelId: uuidv4(),
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: anotherUnit.cadTrustUnitId,
       };
@@ -548,11 +567,13 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       });
 
       const unitLabelData1 = {
+        cadTrustUnitLabelId: uuidv4(),
         cadTrustLabelId: label1.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
       };
 
       const unitLabelData2 = {
+        cadTrustUnitLabelId: uuidv4(),
         cadTrustLabelId: label2.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
       };
@@ -575,7 +596,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelLink: 'https://example.com/date',
       });
 
+      const unitLabelId = uuidv4();
       const unitLabelData = {
+        cadTrustUnitLabelId: unitLabelId,
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
         labelUnitDate: '2024-12-31',
@@ -595,8 +618,10 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelLink: 'https://example.com/description',
       });
 
+      const unitLabelId = uuidv4();
       const longDescription = 'A'.repeat(1000); // Long description
       const unitLabelData = {
+        cadTrustUnitLabelId: unitLabelId,
         cadTrustLabelId: newLabel.cadTrustLabelId,
         cadTrustUnitId: testUnitId,
         labelUnitDescription: longDescription,
@@ -635,13 +660,13 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       expect(response.status).to.equal(200);
       expect(response.body).to.have.property('message');
       expect(response.body.message).to.equal('Unit-Label relationship staged successfully');
-      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustUnitLabelId');
       expect(response.body).to.have.property('success', true);
       expect(response.body).to.not.have.property('data');
 
       // Verify record was staged
       const stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
+        where: { uuid: response.body.cadTrustUnitLabelId },
       });
       expect(stagingRecord).to.exist;
       expect(stagingRecord.table).to.equal('unit_label');
@@ -688,9 +713,10 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
     });
   });
 
-  describe('PUT /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId (Update)', function () {
+  describe('PUT /v2/unit-label/:cadTrustUnitLabelId (Update)', function () {
     let createdLabelId;
     let createdUnitId;
+    let createdUnitLabelId;
 
     before(async function () {
       // Create via API
@@ -706,16 +732,23 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
       createdLabelId = testLabelId;
       createdUnitId = testUnitId;
+      createdUnitLabelId = response.body.cadTrustUnitLabelId || response.body.uuid;
+
+      if (!createdUnitLabelId) {
+        throw new Error('Failed to get unit-label ID from POST response for update test');
+      }
 
       let stagingRecord = null;
-      if (response.body.uuid) {
+      const stagingUuid = response.body.uuid || response.body.cadTrustUnitLabelId;
+      if (stagingUuid) {
         stagingRecord = await StagingV2.findOne({
-          where: { uuid: response.body.uuid },
+          where: { uuid: stagingUuid },
         });
       }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await UnitLabelV2.create({
+          cadTrustUnitLabelId: createdUnitLabelId,
           cadTrustLabelId: createdLabelId,
           cadTrustUnitId: createdUnitId,
           labelUnitDate: '2024-01-01',
@@ -734,7 +767,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       };
 
       const response = await supertest(app)
-        .put(`/v2/unit-label/${createdLabelId}/${createdUnitId}`)
+        .put(`/v2/unit-label/${createdUnitLabelId}`)
         .send(updateData);
 
       expect(response.status).to.equal(200);
@@ -744,11 +777,16 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
     });
   });
 
-  describe('DELETE /v2/unit-label/:cadTrustLabelId/:cadTrustUnitId (Delete)', function () {
+  describe('DELETE /v2/unit-label/:cadTrustUnitLabelId (Delete)', function () {
     let createdLabelId;
     let createdUnitId;
+    let createdUnitLabelId;
 
     before(async function () {
+      // Clean up any existing unit-label relationships for test isolation
+      await UnitLabelV2.destroy({ where: { cadTrustLabelId: testLabelId, cadTrustUnitId: testUnitId } });
+      await StagingV2.destroy({ where: { table: 'unit_label' } });
+
       // Create via API
       const unitLabelData = {
         cadTrustLabelId: testLabelId,
@@ -757,35 +795,50 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
       const response = await supertest(app)
         .post('/v2/unit-label')
-        .send(unitLabelData);
+        .send(unitLabelData)
+        .expect(200);
 
       createdLabelId = testLabelId;
       createdUnitId = testUnitId;
+      createdUnitLabelId = response.body.cadTrustUnitLabelId || response.body.uuid;
+
+      if (!createdUnitLabelId) {
+        throw new Error('Failed to get unit-label ID from POST response');
+      }
 
       let stagingRecord = null;
-      if (response.body.uuid) {
+      const stagingUuid = response.body.uuid || response.body.cadTrustUnitLabelId;
+      if (stagingUuid) {
         stagingRecord = await StagingV2.findOne({
-          where: { uuid: response.body.uuid },
+          where: { uuid: stagingUuid },
         });
       }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await UnitLabelV2.create({
+          cadTrustUnitLabelId: createdUnitLabelId,
           cadTrustLabelId: createdLabelId,
           cadTrustUnitId: createdUnitId,
         });
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();
       }
+
+      // Verify record was created successfully
+      const verifyRecord = await UnitLabelV2.findByPk(createdUnitLabelId);
+      if (!verifyRecord) {
+        throw new Error(`Failed to create unit-label record with ID: ${createdUnitLabelId}`);
+      }
     });
 
     it('should delete a unit-label relationship via API', async function () {
       const response = await supertest(app)
-        .delete(`/v2/unit-label/${createdLabelId}/${createdUnitId}`);
+        .delete(`/v2/unit-label/${createdUnitLabelId}`);
 
       expect(response.status).to.equal(200);
       expect(response.body).to.have.property('message');
       expect(response.body.message).to.equal('Unit-Label relationship delete staged successfully');
+      expect(response.body).to.have.property('cadTrustUnitLabelId');
       expect(response.body).to.have.property('success', true);
     });
   });

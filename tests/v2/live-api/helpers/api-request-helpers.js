@@ -41,6 +41,8 @@ export const extractIdFromResponse = (endpoint, responseBody) => {
     '/v2/label': 'cadTrustLabelId',
     '/v2/location': 'cadTrustLocationId',
     '/v2/stakeholder-projects': 'cadTrustStakeholderProjectId',
+    '/v2/project-methodology': 'cadTrustProjectMethodologyId',
+    '/v2/unit-label': 'cadTrustUnitLabelId',
     '/v2/aef-t1-submission': 'cadTrustAefT1SubmissionId',
     '/v2/aef-t2-authorizations': 'cadTrustAefT2AuthorizationsId',
     '/v2/aef-t3-actions': 'cadTrustAefT3ActionsId',
@@ -48,16 +50,7 @@ export const extractIdFromResponse = (endpoint, responseBody) => {
     '/v2/aef-t5-authorized-entities': 'cadTrustAefT5AuthorizedEntitiesId',
   };
 
-  // Special handling for composite key endpoints
-  if (endpoint === '/v2/project-methodology') {
-    // These don't return IDs in the response, need to construct from request data
-    return null; // Caller should handle this
-  }
-
-  if (endpoint === '/v2/unit-label') {
-    // These don't return IDs in the response, need to construct from request data
-    return null; // Caller should handle this
-  }
+  // All endpoints now return UUID primary keys in response
 
   const idField = endpointToIdField[endpoint];
   if (!idField) {
@@ -77,8 +70,8 @@ export const extractIdFromResponse = (endpoint, responseBody) => {
  * @returns {Promise<{id: string|object|null, response: object}>} - ID and full response
  */
 export const makePostRequest = async (request, endpoint, data, expectId = true) => {
-  // Log the request URI (without data) with timestamp
-  console.log(`[${getTimestamp()}] POST ${endpoint}`);
+  // Note: Request logging is handled by the request wrapper in live-api-helpers.js
+  // No need to log here to avoid duplicate logs
 
   let response;
   let lastError;
@@ -88,10 +81,38 @@ export const makePostRequest = async (request, endpoint, data, expectId = true) 
     try {
       response = await request
         .post(endpoint)
-        .send(data)
-        .expect(200);
-      // Success - break out of retry loop
-      break;
+        .send(data);
+
+      // Check status code manually so we can capture error responses
+      if (response.status === 200) {
+        // Success - break out of retry loop
+        break;
+      } else {
+        // Non-200 response - log it and throw
+        const errorBody = response.body || {};
+        const errorMessage = errorBody.error || errorBody.message || `HTTP ${response.status}`;
+        const errorDetails = errorBody.details || errorBody.validation || '';
+
+        console.error(`[${getTimestamp()}] POST ${endpoint} failed with status ${response.status} (attempt ${attempt + 1}/2):`);
+        console.error(`  Error: ${errorMessage}`);
+        if (errorDetails) {
+          console.error(`  Details: ${typeof errorDetails === 'string' ? errorDetails : JSON.stringify(errorDetails, null, 2)}`);
+        }
+        // Also log full response body for debugging
+        console.error(`  Full response:`, JSON.stringify(errorBody, null, 2));
+
+        // Create an error object similar to supertest's
+        const error = new Error(`expected 200 "OK", got ${response.status} "${response.statusText}"`);
+        error.status = response.status;
+        error.response = response;
+        lastError = error;
+
+        // If this was the first attempt, wait 3 seconds before retrying
+        if (attempt === 0) {
+          console.log(`[${getTimestamp()}] Retrying POST ${endpoint} after 3 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
     } catch (error) {
       lastError = error;
       // supertest errors structure: error.status, error.response.status, error.response.body
@@ -118,6 +139,10 @@ export const makePostRequest = async (request, endpoint, data, expectId = true) 
         console.error(`  Error object keys:`, Object.keys(error));
         if (error.response) console.error(`  error.response keys:`, Object.keys(error.response));
         if (error.res) console.error(`  error.res keys:`, Object.keys(error.res));
+        // Try to get response body from error if available
+        if (error.response?.body) {
+          console.error(`  Response body:`, JSON.stringify(error.response.body, null, 2));
+        }
       }
 
       // If this was the first attempt, wait 3 seconds before retrying
@@ -133,24 +158,17 @@ export const makePostRequest = async (request, endpoint, data, expectId = true) 
     throw lastError;
   }
 
+  // Return response object even for non-200 status codes so tests can handle them
+  // The response.body will contain the error information
+  if (response.status !== 200) {
+    return { id: null, response: response.body };
+  }
+
   let id = null;
   if (expectId) {
     id = extractIdFromResponse(endpoint, response.body);
     if (!id) {
-      // For composite key endpoints, construct ID from request data
-      if (endpoint === '/v2/project-methodology') {
-        id = {
-          projectId: data.cadTrustProjectId,
-          methodologyId: data.cadTrustMethodologyId,
-        };
-      } else if (endpoint === '/v2/unit-label') {
-        id = {
-          labelId: data.cadTrustLabelId,
-          unitId: data.cadTrustUnitId,
-        };
-      } else {
-        console.warn(`⚠️  No ID found in POST response for ${endpoint}`);
-      }
+      console.warn(`⚠️  No ID found in POST response for ${endpoint}`);
     }
   }
 
@@ -167,21 +185,11 @@ export const makePostRequest = async (request, endpoint, data, expectId = true) 
  */
 export const makePutRequest = async (request, endpoint, id, data) => {
   // Construct full endpoint path with ID
-  let fullEndpoint;
-  if (typeof id === 'object') {
-    if (endpoint === '/v2/project-methodology') {
-      fullEndpoint = `/v2/project-methodology/project/${id.projectId}/methodology/${id.methodologyId}`;
-    } else if (endpoint === '/v2/unit-label') {
-      fullEndpoint = `/v2/unit-label/${id.labelId}/${id.unitId}`;
-    } else {
-      throw new Error(`Unknown composite key endpoint: ${endpoint}`);
-    }
-  } else {
-    fullEndpoint = `${endpoint}/${id}`;
-  }
+  // All endpoints now use UUID primary keys
+  const fullEndpoint = `${endpoint}/${id}`;
 
-  // Log the request URI (without data) with timestamp
-  console.log(`[${getTimestamp()}] PUT ${fullEndpoint}`);
+  // Note: Request logging is handled by the request wrapper in live-api-helpers.js
+  // No need to log here to avoid duplicate logs
 
   let response;
   let lastError;
@@ -191,10 +199,38 @@ export const makePutRequest = async (request, endpoint, id, data) => {
     try {
       response = await request
         .put(fullEndpoint)
-        .send(data)
-        .expect(200);
-      // Success - break out of retry loop
-      break;
+        .send(data);
+
+      // Check status code manually so we can capture error responses
+      if (response.status === 200) {
+        // Success - break out of retry loop
+        break;
+      } else {
+        // Non-200 response - log it and throw
+        const errorBody = response.body || {};
+        const errorMessage = errorBody.error || errorBody.message || `HTTP ${response.status}`;
+        const errorDetails = errorBody.details || errorBody.validation || '';
+
+        console.error(`[${getTimestamp()}] PUT ${fullEndpoint} failed with status ${response.status} (attempt ${attempt + 1}/2):`);
+        console.error(`  Error: ${errorMessage}`);
+        if (errorDetails) {
+          console.error(`  Details: ${typeof errorDetails === 'string' ? errorDetails : JSON.stringify(errorDetails, null, 2)}`);
+        }
+        // Also log full response body for debugging
+        console.error(`  Full response:`, JSON.stringify(errorBody, null, 2));
+
+        // Create an error object similar to supertest's
+        const error = new Error(`expected 200 "OK", got ${response.status} "${response.statusText}"`);
+        error.status = response.status;
+        error.response = response;
+        lastError = error;
+
+        // If this was the first attempt, wait 3 seconds before retrying
+        if (attempt === 0) {
+          console.log(`[${getTimestamp()}] Retrying PUT ${fullEndpoint} after 3 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
     } catch (error) {
       lastError = error;
       // supertest errors structure: error.status, error.response.status, error.response.body
@@ -221,6 +257,10 @@ export const makePutRequest = async (request, endpoint, id, data) => {
         console.error(`  Error object keys:`, Object.keys(error));
         if (error.response) console.error(`  error.response keys:`, Object.keys(error.response));
         if (error.res) console.error(`  error.res keys:`, Object.keys(error.res));
+        // Try to get response body from error if available
+        if (error.response?.body) {
+          console.error(`  Response body:`, JSON.stringify(error.response.body, null, 2));
+        }
       }
 
       // If this was the first attempt, wait 3 seconds before retrying
@@ -236,6 +276,12 @@ export const makePutRequest = async (request, endpoint, id, data) => {
     throw lastError;
   }
 
+  // Return response object even for non-200 status codes so tests can handle them
+  // The response.body will contain the error information
+  if (response.status !== 200) {
+    return response.body;
+  }
+
   return response.body;
 };
 
@@ -248,25 +294,25 @@ export const makePutRequest = async (request, endpoint, id, data) => {
  */
 export const makeDeleteRequest = async (request, endpoint, id) => {
   // Construct full endpoint path with ID
-  let fullEndpoint;
-  if (typeof id === 'object') {
-    if (endpoint === '/v2/project-methodology') {
-      fullEndpoint = `/v2/project-methodology/project/${id.projectId}/methodology/${id.methodologyId}`;
-    } else if (endpoint === '/v2/unit-label') {
-      fullEndpoint = `/v2/unit-label/${id.labelId}/${id.unitId}`;
-    } else {
-      throw new Error(`Unknown composite key endpoint: ${endpoint}`);
-    }
-  } else {
-    fullEndpoint = `${endpoint}/${id}`;
-  }
+  // All endpoints now use UUID primary keys
+  const fullEndpoint = `${endpoint}/${id}`;
 
-  // Log the request URI (without data) with timestamp
-  console.log(`[${getTimestamp()}] DELETE ${fullEndpoint}`);
+  // Note: Request logging is handled by the request wrapper in live-api-helpers.js
+  // No need to log here to avoid duplicate logs
 
   const response = await request
-    .delete(fullEndpoint)
-    .expect(200);
+    .delete(fullEndpoint);
+
+  // Return response object even for non-200 status codes so tests can handle them
+  // The response.body will contain the error information
+  if (response.status !== 200) {
+    const errorBody = response.body || {};
+    const errorMessage = errorBody.error || errorBody.message || `HTTP ${response.status}`;
+    console.error(`[${getTimestamp()}] DELETE ${fullEndpoint} failed with status ${response.status}:`);
+    console.error(`  Error: ${errorMessage}`);
+    console.error(`  Full response:`, JSON.stringify(errorBody, null, 2));
+    return response.body;
+  }
 
   return response.body;
 };
@@ -323,34 +369,27 @@ export const checkRecordInStaging = async (request, endpoint, id, expectedData) 
 
         // Check if ID matches
         let idMatches = false;
-        if (typeof id === 'object') {
-          // For composite keys, check all key fields
-          if (endpoint === '/v2/project-methodology' || endpoint === '/v2/projectMethodology') {
-            const projectIdField = 'cad_trust_project_id';
-            const methodologyIdField = 'cad_trust_methodology_id';
-            idMatches = changeData[projectIdField] === id.projectId &&
-                       changeData[methodologyIdField] === id.methodologyId;
-          } else if (endpoint === '/v2/unit-label' || endpoint === '/v2/unitLabel') {
-            const labelIdField = 'cad_trust_label_id';
-            const unitIdField = 'cad_trust_unit_id';
-            idMatches = changeData[labelIdField] === id.labelId &&
-                       changeData[unitIdField] === id.unitId;
-          }
-        } else {
-          // For single keys, find the ID field (primary key field is cad_trust_{table}_id)
-          // Try both camelCase and snake_case ID field names
-          const idFieldSnake = `cad_trust_${tableName}_id`;
-          const idFieldCamel = `cadTrust${tableName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}Id`;
+        // All tables now use UUID primary keys
+        // Find the ID field (primary key field is cad_trust_{table}_id)
+        // Try both camelCase and snake_case ID field names
+        const idFieldSnake = `cad_trust_${tableName}_id`;
+        const idFieldCamel = `cadTrust${tableName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')}Id`;
 
-          // Handle special cases
-          let actualIdField;
-          if (tableName === 'project_methodology') {
-            // This is a composite key table, shouldn't reach here
-            continue;
-          } else if (tableName === 'unit_label') {
-            // This is a composite key table, shouldn't reach here
-            continue;
-          } else {
+        // Handle special cases for table name variations
+        let actualIdField;
+        if (tableName === 'project_methodology') {
+          actualIdField = Object.keys(changeData).find(key =>
+            key === 'cad_trust_project_methodology_id' ||
+            key === 'cadTrustProjectMethodologyId' ||
+            (key.toLowerCase() === 'cad_trust_project_methodology_id' && changeData[key] === id)
+          );
+        } else if (tableName === 'unit_label') {
+          actualIdField = Object.keys(changeData).find(key =>
+            key === 'cad_trust_unit_label_id' ||
+            key === 'cadTrustUnitLabelId' ||
+            (key.toLowerCase() === 'cad_trust_unit_label_id' && changeData[key] === id)
+          );
+        } else {
             // Try to find the ID field - check exact matches first
             actualIdField = Object.keys(changeData).find(key =>
               key === idFieldSnake || // Exact snake_case match
@@ -371,7 +410,6 @@ export const checkRecordInStaging = async (request, endpoint, id, expectedData) 
           if (actualIdField && changeData[actualIdField] === id) {
             idMatches = true;
           }
-        }
 
         if (idMatches) {
           // Verify data matches expected data

@@ -138,10 +138,7 @@ export const getEstimationV2 = async (req, res) => {
       });
     }
 
-    res.status(200).json({
-      success: true,
-      data: estimation,
-    });
+    res.json(estimation);
   } catch (err) {
     loggerV2.error('[v2]: Error fetching estimation:', err);
     res.status(400).json({

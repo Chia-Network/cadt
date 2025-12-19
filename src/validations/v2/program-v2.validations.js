@@ -11,8 +11,8 @@ export const programV2Schema = Joi.object({
   programName: Joi.string().required(),
   programRegistry: Joi.string().required(),
   programRegistryActivityId: Joi.string().required(),
-  programRegistryProgramId: Joi.string().optional(),
-  programDescription: Joi.string().optional(),
+  programRegistryProgramId: Joi.string().allow(null).optional(),
+  programDescription: Joi.string().allow(null).optional(),
 
   // Timestamps - forbidden in requests
   createdAt: Joi.date().forbidden().messages({

@@ -15,19 +15,17 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
-  generateEstimation,
-  generateEstimationMinimal,
-  generateEstimationMaximal,
-  generateEstimationLongStrings,
-  generateEstimationForbiddenFields,
-  generateProject,
+  generateCoBenefit,
+  generateCoBenefitMinimal,
+  generateCoBenefitMaximal,
+  generateCoBenefitForbiddenFields,
   getLongString,
   getInvalidPicklistValue,
 } from './data/test-data-generators.js';
 
-describe('Estimation Live API Validation Tests', function () {
+describe('CoBenefit Live API Validation Tests', function () {
   this.timeout(600000); // 10 minute timeout
   let request;
   let homeOrgId;
@@ -43,33 +41,30 @@ describe('Estimation Live API Validation Tests', function () {
       if (!projectId) {
         this.skip();
       }
-      const forbiddenData = generateEstimationForbiddenFields(projectId);
+      const forbiddenData = generateCoBenefitForbiddenFields(projectId);
       const response = await request
-        .post('/v2/estimation')
+        .post('/v2/co-benefit')
         .send(forbiddenData);
       expect(response.status).to.not.equal(200);
     });
-    it('should reject POST with invalid date range (end before start)', async function () {
+    it('should reject POST with invalid picklist values', async function () {
       const projectId = getFirstCreatedId('project');
       if (!projectId) {
         this.skip();
       }
-      const invalidData = {
-        estimationStartDate: '2024-12-31',
-        estimationEndDate: '2024-01-01', // End before start
-        cadTrustProjectId: projectId,
-      };
+      const invalidData = generateCoBenefitMinimal(projectId);
+      invalidData.coBenefitId = getInvalidPicklistValue('coBenefitId');
       const response = await request
-        .post('/v2/estimation')
+        .post('/v2/co-benefit')
         .send(invalidData);
 
       expect(response.status).to.not.equal(200);
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { estimationStartDate: '2024-01-01' }; // Missing estimationEndDate and cadTrustProjectId
+      const incompleteData = { coBenefitId: 'SDG 13 - Climate action' }; // Missing cadTrustProjectId
       const response = await request
-        .post('/v2/estimation')
+        .post('/v2/co-benefit')
         .send(incompleteData);
 
       expect(response.status).to.not.equal(200);
@@ -80,9 +75,10 @@ describe('Estimation Live API Validation Tests', function () {
       if (!projectId) {
         this.skip();
       }
-      const longData = generateEstimationLongStrings(projectId);
+      const longData = generateCoBenefit(projectId);
+      // Note: Long strings test may need manual adjustment
       const response = await request
-        .post('/v2/estimation')
+        .post('/v2/co-benefit')
         .send(longData);
 
       // May or may not fail depending on validation rules
@@ -98,24 +94,23 @@ describe('Estimation Live API Validation Tests', function () {
     });
   });
   describe('Step 4: POST Request Tests', function () {
-    it('should create estimations with typical, minimal, and maximal data', async function () {
+    it('should create coBenefits with typical, minimal, and maximal data', async function () {
       // Get project ID from earlier test (project-validation.spec.js runs before this)
       const projectId = getFirstCreatedId('project');
       if (!projectId) {
-        throw new Error('Project ID not found. Ensure project-validation.spec.js runs before estimation-validation.spec.js');
+        throw new Error('Project ID not found. Ensure project-validation.spec.js runs before co-benefit-validation.spec.js');
       }
 
       // Create 1 typical record
-      const data = generateEstimation(projectId);
-      const { id, response } = await makePostRequest(request, '/v2/estimation', data);
+      const data = generateCoBenefit(projectId);
+      const { id, response } = await makePostRequest(request, '/v2/co-benefit', data);
       expect(response.success).to.be.true;
       expect(id).to.exist;
       createdIds.push(id);
-      addCreatedId('estimation', id);
+      addCreatedId('coBenefit', id);
       // Check record is in staging table
-      const inStaging = await checkRecordInStaging(request, '/v2/estimation', id, {
-        estimationStartDate: data.estimationStartDate,
-        estimationEndDate: data.estimationEndDate,
+      const inStaging = await checkRecordInStaging(request, '/v2/co-benefit', id, {
+        coBenefitId: data.coBenefitId,
       });
       expect(inStaging).to.be.true;
       // Commit if in extended mode
@@ -123,49 +118,46 @@ describe('Estimation Live API Validation Tests', function () {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'estimation', id);
+        await waitForDataToAppear(request, 'coBenefit', id);
       } else {
-        trackBatchVerification('POST', 'estimation', id, {
-          estimationStartDate: data.estimationStartDate,
-          estimationEndDate: data.estimationEndDate,
+        trackBatchVerification('POST', 'coBenefit', id, {
+          coBenefitId: data.coBenefitId,
         });
       }
 
       // Create 1 minimal record
-      const minimalData = generateEstimationMinimal(projectId);
-      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/estimation', minimalData);
+      const minimalData = generateCoBenefitMinimal(getFirstCreatedId('project'));
+      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/co-benefit', minimalData);
       expect(minResponse.success).to.be.true;
       createdIds.push(minId);
-      addCreatedId('estimation', minId);
+      addCreatedId('coBenefit', minId);
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'estimation', minId);
+        await waitForDataToAppear(request, 'coBenefit', minId);
       } else {
-        trackBatchVerification('POST', 'estimation', minId, {
-          estimationStartDate: minimalData.estimationStartDate,
-          estimationEndDate: minimalData.estimationEndDate,
+        trackBatchVerification('POST', 'coBenefit', minId, {
+          coBenefitId: minimalData.coBenefitId,
         });
       }
 
       // Create 1 maximal record
-      const maximalData = generateEstimationMaximal(projectId);
-      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/estimation', maximalData);
+      const maximalData = generateCoBenefitMaximal(getFirstCreatedId('project'));
+      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/co-benefit', maximalData);
       expect(maxResponse.success).to.be.true;
       createdIds.push(maxId);
-      addCreatedId('estimation', maxId);
+      addCreatedId('coBenefit', maxId);
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'estimation', maxId);
+        await waitForDataToAppear(request, 'coBenefit', maxId);
       } else {
-        trackBatchVerification('POST', 'estimation', maxId, {
-          estimationStartDate: maximalData.estimationStartDate,
-          estimationEndDate: maximalData.estimationEndDate,
+        trackBatchVerification('POST', 'coBenefit', maxId, {
+          coBenefitId: maximalData.coBenefitId,
         });
       }
     });
@@ -178,7 +170,7 @@ describe('Estimation Live API Validation Tests', function () {
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
         // Wait for all records to appear
-        const recordsToWaitFor = createdIds.map(id => ({ type: 'estimation', id }));
+        const recordsToWaitFor = createdIds.map(id => ({ type: 'coBenefit', id }));
         await waitForBatchToAppear(request, recordsToWaitFor);
       }
     });
@@ -187,45 +179,49 @@ describe('Estimation Live API Validation Tests', function () {
   describe('Step 6: Validation After Commit', function () {
     it('should validate all created records are in database', async function () {
       for (const id of createdIds) {
-        const record = await waitForDataToAppear(request, 'estimation', id);
+        const record = await waitForDataToAppear(request, 'coBenefit', id);
         expect(record).to.exist;
-        expect(record.cadTrustEstimationId).to.equal(id);
+        expect(record.cadTrustCoBenefitId).to.equal(id);
       }
     });
   });
   describe('Step 7: PUT Request Tests', function () {
-    it('should update a estimation', async function () {
-      const id = createdIds[0];
+    it('should update a coBenefit', async function () {
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'co-benefit');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
-      const currentRecord = await request.get(`/v2/estimation/${id}`).expect(200);
+      const currentRecord = await request.get(`/v2/co-benefit/${id}`).expect(200);
       // Create update data with ALL fields
       const updateData = {
-        estimationStartDate: currentRecord.body.estimationStartDate,
-        estimationEndDate: currentRecord.body.estimationEndDate,
-        estimationUnitCount: currentRecord.body.estimationUnitCount || null,
-        estimationReferenceNo: `UPDATED-${Date.now()}`,
+        coBenefitId: 'SDG 17 - Partnerships for the goals', // Different SDG value
         cadTrustProjectId: currentRecord.body.cadTrustProjectId,
       };
-      const response = await makePutRequest(request, '/v2/estimation', id, updateData);
+      const response = await makePutRequest(request, '/v2/co-benefit', id, updateData);
       expect(response.success).to.be.true;
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'estimation', id);
-        await validateDataInDatabase(request, 'estimation', id, {
-          estimationReferenceNo: updateData.estimationReferenceNo,
+        await waitForDataToAppear(request, 'coBenefit', id);
+        await validateDataInDatabase(request, 'coBenefit', id, {
+          coBenefitId: updateData.coBenefitId,
         });
       } else {
-        trackBatchVerification('PUT', 'estimation', id, updateData);
+        trackBatchVerification('PUT', 'coBenefit', id, updateData);
       }
     });
   });
   describe('Step 8: GET Request Tests', function () {
-    it('should list all estimations with pagination', async function () {
+    it('should list all coBenefits with pagination', async function () {
       const response = await request
-        .get('/v2/estimation?page=1&limit=5')
+        .get('/v2/co-benefit?page=1&limit=5')
         .expect(200);
 
       expect(response.body).to.have.property('data');
@@ -233,30 +229,42 @@ describe('Estimation Live API Validation Tests', function () {
       expect(response.body).to.have.property('pageCount');
     });
 
-    it('should get a specific estimation by ID', async function () {
+    it('should get a specific coBenefit by ID', async function () {
       const id = createdIds[0];
       const response = await request
-        .get(`/v2/estimation/${id}`)
+        .get(`/v2/co-benefit/${id}`)
         .expect(200);
 
-      expect(response.body.cadTrustEstimationId).to.equal(id);
+      expect(response.body.cadTrustCoBenefitId).to.equal(id);
     });
 
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
-        .get('/v2/estimation')
+        .get('/v2/co-benefit')
         .expect(200);
 
       expect(response.body).to.exist;
     });
   });
   describe('Step 9: DELETE Request Tests', function () {
-    it('should delete all created estimations', async function () {
+    it('should delete all created coBenefits', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'co-benefit');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
-        const response = await makeDeleteRequest(request, '/v2/estimation', id);
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
+        const response = await makeDeleteRequest(request, '/v2/co-benefit', id);
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
@@ -264,24 +272,18 @@ describe('Estimation Live API Validation Tests', function () {
           await waitForPendingCommits(request);
           await waitForStagingEmpty(request);
         } else {
-          trackBatchVerification('DELETE', 'estimation', id);
+          trackBatchVerification('DELETE', 'coBenefit', id);
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 
   describe('Step 10: Final Validation', function () {
-    it('should verify all estimations are deleted', async function () {
-      const response = await request.get('/v2/estimation').expect(200);
+    it('should verify all coBenefits are deleted', async function () {
+      const response = await request.get('/v2/co-benefit').expect(200);
       const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
-      // Should only have estimations that existed before tests
+      // Should only have coBenefits that existed before tests
       expect(data.length).to.equal(0);
     });
   });

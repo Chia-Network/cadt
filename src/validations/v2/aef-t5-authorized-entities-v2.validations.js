@@ -31,32 +31,32 @@ export const aefT5AuthorizedEntitiesV2Schema = Joi.object({
   }),
 
   // Optional fields
-  aefT5AuthorizedEntitiesIncorporationCountry: Joi.string().valid(...countryPicklist).allow(null).messages({
+  aefT5AuthorizedEntitiesIncorporationCountry: Joi.string().valid(...countryPicklist).allow(null).optional().messages({
     'any.only': `aefT5AuthorizedEntitiesIncorporationCountry does not include a valid option. Valid options are: ${countryPicklist.join(', ')}`,
   }),
 
-  aefT5AuthorizedEntitiesConditions: Joi.string().allow(null).messages({
+  aefT5AuthorizedEntitiesConditions: Joi.string().allow(null).optional().messages({
     'string.base': 'aefT5AuthorizedEntitiesConditions must be a string',
   }),
 
-  aefT5AuthorizedEntitiesChangeConditions: Joi.string().allow(null).messages({
+  aefT5AuthorizedEntitiesChangeConditions: Joi.string().allow(null).optional().messages({
     'string.base': 'aefT5AuthorizedEntitiesChangeConditions must be a string',
   }),
 
-  aefT5AuthorizedEntitiesAdditionalInformation: Joi.string().allow(null).messages({
+  aefT5AuthorizedEntitiesAdditionalInformation: Joi.string().allow(null).optional().messages({
     'string.base': 'aefT5AuthorizedEntitiesAdditionalInformation must be a string',
   }),
 
   // Foreign keys - optional
-  cadTrustAefT1SubmissionId: Joi.string().uuid().allow(null).messages({
+  cadTrustAefT1SubmissionId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustAefT1SubmissionId must be a valid UUID',
   }),
 
-  cadTrustUnitId: Joi.string().uuid().allow(null).messages({
+  cadTrustUnitId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustUnitId must be a valid UUID',
   }),
 
-  cadTrustProjectId: Joi.string().uuid().allow(null).messages({
+  cadTrustProjectId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustProjectId must be a valid UUID',
   }),
 

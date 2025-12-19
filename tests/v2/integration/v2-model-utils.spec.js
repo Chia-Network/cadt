@@ -140,10 +140,10 @@ describe('Phase 27.1: ModelKeysV2 Utility Tests', function () {
       expect(getV2PrimaryKeyField('unit')).to.equal('cad_trust_unit_id');
     });
 
-    it('should return "id" for join tables', function () {
-      expect(getV2PrimaryKeyField('project_methodology')).to.equal('id');
-      expect(getV2PrimaryKeyField('stakeholder_projects')).to.equal('id');
-      expect(getV2PrimaryKeyField('unit_label')).to.equal('id');
+    it('should return UUID field names for join tables', function () {
+      expect(getV2PrimaryKeyField('project_methodology')).to.equal('cad_trust_project_methodology_id');
+      expect(getV2PrimaryKeyField('stakeholder_projects')).to.equal('cad_trust_stakeholder_project_id');
+      expect(getV2PrimaryKeyField('unit_label')).to.equal('cad_trust_unit_label_id');
     });
 
     it('should return correct primary key for all models', function () {
@@ -212,7 +212,7 @@ describe('Phase 27.1: ModelKeysV2 Utility Tests', function () {
       const primaryKeyField = getV2PrimaryKeyField(modelKey);
 
       expect(ModelClass).to.equal(ProjectMethodologyV2);
-      expect(primaryKeyField).to.equal('id');
+      expect(primaryKeyField).to.equal('cad_trust_project_methodology_id');
     });
   });
 });

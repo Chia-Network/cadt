@@ -10,6 +10,7 @@ import {
 } from '../../utils/xls.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
+import { UnitV2 } from './unit-v2.model.js';
 
 class IssuanceV2 extends Model {
   static associate(models) {

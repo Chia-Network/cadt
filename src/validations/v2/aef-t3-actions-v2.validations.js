@@ -84,74 +84,74 @@ export const aefT3ActionsV2Schema = Joi.object({
   }),
 
   // Optional fields
-  aefT3ActionsType: Joi.string().valid(...typePicklist).allow(null).messages({
+  aefT3ActionsType: Joi.string().valid(...typePicklist).allow(null).optional().messages({
     'any.only': `aefT3ActionsType does not include a valid option. Valid options are: ${typePicklist.join(', ')}`,
   }),
 
-  aefT3ActionsSubtype: Joi.string().max(255).allow(null).messages({
+  aefT3ActionsSubtype: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsSubtype must not exceed 255 characters',
   }),
 
-  aefT3ActionsMetric: Joi.string().valid(...metricPicklist).allow(null).messages({
+  aefT3ActionsMetric: Joi.string().valid(...metricPicklist).allow(null).optional().messages({
     'any.only': `aefT3ActionsMetric does not include a valid option. Valid options are: ${metricPicklist.join(', ')}`,
   }),
 
-  aefT3ActionsGwpValue: Joi.string().max(255).allow(null).messages({
+  aefT3ActionsGwpValue: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsGwpValue must not exceed 255 characters',
   }),
 
-  aefT3ActionsApplicableNonGhgMetric: Joi.string().max(255).allow(null).messages({
+  aefT3ActionsApplicableNonGhgMetric: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsApplicableNonGhgMetric must not exceed 255 characters',
   }),
 
-  aefT3ActionsQuantityNonGhg: Joi.string().max(255).allow(null).messages({
+  aefT3ActionsQuantityNonGhg: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsQuantityNonGhg must not exceed 255 characters',
   }),
 
-  aefT3ActionsMitigationType: Joi.string().valid(...typePicklist).allow(null).messages({
+  aefT3ActionsMitigationType: Joi.string().valid(...typePicklist).allow(null).optional().messages({
     'any.only': `aefT3ActionsMitigationType does not include a valid option. Valid options are: ${typePicklist.join(', ')}`,
   }),
 
-  aefT3ActionsPurposeOfUseOimp: Joi.string().max(255).allow(null).messages({
+  aefT3ActionsPurposeOfUseOimp: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsPurposeOfUseOimp must not exceed 255 characters',
   }),
 
-  aefT3ActionsUsingParticipatingPartyId: Joi.string().max(255).allow(null).messages({
+  aefT3ActionsUsingParticipatingPartyId: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsUsingParticipatingPartyId must not exceed 255 characters',
   }),
 
-  aefT3ActionsUsingAuthorizedEntityId: Joi.string().max(255).allow(null).messages({
+  aefT3ActionsUsingAuthorizedEntityId: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsUsingAuthorizedEntityId must not exceed 255 characters',
   }),
 
-  aefT3ActionsItmoUsedYear: Joi.number().integer().min(1900).max(2100).allow(null).messages({
+  aefT3ActionsItmoUsedYear: Joi.number().integer().min(1900).max(2100).allow(null).optional().messages({
     'number.integer': 'aefT3ActionsItmoUsedYear must be an integer',
     'number.min': 'aefT3ActionsItmoUsedYear must be greater than or equal to 1900',
     'number.max': 'aefT3ActionsItmoUsedYear must be less than or equal to 2100',
   }),
 
-  aefT3ActionsConsistencyCheckResult: Joi.string().max(255).allow(null).messages({
+  aefT3ActionsConsistencyCheckResult: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsConsistencyCheckResult must not exceed 255 characters',
   }),
 
-  aefT3ActionsAdditionalInformation: Joi.string().max(255).allow(null).messages({
+  aefT3ActionsAdditionalInformation: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsAdditionalInformation must not exceed 255 characters',
   }),
 
   // Foreign keys - optional
-  cadTrustAefT1SubmissionId: Joi.string().uuid().allow(null).messages({
+  cadTrustAefT1SubmissionId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustAefT1SubmissionId must be a valid UUID',
   }),
 
-  cadTrustUnitId: Joi.string().uuid().allow(null).messages({
+  cadTrustUnitId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustUnitId must be a valid UUID',
   }),
 
-  cadTrustProjectId: Joi.string().uuid().allow(null).messages({
+  cadTrustProjectId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustProjectId must be a valid UUID',
   }),
 
-  cadTrustAefT2AuthorizationsId: Joi.string().uuid().allow(null).messages({
+  cadTrustAefT2AuthorizationsId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustAefT2AuthorizationsId must be a valid UUID',
   }),
 

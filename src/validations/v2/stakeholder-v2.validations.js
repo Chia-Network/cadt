@@ -13,11 +13,11 @@ export const stakeholderV2Schema = Joi.object({
   }),
 
   // Optional fields with validation
-  stakeholderType: Joi.string().valid('Owner', 'Developer', 'Consultant').messages({
+  stakeholderType: Joi.string().valid('Owner', 'Developer', 'Consultant').allow(null).optional().messages({
     'any.only': 'stakeholderType must be one of: Owner, Developer, Consultant',
   }),
 
-  stakeholderLink: Joi.string().uri().messages({
+  stakeholderLink: Joi.alternatives().try(Joi.string().uri(), Joi.allow(null, '')).optional().messages({
     'string.uri': 'stakeholderLink must be a valid URI',
   }),
 

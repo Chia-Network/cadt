@@ -31,29 +31,29 @@ export const aefT1SubmissionV2Schema = Joi.object({
   }),
 
   // Optional fields
-  aefT1SubmissionReviewStatus: Joi.string().allow(null).messages({
+  aefT1SubmissionReviewStatus: Joi.string().allow(null).optional().messages({
     'string.base': 'aefT1SubmissionReviewStatus must be a string',
   }),
 
-  aefT1SubmissionResultCheck: Joi.string().allow(null).messages({
+  aefT1SubmissionResultCheck: Joi.string().allow(null).optional().messages({
     'string.base': 'aefT1SubmissionResultCheck must be a string',
   }),
 
-  aefT1SubmissionNdcFirstYear: Joi.number().integer().min(1900).max(2100).allow(null).messages({
+  aefT1SubmissionNdcFirstYear: Joi.number().integer().min(1900).max(2100).allow(null).optional().messages({
     'number.base': 'aefT1SubmissionNdcFirstYear must be a number',
     'number.integer': 'aefT1SubmissionNdcFirstYear must be an integer',
     'number.min': 'aefT1SubmissionNdcFirstYear must be between 1900 and 2100',
     'number.max': 'aefT1SubmissionNdcFirstYear must be between 1900 and 2100',
   }),
 
-  aefT1SubmissionNdcLastYear: Joi.number().integer().min(1900).max(2100).allow(null).messages({
+  aefT1SubmissionNdcLastYear: Joi.number().integer().min(1900).max(2100).allow(null).optional().messages({
     'number.base': 'aefT1SubmissionNdcLastYear must be a number',
     'number.integer': 'aefT1SubmissionNdcLastYear must be an integer',
     'number.min': 'aefT1SubmissionNdcLastYear must be between 1900 and 2100',
     'number.max': 'aefT1SubmissionNdcLastYear must be between 1900 and 2100',
   }),
 
-  aefT1SubmissionReferenceReviewReport: Joi.string().uri().allow(null).messages({
+  aefT1SubmissionReferenceReviewReport: Joi.alternatives().try(Joi.string().uri(), Joi.allow(null, '')).optional().messages({
     'string.uri': 'aefT1SubmissionReferenceReviewReport must be a valid URI',
   }),
 

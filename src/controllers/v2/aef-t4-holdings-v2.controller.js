@@ -139,30 +139,7 @@ export const getAefT4HoldingsV2 = async (req, res) => {
   try {
     const { cadTrustAefT4HoldingsId } = req.params;
 
-    const aefT4Holdings = await AefT4HoldingsV2.findByPk(cadTrustAefT4HoldingsId, {
-      include: [
-        {
-          model: AefT1SubmissionV2,
-          as: 'aefT1Submission',
-          attributes: ['cadTrustAefT1SubmissionId', 'aefT1SubmissionParty', 'aefT1SubmissionVersion'],
-        },
-        {
-          model: UnitV2,
-          as: 'unit',
-          attributes: ['cadTrustUnitId', 'unitSerialId', 'unitType', 'unitVintageYear'],
-        },
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectSector', 'projectType'],
-        },
-        {
-          model: AefT2AuthorizationsV2,
-          as: 'aefT2Authorizations',
-          attributes: ['cadTrustAefT2AuthorizationsId', 'aefT2AuthorizationsId', 'aefT2AuthorizationsDate'],
-        },
-      ],
-    });
+    const aefT4Holdings = await AefT4HoldingsV2.findByPk(cadTrustAefT4HoldingsId);
 
     if (!aefT4Holdings) {
       return res.status(404).json({
@@ -185,28 +162,6 @@ export const getAefT4HoldingsV2 = async (req, res) => {
 export const getAllAefT4HoldingsV2 = async (req, res) => {
   try {
     const aefT4Holdings = await AefT4HoldingsV2.findAll({
-      include: [
-        {
-          model: AefT1SubmissionV2,
-          as: 'aefT1Submission',
-          attributes: ['cadTrustAefT1SubmissionId', 'aefT1SubmissionParty', 'aefT1SubmissionVersion'],
-        },
-        {
-          model: UnitV2,
-          as: 'unit',
-          attributes: ['cadTrustUnitId', 'unitSerialId', 'unitType', 'unitVintageYear'],
-        },
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectSector', 'projectType'],
-        },
-        {
-          model: AefT2AuthorizationsV2,
-          as: 'aefT2Authorizations',
-          attributes: ['cadTrustAefT2AuthorizationsId', 'aefT2AuthorizationsId', 'aefT2AuthorizationsDate'],
-        },
-      ],
       order: [['aefT4HoldingsVintageYear', 'DESC']],
     });
 

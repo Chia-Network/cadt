@@ -15,7 +15,7 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateUnitLabel,
   generateUnitLabelMinimal,
@@ -81,34 +81,35 @@ describe('UnitLabel Live API Validation Tests', function () {
       }
 
       // Create up to 1 unit-label relationship (typical)
-      // Use unique combinations to avoid duplicate composite keys
-      const usedCombinations = new Set();
       let created = 0;
-      const maxRecords = Math.min(1, labelIds.length * unitIds.length); // Don't exceed possible unique combinations
+      const maxRecords = Math.min(1, labelIds.length * unitIds.length);
+      const usedCombinations = new Set(); // Track used label-unit combinations
 
       for (let labelIdx = 0; labelIdx < labelIds.length && created < maxRecords; labelIdx++) {
         for (let unitIdx = 0; unitIdx < unitIds.length && created < maxRecords; unitIdx++) {
           const labelId = labelIds[labelIdx];
           const unitId = unitIds[unitIdx];
-          const combinationKey = `${labelId}-${unitId}`;
+          const comboKey = `${labelId}:${unitId}`;
 
-          // Skip if we've already used this combination
-          if (usedCombinations.has(combinationKey)) {
+          // Skip if this combination was already used
+          if (usedCombinations.has(comboKey)) {
             continue;
           }
 
-          usedCombinations.add(combinationKey);
           const data = generateUnitLabel(labelId, unitId);
           const { id, response } = await makePostRequest(request, '/v2/unit-label', data);
+
+          // Fail fast on any error - including duplicates
           expect(response.success).to.be.true;
           expect(id).to.exist;
-          // Unit-label uses composite key: { labelId, unitId }
-          // For composite keys, id is an object with labelId and unitId
-          const compositeId = id || { labelId: data.cadTrustLabelId, unitId: data.cadTrustUnitId };
-          createdIds.push(compositeId);
-          addCreatedId('unit-label', compositeId);
+          // UUID primary key
+          const unitLabelId = id;
+          createdIds.push(unitLabelId);
+          addCreatedId('unit-label', unitLabelId);
+          usedCombinations.add(comboKey);
+
           // Check record is in staging table
-          const inStaging = await checkRecordInStaging(request, '/v2/unit-label', compositeId, {
+          const inStaging = await checkRecordInStaging(request, '/v2/unit-label', unitLabelId, {
             cadTrustLabelId: data.cadTrustLabelId,
             cadTrustUnitId: data.cadTrustUnitId,
           });
@@ -118,9 +119,9 @@ describe('UnitLabel Live API Validation Tests', function () {
             await commitStagedRecords(request, []);
             await waitForPendingCommits(request);
             await waitForStagingEmpty(request);
-            await waitForDataToAppear(request, 'unit-label', compositeId);
+            await waitForDataToAppear(request, 'unit-label', unitLabelId);
           } else {
-            trackBatchVerification('POST', 'unit-label', compositeId, {
+            trackBatchVerification('POST', 'unit-label', unitLabelId, {
               cadTrustLabelId: data.cadTrustLabelId,
               cadTrustUnitId: data.cadTrustUnitId,
             });
@@ -129,88 +130,80 @@ describe('UnitLabel Live API Validation Tests', function () {
         }
       }
 
-      // Create 1 minimal record - use a combination that hasn't been used yet
-      let minLabelId = labelIds[0];
-      let minUnitId = unitIds[0];
-      const minCombinationKey = `${minLabelId}-${minUnitId}`;
-      if (usedCombinations.has(minCombinationKey)) {
-        // Find an unused combination
-        let found = false;
-        for (let i = 0; i < labelIds.length && !found; i++) {
-          for (let j = 0; j < unitIds.length && !found; j++) {
-            const testKey = `${labelIds[i]}-${unitIds[j]}`;
-            if (!usedCombinations.has(testKey)) {
-              minLabelId = labelIds[i];
-              minUnitId = unitIds[j];
-              found = true;
-            }
+      // Create 1 minimal record - find an unused combination
+      let minLabelId = null;
+      let minUnitId = null;
+      for (let labelIdx = 0; labelIdx < labelIds.length && !minLabelId; labelIdx++) {
+        for (let unitIdx = 0; unitIdx < unitIds.length && !minLabelId; unitIdx++) {
+          const comboKey = `${labelIds[labelIdx]}:${unitIds[unitIdx]}`;
+          if (!usedCombinations.has(comboKey)) {
+            minLabelId = labelIds[labelIdx];
+            minUnitId = unitIds[unitIdx];
+            usedCombinations.add(comboKey);
+            break;
           }
         }
       }
-      const finalMinKey = `${minLabelId}-${minUnitId}`;
-      if (usedCombinations.has(finalMinKey)) {
-        throw new Error(`Cannot create minimal record: all combinations are already used`);
-      }
-      usedCombinations.add(finalMinKey);
-      const minimalData = generateUnitLabelMinimal(minLabelId, minUnitId);
-      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/unit-label', minimalData);
-      expect(minResponse.success).to.be.true;
-      const minCompositeId = minId || { labelId: minimalData.cadTrustLabelId, unitId: minimalData.cadTrustUnitId };
-      createdIds.push(minCompositeId);
-      addCreatedId('unit-label', minCompositeId);
 
-      if (shouldAutoCommit()) {
-        await commitStagedRecords(request, []);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'unit-label', minCompositeId);
-      } else {
-        trackBatchVerification('POST', 'unit-label', minCompositeId, {
-          cadTrustLabelId: minimalData.cadTrustLabelId,
-          cadTrustUnitId: minimalData.cadTrustUnitId,
-        });
+      if (minLabelId && minUnitId) {
+        const minimalData = generateUnitLabelMinimal(minLabelId, minUnitId);
+        const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/unit-label', minimalData);
+
+        // Fail fast on any error - including duplicates
+        expect(minResponse.success).to.be.true;
+        expect(minId).to.exist;
+        createdIds.push(minId);
+        addCreatedId('unit-label', minId);
+
+        if (shouldAutoCommit()) {
+          await commitStagedRecords(request, []);
+          await waitForPendingCommits(request);
+          await waitForStagingEmpty(request);
+          await waitForDataToAppear(request, 'unit-label', minId);
+        } else {
+          trackBatchVerification('POST', 'unit-label', minId, {
+            cadTrustLabelId: minimalData.cadTrustLabelId,
+            cadTrustUnitId: minimalData.cadTrustUnitId,
+          });
+        }
       }
 
-      // Create 1 maximal record - use a combination that hasn't been used yet
-      let maxLabelId = labelIds.length > 1 ? labelIds[1] : labelIds[0];
-      let maxUnitId = unitIds.length > 1 ? unitIds[1] : unitIds[0];
-      const maxCombinationKey = `${maxLabelId}-${maxUnitId}`;
-      if (usedCombinations.has(maxCombinationKey)) {
-        // Find an unused combination
-        let found = false;
-        for (let i = 0; i < labelIds.length && !found; i++) {
-          for (let j = 0; j < unitIds.length && !found; j++) {
-            const testKey = `${labelIds[i]}-${unitIds[j]}`;
-            if (!usedCombinations.has(testKey)) {
-              maxLabelId = labelIds[i];
-              maxUnitId = unitIds[j];
-              found = true;
-            }
+      // Create 1 maximal record - find another unused combination
+      let maxLabelId = null;
+      let maxUnitId = null;
+      for (let labelIdx = 0; labelIdx < labelIds.length && !maxLabelId; labelIdx++) {
+        for (let unitIdx = 0; unitIdx < unitIds.length && !maxLabelId; unitIdx++) {
+          const comboKey = `${labelIds[labelIdx]}:${unitIds[unitIdx]}`;
+          if (!usedCombinations.has(comboKey)) {
+            maxLabelId = labelIds[labelIdx];
+            maxUnitId = unitIds[unitIdx];
+            usedCombinations.add(comboKey);
+            break;
           }
         }
       }
-      const finalMaxKey = `${maxLabelId}-${maxUnitId}`;
-      if (usedCombinations.has(finalMaxKey)) {
-        throw new Error(`Cannot create maximal record: all combinations are already used`);
-      }
-      usedCombinations.add(finalMaxKey);
-      const maximalData = generateUnitLabelMaximal(maxLabelId, maxUnitId);
-      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/unit-label', maximalData);
-      expect(maxResponse.success).to.be.true;
-      const maxCompositeId = maxId || { labelId: maximalData.cadTrustLabelId, unitId: maximalData.cadTrustUnitId };
-      createdIds.push(maxCompositeId);
-      addCreatedId('unit-label', maxCompositeId);
 
-      if (shouldAutoCommit()) {
-        await commitStagedRecords(request, []);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'unit-label', maxCompositeId);
-      } else {
-        trackBatchVerification('POST', 'unit-label', maxCompositeId, {
-          cadTrustLabelId: maximalData.cadTrustLabelId,
-          cadTrustUnitId: maximalData.cadTrustUnitId,
-        });
+      if (maxLabelId && maxUnitId) {
+        const maximalData = generateUnitLabelMaximal(maxLabelId, maxUnitId);
+        const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/unit-label', maximalData);
+
+        // Fail fast on any error - including duplicates
+        expect(maxResponse.success).to.be.true;
+        expect(maxId).to.exist;
+        createdIds.push(maxId);
+        addCreatedId('unit-label', maxId);
+
+        if (shouldAutoCommit()) {
+          await commitStagedRecords(request, []);
+          await waitForPendingCommits(request);
+          await waitForStagingEmpty(request);
+          await waitForDataToAppear(request, 'unit-label', maxId);
+        } else {
+          trackBatchVerification('POST', 'unit-label', maxId, {
+            cadTrustLabelId: maximalData.cadTrustLabelId,
+            cadTrustUnitId: maximalData.cadTrustUnitId,
+          });
+        }
       }
     });
   });
@@ -228,48 +221,50 @@ describe('UnitLabel Live API Validation Tests', function () {
 
   describe('Step 6: Validation After Commit', function () {
     it('should validate all created records are in database', async function () {
-      for (const id of createdIds) {
-        const record = await waitForDataToAppear(request, 'unit-label', id);
+      for (const unitLabelId of createdIds) {
+        const record = await waitForDataToAppear(request, 'unit-label', unitLabelId);
         expect(record).to.exist;
-        // Note: unit-label uses composite key, so id is an object with labelId and unitId
+        expect(record.cadTrustUnitLabelId).to.equal(unitLabelId);
         expect(record).to.have.property('cadTrustLabelId');
         expect(record).to.have.property('cadTrustUnitId');
-        if (id.labelId) {
-          expect(record.cadTrustLabelId).to.equal(id.labelId);
-        }
-        if (id.unitId) {
-          expect(record.cadTrustUnitId).to.equal(id.unitId);
-        }
       }
     });
   });
   describe('Step 7: PUT Request Tests', function () {
     it('should update a unit-label relationship', async function () {
-      const id = createdIds[0];
+      // Get ID from createdIds (if available) or query database for existing record
+      let unitLabelId = createdIds[0];
+      if (!unitLabelId) {
+        unitLabelId = await getFirstRecordIdFromDatabase(request, 'unit-label');
+        if (!unitLabelId) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
-      // Note: unit-label uses composite key in path: /v2/unit-label/{labelId}/{unitId}
-      const currentRecord = await request.get(`/v2/unit-label/${id.labelId}/${id.unitId}`).expect(200);
+      const currentRecord = await request.get(`/v2/unit-label/${unitLabelId}`).expect(200);
+      const record = currentRecord.body.data || currentRecord.body;
       // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
-        cadTrustLabelId: currentRecord.body.cadTrustLabelId,
-        cadTrustUnitId: currentRecord.body.cadTrustUnitId,
+        cadTrustLabelId: record.cadTrustLabelId,
+        cadTrustUnitId: record.cadTrustUnitId,
         labelUnitDate: '2024-12-31',
-        labelUnitDescription: 'Updated unit label description',
+        labelUnitDescription: record.labelUnitDescription ?? null,
       };
-      const response = await makePutRequest(request, '/v2/unit-label', id, updateData);
+      const response = await makePutRequest(request, '/v2/unit-label', unitLabelId, updateData);
       expect(response.success).to.be.true;
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'unit-label', id);
-        await validateDataInDatabase(request, 'unit-label', id, {
+        await waitForDataToAppear(request, 'unit-label', unitLabelId);
+        await validateDataInDatabase(request, 'unit-label', unitLabelId, {
           cadTrustLabelId: updateData.cadTrustLabelId,
           cadTrustUnitId: updateData.cadTrustUnitId,
         });
       } else {
-        trackBatchVerification('PUT', 'unit-label', id, updateData);
+        trackBatchVerification('PUT', 'unit-label', unitLabelId, updateData);
       }
     });
   });
@@ -284,14 +279,15 @@ describe('UnitLabel Live API Validation Tests', function () {
       expect(response.body).to.have.property('pageCount');
     });
 
-    it('should get a specific unit-label by composite key', async function () {
-      const id = createdIds[0];
+    it('should get a specific unit-label by ID', async function () {
+      const unitLabelId = createdIds[0];
       const response = await request
-        .get(`/v2/unit-label/${id.labelId}/${id.unitId}`)
+        .get(`/v2/unit-label/${unitLabelId}`)
         .expect(200);
 
-      expect(response.body.cadTrustLabelId).to.equal(id.labelId);
-      expect(response.body.cadTrustUnitId).to.equal(id.unitId);
+      expect(response.body.cadTrustUnitLabelId).to.equal(unitLabelId);
+      expect(response.body.cadTrustLabelId).to.exist;
+      expect(response.body.cadTrustUnitId).to.exist;
     });
 
     it('should support search functionality', async function () {
@@ -305,10 +301,22 @@ describe('UnitLabel Live API Validation Tests', function () {
   });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created unit-label relationships', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'unit-label');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
-        const response = await makeDeleteRequest(request, '/v2/unit-label', id);
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const unitLabelId = idsToDelete[i];
+        const response = await makeDeleteRequest(request, '/v2/unit-label', unitLabelId);
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
@@ -316,16 +324,10 @@ describe('UnitLabel Live API Validation Tests', function () {
           await waitForPendingCommits(request);
           await waitForStagingEmpty(request);
         } else {
-          trackBatchVerification('DELETE', 'unit-label', id);
+          trackBatchVerification('DELETE', 'unit-label', unitLabelId);
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 

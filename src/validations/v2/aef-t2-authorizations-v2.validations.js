@@ -34,80 +34,80 @@ export const aefT2AuthorizationsV2Schema = Joi.object({
   }),
 
   // Optional fields
-  aefT2AuthorizationsVersion: Joi.string().max(255).allow(null).messages({
+  aefT2AuthorizationsVersion: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT2AuthorizationsVersion must not exceed 255 characters',
   }),
 
-  aefT2AuthorizationsQuantity: Joi.number().precision(2).allow(null).messages({
+  aefT2AuthorizationsQuantity: Joi.number().precision(2).allow(null).optional().messages({
     'number.base': 'aefT2AuthorizationsQuantity must be a number',
   }),
 
-  aefT2AuthorizationsMetric: Joi.string().valid(...metricPicklist).allow(null).messages({
+  aefT2AuthorizationsMetric: Joi.string().valid(...metricPicklist).allow(null).optional().messages({
     'any.only': `aefT2AuthorizationsMetric does not include a valid option. Valid options are: ${metricPicklist.join(', ')}`,
   }),
 
-  aefT2AuthorizationsGwpValue: Joi.string().max(255).allow(null).messages({
+  aefT2AuthorizationsGwpValue: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT2AuthorizationsGwpValue must not exceed 255 characters',
   }),
 
-  aefT2AuthorizationsApplicableNonGhgMetric: Joi.string().max(255).allow(null).messages({
+  aefT2AuthorizationsApplicableNonGhgMetric: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT2AuthorizationsApplicableNonGhgMetric must not exceed 255 characters',
   }),
 
-  aefT2AuthorizationsSector: Joi.string().valid(...sectorPicklist).allow(null).messages({
+  aefT2AuthorizationsSector: Joi.string().valid(...sectorPicklist).allow(null).optional().messages({
     'any.only': `aefT2AuthorizationsSector does not include a valid option. Valid options are: ${sectorPicklist.join(', ')}`,
   }),
 
-  aefT2AuthorizationsActivityType: Joi.string().valid(...typePicklist).allow(null).messages({
+  aefT2AuthorizationsActivityType: Joi.string().valid(...typePicklist).allow(null).optional().messages({
     'any.only': `aefT2AuthorizationsActivityType does not include a valid option. Valid options are: ${typePicklist.join(', ')}`,
   }),
 
-  aefT2AuthorizationsPurposesForAuthorization: Joi.string().valid(...purposePicklist).allow(null).messages({
+  aefT2AuthorizationsPurposesForAuthorization: Joi.string().valid(...purposePicklist).allow(null).optional().messages({
     'any.only': `aefT2AuthorizationsPurposesForAuthorization does not include a valid option. Valid options are: ${purposePicklist.join(', ')}`,
   }),
 
-  aefT2AuthorizationsAuthoziedEntityId: Joi.string().max(255).allow(null).messages({
+  aefT2AuthorizationsAuthoziedEntityId: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT2AuthorizationsAuthoziedEntityId must not exceed 255 characters',
   }),
 
-  aefT2AuthorizationsOimpAuthorizedParty: Joi.string().max(255).allow(null).messages({
+  aefT2AuthorizationsOimpAuthorizedParty: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT2AuthorizationsOimpAuthorizedParty must not exceed 255 characters',
   }),
 
-  aefT2AuthorizationsAuthorizedTimeframe: Joi.string().max(255).allow(null).messages({
+  aefT2AuthorizationsAuthorizedTimeframe: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT2AuthorizationsAuthorizedTimeframe must not exceed 255 characters',
   }),
 
-  aefT2AuthorizationsAuthorizationTerms: Joi.string().max(255).allow(null).messages({
+  aefT2AuthorizationsAuthorizationTerms: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT2AuthorizationsAuthorizationTerms must not exceed 255 characters',
   }),
 
-  aefT2AuthorizationsAuthorizationDocumentation: Joi.string().allow(null).messages({
+  aefT2AuthorizationsAuthorizationDocumentation: Joi.string().allow(null).optional().messages({
     'string.base': 'aefT2AuthorizationsAuthorizationDocumentation must be a string',
   }),
 
-  aefT2AuthorizationsFirstTransferDefinitionOimp: Joi.string().allow(null).messages({
+  aefT2AuthorizationsFirstTransferDefinitionOimp: Joi.string().allow(null).optional().messages({
     'string.base': 'aefT2AuthorizationsFirstTransferDefinitionOimp must be a string',
   }),
 
-  aefT2AuthorizationsAdditionalInformation: Joi.string().allow(null).messages({
+  aefT2AuthorizationsAdditionalInformation: Joi.string().allow(null).optional().messages({
     'string.base': 'aefT2AuthorizationsAdditionalInformation must be a string',
   }),
 
   // Foreign keys - optional
-  cadTrustAefT1SubmissionId: Joi.string().uuid().allow(null).messages({
+  cadTrustAefT1SubmissionId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustAefT1SubmissionId must be a valid UUID',
   }),
 
-  cadTrustUnitId: Joi.string().uuid().allow(null).messages({
+  cadTrustUnitId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustUnitId must be a valid UUID',
   }),
 
-  cadTrustProjectId: Joi.string().uuid().allow(null).messages({
+  cadTrustProjectId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustProjectId must be a valid UUID',
   }),
 
-  cadTrustAefT5AuthorizedEntitiesId: Joi.string().uuid().allow(null).messages({
+  cadTrustAefT5AuthorizedEntitiesId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustAefT5AuthorizedEntitiesId must be a valid UUID',
   }),
 

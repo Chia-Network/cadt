@@ -15,18 +15,18 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
-  generateRating,
-  generateRatingMinimal,
-  generateRatingMaximal,
-  generateRatingLongStrings,
-  generateRatingForbiddenFields,
+  generateLocation,
+  generateLocationMinimal,
+  generateLocationMaximal,
+  generateLocationLongStrings,
+  generateLocationForbiddenFields,
   getLongString,
   getInvalidPicklistValue,
 } from './data/test-data-generators.js';
 
-describe('Rating Live API Validation Tests', function () {
+describe('Location Live API Validation Tests', function () {
   this.timeout(600000); // 10 minute timeout
   let request;
   let homeOrgId;
@@ -38,34 +38,26 @@ describe('Rating Live API Validation Tests', function () {
   });
   describe('Step 3: Validation Failure Tests', function () {
     it('should reject POST with forbidden fields (createdAt, updatedAt, ID)', async function () {
-      const projectId = getFirstCreatedId('project');
-      if (!projectId) {
-        this.skip();
-      }
-      const forbiddenData = generateRatingForbiddenFields(projectId);
+      const forbiddenData = generateLocationForbiddenFields();
       const response = await request
-        .post('/v2/rating')
+        .post('/v2/location')
         .send(forbiddenData);
       expect(response.status).to.not.equal(200);
     });
     it('should reject POST with invalid picklist values', async function () {
-      const projectId = getFirstCreatedId('project');
-      if (!projectId) {
-        this.skip();
-      }
-      const invalidData = generateRatingMinimal(projectId);
-      invalidData.ratingType = getInvalidPicklistValue('ratingType');
+      const invalidData = generateLocationMinimal(projectId);
+      invalidData.locationCountry = getInvalidPicklistValue('locationCountry');
       const response = await request
-        .post('/v2/rating')
+        .post('/v2/location')
         .send(invalidData);
 
       expect(response.status).to.not.equal(200);
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = {}; // Missing ratingName and ratingValue (required fields)
+      const incompleteData = { locationCountry: 'United States of America' }; // Missing cadTrustProjectId
       const response = await request
-        .post('/v2/rating')
+        .post('/v2/location')
         .send(incompleteData);
 
       expect(response.status).to.not.equal(200);
@@ -76,9 +68,9 @@ describe('Rating Live API Validation Tests', function () {
       if (!projectId) {
         this.skip();
       }
-      const longData = generateRatingLongStrings(projectId);
+      const longData = generateLocationLongStrings(projectId);
       const response = await request
-        .post('/v2/rating')
+        .post('/v2/location')
         .send(longData);
 
       // May or may not fail depending on validation rules
@@ -94,24 +86,24 @@ describe('Rating Live API Validation Tests', function () {
     });
   });
   describe('Step 4: POST Request Tests', function () {
-    it('should create ratings with typical, minimal, and maximal data', async function () {
+    it('should create locations with typical, minimal, and maximal data', async function () {
       // Get project ID from earlier test (project-validation.spec.js runs before this)
       const projectId = getFirstCreatedId('project');
       if (!projectId) {
-        throw new Error('Project ID not found. Ensure project-validation.spec.js runs before rating-validation.spec.js');
+        throw new Error('Project ID not found. Ensure project-validation.spec.js runs before location-validation.spec.js');
       }
 
       // Create 1 typical record
-      const data = generateRating(projectId);
-      const { id, response } = await makePostRequest(request, '/v2/rating', data);
+      const data = generateLocation(projectId);
+      const { id, response } = await makePostRequest(request, '/v2/location', data);
       expect(response.success).to.be.true;
       expect(id).to.exist;
       createdIds.push(id);
-      addCreatedId('rating', id);
+      addCreatedId('location', id);
       // Check record is in staging table
-      const inStaging = await checkRecordInStaging(request, '/v2/rating', id, {
-        ratingName: data.ratingName,
-        ratingValue: data.ratingValue,
+      const inStaging = await checkRecordInStaging(request, '/v2/location', id, {
+        locationCountry: data.locationCountry,
+        locationRegion: data.locationRegion,
       });
       expect(inStaging).to.be.true;
       // Commit if in extended mode
@@ -119,53 +111,52 @@ describe('Rating Live API Validation Tests', function () {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'rating', id);
+        await waitForDataToAppear(request, 'location', id);
       } else {
-        trackBatchVerification('POST', 'rating', id, {
-          ratingName: data.ratingName,
-          ratingValue: data.ratingValue,
+        trackBatchVerification('POST', 'location', id, {
+          locationCountry: data.locationCountry,
+          locationRegion: data.locationRegion,
         });
       }
 
       // Create 1 minimal record
-      const minimalData = generateRatingMinimal(projectId);
-      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/rating', minimalData);
+      const minimalData = generateLocationMinimal(projectId);
+      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/location', minimalData);
       expect(minResponse.success).to.be.true;
       createdIds.push(minId);
-      addCreatedId('rating', minId);
-
+      addCreatedId('location', minId);
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'rating', minId);
+        await waitForDataToAppear(request, 'location', minId);
       } else {
-        trackBatchVerification('POST', 'rating', minId, {
-          ratingName: minimalData.ratingName,
-          ratingValue: minimalData.ratingValue,
+        trackBatchVerification('POST', 'location', minId, {
+          cadTrustProjectId: minimalData.cadTrustProjectId,
         });
       }
 
       // Create 1 maximal record
-      const maximalData = generateRatingMaximal(projectId);
-      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/rating', maximalData);
+      const maximalData = generateLocationMaximal(projectId);
+      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/location', maximalData);
       expect(maxResponse.success).to.be.true;
       createdIds.push(maxId);
-      addCreatedId('rating', maxId);
+      addCreatedId('location', maxId);
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'rating', maxId);
+        await waitForDataToAppear(request, 'location', maxId);
       } else {
-        trackBatchVerification('POST', 'rating', maxId, {
-          ratingName: maximalData.ratingName,
-          ratingValue: maximalData.ratingValue,
+        trackBatchVerification('POST', 'location', maxId, {
+          locationCountry: maximalData.locationCountry,
+          locationRegion: maximalData.locationRegion,
         });
       }
     });
   });
+
   describe('Step 5: Staging Commit (if short mode)', function () {
     it('should commit all staged records in batch', async function () {
       if (!shouldAutoCommit()) {
@@ -174,7 +165,7 @@ describe('Rating Live API Validation Tests', function () {
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
         // Wait for all records to appear
-        const recordsToWaitFor = createdIds.map(id => ({ type: 'rating', id }));
+        const recordsToWaitFor = createdIds.map(id => ({ type: 'location', id }));
         await waitForBatchToAppear(request, recordsToWaitFor);
       }
     });
@@ -183,45 +174,61 @@ describe('Rating Live API Validation Tests', function () {
   describe('Step 6: Validation After Commit', function () {
     it('should validate all created records are in database', async function () {
       for (const id of createdIds) {
-        const record = await waitForDataToAppear(request, 'rating', id);
+        const record = await waitForDataToAppear(request, 'location', id);
         expect(record).to.exist;
-        expect(record.cadTrustRatingId).to.equal(id);
+        expect(record.cadTrustLocationId).to.equal(id);
       }
     });
   });
   describe('Step 7: PUT Request Tests', function () {
-    it('should update a rating', async function () {
-      const id = createdIds[0];
+    it('should update a location', async function () {
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'location');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
-      const currentRecord = await request.get(`/v2/rating/${id}`).expect(200);
+      const currentRecord = await request.get(`/v2/location/${id}`).expect(200);
+      // Handle both wrapped { data: record } and direct record responses
+      const record = currentRecord.body.data || currentRecord.body;
       // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
+      // Ensure required field is present (should always exist for valid records)
+      if (record.cadTrustProjectId == null) {
+        throw new Error(`Required field cadTrustProjectId is missing from location record ${id}. Record keys: ${Object.keys(record).join(', ')}`);
+      }
       const updateData = {
-        ratingName: `UPDATED-${Date.now()}`,
-        ratingValue: currentRecord.body.ratingValue,
-        ratingType: currentRecord.body.ratingType || null,
-        ratingLink: currentRecord.body.ratingLink || null,
-        cadTrustProjectId: currentRecord.body.cadTrustProjectId,
+        locationCountry: record.locationCountry ?? null,
+        locationRegion: `UPDATED-REGION-${Date.now()}`,
+        locationGis: record.locationGis ?? null,
+        locationMapType: record.locationMapType ?? null,
+        locationMapFileLink: record.locationMapFileLink ?? null,
+        cadTrustProjectId: record.cadTrustProjectId, // Required - must be present
       };
-      const response = await makePutRequest(request, '/v2/rating', id, updateData);
+      const response = await makePutRequest(request, '/v2/location', id, updateData);
       expect(response.success).to.be.true;
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'rating', id);
-        await validateDataInDatabase(request, 'rating', id, {
-          ratingName: updateData.ratingName,
+        await waitForDataToAppear(request, 'location', id);
+        await validateDataInDatabase(request, 'location', id, {
+          locationRegion: updateData.locationRegion,
         });
       } else {
-        trackBatchVerification('PUT', 'rating', id, updateData);
+        trackBatchVerification('PUT', 'location', id, updateData);
       }
     });
   });
+
   describe('Step 8: GET Request Tests', function () {
-    it('should list all ratings with pagination', async function () {
+    it('should list all locations with pagination', async function () {
       const response = await request
-        .get('/v2/rating?page=1&limit=5')
+        .get('/v2/location?page=1&limit=5')
         .expect(200);
 
       expect(response.body).to.have.property('data');
@@ -229,30 +236,42 @@ describe('Rating Live API Validation Tests', function () {
       expect(response.body).to.have.property('pageCount');
     });
 
-    it('should get a specific rating by ID', async function () {
+    it('should get a specific location by ID', async function () {
       const id = createdIds[0];
       const response = await request
-        .get(`/v2/rating/${id}`)
+        .get(`/v2/location/${id}`)
         .expect(200);
 
-      expect(response.body.cadTrustRatingId).to.equal(id);
+      expect(response.body.cadTrustLocationId).to.equal(id);
     });
 
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
-        .get('/v2/rating')
+        .get('/v2/location')
         .expect(200);
 
       expect(response.body).to.exist;
     });
   });
   describe('Step 9: DELETE Request Tests', function () {
-    it('should delete all created ratings', async function () {
+    it('should delete all created locations', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'location');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
-        const response = await makeDeleteRequest(request, '/v2/rating', id);
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
+        const response = await makeDeleteRequest(request, '/v2/location', id);
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
@@ -260,24 +279,18 @@ describe('Rating Live API Validation Tests', function () {
           await waitForPendingCommits(request);
           await waitForStagingEmpty(request);
         } else {
-          trackBatchVerification('DELETE', 'rating', id);
+          trackBatchVerification('DELETE', 'location', id);
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 
   describe('Step 10: Final Validation', function () {
-    it('should verify all ratings are deleted', async function () {
-      const response = await request.get('/v2/rating').expect(200);
+    it('should verify all locations are deleted', async function () {
+      const response = await request.get('/v2/location').expect(200);
       const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
-      // Should only have ratings that existed before tests
+      // Should only have locations that existed before tests
       expect(data.length).to.equal(0);
     });
   });

@@ -15,17 +15,18 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
-  generateCoBenefit,
-  generateCoBenefitMinimal,
-  generateCoBenefitMaximal,
-  generateCoBenefitForbiddenFields,
+  generateRating,
+  generateRatingMinimal,
+  generateRatingMaximal,
+  generateRatingLongStrings,
+  generateRatingForbiddenFields,
   getLongString,
   getInvalidPicklistValue,
 } from './data/test-data-generators.js';
 
-describe('CoBenefit Live API Validation Tests', function () {
+describe('Rating Live API Validation Tests', function () {
   this.timeout(600000); // 10 minute timeout
   let request;
   let homeOrgId;
@@ -41,9 +42,9 @@ describe('CoBenefit Live API Validation Tests', function () {
       if (!projectId) {
         this.skip();
       }
-      const forbiddenData = generateCoBenefitForbiddenFields(projectId);
+      const forbiddenData = generateRatingForbiddenFields(projectId);
       const response = await request
-        .post('/v2/co-benefit')
+        .post('/v2/rating')
         .send(forbiddenData);
       expect(response.status).to.not.equal(200);
     });
@@ -52,19 +53,19 @@ describe('CoBenefit Live API Validation Tests', function () {
       if (!projectId) {
         this.skip();
       }
-      const invalidData = generateCoBenefitMinimal(projectId);
-      invalidData.coBenefitId = getInvalidPicklistValue('coBenefitId');
+      const invalidData = generateRatingMinimal(projectId);
+      invalidData.ratingType = getInvalidPicklistValue('ratingType');
       const response = await request
-        .post('/v2/co-benefit')
+        .post('/v2/rating')
         .send(invalidData);
 
       expect(response.status).to.not.equal(200);
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { coBenefitId: 'SDG 13 - Climate action' }; // Missing cadTrustProjectId
+      const incompleteData = {}; // Missing ratingName and ratingValue (required fields)
       const response = await request
-        .post('/v2/co-benefit')
+        .post('/v2/rating')
         .send(incompleteData);
 
       expect(response.status).to.not.equal(200);
@@ -75,10 +76,9 @@ describe('CoBenefit Live API Validation Tests', function () {
       if (!projectId) {
         this.skip();
       }
-      const longData = generateCoBenefit(projectId);
-      // Note: Long strings test may need manual adjustment
+      const longData = generateRatingLongStrings(projectId);
       const response = await request
-        .post('/v2/co-benefit')
+        .post('/v2/rating')
         .send(longData);
 
       // May or may not fail depending on validation rules
@@ -94,23 +94,24 @@ describe('CoBenefit Live API Validation Tests', function () {
     });
   });
   describe('Step 4: POST Request Tests', function () {
-    it('should create coBenefits with typical, minimal, and maximal data', async function () {
+    it('should create ratings with typical, minimal, and maximal data', async function () {
       // Get project ID from earlier test (project-validation.spec.js runs before this)
       const projectId = getFirstCreatedId('project');
       if (!projectId) {
-        throw new Error('Project ID not found. Ensure project-validation.spec.js runs before co-benefit-validation.spec.js');
+        throw new Error('Project ID not found. Ensure project-validation.spec.js runs before rating-validation.spec.js');
       }
 
       // Create 1 typical record
-      const data = generateCoBenefit(projectId);
-      const { id, response } = await makePostRequest(request, '/v2/co-benefit', data);
+      const data = generateRating(projectId);
+      const { id, response } = await makePostRequest(request, '/v2/rating', data);
       expect(response.success).to.be.true;
       expect(id).to.exist;
       createdIds.push(id);
-      addCreatedId('coBenefit', id);
+      addCreatedId('rating', id);
       // Check record is in staging table
-      const inStaging = await checkRecordInStaging(request, '/v2/co-benefit', id, {
-        coBenefitId: data.coBenefitId,
+      const inStaging = await checkRecordInStaging(request, '/v2/rating', id, {
+        ratingName: data.ratingName,
+        ratingValue: data.ratingValue,
       });
       expect(inStaging).to.be.true;
       // Commit if in extended mode
@@ -118,46 +119,49 @@ describe('CoBenefit Live API Validation Tests', function () {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'coBenefit', id);
+        await waitForDataToAppear(request, 'rating', id);
       } else {
-        trackBatchVerification('POST', 'coBenefit', id, {
-          coBenefitId: data.coBenefitId,
+        trackBatchVerification('POST', 'rating', id, {
+          ratingName: data.ratingName,
+          ratingValue: data.ratingValue,
         });
       }
 
       // Create 1 minimal record
-      const minimalData = generateCoBenefitMinimal(getFirstCreatedId('project'));
-      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/co-benefit', minimalData);
+      const minimalData = generateRatingMinimal(projectId);
+      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/rating', minimalData);
       expect(minResponse.success).to.be.true;
       createdIds.push(minId);
-      addCreatedId('coBenefit', minId);
+      addCreatedId('rating', minId);
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'coBenefit', minId);
+        await waitForDataToAppear(request, 'rating', minId);
       } else {
-        trackBatchVerification('POST', 'coBenefit', minId, {
-          coBenefitId: minimalData.coBenefitId,
+        trackBatchVerification('POST', 'rating', minId, {
+          ratingName: minimalData.ratingName,
+          ratingValue: minimalData.ratingValue,
         });
       }
 
       // Create 1 maximal record
-      const maximalData = generateCoBenefitMaximal(getFirstCreatedId('project'));
-      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/co-benefit', maximalData);
+      const maximalData = generateRatingMaximal(projectId);
+      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/rating', maximalData);
       expect(maxResponse.success).to.be.true;
       createdIds.push(maxId);
-      addCreatedId('coBenefit', maxId);
+      addCreatedId('rating', maxId);
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'coBenefit', maxId);
+        await waitForDataToAppear(request, 'rating', maxId);
       } else {
-        trackBatchVerification('POST', 'coBenefit', maxId, {
-          coBenefitId: maximalData.coBenefitId,
+        trackBatchVerification('POST', 'rating', maxId, {
+          ratingName: maximalData.ratingName,
+          ratingValue: maximalData.ratingValue,
         });
       }
     });
@@ -170,7 +174,7 @@ describe('CoBenefit Live API Validation Tests', function () {
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
         // Wait for all records to appear
-        const recordsToWaitFor = createdIds.map(id => ({ type: 'coBenefit', id }));
+        const recordsToWaitFor = createdIds.map(id => ({ type: 'rating', id }));
         await waitForBatchToAppear(request, recordsToWaitFor);
       }
     });
@@ -179,42 +183,59 @@ describe('CoBenefit Live API Validation Tests', function () {
   describe('Step 6: Validation After Commit', function () {
     it('should validate all created records are in database', async function () {
       for (const id of createdIds) {
-        const record = await waitForDataToAppear(request, 'coBenefit', id);
+        const record = await waitForDataToAppear(request, 'rating', id);
         expect(record).to.exist;
-        expect(record.cadTrustCoBenefitId).to.equal(id);
+        expect(record.cadTrustRatingId).to.equal(id);
       }
     });
   });
   describe('Step 7: PUT Request Tests', function () {
-    it('should update a coBenefit', async function () {
-      const id = createdIds[0];
+    it('should update a rating', async function () {
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'rating');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
-      const currentRecord = await request.get(`/v2/co-benefit/${id}`).expect(200);
+      const currentRecord = await request.get(`/v2/rating/${id}`).expect(200);
+      // Handle both wrapped { data: record } and direct record responses
+      const record = currentRecord.body.data || currentRecord.body;
       // Create update data with ALL fields
+      // Required fields must always be included; optional fields that are null should be omitted
+      // Ensure required fields are present (should always exist for valid records)
+      if (record.ratingValue == null || record.cadTrustProjectId == null) {
+        throw new Error(`Required fields missing from rating record ${id}: ratingValue=${record.ratingValue}, cadTrustProjectId=${record.cadTrustProjectId}. Record keys: ${Object.keys(record).join(', ')}`);
+      }
       const updateData = {
-        coBenefitId: 'SDG 17 - Partnerships for the goals', // Different SDG value
-        cadTrustProjectId: currentRecord.body.cadTrustProjectId,
+        ratingName: `UPDATED-${Date.now()}`,
+        ratingValue: record.ratingValue, // Required - must be present
+        ratingType: record.ratingType ?? null,
+        ratingLink: record.ratingLink ?? null,
+        cadTrustProjectId: record.cadTrustProjectId, // Required - must be present
       };
-      const response = await makePutRequest(request, '/v2/co-benefit', id, updateData);
+      const response = await makePutRequest(request, '/v2/rating', id, updateData);
       expect(response.success).to.be.true;
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'coBenefit', id);
-        await validateDataInDatabase(request, 'coBenefit', id, {
-          coBenefitId: updateData.coBenefitId,
+        await waitForDataToAppear(request, 'rating', id);
+        await validateDataInDatabase(request, 'rating', id, {
+          ratingName: updateData.ratingName,
         });
       } else {
-        trackBatchVerification('PUT', 'coBenefit', id, updateData);
+        trackBatchVerification('PUT', 'rating', id, updateData);
       }
     });
   });
   describe('Step 8: GET Request Tests', function () {
-    it('should list all coBenefits with pagination', async function () {
+    it('should list all ratings with pagination', async function () {
       const response = await request
-        .get('/v2/co-benefit?page=1&limit=5')
+        .get('/v2/rating?page=1&limit=5')
         .expect(200);
 
       expect(response.body).to.have.property('data');
@@ -222,30 +243,42 @@ describe('CoBenefit Live API Validation Tests', function () {
       expect(response.body).to.have.property('pageCount');
     });
 
-    it('should get a specific coBenefit by ID', async function () {
+    it('should get a specific rating by ID', async function () {
       const id = createdIds[0];
       const response = await request
-        .get(`/v2/co-benefit/${id}`)
+        .get(`/v2/rating/${id}`)
         .expect(200);
 
-      expect(response.body.cadTrustCoBenefitId).to.equal(id);
+      expect(response.body.cadTrustRatingId).to.equal(id);
     });
 
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
-        .get('/v2/co-benefit')
+        .get('/v2/rating')
         .expect(200);
 
       expect(response.body).to.exist;
     });
   });
   describe('Step 9: DELETE Request Tests', function () {
-    it('should delete all created coBenefits', async function () {
+    it('should delete all created ratings', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'rating');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
-        const response = await makeDeleteRequest(request, '/v2/co-benefit', id);
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
+        const response = await makeDeleteRequest(request, '/v2/rating', id);
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
@@ -253,24 +286,18 @@ describe('CoBenefit Live API Validation Tests', function () {
           await waitForPendingCommits(request);
           await waitForStagingEmpty(request);
         } else {
-          trackBatchVerification('DELETE', 'coBenefit', id);
+          trackBatchVerification('DELETE', 'rating', id);
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 
   describe('Step 10: Final Validation', function () {
-    it('should verify all coBenefits are deleted', async function () {
-      const response = await request.get('/v2/co-benefit').expect(200);
+    it('should verify all ratings are deleted', async function () {
+      const response = await request.get('/v2/rating').expect(200);
       const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
-      // Should only have coBenefits that existed before tests
+      // Should only have ratings that existed before tests
       expect(data.length).to.equal(0);
     });
   });

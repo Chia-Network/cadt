@@ -1,29 +1,31 @@
 const Sequelize = require('sequelize');
 
 module.exports = {
-  id: {
-    type: Sequelize.VIRTUAL,
-    get() {
-      return `${this.cadTrustProjectId}-${this.cadTrustMethodologyId}`;
-    },
+  cadTrustProjectMethodologyId: {
+    type: Sequelize.STRING(36),
+    primaryKey: true,
+    allowNull: false,
+    field: 'cad_trust_project_methodology_id',
   },
   cadTrustProjectId: {
     type: Sequelize.UUID,
     allowNull: false,
-    primaryKey: true,
+    field: 'cad_trust_project_id',
   },
   cadTrustMethodologyId: {
     type: Sequelize.UUID,
     allowNull: false,
-    primaryKey: true,
+    field: 'cad_trust_methodology_id',
   },
   projectMethodologyDate: {
     type: Sequelize.DATEONLY,
     allowNull: true,
+    field: 'project_methodology_date',
   },
   projectMethodologyDescription: {
     type: Sequelize.TEXT,
     allowNull: true,
+    field: 'project_methodology_description',
   },
   createdAt: {
     type: Sequelize.DATE,

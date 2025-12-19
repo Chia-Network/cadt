@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 export const projectMethodologyV2Schema = Joi.object({
-  // Required foreign keys (composite primary key)
+  // Required foreign keys
   cadTrustProjectId: Joi.string().uuid().required().messages({
     'any.required': 'cadTrustProjectId is required',
     'string.guid': 'cadTrustProjectId must be a valid UUID',
@@ -13,19 +13,22 @@ export const projectMethodologyV2Schema = Joi.object({
   }),
 
   // Optional fields
-  projectMethodologyDate: Joi.date().iso().optional().messages({
+  projectMethodologyDate: Joi.date().iso().allow(null).optional().messages({
     'date.format': 'projectMethodologyDate must be a valid ISO date (YYYY-MM-DD)',
   }),
 
-  projectMethodologyDescription: Joi.string().max(10000).optional().messages({
+  projectMethodologyDescription: Joi.string().max(10000).allow(null).optional().messages({
     'string.max': 'projectMethodologyDescription must not exceed 10000 characters',
   }),
 
-  // Timestamps - forbidden in requests
-  createdAt: Joi.date().forbidden().messages({
+  // Forbidden fields - automatically managed or auto-generated
+  createdAt: Joi.any().forbidden().messages({
     'any.unknown': 'createdAt is automatically managed and cannot be set via API',
   }),
-  updatedAt: Joi.date().forbidden().messages({
+  updatedAt: Joi.any().forbidden().messages({
     'any.unknown': 'updatedAt is automatically managed and cannot be set via API',
   }),
-});
+  cadTrustProjectMethodologyId: Joi.any().forbidden().messages({
+    'any.unknown': 'cadTrustProjectMethodologyId is auto-generated and cannot be set via API',
+  }),
+}).unknown(false);

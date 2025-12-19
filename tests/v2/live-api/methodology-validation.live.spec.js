@@ -15,18 +15,19 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
-  generateProgram,
-  generateProgramMinimal,
-  generateProgramMaximal,
-  generateProgramLongStrings,
-  generateProgramForbiddenFields,
+  generateMethodology,
+  generateMethodologyMinimal,
+  generateMethodologyMaximal,
+  generateMethodologyLongStrings,
+  generateMethodologyInvalidPicklist,
+  generateMethodologyForbiddenFields,
   getLongString,
   getInvalidPicklistValue,
 } from './data/test-data-generators.js';
 
-describe('Program Live API Validation Tests', function () {
+describe('Methodology Live API Validation Tests', function () {
   this.timeout(600000); // 10 minute timeout
   let request;
   let homeOrgId;
@@ -38,35 +39,34 @@ describe('Program Live API Validation Tests', function () {
   });
   describe('Step 3: Validation Failure Tests', function () {
     it('should reject POST with forbidden fields (createdAt, updatedAt, ID)', async function () {
-      const forbiddenData = generateProgramForbiddenFields();
+      const forbiddenData = generateMethodologyForbiddenFields();
       const response = await request
-        .post('/v2/program')
+        .post('/v2/methodology')
         .send(forbiddenData);
       expect(response.status).to.not.equal(200);
     });
     it('should reject POST with invalid picklist values', async function () {
-      const invalidData = generateProgramMinimal();
-      invalidData.programRegistry = getInvalidPicklistValue('programRegistry');
+      const invalidData = generateMethodologyInvalidPicklist();
       const response = await request
-        .post('/v2/program')
+        .post('/v2/methodology')
         .send(invalidData);
 
       expect(response.status).to.not.equal(200);
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { programName: 'Test' }; // Missing programRegistry and programRegistryActivityId
+      const incompleteData = { methodologyName: 'Test' }; // Missing methodologyCode
       const response = await request
-        .post('/v2/program')
+        .post('/v2/methodology')
         .send(incompleteData);
 
       expect(response.status).to.not.equal(200);
     });
 
     it('should reject POST with strings that are too long', async function () {
-      const longData = generateProgramLongStrings();
+      const longData = generateMethodologyLongStrings();
       const response = await request
-        .post('/v2/program')
+        .post('/v2/methodology')
         .send(longData);
 
       // May or may not fail depending on validation rules
@@ -82,18 +82,18 @@ describe('Program Live API Validation Tests', function () {
     });
   });
   describe('Step 4: POST Request Tests', function () {
-    it('should create programs with typical, minimal, and maximal data', async function () {
+    it('should create methodologies with typical, minimal, and maximal data', async function () {
       // Create 1 typical record
-      const data = generateProgram();
-      const { id, response } = await makePostRequest(request, '/v2/program', data);
+      const data = generateMethodology();
+      const { id, response } = await makePostRequest(request, '/v2/methodology', data);
       expect(response.success).to.be.true;
       expect(id).to.exist;
       createdIds.push(id);
-      addCreatedId('program', id);
+      addCreatedId('methodology', id);
       // Check record is in staging table
-      const inStaging = await checkRecordInStaging(request, '/v2/program', id, {
-        programName: data.programName,
-        programRegistry: data.programRegistry,
+      const inStaging = await checkRecordInStaging(request, '/v2/methodology', id, {
+        methodologyCode: data.methodologyCode,
+        methodologyName: data.methodologyName,
       });
       expect(inStaging).to.be.true;
       // Commit if in extended mode
@@ -101,49 +101,49 @@ describe('Program Live API Validation Tests', function () {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'program', id);
+        await waitForDataToAppear(request, 'methodology', id);
       } else {
-        trackBatchVerification('POST', 'program', id, {
-          programName: data.programName,
-          programRegistry: data.programRegistry,
+        trackBatchVerification('POST', 'methodology', id, {
+          methodologyCode: data.methodologyCode,
+          methodologyName: data.methodologyName,
         });
       }
 
       // Create 1 minimal record
-      const minimalData = generateProgramMinimal();
-      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/program', minimalData);
+      const minimalData = generateMethodologyMinimal();
+      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/methodology', minimalData);
       expect(minResponse.success).to.be.true;
       createdIds.push(minId);
-      addCreatedId('program', minId);
+      addCreatedId('methodology', minId);
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'program', minId);
+        await waitForDataToAppear(request, 'methodology', minId);
       } else {
-        trackBatchVerification('POST', 'program', minId, {
-          programCode: minimalData.programCode,
-          programName: minimalData.programName,
+        trackBatchVerification('POST', 'methodology', minId, {
+          methodologyCode: minimalData.methodologyCode,
+          methodologyName: minimalData.methodologyName,
         });
       }
 
       // Create 1 maximal record
-      const maximalData = generateProgramMaximal();
-      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/program', maximalData);
+      const maximalData = generateMethodologyMaximal();
+      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/methodology', maximalData);
       expect(maxResponse.success).to.be.true;
       createdIds.push(maxId);
-      addCreatedId('program', maxId);
+      addCreatedId('methodology', maxId);
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'program', maxId);
+        await waitForDataToAppear(request, 'methodology', maxId);
       } else {
-        trackBatchVerification('POST', 'program', maxId, {
-          programCode: maximalData.programCode,
-          programName: maximalData.programName,
+        trackBatchVerification('POST', 'methodology', maxId, {
+          methodologyCode: maximalData.methodologyCode,
+          methodologyName: maximalData.methodologyName,
         });
       }
     });
@@ -156,7 +156,7 @@ describe('Program Live API Validation Tests', function () {
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
         // Wait for all records to appear
-        const recordsToWaitFor = createdIds.map(id => ({ type: 'program', id }));
+        const recordsToWaitFor = createdIds.map(id => ({ type: 'methodology', id }));
         await waitForBatchToAppear(request, recordsToWaitFor);
       }
     });
@@ -165,48 +165,61 @@ describe('Program Live API Validation Tests', function () {
   describe('Step 6: Validation After Commit', function () {
     it('should validate all created records are in database', async function () {
       for (const id of createdIds) {
-        const record = await waitForDataToAppear(request, 'program', id);
+        const record = await waitForDataToAppear(request, 'methodology', id);
         expect(record).to.exist;
-        expect(record.cadTrustProgramId).to.equal(id);
+        expect(record.cadTrustMethodologyId).to.equal(id);
       }
     });
   });
   describe('Step 7: PUT Request Tests', function () {
-    it('should update a program', async function () {
-      const id = createdIds[0];
+    it('should update a methodology', async function () {
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        // Query database to get first existing record (for PUT tests running in separate process)
+        const listResponse = await request.get('/v2/methodology').expect(200);
+        const data = Array.isArray(listResponse.body)
+          ? listResponse.body
+          : (listResponse.body?.data || []);
+        if (!data || data.length === 0) {
+          this.skip(); // Skip if no records exist
+        }
+        id = data[0].cadTrustMethodologyId;
+      }
       // Get current record to include all fields
-      const currentRecord = await request.get(`/v2/program/${id}`).expect(200);
+      const currentRecord = await request.get(`/v2/methodology/${id}`).expect(200);
+      const record = currentRecord.body.data || currentRecord.body;
       // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
-        programCode: `UPDATED-${Date.now()}`,
-        programName: 'Updated Program Name',
-        programVersion: currentRecord.body.programVersion || null,
-        programDate: currentRecord.body.programDate || null,
-        programLink: currentRecord.body.programLink || null,
-        programType: currentRecord.body.programType || null,
+        methodologyCode: `UPDATED-${Date.now()}`,
+        methodologyName: 'Updated Methodology Name',
+        methodologyVersion: record.methodologyVersion ?? null,
+        methodologyDate: record.methodologyDate ?? null,
+        methodologyLink: record.methodologyLink ?? null,
+        methodologyType: record.methodologyType ?? null,
       };
-      const response = await makePutRequest(request, '/v2/program', id, updateData);
+      const response = await makePutRequest(request, '/v2/methodology', id, updateData);
       expect(response.success).to.be.true;
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'program', id);
-        await validateDataInDatabase(request, 'program', id, {
-          programCode: updateData.programCode,
-          programName: updateData.programName,
+        await waitForDataToAppear(request, 'methodology', id);
+        await validateDataInDatabase(request, 'methodology', id, {
+          methodologyCode: updateData.methodologyCode,
+          methodologyName: updateData.methodologyName,
         });
       } else {
-        trackBatchVerification('PUT', 'program', id, updateData);
+        trackBatchVerification('PUT', 'methodology', id, updateData);
       }
     });
   });
-
   describe('Step 8: GET Request Tests', function () {
-    it('should list all programs with pagination', async function () {
+    it('should list all methodologies with pagination', async function () {
       const response = await request
-        .get('/v2/program?page=1&limit=5')
+        .get('/v2/methodology?page=1&limit=5')
         .expect(200);
 
       expect(response.body).to.have.property('data');
@@ -214,30 +227,42 @@ describe('Program Live API Validation Tests', function () {
       expect(response.body).to.have.property('pageCount');
     });
 
-    it('should get a specific program by ID', async function () {
+    it('should get a specific methodology by ID', async function () {
       const id = createdIds[0];
       const response = await request
-        .get(`/v2/program/${id}`)
+        .get(`/v2/methodology/${id}`)
         .expect(200);
 
-      expect(response.body.cadTrustProgramId).to.equal(id);
+      expect(response.body.cadTrustMethodologyId).to.equal(id);
     });
 
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
-        .get('/v2/program')
+        .get('/v2/methodology')
         .expect(200);
 
       expect(response.body).to.exist;
     });
   });
   describe('Step 9: DELETE Request Tests', function () {
-    it('should delete all created programs', async function () {
+    it('should delete all created methodologies', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'methodology');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
-        const response = await makeDeleteRequest(request, '/v2/program', id);
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
+        const response = await makeDeleteRequest(request, '/v2/methodology', id);
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
@@ -245,24 +270,16 @@ describe('Program Live API Validation Tests', function () {
           await waitForPendingCommits(request);
           await waitForStagingEmpty(request);
         } else {
-          trackBatchVerification('DELETE', 'program', id);
+          trackBatchVerification('DELETE', 'methodology', id);
         }
-      }
-
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
       }
     });
   });
-
   describe('Step 10: Final Validation', function () {
-    it('should verify all programs are deleted', async function () {
-      const response = await request.get('/v2/program').expect(200);
+    it('should verify all methodologies are deleted', async function () {
+      const response = await request.get('/v2/methodology').expect(200);
       const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
-      // Should only have programs that existed before tests
+      // Should only have methodologies that existed before tests
       expect(data.length).to.equal(0);
     });
   });

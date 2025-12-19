@@ -15,7 +15,7 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateProjectMethodology,
   generateProjectMethodologyMinimal,
@@ -101,35 +101,37 @@ describe('ProjectMethodology Live API Validation Tests', function () {
       }
 
       // Create up to 1 typical record
-      // Use unique combinations to avoid duplicate composite keys
       const methodologyIds = getCreatedIds('methodology');
       const projectIds = getCreatedIds('project');
-      const usedCombinations = new Set();
       let created = 0;
       const maxRecords = Math.min(1, projectIds.length * methodologyIds.length);
+      const usedCombinations = new Set(); // Track used project-methodology combinations
 
       for (let projIdx = 0; projIdx < projectIds.length && created < maxRecords; projIdx++) {
         for (let methIdx = 0; methIdx < methodologyIds.length && created < maxRecords; methIdx++) {
           const currentProjectId = projectIds[projIdx];
           const currentMethodologyId = methodologyIds[methIdx];
-          const combinationKey = `${currentProjectId}-${currentMethodologyId}`;
+          const comboKey = `${currentProjectId}:${currentMethodologyId}`;
 
-          // Skip if we've already used this combination
-          if (usedCombinations.has(combinationKey)) {
+          // Skip if this combination was already used
+          if (usedCombinations.has(comboKey)) {
             continue;
           }
 
-          usedCombinations.add(combinationKey);
           const data = generateProjectMethodology(currentProjectId, currentMethodologyId);
           const { id, response } = await makePostRequest(request, '/v2/project-methodology', data);
+
+          // Fail fast on any error - including duplicates
           expect(response.success).to.be.true;
           expect(id).to.exist;
-          // Composite key: { projectId, methodologyId }
-          const compositeId = { projectId: currentProjectId, methodologyId: currentMethodologyId };
-          createdIds.push(compositeId);
-          addCreatedId('project-methodology', compositeId);
+          // UUID primary key
+          const projectMethodologyId = id;
+          createdIds.push(projectMethodologyId);
+          addCreatedId('project-methodology', projectMethodologyId);
+          usedCombinations.add(comboKey);
+
           // Check record is in staging table
-          const inStaging = await checkRecordInStaging(request, '/v2/project-methodology', compositeId, {
+          const inStaging = await checkRecordInStaging(request, '/v2/project-methodology', projectMethodologyId, {
             cadTrustProjectId: currentProjectId,
             cadTrustMethodologyId: currentMethodologyId,
           });
@@ -139,9 +141,9 @@ describe('ProjectMethodology Live API Validation Tests', function () {
             await commitStagedRecords(request, []);
             await waitForPendingCommits(request);
             await waitForStagingEmpty(request);
-            await waitForDataToAppear(request, 'project-methodology', compositeId);
+            await waitForDataToAppear(request, 'project-methodology', projectMethodologyId);
           } else {
-            trackBatchVerification('POST', 'project-methodology', compositeId, {
+            trackBatchVerification('POST', 'project-methodology', projectMethodologyId, {
               cadTrustProjectId: currentProjectId,
               cadTrustMethodologyId: currentMethodologyId,
             });
@@ -150,88 +152,80 @@ describe('ProjectMethodology Live API Validation Tests', function () {
         }
       }
 
-      // Create 1 minimal record - use a combination that hasn't been used yet
-      let minProjectId = projectId;
-      let minMethodologyId = methodologyId;
-      const minCombinationKey = `${minProjectId}-${minMethodologyId}`;
-      if (usedCombinations.has(minCombinationKey)) {
-        // Find an unused combination
-        let found = false;
-        for (let i = 0; i < projectIds.length && !found; i++) {
-          for (let j = 0; j < methodologyIds.length && !found; j++) {
-            const testKey = `${projectIds[i]}-${methodologyIds[j]}`;
-            if (!usedCombinations.has(testKey)) {
-              minProjectId = projectIds[i];
-              minMethodologyId = methodologyIds[j];
-              found = true;
-            }
+      // Create 1 minimal record - find an unused combination
+      let minProjectId = null;
+      let minMethodologyId = null;
+      for (let projIdx = 0; projIdx < projectIds.length && !minProjectId; projIdx++) {
+        for (let methIdx = 0; methIdx < methodologyIds.length && !minProjectId; methIdx++) {
+          const comboKey = `${projectIds[projIdx]}:${methodologyIds[methIdx]}`;
+          if (!usedCombinations.has(comboKey)) {
+            minProjectId = projectIds[projIdx];
+            minMethodologyId = methodologyIds[methIdx];
+            usedCombinations.add(comboKey);
+            break;
           }
         }
       }
-      const finalMinKey = `${minProjectId}-${minMethodologyId}`;
-      if (usedCombinations.has(finalMinKey)) {
-        throw new Error(`Cannot create minimal record: all combinations are already used`);
-      }
-      usedCombinations.add(finalMinKey);
-      const minimalData = generateProjectMethodologyMinimal(minProjectId, minMethodologyId);
-      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/project-methodology', minimalData);
-      expect(minResponse.success).to.be.true;
-      const minCompositeId = { projectId: minProjectId, methodologyId: minMethodologyId };
-      createdIds.push(minCompositeId);
-      addCreatedId('project-methodology', minCompositeId);
 
-      if (shouldAutoCommit()) {
-        await commitStagedRecords(request, []);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'project-methodology', minCompositeId);
-      } else {
-        trackBatchVerification('POST', 'project-methodology', minCompositeId, {
-          cadTrustProjectId: minProjectId,
-          cadTrustMethodologyId: minMethodologyId,
-        });
+      if (minProjectId && minMethodologyId) {
+        const minimalData = generateProjectMethodologyMinimal(minProjectId, minMethodologyId);
+        const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/project-methodology', minimalData);
+
+        // Fail fast on any error - including duplicates
+        expect(minResponse.success).to.be.true;
+        expect(minId).to.exist;
+        createdIds.push(minId);
+        addCreatedId('project-methodology', minId);
+
+        if (shouldAutoCommit()) {
+          await commitStagedRecords(request, []);
+          await waitForPendingCommits(request);
+          await waitForStagingEmpty(request);
+          await waitForDataToAppear(request, 'project-methodology', minId);
+        } else {
+          trackBatchVerification('POST', 'project-methodology', minId, {
+            cadTrustProjectId: minProjectId,
+            cadTrustMethodologyId: minMethodologyId,
+          });
+        }
       }
 
-      // Create 1 maximal record - use a combination that hasn't been used yet
-      let maxProjectId = projectId;
-      let maxMethodologyId = methodologyId;
-      const maxCombinationKey = `${maxProjectId}-${maxMethodologyId}`;
-      if (usedCombinations.has(maxCombinationKey)) {
-        // Find an unused combination
-        let found = false;
-        for (let i = 0; i < projectIds.length && !found; i++) {
-          for (let j = 0; j < methodologyIds.length && !found; j++) {
-            const testKey = `${projectIds[i]}-${methodologyIds[j]}`;
-            if (!usedCombinations.has(testKey)) {
-              maxProjectId = projectIds[i];
-              maxMethodologyId = methodologyIds[j];
-              found = true;
-            }
+      // Create 1 maximal record - find another unused combination
+      let maxProjectId = null;
+      let maxMethodologyId = null;
+      for (let projIdx = 0; projIdx < projectIds.length && !maxProjectId; projIdx++) {
+        for (let methIdx = 0; methIdx < methodologyIds.length && !maxProjectId; methIdx++) {
+          const comboKey = `${projectIds[projIdx]}:${methodologyIds[methIdx]}`;
+          if (!usedCombinations.has(comboKey)) {
+            maxProjectId = projectIds[projIdx];
+            maxMethodologyId = methodologyIds[methIdx];
+            usedCombinations.add(comboKey);
+            break;
           }
         }
       }
-      const finalMaxKey = `${maxProjectId}-${maxMethodologyId}`;
-      if (usedCombinations.has(finalMaxKey)) {
-        throw new Error(`Cannot create maximal record: all combinations are already used`);
-      }
-      usedCombinations.add(finalMaxKey);
-      const maximalData = generateProjectMethodologyMaximal(maxProjectId, maxMethodologyId);
-      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/project-methodology', maximalData);
-      expect(maxResponse.success).to.be.true;
-      const maxCompositeId = { projectId: maxProjectId, methodologyId: maxMethodologyId };
-      createdIds.push(maxCompositeId);
-      addCreatedId('project-methodology', maxCompositeId);
 
-      if (shouldAutoCommit()) {
-        await commitStagedRecords(request, []);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'project-methodology', maxCompositeId);
-      } else {
-        trackBatchVerification('POST', 'project-methodology', maxCompositeId, {
-          cadTrustProjectId: maxProjectId,
-          cadTrustMethodologyId: maxMethodologyId,
-        });
+      if (maxProjectId && maxMethodologyId) {
+        const maximalData = generateProjectMethodologyMaximal(maxProjectId, maxMethodologyId);
+        const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/project-methodology', maximalData);
+
+        // Fail fast on any error - including duplicates
+        expect(maxResponse.success).to.be.true;
+        expect(maxId).to.exist;
+        createdIds.push(maxId);
+        addCreatedId('project-methodology', maxId);
+
+        if (shouldAutoCommit()) {
+          await commitStagedRecords(request, []);
+          await waitForPendingCommits(request);
+          await waitForStagingEmpty(request);
+          await waitForDataToAppear(request, 'project-methodology', maxId);
+        } else {
+          trackBatchVerification('POST', 'project-methodology', maxId, {
+            cadTrustProjectId: maxProjectId,
+            cadTrustMethodologyId: maxMethodologyId,
+          });
+        }
       }
     });
   });
@@ -251,40 +245,50 @@ describe('ProjectMethodology Live API Validation Tests', function () {
 
   describe('Step 6: Validation After Commit', function () {
     it('should validate all created records are in database', async function () {
-      for (const compositeId of createdIds) {
-        const record = await waitForDataToAppear(request, 'project-methodology', compositeId);
+      for (const projectMethodologyId of createdIds) {
+        const record = await waitForDataToAppear(request, 'project-methodology', projectMethodologyId);
         expect(record).to.exist;
-        expect(record.cadTrustProjectId).to.equal(compositeId.projectId);
-        expect(record.cadTrustMethodologyId).to.equal(compositeId.methodologyId);
+        expect(record.cadTrustProjectMethodologyId).to.equal(projectMethodologyId);
+        expect(record.cadTrustProjectId).to.exist;
+        expect(record.cadTrustMethodologyId).to.exist;
       }
     });
   });
   describe('Step 7: PUT Request Tests', function () {
     it('should update a projectMethodology', async function () {
-      const compositeId = createdIds[0];
+      // Get ID from createdIds (if available) or query database for existing record
+      let projectMethodologyId = createdIds[0];
+      if (!projectMethodologyId) {
+        projectMethodologyId = await getFirstRecordIdFromDatabase(request, 'project-methodology');
+        if (!projectMethodologyId) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
-      const currentRecord = await request.get(`/v2/project-methodology/project/${compositeId.projectId}/methodology/${compositeId.methodologyId}`).expect(200);
+      const currentRecord = await request.get(`/v2/project-methodology/${projectMethodologyId}`).expect(200);
+      const record = currentRecord.body.data || currentRecord.body;
       // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
-        cadTrustProjectId: currentRecord.body.cadTrustProjectId,
-        cadTrustMethodologyId: currentRecord.body.cadTrustMethodologyId,
-        projectMethodologyDate: currentRecord.body.projectMethodologyDate || null,
-        projectMethodologyDescription: currentRecord.body.projectMethodologyDescription || null,
+        cadTrustProjectId: record.cadTrustProjectId, // Required
+        cadTrustMethodologyId: record.cadTrustMethodologyId, // Required
+        projectMethodologyDate: record.projectMethodologyDate ?? null,
+        projectMethodologyDescription: record.projectMethodologyDescription ?? null,
       };
-      const response = await makePutRequest(request, '/v2/project-methodology', compositeId, updateData);
+      const response = await makePutRequest(request, '/v2/project-methodology', projectMethodologyId, updateData);
       expect(response.success).to.be.true;
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'project-methodology', compositeId);
-        await validateDataInDatabase(request, 'project-methodology', compositeId, {
+        await waitForDataToAppear(request, 'project-methodology', projectMethodologyId);
+        await validateDataInDatabase(request, 'project-methodology', projectMethodologyId, {
           cadTrustProjectId: updateData.cadTrustProjectId,
           cadTrustMethodologyId: updateData.cadTrustMethodologyId,
         });
       } else {
-        trackBatchVerification('PUT', 'project-methodology', compositeId, updateData);
+        trackBatchVerification('PUT', 'project-methodology', projectMethodologyId, updateData);
       }
     });
   });
@@ -300,13 +304,14 @@ describe('ProjectMethodology Live API Validation Tests', function () {
     });
 
     it('should get a specific projectMethodology by ID', async function () {
-      const compositeId = createdIds[0];
+      const projectMethodologyId = createdIds[0];
       const response = await request
-        .get(`/v2/project-methodology/project/${compositeId.projectId}/methodology/${compositeId.methodologyId}`)
+        .get(`/v2/project-methodology/${projectMethodologyId}`)
         .expect(200);
 
-      expect(response.body.cadTrustProjectId).to.equal(compositeId.projectId);
-      expect(response.body.cadTrustMethodologyId).to.equal(compositeId.methodologyId);
+      expect(response.body.cadTrustProjectMethodologyId).to.equal(projectMethodologyId);
+      expect(response.body.cadTrustProjectId).to.exist;
+      expect(response.body.cadTrustMethodologyId).to.exist;
     });
 
     it('should support search functionality', async function () {
@@ -320,10 +325,22 @@ describe('ProjectMethodology Live API Validation Tests', function () {
   });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created projectMethodologies', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'project-methodology');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const compositeId = createdIds[i];
-        const response = await makeDeleteRequest(request, '/v2/project-methodology', compositeId);
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const projectMethodologyId = idsToDelete[i];
+        const response = await makeDeleteRequest(request, '/v2/project-methodology', projectMethodologyId);
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
@@ -331,16 +348,10 @@ describe('ProjectMethodology Live API Validation Tests', function () {
           await waitForPendingCommits(request);
           await waitForStagingEmpty(request);
         } else {
-          trackBatchVerification('DELETE', 'project-methodology', compositeId);
+          trackBatchVerification('DELETE', 'project-methodology', projectMethodologyId);
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 

@@ -117,11 +117,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
           });
         }
 
-        res.json({
-          message: 'Location retrieved successfully',
-          data: location,
-          success: true,
-        });
+        res.json(location);
       } catch (err) {
         console.error('Error retrieving location:', err);
         res.status(500).json({

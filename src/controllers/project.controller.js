@@ -2,7 +2,7 @@ import _ from 'lodash';
 
 import { Sequelize } from 'sequelize';
 import xlsx from 'node-xlsx';
-import { uuid as uuidv4 } from 'uuidv4';
+import { v4 as uuidv4 } from 'uuid';
 
 import { Staging, Project, Organization, ModelKeys } from '../models';
 

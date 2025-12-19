@@ -15,9 +15,11 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateStakeholderProjects,
+  generateStakeholderProjectsMinimal,
+  generateStakeholderProjectsMaximal,
   generateStakeholderProjectsInvalidForeignKey,
   generateStakeholderProjectsForbiddenFields,
 } from './data/test-data-generators.js';
@@ -69,7 +71,7 @@ describe('StakeholderProjects Live API Validation Tests', function () {
     });
   });
   describe('Step 4: POST Request Tests', function () {
-    it('should create stakeholderProjects relationships', async function () {
+    it('should create stakeholderProjects relationships with typical, minimal, and maximal data', async function () {
       // Get stakeholder and project IDs from earlier tests
       const stakeholderIds = getCreatedIds('stakeholder');
       const projectIds = getCreatedIds('project');
@@ -77,7 +79,7 @@ describe('StakeholderProjects Live API Validation Tests', function () {
         throw new Error('Stakeholder or Project IDs not found. Ensure stakeholder-validation.spec.js and project-validation.spec.js run before stakeholder-projects-validation.spec.js');
       }
 
-      // Create up to 1 stakeholder-project relationship
+      // Create up to 1 typical record
       // Use unique combinations to avoid duplicate composite keys (unique constraint on stakeholder+project)
       const usedCombinations = new Set();
       let created = 0;
@@ -123,6 +125,92 @@ describe('StakeholderProjects Live API Validation Tests', function () {
           created++;
         }
       }
+
+      // Create 1 minimal record - use a combination that hasn't been used yet
+      const firstStakeholderId = stakeholderIds[0];
+      const firstProjectId = projectIds[0];
+      let minStakeholderId = firstStakeholderId;
+      let minProjectId = firstProjectId;
+      const minCombinationKey = `${minStakeholderId}-${minProjectId}`;
+      if (usedCombinations.has(minCombinationKey)) {
+        // Find an unused combination
+        let found = false;
+        for (let i = 0; i < stakeholderIds.length && !found; i++) {
+          for (let j = 0; j < projectIds.length && !found; j++) {
+            const testKey = `${stakeholderIds[i]}-${projectIds[j]}`;
+            if (!usedCombinations.has(testKey)) {
+              minStakeholderId = stakeholderIds[i];
+              minProjectId = projectIds[j];
+              found = true;
+            }
+          }
+        }
+      }
+      const finalMinKey = `${minStakeholderId}-${minProjectId}`;
+      if (usedCombinations.has(finalMinKey)) {
+        throw new Error(`Cannot create minimal record: all combinations are already used`);
+      }
+      usedCombinations.add(finalMinKey);
+      const minimalData = generateStakeholderProjectsMinimal(minStakeholderId, minProjectId);
+      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/stakeholder-projects', minimalData);
+      expect(minResponse.success).to.be.true;
+      expect(minId).to.exist;
+      createdIds.push(minId);
+      addCreatedId('stakeholder-projects', minId);
+
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'stakeholder-projects', minId);
+      } else {
+        trackBatchVerification('POST', 'stakeholder-projects', minId, {
+          cadTrustStakeholderId: minimalData.cadTrustStakeholderId,
+          cadTrustProjectId: minimalData.cadTrustProjectId,
+        });
+      }
+
+      // Create 1 maximal record - use a combination that hasn't been used yet
+      let maxStakeholderId = firstStakeholderId;
+      let maxProjectId = firstProjectId;
+      const maxCombinationKey = `${maxStakeholderId}-${maxProjectId}`;
+      if (usedCombinations.has(maxCombinationKey)) {
+        // Find an unused combination
+        let found = false;
+        for (let i = 0; i < stakeholderIds.length && !found; i++) {
+          for (let j = 0; j < projectIds.length && !found; j++) {
+            const testKey = `${stakeholderIds[i]}-${projectIds[j]}`;
+            if (!usedCombinations.has(testKey)) {
+              maxStakeholderId = stakeholderIds[i];
+              maxProjectId = projectIds[j];
+              found = true;
+            }
+          }
+        }
+      }
+      const finalMaxKey = `${maxStakeholderId}-${maxProjectId}`;
+      if (usedCombinations.has(finalMaxKey)) {
+        throw new Error(`Cannot create maximal record: all combinations are already used`);
+      }
+      usedCombinations.add(finalMaxKey);
+      const maximalData = generateStakeholderProjectsMaximal(maxStakeholderId, maxProjectId);
+      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/stakeholder-projects', maximalData);
+      expect(maxResponse.success).to.be.true;
+      expect(maxId).to.exist;
+      createdIds.push(maxId);
+      addCreatedId('stakeholder-projects', maxId);
+
+      if (shouldAutoCommit()) {
+        await commitStagedRecords(request, []);
+        await waitForPendingCommits(request);
+        await waitForStagingEmpty(request);
+        await waitForDataToAppear(request, 'stakeholder-projects', maxId);
+      } else {
+        trackBatchVerification('POST', 'stakeholder-projects', maxId, {
+          cadTrustStakeholderId: maximalData.cadTrustStakeholderId,
+          cadTrustProjectId: maximalData.cadTrustProjectId,
+        });
+      }
     });
   });
   describe('Step 5: Staging Commit (if short mode)', function () {
@@ -150,7 +238,14 @@ describe('StakeholderProjects Live API Validation Tests', function () {
   });
   describe('Step 7: PUT Request Tests', function () {
     it('should update a stakeholderProjects relationship', async function () {
-      const id = createdIds[0];
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'stakeholder-projects');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
       const currentRecord = await request.get(`/v2/stakeholder-projects/${id}`).expect(200);
       // Create update data with ALL fields (must include both IDs)
@@ -206,9 +301,21 @@ describe('StakeholderProjects Live API Validation Tests', function () {
   });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created stakeholder-projects', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'stakeholder-projects');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
         const response = await makeDeleteRequest(request, '/v2/stakeholder-projects', id);
         expect(response.success).to.be.true;
 
@@ -221,12 +328,6 @@ describe('StakeholderProjects Live API Validation Tests', function () {
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 

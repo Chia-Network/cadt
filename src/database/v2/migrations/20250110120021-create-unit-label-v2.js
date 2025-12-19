@@ -5,16 +5,21 @@ import { v4 as uuidv4 } from 'uuid';
 export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('unit_label', {
+      cad_trust_unit_label_id: {
+        type: Sequelize.STRING(36),
+        primaryKey: true,
+        allowNull: false,
+        unique: true,
+        comment: 'generated UUID'
+      },
       cad_trust_label_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        primaryKey: true,
         comment: 'Foreign key to label table'
       },
       cad_trust_unit_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        primaryKey: true,
         comment: 'Foreign key to unit table'
       },
       label_unit_date: {

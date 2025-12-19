@@ -4,6 +4,7 @@ import _ from 'lodash';
 
 import { StagingV2, OrganizationsV2, MetaV2 } from '../models/v2/index.js';
 import { getConfig, getConfigV2 } from './config-loader.js';
+import { loggerV2 } from '../config/logger.js';
 
 /**
  * V2-specific assertion that the system is not in read-only mode
@@ -40,9 +41,24 @@ export const assertRecordExistanceOrStaged = async (Model, pk, apiFieldName = nu
   const primaryKeyDbField = Model.rawAttributes[primaryKeyAttribute]?.field || primaryKeyAttribute;
 
   // First check the main table
-  const record = await Model.findByPk(pk);
-  if (record) {
-    return record;
+  // Wrap in try-catch to handle cases where table/column might not exist yet
+  let record = null;
+  try {
+    record = await Model.findByPk(pk);
+    if (record) {
+      return record;
+    }
+  } catch (error) {
+    // If table/column doesn't exist, continue to check staging table
+    // This can happen during initial setup or if migrations haven't run
+    // Only catch "no such column" errors - re-throw other database errors
+    if (error.message && error.message.includes('no such column')) {
+      // Table exists but column doesn't - likely migration issue, but continue to staging check
+      // This allows the function to still check staging table even if main table schema is incomplete
+    } else {
+      // Re-throw other errors (table doesn't exist, connection errors, etc.)
+      throw error;
+    }
   }
 
   // If not found in main table, check staging table

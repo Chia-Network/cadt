@@ -21,6 +21,25 @@ export const createProjectMethodologyV2 = async (req, res) => {
 
     const newRecord = _.cloneDeep(req.body);
 
+    // Check for forbidden fields BEFORE Joi validation
+    // This ensures we return custom error messages instead of Joi's "not allowed" message
+    if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
+      return res.status(400).json({
+        message: 'Error creating new project-methodology relationship',
+        error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
+        success: false,
+      });
+    }
+
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustProjectMethodologyId')) {
+      return res.status(400).json({
+        message: 'Error creating new project-methodology relationship',
+        error: 'cadTrustProjectMethodologyId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Validate the request data
     const { error } = projectMethodologyV2Schema.validate(newRecord, {
       allowUnknown: false,
@@ -35,15 +54,6 @@ export const createProjectMethodologyV2 = async (req, res) => {
       return res.status(400).json({
         message: 'Error creating new project-methodology relationship',
         error: errorMessage,
-        success: false,
-      });
-    }
-
-    // Check for forbidden fields
-    if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
-      return res.status(400).json({
-        message: 'Error creating new project-methodology relationship',
-        error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
         success: false,
       });
     }
@@ -69,12 +79,23 @@ export const createProjectMethodologyV2 = async (req, res) => {
     }
 
     // Check if the relationship already exists (in main table or staging)
-    const existingRelation = await ProjectMethodologyV2.findOne({
-      where: {
-        cadTrustProjectId: newRecord.cadTrustProjectId,
-        cadTrustMethodologyId: newRecord.cadTrustMethodologyId,
-      },
-    });
+    // Wrap in try-catch to handle cases where table/column might not exist yet
+    let existingRelation = null;
+    try {
+      existingRelation = await ProjectMethodologyV2.findOne({
+        where: {
+          cadTrustProjectId: newRecord.cadTrustProjectId,
+          cadTrustMethodologyId: newRecord.cadTrustMethodologyId,
+        },
+      });
+    } catch (error) {
+      // If table/column doesn't exist, continue (will check staging table below)
+      // Only catch "no such column" errors - re-throw other database errors
+      if (!error.message || !error.message.includes('no such column')) {
+        throw error;
+      }
+      // Table exists but column doesn't - likely migration issue, but continue
+    }
 
     if (existingRelation) {
       return res.status(409).json({
@@ -114,11 +135,12 @@ export const createProjectMethodologyV2 = async (req, res) => {
       }
     }
 
-    // Generate UUID for staging
-    const uuid = uuidv4();
+    // Generate UUID for the primary key
+    const cadTrustProjectMethodologyId = uuidv4();
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
+      cad_trust_project_methodology_id: cadTrustProjectMethodologyId,
       cad_trust_project_id: newRecord.cadTrustProjectId,
       cad_trust_methodology_id: newRecord.cadTrustMethodologyId,
       project_methodology_date: newRecord.projectMethodologyDate,
@@ -127,7 +149,7 @@ export const createProjectMethodologyV2 = async (req, res) => {
 
     // Stage the record
     await StagingV2.create({
-      uuid,
+      uuid: cadTrustProjectMethodologyId,
       table: 'project_methodology',
       action: 'INSERT',
       data: JSON.stringify([dbRecord]),
@@ -138,7 +160,8 @@ export const createProjectMethodologyV2 = async (req, res) => {
 
     res.json({
       message: 'Project-Methodology relationship staged successfully',
-      uuid,
+      uuid: cadTrustProjectMethodologyId,
+      cadTrustProjectMethodologyId,
       success: true,
     });
   } catch (err) {
@@ -153,25 +176,12 @@ export const createProjectMethodologyV2 = async (req, res) => {
 
 export const getProjectMethodologyV2 = async (req, res) => {
   try {
-    const { projectId, methodologyId } = req.params;
+    const { cadTrustProjectMethodologyId } = req.params;
 
     const projectMethodology = await ProjectMethodologyV2.findOne({
       where: {
-        cadTrustProjectId: projectId,
-        cadTrustMethodologyId: methodologyId,
+        cadTrustProjectMethodologyId,
       },
-      include: [
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectRegistryName'],
-        },
-        {
-          model: MethodologyV2,
-          as: 'methodology',
-          attributes: ['cadTrustMethodologyId', 'methodologyName', 'methodologyCode'],
-        },
-      ],
     });
 
     if (!projectMethodology) {
@@ -195,18 +205,6 @@ export const getProjectMethodologyV2 = async (req, res) => {
 export const getAllProjectMethodologiesV2 = async (req, res) => {
   try {
     const projectMethodologies = await ProjectMethodologyV2.findAll({
-      include: [
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectRegistryName'],
-        },
-        {
-          model: MethodologyV2,
-          as: 'methodology',
-          attributes: ['cadTrustMethodologyId', 'methodologyName', 'methodologyCode'],
-        },
-      ],
       order: [['createdAt', 'DESC']],
     });
 
@@ -231,14 +229,13 @@ export const updateProjectMethodologyV2 = async (req, res) => {
     await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
-    const { projectId, methodologyId } = req.params;
+    const { cadTrustProjectMethodologyId } = req.params;
     const updateData = _.cloneDeep(req.body);
 
     // Verify record exists first (before validation)
     const existingRecord = await ProjectMethodologyV2.findOne({
       where: {
-        cadTrustProjectId: projectId,
-        cadTrustMethodologyId: methodologyId,
+        cadTrustProjectMethodologyId,
       },
     });
 
@@ -277,7 +274,7 @@ export const updateProjectMethodologyV2 = async (req, res) => {
     }
 
     // Validate foreign keys if they're being changed
-    if (updateData.cadTrustProjectId !== projectId || updateData.cadTrustMethodologyId !== methodologyId) {
+    if (updateData.cadTrustProjectId !== existingRecord.cadTrustProjectId || updateData.cadTrustMethodologyId !== existingRecord.cadTrustMethodologyId) {
       try {
         if (updateData.cadTrustProjectId) {
           await assertRecordExistanceOrStaged(
@@ -304,8 +301,7 @@ export const updateProjectMethodologyV2 = async (req, res) => {
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
-      cad_trust_project_id: projectId, // Original IDs for WHERE clause
-      cad_trust_methodology_id: methodologyId,
+      cad_trust_project_methodology_id: cadTrustProjectMethodologyId,
     };
 
     if (updateData.cadTrustProjectId !== undefined) dbUpdateData.cad_trust_project_id = updateData.cadTrustProjectId;
@@ -315,7 +311,7 @@ export const updateProjectMethodologyV2 = async (req, res) => {
 
     // Stage the update
     await StagingV2.create({
-      uuid: uuidv4(),
+      uuid: cadTrustProjectMethodologyId,
       table: 'project_methodology',
       action: 'UPDATE',
       data: JSON.stringify([dbUpdateData]),
@@ -326,6 +322,7 @@ export const updateProjectMethodologyV2 = async (req, res) => {
 
     res.json({
       message: 'Project-Methodology relationship update staged successfully',
+      cadTrustProjectMethodologyId,
       success: true,
     });
   } catch (err) {
@@ -344,13 +341,12 @@ export const deleteProjectMethodologyV2 = async (req, res) => {
     await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
-    const { projectId, methodologyId } = req.params;
+    const { cadTrustProjectMethodologyId } = req.params;
 
     // Verify record exists
     const existingRecord = await ProjectMethodologyV2.findOne({
       where: {
-        cadTrustProjectId: projectId,
-        cadTrustMethodologyId: methodologyId,
+        cadTrustProjectMethodologyId,
       },
     });
 
@@ -361,14 +357,13 @@ export const deleteProjectMethodologyV2 = async (req, res) => {
       });
     }
 
-    // Stage the delete (composite key requires both IDs)
+    // Stage the delete
     await StagingV2.create({
-      uuid: uuidv4(),
+      uuid: cadTrustProjectMethodologyId,
       table: 'project_methodology',
       action: 'DELETE',
       data: JSON.stringify([{
-        cad_trust_project_id: projectId,
-        cad_trust_methodology_id: methodologyId,
+        cad_trust_project_methodology_id: cadTrustProjectMethodologyId,
       }]),
       committed: false,
       failed_commit: false,
@@ -377,6 +372,7 @@ export const deleteProjectMethodologyV2 = async (req, res) => {
 
     res.json({
       message: 'Project-Methodology relationship delete staged successfully',
+      cadTrustProjectMethodologyId,
       success: true,
     });
   } catch (err) {

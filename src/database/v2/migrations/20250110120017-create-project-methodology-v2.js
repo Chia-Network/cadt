@@ -5,16 +5,21 @@ import { v4 as uuidv4 } from 'uuid';
 export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('project_methodology', {
+      cad_trust_project_methodology_id: {
+        type: Sequelize.STRING(36),
+        primaryKey: true,
+        allowNull: false,
+        unique: true,
+        comment: 'generated UUID'
+      },
       cad_trust_project_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        primaryKey: true,
         comment: 'Foreign key to project table'
       },
       cad_trust_methodology_id: {
         type: Sequelize.UUID,
         allowNull: false,
-        primaryKey: true,
         comment: 'references methodology UUID'
       },
       project_methodology_date: {

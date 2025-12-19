@@ -241,9 +241,9 @@ describe('Phase 27.14: Comprehensive Sync Registries V2 Tests', function () {
       const testCases = [
         { modelKey: 'project', expected: 'cad_trust_project_id' },
         { modelKey: 'unit', expected: 'cad_trust_unit_id' },
-        { modelKey: 'project_methodology', expected: 'id' },
-        { modelKey: 'stakeholder_projects', expected: 'id' },
-        { modelKey: 'unit_label', expected: 'id' },
+        { modelKey: 'project_methodology', expected: 'cad_trust_project_methodology_id' },
+        { modelKey: 'stakeholder_projects', expected: 'cad_trust_stakeholder_project_id' },
+        { modelKey: 'unit_label', expected: 'cad_trust_unit_label_id' },
       ];
 
       testCases.forEach(({ modelKey, expected }) => {

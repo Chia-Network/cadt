@@ -15,7 +15,7 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateAefT5AuthorizedEntities,
   generateAefT5AuthorizedEntitiesMinimal,
@@ -168,22 +168,31 @@ describe('AefT5AuthorizedEntities Live API Validation Tests', function () {
   });
   describe('Step 7: PUT Request Tests', function () {
     it('should update a aefT5AuthorizedEntities', async function () {
-      const id = createdIds[0];
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'aef-t5-authorized-entities');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
       const currentRecord = await request.get(`/v2/aef-t5-authorized-entities/${id}`).expect(200);
-      // Create update data with ALL fields (required fields must be included)
+      const record = currentRecord.body.data || currentRecord.body;
+      // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
-        aefT5AuthorizedEntitiesAuthorizationDate: currentRecord.body.aefT5AuthorizedEntitiesAuthorizationDate,
-        aefT5AuthorizedEntitiesName: currentRecord.body.aefT5AuthorizedEntitiesName,
-        aefT5AuthorizedEntitiesId: currentRecord.body.aefT5AuthorizedEntitiesId,
-        aefT5AuthorizedEntitiesCooperativeApproachId: currentRecord.body.aefT5AuthorizedEntitiesCooperativeApproachId,
-        aefT5AuthorizedEntitiesIncorporationCountry: currentRecord.body.aefT5AuthorizedEntitiesIncorporationCountry || null,
-        aefT5AuthorizedEntitiesConditions: currentRecord.body.aefT5AuthorizedEntitiesConditions || null,
-        aefT5AuthorizedEntitiesChangeConditions: currentRecord.body.aefT5AuthorizedEntitiesChangeConditions || null,
-        aefT5AuthorizedEntitiesAdditionalInformation: currentRecord.body.aefT5AuthorizedEntitiesAdditionalInformation || null,
-        cadTrustAefT1SubmissionId: currentRecord.body.cadTrustAefT1SubmissionId || null,
-        cadTrustUnitId: currentRecord.body.cadTrustUnitId || null,
-        cadTrustProjectId: currentRecord.body.cadTrustProjectId || null,
+        aefT5AuthorizedEntitiesAuthorizationDate: record.aefT5AuthorizedEntitiesAuthorizationDate,
+        aefT5AuthorizedEntitiesName: record.aefT5AuthorizedEntitiesName,
+        aefT5AuthorizedEntitiesId: record.aefT5AuthorizedEntitiesId,
+        aefT5AuthorizedEntitiesCooperativeApproachId: record.aefT5AuthorizedEntitiesCooperativeApproachId,
+        aefT5AuthorizedEntitiesIncorporationCountry: record.aefT5AuthorizedEntitiesIncorporationCountry ?? null,
+        aefT5AuthorizedEntitiesConditions: record.aefT5AuthorizedEntitiesConditions ?? null,
+        aefT5AuthorizedEntitiesChangeConditions: record.aefT5AuthorizedEntitiesChangeConditions ?? null,
+        aefT5AuthorizedEntitiesAdditionalInformation: record.aefT5AuthorizedEntitiesAdditionalInformation ?? null,
+        cadTrustAefT1SubmissionId: record.cadTrustAefT1SubmissionId ?? null,
+        cadTrustUnitId: record.cadTrustUnitId ?? null,
+        cadTrustProjectId: record.cadTrustProjectId ?? null,
       };
       const response = await makePutRequest(request, '/v2/aef-t5-authorized-entities', id, updateData);
       expect(response.success).to.be.true;
@@ -232,9 +241,21 @@ describe('AefT5AuthorizedEntities Live API Validation Tests', function () {
   });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created aef-t5-authorized-entities', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'aef-t5-authorized-entities');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
         const response = await makeDeleteRequest(request, '/v2/aef-t5-authorized-entities', id);
         expect(response.success).to.be.true;
 
@@ -247,12 +268,6 @@ describe('AefT5AuthorizedEntities Live API Validation Tests', function () {
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 

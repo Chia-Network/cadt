@@ -1,4 +1,4 @@
-const { uuid: uuidv4 } = require('uuidv4');
+const { v4: uuidv4 } = require('uuid');
 const Sequelize = require('sequelize');
 
 module.exports = {

@@ -169,12 +169,29 @@ export const commit = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    loggerV2.error('[v2]: Error committing staging table:', error);
+    loggerV2.error('[v2]: Error committing staging table:', {
+      errorMessage: error.message,
+      errorName: error.name,
+      errorStack: error.stack,
+      errorType: typeof error,
+      errorConstructor: error.constructor?.name,
+    });
     const table = _.get(req, 'query.table', 'all tables');
     const ids = _.get(req, 'body.ids', []);
+    // Safely get error message - handle cases where error.message might throw
+    let errorMessage = 'An internal error occurred while committing staging table';
+    try {
+      errorMessage = error.message || errorMessage;
+    } catch (msgError) {
+      loggerV2.error('[v2]: Error accessing error.message:', {
+        msgError: msgError.message,
+        msgErrorStack: msgError.stack,
+      });
+      errorMessage = 'An internal error occurred (error message unavailable)';
+    }
     res.status(400).json({
       message: 'Error committing staging table',
-      error: error.message || `An internal error occurred while committing staging table${table !== 'all tables' ? ` '${table}'` : ''}${ids.length > 0 ? ` with ${ids.length} record(s)` : ''}`,
+      error: errorMessage,
       success: false,
     });
   }

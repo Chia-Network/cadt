@@ -65,7 +65,7 @@ export async function getDeletedItems(
     );
 
     const query = {
-      ...columnsToInclude(columns, includes),
+      ...columnsToInclude(columns, includes, model),
     };
 
     originalProjects = await model.findAll({

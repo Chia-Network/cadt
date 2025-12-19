@@ -69,40 +69,40 @@ export const aefT4HoldingsV2Schema = Joi.object({
   }),
 
   // Optional fields
-  aefT4HoldingsMetric: Joi.string().valid(...metricPicklist).allow(null).messages({
+  aefT4HoldingsMetric: Joi.string().valid(...metricPicklist).allow(null).optional().messages({
     'any.only': `aefT4HoldingsMetric does not include a valid option. Valid options are: ${metricPicklist.join(', ')}`,
   }),
 
-  aefT4HoldingsGwpValue: Joi.string().max(255).allow(null).messages({
+  aefT4HoldingsGwpValue: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT4HoldingsGwpValue must not exceed 255 characters',
   }),
 
-  aefT4HoldingsApplicableNonGhgMetric: Joi.string().max(255).allow(null).messages({
+  aefT4HoldingsApplicableNonGhgMetric: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT4HoldingsApplicableNonGhgMetric must not exceed 255 characters',
   }),
 
-  aefT4HoldingsQuantityNonGhg: Joi.string().max(255).allow(null).messages({
+  aefT4HoldingsQuantityNonGhg: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT4HoldingsQuantityNonGhg must not exceed 255 characters',
   }),
 
-  aefT4HoldingsMitigationType: Joi.string().valid(...typePicklist).allow(null).messages({
+  aefT4HoldingsMitigationType: Joi.string().valid(...typePicklist).allow(null).optional().messages({
     'any.only': `aefT4HoldingsMitigationType does not include a valid option. Valid options are: ${typePicklist.join(', ')}`,
   }),
 
   // Foreign keys - optional
-  cadTrustAefT1SubmissionId: Joi.string().uuid().allow(null).messages({
+  cadTrustAefT1SubmissionId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustAefT1SubmissionId must be a valid UUID',
   }),
 
-  cadTrustUnitId: Joi.string().uuid().allow(null).messages({
+  cadTrustUnitId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustUnitId must be a valid UUID',
   }),
 
-  cadTrustProjectId: Joi.string().uuid().allow(null).messages({
+  cadTrustProjectId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustProjectId must be a valid UUID',
   }),
 
-  cadTrustAefT2AuthorizationsId: Joi.string().uuid().allow(null).messages({
+  cadTrustAefT2AuthorizationsId: Joi.string().uuid().allow(null).optional().messages({
     'string.guid': 'cadTrustAefT2AuthorizationsId must be a valid UUID',
   }),
 

@@ -16,35 +16,35 @@ const __dirname = dirname(__filename);
 // Order matches natural user workflow: create base entities first, then relationships
 const testFiles = [
   // Base entities (no dependencies)
-  'methodology-validation.spec.js',      // No deps
-  'program-validation.spec.js',         // No deps
-  'stakeholder-validation.spec.js',      // No deps
-  'label-validation.spec.js',           // No deps
+  'methodology-validation.live.spec.js',      // No deps
+  'program-validation.live.spec.js',         // No deps
+  'stakeholder-validation.live.spec.js',      // No deps
+  'label-validation.live.spec.js',           // No deps
 
   // Project and its direct dependents
-  'project-validation.spec.js',         // Needs program (optional)
-  'location-validation.spec.js',        // Needs project
-  'estimation-validation.spec.js',      // Needs project
-  'rating-validation.spec.js',          // Needs project
-  'co-benefit-validation.spec.js',      // Needs project
-  'validation-validation.spec.js',      // Needs project
+  'project-validation.live.spec.js',         // Needs program (optional)
+  'location-validation.live.spec.js',        // Needs project
+  'estimation-validation.live.spec.js',      // Needs project
+  'rating-validation.live.spec.js',          // Needs project
+  'co-benefit-validation.live.spec.js',      // Needs project
+  'validation-validation.live.spec.js',      // Needs project
 
   // Verification and its dependents
-  'verification-validation.spec.js',     // Needs project, optionally validation
-  'issuance-validation.spec.js',        // Needs verification + methodology
-  'unit-validation.spec.js',            // Needs issuance
+  'verification-validation.live.spec.js',     // Needs project, optionally validation
+  'issuance-validation.live.spec.js',        // Needs verification + methodology
+  'unit-validation.live.spec.js',            // Needs issuance
 
   // Relationship tables (composite keys)
-  'project-methodology-validation.spec.js',  // Needs project + methodology
-  'stakeholder-projects-validation.spec.js',  // Needs stakeholder + project
-  'unit-label-validation.spec.js',            // Needs unit + label
+  'project-methodology-validation.live.spec.js',  // Needs project + methodology
+  'stakeholder-projects-validation.live.spec.js',  // Needs stakeholder + project
+  'unit-label-validation.live.spec.js',            // Needs unit + label
 
   // AEF endpoints (need to check dependencies)
-  'aef-t1-submission-validation.spec.js',
-  'aef-t2-authorizations-validation.spec.js',
-  'aef-t3-actions-validation.spec.js',
-  'aef-t4-holdings-validation.spec.js',
-  'aef-t5-authorized-entities-validation.spec.js',
+  'aef-t1-submission-validation.live.spec.js',
+  'aef-t2-authorizations-validation.live.spec.js',
+  'aef-t3-actions-validation.live.spec.js',
+  'aef-t4-holdings-validation.live.spec.js',
+  'aef-t5-authorized-entities-validation.live.spec.js',
 ];
 
 async function main() {

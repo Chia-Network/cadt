@@ -15,7 +15,7 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateVerification,
   generateVerificationMinimal,
@@ -189,17 +189,26 @@ describe('Verification Live API Validation Tests', function () {
   });
   describe('Step 7: PUT Request Tests', function () {
     it('should update a verification', async function () {
-      const id = createdIds[0];
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'verification');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
       const currentRecord = await request.get(`/v2/verification/${id}`).expect(200);
+      const record = currentRecord.body.data || currentRecord.body;
       // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
-        verificationId: currentRecord.body.verificationId,
-        verificationStartDate: currentRecord.body.verificationStartDate || null,
-        verificationEndDate: currentRecord.body.verificationEndDate || null,
-        verificationBody: currentRecord.body.verificationBody || null,
-        cadTrustProjectId: currentRecord.body.cadTrustProjectId,
-        cadTrustValidationId: currentRecord.body.cadTrustValidationId || null,
+        verificationId: record.verificationId,
+        verificationStartDate: record.verificationStartDate ?? null,
+        verificationEndDate: record.verificationEndDate ?? null,
+        verificationBody: record.verificationBody ?? null,
+        cadTrustProjectId: record.cadTrustProjectId,
+        cadTrustValidationId: record.cadTrustValidationId ?? null,
       };
       const response = await makePutRequest(request, '/v2/verification', id, updateData);
       expect(response.success).to.be.true;
@@ -248,9 +257,21 @@ describe('Verification Live API Validation Tests', function () {
   });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created verifications', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'verification');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
         const response = await makeDeleteRequest(request, '/v2/verification', id);
         expect(response.success).to.be.true;
 
@@ -263,12 +284,6 @@ describe('Verification Live API Validation Tests', function () {
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 

@@ -532,7 +532,7 @@ export const generateLabelForbiddenFields = () => ({
 });
 
 // ============================================================================
-// PROJECT-METHODOLOGY GENERATORS (Composite Key)
+// PROJECT-METHODOLOGY GENERATORS
 // ============================================================================
 
 export const generateProjectMethodology = (cadTrustProjectId, cadTrustMethodologyId) => ({
@@ -575,6 +575,18 @@ export const generateStakeholderProjects = (cadTrustStakeholderId, cadTrustProje
   cadTrustProjectId,
 });
 
+// Minimal: same as typical (only required fields)
+export const generateStakeholderProjectsMinimal = (cadTrustStakeholderId, cadTrustProjectId) => ({
+  cadTrustStakeholderId,
+  cadTrustProjectId,
+});
+
+// Maximal: same as typical (only required fields)
+export const generateStakeholderProjectsMaximal = (cadTrustStakeholderId, cadTrustProjectId) => ({
+  cadTrustStakeholderId,
+  cadTrustProjectId,
+});
+
 export const generateStakeholderProjectsInvalidForeignKey = () => ({
   cadTrustStakeholderId: getNonExistentId(),
   cadTrustProjectId: getNonExistentId(),
@@ -589,7 +601,7 @@ export const generateStakeholderProjectsForbiddenFields = (cadTrustStakeholderId
 });
 
 // ============================================================================
-// UNIT-LABEL GENERATORS (Composite Key)
+// UNIT-LABEL GENERATORS
 // ============================================================================
 
 export const generateUnitLabel = (cadTrustLabelId, cadTrustUnitId) => ({

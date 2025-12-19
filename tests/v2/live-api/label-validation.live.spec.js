@@ -15,17 +15,18 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
-  generateIssuance,
-  generateIssuanceMinimal,
-  generateIssuanceMaximal,
-  generateIssuanceForbiddenFields,
+  generateLabel,
+  generateLabelMinimal,
+  generateLabelMaximal,
+  generateLabelLongStrings,
+  generateLabelForbiddenFields,
   getLongString,
   getInvalidPicklistValue,
 } from './data/test-data-generators.js';
 
-describe('Issuance Live API Validation Tests', function () {
+describe('Label Live API Validation Tests', function () {
   this.timeout(600000); // 10 minute timeout
   let request;
   let homeOrgId;
@@ -37,45 +38,35 @@ describe('Issuance Live API Validation Tests', function () {
   });
   describe('Step 3: Validation Failure Tests', function () {
     it('should reject POST with forbidden fields (createdAt, updatedAt, ID)', async function () {
-      const verificationId = getFirstCreatedId('verification');
-      const methodologyId = getFirstCreatedId('methodology');
-      if (!verificationId || !methodologyId) {
-        this.skip(); // Skip if prerequisites not available
-      }
-      const forbiddenData = generateIssuanceForbiddenFields(verificationId, methodologyId);
+      const forbiddenData = generateLabelForbiddenFields();
       const response = await request
-        .post('/v2/issuance')
+        .post('/v2/label')
         .send(forbiddenData);
       expect(response.status).to.not.equal(200);
     });
-    it('should reject POST with invalid foreign keys', async function () {
-      const invalidData = generateIssuanceInvalidForeignKey();
+    it('should reject POST with invalid picklist values', async function () {
+      const invalidData = generateLabelMinimal();
+      invalidData.labelType = getInvalidPicklistValue('labelType');
       const response = await request
-        .post('/v2/issuance')
+        .post('/v2/label')
         .send(invalidData);
 
       expect(response.status).to.not.equal(200);
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { issuanceId: 'TEST-ISS' }; // Missing cadTrustVerificationId and cadTrustMethodologyId
+      const incompleteData = {}; // Missing labelName (required field)
       const response = await request
-        .post('/v2/issuance')
+        .post('/v2/label')
         .send(incompleteData);
 
       expect(response.status).to.not.equal(200);
     });
 
     it('should reject POST with strings that are too long', async function () {
-      const verificationId = getFirstCreatedId('verification');
-      const methodologyId = getFirstCreatedId('methodology');
-      if (!verificationId || !methodologyId) {
-        this.skip();
-      }
-      const longData = generateIssuance(verificationId, methodologyId);
-      // Note: Long strings test may need manual adjustment
+      const longData = generateLabelLongStrings();
       const response = await request
-        .post('/v2/issuance')
+        .post('/v2/label')
         .send(longData);
 
       // May or may not fail depending on validation rules
@@ -91,27 +82,18 @@ describe('Issuance Live API Validation Tests', function () {
     });
   });
   describe('Step 4: POST Request Tests', function () {
-    it('should create issuances with typical, minimal, and maximal data', async function () {
-      // Get verification and methodology IDs from earlier tests
-      const verificationId = getFirstCreatedId('verification');
-      const methodologyId = getFirstCreatedId('methodology');
-      if (!verificationId || !methodologyId) {
-        throw new Error('Verification or Methodology ID not found. Ensure verification-validation.spec.js and methodology-validation.spec.js run before issuance-validation.spec.js');
-      }
-      // Optionally get location ID if available
-      const locationIds = getCreatedIds('location');
-      const locationId = locationIds.length > 0 ? locationIds[0] : null;
-
+    it('should create labels with typical, minimal, and maximal data', async function () {
       // Create 1 typical record
-      const data = generateIssuance(verificationId, methodologyId, locationId);
-      const { id, response } = await makePostRequest(request, '/v2/issuance', data);
+      const data = generateLabel();
+      const { id, response } = await makePostRequest(request, '/v2/label', data);
       expect(response.success).to.be.true;
       expect(id).to.exist;
       createdIds.push(id);
-      addCreatedId('issuance', id);
+      addCreatedId('label', id);
       // Check record is in staging table
-      const inStaging = await checkRecordInStaging(request, '/v2/issuance', id, {
-        issuanceId: data.issuanceId,
+      const inStaging = await checkRecordInStaging(request, '/v2/label', id, {
+        labelName: data.labelName,
+        labelName: data.labelName,
       });
       expect(inStaging).to.be.true;
       // Commit if in extended mode
@@ -119,46 +101,46 @@ describe('Issuance Live API Validation Tests', function () {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'issuance', id);
+        await waitForDataToAppear(request, 'label', id);
       } else {
-        trackBatchVerification('POST', 'issuance', id, {
-          issuanceId: data.issuanceId,
+        trackBatchVerification('POST', 'label', id, {
+          labelName: data.labelName,
+          labelName: data.labelName,
         });
       }
 
       // Create 1 minimal record
-      const minimalData = generateIssuanceMinimal(verificationId, methodologyId);
-      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/issuance', minimalData);
+      const minimalData = generateLabelMinimal();
+      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/label', minimalData);
       expect(minResponse.success).to.be.true;
       createdIds.push(minId);
-      addCreatedId('issuance', minId);
-
+      addCreatedId('label', minId);
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'issuance', minId);
+        await waitForDataToAppear(request, 'label', minId);
       } else {
-        trackBatchVerification('POST', 'issuance', minId, {
-          issuanceId: minimalData.issuanceId,
+        trackBatchVerification('POST', 'label', minId, {
+          labelName: minimalData.labelName,
+          labelName: minimalData.labelName,
         });
       }
 
       // Create 1 maximal record
-      const maximalData = generateIssuanceMaximal(verificationId, methodologyId, locationId);
-      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/issuance', maximalData);
+      const maximalData = generateLabelMaximal();
+      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/label', maximalData);
       expect(maxResponse.success).to.be.true;
       createdIds.push(maxId);
-      addCreatedId('issuance', maxId);
-
+      addCreatedId('label', maxId);
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'issuance', maxId);
+        await waitForDataToAppear(request, 'label', maxId);
       } else {
-        trackBatchVerification('POST', 'issuance', maxId, {
-          issuanceId: maximalData.issuanceId,
+        trackBatchVerification('POST', 'label', maxId, {
+          labelName: maximalData.labelName,
         });
       }
     });
@@ -171,7 +153,7 @@ describe('Issuance Live API Validation Tests', function () {
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
         // Wait for all records to appear
-        const recordsToWaitFor = createdIds.map(id => ({ type: 'issuance', id }));
+        const recordsToWaitFor = createdIds.map(id => ({ type: 'label', id }));
         await waitForBatchToAppear(request, recordsToWaitFor);
       }
     });
@@ -180,45 +162,53 @@ describe('Issuance Live API Validation Tests', function () {
   describe('Step 6: Validation After Commit', function () {
     it('should validate all created records are in database', async function () {
       for (const id of createdIds) {
-        const record = await waitForDataToAppear(request, 'issuance', id);
+        const record = await waitForDataToAppear(request, 'label', id);
         expect(record).to.exist;
-        expect(record.cadTrustIssuanceId).to.equal(id);
+        expect(record.cadTrustLabelId).to.equal(id);
       }
     });
   });
   describe('Step 7: PUT Request Tests', function () {
-    it('should update a issuance', async function () {
-      const id = createdIds[0];
+    it('should update a label', async function () {
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'label');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
-      const currentRecord = await request.get(`/v2/issuance/${id}`).expect(200);
+      const currentRecord = await request.get(`/v2/label/${id}`).expect(200);
+      const record = currentRecord.body.data || currentRecord.body;
       // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
-        issuanceId: currentRecord.body.issuanceId,
-        issuanceDate: currentRecord.body.issuanceDate || null,
-        cadTrustVerificationId: currentRecord.body.cadTrustVerificationId,
-        cadTrustMethodologyId: currentRecord.body.cadTrustMethodologyId,
-        cadTrustLocationId: currentRecord.body.cadTrustLocationId || null,
+        labelName: `UPDATED-${Date.now()}`,
+        labelType: record.labelType ?? null,
+        labelLink: record.labelLink ?? null,
+        labelDate: record.labelDate ?? null,
       };
-      const response = await makePutRequest(request, '/v2/issuance', id, updateData);
+      const response = await makePutRequest(request, '/v2/label', id, updateData);
       expect(response.success).to.be.true;
 
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
-        await waitForDataToAppear(request, 'issuance', id);
-        await validateDataInDatabase(request, 'issuance', id, {
-          issuanceId: updateData.issuanceId,
+        await waitForDataToAppear(request, 'label', id);
+        await validateDataInDatabase(request, 'label', id, {
+          labelName: updateData.labelName,
         });
       } else {
-        trackBatchVerification('PUT', 'issuance', id, updateData);
+        trackBatchVerification('PUT', 'label', id, updateData);
       }
     });
   });
   describe('Step 8: GET Request Tests', function () {
-    it('should list all issuances with pagination', async function () {
+    it('should list all labels with pagination', async function () {
       const response = await request
-        .get('/v2/issuance?page=1&limit=5')
+        .get('/v2/label?page=1&limit=5')
         .expect(200);
 
       expect(response.body).to.have.property('data');
@@ -226,30 +216,42 @@ describe('Issuance Live API Validation Tests', function () {
       expect(response.body).to.have.property('pageCount');
     });
 
-    it('should get a specific issuance by ID', async function () {
+    it('should get a specific label by ID', async function () {
       const id = createdIds[0];
       const response = await request
-        .get(`/v2/issuance/${id}`)
+        .get(`/v2/label/${id}`)
         .expect(200);
 
-      expect(response.body.cadTrustIssuanceId).to.equal(id);
+      expect(response.body.cadTrustLabelId).to.equal(id);
     });
 
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
-        .get('/v2/issuance')
+        .get('/v2/label')
         .expect(200);
 
       expect(response.body).to.exist;
     });
   });
   describe('Step 9: DELETE Request Tests', function () {
-    it('should delete all created issuances', async function () {
+    it('should delete all created labels', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'label');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
-        const response = await makeDeleteRequest(request, '/v2/issuance', id);
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
+        const response = await makeDeleteRequest(request, '/v2/label', id);
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {
@@ -257,24 +259,18 @@ describe('Issuance Live API Validation Tests', function () {
           await waitForPendingCommits(request);
           await waitForStagingEmpty(request);
         } else {
-          trackBatchVerification('DELETE', 'issuance', id);
+          trackBatchVerification('DELETE', 'label', id);
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 
   describe('Step 10: Final Validation', function () {
-    it('should verify all issuances are deleted', async function () {
-      const response = await request.get('/v2/issuance').expect(200);
+    it('should verify all labels are deleted', async function () {
+      const response = await request.get('/v2/label').expect(200);
       const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
-      // Should only have issuances that existed before tests
+      // Should only have labels that existed before tests
       expect(data.length).to.equal(0);
     });
   });
