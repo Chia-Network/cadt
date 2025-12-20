@@ -335,10 +335,9 @@ describe('V2 Location API - Basic CRUD Tests', function () {
         .get(`/v2/location/${location.cadTrustLocationId}`)
         .expect(200);
 
-      expect(response.body.success).to.be.true;
-      expect(response.body.data.cadTrustLocationId).to.equal(location.cadTrustLocationId);
-      expect(response.body.data.locationCountry).to.equal('Canada');
-      expect(response.body.data.locationRegion).to.equal('British Columbia');
+      expect(response.body.cadTrustLocationId).to.equal(location.cadTrustLocationId);
+      expect(response.body.locationCountry).to.equal('Canada');
+      expect(response.body.locationRegion).to.equal('British Columbia');
       // Note: Project association is not included by default - use columns parameter if needed
     });
   });

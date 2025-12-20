@@ -212,11 +212,9 @@ export const commitStagedRecords = async (request, uuids = [], force = false) =>
 
   if (uuids && uuids.length > 0) {
     body.ids = uuids;
-    console.log(`[${getTimestamp()}] POST /v2/staging/commit (${uuids.length} UUIDs)`);
-  } else {
-    console.log(`[${getTimestamp()}] POST /v2/staging/commit`);
   }
 
+  // Note: Request logging is handled by the request wrapper in getLiveApiRequest()
   // Commit UUIDs if provided, otherwise commit all uncommitted records (no ids field)
   const response = await request
     .post('/v2/staging/commit')
@@ -341,19 +339,8 @@ export const waitForDataToAppear = async (request, type, id, maxWaitTime = 60000
 
   while (Date.now() - startTime < maxWaitTime) {
     try {
-      // Handle composite keys (project-methodology, unit-label)
-      let endpoint;
-      if (typeof id === 'object') {
-        if (type === 'project-methodology') {
-          endpoint = `/v2/project-methodology/project/${id.projectId}/methodology/${id.methodologyId}`;
-        } else if (type === 'unit-label') {
-          endpoint = `/v2/unit-label/${id.labelId}/${id.unitId}`;
-        } else {
-          throw new Error(`Unknown composite key type: ${type}`);
-        }
-      } else {
-        endpoint = `/v2/${type}/${id}`;
-      }
+      // All tables now use UUID primary keys
+      const endpoint = `/v2/${type}/${id}`;
 
       const response = await request.get(endpoint);
       if (response.status === 200 && response.body) {
@@ -400,19 +387,8 @@ export const waitForBatchToAppear = async (request, records, maxWaitTime = 60000
 
     const promises = recordsToCheck.map(async (record) => {
       try {
-        // Handle composite keys
-        let endpoint;
-        if (typeof record.id === 'object') {
-          if (record.type === 'project-methodology') {
-            endpoint = `/v2/project-methodology/project/${record.id.projectId}/methodology/${record.id.methodologyId}`;
-          } else if (record.type === 'unit-label') {
-            endpoint = `/v2/unit-label/${record.id.labelId}/${record.id.unitId}`;
-          } else {
-            throw new Error(`Unknown composite key type: ${record.type}`);
-          }
-        } else {
-          endpoint = `/v2/${record.type}/${record.id}`;
-        }
+        // All tables now use UUID primary keys
+        const endpoint = `/v2/${record.type}/${record.id}`;
 
         const response = await request.get(endpoint);
         if (response.status === 200 && response.body) {
@@ -467,7 +443,7 @@ export const waitForBatchToAppear = async (request, records, maxWaitTime = 60000
  */
 export const clearStagingTable = async (request) => {
   try {
-    console.log(`[${getTimestamp()}] DELETE /v2/staging/clean`);
+    // Note: Request logging is handled by the request wrapper in getLiveApiRequest()
     const response = await request.delete('/v2/staging/clean');
     if (response.status === 200) {
       console.log('✓ Staging table cleared');
@@ -490,19 +466,8 @@ export const clearStagingTable = async (request) => {
  */
 export const validateDataInDatabase = async (request, type, id, expectedData) => {
   try {
-    // Get actual data
-    let endpoint;
-    if (typeof id === 'object') {
-      if (type === 'project-methodology') {
-        endpoint = `/v2/project-methodology/project/${id.projectId}/methodology/${id.methodologyId}`;
-      } else if (type === 'unit-label') {
-        endpoint = `/v2/unit-label/${id.labelId}/${id.unitId}`;
-      } else {
-        throw new Error(`Unknown composite key type: ${type}`);
-      }
-    } else {
-      endpoint = `/v2/${type}/${id}`;
-    }
+    // Get actual data - all tables now use UUID primary keys
+    const endpoint = `/v2/${type}/${id}`;
 
     const response = await request.get(endpoint).expect(200);
     const actualData = response.body;
@@ -531,25 +496,182 @@ export const getLiveApiRequest = async () => {
   const request = createLiveApiRequest();
   await waitForServer(request);
 
-  // Wrap request methods to track endpoints
+  // Wrap request methods to track endpoints and log timestamps
+  // Only wrap if not already wrapped (check for our custom property)
+  if (request._wrappedForLogging) {
+    return request;
+  }
+
   const originalPost = request.post.bind(request);
   const originalPut = request.put.bind(request);
   const originalDelete = request.delete.bind(request);
 
   request.post = function(path) {
     trackTestEndpoint('POST', path);
+    console.log(`[${getTimestamp()}] POST ${path}`);
     return originalPost(path);
   };
 
   request.put = function(path) {
     trackTestEndpoint('PUT', path);
+    console.log(`[${getTimestamp()}] PUT ${path}`);
     return originalPut(path);
   };
 
   request.delete = function(path) {
     trackTestEndpoint('DELETE', path);
+    console.log(`[${getTimestamp()}] DELETE ${path}`);
     return originalDelete(path);
   };
 
+  // Mark as wrapped to prevent duplicate wrapping
+  request._wrappedForLogging = true;
+
   return request;
+};
+
+/**
+ * Wait for V2 organization to be created and ready
+ * Polls GET /v2/organizations until organization appears and is synced
+ * @param {Object} request - supertest request instance
+ * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
+ * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
+ * @returns {Promise<{orgUid: string, organization: object}>} Organization UID and data
+ */
+export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000) => {
+  const startTime = Date.now();
+  const interval = 10000; // Check every 10 seconds
+  const timestamp = getTimestamp();
+
+  console.log(`[${timestamp}] Waiting for V2 organization to be ready...`);
+  if (orgName) {
+    console.log(`  Looking for organization with name: ${orgName}`);
+  } else {
+    console.log(`  Looking for home organization`);
+  }
+
+  while (Date.now() - startTime < maxWaitTime) {
+    try {
+      const response = await request.get('/v2/organizations');
+
+      if (response.status === 200 && response.body && typeof response.body === 'object') {
+        // Response is an object keyed by org_uid: { "org_uid": { org data }, ... }
+        const orgs = Object.values(response.body);
+
+        // Find matching organization
+        let org = null;
+        if (orgName) {
+          org = orgs.find(o =>
+            (o.name === orgName || o.orgName === orgName) &&
+            (o.is_home === true || o.isHome === true)
+          );
+        } else {
+          // Find home org
+          org = orgs.find(o => o.is_home === true || o.isHome === true);
+        }
+
+        if (org) {
+          // Check if organization is synced (V2 requirement)
+          const isSynced = org.synced === true;
+          const orgUid = org.org_uid || org.orgUid;
+
+          if (isSynced && orgUid) {
+            console.log(`✓ V2 Organization ready: ${orgUid}`);
+            return {
+              orgUid,
+              organization: org,
+            };
+          } else {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            console.log(`  Organization found but not synced yet (${elapsed}s elapsed)`);
+          }
+        } else {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          console.log(`  Organization not found yet (${elapsed}s elapsed)`);
+        }
+      }
+    } catch (error) {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      console.log(`  Error checking organizations: ${error.message} (${elapsed}s elapsed)`);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  throw new Error(
+    `Timeout waiting for V2 organization to be ready after ${elapsed}s (${maxWaitTime}ms). ` +
+    `Organization creation may be taking longer than expected.`
+  );
+};
+
+/**
+ * Wait for V1 organization to be created and ready
+ * Polls GET /v1/organizations until organization appears
+ * @param {Object} request - supertest request instance
+ * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
+ * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
+ * @returns {Promise<{orgUid: string, organization: object}>} Organization UID and data
+ */
+export const waitForV1OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000) => {
+  const startTime = Date.now();
+  const interval = 10000; // Check every 10 seconds
+  const timestamp = getTimestamp();
+
+  console.log(`[${timestamp}] Waiting for V1 organization to be ready...`);
+  if (orgName) {
+    console.log(`  Looking for organization with name: ${orgName}`);
+  } else {
+    console.log(`  Looking for home organization`);
+  }
+
+  while (Date.now() - startTime < maxWaitTime) {
+    try {
+      const response = await request.get('/v1/organizations');
+
+      if (response.status === 200) {
+        // V1 response format may be array or object
+        const orgs = Array.isArray(response.body)
+          ? response.body
+          : (response.body?.data || []);
+
+        // Find matching organization
+        let org = null;
+        if (orgName) {
+          org = orgs.find(o =>
+            (o.name === orgName || o.orgName === orgName) &&
+            (o.isHome === true || o.is_home === true)
+          );
+        } else {
+          // Find home org
+          org = orgs.find(o => o.isHome === true || o.is_home === true);
+        }
+
+        if (org) {
+          const orgUid = org.orgUid || org.org_uid;
+          if (orgUid) {
+            console.log(`✓ V1 Organization ready: ${orgUid}`);
+            return {
+              orgUid,
+              organization: org,
+            };
+          }
+        } else {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          console.log(`  Organization not found yet (${elapsed}s elapsed)`);
+        }
+      }
+    } catch (error) {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      console.log(`  Error checking organizations: ${error.message} (${elapsed}s elapsed)`);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  throw new Error(
+    `Timeout waiting for V1 organization to be ready after ${elapsed}s (${maxWaitTime}ms). ` +
+    `Organization creation may be taking longer than expected.`
+  );
 };

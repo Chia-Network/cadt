@@ -1,28 +1,28 @@
 'use strict';
 
 import { Sequelize, Model } from 'sequelize';
+import { v4 as uuidv4 } from 'uuid';
 import { sequelizeV2 } from '../../database/v2/index.js';
 
 class UnitLabelV2Mirror extends Model {}
 
 UnitLabelV2Mirror.init(
   {
-    id: {
-      type: Sequelize.VIRTUAL,
-      get() {
-        return `${this.cadTrustLabelId}-${this.cadTrustUnitId}`;
-      },
+    cadTrustUnitLabelId: {
+      type: Sequelize.STRING(36),
+      primaryKey: true,
+      allowNull: false,
+      field: 'cad_trust_unit_label_id',
+      defaultValue: () => uuidv4(),
     },
     cadTrustLabelId: {
       type: Sequelize.UUID,
       allowNull: false,
-      primaryKey: true,
       field: 'cad_trust_label_id',
     },
     cadTrustUnitId: {
       type: Sequelize.UUID,
       allowNull: false,
-      primaryKey: true,
       field: 'cad_trust_unit_id',
     },
     labelUnitDate: {
@@ -56,8 +56,6 @@ UnitLabelV2Mirror.init(
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     underscored: true,
-    // Define composite primary key
-    primaryKey: ['cadTrustLabelId', 'cadTrustUnitId'],
   }
 );
 

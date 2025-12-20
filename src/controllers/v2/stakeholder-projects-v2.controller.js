@@ -167,20 +167,7 @@ export const getStakeholderProjectV2 = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const stakeholderProject = await StakeholderProjectV2.findByPk(id, {
-      include: [
-        {
-          model: StakeholderV2,
-          as: 'stakeholder',
-          attributes: ['cadTrustStakeholderId', 'stakeholderName', 'stakeholderType'],
-        },
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectRegistryName'],
-        },
-      ],
-    });
+    const stakeholderProject = await StakeholderProjectV2.findByPk(id);
 
     if (!stakeholderProject) {
       return res.status(404).json({
@@ -203,18 +190,6 @@ export const getStakeholderProjectV2 = async (req, res) => {
 export const getAllStakeholderProjectsV2 = async (req, res) => {
   try {
     const stakeholderProjects = await StakeholderProjectV2.findAll({
-      include: [
-        {
-          model: StakeholderV2,
-          as: 'stakeholder',
-          attributes: ['cadTrustStakeholderId', 'stakeholderName', 'stakeholderType'],
-        },
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectRegistryName'],
-        },
-      ],
       order: [['createdAt', 'DESC']],
     });
 

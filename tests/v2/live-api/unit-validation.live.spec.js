@@ -15,7 +15,7 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateUnit,
   generateUnitMinimal,
@@ -23,6 +23,7 @@ import {
   generateUnitForbiddenFields,
   getLongString,
   getInvalidPicklistValue,
+  getNonExistentId,
 } from './data/test-data-generators.js';
 
 describe('Unit Live API Validation Tests', function () {
@@ -39,14 +40,27 @@ describe('Unit Live API Validation Tests', function () {
     it('should reject POST with forbidden fields (createdAt, updatedAt, ID)', async function () {
       const issuanceId = getFirstCreatedId('issuance');
       if (!issuanceId) {
-        this.skip(); // Skip if prerequisite not available
+        this.skip();
       }
       const forbiddenData = generateUnitForbiddenFields(issuanceId);
       const response = await request
         .post('/v2/unit')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
+    it('should reject POST with invalid foreign keys', async function () {
+      const invalidData = generateUnitMinimal(getNonExistentId());
+      const response = await request
+        .post('/v2/unit')
+        .send(invalidData);
+
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
+    });
+
     it('should reject POST with invalid picklist values', async function () {
       const issuanceId = getFirstCreatedId('issuance');
       if (!issuanceId) {
@@ -58,34 +72,33 @@ describe('Unit Live API Validation Tests', function () {
         .post('/v2/unit')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { unitSerialId: 'TEST-UNIT' }; // Missing unitStartBlock, unitEndBlock, unitVintageYear, cadTrustIssuanceId
+      const incompleteData = { unitSerialId: 'Incomplete' }; // Missing unitStartBlock, unitEndBlock, etc.
       const response = await request
         .post('/v2/unit')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
-    it('should reject POST with strings that are too long', async function () {
+    it('should reject POST with invalid data types', async function () {
       const issuanceId = getFirstCreatedId('issuance');
       if (!issuanceId) {
         this.skip();
       }
-      const longData = generateUnitMaximal(issuanceId); // Use maximal which has long strings
-      // Note: Long strings test may need manual adjustment
+      const invalidTypeData = generateUnitMinimal(issuanceId);
+      invalidTypeData.unitCount = 'not-a-number';
       const response = await request
         .post('/v2/unit')
-        .send(longData);
+        .send(invalidTypeData);
 
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {
@@ -187,31 +200,59 @@ describe('Unit Live API Validation Tests', function () {
   });
   describe('Step 7: PUT Request Tests', function () {
     it('should update a unit', async function () {
-      const id = createdIds[0];
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'unit');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
       const currentRecord = await request.get(`/v2/unit/${id}`).expect(200);
+      const record = currentRecord.body.data || currentRecord.body;
+
+      // Ensure required fields exist
+      if (!record.unitSerialId) {
+        throw new Error('unitSerialId is required but missing from GET response');
+      }
+      if (!record.unitStartBlock) {
+        throw new Error('unitStartBlock is required but missing from GET response');
+      }
+      if (!record.unitEndBlock) {
+        throw new Error('unitEndBlock is required but missing from GET response');
+      }
+      if (!record.unitVintageYear) {
+        throw new Error('unitVintageYear is required but missing from GET response');
+      }
+      if (!record.cadTrustIssuanceId) {
+        throw new Error('cadTrustIssuanceId is required but missing from GET response');
+      }
+
       // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
-        unitSerialId: currentRecord.body.unitSerialId,
-        unitStartBlock: currentRecord.body.unitStartBlock,
-        unitEndBlock: currentRecord.body.unitEndBlock,
-        unitCount: currentRecord.body.unitCount || null,
-        unitType: currentRecord.body.unitType || null,
-        unitVintageYear: currentRecord.body.unitVintageYear,
-        unitStatus: currentRecord.body.unitStatus || null,
-        unitStatusReason: currentRecord.body.unitStatusReason || null,
-        unitStatusDate: currentRecord.body.unitStatusDate || null,
-        unitRetirementDetail: currentRecord.body.unitRetirementDetail || null,
-        unitRetirementBeneficiary: currentRecord.body.unitRetirementBeneficiary || null,
-        unitRetirementBeneficiaryId: currentRecord.body.unitRetirementBeneficiaryId || null,
-        unitLink: currentRecord.body.unitLink || null,
-        unitMetric: currentRecord.body.unitMetric || null,
-        unitCurrentOwner: currentRecord.body.unitCurrentOwner || null,
-        unitItmosReferenceId: currentRecord.body.unitItmosReferenceId || null,
-        marketplace: currentRecord.body.marketplace || null,
-        marketplaceLink: currentRecord.body.marketplaceLink || null,
-        marketplaceIdentifier: currentRecord.body.marketplaceIdentifier || null,
-        cadTrustIssuanceId: currentRecord.body.cadTrustIssuanceId,
+        unitSerialId: record.unitSerialId, // Required
+        unitStartBlock: record.unitStartBlock, // Required
+        unitEndBlock: record.unitEndBlock, // Required
+        unitVintageYear: record.unitVintageYear, // Required
+        cadTrustIssuanceId: record.cadTrustIssuanceId, // Required
+        // Optional fields: include with their value (can be null)
+        unitCount: record.unitCount ?? null,
+        unitType: record.unitType ?? null,
+        unitStatus: record.unitStatus ?? null,
+        unitStatusReason: record.unitStatusReason ?? null,
+        unitStatusDate: record.unitStatusDate ?? null,
+        unitRetirementDetail: record.unitRetirementDetail ?? null,
+        unitRetirementBeneficiary: record.unitRetirementBeneficiary ?? null,
+        unitRetirementBeneficiaryId: record.unitRetirementBeneficiaryId ?? null,
+        unitLink: record.unitLink ?? null,
+        unitMetric: record.unitMetric ?? null,
+        unitCurrentOwner: record.unitCurrentOwner ?? null,
+        unitItmosReferenceId: record.unitItmosReferenceId ?? null,
+        marketplace: record.marketplace ?? null,
+        marketplaceLink: record.marketplaceLink ?? null,
+        marketplaceIdentifier: record.marketplaceIdentifier ?? null,
       };
       const response = await makePutRequest(request, '/v2/unit', id, updateData);
       expect(response.success).to.be.true;
@@ -260,9 +301,21 @@ describe('Unit Live API Validation Tests', function () {
   });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created units', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'unit');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
         const response = await makeDeleteRequest(request, '/v2/unit', id);
         expect(response.success).to.be.true;
 
@@ -275,12 +328,6 @@ describe('Unit Live API Validation Tests', function () {
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 

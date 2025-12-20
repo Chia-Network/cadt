@@ -3738,14 +3738,17 @@ Response
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v2/project-methodology/project/9b9bb857-c71b-4649-b805-a289db27dc1c/methodology/51ca9638-22b0-4e14-ae7a-c09d23b37b58' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v2/project-methodology/a1b2c3d4-e5f6-7890-abcd-ef1234567890' --header 'Content-Type: application/json'
 ```
 
 Response
 ```json
 {
+  "cadTrustProjectMethodologyId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "cadTrustMethodologyId": "51ca9638-22b0-4e14-ae7a-c09d23b37b58",
+  "projectMethodologyDate": "2022-01-01",
+  "projectMethodologyDescription": "Primary methodology for this project",
   "createdAt": "2022-03-11T05:17:55.427Z",
   "updatedAt": "2022-03-11T05:17:55.427Z"
 }
@@ -3782,7 +3785,9 @@ curl --location --request POST 'localhost:31310/v2/project-methodology' \
 Response
 ```json
 {
-  "message": "Project-methodology relationship staged successfully",
+  "message": "Project-Methodology relationship staged successfully",
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustProjectMethodologyId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "success": true
 }
 ```
@@ -3800,7 +3805,7 @@ Fields are the same as POST (see above).
 
 Request
 ```shell
-curl --location --request PUT 'localhost:31310/v2/project-methodology/project/9b9bb857-c71b-4649-b805-a289db27dc1c/methodology/51ca9638-22b0-4e14-ae7a-c09d23b37b58' \
+curl --location --request PUT 'localhost:31310/v2/project-methodology/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
@@ -3813,7 +3818,8 @@ curl --location --request PUT 'localhost:31310/v2/project-methodology/project/9b
 Response
 ```json
 {
-  "message": "Project-methodology relationship update added to staging",
+  "message": "Project-Methodology relationship update staged successfully",
+  "cadTrustProjectMethodologyId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "success": true
 }
 ```
@@ -3827,14 +3833,14 @@ Response
 
 Request
 ```shell
-curl --location --request DELETE 'localhost:31310/v2/project-methodology/project/9b9bb857-c71b-4649-b805-a289db27dc1c/methodology/51ca9638-22b0-4e14-ae7a-c09d23b37b58' \
+curl --location --request DELETE 'localhost:31310/v2/project-methodology/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json'
 ```
 
 Response
 ```json
 {
-  "message": "Project-methodology relationship deletion staged successfully",
+  "message": "Project-Methodology relationship deletion staged successfully",
   "success": true
 }
 ```
@@ -3993,23 +3999,23 @@ Functionality: Create, read, update, and delete stakeholder-project relationship
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v2/stakeholder-projects?page=1&limit=10' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v2/stakeholder-projects' --header 'Content-Type: application/json'
 ```
 
 Response
 ```json
 {
-  "page": 1,
-  "pageCount": 3,
+  "success": true,
   "data": [
     {
-      "cadTrustStakeholderProjectsId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
+      "cadTrustStakeholderProjectId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
       "cadTrustStakeholderId": "e880047e-cdf4-45bb-a9df-e706fa427713",
       "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
       "createdAt": "2022-03-11T05:17:55.426Z",
       "updatedAt": "2022-03-11T05:17:55.426Z"
     }
-  ]
+  ],
+  "count": 1
 }
 ```
 
@@ -4025,7 +4031,7 @@ curl --location --request GET 'localhost:31310/v2/stakeholder-projects/f1a2b3c4-
 Response
 ```json
 {
-  "cadTrustStakeholderProjectsId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
+  "cadTrustStakeholderProjectId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
   "cadTrustStakeholderId": "e880047e-cdf4-45bb-a9df-e706fa427713",
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "createdAt": "2022-03-11T05:17:55.426Z",
@@ -4091,7 +4097,7 @@ curl --location --request PUT 'localhost:31310/v2/stakeholder-projects/f1a2b3c4-
 Response
 ```json
 {
-  "message": "Stakeholder-project relationship update added to staging",
+  "message": "Stakeholder-Project relationship update staged successfully",
   "success": true
 }
 ```
@@ -4276,22 +4282,25 @@ Functionality: Create, read, update, and delete unit-label relationships
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v2/unit-label?page=1&limit=10' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v2/unit-label' --header 'Content-Type: application/json'
 ```
 
 Response
 ```json
 {
-  "page": 1,
-  "pageCount": 3,
+  "success": true,
   "data": [
     {
+      "cadTrustUnitLabelId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "cadTrustLabelId": "dcacd68e-1cfb-4f06-9798-efa0aacda42c",
       "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+      "labelUnitDate": "2022-03-11",
+      "labelUnitDescription": "Label applied to unit for certification",
       "createdAt": "2022-03-11T05:17:55.426Z",
       "updatedAt": "2022-03-11T05:17:55.426Z"
     }
-  ]
+  ],
+  "count": 1
 }
 ```
 
@@ -4301,14 +4310,17 @@ Response
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v2/unit-label/dcacd68e-1cfb-4f06-9798-efa0aacda42c/89d7a102-a5a6-4f80-bc67-d28eba4952f3' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v2/unit-label/a1b2c3d4-e5f6-7890-abcd-ef1234567890' --header 'Content-Type: application/json'
 ```
 
 Response
 ```json
 {
+  "cadTrustUnitLabelId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "cadTrustLabelId": "dcacd68e-1cfb-4f06-9798-efa0aacda42c",
   "cadTrustUnitId": "89d7a102-a5a6-4f80-bc67-d28eba4952f3",
+  "labelUnitDate": "2022-03-11",
+  "labelUnitDescription": "Label applied to unit for certification",
   "createdAt": "2022-03-11T05:17:55.426Z",
   "updatedAt": "2022-03-11T05:17:55.426Z"
 }
@@ -4345,7 +4357,9 @@ curl --location --request POST 'localhost:31310/v2/unit-label' \
 Response
 ```json
 {
-  "message": "Unit-label relationship staged successfully",
+  "message": "Unit-Label relationship staged successfully",
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "cadTrustUnitLabelId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "success": true
 }
 ```
@@ -4363,7 +4377,7 @@ Fields are the same as POST (see above).
 
 Request
 ```shell
-curl --location --request PUT 'localhost:31310/v2/unit-label/dcacd68e-1cfb-4f06-9798-efa0aacda42c/89d7a102-a5a6-4f80-bc67-d28eba4952f3' \
+curl --location --request PUT 'localhost:31310/v2/unit-label/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "cadTrustLabelId": "dcacd68e-1cfb-4f06-9798-efa0aacda42c",
@@ -4376,7 +4390,7 @@ curl --location --request PUT 'localhost:31310/v2/unit-label/dcacd68e-1cfb-4f06-
 Response
 ```json
 {
-  "message": "Unit-label relationship update added to staging",
+  "message": "Unit-Label relationship update staged successfully",
   "success": true
 }
 ```
@@ -4390,14 +4404,14 @@ Response
 
 Request
 ```shell
-curl --location --request DELETE 'localhost:31310/v2/unit-label/dcacd68e-1cfb-4f06-9798-efa0aacda42c/89d7a102-a5a6-4f80-bc67-d28eba4952f3' \
+curl --location --request DELETE 'localhost:31310/v2/unit-label/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
 --header 'Content-Type: application/json'
 ```
 
 Response
 ```json
 {
-  "message": "Unit-label relationship deletion staged successfully",
+  "message": "Unit-Label relationship deletion staged successfully",
   "success": true
 }
 ```

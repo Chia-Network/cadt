@@ -7,7 +7,7 @@ import { encodeHex } from '../../utils/datalayer-utils';
 import { ModelKeys, Staging } from '../index';
 
 import ModelTypes from './simulator.modeltypes.cjs';
-import { uuid as uuidv4 } from 'uuidv4';
+import { v4 as uuidv4 } from 'uuid';
 
 class Simulator extends Model {
   /**

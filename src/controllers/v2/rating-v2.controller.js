@@ -138,10 +138,7 @@ export const getRatingV2 = async (req, res) => {
       });
     }
 
-    res.status(200).json({
-      success: true,
-      data: rating,
-    });
+    res.json(rating);
   } catch (err) {
     loggerV2.error('[v2]: Error fetching rating:', err);
     res.status(400).json({

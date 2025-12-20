@@ -16,40 +16,41 @@ const __dirname = dirname(__filename);
 // Order matches natural user workflow: create base entities first, then relationships
 const testFiles = [
   // Base entities (no dependencies)
-  'methodology-validation.spec.js',      // No deps
-  'program-validation.spec.js',         // No deps
-  'stakeholder-validation.spec.js',      // No deps
-  'label-validation.spec.js',           // No deps
+  'methodology-validation.live.spec.js',      // No deps
+  'program-validation.live.spec.js',         // No deps
+  'stakeholder-validation.live.spec.js',      // No deps
+  'label-validation.live.spec.js',           // No deps
 
   // Project and its direct dependents
-  'project-validation.spec.js',         // Needs program (optional)
-  'location-validation.spec.js',        // Needs project
-  'estimation-validation.spec.js',      // Needs project
-  'rating-validation.spec.js',          // Needs project
-  'co-benefit-validation.spec.js',      // Needs project
-  'validation-validation.spec.js',      // Needs project
+  'project-validation.live.spec.js',         // Needs program (optional)
+  'location-validation.live.spec.js',        // Needs project
+  'estimation-validation.live.spec.js',      // Needs project
+  'rating-validation.live.spec.js',          // Needs project
+  'co-benefit-validation.live.spec.js',      // Needs project
+  'validation-validation.live.spec.js',      // Needs project
 
   // Verification and its dependents
-  'verification-validation.spec.js',     // Needs project, optionally validation
-  'issuance-validation.spec.js',        // Needs verification + methodology
-  'unit-validation.spec.js',            // Needs issuance
+  'verification-validation.live.spec.js',     // Needs project, optionally validation
+  'issuance-validation.live.spec.js',        // Needs verification + methodology
+  'unit-validation.live.spec.js',            // Needs issuance
 
   // Relationship tables (composite keys)
-  'project-methodology-validation.spec.js',  // Needs project + methodology
-  'stakeholder-projects-validation.spec.js',  // Needs stakeholder + project
-  'unit-label-validation.spec.js',            // Needs unit + label
+  'project-methodology-validation.live.spec.js',  // Needs project + methodology
+  'stakeholder-projects-validation.live.spec.js',  // Needs stakeholder + project
+  'unit-label-validation.live.spec.js',            // Needs unit + label
 
   // AEF endpoints (need to check dependencies)
-  'aef-t1-submission-validation.spec.js',
-  'aef-t2-authorizations-validation.spec.js',
-  'aef-t3-actions-validation.spec.js',
-  'aef-t4-holdings-validation.spec.js',
-  'aef-t5-authorized-entities-validation.spec.js',
+  'aef-t1-submission-validation.live.spec.js',
+  'aef-t2-authorizations-validation.live.spec.js',
+  'aef-t3-actions-validation.live.spec.js',
+  'aef-t4-holdings-validation.live.spec.js',
+  'aef-t5-authorized-entities-validation.live.spec.js',
 ];
 
-async function runMochaTests(grepPattern, phaseName) {
+async function runMochaTests(grepPattern, phaseName, filesToRun = null) {
   return new Promise((resolve, reject) => {
-    const testPaths = testFiles.map(f => join(__dirname, f));
+    const files = filesToRun || testFiles;
+    const testPaths = files.map(f => join(__dirname, f));
     const args = [
       '--loader', 'node_modules/extensionless/src/register.js',
       '--require', join(__dirname, 'helpers/mocha-setup.js'),
@@ -61,10 +62,16 @@ async function runMochaTests(grepPattern, phaseName) {
     ];
 
     const method = phaseName.includes('POST') ? 'POST' : phaseName.includes('PUT') ? 'PUT' : 'DELETE';
+    // Skip empty database check for PUT and DELETE phases
+    const skipEmptyCheck = method !== 'POST';
+    const envArgs = skipEmptyCheck
+      ? ['NODE_ENV=production', 'TEST_MODE=short', 'SKIP_EMPTY_CHECK=true']
+      : ['NODE_ENV=production', 'TEST_MODE=short'];
+
     console.log(`\n=== Phase: ${phaseName} ===`);
     console.log(`Running tests matching: ${grepPattern}\n`);
 
-    const mocha = spawn('npx', ['cross-env', 'NODE_ENV=production', 'TEST_MODE=short', 'mocha', ...args], {
+    const mocha = spawn('npx', ['cross-env', ...envArgs, 'mocha', ...args], {
       stdio: 'inherit',
       shell: false,
     });
@@ -106,11 +113,12 @@ async function commitAndWait(phase) {
 
   // Verify records
   const verificationRecords = getBatchVerificationRecords();
-  console.log(`[${timestamp}] Verifying ${phase} operations...`);
+  const verifyTimestamp = new Date().toISOString();
+  console.log(`[${verifyTimestamp}] Verifying ${phase} operations...`);
   // Verification logic would go here
 
   clearBatchVerificationRecords();
-  console.log(`[${timestamp}] ✓ ${phase} phase complete\n`);
+  console.log(`[${verifyTimestamp}] ✓ ${phase} phase complete\n`);
 }
 
 async function main() {
@@ -122,9 +130,16 @@ async function main() {
     const request = await getLiveApiRequest();
     console.log('Clearing staging table before tests...');
     await clearStagingTable(request);
-    console.log('✓ Staging table cleared\n');
+    // Note: clearStagingTable already logs "✓ Staging table cleared"
+    console.log('');
 
     // Note: Shared setup runs via --require flag in mocha, so it executes once before all tests
+
+    // Phase 0: Validation Failure Tests
+    await runMochaTests('Step 3: Validation Failure Tests', 'Validation Failures');
+    console.log('Clearing staging table after validation failure tests...');
+    await clearStagingTable(request);
+    console.log('');
 
     // Phase 1: POST tests
     await runMochaTests('Step 4: POST Request Tests', 'POST Operations');

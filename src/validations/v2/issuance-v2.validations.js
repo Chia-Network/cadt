@@ -5,10 +5,10 @@ import { pickListValidationV2 } from '../../utils/v2-validation-utils.js';
 // V2 follows V1 pattern: update requests include ALL fields, not just changed ones
 export const issuanceV2Schema = Joi.object({
   issuanceId: Joi.string().required(),
-  issuanceDate: Joi.date().optional(),
+  issuanceDate: Joi.date().allow(null).optional(),
   cadTrustVerificationId: Joi.string().uuid().required(),
   cadTrustMethodologyId: Joi.string().required(),
-  cadTrustLocationId: Joi.string().uuid().optional(),
+  cadTrustLocationId: Joi.string().uuid().allow(null).optional(),
   // Note: createdAt and updatedAt are automatically managed by Sequelize
   // Note: cadTrustIssuanceId is auto-generated UUID
 });

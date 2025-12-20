@@ -55,9 +55,10 @@ export const optionallyPaginatedResponse = ({ count, rows }, page, limit) => {
  *
  * @param userColumns {string[]}
  * @param foreignKeys {{ model: Object, pluralize: boolean }[]}
+ * @param parentModel {Object} - Optional parent model to look up association aliases
  * @return {{include: unknown[], attributes: *}}
  */
-export const columnsToInclude = (userColumns, foreignKeys) => {
+export const columnsToInclude = (userColumns, foreignKeys, parentModel = null) => {
   // TODO MariusD: simplify
   const attributeModelMap = foreignKeys.map(formatModelAssociationName);
 
@@ -78,9 +79,40 @@ export const columnsToInclude = (userColumns, foreignKeys) => {
     ),
     include: filteredIncludes.map((include) => {
       if (include.pluralize) {
+        // Find the correct association alias from the parent model's associations
+        let alias = include.model.name + 's'; // fallback to default
+
+        // Known mappings for ProjectV2 associations (fallback if association lookup fails)
+        const projectV2ModelToAliasMap = {
+          LocationV2: 'locations',
+          EstimationV2: 'estimations',
+          RatingV2: 'ratings',
+          CoBenefitV2: 'coBenefits',
+        };
+
+        if (parentModel && parentModel.associations) {
+          // Look through parent model's associations to find one that matches this model
+          for (const [assocName, assoc] of Object.entries(parentModel.associations)) {
+            // Check if this association targets the model we're looking for
+            // Sequelize stores the target model in assoc.target
+            const targetModel = assoc.target;
+            if (targetModel && (targetModel === include.model || (targetModel.name && targetModel.name === include.model.name))) {
+              alias = assocName;
+              break;
+            }
+          }
+        }
+
+        // Fallback: if parentModel is ProjectV2 and we have a known mapping, use it
+        if (alias === include.model.name + 's' && parentModel && parentModel.name === 'ProjectV2') {
+          if (projectV2ModelToAliasMap[include.model.name]) {
+            alias = projectV2ModelToAliasMap[include.model.name];
+          }
+        }
+
         return {
           model: include.model,
-          as: include.model.name + 's',
+          as: alias,
         };
       }
       return include.model;

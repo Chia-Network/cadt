@@ -29,12 +29,9 @@ describe('Delete All Test Data', function () {
       {
         name: 'unit-label',
         getEndpoint: '/v2/unit-label',
-        getIdFromRecord: (record) => ({
-          labelId: record.cadTrustLabelId,
-          unitId: record.cadTrustUnitId,
-        }),
-        deleteEndpoint: (ids) => `/v2/unit-label/${ids.labelId}/${ids.unitId}`,
-        verifyEndpoint: (ids) => `/v2/unit-label/${ids.labelId}/${ids.unitId}`,
+        getIdFromRecord: (record) => record.cadTrustUnitLabelId,
+        deleteEndpoint: (id) => `/v2/unit-label/${id}`,
+        verifyEndpoint: (id) => `/v2/unit-label/${id}`,
       },
       {
         name: 'stakeholder-projects',
@@ -46,12 +43,9 @@ describe('Delete All Test Data', function () {
       {
         name: 'project-methodology',
         getEndpoint: '/v2/project-methodology',
-        getIdFromRecord: (record) => ({
-          projectId: record.cadTrustProjectId,
-          methodologyId: record.cadTrustMethodologyId,
-        }),
-        deleteEndpoint: (ids) => `/v2/project-methodology/project/${ids.projectId}/methodology/${ids.methodologyId}`,
-        verifyEndpoint: (ids) => `/v2/project-methodology/project/${ids.projectId}/methodology/${ids.methodologyId}`,
+        getIdFromRecord: (record) => record.cadTrustProjectMethodologyId,
+        deleteEndpoint: (id) => `/v2/project-methodology/${id}`,
+        verifyEndpoint: (id) => `/v2/project-methodology/${id}`,
       },
       {
         name: 'unit',
@@ -84,28 +78,28 @@ describe('Delete All Test Data', function () {
       {
         name: 'aef-t4-holdings',
         getEndpoint: '/v2/aef-t4-holdings',
-        getIdFromRecord: (record) => record.cadTrustAefT4HoldingId,
+        getIdFromRecord: (record) => record.cadTrustAefT4HoldingsId,
         deleteEndpoint: (id) => `/v2/aef-t4-holdings/${id}`,
         verifyEndpoint: (id) => `/v2/aef-t4-holdings/${id}`,
       },
       {
         name: 'aef-t3-actions',
         getEndpoint: '/v2/aef-t3-actions',
-        getIdFromRecord: (record) => record.cadTrustAefT3ActionId,
+        getIdFromRecord: (record) => record.cadTrustAefT3ActionsId,
         deleteEndpoint: (id) => `/v2/aef-t3-actions/${id}`,
         verifyEndpoint: (id) => `/v2/aef-t3-actions/${id}`,
       },
       {
         name: 'aef-t2-authorizations',
         getEndpoint: '/v2/aef-t2-authorizations',
-        getIdFromRecord: (record) => record.cadTrustAefT2AuthorizationId,
+        getIdFromRecord: (record) => record.cadTrustAefT2AuthorizationsId,
         deleteEndpoint: (id) => `/v2/aef-t2-authorizations/${id}`,
         verifyEndpoint: (id) => `/v2/aef-t2-authorizations/${id}`,
       },
       {
         name: 'aef-t5-authorized-entities',
         getEndpoint: '/v2/aef-t5-authorized-entities',
-        getIdFromRecord: (record) => record.cadTrustAefT5AuthorizedEntityId,
+        getIdFromRecord: (record) => record.cadTrustAefT5AuthorizedEntitiesId,
         deleteEndpoint: (id) => `/v2/aef-t5-authorized-entities/${id}`,
         verifyEndpoint: (id) => `/v2/aef-t5-authorized-entities/${id}`,
       },

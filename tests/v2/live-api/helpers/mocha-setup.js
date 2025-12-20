@@ -5,5 +5,9 @@
 
 import { runSharedSetup } from './shared-setup.js';
 
+// Check if we should skip empty database check (for PUT/DELETE phases)
+// This is set via environment variable SKIP_EMPTY_CHECK
+const skipEmptyCheck = process.env.SKIP_EMPTY_CHECK === 'true';
+
 // Run shared setup before any tests
-await runSharedSetup();
+await runSharedSetup(skipEmptyCheck);

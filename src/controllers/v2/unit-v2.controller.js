@@ -474,41 +474,24 @@ export const findAll = async (req, res) => {
       // Note: orgUid filtering is handled in FTS query, so don't add it to where clause again
     }
 
-    // Build query with column selection and includes
+    // Build query with column selection (no includes - only show data from this table)
     // Consistent with other V2 controllers: if no columns specified, don't set attributes
     let queryAttributes = undefined;
-    let fixedIncludes = [];
 
     if (normalizedColumns) {
-      // Separate association names from regular columns
+      // Filter out association names - we don't support joins anymore
       const associationNames = ['issuance', 'IssuanceV2', 'unitLabels', 'UnitLabelV2'];
       const regularColumns = normalizedColumns.filter(col => !associationNames.includes(col));
 
       // Use columnsToInclude helper only for regular columns
-      const columnQuery = regularColumns.length > 0 ? columnsToInclude(regularColumns, includes) : { attributes: [], include: [] };
-      queryAttributes = regularColumns.length > 0 ? columnQuery.attributes : undefined;
-
-      // Build includes with correct V2 aliases based on requested columns
-      const columnsArray = normalizedColumns;
-      if (columnsArray.includes('issuance') || columnsArray.includes('IssuanceV2')) {
-        fixedIncludes.push({
-          model: IssuanceV2,
-          as: 'issuance',
-          required: false,
-        });
-      }
-      if (columnsArray.includes('unitLabels') || columnsArray.includes('UnitLabelV2')) {
-        fixedIncludes.push({
-          model: UnitLabelV2,
-          as: 'unitLabels',
-          required: false,
-        });
+      if (regularColumns.length > 0) {
+        const columnQuery = columnsToInclude(regularColumns, []);
+        queryAttributes = columnQuery.attributes;
       }
     }
 
     const query = {
       attributes: queryAttributes, // undefined = include all fields (consistent with other V2 controllers)
-      include: fixedIncludes,
       ...pagination,
     };
 

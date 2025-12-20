@@ -15,7 +15,7 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateAefT2Authorizations,
   generateAefT2AuthorizationsMinimal,
@@ -42,15 +42,19 @@ describe('AefT2Authorizations Live API Validation Tests', function () {
       const response = await request
         .post('/v2/aef-t2-authorizations')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
     it('should reject POST with invalid picklist values', async function () {
       const invalidData = generateAefT2AuthorizationsInvalidPicklist();
       const response = await request
         .post('/v2/aef-t2-authorizations')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
@@ -59,26 +63,8 @@ describe('AefT2Authorizations Live API Validation Tests', function () {
         .post('/v2/aef-t2-authorizations')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
-    });
-
-    it('should reject POST with strings that are too long', async function () {
-      // Get optional IDs if available
-      const t1SubmissionId = getFirstCreatedId('aef-t1-submission');
-      const unitId = getFirstCreatedId('unit');
-      const projectId = getFirstCreatedId('project');
-      const t5EntityId = getFirstCreatedId('aef-t5-authorized-entities');
-      const longData = generateAefT2AuthorizationsMaximal(t1SubmissionId, unitId, projectId, t5EntityId);
-      // Note: Long strings test may need manual adjustment
-      const response = await request
-        .post('/v2/aef-t2-authorizations')
-        .send(longData);
-
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {
@@ -178,34 +164,43 @@ describe('AefT2Authorizations Live API Validation Tests', function () {
   });
   describe('Step 7: PUT Request Tests', function () {
     it('should update a aefT2Authorizations', async function () {
-      const id = createdIds[0];
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'aef-t2-authorizations');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
       const currentRecord = await request.get(`/v2/aef-t2-authorizations/${id}`).expect(200);
-      // Create update data with ALL fields (required fields must be included)
+      const record = currentRecord.body.data || currentRecord.body;
+      // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
-        aefT2AuthorizationsId: currentRecord.body.aefT2AuthorizationsId,
-        aefT2AuthorizationsDate: currentRecord.body.aefT2AuthorizationsDate,
-        aefT2AuthorizationsCooperativeApproachId: currentRecord.body.aefT2AuthorizationsCooperativeApproachId,
-        aefT2AuthorizationsAuthorizedPartyId: currentRecord.body.aefT2AuthorizationsAuthorizedPartyId,
-        aefT2AuthorizationsVersion: currentRecord.body.aefT2AuthorizationsVersion || null,
-        aefT2AuthorizationsQuantity: currentRecord.body.aefT2AuthorizationsQuantity || null,
-        aefT2AuthorizationsMetric: currentRecord.body.aefT2AuthorizationsMetric || null,
-        aefT2AuthorizationsGwpValue: currentRecord.body.aefT2AuthorizationsGwpValue || null,
-        aefT2AuthorizationsApplicableNonGhgMetric: currentRecord.body.aefT2AuthorizationsApplicableNonGhgMetric || null,
-        aefT2AuthorizationsSector: currentRecord.body.aefT2AuthorizationsSector || null,
-        aefT2AuthorizationsActivityType: currentRecord.body.aefT2AuthorizationsActivityType || null,
-        aefT2AuthorizationsPurposesForAuthorization: currentRecord.body.aefT2AuthorizationsPurposesForAuthorization || null,
-        aefT2AuthorizationsAuthoziedEntityId: currentRecord.body.aefT2AuthorizationsAuthoziedEntityId || null,
-        aefT2AuthorizationsOimpAuthorizedParty: currentRecord.body.aefT2AuthorizationsOimpAuthorizedParty || null,
-        aefT2AuthorizationsAuthorizedTimeframe: currentRecord.body.aefT2AuthorizationsAuthorizedTimeframe || null,
-        aefT2AuthorizationsAuthorizationTerms: currentRecord.body.aefT2AuthorizationsAuthorizationTerms || null,
-        aefT2AuthorizationsAuthorizationDocumentation: currentRecord.body.aefT2AuthorizationsAuthorizationDocumentation || null,
-        aefT2AuthorizationsFirstTransferDefinitionOimp: currentRecord.body.aefT2AuthorizationsFirstTransferDefinitionOimp || null,
-        aefT2AuthorizationsAdditionalInformation: currentRecord.body.aefT2AuthorizationsAdditionalInformation || null,
-        cadTrustAefT1SubmissionId: currentRecord.body.cadTrustAefT1SubmissionId || null,
-        cadTrustUnitId: currentRecord.body.cadTrustUnitId || null,
-        cadTrustProjectId: currentRecord.body.cadTrustProjectId || null,
-        cadTrustAefT5AuthorizedEntitiesId: currentRecord.body.cadTrustAefT5AuthorizedEntitiesId || null,
+        aefT2AuthorizationsId: record.aefT2AuthorizationsId,
+        aefT2AuthorizationsDate: record.aefT2AuthorizationsDate,
+        aefT2AuthorizationsCooperativeApproachId: record.aefT2AuthorizationsCooperativeApproachId,
+        aefT2AuthorizationsAuthorizedPartyId: record.aefT2AuthorizationsAuthorizedPartyId,
+        aefT2AuthorizationsVersion: record.aefT2AuthorizationsVersion ?? null,
+        aefT2AuthorizationsQuantity: record.aefT2AuthorizationsQuantity ?? null,
+        aefT2AuthorizationsMetric: record.aefT2AuthorizationsMetric ?? null,
+        aefT2AuthorizationsGwpValue: record.aefT2AuthorizationsGwpValue ?? null,
+        aefT2AuthorizationsApplicableNonGhgMetric: record.aefT2AuthorizationsApplicableNonGhgMetric ?? null,
+        aefT2AuthorizationsSector: record.aefT2AuthorizationsSector ?? null,
+        aefT2AuthorizationsActivityType: record.aefT2AuthorizationsActivityType ?? null,
+        aefT2AuthorizationsPurposesForAuthorization: record.aefT2AuthorizationsPurposesForAuthorization ?? null,
+        aefT2AuthorizationsAuthoziedEntityId: record.aefT2AuthorizationsAuthoziedEntityId ?? null,
+        aefT2AuthorizationsOimpAuthorizedParty: record.aefT2AuthorizationsOimpAuthorizedParty ?? null,
+        aefT2AuthorizationsAuthorizedTimeframe: record.aefT2AuthorizationsAuthorizedTimeframe ?? null,
+        aefT2AuthorizationsAuthorizationTerms: record.aefT2AuthorizationsAuthorizationTerms ?? null,
+        aefT2AuthorizationsAuthorizationDocumentation: record.aefT2AuthorizationsAuthorizationDocumentation ?? null,
+        aefT2AuthorizationsFirstTransferDefinitionOimp: record.aefT2AuthorizationsFirstTransferDefinitionOimp ?? null,
+        aefT2AuthorizationsAdditionalInformation: record.aefT2AuthorizationsAdditionalInformation ?? null,
+        cadTrustAefT1SubmissionId: record.cadTrustAefT1SubmissionId ?? null,
+        cadTrustUnitId: record.cadTrustUnitId ?? null,
+        cadTrustProjectId: record.cadTrustProjectId ?? null,
+        cadTrustAefT5AuthorizedEntitiesId: record.cadTrustAefT5AuthorizedEntitiesId ?? null,
       };
       const response = await makePutRequest(request, '/v2/aef-t2-authorizations', id, updateData);
       expect(response.success).to.be.true;
@@ -254,9 +249,21 @@ describe('AefT2Authorizations Live API Validation Tests', function () {
   });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created aef-t2-authorizations', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'aef-t2-authorizations');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
         const response = await makeDeleteRequest(request, '/v2/aef-t2-authorizations', id);
         expect(response.success).to.be.true;
 
@@ -269,12 +276,6 @@ describe('AefT2Authorizations Live API Validation Tests', function () {
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 

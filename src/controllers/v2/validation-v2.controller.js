@@ -135,12 +135,12 @@ export const findAll = async (req, res) => {
     const { page, limit, columns } = req.query;
     const pagination = paginationParams(page, limit);
 
-    // Build includes if columns parameter is provided
-    let includes = [];
+    // Handle association includes
+    let queryIncludes = [];
     if (columns) {
       const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
       if (columnsArray.includes('project') || columnsArray.includes('ProjectV2')) {
-        includes.push({
+        queryIncludes.push({
           model: ProjectV2,
           as: 'project',
           required: false,
@@ -149,7 +149,7 @@ export const findAll = async (req, res) => {
     }
 
     const records = await ValidationV2.findAndCountAll({
-      include: includes.length > 0 ? includes : undefined,
+      include: queryIncludes.length > 0 ? queryIncludes : undefined,
       ...pagination,
     });
 
@@ -169,12 +169,12 @@ export const findOne = async (req, res) => {
     const { id } = req.params;
     const { columns } = req.query;
 
-    // Build includes if columns parameter is provided
-    let includes = [];
+    // Handle association includes
+    let queryIncludes = [];
     if (columns) {
       const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
       if (columnsArray.includes('project') || columnsArray.includes('ProjectV2')) {
-        includes.push({
+        queryIncludes.push({
           model: ProjectV2,
           as: 'project',
           required: false,
@@ -183,7 +183,7 @@ export const findOne = async (req, res) => {
     }
 
     const record = await ValidationV2.findByPk(id, {
-      include: includes.length > 0 ? includes : undefined,
+      include: queryIncludes.length > 0 ? queryIncludes : undefined,
     });
 
     if (!record) {

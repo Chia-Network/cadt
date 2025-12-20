@@ -9,7 +9,7 @@ import app from '../../src/server';
 import { Organization } from '../../src/models/organizations/index.js';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import { Staging, Project } from '../../src/models/index.js';
-import { uuid as uuidv4 } from 'uuidv4';
+import { v4 as uuidv4 } from 'uuid';
 import { prepareDb, seedDb, sequelize } from '../../src/database';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 

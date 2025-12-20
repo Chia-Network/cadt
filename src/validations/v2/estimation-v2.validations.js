@@ -18,11 +18,11 @@ export const estimationV2Schema = Joi.object({
   }),
 
   // Optional fields
-  estimationUnitCount: Joi.number().precision(6).optional().messages({
+  estimationUnitCount: Joi.number().precision(6).allow(null).optional().messages({
     'number.precision': 'estimationUnitCount must have at most 6 decimal places',
   }),
 
-  estimationReferenceNo: Joi.string().max(255).optional().messages({
+  estimationReferenceNo: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'estimationReferenceNo must not exceed 255 characters',
   }),
 

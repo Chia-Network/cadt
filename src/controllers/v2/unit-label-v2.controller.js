@@ -21,6 +21,25 @@ export const createUnitLabelV2 = async (req, res) => {
 
     const newRecord = _.cloneDeep(req.body);
 
+    // Check for forbidden fields BEFORE Joi validation
+    // This ensures we return custom error messages instead of Joi's "not allowed" message
+    if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
+      return res.status(400).json({
+        message: 'Error creating new unit-label relationship',
+        error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
+        success: false,
+      });
+    }
+
+    // Check for forbidden ID field
+    if (newRecord.hasOwnProperty('cadTrustUnitLabelId')) {
+      return res.status(400).json({
+        message: 'Error creating new unit-label relationship',
+        error: 'cadTrustUnitLabelId is auto-generated and cannot be set via API',
+        success: false,
+      });
+    }
+
     // Validate the request data
     const { error } = unitLabelV2Schema.validate(newRecord, {
       allowUnknown: false,
@@ -35,15 +54,6 @@ export const createUnitLabelV2 = async (req, res) => {
       return res.status(400).json({
         message: 'Error creating new unit-label relationship',
         error: errorMessage,
-        success: false,
-      });
-    }
-
-    // Check for forbidden fields
-    if (newRecord.hasOwnProperty('createdAt') || newRecord.hasOwnProperty('updatedAt')) {
-      return res.status(400).json({
-        message: 'Error creating new unit-label relationship',
-        error: 'createdAt and updatedAt fields are automatically managed and cannot be set via API',
         success: false,
       });
     }
@@ -69,12 +79,23 @@ export const createUnitLabelV2 = async (req, res) => {
     }
 
     // Check if the relationship already exists (in main table or staging)
-    const existingRelation = await UnitLabelV2.findOne({
-      where: {
-        cadTrustLabelId: newRecord.cadTrustLabelId,
-        cadTrustUnitId: newRecord.cadTrustUnitId,
-      },
-    });
+    // Wrap in try-catch to handle cases where table/column might not exist yet
+    let existingRelation = null;
+    try {
+      existingRelation = await UnitLabelV2.findOne({
+        where: {
+          cadTrustLabelId: newRecord.cadTrustLabelId,
+          cadTrustUnitId: newRecord.cadTrustUnitId,
+        },
+      });
+    } catch (error) {
+      // If table/column doesn't exist, continue (will check staging table below)
+      // Only catch "no such column" errors - re-throw other database errors
+      if (!error.message || !error.message.includes('no such column')) {
+        throw error;
+      }
+      // Table exists but column doesn't - likely migration issue, but continue
+    }
 
     if (existingRelation) {
       return res.status(409).json({
@@ -114,11 +135,12 @@ export const createUnitLabelV2 = async (req, res) => {
       }
     }
 
-    // Generate UUID for staging
-    const uuid = uuidv4();
+    // Generate UUID for the primary key
+    const cadTrustUnitLabelId = uuidv4();
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
+      cad_trust_unit_label_id: cadTrustUnitLabelId,
       cad_trust_label_id: newRecord.cadTrustLabelId,
       cad_trust_unit_id: newRecord.cadTrustUnitId,
       label_unit_date: newRecord.labelUnitDate,
@@ -127,7 +149,7 @@ export const createUnitLabelV2 = async (req, res) => {
 
     // Stage the record
     await StagingV2.create({
-      uuid,
+      uuid: cadTrustUnitLabelId,
       table: 'unit_label',
       action: 'INSERT',
       data: JSON.stringify([dbRecord]),
@@ -138,7 +160,8 @@ export const createUnitLabelV2 = async (req, res) => {
 
     res.json({
       message: 'Unit-Label relationship staged successfully',
-      uuid,
+      uuid: cadTrustUnitLabelId,
+      cadTrustUnitLabelId,
       success: true,
     });
   } catch (err) {
@@ -153,25 +176,12 @@ export const createUnitLabelV2 = async (req, res) => {
 
 export const getUnitLabelV2 = async (req, res) => {
   try {
-    const { cadTrustLabelId, cadTrustUnitId } = req.params;
+    const { cadTrustUnitLabelId } = req.params;
 
     const unitLabel = await UnitLabelV2.findOne({
       where: {
-        cadTrustLabelId,
-        cadTrustUnitId,
+        cadTrustUnitLabelId,
       },
-      include: [
-        {
-          model: LabelV2,
-          as: 'label',
-          attributes: ['cadTrustLabelId', 'labelName', 'labelType'],
-        },
-        {
-          model: UnitV2,
-          as: 'unit',
-          attributes: ['cadTrustUnitId', 'unitSerialId', 'unitType', 'unitVintageYear'],
-        },
-      ],
     });
 
     if (!unitLabel) {
@@ -195,18 +205,6 @@ export const getUnitLabelV2 = async (req, res) => {
 export const getAllUnitLabelsV2 = async (req, res) => {
   try {
     const unitLabels = await UnitLabelV2.findAll({
-      include: [
-        {
-          model: LabelV2,
-          as: 'label',
-          attributes: ['cadTrustLabelId', 'labelName', 'labelType'],
-        },
-        {
-          model: UnitV2,
-          as: 'unit',
-          attributes: ['cadTrustUnitId', 'unitSerialId', 'unitType', 'unitVintageYear'],
-        },
-      ],
       order: [['createdAt', 'DESC']],
     });
 
@@ -231,14 +229,13 @@ export const updateUnitLabelV2 = async (req, res) => {
     await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
-    const { cadTrustLabelId, cadTrustUnitId } = req.params;
+    const { cadTrustUnitLabelId } = req.params;
     const updateData = _.cloneDeep(req.body);
 
     // Verify record exists first (before validation)
     const existingRecord = await UnitLabelV2.findOne({
       where: {
-        cadTrustLabelId,
-        cadTrustUnitId,
+        cadTrustUnitLabelId,
       },
     });
 
@@ -277,7 +274,7 @@ export const updateUnitLabelV2 = async (req, res) => {
     }
 
     // Validate foreign keys if they're being changed
-    if (updateData.cadTrustLabelId !== cadTrustLabelId || updateData.cadTrustUnitId !== cadTrustUnitId) {
+    if (updateData.cadTrustLabelId !== existingRecord.cadTrustLabelId || updateData.cadTrustUnitId !== existingRecord.cadTrustUnitId) {
       try {
         if (updateData.cadTrustLabelId) {
           await assertRecordExistanceOrStaged(
@@ -304,8 +301,7 @@ export const updateUnitLabelV2 = async (req, res) => {
 
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
-      cad_trust_label_id: cadTrustLabelId, // Original IDs for WHERE clause
-      cad_trust_unit_id: cadTrustUnitId,
+      cad_trust_unit_label_id: cadTrustUnitLabelId,
     };
 
     if (updateData.cadTrustLabelId !== undefined) dbUpdateData.cad_trust_label_id = updateData.cadTrustLabelId;
@@ -315,7 +311,7 @@ export const updateUnitLabelV2 = async (req, res) => {
 
     // Stage the update
     await StagingV2.create({
-      uuid: uuidv4(),
+      uuid: cadTrustUnitLabelId,
       table: 'unit_label',
       action: 'UPDATE',
       data: JSON.stringify([dbUpdateData]),
@@ -326,6 +322,7 @@ export const updateUnitLabelV2 = async (req, res) => {
 
     res.json({
       message: 'Unit-Label relationship update staged successfully',
+      cadTrustUnitLabelId,
       success: true,
     });
   } catch (err) {
@@ -344,13 +341,12 @@ export const deleteUnitLabelV2 = async (req, res) => {
     await assertV2HomeOrgExists();
     await assertNoPendingCommitsExcludingTransfers();
 
-    const { cadTrustLabelId, cadTrustUnitId } = req.params;
+    const { cadTrustUnitLabelId } = req.params;
 
     // Verify record exists
     const existingRecord = await UnitLabelV2.findOne({
       where: {
-        cadTrustLabelId,
-        cadTrustUnitId,
+        cadTrustUnitLabelId,
       },
     });
 
@@ -361,14 +357,13 @@ export const deleteUnitLabelV2 = async (req, res) => {
       });
     }
 
-    // Stage the delete (composite key requires both IDs)
+    // Stage the delete
     await StagingV2.create({
-      uuid: uuidv4(),
+      uuid: cadTrustUnitLabelId,
       table: 'unit_label',
       action: 'DELETE',
       data: JSON.stringify([{
-        cad_trust_label_id: cadTrustLabelId,
-        cad_trust_unit_id: cadTrustUnitId,
+        cad_trust_unit_label_id: cadTrustUnitLabelId,
       }]),
       committed: false,
       failed_commit: false,
@@ -377,6 +372,7 @@ export const deleteUnitLabelV2 = async (req, res) => {
 
     res.json({
       message: 'Unit-Label relationship delete staged successfully',
+      cadTrustUnitLabelId,
       success: true,
     });
   } catch (err) {

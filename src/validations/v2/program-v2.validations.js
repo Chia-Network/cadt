@@ -8,11 +8,11 @@ export const programV2Schema = Joi.object({
     'any.unknown': 'cadTrustProgramId is auto-generated and cannot be set via API',
   }),
 
-  programName: Joi.string().required(),
-  programRegistry: Joi.string().required(),
-  programRegistryActivityId: Joi.string().required(),
-  programRegistryProgramId: Joi.string().optional(),
-  programDescription: Joi.string().optional(),
+  programName: Joi.string().max(255).required(),
+  programRegistry: Joi.string().max(255).required(),
+  programRegistryActivityId: Joi.string().max(255).required(),
+  programRegistryProgramId: Joi.string().max(255).allow(null).optional(),
+  programDescription: Joi.string().max(2000).allow(null).optional(),
 
   // Timestamps - forbidden in requests
   createdAt: Joi.date().forbidden().messages({

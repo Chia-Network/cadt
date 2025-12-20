@@ -17,8 +17,9 @@ let sharedHomeOrgId = null;
 /**
  * Run shared setup once
  * This should be called before running any tests
+ * @param {boolean} skipEmptyCheck - If true, skip the empty database check (for PUT/DELETE phases)
  */
-export async function runSharedSetup() {
+export async function runSharedSetup(skipEmptyCheck = false) {
   if (setupComplete) {
     return { request: sharedRequest, homeOrgId: sharedHomeOrgId };
   }
@@ -29,14 +30,22 @@ export async function runSharedSetup() {
     sharedHomeOrgId = await getHomeOrgId(sharedRequest);
     console.log(`✓ Home organization found: ${sharedHomeOrgId}`);
 
-    // Step 2: Check database is empty - FAIL FAST if it's not
-    await checkDatabaseEmpty(sharedRequest);
+    // Step 2: Check database is empty - FAIL FAST if it's not (skip for PUT/DELETE phases)
+    if (!skipEmptyCheck) {
+      await checkDatabaseEmpty(sharedRequest);
+    } else {
+      console.log('✓ Skipping empty database check (PUT/DELETE phase)');
+    }
 
     setupComplete = true;
     return { request: sharedRequest, homeOrgId: sharedHomeOrgId };
   } catch (error) {
     console.error(`\n❌ Shared setup failed: ${error.message}`);
-    console.error('Tests cannot proceed without a home organization and empty database.');
+    if (skipEmptyCheck) {
+      console.error('Tests cannot proceed without a home organization.');
+    } else {
+      console.error('Tests cannot proceed without a home organization and empty database.');
+    }
     process.exit(1);
   }
 }

@@ -139,30 +139,7 @@ export const getAefT3ActionsV2 = async (req, res) => {
   try {
     const { cadTrustAefT3ActionsId } = req.params;
 
-    const aefT3Actions = await AefT3ActionsV2.findByPk(cadTrustAefT3ActionsId, {
-      include: [
-        {
-          model: AefT1SubmissionV2,
-          as: 'aefT1Submission',
-          attributes: ['cadTrustAefT1SubmissionId', 'aefT1SubmissionParty', 'aefT1SubmissionVersion'],
-        },
-        {
-          model: UnitV2,
-          as: 'unit',
-          attributes: ['cadTrustUnitId', 'unitSerialId', 'unitType', 'unitVintageYear'],
-        },
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectSector', 'projectType'],
-        },
-        {
-          model: AefT2AuthorizationsV2,
-          as: 'aefT2Authorizations',
-          attributes: ['cadTrustAefT2AuthorizationsId', 'aefT2AuthorizationsId', 'aefT2AuthorizationsDate'],
-        },
-      ],
-    });
+    const aefT3Actions = await AefT3ActionsV2.findByPk(cadTrustAefT3ActionsId);
 
     if (!aefT3Actions) {
       return res.status(404).json({
@@ -185,28 +162,6 @@ export const getAefT3ActionsV2 = async (req, res) => {
 export const getAllAefT3ActionsV2 = async (req, res) => {
   try {
     const aefT3Actions = await AefT3ActionsV2.findAll({
-      include: [
-        {
-          model: AefT1SubmissionV2,
-          as: 'aefT1Submission',
-          attributes: ['cadTrustAefT1SubmissionId', 'aefT1SubmissionParty', 'aefT1SubmissionVersion'],
-        },
-        {
-          model: UnitV2,
-          as: 'unit',
-          attributes: ['cadTrustUnitId', 'unitSerialId', 'unitType', 'unitVintageYear'],
-        },
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectSector', 'projectType'],
-        },
-        {
-          model: AefT2AuthorizationsV2,
-          as: 'aefT2Authorizations',
-          attributes: ['cadTrustAefT2AuthorizationsId', 'aefT2AuthorizationsId', 'aefT2AuthorizationsDate'],
-        },
-      ],
       order: [['aefT3ActionsDate', 'DESC']],
     });
 

@@ -46,7 +46,7 @@ class ProjectMethodologyV2 extends Model {
       );
 
     const primaryKeyMap = {
-      project_methodology: 'id', // Virtual field for composite key
+      project_methodology: 'cad_trust_project_methodology_id',
     };
 
     // PERFORMANCE: Join tables have no child tables, so skip getDeletedItems()
@@ -125,8 +125,6 @@ ProjectMethodologyV2.init(ModelTypes, {
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   underscored: true,
-  // Define composite primary key
-  primaryKey: ['cadTrustProjectId', 'cadTrustMethodologyId'],
 });
 
 // Define associations

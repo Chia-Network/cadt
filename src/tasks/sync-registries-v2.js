@@ -515,7 +515,7 @@ const syncOrganizationAuditV2 = async (organization) => {
               }
             } else if (diff.type === 'DELETE') {
               // For DELETE operations, extract primary key value from the key field
-              // Key format is: "project|{uuid}" or "co_benefit|{uuid}" or "project_methodology|{projectId}-{methodologyId}"
+              // Key format is: "project|{uuid}" or "co_benefit|{uuid}" or "project_methodology|{uuid}"
               const keyParts = key.split('|');
               if (keyParts.length < 2) {
                 loggerV2.error(`Invalid DELETE key format: ${key}. Expected format: "table|id"`);
@@ -523,44 +523,22 @@ const syncOrganizationAuditV2 = async (organization) => {
               }
               const primaryKeyValue = keyParts.slice(1).join('|'); // Handle cases where UUID might contain '|'
 
+              loggerV2.debug(`[v2]: [DELETE SYNC DEBUG] Processing DELETE operation from datalayer`, {
+                modelKey,
+                decodedKey: key,
+                hexKey: diff.key,
+                primaryKeyValue,
+                keyParts,
+                organization: organization.name,
+                generationIndex: toBeProcessedDatalayerGenerationIndex,
+              });
+
               loggerV2.verbose(`DELETING: ${modelKey} - ${primaryKeyValue}`);
 
-              // Handle composite keys (virtual 'id' field)
-              let whereClause;
-              if (primaryKeyField === 'id') {
-                // Composite key tables: split the composite key value
-                if (modelKey === 'project_methodology') {
-                  const compositeParts = primaryKeyValue.split('-');
-                  if (compositeParts.length !== 2) {
-                    loggerV2.error(`Invalid composite key format for ${modelKey}: ${primaryKeyValue}. Expected format: "{projectId}-{methodologyId}"`);
-                    continue;
-                  }
-                  const [projectId, methodologyId] = compositeParts;
-                  whereClause = {
-                    cadTrustProjectId: projectId,
-                    cadTrustMethodologyId: methodologyId,
-                  };
-                } else if (modelKey === 'unit_label') {
-                  const compositeParts = primaryKeyValue.split('-');
-                  if (compositeParts.length !== 2) {
-                    loggerV2.error(`Invalid composite key format for ${modelKey}: ${primaryKeyValue}. Expected format: "{labelId}-{unitId}"`);
-                    continue;
-                  }
-                  const [labelId, unitId] = compositeParts;
-                  whereClause = {
-                    cadTrustLabelId: labelId,
-                    cadTrustUnitId: unitId,
-                  };
-                } else {
-                  loggerV2.error(`Unknown composite key table: ${modelKey}`);
-                  continue;
-                }
-              } else {
-                // Single primary key: use the field directly
-                whereClause = {
-                  [primaryKeyFieldCamelCase]: primaryKeyValue,
-                };
-              }
+              // Use the primary key field directly
+              const whereClause = {
+                [primaryKeyFieldCamelCase]: primaryKeyValue,
+              };
 
               await ModelKeysV2[modelKey].destroy({
                 where: whereClause,

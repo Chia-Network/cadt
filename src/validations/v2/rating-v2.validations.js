@@ -7,7 +7,7 @@ export const ratingV2Schema = Joi.object({
   }),
 
   // Optional fields
-  ratingType: Joi.string().valid('CDP', 'CCQI').optional().messages({
+  ratingType: Joi.string().valid('CDP', 'CCQI').allow(null).optional().messages({
     'any.only': 'ratingType must be one of: CDP, CCQI',
   }),
 
@@ -21,7 +21,7 @@ export const ratingV2Schema = Joi.object({
     'string.max': 'ratingValue must not exceed 255 characters',
   }),
 
-  ratingLink: Joi.string().uri().optional().messages({
+  ratingLink: Joi.alternatives().try(Joi.string().uri(), Joi.allow(null, '')).optional().messages({
     'string.uri': 'ratingLink must be a valid URI',
   }),
 

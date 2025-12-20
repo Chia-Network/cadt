@@ -21,6 +21,7 @@ import { getDeletedItems } from '../../utils/model-utils.js';
 import { UnitLabelV2 } from './unit-label-v2.model.js';
 import { loggerV2 } from '../../config/logger.js';
 import { sanitizeSqliteFtsQuery } from '../../utils/v2-fts-utils.js';
+import { convertToCamelCase } from '../../utils/v2-camel-to-snake.js';
 
 class UnitV2 extends Model {
   static changes = new rxjs.Subject();
@@ -100,8 +101,8 @@ class UnitV2 extends Model {
       await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'unit');
 
     const primaryKeyMap = {
-      unit: 'cad_trust_unit_id',
-      unit_label: 'id', // Join table uses 'id' as primary key (virtual field)
+      unit: 'cadTrustUnitId',
+      unit_label: 'cadTrustUnitLabelId', // Primary key field name (Sequelize camelCase)
     };
 
     // PERFORMANCE: Only call getDeletedItems() if UPDATE records exist
@@ -116,28 +117,72 @@ class UnitV2 extends Model {
         : [];
 
     // Convert records to Excel format (only if records exist)
+    // Staging data is in snake_case (database format), but createXlsFromSequelizeResults expects camelCase (Sequelize format)
+    const convertedInsertRecords = insertRecords.length > 0
+      ? insertRecords.map(record => {
+          // Convert snake_case keys to camelCase
+          const converted = {};
+          for (const key in record) {
+            if (record.hasOwnProperty(key)) {
+              const camelKey = key.replace(/_([a-z0-9])/g, (_, letter) => letter.toUpperCase());
+              converted[camelKey] = record[key];
+            }
+          }
+          // Explicitly ensure primary key is present (handle both formats)
+          if (!converted.cadTrustUnitId) {
+            converted.cadTrustUnitId = record.cad_trust_unit_id || record.cadTrustUnitId;
+          }
+          if (!converted.cadTrustUnitId) {
+            loggerV2.error('[v2]: Missing primary key in unit insert record', { record });
+            throw new Error('Missing primary key (cadTrustUnitId) in unit insert record');
+          }
+          return converted;
+        })
+      : [];
     const insertXslsSheets =
-      insertRecords.length > 0
+      convertedInsertRecords.length > 0
         ? createXlsFromSequelizeResults({
-            rows: insertRecords,
+            rows: convertedInsertRecords,
             model: UnitV2,
             toStructuredCsv: true,
           })
         : null;
 
+    const convertedUpdateRecords = updateRecords.length > 0
+      ? updateRecords.map(record => {
+          // Convert snake_case keys to camelCase
+          const converted = {};
+          for (const key in record) {
+            if (record.hasOwnProperty(key)) {
+              const camelKey = key.replace(/_([a-z0-9])/g, (_, letter) => letter.toUpperCase());
+              converted[camelKey] = record[key];
+            }
+          }
+          // Explicitly ensure primary key is present (handle both formats)
+          if (!converted.cadTrustUnitId) {
+            converted.cadTrustUnitId = record.cad_trust_unit_id || record.cadTrustUnitId;
+          }
+          if (!converted.cadTrustUnitId) {
+            loggerV2.error('[v2]: Missing primary key in unit update record', { record });
+            throw new Error('Missing primary key (cadTrustUnitId) in unit update record');
+          }
+          return converted;
+        })
+      : [];
     const updateXslsSheets =
-      updateRecords.length > 0
+      convertedUpdateRecords.length > 0
         ? createXlsFromSequelizeResults({
-            rows: updateRecords,
+            rows: convertedUpdateRecords,
             model: UnitV2,
             toStructuredCsv: true,
           })
         : null;
 
+    // deletedRecords come from getDeletedItems which returns Sequelize instances (already camelCase)
     const deleteXslsSheets =
       deletedRecords.length > 0
         ? createXlsFromSequelizeResults({
-            rows: deletedRecords,
+            rows: deletedRecords.map(record => record.dataValues || record),
             model: UnitV2,
             toStructuredCsv: true,
           })

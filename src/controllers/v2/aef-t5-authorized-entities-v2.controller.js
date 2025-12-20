@@ -132,25 +132,7 @@ export const getAefT5AuthorizedEntitiesV2 = async (req, res) => {
   try {
     const { cadTrustAefT5AuthorizedEntitiesId } = req.params;
 
-    const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.findByPk(cadTrustAefT5AuthorizedEntitiesId, {
-      include: [
-        {
-          model: AefT1SubmissionV2,
-          as: 'aefT1Submission',
-          attributes: ['cadTrustAefT1SubmissionId', 'aefT1SubmissionParty', 'aefT1SubmissionVersion'],
-        },
-        {
-          model: UnitV2,
-          as: 'unit',
-          attributes: ['cadTrustUnitId', 'unitSerialId', 'unitType', 'unitVintageYear'],
-        },
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectSector', 'projectType'],
-        },
-      ],
-    });
+    const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.findByPk(cadTrustAefT5AuthorizedEntitiesId);
 
     if (!aefT5AuthorizedEntities) {
       return res.status(404).json({
@@ -173,23 +155,6 @@ export const getAefT5AuthorizedEntitiesV2 = async (req, res) => {
 export const getAllAefT5AuthorizedEntitiesV2 = async (req, res) => {
   try {
     const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.findAll({
-      include: [
-        {
-          model: AefT1SubmissionV2,
-          as: 'aefT1Submission',
-          attributes: ['cadTrustAefT1SubmissionId', 'aefT1SubmissionParty', 'aefT1SubmissionVersion'],
-        },
-        {
-          model: UnitV2,
-          as: 'unit',
-          attributes: ['cadTrustUnitId', 'unitSerialId', 'unitType', 'unitVintageYear'],
-        },
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectSector', 'projectType'],
-        },
-      ],
       order: [['aefT5AuthorizedEntitiesAuthorizationDate', 'DESC']],
     });
 

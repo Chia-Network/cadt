@@ -126,6 +126,104 @@ export const getFirstCreatedId = (type) => {
 };
 
 /**
+ * Mapping of resource types to their primary key field names
+ */
+const PRIMARY_KEY_FIELDS = {
+  'methodology': 'cadTrustMethodologyId',
+  'program': 'cadTrustProgramId',
+  'project': 'cadTrustProjectId',
+  'validation': 'cadTrustValidationId',
+  'verification': 'cadTrustVerificationId',
+  'issuance': 'cadTrustIssuanceId',
+  'unit': 'cadTrustUnitId',
+  'location': 'cadTrustLocationId',
+  'estimation': 'cadTrustEstimationId',
+  'rating': 'cadTrustRatingId',
+  'co-benefit': 'cadTrustCoBenefitId',
+  'label': 'cadTrustLabelId',
+  'stakeholder': 'cadTrustStakeholderId',
+  'project-methodology': 'cadTrustProjectMethodologyId',
+  'stakeholder-projects': 'cadTrustStakeholderProjectId',
+  'unit-label': 'cadTrustUnitLabelId',
+  'aef-t1-submission': 'cadTrustAefT1SubmissionId',
+  'aef-t2-authorizations': 'cadTrustAefT2AuthorizationsId',
+  'aef-t3-actions': 'cadTrustAefT3ActionsId',
+  'aef-t4-holdings': 'cadTrustAefT4HoldingsId',
+  'aef-t5-authorized-entities': 'cadTrustAefT5AuthorizedEntitiesId',
+};
+
+/**
+ * Get the first record ID from the database for a specific type
+ * This is useful for PUT/DELETE tests that run in separate processes
+ * @param {Object} request - supertest request instance
+ * @param {string} type - Resource type (e.g., 'methodology', 'project')
+ * @returns {Promise<string|null>} First record ID or null if none exist
+ */
+export const getFirstRecordIdFromDatabase = async (request, type) => {
+  try {
+    const response = await request.get(`/v2/${type}`);
+    const data = Array.isArray(response.body)
+      ? response.body
+      : (response.body?.data || []);
+
+    if (response.status === 200 && Array.isArray(data) && data.length > 0) {
+      const firstRecord = data[0];
+      const idField = PRIMARY_KEY_FIELDS[type];
+      if (idField && firstRecord[idField]) {
+        return firstRecord[idField];
+      }
+      // Fallback: try to find ID field
+      const foundIdField = Object.keys(firstRecord).find(key =>
+        key.toLowerCase().includes('id') &&
+        (key.toLowerCase().includes(type.toLowerCase()) || key === 'id')
+      );
+      return foundIdField ? firstRecord[foundIdField] : null;
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+};
+
+/**
+ * Get all record IDs from the database for a specific type
+ * This is useful for DELETE tests that run in separate processes
+ * @param {Object} request - supertest request instance
+ * @param {string} type - Resource type (e.g., 'methodology', 'project')
+ * @returns {Promise<string[]>} Array of record IDs
+ */
+export const getAllRecordIdsFromDatabase = async (request, type) => {
+  try {
+    const response = await request.get(`/v2/${type}`);
+    const data = Array.isArray(response.body)
+      ? response.body
+      : (response.body?.data || []);
+
+    if (response.status === 200 && Array.isArray(data) && data.length > 0) {
+      const idField = PRIMARY_KEY_FIELDS[type];
+      if (idField) {
+        return data
+          .map(record => record[idField])
+          .filter(id => id != null);
+      }
+      // Fallback: try to find ID field
+      const foundIdField = Object.keys(data[0] || {}).find(key =>
+        key.toLowerCase().includes('id') &&
+        (key.toLowerCase().includes(type.toLowerCase()) || key === 'id')
+      );
+      if (foundIdField) {
+        return data
+          .map(record => record[foundIdField])
+          .filter(id => id != null);
+      }
+    }
+    return [];
+  } catch (error) {
+    return [];
+  }
+};
+
+/**
  * Get all created IDs in reverse dependency order for cleanup
  * @returns {Array<{type: string, id: string|object}>}
  */

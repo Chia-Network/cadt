@@ -21,11 +21,14 @@ export const unitLabelV2Schema = Joi.object({
     'string.base': 'labelUnitDescription must be a string',
   }),
 
-  // Timestamps - forbidden in requests
-  createdAt: Joi.date().forbidden().messages({
+  // Forbidden fields - automatically managed or auto-generated
+  createdAt: Joi.any().forbidden().messages({
     'any.unknown': 'createdAt is automatically managed and cannot be set via API',
   }),
-  updatedAt: Joi.date().forbidden().messages({
+  updatedAt: Joi.any().forbidden().messages({
     'any.unknown': 'updatedAt is automatically managed and cannot be set via API',
   }),
-});
+  cadTrustUnitLabelId: Joi.any().forbidden().messages({
+    'any.unknown': 'cadTrustUnitLabelId is auto-generated and cannot be set via API',
+  }),
+}).unknown(false);

@@ -1,29 +1,31 @@
 const Sequelize = require('sequelize');
 
 module.exports = {
-  id: {
-    type: Sequelize.VIRTUAL,
-    get() {
-      return `${this.cadTrustLabelId}-${this.cadTrustUnitId}`;
-    },
+  cadTrustUnitLabelId: {
+    type: Sequelize.STRING(36),
+    primaryKey: true,
+    allowNull: false,
+    field: 'cad_trust_unit_label_id',
   },
   cadTrustLabelId: {
     type: Sequelize.UUID,
     allowNull: false,
-    primaryKey: true,
+    field: 'cad_trust_label_id',
   },
   cadTrustUnitId: {
     type: Sequelize.UUID,
     allowNull: false,
-    primaryKey: true,
+    field: 'cad_trust_unit_id',
   },
   labelUnitDate: {
     type: Sequelize.DATEONLY,
     allowNull: true,
+    field: 'label_unit_date',
   },
   labelUnitDescription: {
     type: Sequelize.TEXT,
     allowNull: true,
+    field: 'label_unit_description',
   },
   createdAt: {
     type: Sequelize.DATE,

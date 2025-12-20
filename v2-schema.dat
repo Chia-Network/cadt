@@ -188,17 +188,13 @@ updated_at timestamp [note: 'generated']
 }
 
 Table project_methodology {
-cad_trust_project_id varchar [note: 'Foreign key to project table']
-cad_trust_methodology_id varchar [note: 'references methodology UUID']
+cad_trust_project_methodology_id varchar [primary key, unique, note: 'generated UUID']
+cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
+cad_trust_methodology_id varchar [not null, note: 'references methodology UUID']
 project_methodology_date date
 project_methodology_description text
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-
-indexes {
-// composite primary key
-(cad_trust_project_id, cad_trust_methodology_id) [pk]
-}
 }
 
 Table location {
@@ -226,6 +222,8 @@ Table stakeholder_projects{
 cad_trust_stakeholder_project_id varchar [primary key, unique, note: 'generated UUID']
 cad_trust_stakeholder_id varchar [not null, note: 'Foreign key to stakeholder table']
 cad_trust_project_id varchar [not null, note: 'Foreign key to project table']
+created_at timestamp [note: 'generated']
+updated_at timestamp [note: 'generated']
 }
 
 Table label {
@@ -239,17 +237,13 @@ updated_at timestamp [note: 'generated']
 }
 
 Table unit_label {
-cad_trust_label_id varchar [note: 'Foreign key to label table']
-cad_trust_unit_id varchar [note: 'Foreign key to unit table']
+cad_trust_unit_label_id varchar [primary key, unique, note: 'generated UUID']
+cad_trust_label_id varchar [not null, note: 'Foreign key to label table']
+cad_trust_unit_id varchar [not null, note: 'Foreign key to unit table']
 label_unit_date date
 label_unit_description text
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
-
-indexes {
-// composite primary key
-(cad_trust_label_id, cad_trust_unit_id) [pk]
-}
 }
 
 Table co_benefit {

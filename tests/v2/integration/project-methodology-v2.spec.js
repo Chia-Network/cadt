@@ -81,7 +81,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       expect(projectMethodology.updatedAt).to.exist;
     });
 
-    it('should read a project-methodology relationship by composite key', async function () {
+    it('should read a project-methodology relationship by UUID', async function () {
       // Create a new methodology for this test to avoid conflicts
       const newMethodology = await MethodologyV2.create({
         cadTrustMethodologyId: uuidv4(),
@@ -91,7 +91,9 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         methodologyDescription: 'Test methodology description for read test',
       });
 
+      const projectMethodologyId = uuidv4();
       const projectMethodologyData = {
+        cadTrustProjectMethodologyId: projectMethodologyId,
         cadTrustProjectId: testProjectId,
         cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
         projectMethodologyDate: '2024-02-15',
@@ -101,12 +103,12 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       const createdProjectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
       const foundProjectMethodology = await ProjectMethodologyV2.findOne({
         where: {
-          cadTrustProjectId: testProjectId,
-          cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
+          cadTrustProjectMethodologyId: projectMethodologyId,
         },
       });
 
       expect(foundProjectMethodology).to.exist;
+      expect(foundProjectMethodology.cadTrustProjectMethodologyId).to.equal(projectMethodologyId);
       expect(foundProjectMethodology.cadTrustProjectId).to.equal(testProjectId);
       expect(foundProjectMethodology.cadTrustMethodologyId).to.equal(newMethodology.cadTrustMethodologyId);
       expect(foundProjectMethodology.projectMethodologyDate).to.equal('2024-02-15');
@@ -121,6 +123,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
       // Verify each relationship has required fields
       projectMethodologies.forEach(projectMethodology => {
+        expect(projectMethodology.cadTrustProjectMethodologyId).to.exist;
         expect(projectMethodology.cadTrustProjectId).to.exist;
         expect(projectMethodology.cadTrustMethodologyId).to.exist;
         expect(projectMethodology.createdAt).to.exist;
@@ -138,7 +141,9 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         methodologyDescription: 'Test methodology description for update test',
       });
 
+      const projectMethodologyId = uuidv4();
       const projectMethodologyData = {
+        cadTrustProjectMethodologyId: projectMethodologyId,
         cadTrustProjectId: testProjectId,
         cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
         projectMethodologyDate: '2024-03-15',
@@ -156,8 +161,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
       const updatedProjectMethodology = await ProjectMethodologyV2Mirror.findOne({
         where: {
-          cadTrustProjectId: testProjectId,
-          cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
+          cadTrustProjectMethodologyId: projectMethodologyId,
         },
       });
 
@@ -200,7 +204,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
     it('should reject project-methodology with missing required fields', async function () {
       try {
         await ProjectMethodologyV2Mirror.create({
-          // Missing cadTrustProjectId, cadTrustMethodologyId
+          // Missing cadTrustProjectMethodologyId, cadTrustProjectId, cadTrustMethodologyId
           projectMethodologyDate: '2024-01-01',
         });
         expect.fail('Should have thrown validation error');
@@ -227,6 +231,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
     it('should reject project-methodology with invalid methodology ID', async function () {
       try {
         await ProjectMethodologyV2Mirror.create({
+          cadTrustProjectMethodologyId: uuidv4(),
           cadTrustProjectId: testProjectId,
           cadTrustMethodologyId: 'invalid-uuid',
         });
@@ -285,6 +290,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
       try {
         await ProjectMethodologyV2Mirror.create({
+          cadTrustProjectMethodologyId: uuidv4(),
           cadTrustProjectId: testProjectId,
           cadTrustMethodologyId: nonExistentMethodologyId,
         });
@@ -337,12 +343,16 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectMethodologyDescription: 'Test association relationship',
       };
 
-      const createdProjectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+      const projectMethodologyId = uuidv4();
+      const projectMethodologyDataWithId = {
+        ...projectMethodologyData,
+        cadTrustProjectMethodologyId: projectMethodologyId,
+      };
+      const createdProjectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyDataWithId);
 
       const projectMethodologyWithAssociations = await ProjectMethodologyV2.findOne({
         where: {
-          cadTrustProjectId: testProjectId,
-          cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
+          cadTrustProjectMethodologyId: projectMethodologyId,
         },
         include: [
           {
@@ -368,8 +378,8 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
     });
   });
 
-  describe('Project-Methodology Composite Key Tests', function () {
-    it('should enforce uniqueness of composite primary key', async function () {
+  describe('Project-Methodology Primary Key Tests', function () {
+    it('should enforce uniqueness of primary key', async function () {
       // Create a new methodology for this test to avoid conflicts
       const newMethodology = await MethodologyV2.create({
         cadTrustMethodologyId: uuidv4(),
@@ -379,7 +389,9 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         methodologyDescription: 'Test methodology description for uniqueness test',
       });
 
+      const projectMethodologyId = uuidv4();
       const projectMethodologyData = {
+        cadTrustProjectMethodologyId: projectMethodologyId,
         cadTrustProjectId: testProjectId,
         cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
         projectMethodologyDate: '2024-07-15',
@@ -389,7 +401,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       // Create first relationship
       await ProjectMethodologyV2Mirror.create(projectMethodologyData);
 
-      // Try to create duplicate relationship
+      // Try to create duplicate with same UUID (should fail)
       try {
         await ProjectMethodologyV2Mirror.create(projectMethodologyData);
         expect.fail('Should have thrown unique constraint error');
@@ -611,9 +623,10 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
     });
   });
 
-  describe('PUT /v2/project-methodology/project/:projectId/methodology/:methodologyId (Update)', function () {
+  describe('PUT /v2/project-methodology/:cadTrustProjectMethodologyId (Update)', function () {
     let createdProjectId;
     let createdMethodologyId;
+    let createdProjectMethodologyId;
 
     before(async function () {
       // Create a new methodology for this test to avoid conflicts
@@ -637,17 +650,20 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
       createdProjectId = testProjectId;
       createdMethodologyId = newMethodology.cadTrustMethodologyId;
+      createdProjectMethodologyId = response.body.uuid || response.body.cadTrustProjectMethodologyId;
 
-      if (!response.body.uuid) {
+      if (!createdProjectMethodologyId) {
         throw new Error('Failed to create project-methodology relationship for update test');
       }
 
+      const stagingUuid = response.body.uuid || response.body.cadTrustProjectMethodologyId;
       const stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
+        where: { uuid: stagingUuid },
       });
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await ProjectMethodologyV2.create({
+          cadTrustProjectMethodologyId: createdProjectMethodologyId,
           cadTrustProjectId: createdProjectId,
           cadTrustMethodologyId: createdMethodologyId,
           projectMethodologyDate: '2024-01-01',
@@ -666,7 +682,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       };
 
       const response = await supertest(app)
-        .put(`/v2/project-methodology/project/${createdProjectId}/methodology/${createdMethodologyId}`)
+        .put(`/v2/project-methodology/${createdProjectMethodologyId}`)
         .send(updateData);
 
       expect(response.status).to.equal(200);
@@ -676,11 +692,16 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
     });
   });
 
-  describe('DELETE /v2/project-methodology/project/:projectId/methodology/:methodologyId (Delete)', function () {
+  describe('DELETE /v2/project-methodology/:cadTrustProjectMethodologyId (Delete)', function () {
     let createdProjectId;
     let createdMethodologyId;
+    let createdProjectMethodologyId;
 
     before(async function () {
+      // Clean up any existing project-methodology relationships for test isolation
+      await ProjectMethodologyV2.destroy({ where: { cadTrustProjectId: testProjectId, cadTrustMethodologyId: testMethodologyId } });
+      await StagingV2.destroy({ where: { table: 'project_methodology' } });
+
       const projectMethodologyData = {
         cadTrustProjectId: testProjectId,
         cadTrustMethodologyId: testMethodologyId,
@@ -688,31 +709,45 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
       const response = await supertest(app)
         .post('/v2/project-methodology')
-        .send(projectMethodologyData);
+        .send(projectMethodologyData)
+        .expect(200);
 
       createdProjectId = testProjectId;
       createdMethodologyId = testMethodologyId;
+      createdProjectMethodologyId = response.body.uuid || response.body.cadTrustProjectMethodologyId;
+
+      if (!createdProjectMethodologyId) {
+        throw new Error('Failed to get project-methodology ID from POST response');
+      }
 
       let stagingRecord = null;
-      if (response.body.uuid) {
+      const stagingUuid = response.body.uuid || response.body.cadTrustProjectMethodologyId;
+      if (stagingUuid) {
         stagingRecord = await StagingV2.findOne({
-          where: { uuid: response.body.uuid },
+          where: { uuid: stagingUuid },
         });
       }
       if (stagingRecord) {
         await stagingRecord.update({ committed: true });
         await ProjectMethodologyV2.create({
+          cadTrustProjectMethodologyId: createdProjectMethodologyId,
           cadTrustProjectId: createdProjectId,
           cadTrustMethodologyId: createdMethodologyId,
         });
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();
       }
+
+      // Verify record was created successfully
+      const verifyRecord = await ProjectMethodologyV2.findByPk(createdProjectMethodologyId);
+      if (!verifyRecord) {
+        throw new Error(`Failed to create project-methodology record with ID: ${createdProjectMethodologyId}`);
+      }
     });
 
     it('should delete a project-methodology relationship via API', async function () {
       const response = await supertest(app)
-        .delete(`/v2/project-methodology/project/${createdProjectId}/methodology/${createdMethodologyId}`);
+        .delete(`/v2/project-methodology/${createdProjectMethodologyId}`);
 
       expect(response.status).to.equal(200);
       expect(response.body).to.have.property('message');

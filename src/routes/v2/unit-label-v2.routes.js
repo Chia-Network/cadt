@@ -14,8 +14,8 @@ const router = express.Router();
 // Unit-Label CRUD routes
 router.post('/', createUnitLabelV2);
 router.get('/', getAllUnitLabelsV2);
-router.get('/:cadTrustLabelId/:cadTrustUnitId', getUnitLabelV2);
-router.put('/:cadTrustLabelId/:cadTrustUnitId', updateUnitLabelV2);
-router.delete('/:cadTrustLabelId/:cadTrustUnitId', deleteUnitLabelV2);
+router.get('/:cadTrustUnitLabelId', getUnitLabelV2);
+router.put('/:cadTrustUnitLabelId', updateUnitLabelV2);
+router.delete('/:cadTrustUnitLabelId', deleteUnitLabelV2);
 
 export default router;

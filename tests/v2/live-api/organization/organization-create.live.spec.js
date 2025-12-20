@@ -34,9 +34,20 @@ describe('Organization Creation Tests', function () {
       // Create V2 organization
       const createResponse = await request
         .post('/v2/organizations')
-        .send(orgData)
-        .expect(200);
+        .send(orgData);
 
+      if (createResponse.status !== 200) {
+        console.error(`POST /v2/organizations failed with status ${createResponse.status}:`);
+        console.error(`Response body:`, JSON.stringify(createResponse.body, null, 2));
+        if (createResponse.body?.error) {
+          console.error(`Error message: ${createResponse.body.error}`);
+        }
+        if (createResponse.body?.message) {
+          console.error(`Message: ${createResponse.body.message}`);
+        }
+      }
+
+      expect(createResponse.status).to.equal(200);
       expect(createResponse.body.success).to.be.true;
       expect(createResponse.body.message).to.include('currently being created');
 
@@ -65,9 +76,20 @@ describe('Organization Creation Tests', function () {
       // Create V1 organization (uses /v1/organizations/create endpoint)
       const createResponse = await request
         .post('/v1/organizations/create')
-        .send(orgData)
-        .expect(200);
+        .send(orgData);
 
+      if (createResponse.status !== 200) {
+        console.error(`POST /v1/organizations/create failed with status ${createResponse.status}:`);
+        console.error(`Response body:`, JSON.stringify(createResponse.body, null, 2));
+        if (createResponse.body?.error) {
+          console.error(`Error message: ${createResponse.body.error}`);
+        }
+        if (createResponse.body?.message) {
+          console.error(`Message: ${createResponse.body.message}`);
+        }
+      }
+
+      expect(createResponse.status).to.equal(200);
       expect(createResponse.body.success).to.be.true;
       expect(createResponse.body.message).to.include('currently being created');
 
@@ -92,9 +114,20 @@ describe('Organization Creation Tests', function () {
 
       // Upgrade V1 to V2
       const upgradeResponse = await request
-        .post('/v2/organizations/upgrade')
-        .expect(200);
+        .post('/v2/organizations/upgrade');
 
+      if (upgradeResponse.status !== 200) {
+        console.error(`POST /v2/organizations/upgrade failed with status ${upgradeResponse.status}:`);
+        console.error(`Response body:`, JSON.stringify(upgradeResponse.body, null, 2));
+        if (upgradeResponse.body?.error) {
+          console.error(`Error message: ${upgradeResponse.body.error}`);
+        }
+        if (upgradeResponse.body?.message) {
+          console.error(`Message: ${upgradeResponse.body.message}`);
+        }
+      }
+
+      expect(upgradeResponse.status).to.equal(200);
       expect(upgradeResponse.body.success).to.be.true;
       expect(upgradeResponse.body.message).to.include('currently being processed');
 

@@ -723,6 +723,39 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
         return true;
       }
 
+      // Handle "unknown key" errors - this is an ERROR, not acceptable
+      // All data in CADT must come from datalayer, so DELETE operations should always find the keys
+      // If keys are not found, it indicates a key format mismatch that needs to be fixed
+      if (data.error && data.error.includes('unknown key')) {
+        const isDeleteOnlyChangelist = changelist.every(change => change.action === 'delete');
+
+        // Log detailed information about the keys we're trying to delete
+        const deleteKeys = changelist.map(change => ({
+          hex: change.key,
+          decoded: decodeHex(change.key),
+        }));
+
+        logger.error(`[DELETE KEY MISMATCH ERROR] Unknown key error for ${isDeleteOnlyChangelist ? 'DELETE-only' : ''} changelist`, {
+          storeId,
+          deleteKeysCount: deleteKeys.length,
+          deleteKeys,
+          error: data.error,
+          traceback: data.traceback,
+        });
+
+        if (isDeleteOnlyChangelist) {
+          logger.error(
+            `CRITICAL: DELETE operation failed - keys not found in datalayer for storeId: ${storeId}. ` +
+              `This indicates a key format mismatch. All data in CADT must come from datalayer, ` +
+              `so DELETE operations should always find the keys. ` +
+              `Check logs for [DELETE KEY MISMATCH ERROR] and [DELETE KEY DEBUG] for details.`,
+          );
+        }
+
+        // Do NOT treat as success - this is an error that needs to be fixed
+        return false;
+      }
+
       logger.error(
         `There was an error pushing your changes to the datalayer, ${JSON.stringify(
           data,

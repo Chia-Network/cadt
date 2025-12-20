@@ -165,31 +165,8 @@ export const findAll = async (req, res) => {
 export const findOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const { columns } = req.query;
 
-    // Build includes if columns parameter is provided
-    let includes = [];
-    if (columns) {
-      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
-      if (columnsArray.includes('project') || columnsArray.includes('ProjectV2')) {
-        includes.push({
-          model: ProjectV2,
-          as: 'project',
-          required: false,
-        });
-      }
-      if (columnsArray.includes('location') || columnsArray.includes('LocationV2')) {
-        includes.push({
-          model: LocationV2,
-          as: 'location',
-          required: false,
-        });
-      }
-    }
-
-    const record = await IssuanceV2.findByPk(id, {
-      include: includes.length > 0 ? includes : undefined,
-    });
+    const record = await IssuanceV2.findByPk(id);
 
     if (!record) {
       return res.status(404).json({

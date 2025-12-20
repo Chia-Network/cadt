@@ -9,6 +9,7 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
+import { loggerV2 } from '../../config/logger.js';
 
 class UnitLabelV2 extends Model {
   /**
@@ -43,25 +44,68 @@ class UnitLabelV2 extends Model {
       await StagingV2.seperateStagingDataIntoActionGroups(stagedData, 'unit_label');
 
     const primaryKeyMap = {
-      unit_label: 'id', // Virtual field for composite key
+      unit_label: 'cadTrustUnitLabelId', // Primary key field name (Sequelize camelCase)
     };
 
     // PERFORMANCE: Join tables have no child tables, so skip getDeletedItems()
 
     // Convert records to Excel format (only if records exist)
+    // Staging data is in snake_case (database format), but createXlsFromSequelizeResults expects camelCase (Sequelize format)
+    const convertedInsertRecords = insertRecords.length > 0
+      ? insertRecords.map(record => {
+          // Convert snake_case keys to camelCase
+          const converted = {};
+          for (const key in record) {
+            if (record.hasOwnProperty(key)) {
+              const camelKey = key.replace(/_([a-z0-9])/g, (_, letter) => letter.toUpperCase());
+              converted[camelKey] = record[key];
+            }
+          }
+          // Explicitly ensure primary key is present (handle both formats)
+          if (!converted.cadTrustUnitLabelId) {
+            converted.cadTrustUnitLabelId = record.cad_trust_unit_label_id || record.cadTrustUnitLabelId;
+          }
+          if (!converted.cadTrustUnitLabelId) {
+            loggerV2.error('[v2]: Missing primary key in unit_label insert record', { record });
+            throw new Error('Missing primary key (cadTrustUnitLabelId) in unit_label insert record');
+          }
+          return converted;
+        })
+      : [];
     const insertXslsSheets =
-      insertRecords.length > 0
+      convertedInsertRecords.length > 0
         ? createXlsFromSequelizeResults({
-            rows: insertRecords,
+            rows: convertedInsertRecords,
             model: UnitLabelV2,
             toStructuredCsv: true,
           })
         : null;
 
+    const convertedUpdateRecords = updateRecords.length > 0
+      ? updateRecords.map(record => {
+          // Convert snake_case keys to camelCase
+          const converted = {};
+          for (const key in record) {
+            if (record.hasOwnProperty(key)) {
+              const camelKey = key.replace(/_([a-z0-9])/g, (_, letter) => letter.toUpperCase());
+              converted[camelKey] = record[key];
+            }
+          }
+          // Explicitly ensure primary key is present (handle both formats)
+          if (!converted.cadTrustUnitLabelId) {
+            converted.cadTrustUnitLabelId = record.cad_trust_unit_label_id || record.cadTrustUnitLabelId;
+          }
+          if (!converted.cadTrustUnitLabelId) {
+            loggerV2.error('[v2]: Missing primary key in unit_label update record', { record });
+            throw new Error('Missing primary key (cadTrustUnitLabelId) in unit_label update record');
+          }
+          return converted;
+        })
+      : [];
     const updateXslsSheets =
-      updateRecords.length > 0
+      convertedUpdateRecords.length > 0
         ? createXlsFromSequelizeResults({
-            rows: updateRecords,
+            rows: convertedUpdateRecords,
             model: UnitLabelV2,
             toStructuredCsv: true,
           })
@@ -122,8 +166,6 @@ UnitLabelV2.init(ModelTypes, {
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   underscored: true,
-  // Define composite primary key
-  primaryKey: ['cadTrustLabelId', 'cadTrustUnitId'],
 });
 
 // Define associations

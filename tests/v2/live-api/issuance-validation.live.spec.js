@@ -15,7 +15,7 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getCreatedIds, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateIssuance,
   generateIssuanceMinimal,
@@ -23,6 +23,8 @@ import {
   generateIssuanceForbiddenFields,
   getLongString,
   getInvalidPicklistValue,
+  getNonExistentId,
+  generateIssuanceInvalidForeignKey,
 } from './data/test-data-generators.js';
 
 describe('Issuance Live API Validation Tests', function () {
@@ -40,30 +42,35 @@ describe('Issuance Live API Validation Tests', function () {
       const verificationId = getFirstCreatedId('verification');
       const methodologyId = getFirstCreatedId('methodology');
       if (!verificationId || !methodologyId) {
-        this.skip(); // Skip if prerequisites not available
+        this.skip();
       }
       const forbiddenData = generateIssuanceForbiddenFields(verificationId, methodologyId);
       const response = await request
         .post('/v2/issuance')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
     it('should reject POST with invalid foreign keys', async function () {
       const invalidData = generateIssuanceInvalidForeignKey();
       const response = await request
         .post('/v2/issuance')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { issuanceId: 'TEST-ISS' }; // Missing cadTrustVerificationId and cadTrustMethodologyId
+      const incompleteData = { issuanceId: 'Incomplete' }; // Missing cadTrustVerificationId
       const response = await request
         .post('/v2/issuance')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with strings that are too long', async function () {
@@ -73,16 +80,13 @@ describe('Issuance Live API Validation Tests', function () {
         this.skip();
       }
       const longData = generateIssuance(verificationId, methodologyId);
-      // Note: Long strings test may need manual adjustment
+      longData.issuanceId = getLongString(500);
       const response = await request
         .post('/v2/issuance')
         .send(longData);
 
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {
@@ -188,16 +192,25 @@ describe('Issuance Live API Validation Tests', function () {
   });
   describe('Step 7: PUT Request Tests', function () {
     it('should update a issuance', async function () {
-      const id = createdIds[0];
+      // Get ID from createdIds (if available) or query database for existing record
+      let id = createdIds[0];
+      if (!id) {
+        id = await getFirstRecordIdFromDatabase(request, 'issuance');
+        if (!id) {
+          this.skip(); // Skip if no records exist
+        }
+      }
       // Get current record to include all fields
       const currentRecord = await request.get(`/v2/issuance/${id}`).expect(200);
+      const record = currentRecord.body.data || currentRecord.body;
       // Create update data with ALL fields
+      // Required fields must always be included; optional fields can be null (matching V1 behavior)
       const updateData = {
-        issuanceId: currentRecord.body.issuanceId,
-        issuanceDate: currentRecord.body.issuanceDate || null,
-        cadTrustVerificationId: currentRecord.body.cadTrustVerificationId,
-        cadTrustMethodologyId: currentRecord.body.cadTrustMethodologyId,
-        cadTrustLocationId: currentRecord.body.cadTrustLocationId || null,
+        issuanceId: record.issuanceId,
+        issuanceDate: record.issuanceDate ?? null,
+        cadTrustVerificationId: record.cadTrustVerificationId,
+        cadTrustMethodologyId: record.cadTrustMethodologyId,
+        cadTrustLocationId: record.cadTrustLocationId ?? null,
       };
       const response = await makePutRequest(request, '/v2/issuance', id, updateData);
       expect(response.success).to.be.true;
@@ -246,9 +259,21 @@ describe('Issuance Live API Validation Tests', function () {
   });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created issuances', async function () {
+      // Get IDs from createdIds (if available) or query database for existing records
+      let idsToDelete = createdIds.length > 0 ? createdIds : [];
+      if (idsToDelete.length === 0) {
+        // Query database to get all existing records (for DELETE tests running in separate process)
+        idsToDelete = await getAllRecordIdsFromDatabase(request, 'issuance');
+      }
+
+      if (idsToDelete.length === 0) {
+        // No records to delete, skip test
+        return;
+      }
+
       // Delete in reverse order
-      for (let i = createdIds.length - 1; i >= 0; i--) {
-        const id = createdIds[i];
+      for (let i = idsToDelete.length - 1; i >= 0; i--) {
+        const id = idsToDelete[i];
         const response = await makeDeleteRequest(request, '/v2/issuance', id);
         expect(response.success).to.be.true;
 
@@ -261,12 +286,6 @@ describe('Issuance Live API Validation Tests', function () {
         }
       }
 
-      // Commit all deletes if in short mode
-      if (!shouldAutoCommit()) {
-        await commitStagedRecords(request, [], true);
-        await waitForPendingCommits(request);
-        await waitForStagingEmpty(request);
-      }
     });
   });
 

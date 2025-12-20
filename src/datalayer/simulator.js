@@ -1,4 +1,4 @@
-import { uuid as uuidv4 } from 'uuidv4';
+import { v4 as uuidv4 } from 'uuid';
 import { Simulator, Organization } from '../models';
 import { Sequelize } from 'sequelize';
 import { createHash } from 'crypto';

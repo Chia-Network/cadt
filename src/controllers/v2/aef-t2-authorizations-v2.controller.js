@@ -139,30 +139,7 @@ export const getAefT2AuthorizationsV2 = async (req, res) => {
   try {
     const { cadTrustAefT2AuthorizationsId } = req.params;
 
-    const aefT2Authorizations = await AefT2AuthorizationsV2.findByPk(cadTrustAefT2AuthorizationsId, {
-      include: [
-        {
-          model: AefT1SubmissionV2,
-          as: 'aefT1Submission',
-          attributes: ['cadTrustAefT1SubmissionId', 'aefT1SubmissionParty', 'aefT1SubmissionVersion'],
-        },
-        {
-          model: UnitV2,
-          as: 'unit',
-          attributes: ['cadTrustUnitId', 'unitSerialId', 'unitType', 'unitVintageYear'],
-        },
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectSector', 'projectType'],
-        },
-        {
-          model: AefT5AuthorizedEntitiesV2,
-          as: 'aefT5AuthorizedEntities',
-          attributes: ['cadTrustAefT5AuthorizedEntitiesId', 'aefT5AuthorizedEntitiesName', 'aefT5AuthorizedEntitiesId'],
-        },
-      ],
-    });
+    const aefT2Authorizations = await AefT2AuthorizationsV2.findByPk(cadTrustAefT2AuthorizationsId);
 
     if (!aefT2Authorizations) {
       return res.status(404).json({
@@ -185,28 +162,6 @@ export const getAefT2AuthorizationsV2 = async (req, res) => {
 export const getAllAefT2AuthorizationsV2 = async (req, res) => {
   try {
     const aefT2Authorizations = await AefT2AuthorizationsV2.findAll({
-      include: [
-        {
-          model: AefT1SubmissionV2,
-          as: 'aefT1Submission',
-          attributes: ['cadTrustAefT1SubmissionId', 'aefT1SubmissionParty', 'aefT1SubmissionVersion'],
-        },
-        {
-          model: UnitV2,
-          as: 'unit',
-          attributes: ['cadTrustUnitId', 'unitSerialId', 'unitType', 'unitVintageYear'],
-        },
-        {
-          model: ProjectV2,
-          as: 'project',
-          attributes: ['cadTrustProjectId', 'projectName', 'projectSector', 'projectType'],
-        },
-        {
-          model: AefT5AuthorizedEntitiesV2,
-          as: 'aefT5AuthorizedEntities',
-          attributes: ['cadTrustAefT5AuthorizedEntitiesId', 'aefT5AuthorizedEntitiesName', 'aefT5AuthorizedEntitiesId'],
-        },
-      ],
       order: [['aefT2AuthorizationsDate', 'DESC']],
     });
 

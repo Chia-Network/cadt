@@ -142,45 +142,24 @@ class StagingV2 extends Model {
           throw new Error(`Unknown primary key field for table: ${table}`);
         }
 
-        // Handle composite keys (virtual 'id' field)
-        let primaryKeyValue;
-        if (primaryKeyField === 'id') {
-          // Composite key tables: construct the virtual id from component fields
-          if (table === 'project_methodology') {
-            const projectId = recordData.cad_trust_project_id || recordData.cadTrustProjectId;
-            const methodologyId = recordData.cad_trust_methodology_id || recordData.cadTrustMethodologyId;
-            if (!projectId || !methodologyId) {
-              throw new Error(`Composite key fields not found in UPDATE staging data for table ${table}`);
-            }
-            primaryKeyValue = `${projectId}-${methodologyId}`;
-          } else if (table === 'unit_label') {
-            const labelId = recordData.cad_trust_label_id || recordData.cadTrustLabelId;
-            const unitId = recordData.cad_trust_unit_id || recordData.cadTrustUnitId;
-            if (!labelId || !unitId) {
-              throw new Error(`Composite key fields not found in UPDATE staging data for table ${table}`);
-            }
-            primaryKeyValue = `${labelId}-${unitId}`;
-          } else if (table === 'stakeholder_projects') {
-            // stakeholder_projects uses 'id' as primary key field name but has UUID primary key
-            // Use the actual UUID field instead of constructing a composite key
-            primaryKeyValue = recordData.cad_trust_stakeholder_project_id || recordData.cadTrustStakeholderProjectId;
-            if (!primaryKeyValue) {
-              throw new Error(`Primary key field cad_trust_stakeholder_project_id not found in UPDATE staging data for table ${table}`);
-            }
-          } else {
-            throw new Error(`Unknown composite key table: ${table}`);
-          }
-        } else {
-          // Single primary key: extract directly from record data
-          primaryKeyValue = recordData[primaryKeyField];
-          if (!primaryKeyValue) {
-            // Try camelCase version
-            const camelCaseField = primaryKeyField.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-            primaryKeyValue = recordData[camelCaseField];
-          }
-          if (!primaryKeyValue) {
-            throw new Error(`Primary key field ${primaryKeyField} not found in UPDATE staging data for table ${table}`);
-          }
+        // Extract primary key value from record data
+        let primaryKeyValue = recordData[primaryKeyField];
+        if (!primaryKeyValue) {
+          // Try camelCase version
+          const camelCaseField = primaryKeyField.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+          primaryKeyValue = recordData[camelCaseField];
+        }
+        if (!primaryKeyValue) {
+          throw new Error(`Primary key field ${primaryKeyField} not found in UPDATE staging data for table ${table}`);
+        }
+
+        // CRITICAL: Never allow undefined/null primary key values - this creates invalid datalayer keys
+        if (primaryKeyValue == null || primaryKeyValue === 'undefined') {
+          throw new Error(
+            `Cannot create datalayer key for UPDATE operation on table '${table}': primary key value is null or undefined. ` +
+            `This would result in an invalid datalayer key like '${tablePrefix}|undefined'. ` +
+            `Record data: ${JSON.stringify(recordData)}`
+          );
         }
 
         // Generate delete changelist item for UPDATE using the actual primary key
@@ -207,44 +186,43 @@ class StagingV2 extends Model {
           throw new Error(`Unknown primary key field for table: ${table}`);
         }
 
-        // Handle composite keys (virtual 'id' field)
-        let primaryKeyValue;
-        if (primaryKeyField === 'id') {
-          // Composite key tables: construct the virtual id from component fields
-          if (table === 'project_methodology') {
-            const projectId = recordData.cad_trust_project_id || recordData.cadTrustProjectId;
-            const methodologyId = recordData.cad_trust_methodology_id || recordData.cadTrustMethodologyId;
-            if (!projectId || !methodologyId) {
-              throw new Error(`Composite key fields not found in DELETE staging data for table ${table}`);
-            }
-            primaryKeyValue = `${projectId}-${methodologyId}`;
-          } else if (table === 'unit_label') {
-            const labelId = recordData.cad_trust_label_id || recordData.cadTrustLabelId;
-            const unitId = recordData.cad_trust_unit_id || recordData.cadTrustUnitId;
-            if (!labelId || !unitId) {
-              throw new Error(`Composite key fields not found in DELETE staging data for table ${table}`);
-            }
-            primaryKeyValue = `${labelId}-${unitId}`;
-          } else {
-            throw new Error(`Unknown composite key table: ${table}`);
-          }
-        } else {
-          // Single primary key: extract directly from record data
-          primaryKeyValue = recordData[primaryKeyField];
-          if (!primaryKeyValue) {
-            // Try camelCase version
-            const camelCaseField = primaryKeyField.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-            primaryKeyValue = recordData[camelCaseField];
-          }
-          if (!primaryKeyValue) {
-            throw new Error(`Primary key field ${primaryKeyField} not found in DELETE staging data for table ${table}`);
-          }
+        // Extract primary key value from record data
+        let primaryKeyValue = recordData[primaryKeyField];
+        if (!primaryKeyValue) {
+          // Try camelCase version
+          const camelCaseField = primaryKeyField.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+          primaryKeyValue = recordData[camelCaseField];
+        }
+        if (!primaryKeyValue) {
+          throw new Error(`Primary key field ${primaryKeyField} not found in DELETE staging data for table ${table}`);
+        }
+
+        // CRITICAL: Never allow undefined/null primary key values - this creates invalid datalayer keys
+        if (primaryKeyValue == null || primaryKeyValue === 'undefined') {
+          throw new Error(
+            `Cannot create datalayer key for DELETE operation on table '${table}': primary key value is null or undefined. ` +
+            `This would result in an invalid datalayer key like '${tablePrefix}|undefined'. ` +
+            `Record data: ${JSON.stringify(recordData)}`
+          );
         }
 
         // Generate delete changelist item for DELETE using the actual primary key
+        const generatedKey = `${tablePrefix}|${primaryKeyValue}`;
+        const encodedKey = encodeHex(generatedKey);
+
+        loggerV2.debug(`[v2]: [DELETE KEY DEBUG] Generated DELETE key for staging record`, {
+          uuid: stagingRecord.uuid,
+          table,
+          primaryKeyField,
+          primaryKeyValue,
+          generatedKey,
+          encodedKey,
+          recordData: JSON.stringify(recordData),
+        });
+
         deleteChangeList.push({
           action: 'delete',
-          key: encodeHex(`${tablePrefix}|${primaryKeyValue}`),
+          key: encodedKey,
         });
 
         // TODO: Child table records are getting orphaned in the datalayer,
@@ -281,11 +259,11 @@ class StagingV2 extends Model {
       estimation: [EstimationV2, 'cadTrustEstimationId', false],
       rating: [RatingV2, 'cadTrustRatingId', false],
       co_benefit: [CoBenefitV2, 'cadTrustCoBenefitId', false],
-      project_methodology: [ProjectMethodologyV2, null, false], // Composite key
+      project_methodology: [ProjectMethodologyV2, 'cadTrustProjectMethodologyId', false],
       stakeholder: [StakeholderV2, 'cadTrustStakeholderId', false],
       stakeholder_projects: [StakeholderProjectV2, 'cadTrustStakeholderProjectId', false],
       label: [LabelV2, 'cadTrustLabelId', false],
-      unit_label: [UnitLabelV2, null, false], // Composite key
+      unit_label: [UnitLabelV2, 'cadTrustUnitLabelId', false],
       aef_t1_submission: [AefT1SubmissionV2, 'cadTrustAefT1SubmissionId', false],
       aef_t5_authorized_entities: [AefT5AuthorizedEntitiesV2, 'cadTrustAefT5AuthorizedEntitiesId', false],
       aef_t2_authorizations: [AefT2AuthorizationsV2, 'cadTrustAefT2AuthorizationsId', false],
@@ -321,10 +299,8 @@ class StagingV2 extends Model {
               where: whereClause,
             });
           } else {
-            // Composite primary key (join tables)
-            // For join tables, the uuid might be a composite key
-            // We'll try to parse it or use a different lookup strategy
-            // For now, return null for composite keys (they're typically simple relationships)
+            // Should not happen - all tables should have a primary key field
+            loggerV2.warn(`[v2]: No primary key field found for table ${table}, cannot fetch original record`);
             original = null;
           }
         } catch (error) {
@@ -427,6 +403,12 @@ class StagingV2 extends Model {
       // Stage 3: Filter models that have staged data (PERFORMANCE OPTIMIZATION)
       const stage3Start = Date.now();
 
+      // Defensive check: ensure UnitV2 is defined before creating allModels array
+      if (typeof UnitV2 === 'undefined') {
+        loggerV2.error('[v2]: UnitV2 is undefined when creating allModels array in pushToDataLayer');
+        throw new Error('UnitV2 model is not available - possible circular dependency issue');
+      }
+
       // All V2 data models
       // Each model processes its own table independently
       const allModels = [
@@ -452,6 +434,12 @@ class StagingV2 extends Model {
         AefT3ActionsV2,
         AefT4HoldingsV2,
       ];
+
+      // Defensive check: ensure UnitV2 is defined before creating modelToTableMap
+      if (typeof UnitV2 === 'undefined') {
+        loggerV2.error('[v2]: UnitV2 is undefined when creating modelToTableMap in pushToDataLayer');
+        throw new Error('UnitV2 model is not available - possible circular dependency issue');
+      }
 
       // Map model class names to table names
       const modelToTableMap = {
@@ -481,15 +469,43 @@ class StagingV2 extends Model {
       // PERFORMANCE: Filter models that have staged data before processing
       // Each model processes only its own table
       const modelsToProcess = allModels.filter((ModelClass) => {
+        // Defensive check: ensure ModelClass is defined and has a name property
+        if (!ModelClass || typeof ModelClass.name === 'undefined') {
+          loggerV2.error('[v2]: ModelClass is undefined or missing name property in filter', {
+            ModelClassType: typeof ModelClass,
+            ModelClass: ModelClass,
+          });
+          return false;
+        }
         const tableName = modelToTableMap[ModelClass.name];
         return stagedRecords.some((record) => record.table === tableName);
       });
 
       // Call filtered model generateChangeListFromStagedData() methods in parallel
+      loggerV2.debug('[v2]: About to process models in parallel', {
+        modelsToProcessCount: modelsToProcess.length,
+        modelsToProcessNames: modelsToProcess.map(m => m?.name || 'unknown'),
+        UnitV2InModels: modelsToProcess.includes(UnitV2),
+        UnitV2Type: typeof UnitV2,
+        UnitV2Defined: typeof UnitV2 !== 'undefined',
+      });
+
       const modelResults = await Promise.all(
         modelsToProcess.map(async (ModelClass) => {
           const modelStart = Date.now();
           try {
+            // Additional debug logging for UnitV2
+            if (ModelClass === UnitV2 || (ModelClass && ModelClass.name === 'UnitV2')) {
+              loggerV2.debug('[v2]: About to call UnitV2.generateChangeListFromStagedData', {
+                UnitV2Type: typeof UnitV2,
+                UnitV2Defined: typeof UnitV2 !== 'undefined',
+                UnitV2Name: UnitV2?.name,
+                ModelClassType: typeof ModelClass,
+                ModelClassName: ModelClass?.name,
+                ModelClassEqualsUnitV2: ModelClass === UnitV2,
+              });
+            }
+
             const result = await ModelClass.generateChangeListFromStagedData(
               stagedRecords,
               comment,
@@ -513,10 +529,22 @@ class StagingV2 extends Model {
             return result;
           } catch (error) {
             const duration = Date.now() - modelStart;
-            loggerV2.error(`[v2]: Model ${ModelClass.name} failed after ${duration}ms`, {
-              model: ModelClass.name,
+            let modelName = 'unknown';
+            try {
+              modelName = (ModelClass && ModelClass.name) ? ModelClass.name : (ModelClass ? String(ModelClass) : 'unknown');
+            } catch (nameError) {
+              loggerV2.error('[v2]: Error getting model name in error handler', {
+                nameError: nameError.message,
+                modelClassType: typeof ModelClass,
+              });
+              modelName = 'unknown (error getting name)';
+            }
+            loggerV2.error(`[v2]: Model ${modelName} failed after ${duration}ms`, {
+              model: modelName,
               duration,
               error: error.message,
+              errorStack: error.stack,
+              errorName: error.name,
             });
             throw error;
           }
@@ -534,6 +562,10 @@ class StagingV2 extends Model {
       let authorChangeList = null;
 
       modelResults.forEach((changeList) => {
+        // Skip null or undefined changeLists (models with no staged data return null/undefined)
+        if (!changeList || typeof changeList !== 'object') {
+          return;
+        }
         Object.keys(changeList).forEach((key) => {
           if (key === 'comment' && !commentChangeList) {
             commentChangeList = changeList[key];
@@ -730,7 +762,14 @@ class StagingV2 extends Model {
       });
 
       if (!stagingRecord) {
+        // Early return if no transfer record - don't proceed with offer generation
         throw new Error('No transfer record found in staging');
+      }
+
+      // Defensive check: ensure UnitV2 is defined before proceeding with offer generation
+      if (typeof UnitV2 === 'undefined') {
+        loggerV2.error('[v2]: UnitV2 is undefined when trying to generate offer file');
+        throw new Error('UnitV2 model is not available - possible circular dependency issue');
       }
 
       const makerProjectRecord = _.head(JSON.parse(stagingRecord.data));
@@ -846,6 +885,10 @@ class StagingV2 extends Model {
 
       // Get units for the issuances
       // Note: In V2, units may not have orgUid field, so we'll get all units for these issuances
+      // Defensive check: ensure UnitV2 is defined
+      if (!UnitV2) {
+        throw new Error('UnitV2 model is not available - possible circular dependency issue');
+      }
       let unitTakerRecords = await UnitV2.findAll({
         where: {
           cadTrustIssuanceId: { [Op.in]: issuanceIds },
@@ -903,7 +946,7 @@ class StagingV2 extends Model {
 
       const primaryUnitKeyMap = {
         unit: 'cadTrustUnitId',
-        unitLabels: 'id', // Join table uses 'id' as primary key
+        unit_label: 'cadTrustUnitLabelId', // Primary key field name for unit_label table
       };
 
       // Map sheet names from model.name to table name
@@ -942,9 +985,26 @@ class StagingV2 extends Model {
         coBenefits: CoBenefitV2,
       };
 
+      // Defensive check: ensure models are defined before using them
+      loggerV2.debug('[v2]: About to access UnitV2 in generateOfferFile unitModelMap', {
+        UnitV2Type: typeof UnitV2,
+        UnitV2Defined: typeof UnitV2 !== 'undefined',
+        UnitV2Name: UnitV2?.name,
+        UnitLabelV2Type: typeof UnitLabelV2,
+        UnitLabelV2Defined: typeof UnitLabelV2 !== 'undefined',
+      });
+      if (!UnitV2) {
+        loggerV2.error('[v2]: UnitV2 is undefined when creating unitModelMap');
+        throw new Error('UnitV2 model is not available - possible circular dependency issue');
+      }
+      if (!UnitLabelV2) {
+        loggerV2.error('[v2]: UnitLabelV2 is undefined when creating unitModelMap');
+        throw new Error('UnitLabelV2 model is not available - possible circular dependency issue');
+      }
+
       const unitModelMap = {
         unit: UnitV2,
-        unitLabels: UnitLabelV2,
+        unit_label: UnitLabelV2,
       };
 
       const takerProjectXslsSheets = createXlsFromSequelizeResults({
@@ -961,6 +1021,11 @@ class StagingV2 extends Model {
         model: ProjectV2,
         toStructuredCsv: true,
       });
+
+      // Defensive check: ensure UnitV2 is defined before using it
+      if (!UnitV2) {
+        throw new Error('UnitV2 model is not available - possible circular dependency issue');
+      }
 
       const takerUnitXslsSheets = createXlsFromSequelizeResults({
         rows: unitTakerRecords,
@@ -988,15 +1053,29 @@ class StagingV2 extends Model {
         projectModelMap,
       );
 
+      // Defensive check: ensure UnitV2 is defined before using it
+      loggerV2.debug('[v2]: About to access UnitV2.name in generateOfferFile for transformFullXslsToChangeList', {
+        UnitV2Type: typeof UnitV2,
+        UnitV2Defined: typeof UnitV2 !== 'undefined',
+        UnitV2Name: UnitV2?.name,
+      });
+      if (!UnitV2) {
+        loggerV2.error('[v2]: UnitV2 is undefined when calling transformFullXslsToChangeList');
+        throw new Error('UnitV2 model is not available - possible circular dependency issue');
+      }
+
+      // Safely get model name
+      const unitV2ModelName = UnitV2 && UnitV2.name ? UnitV2.name : 'UnitV2';
+
       const takerUnitInclusions = await transformFullXslsToChangeList(
-        mapSheetNames(takerUnitXslsSheets, UnitV2.name, 'unit'),
+        mapSheetNames(takerUnitXslsSheets, unitV2ModelName, 'unit'),
         'insert',
         primaryUnitKeyMap,
         unitModelMap,
       );
 
       const makerUnitInclusions = await transformFullXslsToChangeList(
-        mapSheetNames(makerUnitXslsSheets, UnitV2.name, 'unit'),
+        mapSheetNames(makerUnitXslsSheets, unitV2ModelName, 'unit'),
         'insert',
         primaryUnitKeyMap,
         unitModelMap,
