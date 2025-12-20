@@ -3,7 +3,12 @@
 import { v4 as uuidv4 } from 'uuid';
 import { LocationV2, LocationV2Mirror, ProjectV2, StagingV2 } from '../../models/v2/index.js';
 import { locationV2Schema } from '../../validations/v2/location-v2.validations.js';
-import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
+import {
+  assertRecordExistanceOrStaged,
+  assertV2IfReadOnlyMode,
+  assertV2HomeOrgExists,
+  assertNoPendingCommitsExcludingTransfers,
+} from '../../utils/v2-data-assertions.js';
 import { loggerV2 } from '../../config/logger.js';
 
 // Generic CRUD controller factory for LocationV2
@@ -12,6 +17,10 @@ const createLocationController = (Model, ModelMirror, schema) => {
     // Create new location
     async create(req, res) {
       try {
+        await assertV2IfReadOnlyMode();
+        await assertV2HomeOrgExists();
+        await assertNoPendingCommitsExcludingTransfers();
+
         const newRecord = req.body;
 
         // Check for forbidden ID field
@@ -38,7 +47,15 @@ const createLocationController = (Model, ModelMirror, schema) => {
         }
 
         // Validate foreign key: cadTrustProjectId
-        await assertRecordExistanceOrStaged(ProjectV2, value.cadTrustProjectId, 'cadTrustProjectId');
+        try {
+          await assertRecordExistanceOrStaged(ProjectV2, value.cadTrustProjectId, 'cadTrustProjectId');
+        } catch (err) {
+          return res.status(400).json({
+            message: 'Error creating location',
+            error: err.message,
+            success: false,
+          });
+        }
 
         // Generate UUID for staging
         const uuid = uuidv4();
@@ -75,8 +92,8 @@ const createLocationController = (Model, ModelMirror, schema) => {
           success: true,
         });
       } catch (err) {
-        console.error('Error creating location:', err);
-        res.status(500).json({
+        loggerV2.error('[v2]: Error creating location:', err);
+        res.status(400).json({
           message: 'Error creating location',
           error: err.message,
           success: false,
@@ -95,7 +112,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
           success: true,
         });
       } catch (err) {
-        console.error('Error retrieving locations:', err);
+        loggerV2.error('[v2]: Error retrieving locations:', err);
         res.status(500).json({
           message: 'Error retrieving locations',
           error: err.message,
@@ -119,7 +136,7 @@ const createLocationController = (Model, ModelMirror, schema) => {
 
         res.json(location);
       } catch (err) {
-        console.error('Error retrieving location:', err);
+        loggerV2.error('[v2]: Error retrieving location:', err);
         res.status(500).json({
           message: 'Error retrieving location',
           error: err.message,
@@ -131,6 +148,10 @@ const createLocationController = (Model, ModelMirror, schema) => {
     // Update location
     async update(req, res) {
       try {
+        await assertV2IfReadOnlyMode();
+        await assertV2HomeOrgExists();
+        await assertNoPendingCommitsExcludingTransfers();
+
         const { id } = req.params;
         const updateData = req.body;
 
@@ -149,7 +170,15 @@ const createLocationController = (Model, ModelMirror, schema) => {
         }
 
         // Validate foreign key: cadTrustProjectId
-        await assertRecordExistanceOrStaged(ProjectV2, value.cadTrustProjectId, 'cadTrustProjectId');
+        try {
+          await assertRecordExistanceOrStaged(ProjectV2, value.cadTrustProjectId, 'cadTrustProjectId');
+        } catch (err) {
+          return res.status(400).json({
+            message: 'Error updating location',
+            error: err.message,
+            success: false,
+          });
+        }
 
         // Check if location exists
         const existingLocation = await Model.findByPk(id);
@@ -192,8 +221,8 @@ const createLocationController = (Model, ModelMirror, schema) => {
           success: true,
         });
       } catch (err) {
-        console.error('Error updating location:', err);
-        res.status(500).json({
+        loggerV2.error('[v2]: Error updating location:', err);
+        res.status(400).json({
           message: 'Error updating location',
           error: err.message,
           success: false,
@@ -204,6 +233,10 @@ const createLocationController = (Model, ModelMirror, schema) => {
     // Delete location
     async delete(req, res) {
       try {
+        await assertV2IfReadOnlyMode();
+        await assertV2HomeOrgExists();
+        await assertNoPendingCommitsExcludingTransfers();
+
         const { id } = req.params;
 
         // Check if location exists
@@ -235,8 +268,8 @@ const createLocationController = (Model, ModelMirror, schema) => {
           success: true,
         });
       } catch (err) {
-        console.error('Error deleting location:', err);
-        res.status(500).json({
+        loggerV2.error('[v2]: Error deleting location:', err);
+        res.status(400).json({
           message: 'Error deleting location',
           error: err.message,
           success: false,

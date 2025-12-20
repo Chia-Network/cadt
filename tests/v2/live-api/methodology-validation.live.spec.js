@@ -43,24 +43,29 @@ describe('Methodology Live API Validation Tests', function () {
       const response = await request
         .post('/v2/methodology')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
     it('should reject POST with invalid picklist values', async function () {
       const invalidData = generateMethodologyInvalidPicklist();
       const response = await request
         .post('/v2/methodology')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { methodologyName: 'Test' }; // Missing methodologyCode
+      const incompleteData = { methodologyName: 'Incomplete' }; // Missing methodologyCode
       const response = await request
         .post('/v2/methodology')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with strings that are too long', async function () {
@@ -69,11 +74,19 @@ describe('Methodology Live API Validation Tests', function () {
         .post('/v2/methodology')
         .send(longData);
 
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
+    });
+
+    it('should reject POST with invalid data types', async function () {
+      const invalidTypeData = generateMethodology();
+      invalidTypeData.methodologyDate = 'not-a-date';
+      const response = await request
+        .post('/v2/methodology')
+        .send(invalidTypeData);
+
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {

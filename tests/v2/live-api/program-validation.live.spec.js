@@ -42,25 +42,23 @@ describe('Program Live API Validation Tests', function () {
       const response = await request
         .post('/v2/program')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
-    });
-    it('should reject POST with invalid picklist values', async function () {
-      const invalidData = generateProgramMinimal();
-      invalidData.programRegistry = getInvalidPicklistValue('programRegistry');
-      const response = await request
-        .post('/v2/program')
-        .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
+    });
+
+    it('should reject POST with invalid picklist values', async function () {
+      this.skip(); // Program model has no picklist fields
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { programName: 'Test' }; // Missing programRegistry and programRegistryActivityId
+      const incompleteData = { programName: 'Incomplete' }; // Missing programRegistry and programRegistryActivityId
       const response = await request
         .post('/v2/program')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with strings that are too long', async function () {
@@ -69,11 +67,19 @@ describe('Program Live API Validation Tests', function () {
         .post('/v2/program')
         .send(longData);
 
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
+    });
+
+    it('should reject POST with invalid data types', async function () {
+      const invalidTypeData = generateProgram();
+      invalidTypeData.programProjectCount = 'not-a-number';
+      const response = await request
+        .post('/v2/program')
+        .send(invalidTypeData);
+
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {

@@ -41,39 +41,30 @@ describe('AefT1Submission Live API Validation Tests', function () {
       const response = await request
         .post('/v2/aef-t1-submission')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
-    });
-    it('should reject POST with invalid data', async function () {
-      const invalidData = generateAefT1SubmissionMinimal();
-      invalidData.aefT1SubmissionReportYear = 1800; // Invalid year (below min)
-      const response = await request
-        .post('/v2/aef-t1-submission')
-        .send(invalidData);
-
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { aefT1SubmissionParty: 'Test' }; // Missing required fields
+      const incompleteData = { aefT1SubmissionParty: 'Incomplete' }; // Missing other required fields
       const response = await request
         .post('/v2/aef-t1-submission')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
-    it('should reject POST with strings that are too long', async function () {
-      const longData = generateAefT1Submission();
-      // Note: Long strings test may need manual adjustment
+    it('should reject POST with invalid data types', async function () {
+      const invalidTypeData = generateAefT1Submission();
+      invalidTypeData.aefT1SubmissionReportYear = 'not-a-number';
       const response = await request
         .post('/v2/aef-t1-submission')
-        .send(longData);
+        .send(invalidTypeData);
 
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {

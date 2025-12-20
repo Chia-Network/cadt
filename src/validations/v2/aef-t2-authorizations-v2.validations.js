@@ -1,10 +1,5 @@
 import Joi from 'joi';
-import { getPicklistValuesV2 } from '../../utils/v2-data-loaders.js';
-
-const metricPicklist = getPicklistValuesV2().metric || [];
-const sectorPicklist = getPicklistValuesV2().sector || [];
-const typePicklist = getPicklistValuesV2().type || [];
-const purposePicklist = getPicklistValuesV2().purpose || [];
+import { pickListValidationV2 } from '../../utils/v2-validation-utils.js';
 
 export const aefT2AuthorizationsV2Schema = Joi.object({
   // Primary key - auto-generated, not allowed in requests
@@ -42,9 +37,14 @@ export const aefT2AuthorizationsV2Schema = Joi.object({
     'number.base': 'aefT2AuthorizationsQuantity must be a number',
   }),
 
-  aefT2AuthorizationsMetric: Joi.string().valid(...metricPicklist).allow(null).optional().messages({
-    'any.only': `aefT2AuthorizationsMetric does not include a valid option. Valid options are: ${metricPicklist.join(', ')}`,
-  }),
+  aefT2AuthorizationsMetric: Joi.string()
+    .max(255)
+    .allow(null)
+    .custom(pickListValidationV2('aefT2AuthorizationsMetric'))
+    .optional()
+    .messages({
+      'string.max': 'aefT2AuthorizationsMetric must not exceed 255 characters',
+    }),
 
   aefT2AuthorizationsGwpValue: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT2AuthorizationsGwpValue must not exceed 255 characters',
@@ -54,17 +54,32 @@ export const aefT2AuthorizationsV2Schema = Joi.object({
     'string.max': 'aefT2AuthorizationsApplicableNonGhgMetric must not exceed 255 characters',
   }),
 
-  aefT2AuthorizationsSector: Joi.string().valid(...sectorPicklist).allow(null).optional().messages({
-    'any.only': `aefT2AuthorizationsSector does not include a valid option. Valid options are: ${sectorPicklist.join(', ')}`,
-  }),
+  aefT2AuthorizationsSector: Joi.string()
+    .max(255)
+    .allow(null)
+    .custom(pickListValidationV2('aefT2AuthorizationsSector'))
+    .optional()
+    .messages({
+      'string.max': 'aefT2AuthorizationsSector must not exceed 255 characters',
+    }),
 
-  aefT2AuthorizationsActivityType: Joi.string().valid(...typePicklist).allow(null).optional().messages({
-    'any.only': `aefT2AuthorizationsActivityType does not include a valid option. Valid options are: ${typePicklist.join(', ')}`,
-  }),
+  aefT2AuthorizationsActivityType: Joi.string()
+    .max(255)
+    .allow(null)
+    .custom(pickListValidationV2('aefT2AuthorizationsActivityType'))
+    .optional()
+    .messages({
+      'string.max': 'aefT2AuthorizationsActivityType must not exceed 255 characters',
+    }),
 
-  aefT2AuthorizationsPurposesForAuthorization: Joi.string().valid(...purposePicklist).allow(null).optional().messages({
-    'any.only': `aefT2AuthorizationsPurposesForAuthorization does not include a valid option. Valid options are: ${purposePicklist.join(', ')}`,
-  }),
+  aefT2AuthorizationsPurposesForAuthorization: Joi.string()
+    .max(255)
+    .allow(null)
+    .custom(pickListValidationV2('aefT2AuthorizationsPurposesForAuthorization'))
+    .optional()
+    .messages({
+      'string.max': 'aefT2AuthorizationsPurposesForAuthorization must not exceed 255 characters',
+    }),
 
   aefT2AuthorizationsAuthoziedEntityId: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT2AuthorizationsAuthoziedEntityId must not exceed 255 characters',

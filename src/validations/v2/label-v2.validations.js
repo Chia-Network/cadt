@@ -23,8 +23,9 @@ export const labelV2Schema = Joi.object({
     'any.only': 'labelType must be one of: Certification, Article 6 - Endorsement, Article 6 - Letter of Qualification, Article 6 - Authorisation, Article 6 - Letter of Approvals',
   }),
 
-  labelLink: Joi.alternatives().try(Joi.string().uri(), Joi.allow(null, '')).optional().messages({
+  labelLink: Joi.alternatives().try(Joi.string().uri().max(500), Joi.allow(null, '')).optional().messages({
     'string.uri': 'labelLink must be a valid URI',
+    'string.max': 'labelLink must not exceed 500 characters',
   }),
 
   labelDate: Joi.date().iso().allow(null).optional().messages({

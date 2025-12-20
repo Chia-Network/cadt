@@ -17,8 +17,9 @@ export const stakeholderV2Schema = Joi.object({
     'any.only': 'stakeholderType must be one of: Owner, Developer, Consultant',
   }),
 
-  stakeholderLink: Joi.alternatives().try(Joi.string().uri(), Joi.allow(null, '')).optional().messages({
+  stakeholderLink: Joi.alternatives().try(Joi.string().uri().max(500), Joi.allow(null, '')).optional().messages({
     'string.uri': 'stakeholderLink must be a valid URI',
+    'string.max': 'stakeholderLink must not exceed 500 characters',
   }),
 
   // Timestamps - forbidden in requests

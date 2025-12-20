@@ -22,6 +22,7 @@ import {
   generateUnitLabelMaximal,
   generateUnitLabelInvalidForeignKey,
   generateUnitLabelForbiddenFields,
+  getNonExistentId,
 } from './data/test-data-generators.js';
 
 describe('UnitLabel Live API Validation Tests', function () {
@@ -39,30 +40,35 @@ describe('UnitLabel Live API Validation Tests', function () {
       const labelId = getFirstCreatedId('label');
       const unitId = getFirstCreatedId('unit');
       if (!labelId || !unitId) {
-        this.skip(); // Skip if prerequisites not available
+        this.skip();
       }
       const forbiddenData = generateUnitLabelForbiddenFields(labelId, unitId);
       const response = await request
         .post('/v2/unit-label')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
     it('should reject POST with invalid foreign keys', async function () {
       const invalidData = generateUnitLabelInvalidForeignKey();
       const response = await request
         .post('/v2/unit-label')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { cadTrustLabelId: 'test-id' }; // Missing cadTrustUnitId
+      const incompleteData = { cadTrustLabelId: getNonExistentId() }; // Missing cadTrustUnitId
       const response = await request
         .post('/v2/unit-label')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {

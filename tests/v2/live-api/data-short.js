@@ -135,6 +135,12 @@ async function main() {
 
     // Note: Shared setup runs via --require flag in mocha, so it executes once before all tests
 
+    // Phase 0: Validation Failure Tests
+    await runMochaTests('Step 3: Validation Failure Tests', 'Validation Failures');
+    console.log('Clearing staging table after validation failure tests...');
+    await clearStagingTable(request);
+    console.log('');
+
     // Phase 1: POST tests
     await runMochaTests('Step 4: POST Request Tests', 'POST Operations');
     await commitAndWait('POST');

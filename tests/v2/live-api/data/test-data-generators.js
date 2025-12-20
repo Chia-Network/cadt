@@ -286,11 +286,11 @@ export const generateProjectMaximal = (cadTrustProgramId = null) => {
 };
 
 export const generateProjectLongStrings = () => ({
-  projectRegistryName: 'VCS',
-  projectId: getLongString(200),
-  projectName: getLongString(500),
-  projectLink: `https://example.com/${getLongString(400)}`,
-  projectDescription: getLongString(2000),
+  projectRegistryName: getLongString(300), // Exceeds max of 255
+  projectId: getLongString(300), // Exceeds max of 255
+  projectName: getLongString(600), // Exceeds max of 500
+  projectLink: `https://example.com/${getLongString(600)}`, // Exceeds max of 500
+  projectDescription: getLongString(3000), // Exceeds max of 2000
 });
 
 export const generateProjectInvalidForeignKey = () => ({
@@ -476,8 +476,8 @@ export const generateStakeholderMaximal = () => ({
 });
 
 export const generateStakeholderLongStrings = () => ({
-  stakeholderName: getLongString(255),
-  stakeholderLink: `https://example.com/${getLongString(400)}`,
+  stakeholderName: getLongString(500), // Exceeds max of 255
+  stakeholderLink: `https://example.com/${getLongString(600)}`, // Exceeds max of 500
 });
 
 export const generateStakeholderInvalidPicklist = () => ({
@@ -515,8 +515,8 @@ export const generateLabelMaximal = () => ({
 });
 
 export const generateLabelLongStrings = () => ({
-  labelName: getLongString(255),
-  labelLink: `https://example.com/${getLongString(400)}`,
+  labelName: getLongString(500), // Exceeds max of 255
+  labelLink: `https://example.com/${getLongString(600)}`, // Exceeds max of 500
 });
 
 export const generateLabelInvalidPicklist = () => ({
@@ -994,12 +994,12 @@ export const generateAefT2Authorizations = (cadTrustAefT1SubmissionId = null, ca
     aefT2AuthorizationsAuthorizedPartyId: `TEST-PARTY-${uniqueId}`,
     aefT2AuthorizationsVersion: '1.0',
     aefT2AuthorizationsQuantity: 1000.5,
-    aefT2AuthorizationsMetric: 'tCO2e',
+    aefT2AuthorizationsMetric: 'GHC',
     aefT2AuthorizationsGwpValue: '1.0',
     aefT2AuthorizationsApplicableNonGhgMetric: 'Test metric',
     aefT2AuthorizationsSector: 'Energy industries (renewable-/ non renewable sources)',
-    aefT2AuthorizationsActivityType: 'Energy efficiency',
-    aefT2AuthorizationsPurposesForAuthorization: 'Test purpose',
+    aefT2AuthorizationsActivityType: 'Wind',
+    aefT2AuthorizationsPurposesForAuthorization: 'IMP',
     aefT2AuthorizationsAuthoziedEntityId: `TEST-ENTITY-${uniqueId}`,
     aefT2AuthorizationsOimpAuthorizedParty: 'Test OIMP Party',
     aefT2AuthorizationsAuthorizedTimeframe: '2024-2025',
@@ -1033,12 +1033,12 @@ export const generateAefT2AuthorizationsMaximal = (cadTrustAefT1SubmissionId = n
     aefT2AuthorizationsAuthorizedPartyId: getLongString(255),
     aefT2AuthorizationsVersion: getLongString(255),
     aefT2AuthorizationsQuantity: 999999.99,
-    aefT2AuthorizationsMetric: 'tCO2e',
+    aefT2AuthorizationsMetric: 'GHC',
     aefT2AuthorizationsGwpValue: getLongString(255),
     aefT2AuthorizationsApplicableNonGhgMetric: getLongString(255),
     aefT2AuthorizationsSector: 'Energy industries (renewable-/ non renewable sources)',
-    aefT2AuthorizationsActivityType: 'Energy efficiency',
-    aefT2AuthorizationsPurposesForAuthorization: 'Test purpose',
+    aefT2AuthorizationsActivityType: 'Wind',
+    aefT2AuthorizationsPurposesForAuthorization: 'IMP',
     aefT2AuthorizationsAuthoziedEntityId: getLongString(255),
     aefT2AuthorizationsOimpAuthorizedParty: getLongString(255),
     aefT2AuthorizationsAuthorizedTimeframe: getLongString(255),

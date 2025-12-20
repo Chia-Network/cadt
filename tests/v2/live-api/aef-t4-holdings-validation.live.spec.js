@@ -42,15 +42,19 @@ describe('AefT4Holdings Live API Validation Tests', function () {
       const response = await request
         .post('/v2/aef-t4-holdings')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
     it('should reject POST with invalid foreign keys', async function () {
       const invalidData = generateAefT4HoldingsInvalidForeignKey();
       const response = await request
         .post('/v2/aef-t4-holdings')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
@@ -59,24 +63,8 @@ describe('AefT4Holdings Live API Validation Tests', function () {
         .post('/v2/aef-t4-holdings')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
-    });
-
-    it('should reject POST with strings that are too long', async function () {
-      // Get optional IDs if available
-      const t2AuthId = getFirstCreatedId('aef-t2-authorizations');
-      const unitId = getFirstCreatedId('unit');
-      const longData = generateAefT4HoldingsMaximal(t2AuthId, unitId);
-      // Note: Long strings test may need manual adjustment
-      const response = await request
-        .post('/v2/aef-t4-holdings')
-        .send(longData);
-
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {

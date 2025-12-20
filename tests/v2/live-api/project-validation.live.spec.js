@@ -42,25 +42,30 @@ describe('Project Live API Validation Tests', function () {
       const response = await request
         .post('/v2/project')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
     it('should reject POST with invalid picklist values', async function () {
       const invalidData = generateProjectMinimal();
-      invalidData.projectRegistryName = getInvalidPicklistValue('projectRegistryName');
+      invalidData.projectSector = getInvalidPicklistValue('projectSector');
       const response = await request
         .post('/v2/project')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { projectName: 'Test' }; // Missing projectId
+      const incompleteData = { projectName: 'Incomplete' }; // Missing projectId
       const response = await request
         .post('/v2/project')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with strings that are too long', async function () {
@@ -69,11 +74,19 @@ describe('Project Live API Validation Tests', function () {
         .post('/v2/project')
         .send(longData);
 
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
+    });
+
+    it('should reject POST with invalid data types', async function () {
+      const invalidTypeData = generateProject();
+      invalidTypeData.projectStatusDate = 'not-a-date';
+      const response = await request
+        .post('/v2/project')
+        .send(invalidTypeData);
+
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {

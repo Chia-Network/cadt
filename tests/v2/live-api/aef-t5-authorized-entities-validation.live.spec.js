@@ -41,8 +41,11 @@ describe('AefT5AuthorizedEntities Live API Validation Tests', function () {
       const response = await request
         .post('/v2/aef-t5-authorized-entities')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
     it('should reject POST with invalid picklist values', async function () {
       const invalidData = generateAefT5AuthorizedEntitiesMinimal();
       invalidData.aefT5AuthorizedEntitiesIncorporationCountry = getInvalidPicklistValue('aefT5AuthorizedEntitiesIncorporationCountry');
@@ -50,30 +53,18 @@ describe('AefT5AuthorizedEntities Live API Validation Tests', function () {
         .post('/v2/aef-t5-authorized-entities')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { aefT5AuthorizedEntitiesName: 'Test' }; // Missing required fields
+      const incompleteData = { aefT5AuthorizedEntitiesName: 'Incomplete' }; // Missing other required fields
       const response = await request
         .post('/v2/aef-t5-authorized-entities')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
-    });
-
-    it('should reject POST with strings that are too long', async function () {
-      const longData = generateAefT5AuthorizedEntities();
-      // Note: Long strings test may need manual adjustment
-      const response = await request
-        .post('/v2/aef-t5-authorized-entities')
-        .send(longData);
-
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {

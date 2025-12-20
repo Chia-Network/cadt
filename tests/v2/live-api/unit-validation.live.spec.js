@@ -23,6 +23,7 @@ import {
   generateUnitForbiddenFields,
   getLongString,
   getInvalidPicklistValue,
+  getNonExistentId,
 } from './data/test-data-generators.js';
 
 describe('Unit Live API Validation Tests', function () {
@@ -39,14 +40,27 @@ describe('Unit Live API Validation Tests', function () {
     it('should reject POST with forbidden fields (createdAt, updatedAt, ID)', async function () {
       const issuanceId = getFirstCreatedId('issuance');
       if (!issuanceId) {
-        this.skip(); // Skip if prerequisite not available
+        this.skip();
       }
       const forbiddenData = generateUnitForbiddenFields(issuanceId);
       const response = await request
         .post('/v2/unit')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
+    it('should reject POST with invalid foreign keys', async function () {
+      const invalidData = generateUnitMinimal(getNonExistentId());
+      const response = await request
+        .post('/v2/unit')
+        .send(invalidData);
+
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
+    });
+
     it('should reject POST with invalid picklist values', async function () {
       const issuanceId = getFirstCreatedId('issuance');
       if (!issuanceId) {
@@ -58,34 +72,33 @@ describe('Unit Live API Validation Tests', function () {
         .post('/v2/unit')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { unitSerialId: 'TEST-UNIT' }; // Missing unitStartBlock, unitEndBlock, unitVintageYear, cadTrustIssuanceId
+      const incompleteData = { unitSerialId: 'Incomplete' }; // Missing unitStartBlock, unitEndBlock, etc.
       const response = await request
         .post('/v2/unit')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
-    it('should reject POST with strings that are too long', async function () {
+    it('should reject POST with invalid data types', async function () {
       const issuanceId = getFirstCreatedId('issuance');
       if (!issuanceId) {
         this.skip();
       }
-      const longData = generateUnitMaximal(issuanceId); // Use maximal which has long strings
-      // Note: Long strings test may need manual adjustment
+      const invalidTypeData = generateUnitMinimal(issuanceId);
+      invalidTypeData.unitCount = 'not-a-number';
       const response = await request
         .post('/v2/unit')
-        .send(longData);
+        .send(invalidTypeData);
 
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {

@@ -1,7 +1,5 @@
 import Joi from 'joi';
-import { getPicklistValuesV2 } from '../../utils/v2-data-loaders.js';
-
-const countryPicklist = getPicklistValuesV2().country || [];
+import { pickListValidationV2 } from '../../utils/v2-validation-utils.js';
 
 export const aefT5AuthorizedEntitiesV2Schema = Joi.object({
   // Primary key - auto-generated, not allowed in requests
@@ -31,9 +29,14 @@ export const aefT5AuthorizedEntitiesV2Schema = Joi.object({
   }),
 
   // Optional fields
-  aefT5AuthorizedEntitiesIncorporationCountry: Joi.string().valid(...countryPicklist).allow(null).optional().messages({
-    'any.only': `aefT5AuthorizedEntitiesIncorporationCountry does not include a valid option. Valid options are: ${countryPicklist.join(', ')}`,
-  }),
+  aefT5AuthorizedEntitiesIncorporationCountry: Joi.string()
+    .max(255)
+    .allow(null)
+    .custom(pickListValidationV2('aefT5AuthorizedEntitiesIncorporationCountry'))
+    .optional()
+    .messages({
+      'string.max': 'aefT5AuthorizedEntitiesIncorporationCountry must not exceed 255 characters',
+    }),
 
   aefT5AuthorizedEntitiesConditions: Joi.string().allow(null).optional().messages({
     'string.base': 'aefT5AuthorizedEntitiesConditions must be a string',

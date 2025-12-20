@@ -24,6 +24,7 @@ import {
   generateProjectMethodologyInvalidForeignKey,
   getLongString,
   getInvalidPicklistValue,
+  getNonExistentId,
 } from './data/test-data-generators.js';
 
 describe('ProjectMethodology Live API Validation Tests', function () {
@@ -47,48 +48,29 @@ describe('ProjectMethodology Live API Validation Tests', function () {
       const response = await request
         .post('/v2/project-methodology')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
     it('should reject POST with invalid foreign keys', async function () {
       const invalidData = generateProjectMethodologyInvalidForeignKey();
       const response = await request
         .post('/v2/project-methodology')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { cadTrustProjectId: 'test' }; // Missing cadTrustMethodologyId
+      const incompleteData = { cadTrustProjectId: getNonExistentId() }; // Missing cadTrustMethodologyId
       const response = await request
         .post('/v2/project-methodology')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
-    });
-
-    it('should reject POST with strings that are too long', async function () {
-      const projectId = getFirstCreatedId('project');
-      const methodologyId = getFirstCreatedId('methodology');
-      if (!projectId || !methodologyId) {
-        this.skip();
-      }
-      const longData = generateProjectMethodologyMaximal(projectId, methodologyId);
-      // Note: Long strings test may need manual adjustment
-      const response = await request
-        .post('/v2/project-methodology')
-        .send(longData);
-
-      // May or may not fail depending on validation rules
-      // Just verify it doesn't succeed with invalid data
-      if (response.status === 200) {
-        console.warn('⚠️  Long strings were accepted (may be valid)');
-      }
-    });
-
-    after(async function () {
-      // Batch clear staging table after all validation tests
-      await clearStagingTable(request);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
   });
   describe('Step 4: POST Request Tests', function () {

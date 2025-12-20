@@ -22,6 +22,7 @@ import {
   generateStakeholderProjectsMaximal,
   generateStakeholderProjectsInvalidForeignKey,
   generateStakeholderProjectsForbiddenFields,
+  getNonExistentId,
 } from './data/test-data-generators.js';
 
 describe('StakeholderProjects Live API Validation Tests', function () {
@@ -39,30 +40,35 @@ describe('StakeholderProjects Live API Validation Tests', function () {
       const stakeholderId = getFirstCreatedId('stakeholder');
       const projectId = getFirstCreatedId('project');
       if (!stakeholderId || !projectId) {
-        this.skip(); // Skip if prerequisites not available
+        this.skip();
       }
       const forbiddenData = generateStakeholderProjectsForbiddenFields(stakeholderId, projectId);
       const response = await request
         .post('/v2/stakeholder-projects')
         .send(forbiddenData);
-      expect(response.status).to.not.equal(200);
+      
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
+
     it('should reject POST with invalid foreign keys', async function () {
       const invalidData = generateStakeholderProjectsInvalidForeignKey();
       const response = await request
         .post('/v2/stakeholder-projects')
         .send(invalidData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { cadTrustStakeholderId: 'test-id' }; // Missing cadTrustProjectId
+      const incompleteData = { cadTrustStakeholderId: getNonExistentId() }; // Missing cadTrustProjectId
       const response = await request
         .post('/v2/stakeholder-projects')
         .send(incompleteData);
 
-      expect(response.status).to.not.equal(200);
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     after(async function () {
