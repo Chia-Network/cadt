@@ -8,6 +8,9 @@ on:
     branches:
       - '**'
 
+permissions:
+  contents: read
+
 jobs:
   test-v1:
     name: v1 integration tests
