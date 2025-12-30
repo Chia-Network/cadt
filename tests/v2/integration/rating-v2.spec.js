@@ -527,6 +527,8 @@ describe('Rating V2 Endpoint Integration Tests', function () {
           ratingValue: 'B+',
           cadTrustProjectId: testProjectId,
         });
+        // Wait a moment to ensure record is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();
       }

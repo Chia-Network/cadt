@@ -20,6 +20,132 @@ export const waitForV2DataLayerSync = () => {
 };
 
 /**
+ * Commit V2 staging records and wait for sync to complete
+ * Follows V1's proven pattern: simple 50-second fixed delay
+ *
+ * Like V1, this provides enough time for the scheduler to:
+ * - Run truncateStaging to clean up committed records
+ * - Sync data from simulator to main tables
+ * - Complete all background processing
+ *
+ * @returns {Promise<Object>} Response from commit API
+ */
+export const commitV2StagingAndWait = async () => {
+  const supertest = (await import('supertest')).default;
+  const app = (await import('../../../src/server.js')).default;
+  const { StagingV2 } = await import('../../../src/models/v2/index.js');
+
+  // Count uncommitted staging records before commit
+  const preCommitCount = await StagingV2.count({ where: { committed: false } });
+  console.log(`[TEST commitV2StagingAndWait] BEFORE COMMIT: ${preCommitCount} uncommitted staging records`);
+
+  // Commit the staging records
+  const commitTime = Date.now();
+  const response = await supertest(app).post('/v2/staging/commit');
+  console.log(`[TEST commitV2StagingAndWait] COMMIT API called at ${new Date(commitTime).toISOString()}, status: ${response.status}`);
+
+  // Count staging records immediately after commit
+  const postCommitCount = await StagingV2.count({ where: { committed: false } });
+  const committedCount = await StagingV2.count({ where: { committed: true } });
+  console.log(`[TEST commitV2StagingAndWait] IMMEDIATELY AFTER COMMIT: ${postCommitCount} uncommitted, ${committedCount} committed`);
+
+  // Wait for sync using V1's proven pattern: simple fixed delay
+  // TEST_WAIT_TIME * 5 = (POLLING_INTERVAL * 2) * 5 = (5000 * 2) * 5 = 50 seconds
+  console.log(`[TEST commitV2StagingAndWait] Starting 50-second wait for sync...`);
+  await waitForV2DataLayerSync();
+
+  // Check staging state after wait
+  const finalUncommittedCount = await StagingV2.count({ where: { committed: false } });
+  const finalCommittedCount = await StagingV2.count({ where: { committed: true } });
+  const finalTotalCount = await StagingV2.count();
+  console.log(`[TEST commitV2StagingAndWait] AFTER 50s WAIT: ${finalUncommittedCount} uncommitted, ${finalCommittedCount} committed, ${finalTotalCount} total`);
+
+  const elapsedTime = Date.now() - commitTime;
+  console.log(`[TEST commitV2StagingAndWait] Total elapsed time: ${elapsedTime}ms (${(elapsedTime/1000).toFixed(1)}s)`);
+
+  return response;
+};
+
+/**
+ * Commit V2 staging records and poll until condition is met
+ * Uses smart polling to pass as soon as sync completes, with configurable timeout
+ *
+ * @param {Function} checkFn - Async function that returns true when sync is complete
+ *                             Example: async () => (await UnitV2.findByPk(unitId))?.marketplace === 'expected'
+ * @param {Object} options - Configuration options
+ * @param {number} options.interval - Time between checks in ms (default: 5000ms = 5s)
+ * @param {number} options.maxAttempts - Maximum number of attempts (default: 10 = 50s total)
+ * @param {string} options.description - Description for error/log messages (default: "Sync operation")
+ * @returns {Promise<Object>} Response from commit API
+ * @throws {Error} If condition not met within timeout
+ *
+ * @example
+ * await commitV2StagingAndWaitForCondition(
+ *   async () => {
+ *     const unit = await UnitV2.findOne({ where: { cadTrustUnitId: unitId }});
+ *     return unit?.marketplace === 'Climate Marketplace';
+ *   },
+ *   { description: 'Unit marketplace update sync' }
+ * );
+ */
+export const commitV2StagingAndWaitForCondition = async (checkFn, options = {}) => {
+  const supertest = (await import('supertest')).default;
+  const app = (await import('../../../src/server.js')).default;
+  const { StagingV2 } = await import('../../../src/models/v2/index.js');
+
+  const interval = options.interval || 5000; // 5 seconds between checks (matches scheduler)
+  const maxAttempts = options.maxAttempts || 10; // 10 attempts = 50 seconds total
+  const description = options.description || 'Sync operation';
+
+  // Count uncommitted staging records before commit
+  const preCommitCount = await StagingV2.count({ where: { committed: false } });
+  console.log(`[TEST commitV2StagingAndWaitForCondition] BEFORE COMMIT: ${preCommitCount} uncommitted staging records`);
+
+  // Commit the staging records
+  const commitTime = Date.now();
+  const response = await supertest(app).post('/v2/staging/commit');
+  console.log(`[TEST commitV2StagingAndWaitForCondition] COMMIT API called at ${new Date(commitTime).toISOString()}, status: ${response.status}, description: "${description}"`);
+
+  // Wait 5 seconds before first check (give scheduler time to start processing)
+  console.log(`[TEST commitV2StagingAndWaitForCondition] Waiting 5s before first check...`);
+  await new Promise(resolve => setTimeout(resolve, interval));
+
+  // Poll until checkFn returns true or we hit maxAttempts
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    console.log(`[TEST commitV2StagingAndWaitForCondition] Attempt ${attempt}/${maxAttempts}: Checking condition for "${description}"...`);
+
+    try {
+      const isComplete = await checkFn();
+
+      if (isComplete) {
+        const elapsedTime = Date.now() - commitTime;
+        console.log(`[TEST commitV2StagingAndWaitForCondition] ✓ SUCCESS after ${elapsedTime}ms (${(elapsedTime/1000).toFixed(1)}s, ${attempt} attempts) - ${description}`);
+        return response;
+      }
+
+      console.log(`[TEST commitV2StagingAndWaitForCondition] Condition not met yet, waiting ${interval/1000}s before next attempt...`);
+
+      // Not complete yet, wait before next attempt (unless this was the last attempt)
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, interval));
+      }
+    } catch (checkError) {
+      console.log(`[TEST commitV2StagingAndWaitForCondition] Check function threw error on attempt ${attempt}: ${checkError.message}`);
+      // Continue polling even if check throws - the data might not be there yet
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, interval));
+      }
+    }
+  }
+
+  // Timeout reached
+  const elapsedTime = Date.now() - commitTime;
+  const errorMessage = `${description} did not complete within ${maxAttempts * interval / 1000} seconds (${maxAttempts} attempts at ${interval / 1000}s intervals). Total elapsed: ${elapsedTime}ms`;
+  console.log(`[TEST commitV2StagingAndWaitForCondition] ✗ TIMEOUT - ${errorMessage}`);
+  throw new Error(errorMessage);
+};
+
+/**
  * Safety check: Verify that test databases are being used
  * This prevents accidental production database access during tests
  * Should be called at the start of test suites
@@ -485,3 +611,65 @@ export const withConfigOverride = async (testFn, configOverrides) => {
     }
   }
 };
+
+/**
+ * Commit V2 staging records
+ * @returns {Promise<Object>} Response from commit API
+ */
+export const commitV2Staging = async () => {
+  const supertest = (await import('supertest')).default;
+  const app = (await import('../../../src/server.js')).default;
+  await supertest(app).post('/v2/staging/commit');
+};
+
+/**
+ * Wait for V2 sync to complete by polling
+ *
+ * Follows V1's proven pattern with smart polling:
+ * - Default: 50 seconds total timeout (10 attempts × 5 seconds)
+ * - Waits FIRST, then checks (gives scheduler time to run)
+ * - Exits early when checkFn returns true
+ * - Matches V1's TEST_WAIT_TIME * 5 (POLLING_INTERVAL * 2 * 5)
+ *
+ * @param {Function} checkFn - Function that returns true when sync is complete (e.g., () => record exists)
+ * @param {Object} options - Configuration options
+ * @param {number} options.interval - Time between checks in ms (default: 5000ms = 5s, matches scheduler)
+ * @param {number} options.maxAttempts - Maximum number of attempts (default: 10 = 50s total, matches V1)
+ * @param {string} options.description - Description for error message (default: "Sync operation")
+ * @returns {Promise<void>}
+ * @throws {Error} If sync doesn't complete within maxAttempts
+ */
+export const waitForV2Sync = async (checkFn = null, options = {}) => {
+  const interval = options.interval || 5000; // 5 seconds between checks (matches scheduler interval)
+  const maxAttempts = options.maxAttempts || 10; // 10 attempts = 50 seconds (matches V1's TEST_WAIT_TIME * 5)
+  const description = options.description || 'Sync operation';
+
+  // If no checkFn provided, just wait for the full duration (backward compatibility with V1 pattern)
+  if (!checkFn) {
+    const delay = interval * maxAttempts; // Default: 50 seconds
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return;
+  }
+
+  // Poll until checkFn returns true or we hit maxAttempts
+  // IMPORTANT: Wait FIRST, then check (gives scheduler time to process)
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    // Wait before checking (scheduler runs every 5s, so give it time)
+    await new Promise(resolve => setTimeout(resolve, interval));
+
+    // Check if sync is complete
+    const isComplete = await checkFn();
+    if (isComplete) {
+      return; // Success! Exit early
+    }
+
+    // Not complete yet, continue polling (unless we're at maxAttempts)
+    if (attempt >= maxAttempts) {
+      // Final attempt exhausted, throw error
+      throw new Error(
+        `${description} did not complete within ${maxAttempts * interval / 1000} seconds (${maxAttempts} attempts at ${interval / 1000}s intervals)`
+      );
+    }
+  }
+};
+

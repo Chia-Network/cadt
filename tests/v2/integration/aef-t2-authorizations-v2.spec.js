@@ -621,10 +621,10 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
-        aefT2AuthorizationsMetric: 'tCO2e',
+        aefT2AuthorizationsMetric: 'GHC',
         aefT2AuthorizationsSector: 'Energy industries (renewable-/ non renewable sources)',
-        aefT2AuthorizationsActivityType: 'Energy efficiency',
-        aefT2AuthorizationsPurposesForAuthorization: 'Mitigation',
+        aefT2AuthorizationsActivityType: 'Energy Efficiency households',
+        aefT2AuthorizationsPurposesForAuthorization: 'NDC',
       };
 
       const response = await supertest(app)
@@ -750,7 +750,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         cadTrustAefT1SubmissionId: testAefT1SubmissionId,
         cadTrustUnitId: testUnitId,
         cadTrustProjectId: testProjectId,
-        aefT2AuthorizationsMetric: 'tCO2e',
+        aefT2AuthorizationsMetric: 'GHC',
         aefT2AuthorizationsSector: 'Energy industries (renewable-/ non renewable sources)',
       };
 

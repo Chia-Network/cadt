@@ -919,6 +919,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
             uuid: unit.cadTrustUnitId,
             table: 'unit',
             action: 'UPDATE',
+            committed: false,
           },
         });
         expect(stagingRecord).to.exist;

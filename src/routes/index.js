@@ -70,15 +70,10 @@ export const initializeDatabases = async () => {
     migrationsReady = true;
     logger.info('All database migrations completed');
 
-    // Start scheduler after migrations complete, but skip in test mode
-    // In test mode, scheduler tasks can cause database locks that interfere with tests
-    if (process.env.NODE_ENV !== 'test') {
-      setTimeout(() => {
-        scheduler.start(enableV1, enableV2);
-      }, 5000);
-    } else {
-      logger.debug('Skipping scheduler start in test mode');
-    }
+    // Start scheduler after migrations complete
+    setTimeout(() => {
+      scheduler.start(enableV1, enableV2);
+    }, 5000);
   }).catch((error) => {
     logger.error('Error initializing databases:', error);
     throw error;

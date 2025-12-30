@@ -669,6 +669,8 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
           projectMethodologyDate: '2024-01-01',
         });
         // Clean up committed staging record to avoid pending commits errors
+        // Wait a moment to ensure record is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });
@@ -702,47 +704,16 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       await ProjectMethodologyV2.destroy({ where: { cadTrustProjectId: testProjectId, cadTrustMethodologyId: testMethodologyId } });
       await StagingV2.destroy({ where: { table: 'project_methodology' } });
 
-      const projectMethodologyData = {
-        cadTrustProjectId: testProjectId,
-        cadTrustMethodologyId: testMethodologyId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project-methodology')
-        .send(projectMethodologyData)
-        .expect(200);
-
+      // Create record directly in main table for DELETE test
       createdProjectId = testProjectId;
       createdMethodologyId = testMethodologyId;
-      createdProjectMethodologyId = response.body.uuid || response.body.cadTrustProjectMethodologyId;
+      createdProjectMethodologyId = uuidv4();
 
-      if (!createdProjectMethodologyId) {
-        throw new Error('Failed to get project-methodology ID from POST response');
-      }
-
-      let stagingRecord = null;
-      const stagingUuid = response.body.uuid || response.body.cadTrustProjectMethodologyId;
-      if (stagingUuid) {
-        stagingRecord = await StagingV2.findOne({
-          where: { uuid: stagingUuid },
-        });
-      }
-      if (stagingRecord) {
-        await stagingRecord.update({ committed: true });
-        await ProjectMethodologyV2.create({
-          cadTrustProjectMethodologyId: createdProjectMethodologyId,
-          cadTrustProjectId: createdProjectId,
-          cadTrustMethodologyId: createdMethodologyId,
-        });
-        // Clean up committed staging record to avoid pending commits errors
-        await stagingRecord.destroy();
-      }
-
-      // Verify record was created successfully
-      const verifyRecord = await ProjectMethodologyV2.findByPk(createdProjectMethodologyId);
-      if (!verifyRecord) {
-        throw new Error(`Failed to create project-methodology record with ID: ${createdProjectMethodologyId}`);
-      }
+      await ProjectMethodologyV2.create({
+        cadTrustProjectMethodologyId: createdProjectMethodologyId,
+        cadTrustProjectId: createdProjectId,
+        cadTrustMethodologyId: createdMethodologyId,
+      });
     });
 
     it('should delete a project-methodology relationship via API', async function () {

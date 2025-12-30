@@ -577,6 +577,8 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
           cadTrustProjectId: testProjectId,
         });
         // Clean up committed staging record to avoid pending commits errors
+        // Wait a moment to ensure record is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });
@@ -636,6 +638,8 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
           cadTrustProjectId: testProjectId,
         });
         // Clean up committed staging record to avoid pending commits errors
+        // Wait a moment to ensure record is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });

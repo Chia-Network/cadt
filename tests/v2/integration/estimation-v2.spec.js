@@ -4,7 +4,7 @@ import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { EstimationV2, EstimationV2Mirror, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
+import { createV2TestHomeOrg, getV2HomeOrgId, commitV2StagingAndWait, commitV2StagingAndWaitForCondition } from '../utils/v2-test-helpers.js';
 
 describe('Estimation V2 Endpoint Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -353,51 +353,12 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
   });
 
   describe('POST /v2/estimation (Create)', function () {
-    it('should create a new estimation record via API', async function () {
-      const estimationData = {
-        estimationStartDate: '2024-01-01',
-        estimationEndDate: '2024-12-31',
-        estimationUnitCount: 1000.5,
-        estimationReferenceNo: 'EST-REF-001',
-        cadTrustProjectId: testProjectId,
-      };
-
-      const response = await supertest(app)
-        .post('/v2/estimation')
-        .send(estimationData);
-
-      if (response.status !== 200) {
-        console.log('Error response:', response.body);
-      }
-
-      expect(response.status).to.equal(200);
-      expect(response.body).to.have.property('message');
-      expect(response.body.message).to.equal('Estimation staged successfully');
-      expect(response.body).to.have.property('uuid');
-      expect(response.body).to.have.property('cadTrustEstimationId');
-      expect(response.body).to.have.property('success', true);
-      expect(response.body).to.not.have.property('data'); // Should NOT have data field
-
-      // Verify record was staged
-      expect(response.body).to.have.property('uuid');
-      const stagingRecord = await StagingV2.findOne({
-        where: { uuid: response.body.uuid },
-      });
-      expect(stagingRecord).to.exist;
-      expect(stagingRecord.table).to.equal('estimation');
-      expect(stagingRecord.action).to.equal('INSERT');
-      expect(stagingRecord.committed).to.be.false;
-
-      // Verify staged data
-      const stagedData = JSON.parse(stagingRecord.data);
-      expect(stagedData[0].estimation_start_date).to.equal('2024-01-01');
-      expect(stagedData[0].estimation_end_date).to.equal('2024-12-31');
-      expect(stagedData[0].estimation_unit_count).to.equal(1000.5);
-      expect(stagedData[0].estimation_reference_no).to.equal('EST-REF-001');
-      expect(stagedData[0].cad_trust_project_id).to.equal(testProjectId);
-      expect(stagedData[0].cad_trust_estimation_id).to.equal(response.body.cadTrustEstimationId);
+    // Clean staging before each test to prevent contamination from previous tests
+    beforeEach(async function () {
+      await StagingV2.destroy({ where: {}, truncate: true });
     });
 
+    // Validation tests run FIRST to avoid staging contamination
     it('should reject estimation with invalid cadTrustProjectId (non-existent)', async function () {
       const estimationData = {
         estimationStartDate: '2024-01-01',
@@ -464,6 +425,60 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
       expect(response.body.success).to.be.false;
       expect(response.body.error).to.include('cannot be set via API');
     });
+
+    // Success test runs AFTER validation tests
+    it('should create a new estimation record via API', async function () {
+      const estimationData = {
+        estimationStartDate: '2024-01-01',
+        estimationEndDate: '2024-12-31',
+        estimationUnitCount: 1000.5,
+        estimationReferenceNo: 'EST-REF-001',
+        cadTrustProjectId: testProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/estimation')
+        .send(estimationData);
+
+      if (response.status !== 200) {
+        console.log('Error response:', response.body);
+      }
+
+      expect(response.status).to.equal(200);
+      expect(response.body).to.have.property('message');
+      expect(response.body.message).to.equal('Estimation staged successfully');
+      expect(response.body).to.have.property('uuid');
+      expect(response.body).to.have.property('cadTrustEstimationId');
+      expect(response.body).to.have.property('success', true);
+      expect(response.body).to.not.have.property('data'); // Should NOT have data field
+
+      const estimationId = response.body.cadTrustEstimationId;
+
+      // Commit and wait with smart polling - passes as soon as sync completes
+      await commitV2StagingAndWaitForCondition(
+        async () => {
+          const estimation = await EstimationV2.findOne({
+            where: { cadTrustEstimationId: estimationId },
+          });
+          // Check if all required fields are synced
+          return estimation?.estimationStartDate === '2024-01-01' &&
+                 estimation?.estimationEndDate === '2024-12-31' &&
+                 estimation?.estimationUnitCount === 1000.5;
+        },
+        { description: 'Estimation record creation sync to main table' }
+      );
+
+      // Verify record exists in main table (final assertion for clarity)
+      const estimation = await EstimationV2.findOne({
+        where: { cadTrustEstimationId: estimationId },
+      });
+      expect(estimation).to.exist;
+      expect(estimation.estimationStartDate).to.equal('2024-01-01');
+      expect(estimation.estimationEndDate).to.equal('2024-12-31');
+      expect(estimation.estimationUnitCount).to.equal(1000.5);
+      expect(estimation.estimationReferenceNo).to.equal('EST-REF-001');
+      expect(estimation.cadTrustProjectId).to.equal(testProjectId);
+    });
   });
 
   describe('PUT /v2/estimation/:id (Update)', function () {
@@ -509,6 +524,8 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
           cadTrustProjectId: testProjectId,
         });
         // Clean up committed staging record to avoid pending commits errors
+        // Wait a moment to ensure record is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });
@@ -588,6 +605,8 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
           cadTrustProjectId: testProjectId,
         });
         // Clean up committed staging record to avoid pending commits errors
+        // Wait a moment to ensure record is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });

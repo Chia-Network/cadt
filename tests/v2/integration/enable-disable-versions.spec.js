@@ -55,6 +55,11 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     getConfig.cache?.clear?.();
     getConfigV2.cache?.clear?.();
     getChiaRoot.cache?.clear?.();
+
+    // IMPORTANT: Re-enable both V1 and V2 schedulers for subsequent tests
+    // This test suite explicitly disables schedulers to test that functionality
+    // but we need to restore them for other tests that depend on the scheduler
+    scheduler.start(true, true);
   });
 
   // Helper function to write unified config
