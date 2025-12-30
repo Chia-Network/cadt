@@ -93,7 +93,7 @@
     "extensionless": "^2.0.5",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
-    "mocha": "^11.7.4",
+    "mocha": "^11.7.5",
     "prettier": "^3.7.4",
     "semver": "^7.7.3",
     "sinon": "^21.0.1",
