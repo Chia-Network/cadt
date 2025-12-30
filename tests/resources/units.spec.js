@@ -29,8 +29,18 @@ describe('Units Resource CRUD', function () {
         await testFixtures.createTestHomeOrg();
         await testFixtures.getHomeOrgId();
         await testFixtures.createNewUnit();
-        await testFixtures.commitStagingRecords();
-        await testFixtures.waitForDataLayerSync();
+
+        // Wait for unit to sync to main table using smart polling
+        await testFixtures.commitStagingRecordsAndWaitForCondition(
+          async () => {
+            const result = await supertest(app)
+              .get('/v1/units')
+              .query({ page: 1, limit: 100 });
+            return result.body.data && result.body.data.length > 0;
+          },
+          { description: 'Unit creation sync for GET units tests' }
+        );
+
         const result = await supertest(app)
           .get('/v1/units')
           .query({ page: 1, limit: 100 });
@@ -72,8 +82,17 @@ describe('Units Resource CRUD', function () {
         newUnit2.unitBlockStart = 'AAAAA11';
         newUnit2.unitBlockEnd = 'AAAAA21';
         await testFixtures.createNewUnit(newUnit2);
-        await testFixtures.commitStagingRecords();
-        await testFixtures.waitForDataLayerSync();
+
+        // Wait for units to sync to main table using smart polling
+        await testFixtures.commitStagingRecordsAndWaitForCondition(
+          async () => {
+            const result = await supertest(app)
+              .get('/v1/units')
+              .query({ page: 1, limit: 100 });
+            return result.body.data && result.body.data.length >= 3;
+          },
+          { description: 'Additional units sync for serial number ordering test' }
+        );
 
         const result = await supertest(app)
           .get('/v1/units')
