@@ -828,6 +828,11 @@ describe('V2 Staging Integration Tests', function () {
   });
 
   describe('Staging Controller: Additional Endpoints', function () {
+    beforeEach(async function () {
+      // Clean staging table before each test to prevent contamination from previous tests
+      await StagingV2.destroy({ where: {}, truncate: true });
+    });
+
     it('should delete staging record', async function () {
       const programData = await generateV2ProgramData();
       const stagingRecord = await StagingV2.create({

@@ -19,7 +19,11 @@ export const unitV2Schema = Joi.object({
   unitRetirementDetail: Joi.string().allow(null).optional(),
   unitRetirementBeneficiary: Joi.string().allow(null).optional(),
   unitRetirementBeneficiaryId: Joi.string().allow(null).optional(),
-  unitLink: Joi.alternatives().try(Joi.string().uri(), Joi.allow(null, '')).optional(),
+  unitLink: Joi.string()
+    .uri()
+    .max(500)
+    .allow(null, '')
+    .optional(),
   unitMetric: Joi.string().allow(null).optional().custom(pickListValidationV2('unitMetric', 'Unit Metric')),
   unitCurrentOwner: Joi.string().allow(null).optional(),
   unitItmosReferenceId: Joi.string().allow(null).optional(),

@@ -754,6 +754,8 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
           labelUnitDate: '2024-01-01',
         });
         // Clean up committed staging record to avoid pending commits errors
+        // Wait a moment to ensure record is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });
@@ -821,6 +823,8 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
           cadTrustUnitId: createdUnitId,
         });
         // Clean up committed staging record to avoid pending commits errors
+        // Wait a moment to ensure record is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
 

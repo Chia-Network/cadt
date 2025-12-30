@@ -12,10 +12,12 @@ import {
   createV2TestHomeOrg,
   getV2HomeOrgId,
   addUuidIfNeeded,
+  commitV2StagingAndWait,
+  commitV2StagingAndWaitForCondition,
 } from '../utils/v2-test-helpers.js';
 
 describe('V2 Unit API - Marketplace Features', function () {
-  this.timeout(30000);
+  this.timeout(60000); // Increased to 60s to accommodate 50s sync wait
 
   let testIssuance;
   let homeOrg;
@@ -123,6 +125,11 @@ describe('V2 Unit API - Marketplace Features', function () {
   });
 
   describe('Basic Marketplace Fields', function () {
+    // Clean staging before each test to prevent contamination
+    beforeEach(async function () {
+      await StagingV2.destroy({ where: {}, truncate: true });
+    });
+
     it('should create unit with marketplace fields', async function () {
       const unitData = {
         unitSerialId: 'UNIT-MARKETPLACE-001',
@@ -182,19 +189,31 @@ describe('V2 Unit API - Marketplace Features', function () {
 
       expect(updateRes.body.success).to.be.true;
       expect(updateRes.body.message).to.equal('Unit update staged successfully');
-      // Verify marketplace fields in staged update data
-      const updateStagingRecord = await StagingV2.findOne({
-        where: {
-          table: 'unit',
-          action: 'UPDATE',
+
+      const unitId = unit.cadTrustUnitId;
+
+      // Commit and wait with smart polling - passes as soon as sync completes
+      await commitV2StagingAndWaitForCondition(
+        async () => {
+          const updatedUnit = await UnitV2.findOne({
+            where: { cadTrustUnitId: unitId },
+          });
+          // Check if marketplace fields are synced
+          return updatedUnit?.marketplace === 'Climate Marketplace' &&
+                 updatedUnit?.marketplaceLink === 'https://marketplace.com/units/ABC123' &&
+                 updatedUnit?.marketplaceIdentifier === 'ABC123';
         },
-        order: [['created_at', 'DESC']],
+        { description: 'Unit marketplace fields update sync to main table' }
+      );
+
+      // Verify marketplace fields in the updated unit (final assertion for clarity)
+      const updatedUnit = await UnitV2.findOne({
+        where: { cadTrustUnitId: unitId },
       });
-      expect(updateStagingRecord).to.exist;
-      const updateStagedData = JSON.parse(updateStagingRecord.data);
-      expect(updateStagedData[0].marketplace).to.equal('Climate Marketplace');
-      expect(updateStagedData[0].marketplace_link).to.equal('https://marketplace.com/units/ABC123');
-      expect(updateStagedData[0].marketplace_identifier).to.equal('ABC123');
+      expect(updatedUnit).to.exist;
+      expect(updatedUnit.marketplace).to.equal('Climate Marketplace');
+      expect(updatedUnit.marketplaceLink).to.equal('https://marketplace.com/units/ABC123');
+      expect(updatedUnit.marketplaceIdentifier).to.equal('ABC123');
     });
 
     it('should update unit to remove marketplace fields', async function () {

@@ -166,30 +166,22 @@ const getSubscribedStoreData = async (
   }, {});
 };
 
-const getRootHistory = (storeId) => {
+const getRootHistory = async (storeId) => {
   if (!USE_SIMULATOR) {
     return dataLayer.getRootHistory(storeId);
   } else {
-    return [
-      {
-        confirmed: true,
-        root_hash:
-          '0xs571e7fcf464b3dc1d31a71894633eb47cb9dbdb824f6b4a535ed74f23f32e50',
-        timestamp: 1678518050,
-      },
-      {
-        confirmed: true,
-        root_hash:
-          '0xf571e7fcf464b3dc1d31a71894633eb47cb9dbdb824f6b4a535ed74f23f32e50',
-        timestamp: 1678518053,
-      },
-    ];
+    // In simulator mode, return a dynamic history that grows with each commit
+    // This is critical for tests to work - sync needs to see new generations
+    const simulator = await import('./simulator.js');
+    return simulator.getRootHistory(storeId);
   }
 };
 
-const getRootDiff = (storeId, root1, root2) => {
+const getRootDiff = async (storeId, root1, root2) => {
   if (USE_SIMULATOR) {
-    return Simulator.getMockedKvDiffFromStagingTable();
+    // In simulator mode, get mocked diff from both V1 and V2 staging tables
+    const diff = await Simulator.getMockedKvDiffFromStagingTable();
+    return diff;
   } else {
     return dataLayer.getRootDiff(storeId, root1, root2);
   }

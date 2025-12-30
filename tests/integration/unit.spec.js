@@ -153,7 +153,7 @@ describe('Unit Resource Integration Tests', function () {
     const createdCommitResult = await supertest(app).post('/v1/staging/commit');
     expect(createdCommitResult.statusCode).to.equal(200);
     expect(createdCommitResult.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
+      message: 'Staging Table committing to full node',
       success: true,
     });
 
@@ -249,7 +249,7 @@ describe('Unit Resource Integration Tests', function () {
     const commitRes = await supertest(app).post('/v1/staging/commit');
     expect(stagingRes.statusCode).to.equal(200);
     expect(commitRes.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
+      message: 'Staging Table committing to full node',
       success: true,
     });
 

@@ -53,7 +53,7 @@ const task = new Task('sync-registries-v2', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: 10,
+    seconds: 5,
     runImmediately: true,
   },
   task,
@@ -243,6 +243,14 @@ const syncOrganizationAuditV2 = async (organization) => {
       Math.abs(rootHistoryHighestGenerationIndex) -
       Math.abs(auditTableHighestProcessedGenerationIndex);
     const isSynced = syncRemaining === 0;
+
+    loggerV2.debug(
+      `[SYNC DEBUG] ${organization.name}: rootHistory.length=${rootHistory.length}, ` +
+      `auditGeneration=${auditTableHighestProcessedGenerationIndex}, ` +
+      `rootHistoryHighestIndex=${rootHistoryHighestGenerationIndex}, ` +
+      `syncRemaining=${syncRemaining}, isSynced=${isSynced}`,
+    );
+
     loggerV2.debug(
       `2 the root history length for ${organization.name} is ${rootHistory.length} and the last processed generation index is ${auditTableHighestProcessedGenerationIndex}`,
     );
@@ -398,6 +406,17 @@ const syncOrganizationAuditV2 = async (organization) => {
       loggerV2.info(
         `Syncing ${organization.name} generation ${toBeProcessedDatalayerGenerationIndex} (orgUid ${organization.org_uid}, registryId ${organization.registry_id})`,
       );
+
+      loggerV2.debug('[v2]: updateAuditTransaction - optimizedKvDiff details', {
+        orgName: organization.name,
+        diffCount: optimizedKvDiff.length,
+        isEmpty: _.isEmpty(optimizedKvDiff),
+        sampleDiffs: optimizedKvDiff.slice(0, 3).map(d => ({
+          type: d.type,
+          key: d.key?.substring(0, 30),
+        })),
+      });
+
       if (_.isEmpty(optimizedKvDiff)) {
         const auditData = {
           org_uid: organization.org_uid,
@@ -427,8 +446,9 @@ const syncOrganizationAuditV2 = async (organization) => {
         for (const diff of optimizedKvDiff) {
           const key = decodeHex(diff.key);
           const modelKey = key.split('|')[0];
+
           loggerV2.debug(
-            `proccessing kv diff entry for organization ${organization.name} with key ${key}`,
+            `processing kv diff entry for organization ${organization.name} with key ${key}, model: ${modelKey}, action: ${diff.type}`,
           );
 
           const auditData = {
@@ -460,7 +480,7 @@ const syncOrganizationAuditV2 = async (organization) => {
             const primaryKeyField = getV2PrimaryKeyField(modelKey);
             const primaryKeyFieldCamelCase = _.camelCase(primaryKeyField);
 
-            if (diff.type === 'INSERT') {
+            if (diff.type === 'INSERT' || diff.type === 'UPDATE') {
               const record = JSON.parse(decodeHex(diff.value));
               // Convert snake_case field names from datalayer to camelCase for Sequelize
               // V2 models use underscored: true, which means Sequelize expects camelCase in JS
@@ -470,7 +490,7 @@ const syncOrganizationAuditV2 = async (organization) => {
               });
               const primaryKeyValue = camelCaseRecord[primaryKeyFieldCamelCase] || record[primaryKeyField];
 
-              loggerV2.verbose(`UPSERTING: ${modelKey} - ${primaryKeyValue}`);
+              loggerV2.verbose(`UPSERTING (${diff.type}): ${modelKey} - ${primaryKeyValue}`);
 
               // Remove updatedAt/updated_at fields if they exist
               // This is because the db will update this field automatically and its not allowed to be null
@@ -564,6 +584,15 @@ const syncOrganizationAuditV2 = async (organization) => {
     );
 
     if (transactionSucceeded) {
+      loggerV2.info('[v2]: syncOrganizationGenerationV2 COMPLETED', {
+        orgName: organization.name,
+        orgUid: organization.org_uid,
+        registryId: organization.registry_id,
+        generationIndex: toBeProcessedDatalayerGenerationIndex,
+        rootHash: rootToBeProcessed.root_hash,
+        diffCount: optimizedKvDiff.length,
+      });
+
       loggerV2.debug(
         `updateAuditTransaction successfully completed and committed audit updates for ${organization.name} (orgUid: ${organization.org_uid}, registryId: ${organization.registry_id}) generation index ${toBeProcessedDatalayerGenerationIndex}. updating registry hash to ${rootToBeProcessed.root_hash}`,
       );

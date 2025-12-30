@@ -20,7 +20,11 @@ export const locationV2Schema = Joi.object({
     .max(100)
     .allow(null)
     .optional(),
-  locationMapFileLink: Joi.alternatives().try(Joi.string().uri().max(500), Joi.allow(null, '')).optional(),
+  locationMapFileLink: Joi.string()
+    .uri()
+    .max(500)
+    .allow(null, '')
+    .optional(),
   cadTrustProjectId: Joi.string().uuid().required(),
   // Note: createdAt and updatedAt are automatically managed by Sequelize
   // Note: cadTrustLocationId is auto-generated UUID

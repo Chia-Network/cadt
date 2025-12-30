@@ -8,7 +8,11 @@ export const projectV2Schema = Joi.object({
   projectId: Joi.string().max(255).required(),
   projectCreditingProgram: Joi.string().max(255).allow(null).optional(),
   projectName: Joi.string().max(500).required(),
-  projectLink: Joi.alternatives().try(Joi.string().uri().max(500), Joi.allow(null, '')).optional(),
+  projectLink: Joi.string()
+    .uri()
+    .max(500)
+    .allow(null, '')
+    .optional(),
   projectDescription: Joi.string().max(2000).allow(null).optional(),
   projectSector: Joi.string()
     .max(255)

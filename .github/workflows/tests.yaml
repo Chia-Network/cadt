@@ -8,9 +8,12 @@ on:
     branches:
       - '**'
 
+permissions:
+  contents: read
+
 jobs:
-  test:
-    name: NPM Tests
+  test-v1:
+    name: v1 integration tests
     runs-on: ubuntu-latest
     container:
       image: node:20.16
@@ -46,4 +49,43 @@ jobs:
         run: ls -lah ~
 
       - name: npm tests
-        run: npm run test
+        run: npm run test:v1
+
+  test-v2:
+    name: v2 integration tests
+    runs-on: ubuntu-latest
+    container:
+      image: node:20.16
+
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v5
+
+      - name: Ignore Husky
+        run: npm pkg delete scripts.prepare
+
+      - name: Install Mocha
+        run: npm install --save-dev mocha
+
+      - name: npm install
+        run: npm install
+
+      - name: npm cache clear --force
+        run: npm cache clear --force
+
+      - name: npm cache rm
+        run: npm cache rm --force
+
+      - name: npm cache verify
+        run: npm cache verify
+
+      - name: install global packages
+        run: npm i -g @babel/cli sequelize-cli cross-env
+
+      - name: Show home directory
+        run: ls -lah ~
+
+      - name: npm tests
+        run: npm run test:v2

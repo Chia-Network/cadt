@@ -126,7 +126,7 @@ describe('V2 Location API - Basic CRUD Tests', function () {
       const response = await supertest(app)
         .post('/v2/location')
         .send(invalidData)
-        .expect(500);
+        .expect(400);
 
       expect(response.body.success).to.be.false;
       expect(response.body.error).to.include('cadTrustProjectId');

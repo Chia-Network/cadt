@@ -74,7 +74,7 @@ const task = new Task('sync-registries', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: 10,
+    seconds: 5,
     runImmediately: true,
   },
   task,

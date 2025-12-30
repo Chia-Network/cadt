@@ -395,6 +395,8 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
           stakeholderType: 'Owner',
         });
         // Clean up committed staging record to avoid pending commits errors
+        // Wait a moment to ensure record is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });
@@ -446,6 +448,8 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
           stakeholderType: 'Consultant',
         });
         // Clean up committed staging record to avoid pending commits errors
+        // Wait a moment to ensure record is persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });

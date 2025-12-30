@@ -619,6 +619,13 @@ class StagingV2 extends Model {
 
       monitor.rpcCount += 1; // pushDataLayerChangeList
 
+      loggerV2.info('[v2]: Pushing changelist to datalayer', {
+        registryId,
+        changelistSize: finalChangeList.length,
+        stagedRecordsCount: stagedRecords.length,
+        tables: [...new Set(stagedRecords.map((r) => r.table))],
+      });
+
       await datalayer.pushDataLayerChangeList(
         registryId,
         finalChangeList,
@@ -629,6 +636,11 @@ class StagingV2 extends Model {
           );
         },
       );
+
+      loggerV2.info('[v2]: Successfully pushed changelist to datalayer', {
+        registryId,
+        changelistSize: finalChangeList.length,
+      });
 
       monitor.stages.pushToDatalayer = Date.now() - stage5Start;
 
