@@ -1,8 +1,8 @@
 # V2 Test Flakiness Investigation Report
 
-**Date:** December 30, 2025  
-**Context:** Observed during comprehensive package update testing  
-**Test Command:** `npm run test:v2`  
+**Date:** December 30, 2025
+**Context:** Observed during comprehensive package update testing
+**Test Command:** `npm run test:v2`
 **Baseline:** 1166 passing tests (0 failures)
 
 ## Executive Summary
@@ -188,7 +188,7 @@ V1 tests remained completely stable throughout (92 passing consistently), sugges
 Estimation V2 Endpoint Integration Tests
 POST /v2/estimation (Create)
 should create a new estimation record via API:
-Error: Estimation record creation sync to main table did not complete within 50 seconds 
+Error: Estimation record creation sync to main table did not complete within 50 seconds
 (10 attempts at 5s intervals). Total elapsed: 50053ms
 at commitV2StagingAndWaitForCondition (file:///home/zachary/Chia/Projects/cadt/tests/v2/utils/v2-test-helpers.js:145:9)
 at async Context.<anonymous> (file:///home/zachary/Chia/Projects/cadt/tests/v2/integration/estimation-v2.spec.js:458:7)
@@ -446,9 +446,9 @@ Ranked by frequency of observed failures:
 ### Run Tests Multiple Times
 ```bash
 # Run 10 times to see failure rate
-for i in {1..10}; do 
-  echo "Run $i"; 
-  npm run test:v2 2>&1 | tail -20; 
+for i in {1..10}; do
+  echo "Run $i";
+  npm run test:v2 2>&1 | tail -20;
 done
 ```
 
