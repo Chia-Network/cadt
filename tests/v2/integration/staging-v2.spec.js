@@ -1058,6 +1058,9 @@ describe('V2 Staging Integration Tests', function () {
     });
 
     it('should accept commit with ids array at maximum allowed length', async function () {
+      // Clean up ALL existing staging records to prevent contamination from previous tests
+      await StagingV2.destroy({ where: {} });
+
       const programData = await generateV2ProgramData();
       const stagingUuid = uuidv4();
       await StagingV2.create({
@@ -1066,11 +1069,6 @@ describe('V2 Staging Integration Tests', function () {
         action: 'INSERT',
         data: JSON.stringify([programData]),
         committed: false,
-      });
-
-      // Delete any existing committed records
-      await StagingV2.destroy({
-        where: { committed: true }
       });
 
       // Create array with exactly 10000 elements (maximum allowed)
@@ -1383,6 +1381,9 @@ describe('V2 Staging Integration Tests', function () {
       // Should fail (400 or 500) due to invalid JSON
       expect([400, 500]).to.include(response.status);
       expect(response.body).to.have.property('error');
+
+      // Clean up invalid staging record to prevent contamination of subsequent tests
+      await StagingV2.destroy({ where: {} });
     });
 
     it('should handle staging records for non-existent tables', async function () {
