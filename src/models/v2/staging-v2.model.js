@@ -53,7 +53,14 @@ class StagingV2 extends Model {
 
   static async create(values, options) {
     StagingV2.changes.next(['staging']);
-    return super.create(values, options);
+    const result = await super.create(values, options);
+
+    // Small delay to ensure WAL write is visible to subsequent reads
+    // SQLite WAL mode can have timing issues where immediate reads don't see recent writes
+    // 10ms is sufficient for WAL checkpoint while minimizing test slowdown
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    return result;
   }
 
   static async destroy(values) {

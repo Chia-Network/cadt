@@ -185,17 +185,53 @@ export const checkForV2Migrations = async (db) => {
   }
 };
 
-export const prepareV2Db = async () => {
-  const mirrorConfig =
-    (process.env.NODE_ENV || 'local') === 'local' ? 'v2Mirror' : 'v2MirrorTest';
+// Mutex to prevent concurrent prepareV2Db calls
+let prepareV2DbPromise = null;
+let prepareV2DbCompleted = false;
 
-  if (
-    mirrorConfig == 'v2Mirror' &&
-    getConfig().MIRROR_DB.DB_HOST &&
-    getConfig().MIRROR_DB.DB_HOST !== ''
-  ) {
-    const connection = await mysql.createConnection({
-      host: getConfig().MIRROR_DB.DB_HOST,
+export const prepareV2Db = async () => {
+  // If already completed, verify critical tables still exist before returning
+  if (prepareV2DbCompleted) {
+    // Quick check: does the governance table exist?
+    try {
+      const tables = await sequelizeV2.query(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='governance'",
+        { type: sequelizeV2.QueryTypes.SELECT }
+      );
+      if (tables && tables.length > 0) {
+        // Tables exist, safe to return
+        return;
+      }
+      // Tables missing! Reset the mutex and re-run
+      loggerV2.warn('[v2]: Critical tables missing, re-running prepareV2Db()');
+      prepareV2DbCompleted = false;
+      prepareV2DbPromise = null;
+    } catch (error) {
+      // Database not accessible, reset and re-run
+      loggerV2.warn('[v2]: Database check failed, re-running prepareV2Db():', error.message);
+      prepareV2DbCompleted = false;
+      prepareV2DbPromise = null;
+    }
+  }
+
+  // If currently running, wait for it to complete
+  if (prepareV2DbPromise) {
+    return prepareV2DbPromise;
+  }
+
+  // Start the preparation and store the promise
+  prepareV2DbPromise = (async () => {
+    loggerV2.info('[v2]: prepareV2Db() starting...');
+    const mirrorConfig =
+      (process.env.NODE_ENV || 'local') === 'local' ? 'v2Mirror' : 'v2MirrorTest';
+
+    if (
+      mirrorConfig == 'v2Mirror' &&
+      getConfig().MIRROR_DB.DB_HOST &&
+      getConfig().MIRROR_DB.DB_HOST !== ''
+    ) {
+      const connection = await mysql.createConnection({
+        host: getConfig().MIRROR_DB.DB_HOST,
       port: 3306,
       user: getConfig().MIRROR_DB.DB_USERNAME,
       password: getConfig().MIRROR_DB.DB_PASSWORD,
@@ -205,13 +241,29 @@ export const prepareV2Db = async () => {
       `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}_v2\`;`,
     );
 
-    // Use the exported sequelizeV2Mirror instance instead of creating a new one
-    await checkForV2Migrations(sequelizeV2Mirror);
-  } else if (mirrorConfig == 'v2MirrorTest') {
-    await checkForV2Migrations(sequelizeV2Mirror);
-  }
+      // Use the exported sequelizeV2Mirror instance instead of creating a new one
+      await checkForV2Migrations(sequelizeV2Mirror);
+    } else if (mirrorConfig == 'v2MirrorTest') {
+      await checkForV2Migrations(sequelizeV2Mirror);
+    }
 
-  await checkForV2Migrations(sequelizeV2);
+    loggerV2.info('[v2]: About to run main database migrations (sequelizeV2)...');
+    await checkForV2Migrations(sequelizeV2);
+    loggerV2.info('[v2]: Main database migrations completed');
+
+    prepareV2DbCompleted = true;
+    loggerV2.info('[v2]: prepareV2Db() completed successfully');
+  })();
+
+  try {
+    await prepareV2DbPromise;
+  } catch (error) {
+    // Reset on error so it can be retried
+    prepareV2DbPromise = null;
+    prepareV2DbCompleted = false;
+    loggerV2.error('[v2]: prepareV2Db() failed:', error);
+    throw error;
+  }
 };
 
 async function setV2WALMode() {
