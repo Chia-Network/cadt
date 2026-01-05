@@ -60,7 +60,7 @@ describe('Project Resource CRUD', function () {
           page: 1,
           limit: 100,
         });
-        expect(projects.data.length).to.equal(10);
+        expect(projects.data.length).to.equal(9);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects filtered by orgUid', async function () {

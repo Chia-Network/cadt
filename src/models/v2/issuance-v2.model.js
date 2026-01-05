@@ -13,6 +13,36 @@ import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
 import { UnitV2 } from './unit-v2.model.js';
 
 class IssuanceV2 extends Model {
+  static async create(values, options) {
+    const result = await super.create(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async bulkCreate(values, options) {
+    const result = await super.bulkCreate(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async update(values, options) {
+    const result = await super.update(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async upsert(values, options) {
+    const result = await super.upsert(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async destroy(options) {
+    const result = await super.destroy(options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
   static associate(models) {
     // Issuance belongs to Verification
     IssuanceV2.belongsTo(models.VerificationV2, {

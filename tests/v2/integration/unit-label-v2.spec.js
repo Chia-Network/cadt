@@ -5,6 +5,8 @@ import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { UnitLabelV2, UnitLabelV2Mirror, LabelV2, UnitV2, IssuanceV2, VerificationV2, ProjectV2, ProgramV2, MethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
+import TaskManager from '../../../src/tasks/index.js';
+import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 
 describe('Unit-Label V2 Join Table Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -21,6 +23,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
   before(async function () {
     console.log('Setting up Unit-Label V2 test environment...');
     await prepareV2Db();
+
+    // Stop background tasks to prevent interference
+    TaskManager.stopAll();
 
     // Create test home organization
     await createV2TestHomeOrg();
@@ -126,6 +131,9 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
   after(async function () {
     console.log('Unit-Label V2 test cleanup completed');
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    TaskManager.start(configV1?.ENABLE !== false, configV2?.ENABLE !== false);
   });
 
   describe('Unit-Label CRUD Operations', function () {

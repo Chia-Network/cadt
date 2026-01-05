@@ -26,7 +26,7 @@ import {
   syncRegistriesTaskMutex,
 } from '../utils/model-utils.js';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 const CONFIG = getConfig().APP;
 
 const task = new Task('sync-registries', async () => {

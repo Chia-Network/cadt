@@ -15,6 +15,8 @@ import {
   LocationV2,
 } from '../../../src/models/v2/index.js';
 import { Staging } from '../../../src/models/index.js';
+import TaskManager from '../../../src/tasks/index.js';
+import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 import {
   generateV2ProgramData,
   generateV2MethodologyData,
@@ -40,6 +42,9 @@ describe('V2 Staging Integration Tests', function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
 
+    // Stop background tasks to prevent interference
+    TaskManager.stopAll();
+
     // Create test home organization
     homeOrg = await createV2TestHomeOrg();
     expect(homeOrg).to.exist;
@@ -49,6 +54,11 @@ describe('V2 Staging Integration Tests', function () {
     console.log('Cleaning up V2 test environment...');
     await resetV2StagingTable();
     await resetV2DataTables();
+
+    // Restart background tasks
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    TaskManager.start(configV1?.ENABLE !== false, configV2?.ENABLE !== false);
   });
 
   beforeEach(async function () {
@@ -1058,6 +1068,9 @@ describe('V2 Staging Integration Tests', function () {
     });
 
     it('should accept commit with ids array at maximum allowed length', async function () {
+      // Clean up ALL existing staging records to prevent contamination from previous tests
+      await StagingV2.destroy({ where: {} });
+
       const programData = await generateV2ProgramData();
       const stagingUuid = uuidv4();
       await StagingV2.create({
@@ -1066,11 +1079,6 @@ describe('V2 Staging Integration Tests', function () {
         action: 'INSERT',
         data: JSON.stringify([programData]),
         committed: false,
-      });
-
-      // Delete any existing committed records
-      await StagingV2.destroy({
-        where: { committed: true }
       });
 
       // Create array with exactly 10000 elements (maximum allowed)
@@ -1383,6 +1391,9 @@ describe('V2 Staging Integration Tests', function () {
       // Should fail (400 or 500) due to invalid JSON
       expect([400, 500]).to.include(response.status);
       expect(response.body).to.have.property('error');
+
+      // Clean up invalid staging record to prevent contamination of subsequent tests
+      await StagingV2.destroy({ where: {} });
     });
 
     it('should handle staging records for non-existent tables', async function () {

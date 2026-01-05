@@ -4,6 +4,8 @@ import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { GovernanceV2, MetaV2 } from '../../../src/models/v2/index.js';
 import { withConfigOverride } from '../utils/v2-test-helpers.js';
+import TaskManager from '../../../src/tasks/index.js';
+import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 
 describe('V2 Governance Model Tests', function () {
   this.timeout(30000);
@@ -11,12 +13,20 @@ describe('V2 Governance Model Tests', function () {
   before(async function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
+
+    // Stop background tasks to prevent interference
+    TaskManager.stopAll();
   });
 
   after(async function () {
     console.log('Cleaning up V2 test environment...');
     // Clean up governance records
     await GovernanceV2.destroy({ where: {} });
+
+    // Restart background tasks
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    TaskManager.start(configV1?.ENABLE !== false, configV2?.ENABLE !== false);
   });
 
   beforeEach(async function () {

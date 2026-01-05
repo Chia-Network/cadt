@@ -51,6 +51,10 @@ class UnitV2 extends Model {
     const createResult = await super.create(values, options);
     const { org_uid } = createResult;
     UnitV2.changes.next(['units', org_uid]);
+
+    // Small delay for WAL visibility
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
     return createResult;
   }
 
@@ -59,12 +63,21 @@ class UnitV2 extends Model {
     const { org_uid } = values;
     // Note: Following V1 pattern, upsert emits 'projects' not 'units'
     UnitV2.changes.next(['projects', org_uid]);
+
+    // Small delay for WAL visibility
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
     return upsertResult;
   }
 
   static async destroy(options) {
     UnitV2.changes.next(['units']);
-    return super.destroy(options);
+    const result = await super.destroy(options);
+
+    // Small delay for WAL visibility
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    return result;
   }
 
   /**
@@ -341,8 +354,9 @@ class UnitV2 extends Model {
       }
 
       // Create staging record with UPDATE action
+      const stagingUuid = uuidv4();
       const stagedData = {
-        uuid: unitId,
+        uuid: stagingUuid,
         action: 'UPDATE',
         table: 'unit',
         data: JSON.stringify(splitRecords),
@@ -351,6 +365,7 @@ class UnitV2 extends Model {
       await StagingV2.create(stagedData);
 
       loggerV2.info(`[v2]: Unit ${unitId} split into ${splitRecords.length} units`);
+      return { uuid: stagingUuid };
     } catch (error) {
       loggerV2.error('[v2]: Error splitting unit:', error);
       throw new Error(`Failed to split unit: ${error.message}`);

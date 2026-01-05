@@ -14,6 +14,36 @@ import PickListStub from '../governance/governance-v2.stub.js';
 import ModelTypes from './governance-v2.modeltypes.cjs';
 
 class GovernanceV2 extends Model {
+  static async create(values, options) {
+    const result = await super.create(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async bulkCreate(values, options) {
+    const result = await super.bulkCreate(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async update(values, options) {
+    const result = await super.update(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async upsert(values, options) {
+    const result = await super.upsert(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async destroy(options) {
+    const result = await super.destroy(options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
   /**
    * Upsert governance data downloaded from a governance body store
    * Parses governanceData for orgList, glossary, pickList and upserts into GovernanceV2
@@ -179,7 +209,7 @@ class GovernanceV2 extends Model {
         revertIfFailed,
       );
     } else {
-      onConfirm();
+      await onConfirm();
     }
 
     return governanceVersionId;
@@ -264,7 +294,7 @@ class GovernanceV2 extends Model {
         revertIfFailed,
       );
     } else {
-      onConfirm();
+      await onConfirm();
     }
 
     return governanceVersionId;

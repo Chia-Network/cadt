@@ -9,6 +9,36 @@ import ModelTypes from './meta-v2.modeltypes.cjs';
 export const USER_DELETED_ORGS = 'userDeletedOrgs';
 
 class MetaV2 extends Model {
+  static async create(values, options) {
+    const result = await super.create(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async bulkCreate(values, options) {
+    const result = await super.bulkCreate(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async update(values, options) {
+    const result = await super.update(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async upsert(values, options) {
+    const result = await super.upsert(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async destroy(options) {
+    const result = await super.destroy(options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
   /**
    * Gets list of organization UIDs that have been explicitly deleted by the user
    * These organizations should not be re-imported by sync-default-organizations-v2 task

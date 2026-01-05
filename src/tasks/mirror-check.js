@@ -10,7 +10,7 @@ import { getMirrorUrl } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 
 const APP_CONFIG = getConfig().APP;
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // This task checks if there are any mirrors that have not been properly mirrored and then mirrors them if not
 

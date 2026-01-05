@@ -22,7 +22,7 @@ import {
   syncRegistriesTaskMutexV2,
 } from '../utils/v2-model-utils.js';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 const CONFIG = getConfig().APP;
 
 const task = new Task('sync-registries-v2', async () => {
@@ -85,7 +85,7 @@ const tryParseJSON = (jsonString, defaultValue) => {
 };
 
 const truncateStagingV2 = async () => {
-  loggerV2.info('[v2]: ATTEMPTING TO TRUNCATE V2 STAGING TABLE');
+  loggerV2.info('[v2]: ATTEMPTING TO CLEAN COMMITTED STAGING RECORDS');
 
   let success = false;
   let attempts = 0;
@@ -93,9 +93,15 @@ const truncateStagingV2 = async () => {
 
   while (!success && attempts < maxAttempts) {
     try {
-      await StagingV2.truncate();
-      success = true; // If truncate succeeds, set success to true to exit the loop
-      loggerV2.info('[v2]: V2 STAGING TABLE TRUNCATED SUCCESSFULLY');
+      // Only delete records that have been marked as committed
+      // This prevents deleting newly staged records that haven't been committed yet
+      await StagingV2.destroy({
+        where: {
+          committed: true,
+        },
+      });
+      success = true; // If destroy succeeds, set success to true to exit the loop
+      loggerV2.info('[v2]: COMMITTED STAGING RECORDS CLEANED SUCCESSFULLY');
     } catch (error) {
       attempts++;
       loggerV2.error(

@@ -4,6 +4,8 @@ import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StagingV2, UnitV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import TaskManager from '../../../src/tasks/index.js';
+import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 
 import {
   resetV2StagingTable,
@@ -24,6 +26,9 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
   before(async function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
+
+    // Stop background tasks to prevent interference
+    TaskManager.stopAll();
 
     // Create test home organization
     homeOrg = await createV2TestHomeOrg();
@@ -71,6 +76,13 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       cadTrustVerificationId: testVerification.cadTrustVerificationId,
       cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
     }));
+  });
+
+  after(async function () {
+    // Restart background tasks
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    TaskManager.start(configV1?.ENABLE !== false, configV2?.ENABLE !== false);
   });
 
   beforeEach(async function () {
@@ -912,11 +924,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
         expect(response.body.success).to.be.true;
         expect(response.body.message).to.equal('Unit split successful');
+        expect(response.body.uuid).to.exist;
 
         // Verify staging record was created
         const stagingRecord = await StagingV2.findOne({
           where: {
-            uuid: unit.cadTrustUnitId,
+            uuid: response.body.uuid,
             table: 'unit',
             action: 'UPDATE',
             committed: false,
