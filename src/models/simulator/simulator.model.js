@@ -33,13 +33,19 @@ class Simulator extends Model {
    */
   static async getMockedKvDiffFromStagingTable() {
     // Get data from V1 Staging table
-    const v1Data = await Staging.findAll();
+    // Only get records that have been committed
+    const v1Data = await Staging.findAll({
+      where: { commited: true },
+    });
 
     // Get data from V2 Staging table
+    // Only get records that have been committed
     let v2Data = [];
     try {
       const { StagingV2 } = await import('../v2/index.js');
-      v2Data = await StagingV2.findAll();
+      v2Data = await StagingV2.findAll({
+        where: { committed: true },
+      });
     } catch (error) {
       // V2 models not available, skip V2 staging data
     }

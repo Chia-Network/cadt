@@ -209,7 +209,7 @@ class GovernanceV2 extends Model {
         revertIfFailed,
       );
     } else {
-      onConfirm();
+      await onConfirm();
     }
 
     return governanceVersionId;
@@ -294,7 +294,7 @@ class GovernanceV2 extends Model {
         revertIfFailed,
       );
     } else {
-      onConfirm();
+      await onConfirm();
     }
 
     return governanceVersionId;

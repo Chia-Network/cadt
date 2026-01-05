@@ -15,6 +15,8 @@ import {
   LocationV2,
 } from '../../../src/models/v2/index.js';
 import { Staging } from '../../../src/models/index.js';
+import TaskManager from '../../../src/tasks/index.js';
+import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 import {
   generateV2ProgramData,
   generateV2MethodologyData,
@@ -40,6 +42,9 @@ describe('V2 Staging Integration Tests', function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
 
+    // Stop background tasks to prevent interference
+    TaskManager.stopAll();
+
     // Create test home organization
     homeOrg = await createV2TestHomeOrg();
     expect(homeOrg).to.exist;
@@ -49,6 +54,11 @@ describe('V2 Staging Integration Tests', function () {
     console.log('Cleaning up V2 test environment...');
     await resetV2StagingTable();
     await resetV2DataTables();
+
+    // Restart background tasks
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    TaskManager.start(configV1?.ENABLE !== false, configV2?.ENABLE !== false);
   });
 
   beforeEach(async function () {
