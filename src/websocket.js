@@ -1,6 +1,7 @@
 'use strict';
 
 import { Project, Unit, Staging } from './models/index.js';
+import { ProjectV2, UnitV2, StagingV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
 
 const socketSubscriptions = {};
@@ -58,6 +59,40 @@ export const connection = (socket) => {
             socket.emit('change:staging', data);
           });
           socketSubscriptions[socket.id].push('staging');
+          callback('success');
+        } else {
+          callback('already subscribed');
+        }
+        break;
+      // V2 subscriptions
+      case 'projects-v2':
+        if (!socketSubscriptions[socket.id].includes('projects-v2')) {
+          ProjectV2.changes.subscribe((data) => {
+            socket.emit('change:projects-v2', data);
+          });
+          socketSubscriptions[socket.id].push('projects-v2');
+          callback('success');
+        } else {
+          callback('already subscribed');
+        }
+        break;
+      case 'units-v2':
+        if (!socketSubscriptions[socket.id].includes('units-v2')) {
+          UnitV2.changes.subscribe((data) => {
+            socket.emit('change:units-v2', data);
+          });
+          socketSubscriptions[socket.id].push('units-v2');
+          callback('success');
+        } else {
+          callback('already subscribed');
+        }
+        break;
+      case 'staging-v2':
+        if (!socketSubscriptions[socket.id].includes('staging-v2')) {
+          StagingV2.changes.subscribe((data) => {
+            socket.emit('change:staging-v2', data);
+          });
+          socketSubscriptions[socket.id].push('staging-v2');
           callback('success');
         } else {
           callback('already subscribed');

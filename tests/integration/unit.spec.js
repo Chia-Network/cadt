@@ -67,9 +67,16 @@ describe('Unit Resource Integration Tests', function () {
     const warehouseUnitId = changeRecord.warehouseUnitId;
     expect(warehouseUnitId).to.be.ok;
 
-    // Now push the staging table live
-    await testFixtures.commitStagingRecords();
-    await testFixtures.waitForDataLayerSync();
+    // Now push the staging table live and wait for sync using smart polling
+    await testFixtures.commitStagingRecordsAndWaitForCondition(
+      async () => {
+        // Check if the unit exists in the DB (indicates sync complete)
+        const { Unit } = await import('../../src/models/index.js');
+        const unit = await Unit.findOne({ where: { warehouseUnitId } });
+        return unit !== null;
+      },
+      { description: 'Unit creation sync to main table' }
+    );
 
     // The staging table should be empty after committing
     expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
@@ -102,9 +109,16 @@ describe('Unit Resource Integration Tests', function () {
       newUnitPayload,
     );
 
-    // Now push the staging table live
-    await testFixtures.commitStagingRecords();
-    await testFixtures.waitForDataLayerSync();
+    // Now push the staging table live and wait for sync using smart polling
+    await testFixtures.commitStagingRecordsAndWaitForCondition(
+      async () => {
+        // Check if the unit no longer exists in the DB (indicates delete sync complete)
+        const { Unit } = await import('../../src/models/index.js');
+        const unit = await Unit.findOne({ where: { warehouseUnitId } });
+        return unit === null;
+      },
+      { description: 'Unit deletion sync to main table' }
+    );
 
     // make sure the record is no longer in the db after the datalayer synced
     await testFixtures.checkUnitRecordDoesNotExist(warehouseUnitId);
@@ -153,21 +167,34 @@ describe('Unit Resource Integration Tests', function () {
     const createdCommitResult = await supertest(app).post('/v1/staging/commit');
     expect(createdCommitResult.statusCode).to.equal(200);
     expect(createdCommitResult.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
+      message: 'Staging Table committing to full node',
       success: true,
     });
 
-    // The node simulator runs on an async process, we are importing
-    // the WAIT_TIME constant from the simulator, padding it and waiting for the
-    // appropriate amount of time for the simulator to finish its operations
-    await testFixtures.waitForDataLayerSync();
+    // Wait for the unit to appear in the database using smart polling
+    const { Unit } = await import('../../src/models/index.js');
+    let unitRecord;
+    const pollStartTime1 = Date.now();
+    const interval = 5000; // 5 seconds
+    const maxAttempts = 10; // 50 seconds total
 
-    // Get a unit to split
-    const allUnitsResult = await supertest(app)
-      .get('/v1/units')
-      .query({ page: 1, limit: 100 });
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, interval));
+      const allUnitsResult = await supertest(app)
+        .get('/v1/units')
+        .query({ page: 1, limit: 100 });
 
-    const unitRecord = _.head(allUnitsResult.body.data);
+      if (allUnitsResult.body.data.length > 0) {
+        unitRecord = _.head(allUnitsResult.body.data);
+        const elapsedTime = Date.now() - pollStartTime1;
+        console.log(`[TEST] Unit appeared after ${elapsedTime}ms (${(elapsedTime/1000).toFixed(1)}s, ${attempt} attempts)`);
+        break;
+      }
+
+      if (attempt === maxAttempts) {
+        throw new Error('Unit did not appear in database after 50 seconds');
+      }
+    }
 
     const warehouseUnitIdToSplit = unitRecord.warehouseUnitId;
     const newUnitOwner = '35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf';
@@ -249,7 +276,7 @@ describe('Unit Resource Integration Tests', function () {
     const commitRes = await supertest(app).post('/v1/staging/commit');
     expect(stagingRes.statusCode).to.equal(200);
     expect(commitRes.body).to.deep.equal({
-      message: 'Staging Table committed to full node',
+      message: 'Staging Table committing to full node',
       success: true,
     });
 
@@ -257,16 +284,36 @@ describe('Unit Resource Integration Tests', function () {
     const stagingRes2 = await supertest(app).get('/v1/staging');
     expect(_.head(stagingRes2.body).commited).to.equal(true);
 
-    // The node simulator runs on an async process, we are importing
-    // the WAIT_TIME constant from the simulator, padding it and waiting for the
-    // appropriate amount of time for the simulator to finish its operations
-    await testFixtures.waitForDataLayerSync();
+    // Wait for split units to appear in the database using smart polling
+    // (Note: We already committed above, so we just poll without committing again)
+    const pollStartTime2 = Date.now();
+    const pollInterval = 5000;
+    const pollMaxAttempts = 10;
+    let newRecord1;
+
+    for (let attempt = 1; attempt <= pollMaxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      const warehouseRes = await supertest(app)
+        .get(`/v1/units`)
+        .query({ warehouseUnitId: splitRecord1.warehouseUnitId });
+
+      if (warehouseRes.body && warehouseRes.body.warehouseUnitId === splitRecord1.warehouseUnitId) {
+        newRecord1 = warehouseRes.body;
+        const elapsedTime = Date.now() - pollStartTime2;
+        console.log(`[TEST] Split unit appeared after ${elapsedTime}ms (${(elapsedTime/1000).toFixed(1)}s, ${attempt} attempts)`);
+        break;
+      }
+
+      if (attempt === pollMaxAttempts) {
+        throw new Error('Split unit did not appear in database after 50 seconds');
+      }
+    }
 
     const warehouseRes = await supertest(app)
       .get(`/v1/units`)
       .query({ warehouseUnitId: splitRecord1.warehouseUnitId });
 
-    const newRecord1 = warehouseRes.body;
+    newRecord1 = warehouseRes.body;
 
     expect(newRecord1.warehouseUnitId).to.equal(splitRecord1.warehouseUnitId);
     expect(newRecord1.orgUid).to.equal(splitRecord1.orgUid);
@@ -381,15 +428,15 @@ describe('Unit Resource Integration Tests', function () {
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
     const warehouseUnitId = changeRecord.warehouseUnitId;
 
-    // Now push the staging table live
-    await testFixtures.commitStagingRecords();
-
-    // After commiting the true flag should be set to this staging record
-    expect(
-      (await testFixtures.getLastCreatedStagingRecord()).commited,
-    ).to.equal(true);
-
-    await testFixtures.waitForDataLayerSync();
+    // Now push the staging table live and wait for sync using smart polling
+    await testFixtures.commitStagingRecordsAndWaitForCondition(
+      async () => {
+        const { Unit } = await import('../../src/models/index.js');
+        const unit = await Unit.findOne({ where: { warehouseUnitId } });
+        return unit !== null;
+      },
+      { description: 'Unit creation sync to main table (end-to-end test 1)' }
+    );
 
     // Make sure the staging table is cleaned up
     expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
@@ -424,15 +471,15 @@ describe('Unit Resource Integration Tests', function () {
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
     const warehouseUnitId = changeRecord.warehouseUnitId;
 
-    // Now push the staging table live
-    await testFixtures.commitStagingRecords();
-
-    // After commiting the true flag should be set to this staging record
-    expect(
-      (await testFixtures.getLastCreatedStagingRecord()).commited,
-    ).to.equal(true);
-
-    await testFixtures.waitForDataLayerSync();
+    // Now push the staging table live and wait for sync using smart polling
+    await testFixtures.commitStagingRecordsAndWaitForCondition(
+      async () => {
+        const { Unit } = await import('../../src/models/index.js');
+        const unit = await Unit.findOne({ where: { warehouseUnitId } });
+        return unit !== null;
+      },
+      { description: 'Unit creation sync to main table (end-to-end test 2)' }
+    );
 
     // Make sure the staging table is cleaned up
     expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
@@ -466,13 +513,14 @@ describe('Unit Resource Integration Tests', function () {
       (await testFixtures.getLastCreatedStagingRecord()).commited,
     ).to.equal(false);
 
-    await testFixtures.commitStagingRecords();
-
-    expect(
-      (await testFixtures.getLastCreatedStagingRecord()).commited,
-    ).to.equal(true);
-
-    await testFixtures.waitForDataLayerSync();
+    // Now push the staging table live and wait for update to sync using smart polling
+    await testFixtures.commitStagingRecordsAndWaitForCondition(
+      async () => {
+        const updatedUnit = await testFixtures.getUnit(warehouseUnitId);
+        return updatedUnit !== null;
+      },
+      { description: 'Unit update sync to main table' }
+    );
 
     const updatedUnit = await testFixtures.getUnit(warehouseUnitId);
 

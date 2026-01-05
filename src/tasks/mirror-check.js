@@ -10,21 +10,21 @@ import { getMirrorUrl } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 
 const APP_CONFIG = getConfig().APP;
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // This task checks if there are any mirrors that have not been properly mirrored and then mirrors them if not
 
 const task = new Task('mirror-check', async () => {
-  logger.silly('[MIRROR_DEBUG] Mirror-check task started');
+  logger.silly('[v1]: [MIRROR_DEBUG] Mirror-check task started');
 
   try {
-    logger.silly('[MIRROR_DEBUG] Checking data layer availability');
+    logger.silly('[v1]: [MIRROR_DEBUG] Checking data layer availability');
     await assertDataLayerAvailable();
-    logger.silly('[MIRROR_DEBUG] Data layer is available');
+    logger.silly('[v1]: [MIRROR_DEBUG] Data layer is available');
 
-    logger.silly('[MIRROR_DEBUG] Checking wallet sync status');
+    logger.silly('[v1]: [MIRROR_DEBUG] Checking wallet sync status');
     await assertWalletIsSynced();
-    logger.silly('[MIRROR_DEBUG] Wallet is synced');
+    logger.silly('[v1]: [MIRROR_DEBUG] Wallet is synced');
 
     // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
     const shouldMirror = APP_CONFIG?.AUTO_MIRROR_EXTERNAL_STORES ?? true;
@@ -33,17 +33,17 @@ const task = new Task('mirror-check', async () => {
     );
 
     if (!APP_CONFIG.USE_SIMULATOR && shouldMirror) {
-      logger.silly('[MIRROR_DEBUG] Conditions met, running mirror check');
+      logger.silly('[v1]: [MIRROR_DEBUG] Conditions met, running mirror check');
       await runMirrorCheck();
     } else {
-      logger.silly('[MIRROR_DEBUG] Skipping mirror check - conditions not met');
+      logger.silly('[v1]: [MIRROR_DEBUG] Skipping mirror check - conditions not met');
     }
   } catch (error) {
     logger.error(
       `Retrying in ${APP_CONFIG?.TASKS?.MIRROR_CHECK_TASK_INTERVAL || 300} seconds`,
       error,
     );
-    logger.silly(`[MIRROR_DEBUG] Mirror-check task error: ${error.message}`);
+    logger.silly(`[v1]: [MIRROR_DEBUG] Mirror-check task error: ${error.message}`);
   }
 });
 
@@ -57,21 +57,21 @@ const job = new SimpleIntervalJob(
 );
 
 const runMirrorCheck = async () => {
-  logger.silly('[MIRROR_DEBUG] Starting runMirrorCheck function');
+  logger.silly('[v1]: [MIRROR_DEBUG] Starting runMirrorCheck function');
 
   const mirrorUrl = await getMirrorUrl();
-  logger.silly(`[MIRROR_DEBUG] Retrieved mirror URL: ${mirrorUrl}`);
+  logger.silly(`[v1]: [MIRROR_DEBUG] Retrieved mirror URL: ${mirrorUrl}`);
 
   if (!mirrorUrl) {
     logger.info(
       'DATALAYER_FILE_SERVER_URL not set, skipping mirror announcements',
     );
-    logger.silly('[MIRROR_DEBUG] Exiting runMirrorCheck - no mirror URL');
+    logger.silly('[v1]: [MIRROR_DEBUG] Exiting runMirrorCheck - no mirror URL');
     return;
   }
 
   // get governance info if governance node
-  logger.silly('[MIRROR_DEBUG] Checking for governance organization info');
+  logger.silly('[v1]: [MIRROR_DEBUG] Checking for governance organization info');
   const governanceOrgUidResult = await Meta.findOne({
     where: { metaKey: 'governanceBodyId' },
     attributes: ['metaValue'],
@@ -94,7 +94,7 @@ const runMirrorCheck = async () => {
     governanceOrgUidResult?.metaValue &&
     governanceRegistryIdResult?.metaValue
   ) {
-    logger.silly('[MIRROR_DEBUG] Adding governance mirrors');
+    logger.silly('[v1]: [MIRROR_DEBUG] Adding governance mirrors');
     // add governance mirrors if instance is governance
     // There is logic within the addMirror function to check if the mirror already exists
     await Organization.addMirror(
@@ -107,14 +107,14 @@ const runMirrorCheck = async () => {
       mirrorUrl,
       true,
     );
-    logger.silly('[MIRROR_DEBUG] Completed governance mirror additions');
+    logger.silly('[v1]: [MIRROR_DEBUG] Completed governance mirror additions');
   } else {
     logger.debug(
       '[MIRROR_DEBUG] Skipping governance mirrors - missing governance data',
     );
   }
 
-  logger.silly('[MIRROR_DEBUG] Retrieving organizations map');
+  logger.silly('[v1]: [MIRROR_DEBUG] Retrieving organizations map');
   const organizations = await Organization.getOrgsMap();
   logger.debug(
     `[MIRROR_DEBUG] Retrieved ${Object.keys(organizations).length} organizations from getOrgsMap()`,
@@ -124,10 +124,10 @@ const runMirrorCheck = async () => {
   );
 
   const orgs = Object.keys(organizations);
-  logger.silly(`[MIRROR_DEBUG] Processing ${orgs.length} organizations`);
+  logger.silly(`[v1]: [MIRROR_DEBUG] Processing ${orgs.length} organizations`);
 
   for (const org of orgs) {
-    logger.silly(`[MIRROR_DEBUG] Processing organization: ${org}`);
+    logger.silly(`[v1]: [MIRROR_DEBUG] Processing organization: ${org}`);
     const orgData = organizations[org];
     logger.debug(
       `[MIRROR_DEBUG] Organization data: ${JSON.stringify({
@@ -146,11 +146,11 @@ const runMirrorCheck = async () => {
       try {
         await Organization.addMirror(orgData.orgUid, mirrorUrl, true);
         logger.debug(
-          `[MIRROR_DEBUG] Added mirror for orgUid: ${orgData.orgUid}`,
+          `[MIRROR_DEBUG] Mirror ensured for orgUid: ${orgData.orgUid}`,
         );
       } catch (error) {
         logger.error(
-          `[MIRROR_DEBUG] Failed to add mirror for orgUid ${orgData.orgUid}: ${error.message}`,
+          `[MIRROR_DEBUG] Failed to ensure mirror for orgUid ${orgData.orgUid}: ${error.message}`,
         );
       }
 
@@ -162,11 +162,11 @@ const runMirrorCheck = async () => {
             true,
           );
           logger.debug(
-            `[MIRROR_DEBUG] Added mirror for dataModelVersionStoreId: ${orgData.dataModelVersionStoreId}`,
+            `[MIRROR_DEBUG] Mirror ensured for dataModelVersionStoreId: ${orgData.dataModelVersionStoreId}`,
           );
         } catch (error) {
           logger.error(
-            `[MIRROR_DEBUG] Failed to add mirror for dataModelVersionStoreId ${orgData.dataModelVersionStoreId}: ${error.message}`,
+            `[MIRROR_DEBUG] Failed to ensure mirror for dataModelVersionStoreId ${orgData.dataModelVersionStoreId}: ${error.message}`,
           );
         }
       } else {
@@ -179,11 +179,11 @@ const runMirrorCheck = async () => {
         try {
           await Organization.addMirror(orgData.registryId, mirrorUrl, true);
           logger.debug(
-            `[MIRROR_DEBUG] Added mirror for registryId: ${orgData.registryId}`,
+            `[MIRROR_DEBUG] Mirror ensured for registryId: ${orgData.registryId}`,
           );
         } catch (error) {
           logger.error(
-            `[MIRROR_DEBUG] Failed to add mirror for registryId ${orgData.registryId}: ${error.message}`,
+            `[MIRROR_DEBUG] Failed to ensure mirror for registryId ${orgData.registryId}: ${error.message}`,
           );
         }
       } else {
@@ -198,7 +198,7 @@ const runMirrorCheck = async () => {
     }
   }
 
-  logger.silly('[MIRROR_DEBUG] Completed runMirrorCheck function');
+  logger.silly('[v1]: [MIRROR_DEBUG] Completed runMirrorCheck function');
 };
 
 export default job;

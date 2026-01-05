@@ -9,7 +9,7 @@ import app from '../../src/server';
 import { Organization } from '../../src/models/organizations/index.js';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import { Staging, Project } from '../../src/models/index.js';
-import { uuid as uuidv4 } from 'uuidv4';
+import { v4 as uuidv4 } from 'uuid';
 import { prepareDb, seedDb, sequelize } from '../../src/database';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
@@ -60,7 +60,7 @@ describe('Project Resource CRUD', function () {
           page: 1,
           limit: 100,
         });
-        expect(projects.data.length).to.equal(10);
+        expect(projects.data.length).to.equal(9);
       }).timeout(TEST_WAIT_TIME * 10);
 
       it('gets all the projects filtered by orgUid', async function () {

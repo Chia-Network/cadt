@@ -8,12 +8,13 @@ import { logger } from '../config/logger.js';
 import { Staging, Organization, LabelUnit, ModelKeys } from './../models';
 
 import { sequelize } from '../database';
+import { Sequelize } from 'sequelize';
 import { assertOrgIsHomeOrg } from './data-assertions';
 import { encodeHex } from './datalayer-utils';
 
 import { isPluralized } from './string-utils.js';
 import { formatModelAssociationName } from './model-utils.js';
-import { uuid as uuidv4 } from 'uuidv4';
+import { v4 as uuidv4 } from 'uuid';
 
 const associations = (model) =>
   model.getAssociatedModels().map((model) => model.model);
@@ -623,10 +624,13 @@ export const transformFullXslsToChangeList = async (
   xsls,
   action,
   primaryKeyNames,
+  modelMap = null, // Optional: map of table names to model classes (for V2)
 ) => {
   try {
     const models = Object.keys(primaryKeyNames);
     const changeList = {};
+    // Use provided modelMap or fall back to V1 ModelKeys
+    const modelsToUse = modelMap || ModelKeys;
 
     await Promise.all(
       models.map(async (key) => {
@@ -641,20 +645,95 @@ export const transformFullXslsToChangeList = async (
             changeList[key] = [];
           }
 
-          // filter out the header row
+          // NEW: Collect all primary keys BEFORE processing rows
+          const primaryKeys = new Set();
+          if (primaryKeyIndex >= 0 && ['update', 'insert'].includes(action)) {
+            _.tail(sheet.data).forEach(row => {
+              const rows = checkArrayOfArrays(row) ? row : [row];
+              rows.forEach(r => {
+                if (r && r[primaryKeyIndex] != null) {
+                  primaryKeys.add(r[primaryKeyIndex]);
+                }
+              });
+            });
+          }
+
+          // NEW: Batch query all existing records at once
+          let existingRecordsMap = new Map();
+          if (['update', 'insert'].includes(action) && primaryKeys.size > 0) {
+            // Check if model exists in modelMap/ModelKeys
+            const ModelClass = modelsToUse[key];
+            if (!ModelClass) {
+              logger.warn(`Model not found for key '${key}' in ModelKeys/modelMap. Skipping existing record check.`);
+            } else if (typeof ModelClass !== 'function' && typeof ModelClass !== 'object') {
+              logger.error(`Invalid model class for key '${key}': expected Sequelize model, got ${typeof ModelClass}.`);
+              throw new Error(`Invalid model class for key '${key}': expected Sequelize model, got ${typeof ModelClass}`);
+            } else if (typeof ModelClass.findAll !== 'function') {
+              const modelName = (ModelClass && typeof ModelClass === 'object' && ModelClass.name) ? ModelClass.name : 'unknown';
+              logger.error(`Invalid model class for key '${key}': expected Sequelize model with findAll method, got ${typeof ModelClass}. ModelClass name: ${modelName}`);
+              throw new Error(`Invalid model class for key '${key}': expected Sequelize model with findAll method`);
+            } else {
+              try {
+                // Single primary key: use standard query
+                const existingRecords = await ModelClass.findAll({
+                  where: {
+                    [primaryKeyNames[key]]: {
+                      [Sequelize.Op.in]: Array.from(primaryKeys)
+                    }
+                  },
+                  raw: true
+                });
+
+                // Create lookup map: primaryKey -> record
+                existingRecordsMap = new Map(
+                  existingRecords.map(record => [record[primaryKeyNames[key]], record])
+                );
+              } catch (queryError) {
+                const modelName = (ModelClass && ModelClass.name) ? ModelClass.name : 'unknown';
+                logger.error(`Error querying existing records for table '${key}' using model '${modelName}':`, {
+                  errorMessage: queryError.message,
+                  errorStack: queryError.stack,
+                  key,
+                  modelName: modelName,
+                });
+                throw new Error(`Failed to query existing records for table '${key}': ${queryError.message}`);
+              }
+            }
+          }
+
+          // MODIFIED: Process rows using Map lookup instead of findByPk()
           await Promise.all(
             _.tail(sheet.data).map(async (row) => {
               const rows = checkArrayOfArrays(row) ? row : [row];
               await Promise.all(
                 rows.map(async (r) => {
+                  // Extract primary key value from row
+                  let primaryKeyValue = primaryKeyIndex >= 0 ? r[primaryKeyIndex] : null;
+
+                  // CRITICAL: Never allow undefined/null primary key values - this creates invalid datalayer keys
+                  if (primaryKeyValue == null || primaryKeyValue === 'undefined') {
+                    logger.error(
+                      `Primary key value is null/undefined for table '${key}': ` +
+                      `primaryKeyIndex=${primaryKeyIndex}, ` +
+                      `primaryKeyNames[key]=${primaryKeyNames[key]}, ` +
+                      `headerRow=${JSON.stringify(headerRow)}, ` +
+                      `row=${JSON.stringify(r)}`
+                    );
+                    throw new Error(
+                      `Cannot create datalayer key for table '${key}': primary key value is null or undefined. ` +
+                      `This would result in an invalid datalayer key like '${key}|undefined'. ` +
+                      `Please ensure the primary key field '${primaryKeyNames[key]}' exists in the data.`
+                    );
+                  }
+
                   const dataLayerKey = encodeHex(
-                    `${key}|${r[primaryKeyIndex]}`,
+                    `${key}|${primaryKeyValue}`,
                   );
 
                   if (['update', 'insert'].includes(action)) {
-                    let isUpdate = await ModelKeys[key].findByPk(
-                      r[primaryKeyIndex],
-                    );
+                    // REPLACED: let isUpdate = await ModelKeys[key].findByPk(r[primaryKeyIndex])
+                    // WITH: Map lookup (O(1) instead of database query)
+                    const isUpdate = existingRecordsMap.get(primaryKeyValue);
 
                     if (isUpdate) {
                       const alreadyPushed = changeList[key].find(
@@ -697,9 +776,17 @@ export const transformFullXslsToChangeList = async (
     return changeList;
   } catch (error) {
     logger.error(
-      'Error transformFullXslsToChangeList: ${error.message}',
-      error,
+      `Error transformFullXslsToChangeList: ${error.message}`,
+      {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        errorName: error.name,
+        xslsKeys: xsls ? Object.keys(xsls) : null,
+        primaryKeyNames,
+        modelMapKeys: modelMap ? Object.keys(modelMap) : null,
+      },
     );
+    throw error; // Re-throw to propagate error
   }
 };
 
@@ -802,6 +889,10 @@ function getExcludedColumns(items) {
 
   const excludedColumns = [];
   itemsList.forEach((item) => {
+    // Skip null or undefined items
+    if (item == null || typeof item !== 'object') {
+      return;
+    }
     Object.entries(item).forEach(([column, value]) => {
       if (
         value != null &&

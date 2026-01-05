@@ -8,7 +8,6 @@ import { sequelize } from '../../database';
 import datalayer from '../../datalayer';
 import { logger } from '../../config/logger';
 import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
-import { getDataModelVersion } from '../../utils/helpers';
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
@@ -87,7 +86,7 @@ class Organization extends Model {
       ],
     });
 
-    logger.debug(
+    logger.silly(
       `[MIRROR_DEBUG] Found ${organizations.length} organizations in database`,
     );
 
@@ -111,13 +110,13 @@ class Organization extends Model {
 
     const orgsMap = organizations.reduce((map, current) => {
       map[current.orgUid] = current.dataValues;
-      logger.debug(
+      logger.silly(
         `[MIRROR_DEBUG] Added to map - orgUid: ${current.orgUid}, name: ${current.dataValues.name}, subscribed: ${current.dataValues.subscribed}`,
       );
       return map;
     }, {});
 
-    logger.debug(
+    logger.silly(
       `[MIRROR_DEBUG] Returning organizations map with ${Object.keys(orgsMap).length} entries`,
     );
     return orgsMap;
@@ -125,7 +124,17 @@ class Organization extends Model {
 
   static async createHomeOrganization(name, icon, dataVersion = 'v1') {
     try {
-      logger.info('Creating New Organization, This could take a while.');
+      logger.info('[v1]: Creating New Organization, This could take a while.');
+
+      // Ensure name is provided
+      if (!name) {
+        throw new Error('Organization name is required');
+      }
+
+      // Icon is optional - use provided value or default to empty string
+      // Icon can be any string (URL, base64-encoded data, etc.) or empty
+      const iconValue = icon !== undefined && icon !== null ? icon : '';
+
       const myOrganization = await Organization.getHomeOrg();
 
       if (myOrganization) {
@@ -142,18 +151,18 @@ class Organization extends Model {
         icon: '',
       });
 
-      logger.verbose('createHomeOrg() is creating organization (orgUid) store');
+      logger.verbose('[v1]: createHomeOrg() is creating organization (orgUid) store');
       const newOrganizationId = USE_SIMULATOR
         ? 'f1c54511-865e-4611-976c-7c3c1f704662'
         : await datalayer.createDataLayerStore();
 
-      logger.verbose('createHomeOrg() is creating registryId store');
+      logger.verbose('[v1]: createHomeOrg() is creating registryId store');
       const registryStoreId = await datalayer.createDataLayerStore();
 
-      logger.verbose('createHomeOrg() is creating dataModelVersionId store');
+      logger.verbose('[v1]: createHomeOrg() is creating dataModelVersionId store');
       const dataModelVersionStoreId = await datalayer.createDataLayerStore();
 
-      logger.verbose('createHomeOrg() is creating file store');
+      logger.verbose('[v1]: createHomeOrg() is creating file store');
       const fileStoreId = await datalayer.createDataLayerStore();
 
       const revertOrganizationIfFailed = async () => {
@@ -188,7 +197,7 @@ class Organization extends Model {
           registryId: dataModelVersionStoreId, // registryId is the key named here, but this the DATA MODEL VERSION store id
           fileStoreId,
           name,
-          icon,
+          icon: iconValue,
         },
         revertOrganizationIfFailed,
       );
@@ -218,7 +227,7 @@ class Organization extends Model {
       await new Promise((resolve) => setTimeout(() => resolve(), 30000));
       await datalayer.waitForAllTransactionsToConfirm();
 
-      logger.info('adding new home organization to CADT database');
+      logger.info('[v1]: adding new home organization to CADT database');
       await Promise.all([
         Organization.create({
           orgUid: newOrganizationId,
@@ -228,13 +237,13 @@ class Organization extends Model {
           subscribed: USE_SIMULATOR,
           fileStoreId,
           name,
-          icon,
+          icon: iconValue,
         }),
         Organization.destroy({ where: { orgUid: 'PENDING' } }),
       ]);
 
       const onConfirm = () => {
-        logger.info('Organization confirmed, you are ready to go');
+        logger.info('[v1]: Organization confirmed, you are ready to go');
         Organization.update(
           {
             subscribed: true,
@@ -244,7 +253,7 @@ class Organization extends Model {
       };
 
       if (!USE_SIMULATOR) {
-        logger.info('Waiting for New Organization to be confirmed');
+        logger.info('[v1]: Waiting for New Organization to be confirmed');
         await datalayer.getStoreData(
           newOrganizationId,
           onConfirm,
@@ -437,7 +446,7 @@ class Organization extends Model {
    * @returns {Promise<void>}
    */
   static async importOrganization(orgUid, isHome = false) {
-    logger.verbose('acquiring mutex to import organization');
+    logger.verbose('[v1]: acquiring mutex to import organization');
     const releaseMutex = await addOrDeleteOrganizationRecordMutex.acquire();
 
     // any error caught is re-thrown. this outer try is here because we need to release a mutex
@@ -454,7 +463,7 @@ class Organization extends Model {
 
       await Meta.removeUserDeletedOrgUid(orgUid);
 
-      logger.info(`importing organization ${orgUid} ${isHome && 'as home'}`);
+      logger.info(`[v1]: importing organization ${orgUid} ${isHome && 'as home'}`);
       logger.debug(
         `running the organization model subscription process on ${orgUid}`,
       );
@@ -503,7 +512,7 @@ class Organization extends Model {
         );
       }
 
-      const instanceDataModelVersion = getDataModelVersion();
+      const instanceDataModelVersion = 'v1';
       if (!dataModelInfo[instanceDataModelVersion]) {
         throw new Error(
           `this cadt instance is using datamodel version ${instanceDataModelVersion}. organization ${orgUid} does not have data for this datamodel. cannot import`,
@@ -569,7 +578,7 @@ class Organization extends Model {
    */
   static async subscribeToOrganization(orgUid) {
     if (orgUid === 'PENDING') {
-      logger.info('cannot subscribe to a home organization while its pending.');
+      logger.info('[v1]: cannot subscribe to a home organization while its pending.');
     }
 
     logger.debug(
@@ -602,7 +611,7 @@ class Organization extends Model {
         if (reachedTimeout()) {
           onTimeout(error);
         }
-        logger.debug(`${error.message}. RETRYING`);
+        logger.debug(`[v1]: ${error.message}. RETRYING`);
         await new Promise((resolve) => setTimeout(resolve, 10000));
       }
     }
@@ -618,7 +627,7 @@ class Organization extends Model {
       `the registry datamodel version pointer singleton id for organization ${orgUid} is ${dataModelVersionStoreId}`,
     );
 
-    logger.debug(`determining registry store singleton id for org ${orgUid}`);
+    logger.debug(`[v1]: determining registry store singleton id for org ${orgUid}`);
     let dataModelVersionStoreData = null;
     while (!dataModelVersionStoreData) {
       try {
@@ -631,7 +640,7 @@ class Organization extends Model {
         if (reachedTimeout()) {
           onTimeout(error);
         }
-        logger.debug(`${error.message}. RETRYING`);
+        logger.debug(`[v1]: ${error.message}. RETRYING`);
         await new Promise((resolve) => setTimeout(resolve, 10000));
       }
     }
@@ -647,7 +656,7 @@ class Organization extends Model {
       `the registry singleton id for organization ${orgUid} is ${registryStoreId}`,
     );
 
-    logger.debug(`checking registry store singleton for org ${orgUid}`);
+    logger.debug(`[v1]: checking registry store singleton for org ${orgUid}`);
     const subscribedToRegistryStore =
       await datalayer.subscribeToStoreOnDataLayer(registryStoreId);
     if (!subscribedToRegistryStore) {
@@ -657,7 +666,7 @@ class Organization extends Model {
     }
 
     if (AUTO_SUBSCRIBE_FILESTORE) {
-      logger.info(`subscribing to file store for organization ${orgUid}`);
+      logger.info(`[v1]: subscribing to file store for organization ${orgUid}`);
       try {
         await FileStore.subscribeToFileStore(orgUid);
       } catch (error) {
@@ -672,7 +681,7 @@ class Organization extends Model {
       raw: true,
     });
     if (organization) {
-      logger.info(`marking existing organization record as subscribed`);
+      logger.info(`[v1]: marking existing organization record as subscribed`);
       await Organization.update({ subscribed: true }, { where: { orgUid } });
     }
 
@@ -752,7 +761,7 @@ class Organization extends Model {
    * @param orgUid
    */
   static async deleteAllOrganizationData(orgUid) {
-    logger.verbose('acquiring add/delete org mutex to delete organization');
+    logger.verbose('[v1]: acquiring add/delete org mutex to delete organization');
     const releaseAddDeleteMutex =
       await addOrDeleteOrganizationRecordMutex.acquire();
 
@@ -811,8 +820,8 @@ class Organization extends Model {
             );
 
         const onFail = async (message) => {
-          logger.info(`Unable to sync metadata from ${organization.orgUid}`);
-          logger.error(`ORGANIZATION DATA SYNC ERROR: ${message}`);
+          logger.info(`[v1]: Unable to sync metadata from ${organization.orgUid}`);
+          logger.error(`[v1]: ORGANIZATION DATA SYNC ERROR: ${message}`);
           await Organization.update(
             { orgHash: '0' },
             { where: { orgUid: organization.orgUid } },

@@ -53,11 +53,16 @@ describe('Project Resource Integration Tests', function () {
     const warehouseProjectId = changeRecord.warehouseProjectId;
     expect(warehouseProjectId).to.be.ok;
 
-    // Now push the staging table live
-    await testFixtures.commitStagingRecords();
-    await testFixtures.waitForDataLayerSync();
-    await testFixtures.waitForDataLayerSync();
-    await testFixtures.waitForDataLayerSync();
+    // Now push the staging table live and wait for sync using smart polling
+    await testFixtures.commitStagingRecordsAndWaitForCondition(
+      async () => {
+        // Check if the project exists in the DB (indicates sync complete)
+        const { Project } = await import('../../src/models/index.js');
+        const project = await Project.findOne({ where: { warehouseProjectId } });
+        return project !== null;
+      },
+      { description: 'Project creation sync to main table' }
+    );
 
     // The staging table should be empty after committing
     expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
@@ -90,9 +95,16 @@ describe('Project Resource Integration Tests', function () {
       newProjectPayload,
     );
 
-    // Now push the staging table live
-    await testFixtures.commitStagingRecords();
-    await testFixtures.waitForDataLayerSync();
+    // Now push the staging table live and wait for sync using smart polling
+    await testFixtures.commitStagingRecordsAndWaitForCondition(
+      async () => {
+        // Check if the project no longer exists in the DB (indicates delete sync complete)
+        const { Project } = await import('../../src/models/index.js');
+        const project = await Project.findOne({ where: { warehouseProjectId } });
+        return project === null;
+      },
+      { description: 'Project deletion sync to main table' }
+    );
 
     // make sure the record is no longer in the db after the datalayer synced
     await testFixtures.checkProjectRecordDoesNotExist(warehouseProjectId);
@@ -125,15 +137,15 @@ describe('Project Resource Integration Tests', function () {
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
     const warehouseProjectId = changeRecord.warehouseProjectId;
 
-    // Now push the staging table live
-    await testFixtures.commitStagingRecords();
-
-    // After commiting the true flag should be set to this staging record
-    expect(
-      (await testFixtures.getLastCreatedStagingRecord()).commited,
-    ).to.equal(true);
-
-    await testFixtures.waitForDataLayerSync();
+    // Now push the staging table live and wait for sync using smart polling
+    await testFixtures.commitStagingRecordsAndWaitForCondition(
+      async () => {
+        const { Project } = await import('../../src/models/index.js');
+        const project = await Project.findOne({ where: { warehouseProjectId } });
+        return project !== null;
+      },
+      { description: 'Project creation sync to main table (end-to-end test 1)' }
+    );
 
     // Make sure the staging table is cleaned up
     expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
@@ -168,15 +180,15 @@ describe('Project Resource Integration Tests', function () {
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
     const warehouseProjectId = changeRecord.warehouseProjectId;
 
-    // Now push the staging table live
-    await testFixtures.commitStagingRecords();
-
-    // After commiting the true flag should be set to this staging record
-    expect(
-      (await testFixtures.getLastCreatedStagingRecord()).commited,
-    ).to.equal(true);
-
-    await testFixtures.waitForDataLayerSync();
+    // Now push the staging table live and wait for sync using smart polling
+    await testFixtures.commitStagingRecordsAndWaitForCondition(
+      async () => {
+        const { Project } = await import('../../src/models/index.js');
+        const project = await Project.findOne({ where: { warehouseProjectId } });
+        return project !== null;
+      },
+      { description: 'Project creation sync to main table (end-to-end test 2)' }
+    );
 
     // Make sure the staging table is cleaned up
     expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
@@ -211,13 +223,14 @@ describe('Project Resource Integration Tests', function () {
       (await testFixtures.getLastCreatedStagingRecord()).commited,
     ).to.equal(false);
 
-    await testFixtures.commitStagingRecords();
-
-    expect(
-      (await testFixtures.getLastCreatedStagingRecord()).commited,
-    ).to.equal(true);
-
-    await testFixtures.waitForDataLayerSync();
+    // Now push the staging table live and wait for update to sync using smart polling
+    await testFixtures.commitStagingRecordsAndWaitForCondition(
+      async () => {
+        const updatedProject = await testFixtures.getProject(warehouseProjectId);
+        return updatedProject !== null;
+      },
+      { description: 'Project update sync to main table' }
+    );
 
     const updatedProject = await testFixtures.getProject(warehouseProjectId);
 

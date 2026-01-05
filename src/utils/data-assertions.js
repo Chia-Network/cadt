@@ -86,7 +86,16 @@ export const assertNoPendingCommitsExcludingTransfers = async () => {
 
 export const assertWalletIsSynced = async () => {
   if (!USE_SIMULATOR) {
-    if (!(await datalayer.walletIsSynced())) {
+    const isSynced = await datalayer.walletIsSynced();
+    if (!isSynced) {
+      // Check if the last error was a connection error
+      const lastError = datalayer.getLastWalletSyncError();
+      if (lastError && lastError.isConnectionError) {
+        throw new Error(
+          `Cannot connect to wallet RPC at ${lastError.walletRpcUrl || 'wallet service'}. Please ensure the wallet service is running and accessible.`,
+        );
+      }
+      // Otherwise, wallet is not synced
       throw new Error(
         'Your wallet is syncing, please wait for it to sync and try again',
       );

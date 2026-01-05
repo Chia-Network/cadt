@@ -211,7 +211,7 @@ CADT runs on a testnet called "testnetA" which is different than the main Chia t
 
      `sudo systemctl stop cadt@<USERNAME>`
 
- 5.  Update the `GOVERNANCE_BODY_ID` in `~/.chia/mainnet/cadt/v1/config.yaml` to be `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`
+ 5.  Update the `GOVERNANCE_BODY_ID` in the `V1` section of `~/.chia/mainnet/cadt/config.yaml` to be `1019153f631bb82e7fc4984dc1f0f2af9e95a7c29df743f7b4dcc2b975857409`
 
  6.  If you already were running CADT on mainnet, delete the CADT database
 
@@ -232,7 +232,7 @@ The CADT API uses HTTP and is unencrypted. To add encryption, use a reverse prox
 
 ### Configuration
 
-In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add a directory called `cadt/v1` when the application is first run (in fact, this directory could be deleted at any time and CADT will recreate it next time it is started).  The main CADT configuration file is called `config.yaml` and can be found in this directory.  The options in this file are as follows (the full list of available options can be seen in the [config template](src/utils/defaultConfig.json)):
+In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add a directory called `cadt` when the application is first run. The main CADT configuration file is called `config.yaml` and can be found at `~/.chia/mainnet/cadt/config.yaml`. This unified config file has three sections: `APP` (shared configuration), `V1` (V1-specific settings), and `V2` (V2-specific settings). Database files are stored in `cadt/v1` and `cadt/v2` subdirectories. The options in the config file are as follows (the full list of available options can be seen in the [config template](src/utils/defaultConfig.js)):
 
 * **MIRROR_DB**: This section is for configuring the MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the data CADT uses.
   *  **DB_USERNAME**:  MySQL username

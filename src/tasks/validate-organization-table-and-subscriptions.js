@@ -10,7 +10,7 @@ const CONFIG = getConfig().APP;
 
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const task = new Task('validate-organization-table', async () => {
   try {

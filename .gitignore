@@ -3,6 +3,11 @@ data.sqlite3
 test.sqlite3
 test.sqlite3*
 testMirror.sqlite3
+testMirror-v2.sqlite3
+*-v2.sqlite3
+*-v2.sqlite3*
+*.sql
+*.sql.gz
 
 # dependencies
 /node_modules
@@ -11,6 +16,7 @@ testMirror.sqlite3
 
 # testing
 /coverage
+tests/v2/*/.organization-state.json
 
 # production
 /build

@@ -2,16 +2,57 @@ import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
-import { getConfig } from '../utils/config-loader';
+import { getConfig, getConfigV2 } from '../utils/config-loader';
 import wallet from './wallet';
 import { Organization } from '../models';
+import { OrganizationsV2 } from '../models/v2/index.js';
 import { logger } from '../config/logger.js';
 import { getChiaRoot } from '../utils/chia-root.js';
-import { getMirrorUrl } from '../utils/datalayer-utils';
+import { getMirrorUrl, decodeHex } from '../utils/datalayer-utils';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 const CONFIG = getConfig().APP;
+
+/**
+ * Get home organization from the appropriate version (V2 if enabled, otherwise V1)
+ * Prioritizes V2 when enabled, falls back to V1 only if V1 is also enabled
+ * @returns {Promise<Object|null>} Home organization record or null if not found
+ */
+const getHomeOrg = async () => {
+  const configV1 = getConfig();
+  const configV2 = getConfigV2();
+  const enableV1 = configV1?.ENABLE !== false;
+  const enableV2 = configV2?.ENABLE !== false;
+
+  // Try V2 first if enabled
+  if (enableV2) {
+    try {
+      const v2HomeOrg = await OrganizationsV2.getHomeOrg();
+      if (v2HomeOrg) {
+        return v2HomeOrg;
+      }
+    } catch (error) {
+      // V2 org doesn't exist or error - fall through to V1 if enabled
+      logger.debug('[persistance]: V2 home org not found, trying V1');
+    }
+  }
+
+  // Fallback to V1 only if V1 is enabled
+  if (enableV1) {
+    try {
+      return await Organization.getHomeOrg();
+    } catch (error) {
+      // V1 org doesn't exist
+      logger.debug('[persistance]: No home org found in V1');
+      return null;
+    }
+  }
+
+  // Neither V1 nor V2 is enabled or orgs don't exist
+  logger.debug('[persistance]: No home org found - V1 and V2 both disabled or no orgs exist');
+  return null;
+};
 
 const getBaseOptions = () => {
   const chiaRoot = getChiaRoot();
@@ -62,6 +103,12 @@ const getValue = async (storeId, storeKey) => {
 
 const getMirrors = async (storeId) => {
   logger.silly(`[MIRROR_DEBUG] Starting getMirrors for storeId: ${storeId}`);
+
+  // In simulator mode, return empty array (no mirrors in simulator)
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    logger.debug(`[MIRROR_DEBUG] Simulator mode - returning empty mirrors array`);
+    return [];
+  }
 
   const url = `${CONFIG.DATALAYER_URL}/get_mirrors`;
   const { cert, key, timeout } = getBaseOptions();
@@ -186,7 +233,7 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
   await wallet.waitForAllTransactionsToConfirm();
   logger.silly('[MIRROR_DEBUG] Wallet transactions confirmed');
 
-  const homeOrg = await Organization.getHomeOrg();
+  const homeOrg = await getHomeOrg();
   logger.debug(
     `[MIRROR_DEBUG] Home org retrieved: ${homeOrg ? 'found' : 'not found'}`,
   );
@@ -236,6 +283,12 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
   logger.debug(
     '[MIRROR_DEBUG] No existing mirror found, proceeding to create new mirror',
   );
+
+  // In simulator mode, return success without making RPC call
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    logger.debug(`[MIRROR_DEBUG] Simulator mode - returning success for addMirror`);
+    return true;
+  }
 
   try {
     const coinAmount = _.get(CONFIG, 'DEFAULT_COIN_AMOUNT', 300000000);
@@ -510,6 +563,12 @@ const getStoreData = async (storeId, rootHash) => {
 };
 
 const getRoot = async (storeId) => {
+  // In simulator mode, use simulator instead of making RPC calls
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    const simulator = await import('./simulator.js');
+    return await simulator.getRoot(storeId);
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/get_root`;
   const { cert, key, timeout } = getBaseOptions();
 
@@ -573,8 +632,41 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
     try {
       await wallet.waitForAllTransactionsToConfirm();
 
+      // Log the changelist being sent (with decoded keys/values for readability)
+      logger.debug(`[DATALAYER_RPC] Sending changelist to storeId: ${storeId}`, {
+        storeId,
+        changelistSize: changelist.length,
+        changelist: changelist.map((change) => {
+          const decoded = {
+            action: change.action,
+            key: change.key ? decodeHex(change.key) : change.key,
+          };
+          if (change.value) {
+            try {
+              decoded.value = decodeHex(change.value);
+              // Try to parse as JSON for better readability
+              try {
+                decoded.valueParsed = JSON.parse(decoded.value);
+              } catch {
+                // Not JSON, that's fine
+              }
+            } catch (e) {
+              decoded.value = change.value; // Keep hex if decode fails
+            }
+          }
+          return decoded;
+        }),
+      });
+
       const url = `${CONFIG.DATALAYER_URL}/batch_update`;
       const { cert, key, timeout } = getBaseOptions();
+
+      logger.silly(`[DATALAYER_RPC] Making RPC call to: ${url}`, {
+        url,
+        storeId,
+        changelistLength: changelist.length,
+        fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+      });
 
       const response = await superagent
         .post(url)
@@ -605,7 +697,63 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
           attempts++;
           await new Promise((resolve) => setTimeout(resolve, 5000));
           continue; // Retry
+        } else {
+          // If clearing pending roots didn't help, the key already exists in the datalayer
+          // This can happen when trying to INSERT a record that already exists
+          // Treat this as success since the desired end state (record exists) is already achieved
+          logger.info(
+            `Key already present in datalayer for storeId: ${storeId}. ` +
+              `This indicates the data already exists. Treating as success.`,
+          );
+          return true;
         }
+      }
+
+      // Handle "no change to tree data" error - this means the changelist wouldn't
+      // change the datalayer state (data already exists or is already in desired state)
+      // Treat this as success since the desired end state is already achieved
+      if (
+        data.error &&
+        data.error.includes('Changelist resulted in no change to tree data')
+      ) {
+        logger.info(
+          `Changelist resulted in no change to tree data for storeId: ${storeId}. ` +
+            `This indicates the data is already in the desired state. Treating as success.`,
+        );
+        return true;
+      }
+
+      // Handle "unknown key" errors - this is an ERROR, not acceptable
+      // All data in CADT must come from datalayer, so DELETE operations should always find the keys
+      // If keys are not found, it indicates a key format mismatch that needs to be fixed
+      if (data.error && data.error.includes('unknown key')) {
+        const isDeleteOnlyChangelist = changelist.every(change => change.action === 'delete');
+
+        // Log detailed information about the keys we're trying to delete
+        const deleteKeys = changelist.map(change => ({
+          hex: change.key,
+          decoded: decodeHex(change.key),
+        }));
+
+        logger.error(`[DELETE KEY MISMATCH ERROR] Unknown key error for ${isDeleteOnlyChangelist ? 'DELETE-only' : ''} changelist`, {
+          storeId,
+          deleteKeysCount: deleteKeys.length,
+          deleteKeys,
+          error: data.error,
+          traceback: data.traceback,
+        });
+
+        if (isDeleteOnlyChangelist) {
+          logger.error(
+            `CRITICAL: DELETE operation failed - keys not found in datalayer for storeId: ${storeId}. ` +
+              `This indicates a key format mismatch. All data in CADT must come from datalayer, ` +
+              `so DELETE operations should always find the keys. ` +
+              `Check logs for [DELETE KEY MISMATCH ERROR] and [DELETE KEY DEBUG] for details.`,
+          );
+        }
+
+        // Do NOT treat as success - this is an error that needs to be fixed
+        return false;
       }
 
       logger.error(
@@ -770,6 +918,17 @@ const getOwnedStores = async () => {
 };
 
 const makeOffer = async (offer) => {
+  // In simulator mode, return mock response
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    return {
+      success: true,
+      offer: {
+        trade_id: `simulator-trade-${Date.now()}`,
+        ...offer,
+      },
+    };
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/make_offer`;
   const { cert, key, timeout } = getBaseOptions();
   offer.fee = CONFIG.DEFAULT_FEE;
@@ -796,6 +955,14 @@ const makeOffer = async (offer) => {
 };
 
 const takeOffer = async (offer) => {
+  // In simulator mode, return mock response
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    return {
+      success: true,
+      trade_id: `simulator-trade-${Date.now()}`,
+    };
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/take_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
@@ -822,6 +989,12 @@ const takeOffer = async (offer) => {
 
 const verifyOffer = async (offer) => {
   logger.debug('Verifying offer:', offer);
+
+  // In simulator mode, return success without making RPC call
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    return true;
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/verify_offer`;
   const { cert, key, timeout } = getBaseOptions();
 
@@ -847,6 +1020,11 @@ const verifyOffer = async (offer) => {
 };
 
 const cancelOffer = async (tradeId) => {
+  // In simulator mode, return success without making RPC call
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    return { success: true };
+  }
+
   const url = `${CONFIG.DATALAYER_URL}/cancel_offer`;
   const { cert, key, timeout } = getBaseOptions();
 

@@ -1,7 +1,7 @@
 'use strict';
 
 import _ from 'lodash';
-import { uuid as uuidv4 } from 'uuidv4';
+import { v4 as uuidv4 } from 'uuid';
 import { Sequelize, Model } from 'sequelize';
 const Op = Sequelize.Op;
 
@@ -288,7 +288,7 @@ class Staging extends Model {
 
       return _.omit(offerResponse, ['success']);
     } catch (error) {
-      logger.error('Error in staging operation:', error);
+      logger.error('[v1]: Error in staging operation:', error);
       throw new Error(error.message);
     }
   };

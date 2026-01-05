@@ -7,7 +7,7 @@ import { encodeHex } from '../../utils/datalayer-utils';
 import { ModelKeys, Staging } from '../index';
 
 import ModelTypes from './simulator.modeltypes.cjs';
-import { uuid as uuidv4 } from 'uuidv4';
+import { v4 as uuidv4 } from 'uuid';
 
 class Simulator extends Model {
   /**
@@ -32,10 +32,28 @@ class Simulator extends Model {
    * @throws Will throw an error if the corresponding model for the table doesn't exist or if other database operations fail.
    */
   static async getMockedKvDiffFromStagingTable() {
-    const data = await Staging.findAll();
+    // Get data from V1 Staging table
+    // Only get records that have been committed
+    const v1Data = await Staging.findAll({
+      where: { commited: true },
+    });
+
+    // Get data from V2 Staging table
+    // Only get records that have been committed
+    let v2Data = [];
+    try {
+      const { StagingV2 } = await import('../v2/index.js');
+      v2Data = await StagingV2.findAll({
+        where: { committed: true },
+      });
+    } catch (error) {
+      // V2 models not available, skip V2 staging data
+    }
+
     const diff = [];
 
-    for (const staging of data) {
+    // Process V1 staging data
+    for (const staging of v1Data) {
       const lowerTable = staging.table.toLowerCase();
       const modelKey = ModelKeys[lowerTable];
       const array = [];
@@ -128,7 +146,35 @@ class Simulator extends Model {
       diff.push(array);
     }
 
-    return _.flatten(diff);
+    // Process V2 staging data (if any)
+    // V2 uses different structure: committed (not commited), data is JSON string
+    // V2 models use snake_case fields and different table names
+    for (const staging of v2Data) {
+      const array = [];
+      // V2 staging data is already in JSON string format
+      const parsedDataArray = JSON.parse(staging?.data ?? '[]');
+
+      for (const parsedData of parsedDataArray) {
+        if (!parsedData) continue;
+
+        // V2 uses the primary key from the data itself (e.g., cadTrustEstimationId, cadTrustUnitId)
+        // Use the uuid from the data as the key
+        const primaryKeyField = Object.keys(parsedData).find(key => key.startsWith('cadTrust') && key.endsWith('Id'));
+        const recordId = parsedData[primaryKeyField] || staging.uuid;
+
+        array.push({
+          key: encodeHex(`${staging.table}|${recordId}`),
+          value: encodeHex(JSON.stringify(parsedData)),
+          type: staging.action,
+        });
+      }
+
+      diff.push(array);
+    }
+
+    const flatDiff = _.flatten(diff);
+
+    return flatDiff;
   }
 }
 

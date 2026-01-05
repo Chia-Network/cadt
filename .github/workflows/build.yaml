@@ -135,7 +135,7 @@ jobs:
       # Mac .pkg build + sign
       - name: Import Apple installer signing certificate
         if: startsWith(matrix.runs-on , 'macos') && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
-        uses: Apple-Actions/import-codesign-certs@v5
+        uses: Apple-Actions/download-artifact@v6
         with:
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
           p12-file-base64: ${{ secrets.APPLE_DEV_ID_INSTALLER }}
@@ -143,7 +143,7 @@ jobs:
 
       - name: Import Apple Application signing certificate
         if: startsWith(matrix.runs-on , 'macos') && steps.check_secrets.outputs.HAS_SIGNING_SECRET && contains( github.ref, '-rc')
-        uses: Apple-Actions/import-codesign-certs@v5
+        uses: Apple-Actions/download-artifact@v6
         with:
           create-keychain: false # Created when importing the first cert
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
@@ -194,13 +194,13 @@ jobs:
 
       - name: Upload Mac Installer
         if: startsWith(matrix.runs-on , 'macos')
-        uses: actions/upload-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: ${{ matrix.artifact-name }}-mac-installer
           path: ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ github.workspace }}/dist
@@ -241,7 +241,7 @@ jobs:
   #         sudo cp ./node_modules/sqlite3/build/Release/node_sqlite3.node ./dist/
 
   #     - name: Upload artifacts
-  #       uses: actions/upload-artifact@v5
+  #       uses: actions/download-artifact@v7
   #       with:
   #         name: cadt-linux-arm64
   #         path: ${{ github.workspace }}/dist
@@ -264,7 +264,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download Linux artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ matrix.name }}
           path: ${{ matrix.name }}
@@ -293,7 +293,7 @@ jobs:
           dpkg-deb --build --root-owner-group "deb/$CLI_DEB_BASE"
 
       - name: Upload deb
-        uses: actions/upload-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: ${{ matrix.name }}-deb
           path: ${{ github.workspace }}/deb/*.deb
@@ -305,43 +305,43 @@ jobs:
       - debs
     steps:
       - name: Download Windows artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: cadt-windows-x64
           path: cadt-windows-x64
 
       - name: Download MacOS x64 artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: cadt-macos-x64-mac-installer
           path: cadt-macos-x64-mac-installer
 
       - name: Download MacOS arm64 artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: cadt-macos-arm64-mac-installer
           path: cadt-macos-arm64-mac-installer
 
       - name: Download x64 Linux artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: cadt-linux-x64
           path: cadt-linux-x64
 
       - name: Download arm64 Linux artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: cadt-linux-arm64
           path: cadt-linux-arm64
 
       - name: Download Linux x64 deb
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: cadt-linux-x64-deb
           path: cadt-linux-x64-deb
 
       - name: Download Linux arm64 deb
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: cadt-linux-arm64-deb
           path: cadt-linux-arm64-deb

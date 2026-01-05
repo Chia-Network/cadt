@@ -3,6 +3,14 @@ export function isPluralized(name) {
   return name.endsWith('s');
 }
 
-export const genericFilterRegex = /(\w+):(.+):(in|eq|not|lt|gt|lte|gte|like)/;
-export const isArrayRegex = /\[.+\]/;
-export const genericSortColumnRegex = /(\w+):(ASC|DESC)/;
+// Anchored regex to prevent ReDoS: matches field:value:operator format
+// The .+ in the middle is greedy but anchored regex prevents catastrophic backtracking
+// Length validation (10000 chars) provides additional protection
+export const genericFilterRegex = /^(\w+):(.+):(in|eq|not|lt|gt|lte|gte|like)$/;
+// Safer regex: anchored to prevent catastrophic backtracking
+// Matches strings that start with '[' and end with ']' with any content in between
+export const isArrayRegex = /^\[.*\]$/;
+// Anchored regex to prevent ReDoS: matches column:direction format
+// Maximum reasonable length for order parameter is ~200 characters
+// Note: Column name validation happens separately via whitelist
+export const genericSortColumnRegex = /^([^:]+):(\w+)$/;

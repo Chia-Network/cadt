@@ -35,7 +35,7 @@ export const getDefaultOrganizationList = async (retryCount = 0) => {
     if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
       return [];
     } else {
-      logger.debug(`getting default organization list from governance data`);
+      logger.debug(`[v1]: getting default organization list from governance data`);
       const governanceData = await Governance.findOne({
         where: { metaKey: 'orgList' },
         raw: true,
@@ -59,7 +59,7 @@ export const getDefaultOrganizationList = async (retryCount = 0) => {
       throw error;
     }
 
-    logger.warn(`cannot get default org list. trying again Error: ${error}`);
+    logger.warn(`[v1]: cannot get default org list. trying again Error: ${error}`);
     await new Promise((resolve) => setTimeout(resolve, 5000));
     return getDefaultOrganizationList((retryCount += 1));
   }

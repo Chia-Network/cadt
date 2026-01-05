@@ -2,7 +2,7 @@ import _ from 'lodash';
 
 import { Sequelize } from 'sequelize';
 import xlsx from 'node-xlsx';
-import { uuid as uuidv4 } from 'uuidv4';
+import { v4 as uuidv4 } from 'uuid';
 
 import { Staging, Project, Organization, ModelKeys } from '../models';
 
@@ -137,14 +137,42 @@ export const findAll = async (req, res) => {
         where = {};
       }
 
+      // Type check: filter must be a string to prevent type confusion attacks
+      if (typeof filter !== 'string') {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: 'Filter parameter must be a string',
+          success: false,
+        });
+      }
+
+      // Limit input length to prevent ReDoS attacks
+      if (filter.length > 10000) {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: 'Filter parameter exceeds maximum length',
+          success: false,
+        });
+      }
       const matches = filter.match(genericFilterRegex);
-      // check if the value param is an array so we can parse it
-      const valueMatches = matches[2].match(isArrayRegex);
-      where[matches[1]] = {
-        [Sequelize.Op[matches[3]]]: valueMatches
-          ? JSON.parse(matches[2])
-          : matches[2],
-      };
+      if (matches) {
+        const valueStr = matches[2];
+        // Additional length check on extracted value
+        if (valueStr.length > 5000) {
+          return res.status(400).json({
+            message: 'Error retrieving projects',
+            error: 'Filter value exceeds maximum length',
+            success: false,
+          });
+        }
+        // check if the value param is an array so we can parse it
+        const valueMatches = valueStr.match(isArrayRegex);
+        where[matches[1]] = {
+          [Sequelize.Op[matches[3]]]: valueMatches
+            ? JSON.parse(valueStr)
+            : valueStr,
+        };
+      }
     }
 
     if (orgUid === 'all') {
@@ -231,9 +259,29 @@ export const findAll = async (req, res) => {
     // default to DESC
     let resultOrder = [['timeStaged', 'DESC']];
 
-    if (order?.match(genericSortColumnRegex)) {
-      const matches = order.match(genericSortColumnRegex);
-      resultOrder = [[matches[1], matches[2]]];
+    if (order) {
+      // Type check: order must be a string to prevent type confusion attacks
+      if (typeof order !== 'string') {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: 'Order parameter must be a string',
+          success: false,
+        });
+      }
+
+      // Limit input length to prevent ReDoS attacks
+      if (order.length > 200) {
+        return res.status(400).json({
+          message: 'Error retrieving projects',
+          error: 'Order parameter exceeds maximum length',
+          success: false,
+        });
+      }
+
+      if (order.match(genericSortColumnRegex)) {
+        const matches = order.match(genericSortColumnRegex);
+        resultOrder = [[matches[1], matches[2]]];
+      }
     }
 
     const results = await Project.findAndCountAll({
@@ -326,7 +374,7 @@ export const transfer = async (req, res) => {
       message: err.message,
       success: false,
     });
-    logger.error('Error adding update to stage', err);
+    logger.error('[v1]: Error adding update to stage', err);
   }
 };
 
@@ -427,7 +475,7 @@ const update = async (req, res, isTransfer = false) => {
       message: err.message,
       success: false,
     });
-    logger.error('Error adding update to stage', err);
+    logger.error('[v1]: Error adding update to stage', err);
   }
 };
 
@@ -481,7 +529,7 @@ export const batchUpload = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('Batch Upload Failed.', error);
+    logger.error('[v1]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,

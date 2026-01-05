@@ -5,7 +5,8 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { V1Router } from './routes/v1';
-import { getConfig } from './utils/config-loader';
+import { V2Router } from './routes/v2';
+import { getConfig, getConfigV2 } from './utils/config-loader';
 import {
   assertChiaNetworkMatchInConfiguration,
   assertDataLayerAvailable,
@@ -14,10 +15,10 @@ import {
 import packageJson from '../package.json' assert { type: 'json' };
 import datalayer from './datalayer';
 import { Organization } from './models';
+import { OrganizationsV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
 
-const { CADT_API_KEY, READ_ONLY, IS_GOVERNANCE_BODY, USE_SIMULATOR } =
-  getConfig().APP;
+const { USE_SIMULATOR } = getConfig().APP;
 
 const headerKeys = Object.freeze({
   API_VERSION_HEADER_KEY: 'x-api-version',
@@ -77,6 +78,11 @@ app.use(async function (req, res, next) {
     await assertWalletIsAvailable();
     next();
   } catch (err) {
+    if (res.headersSent) {
+      logger.warn('[middleware]: Response already sent, cannot send Chia exception');
+      return next(err);
+    }
+
     res.status(400).json({
       message: 'Chia Exception',
       error: err.message,
@@ -90,8 +96,26 @@ app.use(function (req, res, next) {
   next();
 });
 
-// Add optional API key if set in .env file
+// Add optional API key if set in config
+// Route-aware: Use V2 config for V2 routes, V1 config for V1 routes
 app.use(function (req, res, next) {
+  const isV2Route = req.path.startsWith('/v2/');
+  const isV1Route = req.path.startsWith('/v1/');
+
+  let CADT_API_KEY = null;
+  if (isV2Route) {
+    const configV2 = getConfigV2();
+    CADT_API_KEY = configV2.CADT_API_KEY;
+  } else if (isV1Route) {
+    const configV1 = getConfig();
+    CADT_API_KEY = configV1.CADT_API_KEY;
+  } else {
+    // For other routes, check both versions
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    CADT_API_KEY = configV2.CADT_API_KEY || configV1.CADT_API_KEY;
+  }
+
   if (CADT_API_KEY && CADT_API_KEY !== '') {
     const apikey = req.header('x-api-key');
     if (CADT_API_KEY === apikey) {
@@ -105,6 +129,23 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
+  const isV2Route = req.path.startsWith('/v2/');
+  const isV1Route = req.path.startsWith('/v1/');
+
+  let READ_ONLY = false;
+  if (isV2Route) {
+    const configV2 = getConfigV2();
+    READ_ONLY = configV2.READ_ONLY || false;
+  } else if (isV1Route) {
+    const configV1 = getConfig();
+    READ_ONLY = configV1.READ_ONLY || false;
+  } else {
+    // For other routes, check both versions
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    READ_ONLY = configV2.READ_ONLY || configV1.READ_ONLY || false;
+  }
+
   if (READ_ONLY) {
     res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, READ_ONLY);
   } else {
@@ -115,6 +156,23 @@ app.use(function (req, res, next) {
 });
 
 app.use(function (req, res, next) {
+  const isV2Route = req.path.startsWith('/v2/');
+  const isV1Route = req.path.startsWith('/v1/');
+
+  let IS_GOVERNANCE_BODY = false;
+  if (isV2Route) {
+    const configV2 = getConfigV2();
+    IS_GOVERNANCE_BODY = configV2.IS_GOVERNANCE_BODY || false;
+  } else if (isV1Route) {
+    const configV1 = getConfig();
+    IS_GOVERNANCE_BODY = configV1.IS_GOVERNANCE_BODY || false;
+  } else {
+    // For other routes, check both versions
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    IS_GOVERNANCE_BODY = configV2.IS_GOVERNANCE_BODY || configV1.IS_GOVERNANCE_BODY || false;
+  }
+
   res.setHeader(headerKeys.GOVERNANCE_BODY_HEADER_KEY, IS_GOVERNANCE_BODY);
   next();
 });
@@ -131,8 +189,66 @@ app.use(function (req, res, next) {
 
 app.use(async function (req, res, next) {
   if (process.env.NODE_ENV !== 'test') {
-    // If the home organization is syncing, then we treat all requests as read-only
-    const homeOrg = await Organization.getHomeOrg();
+    // Wait for migrations to complete before accessing organizations table
+    const { waitForMigrations } = await import('./routes/index.js');
+    await waitForMigrations();
+
+    // Determine which version to use based on request path
+    const isV2Route = req.path.startsWith('/v2/');
+    const isV1Route = req.path.startsWith('/v1/');
+
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    const enableV1 = configV1?.ENABLE !== false;
+    const enableV2 = configV2?.ENABLE !== false;
+
+    let homeOrg = null;
+
+    // For V2 routes, only use V2 models
+    if (isV2Route && enableV2) {
+      try {
+        homeOrg = await OrganizationsV2.getHomeOrg();
+      } catch (error) {
+        // V2 organization may not exist yet, which is OK
+        logger.debug('No home organization found in V2');
+      }
+    }
+    // For V1 routes, only use V1 models
+    else if (isV1Route && enableV1) {
+      try {
+        homeOrg = await Organization.getHomeOrg();
+      } catch (error) {
+        // V1 organization may not exist yet, which is OK
+        logger.debug('No home organization found in V1');
+      }
+    }
+    // For other routes (like /health), check enabled versions
+    else if (!isV2Route && !isV1Route) {
+      // Try V2 first if enabled
+      if (enableV2) {
+        try {
+          homeOrg = await OrganizationsV2.getHomeOrg();
+        } catch (error) {
+          // If V2 fails and V1 is enabled, try V1
+          if (enableV1) {
+            try {
+              homeOrg = await Organization.getHomeOrg();
+            } catch (v1Error) {
+              // Both failed - organization may not exist yet, which is OK
+              logger.debug('No home organization found in V1 or V2');
+            }
+          }
+        }
+      } else if (enableV1) {
+        // Only V1 is enabled
+        try {
+          homeOrg = await Organization.getHomeOrg();
+        } catch (error) {
+          // Organization may not exist yet, which is OK
+          logger.debug('No home organization found in V1');
+        }
+      }
+    }
 
     if (homeOrg) {
       if (!['GET', 'DELETE'].includes(req.method) && !homeOrg.synced) {
@@ -154,13 +270,77 @@ app.use(async function (req, res, next) {
 });
 
 app.use(async function (req, res, next) {
-  const orgMap = await Organization.getOrgsMap();
+  // Wait for migrations to complete before accessing organizations table
+  const { waitForMigrations } = await import('./routes/index.js');
+  await waitForMigrations();
+
+  // Determine which version to use based on request path
+  const isV2Route = req.path.startsWith('/v2/');
+  const isV1Route = req.path.startsWith('/v1/');
+
+  const configV1 = getConfig();
+  const configV2 = getConfigV2();
+  const enableV1 = configV1?.ENABLE !== false;
+  const enableV2 = configV2?.ENABLE !== false;
+
+  let orgMap = {};
+
+  // For V2 routes, only use V2 models
+  if (isV2Route && enableV2) {
+    try {
+      orgMap = await OrganizationsV2.getOrgsMap();
+    } catch (error) {
+      // V2 organizations may not exist yet, which is OK
+      logger.debug('No organizations found in V2');
+      orgMap = {};
+    }
+  }
+  // For V1 routes, only use V1 models
+  else if (isV1Route && enableV1) {
+    try {
+      orgMap = await Organization.getOrgsMap();
+    } catch (error) {
+      // V1 organizations may not exist yet, which is OK
+      logger.debug('No organizations found in V1');
+      orgMap = {};
+    }
+  }
+  // For other routes (like /health), check enabled versions
+  else if (!isV2Route && !isV1Route) {
+    // Try V2 first if enabled
+    if (enableV2) {
+      try {
+        orgMap = await OrganizationsV2.getOrgsMap();
+      } catch (error) {
+        // If V2 fails and V1 is enabled, try V1
+        if (enableV1) {
+          try {
+            orgMap = await Organization.getOrgsMap();
+          } catch (v1Error) {
+            // Both failed - organizations may not exist yet, which is OK
+            logger.debug('No organizations found in V1 or V2');
+            orgMap = {};
+          }
+        }
+      }
+    } else if (enableV1) {
+      // Only V1 is enabled
+      try {
+        orgMap = await Organization.getOrgsMap();
+      } catch (error) {
+        // Organizations may not exist yet, which is OK
+        logger.debug('No organizations found in V1');
+        orgMap = {};
+      }
+    }
+  }
+
   const notSynced = Object.keys(orgMap).find((key) => !orgMap[key].synced);
 
   res.setHeader(headerKeys.ALL_DATA_SYNCED, !notSynced);
 
   const syncRemaining = Object.keys(orgMap).reduce((agg, key) => {
-    return agg + orgMap[key].sync_remaining;
+    return agg + (orgMap[key].sync_remaining || 0);
   }, 0);
 
   res.setHeader(headerKeys.SYNC_REMAINING, syncRemaining);
@@ -184,10 +364,52 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use('/v1', V1Router);
+// Conditionally mount V1 and V2 routes based on config
+// Each version's enable flag is in its own config file
+const configV1 = getConfig();
+const configV2 = getConfigV2();
+const enableV1 = configV1?.ENABLE !== false; // Default to true if not set
+const enableV2 = configV2?.ENABLE !== false; // Default to true if not set
+
+if (enableV1) {
+  app.use('/v1', V1Router);
+  logger.info('[v1]: V1 API routes enabled');
+} else {
+  // Return 403 Forbidden for disabled V1 endpoints
+  // 403 is more appropriate than 503 since this is a configuration choice, not temporary unavailability
+  app.use('/v1', (req, res) => {
+    res.status(403).json({
+      error: 'V1 API is disabled',
+      message: 'V1 functionality has been disabled',
+      success: false,
+    });
+  });
+  logger.info('[v1]: V1 API routes disabled');
+}
+
+if (enableV2) {
+  app.use('/v2', V2Router);
+  logger.info('[v2]: V2 API routes enabled');
+} else {
+  // Return 403 Forbidden for disabled V2 endpoints
+  // 403 is more appropriate than 503 since this is a configuration choice, not temporary unavailability
+  app.use('/v2', (req, res) => {
+    res.status(403).json({
+      error: 'V2 API is disabled',
+      message: 'V2 functionality has been disabled',
+      success: false,
+    });
+  });
+  logger.info('[v2]: V2 API routes disabled');
+}
 
 app.use((err, req, res, next) => {
   if (err) {
+    if (res.headersSent) {
+      logger.warn('[middleware]: Response already sent, cannot handle error');
+      return next(err);
+    }
+
     if (_.get(err, 'error.details')) {
       // format Joi validation errors
       return res.status(400).json({
@@ -195,6 +417,15 @@ app.use((err, req, res, next) => {
         errors: err.error.details.map((detail) => {
           return _.get(detail, 'context.message', detail.message);
         }),
+        success: false,
+      });
+    }
+
+    // If err is an Error object, it won't serialize well - extract message
+    if (err instanceof Error) {
+      return res.status(err?.status || 400).json({
+        message: err.message || 'An error occurred',
+        error: err.message,
         success: false,
       });
     }
