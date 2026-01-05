@@ -1487,6 +1487,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
+**Note**: The ID in the URL path is the `cadTrustMethodologyId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/methodology/9b9bb857-c71b-4649-b805-a289db27dc1c' \
@@ -1515,6 +1517,8 @@ Response
 ### DELETE Examples
 
 #### Delete methodology
+
+**Note**: The ID in the URL path is the `cadTrustMethodologyId`.
 
 Request
 ```shell
@@ -1641,6 +1645,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustProgramId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/program/51ca9638-22b0-4e14-ae7a-c09d23b37b58' \
@@ -1668,6 +1674,8 @@ Response
 ### DELETE Examples
 
 #### Delete program
+
+**Note**: The ID in the URL path is the `cadTrustProgramId`.
 
 Request
 ```shell
@@ -2011,6 +2019,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
+**Note**: The ID in the URL path is the `cadTrustProjectId`.
+
 Request
 ```sh
 curl --location -g --request PUT 'http://localhost:31310/v2/project/51ca9638-22b0-4e14-ae7a-c09d23b37b58' \
@@ -2086,6 +2096,8 @@ Response
 ### DELETE Examples
 
 #### Delete project
+
+**Note**: The ID in the URL path is the `cadTrustProjectId`.
 
 Request
 ```shell
@@ -2232,6 +2244,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
+**Note**: The ID in the URL path is the `cadTrustValidationId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/validation/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
@@ -2261,6 +2275,8 @@ Response
 ### DELETE Examples
 
 #### Delete validation
+
+**Note**: The ID in the URL path is the `cadTrustValidationId`.
 
 Request
 ```shell
@@ -2394,6 +2410,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
+**Note**: The ID in the URL path is the `cadTrustVerificationId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/verification/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
@@ -2422,6 +2440,8 @@ Response
 ### DELETE Examples
 
 #### Delete verification
+
+**Note**: The ID in the URL path is the `cadTrustVerificationId`.
 
 Request
 ```shell
@@ -2555,6 +2575,8 @@ Fields are the same as POST (see above).
 
 **Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`. Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustLocationId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/location/8182100d-7794-4df7-b3b3-758391d13011' \
@@ -2583,6 +2605,8 @@ Response
 ### DELETE Examples
 
 #### Delete location
+
+**Note**: The ID in the URL path is the `cadTrustLocationId`.
 
 Request
 ```shell
@@ -2710,6 +2734,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustIssuanceId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/issuance/d9f58b08-af25-461c-88eb-403bb02b135e' \
@@ -2737,6 +2763,8 @@ Response
 ### DELETE Examples
 
 #### Delete issuance
+
+**Note**: The ID in the URL path is the `cadTrustIssuanceId`.
 
 Request
 ```shell
@@ -3181,6 +3209,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
+**Note**: The ID in the URL path is the `cadTrustUnitId`.
+
 Request
 ```shell
 curl --location -g --request PUT 'localhost:31310/v2/unit/9a5def49-7af6-428a-9958-a1e88d74bf58' \
@@ -3234,6 +3264,8 @@ Response
 ### DELETE Examples
 
 #### Delete unit
+
+**Note**: The ID in the URL path is the `cadTrustUnitId`.
 
 Request
 ```shell
@@ -3368,6 +3400,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustEstimationId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/estimation/c73fb4e7-3bd0-4449-8a57-6137b7c95a1f' \
@@ -3395,6 +3429,8 @@ Response
 ### DELETE Examples
 
 #### Delete estimation
+
+**Note**: The ID in the URL path is the `cadTrustEstimationId`.
 
 Request
 ```shell
@@ -3520,6 +3556,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustRatingId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/rating/d31c3c75-b944-498d-9557-315f9005f478' \
@@ -3547,6 +3585,8 @@ Response
 ### DELETE Examples
 
 #### Delete rating
+
+**Note**: The ID in the URL path is the `cadTrustRatingId`.
 
 Request
 ```shell
@@ -3660,6 +3700,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustCoBenefitId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/co-benefit/73cfbe9c-8cea-4aca-94d8-f1641e686787' \
@@ -3684,6 +3726,8 @@ Response
 ### DELETE Examples
 
 #### Delete co-benefit
+
+**Note**: The ID in the URL path is the `cadTrustCoBenefitId`.
 
 Request
 ```shell
@@ -3803,6 +3847,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustProjectMethodologyId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/project-methodology/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
@@ -3830,6 +3876,8 @@ Response
 ### DELETE Examples
 
 #### Delete project-methodology relationship
+
+**Note**: The ID in the URL path is the `cadTrustProjectMethodologyId`.
 
 Request
 ```shell
@@ -3946,6 +3994,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustStakeholderId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/stakeholder/e880047e-cdf4-45bb-a9df-e706fa427713' \
@@ -3971,6 +4021,8 @@ Response
 ### DELETE Examples
 
 #### Delete stakeholder
+
+**Note**: The ID in the URL path is the `cadTrustStakeholderId`.
 
 Request
 ```shell
@@ -4084,6 +4136,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustStakeholderProjectId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/stakeholder-projects/f1a2b3c4-d5e6-7890-abcd-ef1234567890' \
@@ -4108,6 +4162,8 @@ Response
 ### DELETE Examples
 
 #### Delete stakeholder-project relationship
+
+**Note**: The ID in the URL path is the `cadTrustStakeholderProjectId`.
 
 Request
 ```shell
@@ -4228,6 +4284,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustLabelId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/label/dcacd68e-1cfb-4f06-9798-efa0aacda42c' \
@@ -4254,6 +4312,8 @@ Response
 ### DELETE Examples
 
 #### Delete label
+
+**Note**: The ID in the URL path is the `cadTrustLabelId`.
 
 Request
 ```shell
@@ -4375,6 +4435,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustUnitLabelId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/unit-label/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
@@ -4401,6 +4463,8 @@ Response
 ### DELETE Examples
 
 #### Delete unit-label relationship
+
+**Note**: The ID in the URL path is the `cadTrustUnitLabelId`.
 
 Request
 ```shell
@@ -4526,6 +4590,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed.
 
+**Note**: The ID in the URL path is the `cadTrustAefT1SubmissionId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/aef-t1-submission/a1b2c3d4-e5f6-7890-abcd-ef1234567890' \
@@ -4557,6 +4623,8 @@ Response
 ### DELETE Examples
 
 #### Delete AEF-T1-Submission
+
+**Note**: The ID in the URL path is the `cadTrustAefT1SubmissionId`.
 
 Request
 ```shell
@@ -4711,6 +4779,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
+**Note**: The ID in the URL path is the `cadTrustAefT2AuthorizationsId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/aef-t2-authorizations/c3d4e5f6-a7b8-9012-cdef-345678901234' \
@@ -4756,6 +4826,8 @@ Response
 ### DELETE Examples
 
 #### Delete AEF-T2-Authorizations
+
+**Note**: The ID in the URL path is the `cadTrustAefT2AuthorizationsId`.
 
 Request
 ```shell
@@ -4889,6 +4961,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
+**Note**: The ID in the URL path is the `cadTrustAefT5AuthorizedEntitiesId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/aef-t5-authorized-entities/b2c3d4e5-f6a7-8901-bcde-f23456789012' \
@@ -4923,6 +4997,8 @@ Response
 ### DELETE Examples
 
 #### Delete AEF-T5-Authorized-Entities
+
+**Note**: The ID in the URL path is the `cadTrustAefT5AuthorizedEntitiesId`.
 
 Request
 ```shell
@@ -5094,6 +5170,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
+**Note**: The ID in the URL path is the `cadTrustAefT3ActionsId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/aef-t3-actions/d4e5f6a7-b8c9-0123-def4-456789012345' \
@@ -5147,6 +5225,8 @@ Response
 ### DELETE Examples
 
 #### Delete AEF-T3-Actions
+
+**Note**: The ID in the URL path is the `cadTrustAefT3ActionsId`.
 
 Request
 ```shell
@@ -5296,6 +5376,8 @@ Fields are the same as POST (see above).
 
 **Note**: Update requests must include ALL fields, not just the ones being changed. Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
 
+**Note**: The ID in the URL path is the `cadTrustAefT4HoldingsId`.
+
 Request
 ```shell
 curl --location --request PUT 'localhost:31310/v2/aef-t4-holdings/e5f6a7b8-c9d0-1234-ef56-567890123456' \
@@ -5338,6 +5420,8 @@ Response
 ### DELETE Examples
 
 #### Delete AEF-T4-Holdings
+
+**Note**: The ID in the URL path is the `cadTrustAefT4HoldingsId`.
 
 Request
 ```shell

@@ -3,7 +3,37 @@
 import { Sequelize, Model } from 'sequelize';
 import { sequelizeV2 } from '../../database/v2/index.js';
 
-class AefT4HoldingsV2Mirror extends Model {}
+class AefT4HoldingsV2Mirror extends Model {
+  static async create(values, options) {
+    const result = await super.create(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async bulkCreate(values, options) {
+    const result = await super.bulkCreate(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async update(values, options) {
+    const result = await super.update(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async upsert(values, options) {
+    const result = await super.upsert(values, options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+
+  static async destroy(options) {
+    const result = await super.destroy(options);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    return result;
+  }
+}
 
 AefT4HoldingsV2Mirror.init(
   {

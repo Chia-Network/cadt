@@ -85,7 +85,7 @@ class ProjectV2 extends Model {
     ProjectV2.changes.next(['projects', org_uid]);
 
     // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     return createResult;
   }
@@ -96,7 +96,7 @@ class ProjectV2 extends Model {
     ProjectV2.changes.next(['projects', org_uid]);
 
     // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     return upsertResult;
   }
@@ -106,7 +106,7 @@ class ProjectV2 extends Model {
     const result = await super.destroy(options);
 
     // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     return result;
   }
