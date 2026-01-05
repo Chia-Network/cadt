@@ -912,11 +912,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
         expect(response.body.success).to.be.true;
         expect(response.body.message).to.equal('Unit split successful');
+        expect(response.body.uuid).to.exist;
 
         // Verify staging record was created
         const stagingRecord = await StagingV2.findOne({
           where: {
-            uuid: unit.cadTrustUnitId,
+            uuid: response.body.uuid,
             table: 'unit',
             action: 'UPDATE',
             committed: false,

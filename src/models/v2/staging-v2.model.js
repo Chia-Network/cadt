@@ -57,20 +57,49 @@ class StagingV2 extends Model {
 
     // Small delay to ensure WAL write is visible to subsequent reads
     // SQLite WAL mode can have timing issues where immediate reads don't see recent writes
-    // 10ms is sufficient for WAL checkpoint while minimizing test slowdown
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // 20ms is sufficient for WAL checkpoint while minimizing test slowdown
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    return result;
+  }
+
+  static async bulkCreate(values, options) {
+    StagingV2.changes.next(['staging']);
+    const result = await super.bulkCreate(values, options);
+
+    // Small delay for WAL visibility
+    await new Promise(resolve => setTimeout(resolve, 20));
 
     return result;
   }
 
   static async destroy(values) {
     StagingV2.changes.next(['staging']);
-    return super.destroy(values);
+    const result = await super.destroy(values);
+
+    // Small delay for WAL visibility
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    return result;
   }
 
   static async upsert(values, options) {
     StagingV2.changes.next(['staging']);
-    return super.upsert(values, options);
+    const result = await super.upsert(values, options);
+
+    // Small delay for WAL visibility
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    return result;
+  }
+
+  static async update(values, options) {
+    const result = await super.update(values, options);
+
+    // Small delay for WAL visibility
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    return result;
   }
 
   /**

@@ -5,6 +5,8 @@ import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { AuditV2, OrganizationsV2 } from '../../../src/models/v2/index.js';
 import { Audit } from '../../../src/models/index.js';
 import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
+import TaskManager from '../../../src/tasks/index.js';
+import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 
 /**
  * Phase 17.5: AuditV2 Comprehensive Integration Tests
@@ -26,6 +28,9 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
 
+    // Stop background tasks to prevent interference with audit tests
+    TaskManager.stopAll();
+
     // Clean up any existing data
     await AuditV2.destroy({ where: {} });
     await OrganizationsV2.destroy({ where: {} });
@@ -34,6 +39,12 @@ describe('Phase 17.5: AuditV2 Comprehensive Integration Tests', function () {
     // Create test home organization
     const homeOrg = await createV2TestHomeOrg();
     testOrgUid = homeOrg.org_uid;
+  });
+
+  after(async function () {
+    const configV1 = getConfig();
+    const configV2 = getConfigV2();
+    TaskManager.start(configV1?.ENABLE !== false, configV2?.ENABLE !== false);
   });
 
   beforeEach(async function () {

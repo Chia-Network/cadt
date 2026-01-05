@@ -2,8 +2,9 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { LabelV2, LabelV2Mirror, StagingV2 } from '../../../src/models/v2/index.js';
+import { LabelV2, LabelV2Mirror, StagingV2, OrganizationsV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
 
 describe('Label V2 Endpoint Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -11,6 +12,9 @@ describe('Label V2 Endpoint Integration Tests', function () {
   before(async function () {
     console.log('Setting up Label V2 test environment...');
     await prepareV2Db();
+
+    // Ensure home organization exists for API tests
+    await createV2TestHomeOrg();
   });
 
   after(async function () {

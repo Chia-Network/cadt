@@ -845,10 +845,11 @@ export const split = async (req, res) => {
     }
 
     // Use the model's split method
-    await UnitV2.split(cadTrustUnitId, records);
+    const result = await UnitV2.split(cadTrustUnitId, records);
 
     res.json({
       message: 'Unit split successful',
+      uuid: result.uuid,
       success: true,
     });
   } catch (error) {

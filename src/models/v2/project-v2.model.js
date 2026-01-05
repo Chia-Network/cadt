@@ -83,6 +83,10 @@ class ProjectV2 extends Model {
     const createResult = await super.create(values, options);
     const { org_uid } = values;
     ProjectV2.changes.next(['projects', org_uid]);
+
+    // Small delay for WAL visibility
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
     return createResult;
   }
 
@@ -90,12 +94,21 @@ class ProjectV2 extends Model {
     const upsertResult = await super.upsert(values, options);
     const { org_uid } = values;
     ProjectV2.changes.next(['projects', org_uid]);
+
+    // Small delay for WAL visibility
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
     return upsertResult;
   }
 
   static async destroy(options) {
     ProjectV2.changes.next(['projects']);
-    return super.destroy(options);
+    const result = await super.destroy(options);
+
+    // Small delay for WAL visibility
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    return result;
   }
 
   /**

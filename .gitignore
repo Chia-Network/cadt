@@ -9,7 +9,6 @@ testMirror-v2.sqlite3
 *.sql
 *.sql.gz
 
-
 # dependencies
 /node_modules
 /.pnp
