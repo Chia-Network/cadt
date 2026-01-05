@@ -117,7 +117,9 @@ jobs:
         run: ls -lah ~
 
       - name: Install yq
-        run: apt install -y yq
+        run: |
+          apt-get update
+          apt-get install -y yq
 
       - name: Install Chia and chia-tools
         shell: bash
