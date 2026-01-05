@@ -3,7 +3,7 @@ import { Audit, Meta } from '../models';
 import { logger } from '../config/logger.js';
 import dotenv from 'dotenv';
 import _ from 'lodash';
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const task = new Task('reset-audit-table', async () => {
   try {

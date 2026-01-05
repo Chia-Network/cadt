@@ -12,7 +12,7 @@ import { Organization } from '../models';
 const CONFIG = getConfig();
 
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const task = new Task('sync-governance-meta', async () => {
   try {

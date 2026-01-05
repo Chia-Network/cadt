@@ -10,7 +10,7 @@ import { loggerV2 } from '../config/logger.js';
 const CONFIG = getConfig().APP;
 
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const task = new Task('sync-organization-meta-v2', async () => {
   try {

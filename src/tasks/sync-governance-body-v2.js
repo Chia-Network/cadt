@@ -12,7 +12,7 @@ const CONFIG = getConfig().APP;
 const CONFIG_V2 = getConfigV2();
 
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const task = new Task('sync-governance-meta-v2', async () => {
   try {

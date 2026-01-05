@@ -9,7 +9,7 @@ import { migrations } from './migrations';
 import { seeders } from './seeders';
 
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // possible values: local, test
 const nodeEnv = process.env.NODE_ENV;
