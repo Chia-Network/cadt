@@ -67,7 +67,7 @@
     "sqlite3": "^5.1.7",
     "superagent": "^10.2.3",
     "toad-scheduler": "^3.0.1",
-    "uuid": "^10.0.0",
+    "uuid": "^13.0.0",
     "uuidv4": "^6.2.13",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0"
