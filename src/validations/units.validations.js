@@ -17,7 +17,7 @@ const unitsBaseSchema = {
   // issuanceId - derived upon unit creation
   // orgUid - derived upon unit creation
   projectLocationId: Joi.string().allow(null).optional(),
-  unitOwner: Joi.string().allow(null).optional(),
+  unitOwner: Joi.string().max(500).allow(null).optional(),
   countryJurisdictionOfOwner: Joi.string()
     .custom(pickListValidation('countries', 'countryJurisdictionOfOwner'))
     .required(),
