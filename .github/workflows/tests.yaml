@@ -61,7 +61,7 @@ jobs:
       - uses: Chia-Network/actions/clean-workspace@main
 
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
@@ -90,94 +90,94 @@ jobs:
       - name: npm tests
         run: npm run test:v2
 
-  test-v2-live-api:
-    name: v2 live api tests
-    runs-on: ubuntu-latest
-    container:
-      image: node:20.16
+  # test-v2-live-api:
+  #   name: v2 live api tests
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: node:20.16
 
-    steps:
-      - uses: Chia-Network/actions/clean-workspace@main
+  #   steps:
+  #     - uses: Chia-Network/actions/clean-workspace@main
 
-      - name: Checkout Code
-        uses: actions/checkout@v5
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v6
 
-      - name: Ignore Husky
-        run: npm pkg delete scripts.prepare
+  #     - name: Ignore Husky
+  #       run: npm pkg delete scripts.prepare
 
-      - name: Install Mocha
-        run: npm install --save-dev mocha
+  #     - name: Install Mocha
+  #       run: npm install --save-dev mocha
 
-      - name: npm install
-        run: npm install
+  #     - name: npm install
+  #       run: npm install
 
-      - name: install global packages
-        run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
-      - name: Show home directory
-        run: ls -lah ~
+  #     - name: install global packages
+  #       run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
+  #     - name: Show home directory
+  #       run: ls -lah ~
 
-      - name: Install yq
-        run: |
-          apt-get update
-          apt-get install -y yq
+  #     - name: Install yq
+  #       run: |
+  #         apt-get update
+  #         apt-get install -y yq
 
-      - name: Install Chia and chia-tools
-        shell: bash
-        run: |
-          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
+  #     - name: Install Chia and chia-tools
+  #       shell: bash
+  #       run: |
+  #         curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
+  #         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+  #         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+  #         apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+  #         apt-get install -y chia-blockchain-cli chia-tools
 
-      - name: Configure Chia
-        shell: bash
-        run: |
-          chia init
-          chia keys generate -l "functional_tests"
-          chia-tools network switch testneta
-          chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia configure -log-level INFO
+  #     - name: Configure Chia
+  #       shell: bash
+  #       run: |
+  #         chia init
+  #         chia keys generate -l "functional_tests"
+  #         chia-tools network switch testneta
+  #         chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+  #         chia configure -log-level INFO
 
-      - name: Configure CADT
-        shell: bash
-        run: |
-          # Run cadt momentarily to create config file
-          pm2 start npm --no-autorestart --name "core-registry-cadt" -- start
-          sleep 10
-          pm2 logs core-registry-cadt --nostream
-          pm2 stop core-registry-cadt
+  #     - name: Configure CADT
+  #       shell: bash
+  #       run: |
+  #         # Run cadt momentarily to create config file
+  #         pm2 start npm --no-autorestart --name "core-registry-cadt" -- start
+  #         sleep 10
+  #         pm2 logs core-registry-cadt --nostream
+  #         pm2 stop core-registry-cadt
 
-          # Remove cadt databases to reset system
-          echo "Removing cadt databases to reset system..."
-          rm -f ~/.chia/mainnet/core-registry/cadt/v1/data.sqlite3*
-          rm -f ~/.chia/mainnet/core-registry/cadt/v2/data.sqlite3*
+  #         # Remove cadt databases to reset system
+  #         echo "Removing cadt databases to reset system..."
+  #         rm -f ~/.chia/mainnet/core-registry/cadt/v1/data.sqlite3*
+  #         rm -f ~/.chia/mainnet/core-registry/cadt/v2/data.sqlite3*
 
-          # Configure CADT to most verbose logs
-          echo "Configuring CADT config.yaml..."
-          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = "true"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.ENABLE = "false"' ~/.chia/mainnet/cadt/config.yaml
+  #         # Configure CADT to most verbose logs
+  #         echo "Configuring CADT config.yaml..."
+  #         yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = "true"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.V2.ENABLE = "false"' ~/.chia/mainnet/cadt/config.yaml
 
 
-      # - name: npm live api tests
-      #   run: |
-      #     echo "########################################################"
-      #     echo "Running organization creation tests"
-      #     echo "########################################################"
-      #     npm run test:v2:live:organization:create
-      #     echo "########################################################"
-      #     echo "Running data tests"
-      #     echo "########################################################"
-      #     npm run test:v2:live:data:short
-      #     echo "########################################################"
-      #     echo "Running organization deletion tests"
-      #     echo "########################################################"
-      #     npm run test:v2:live:organization:delete
+  #     # - name: npm live api tests
+  #     #   run: |
+  #     #     echo "########################################################"
+  #     #     echo "Running organization creation tests"
+  #     #     echo "########################################################"
+  #     #     npm run test:v2:live:organization:create
+  #     #     echo "########################################################"
+  #     #     echo "Running data tests"
+  #     #     echo "########################################################"
+  #     #     npm run test:v2:live:data:short
+  #     #     echo "########################################################"
+  #     #     echo "Running organization deletion tests"
+  #     #     echo "########################################################"
+  #     #     npm run test:v2:live:organization:delete

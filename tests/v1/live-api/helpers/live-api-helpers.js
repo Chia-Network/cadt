@@ -27,6 +27,7 @@ let cachedConfig = null;
  * Read production config from ~/.chia/mainnet/cadt/config.yaml
  * This reads the actual production config, not test config
  * Config is cached after first read
+ * V1 uses port 31311 (can be overridden by config)
  */
 export const getLiveApiConfig = () => {
   // Return cached config if available
@@ -48,14 +49,15 @@ export const getLiveApiConfig = () => {
     } else {
       // Fallback to defaults if config doesn't exist
       console.warn(`⚠️  Config file not found at ${configFile}, using defaults`);
-      config = { APP: { CW_PORT: 31310 } };
+      config = { APP: { CW_PORT: 31311 } };
     }
   } catch (error) {
     console.error(`❌ Error reading config file: ${error.message}`);
-    config = { APP: { CW_PORT: 31310 } };
+    config = { APP: { CW_PORT: 31311 } };
   }
 
-  const port = config?.APP?.CW_PORT || 31310;
+  // Use port 31311 for V1 (user specified), but allow config override
+  const port = config?.APP?.CW_PORT || 31311;
   const baseUrl = `http://localhost:${port}`;
 
   console.log(`Using API endpoint: ${baseUrl} (port: ${port})`);
@@ -73,7 +75,7 @@ export const createLiveApiRequest = () => {
 };
 
 /**
- * Check if server is running by hitting health endpoint
+ * Check if server is running by hitting organizations endpoint (V1 doesn't have /health)
  * Retries with timeout if server not ready
  */
 export const waitForServer = async (request, maxWaitTime = 30000) => {
@@ -82,7 +84,7 @@ export const waitForServer = async (request, maxWaitTime = 30000) => {
 
   while (Date.now() - startTime < maxWaitTime) {
     try {
-      const response = await request.get('/v2/health');
+      const response = await request.get('/v1/organizations');
       if (response.status === 200) {
         return true;
       }
@@ -97,14 +99,14 @@ export const waitForServer = async (request, maxWaitTime = 30000) => {
 
 /**
  * Get home organization ID (assumes it exists)
- * Response format is an object keyed by org_uid, not an array
+ * V1 response format is an object keyed by orgUid: { "orgUid": { org data }, ... }
  */
 export const getHomeOrgId = async (request) => {
   const response = await request
-    .get('/v2/organizations')
+    .get('/v1/organizations')
     .expect(200);
 
-  // Response is an object keyed by org_uid: { "org_uid": { org data }, ... }
+  // V1 response is an object keyed by orgUid: { "orgUid": { org data }, ... }
   if (!response.body || typeof response.body !== 'object' || Object.keys(response.body).length === 0) {
     throw new Error('No organizations found. Please ensure a home organization exists.');
   }
@@ -112,18 +114,18 @@ export const getHomeOrgId = async (request) => {
   // Convert object to array of orgs
   const orgs = Object.values(response.body);
 
-  // Find home org (check is_home flag)
-  const homeOrg = orgs.find(org => org.is_home === true || org.isHome === true);
+  // Find home org (check isHome flag - V1 uses camelCase)
+  const homeOrg = orgs.find(org => org.isHome === true || org.is_home === true);
 
   if (!homeOrg) {
     throw new Error('No home organization found. Please ensure a home organization exists.');
   }
 
-  // Handle both snake_case and camelCase field names
-  const orgUid = homeOrg.org_uid || homeOrg.orgUid;
+  // V1 uses orgUid (camelCase)
+  const orgUid = homeOrg.orgUid || homeOrg.org_uid;
 
   if (!orgUid) {
-    throw new Error('Home organization found but missing org_uid');
+    throw new Error('Home organization found but missing orgUid');
   }
 
   return orgUid;
@@ -131,46 +133,30 @@ export const getHomeOrgId = async (request) => {
 
 /**
  * Check if database is empty (fails if not empty)
- * Checks all data tables to see if they have records
+ * Checks V1 data tables to see if they have records
  * @throws {Error} If database is not empty
  */
 export const checkDatabaseEmpty = async (request) => {
   const dataTables = [
-    'methodology',
-    'program',
-    'project',
-    'validation',
-    'verification',
-    'issuance',
-    'unit',
-    'location',
-    'estimation',
-    'rating',
-    'co-benefit',
-    'label',
-    'stakeholder',
-    'stakeholder-projects',
-    'project-methodology',
-    'unit-label',
-    'aef-t1-submission',
-    'aef-t2-authorizations',
-    'aef-t3-actions',
-    'aef-t4-holdings',
-    'aef-t5-authorized-entities',
+    'projects',
+    'units',
   ];
 
   const nonEmptyTables = [];
 
   for (const table of dataTables) {
     try {
-      const response = await request.get(`/v2/${table}`);
-      // Response might be array or object with data property
-      const data = Array.isArray(response.body)
-        ? response.body
-        : (response.body?.data || []);
+      const response = await request.get(`/v1/${table}?page=1&limit=1`);
+      // V1 returns paginated: { page: 1, pageCount: X, data: [...] }
+      const data = response.body?.data || [];
 
       if (response.status === 200 && Array.isArray(data) && data.length > 0) {
-        nonEmptyTables.push({ table, count: data.length });
+        // Get total count from pageCount or make another request
+        const countResponse = await request.get(`/v1/${table}?page=1&limit=1`);
+        const totalCount = countResponse.body?.pageCount ?
+          (countResponse.body.pageCount * (countResponse.body.data?.length || 0)) :
+          (data.length);
+        nonEmptyTables.push({ table, count: totalCount });
       }
     } catch (error) {
       // Table might not exist or endpoint might not be available, skip
@@ -204,7 +190,7 @@ export const commitStagedRecords = async (request, uuids = [], force = false) =>
     return null;
   }
 
-  // Build request body - only include ids if provided and non-empty
+  // V1 staging commit uses body: comment, author, ids
   const body = {
     comment: 'Test commit',
     author: 'Test User',
@@ -215,9 +201,8 @@ export const commitStagedRecords = async (request, uuids = [], force = false) =>
   }
 
   // Note: Request logging is handled by the request wrapper in getLiveApiRequest()
-  // Commit UUIDs if provided, otherwise commit all uncommitted records (no ids field)
   const response = await request
-    .post('/v2/staging/commit')
+    .post('/v1/staging/commit')
     .send(body);
 
   if (response.status !== 200) {
@@ -238,7 +223,7 @@ export const commitStagedRecords = async (request, uuids = [], force = false) =>
  */
 export const checkOrganizationSynced = async (request) => {
   try {
-    const orgsResponse = await request.get('/v2/organizations');
+    const orgsResponse = await request.get('/v1/organizations');
 
     if (!orgsResponse.body || typeof orgsResponse.body !== 'object') {
       throw new Error('Invalid organizations response');
@@ -246,7 +231,7 @@ export const checkOrganizationSynced = async (request) => {
 
     // Find home organization
     const orgs = Object.values(orgsResponse.body);
-    const homeOrg = orgs.find(org => org.is_home === true || org.isHome === true);
+    const homeOrg = orgs.find(org => org.isHome === true || org.is_home === true);
 
     if (!homeOrg) {
       throw new Error('Home organization not found');
@@ -293,7 +278,7 @@ export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
 
 /**
  * Wait for staging table to be empty
- * Polls GET /v2/staging until it returns no records
+ * Polls GET /v1/staging until it returns no records
  * @param {Object} request - supertest request instance
  * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 600000 = 10 minutes)
  */
@@ -305,7 +290,7 @@ export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
 
   while (Date.now() - startTime < maxWaitTime) {
     try {
-      const response = await request.get('/v2/staging');
+      const response = await request.get('/v1/staging');
       const records = Array.isArray(response.body)
         ? response.body
         : (response.body?.data || []);
@@ -331,6 +316,7 @@ export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
 /**
  * Wait for a single record to appear in database after commit
  * Uses exponential backoff polling
+ * V1 uses warehouseProjectId/warehouseUnitId instead of UUIDs
  */
 export const waitForDataToAppear = async (request, type, id, maxWaitTime = 600000) => {
   const startTime = Date.now();
@@ -339,20 +325,31 @@ export const waitForDataToAppear = async (request, type, id, maxWaitTime = 60000
 
   while (Date.now() - startTime < maxWaitTime) {
     try {
-      // All tables now use UUID primary keys
-      const endpoint = `/v2/${type}/${id}`;
+      // V1 endpoints: /v1/projects?warehouseProjectId=... or /v1/units?warehouseUnitId=...
+      let endpoint;
+      if (type === 'project' || type === 'projects') {
+        endpoint = `/v1/projects?warehouseProjectId=${id}`;
+      } else if (type === 'unit' || type === 'units') {
+        endpoint = `/v1/units?warehouseUnitId=${id}`;
+      } else {
+        throw new Error(`Unknown type: ${type}`);
+      }
 
       const response = await request.get(endpoint);
-      if (response.status === 200 && response.body) {
-        // Record exists!
-        return response.body;
+      if (response.status === 200) {
+        // V1 returns paginated or single record
+        const data = response.body?.data || response.body;
+        if (data && (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)) {
+          // Record exists!
+          return Array.isArray(data) ? data[0] : data;
+        }
       }
     } catch (error) {
       // Record doesn't exist yet, continue polling
       const status = error.response?.status || error.status;
       if (status && status !== 404) {
         // Some other error occurred
-        console.warn(`  Error checking ${type}/${JSON.stringify(id)}: ${error.message} (status: ${status})`);
+        console.warn(`  Error checking ${type}/${id}: ${error.message} (status: ${status})`);
       }
     }
 
@@ -364,12 +361,13 @@ export const waitForDataToAppear = async (request, type, id, maxWaitTime = 60000
     await new Promise(resolve => setTimeout(resolve, pollInterval));
   }
 
-  throw new Error(`Record ${type}/${JSON.stringify(id)} did not appear in database within ${maxWaitTime}ms`);
+  throw new Error(`Record ${type}/${id} did not appear in database within ${maxWaitTime}ms`);
 };
 
 /**
  * Wait for multiple records to appear in database after commit
  * Polls all records in parallel until all exist or timeout
+ * V1 uses warehouseProjectId/warehouseUnitId instead of UUIDs
  */
 export const waitForBatchToAppear = async (request, records, maxWaitTime = 600000) => {
   const startTime = Date.now();
@@ -387,14 +385,24 @@ export const waitForBatchToAppear = async (request, records, maxWaitTime = 60000
 
     const promises = recordsToCheck.map(async (record) => {
       try {
-        // All tables now use UUID primary keys
-        const endpoint = `/v2/${record.type}/${record.id}`;
+        // V1 endpoints use query params
+        let endpoint;
+        if (record.type === 'project' || record.type === 'projects') {
+          endpoint = `/v1/projects?warehouseProjectId=${record.id}`;
+        } else if (record.type === 'unit' || record.type === 'units') {
+          endpoint = `/v1/units?warehouseUnitId=${record.id}`;
+        } else {
+          throw new Error(`Unknown type: ${record.type}`);
+        }
 
         const response = await request.get(endpoint);
-        if (response.status === 200 && response.body) {
-          foundRecords.add(`${record.type}/${JSON.stringify(record.id)}`);
-          console.log(`  ✓ Found: ${record.type}/${JSON.stringify(record.id)}`);
-          return { record, found: true, data: response.body };
+        if (response.status === 200) {
+          const data = response.body?.data || response.body;
+          if (data && (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)) {
+            foundRecords.add(`${record.type}/${JSON.stringify(record.id)}`);
+            console.log(`  ✓ Found: ${record.type}/${JSON.stringify(record.id)}`);
+            return { record, found: true, data: Array.isArray(data) ? data[0] : data };
+          }
         }
       } catch (error) {
         const status = error.response?.status || error.status;
@@ -439,12 +447,12 @@ export const waitForBatchToAppear = async (request, records, maxWaitTime = 60000
 
 /**
  * Clear staging table
- * Makes DELETE request to /v2/staging/clean endpoint to delete all staged records
+ * Makes DELETE request to /v1/staging/clean endpoint to delete all staged records
  */
 export const clearStagingTable = async (request) => {
   try {
     // Note: Request logging is handled by the request wrapper in getLiveApiRequest()
-    const response = await request.delete('/v2/staging/clean');
+    const response = await request.delete('/v1/staging/clean');
     if (response.status === 200) {
       console.log('✓ Staging table cleared');
       return true;
@@ -460,20 +468,28 @@ export const clearStagingTable = async (request) => {
  * Compares fields from expectedData with actual data from GET request
  * @param {Object} request - supertest request instance
  * @param {string} type - Resource type
- * @param {string|object} id - Record ID
+ * @param {string|object} id - Record ID (warehouseProjectId or warehouseUnitId)
  * @param {object} expectedData - Expected data fields
  * @returns {boolean} - true if data matches
  */
 export const validateDataInDatabase = async (request, type, id, expectedData) => {
   try {
-    // Get actual data - all tables now use UUID primary keys
-    const endpoint = `/v2/${type}/${id}`;
+    // V1 uses query params to get by ID
+    let endpoint;
+    if (type === 'project' || type === 'projects') {
+      endpoint = `/v1/projects?warehouseProjectId=${id}`;
+    } else if (type === 'unit' || type === 'units') {
+      endpoint = `/v1/units?warehouseUnitId=${id}`;
+    } else {
+      throw new Error(`Unknown type: ${type}`);
+    }
 
     const response = await request.get(endpoint).expect(200);
-    const actualData = response.body;
+    const data = response.body?.data || response.body;
+    const actualData = Array.isArray(data) ? data[0] : data;
 
     // Compare expected fields with actual data
-    // We verify all fields we sent, but ignore fields the API adds (like cadTrustProjectId, createdAt, updatedAt)
+    // We verify all fields we sent, but ignore fields the API adds (like warehouseProjectId, createdAt, updatedAt)
     for (const [key, expectedValue] of Object.entries(expectedData)) {
       // Skip nested child records - they're stored in separate tables
       if (Array.isArray(expectedValue)) {
@@ -565,150 +581,4 @@ export const getLiveApiRequest = async () => {
   request._wrappedForLogging = true;
 
   return request;
-};
-
-/**
- * Wait for V2 organization to be created and ready
- * Polls GET /v2/organizations until organization appears and is synced
- * @param {Object} request - supertest request instance
- * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
- * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
- * @returns {Promise<{orgUid: string, organization: object}>} Organization UID and data
- */
-export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000) => {
-  const startTime = Date.now();
-  const interval = 10000; // Check every 10 seconds
-  const timestamp = getTimestamp();
-
-  console.log(`[${timestamp}] Waiting for V2 organization to be ready...`);
-  if (orgName) {
-    console.log(`  Looking for organization with name: ${orgName}`);
-  } else {
-    console.log(`  Looking for home organization`);
-  }
-
-  while (Date.now() - startTime < maxWaitTime) {
-    try {
-      const response = await request.get('/v2/organizations');
-
-      if (response.status === 200 && response.body && typeof response.body === 'object') {
-        // Response is an object keyed by org_uid: { "org_uid": { org data }, ... }
-        const orgs = Object.values(response.body);
-
-        // Find matching organization
-        let org = null;
-        if (orgName) {
-          org = orgs.find(o =>
-            (o.name === orgName || o.orgName === orgName) &&
-            (o.is_home === true || o.isHome === true)
-          );
-        } else {
-          // Find home org
-          org = orgs.find(o => o.is_home === true || o.isHome === true);
-        }
-
-        if (org) {
-          // Check if organization is synced (V2 requirement)
-          const isSynced = org.synced === true;
-          const orgUid = org.org_uid || org.orgUid;
-
-          if (isSynced && orgUid) {
-            console.log(`✓ V2 Organization ready: ${orgUid}`);
-            return {
-              orgUid,
-              organization: org,
-            };
-          } else {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            console.log(`  Organization found but not synced yet (${elapsed}s elapsed)`);
-          }
-        } else {
-          const elapsed = Math.floor((Date.now() - startTime) / 1000);
-          console.log(`  Organization not found yet (${elapsed}s elapsed)`);
-        }
-      }
-    } catch (error) {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`  Error checking organizations: ${error.message} (${elapsed}s elapsed)`);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, interval));
-  }
-
-  const elapsed = Math.floor((Date.now() - startTime) / 1000);
-  throw new Error(
-    `Timeout waiting for V2 organization to be ready after ${elapsed}s (${maxWaitTime}ms). ` +
-    `Organization creation may be taking longer than expected.`
-  );
-};
-
-/**
- * Wait for V1 organization to be created and ready
- * Polls GET /v1/organizations until organization appears
- * @param {Object} request - supertest request instance
- * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
- * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
- * @returns {Promise<{orgUid: string, organization: object}>} Organization UID and data
- */
-export const waitForV1OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000) => {
-  const startTime = Date.now();
-  const interval = 10000; // Check every 10 seconds
-  const timestamp = getTimestamp();
-
-  console.log(`[${timestamp}] Waiting for V1 organization to be ready...`);
-  if (orgName) {
-    console.log(`  Looking for organization with name: ${orgName}`);
-  } else {
-    console.log(`  Looking for home organization`);
-  }
-
-  while (Date.now() - startTime < maxWaitTime) {
-    try {
-      const response = await request.get('/v1/organizations');
-
-      if (response.status === 200) {
-        // V1 response format may be array or object
-        const orgs = Array.isArray(response.body)
-          ? response.body
-          : (response.body?.data || []);
-
-        // Find matching organization
-        let org = null;
-        if (orgName) {
-          org = orgs.find(o =>
-            (o.name === orgName || o.orgName === orgName) &&
-            (o.isHome === true || o.is_home === true)
-          );
-        } else {
-          // Find home org
-          org = orgs.find(o => o.isHome === true || o.is_home === true);
-        }
-
-        if (org) {
-          const orgUid = org.orgUid || org.org_uid;
-          if (orgUid) {
-            console.log(`✓ V1 Organization ready: ${orgUid}`);
-            return {
-              orgUid,
-              organization: org,
-            };
-          }
-        } else {
-          const elapsed = Math.floor((Date.now() - startTime) / 1000);
-          console.log(`  Organization not found yet (${elapsed}s elapsed)`);
-        }
-      }
-    } catch (error) {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`  Error checking organizations: ${error.message} (${elapsed}s elapsed)`);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, interval));
-  }
-
-  const elapsed = Math.floor((Date.now() - startTime) / 1000);
-  throw new Error(
-    `Timeout waiting for V1 organization to be ready after ${elapsed}s (${maxWaitTime}ms). ` +
-    `Organization creation may be taking longer than expected.`
-  );
 };

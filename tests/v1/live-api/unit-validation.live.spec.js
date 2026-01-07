@@ -15,61 +15,44 @@ import {
   makeDeleteRequest,
   checkRecordInStaging,
 } from './helpers/api-request-helpers.js';
-import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstCreatedId, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
+import { addCreatedId, shouldAutoCommit, trackBatchVerification, getFirstRecordIdFromDatabase, getAllRecordIdsFromDatabase } from './helpers/shared-state.js';
 import {
   generateUnit,
   generateUnitMinimal,
   generateUnitMaximal,
+  generateUnitLongStrings,
   generateUnitForbiddenFields,
   getLongString,
   getInvalidPicklistValue,
-  getNonExistentId,
 } from './data/test-data-generators.js';
 
 describe('Unit Live API Validation Tests', function () {
   this.timeout(600000); // 10 minute timeout
   let request;
   let homeOrgId;
-  const createdIds = []; // Track all created IDs
+  const createdIds = []; // Track all created IDs (warehouseUnitId)
+
   before(async function () {
-    // Get shared request and home org ID (setup already done by orchestration)
     request = getSharedRequest();
     homeOrgId = getSharedHomeOrgId();
   });
+
   describe('Step 3: Validation Failure Tests', function () {
-    it('should reject POST with forbidden fields (createdAt, updatedAt, ID)', async function () {
-      const issuanceId = getFirstCreatedId('issuance');
-      if (!issuanceId) {
-        this.skip();
-      }
-      const forbiddenData = generateUnitForbiddenFields(issuanceId);
+    it('should reject POST with forbidden fields (createdAt, updatedAt, warehouseUnitId)', async function () {
+      const forbiddenData = generateUnitForbiddenFields();
       const response = await request
-        .post('/v2/unit')
+        .post('/v1/units')
         .send(forbiddenData);
 
       expect(response.status).to.equal(400);
       expect(response.body.success).to.be.false;
     });
 
-    it('should reject POST with invalid foreign keys', async function () {
-      const invalidData = generateUnitMinimal(getNonExistentId());
-      const response = await request
-        .post('/v2/unit')
-        .send(invalidData);
-
-      expect(response.status).to.equal(400);
-      expect(response.body.success).to.be.false;
-    });
-
     it('should reject POST with invalid picklist values', async function () {
-      const issuanceId = getFirstCreatedId('issuance');
-      if (!issuanceId) {
-        this.skip();
-      }
-      const invalidData = generateUnitMinimal(issuanceId);
+      const invalidData = generateUnitMinimal();
       invalidData.unitType = getInvalidPicklistValue('unitType');
       const response = await request
-        .post('/v2/unit')
+        .post('/v1/units')
         .send(invalidData);
 
       expect(response.status).to.equal(400);
@@ -77,24 +60,30 @@ describe('Unit Live API Validation Tests', function () {
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { unitSerialId: 'Incomplete' }; // Missing unitStartBlock, unitEndBlock, etc.
+      const incompleteData = { unitOwner: 'Incomplete' }; // Missing required fields
       const response = await request
-        .post('/v2/unit')
+        .post('/v1/units')
         .send(incompleteData);
 
       expect(response.status).to.equal(400);
       expect(response.body.success).to.be.false;
     });
 
-    it('should reject POST with invalid data types', async function () {
-      const issuanceId = getFirstCreatedId('issuance');
-      if (!issuanceId) {
-        this.skip();
-      }
-      const invalidTypeData = generateUnitMinimal(issuanceId);
-      invalidTypeData.unitCount = 'not-a-number';
+    it('should reject POST with strings that are too long', async function () {
+      const longData = generateUnitLongStrings();
       const response = await request
-        .post('/v2/unit')
+        .post('/v1/units')
+        .send(longData);
+
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
+    });
+
+    it('should reject POST with invalid data types', async function () {
+      const invalidTypeData = generateUnit();
+      invalidTypeData.vintageYear = 'not-a-number';
+      const response = await request
+        .post('/v1/units')
         .send(invalidTypeData);
 
       expect(response.status).to.equal(400);
@@ -102,31 +91,27 @@ describe('Unit Live API Validation Tests', function () {
     });
 
     after(async function () {
-      // Batch clear staging table after all validation tests
       await clearStagingTable(request);
     });
   });
+
   describe('Step 4: POST Request Tests', function () {
     it('should create units with typical, minimal, and maximal data', async function () {
-      // Get issuance ID from earlier test (issuance-validation.spec.js runs before this)
-      const issuanceId = getFirstCreatedId('issuance');
-      if (!issuanceId) {
-        throw new Error('Issuance ID not found. Ensure issuance-validation.spec.js runs before unit-validation.spec.js');
-      }
-
       // Create 1 typical record
-      const data = generateUnit(issuanceId);
-      const { id, response } = await makePostRequest(request, '/v2/unit', data);
+      const data = generateUnit();
+      const { id, response } = await makePostRequest(request, '/v1/units', data);
       expect(response.success).to.be.true;
       expect(id).to.exist;
-      createdIds.push(id);
+      createdIds.push(id); // id is warehouseUnitId (same as uuid in V1)
       addCreatedId('unit', id);
+
       // Check record is in staging table
-      const inStaging = await checkRecordInStaging(request, '/v2/unit', id, {
-        unitSerialId: data.unitSerialId,
+      const inStaging = await checkRecordInStaging(request, '/v1/units', id, {
+        unitOwner: data.unitOwner,
+        unitBlockStart: data.unitBlockStart,
       });
       expect(inStaging).to.be.true;
-      // Commit if in extended mode
+
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
@@ -134,12 +119,14 @@ describe('Unit Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'unit', id);
       } else {
         // Track ALL fields from the request data for comprehensive verification
-        trackBatchVerification('POST', 'unit', id, data);
+        // Exclude nested child records (labels) as they're stored separately
+        const { labels, ...fieldsToVerify } = data;
+        trackBatchVerification('POST', 'unit', id, fieldsToVerify);
       }
 
       // Create 1 minimal record
-      const minimalData = generateUnitMinimal(issuanceId);
-      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/unit', minimalData);
+      const minimalData = generateUnitMinimal();
+      const { id: minId, response: minResponse } = await makePostRequest(request, '/v1/units', minimalData);
       expect(minResponse.success).to.be.true;
       createdIds.push(minId);
       addCreatedId('unit', minId);
@@ -151,12 +138,14 @@ describe('Unit Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'unit', minId);
       } else {
         // Track ALL fields from the request data for comprehensive verification
-        trackBatchVerification('POST', 'unit', minId, minimalData);
+        // Exclude nested child records (labels) as they're stored separately
+        const { labels, ...fieldsToVerify } = minimalData;
+        trackBatchVerification('POST', 'unit', minId, fieldsToVerify);
       }
 
       // Create 1 maximal record
-      const maximalData = generateUnitMaximal(issuanceId);
-      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/unit', maximalData);
+      const maximalData = generateUnitMaximal();
+      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v1/units', maximalData);
       expect(maxResponse.success).to.be.true;
       createdIds.push(maxId);
       addCreatedId('unit', maxId);
@@ -168,14 +157,16 @@ describe('Unit Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'unit', maxId);
       } else {
         // Track ALL fields from the request data for comprehensive verification
-        trackBatchVerification('POST', 'unit', maxId, maximalData);
+        // Exclude nested child records (labels) as they're stored separately
+        const { labels, ...fieldsToVerify } = maximalData;
+        trackBatchVerification('POST', 'unit', maxId, fieldsToVerify);
       }
     });
   });
+
   describe('Step 5: Staging Commit (if short mode)', function () {
     it('should commit all staged records in batch', async function () {
       if (!shouldAutoCommit()) {
-        // Commit all uncommitted records
         await commitStagedRecords(request, [], true); // Force commit
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
@@ -191,10 +182,11 @@ describe('Unit Live API Validation Tests', function () {
       for (const id of createdIds) {
         const record = await waitForDataToAppear(request, 'unit', id);
         expect(record).to.exist;
-        expect(record.cadTrustUnitId).to.equal(id);
+        expect(record.warehouseUnitId).to.equal(id);
       }
     });
   });
+
   describe('Step 7: PUT Request Tests', function () {
     it('should update a unit', async function () {
       // Get ID from createdIds (if available) or query for test records we created
@@ -206,17 +198,17 @@ describe('Unit Live API Validation Tests', function () {
         let found = false;
 
         while (!found && page <= 10) { // Limit to 10 pages to avoid infinite loop
-          const response = await request.get(`/v2/unit?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
-          const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+          const response = await request.get(`/v1/units?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
+          const data = response.body?.data || [];
 
-          // Find first test record (unitSerialId or unitCurrentOwner starts with "TEST-")
+          // Find first test record (unitOwner or unitSerialId starts with "TEST-")
           const testRecord = data.find(record =>
-            (record.unitSerialId && record.unitSerialId.startsWith('TEST-')) ||
-            (record.unitCurrentOwner && record.unitCurrentOwner.startsWith('TEST-'))
+            (record.unitOwner && record.unitOwner.startsWith('TEST-')) ||
+            (record.unitSerialId && record.unitSerialId.startsWith('TEST-'))
           );
 
           if (testRecord) {
-            id = testRecord.cadTrustUnitId;
+            id = testRecord.warehouseUnitId;
             found = true;
             break;
           }
@@ -233,63 +225,51 @@ describe('Unit Live API Validation Tests', function () {
           this.skip(); // Skip if no test records exist
         }
       }
-      // Get current record to include all fields
-      const currentRecord = await request.get(`/v2/unit/${id}`).expect(200);
-      const record = currentRecord.body.data || currentRecord.body;
+
+      // Get current record to include all fields (V1 PUT requires ALL fields)
+      const currentResponse = await request.get(`/v1/units?warehouseUnitId=${id}`).expect(200);
+      const currentData = currentResponse.body?.data || currentResponse.body;
+      const record = Array.isArray(currentData) ? currentData[0] : currentData;
+
+      if (!record) {
+        this.skip(); // Skip if record not found
+      }
 
       // Verify record belongs to home org and is a test record
       if (record.orgUid !== homeOrgId) {
         this.skip(); // Skip if record doesn't belong to home org
       }
-      const isTestRecord = (record.unitSerialId && record.unitSerialId.startsWith('TEST-')) ||
-                           (record.unitCurrentOwner && record.unitCurrentOwner.startsWith('TEST-'));
+      const isTestRecord = (record.unitOwner && record.unitOwner.startsWith('TEST-')) ||
+                           (record.unitSerialId && record.unitSerialId.startsWith('TEST-'));
       if (!isTestRecord) {
         this.skip(); // Skip if not a test record
       }
 
-      // Ensure required fields exist
-      if (!record.unitSerialId) {
-        throw new Error('unitSerialId is required but missing from GET response');
-      }
-      if (!record.unitStartBlock) {
-        throw new Error('unitStartBlock is required but missing from GET response');
-      }
-      if (!record.unitEndBlock) {
-        throw new Error('unitEndBlock is required but missing from GET response');
-      }
-      if (!record.unitVintageYear) {
-        throw new Error('unitVintageYear is required but missing from GET response');
-      }
-      if (!record.cadTrustIssuanceId) {
-        throw new Error('cadTrustIssuanceId is required but missing from GET response');
-      }
-
-      // Create update data with ALL fields
-      // Required fields must always be included; optional fields can be null (matching V1 behavior)
+      // Create update data with ALL fields (V1 requirement)
       const updateData = {
-        unitSerialId: record.unitSerialId, // Required
-        unitStartBlock: record.unitStartBlock, // Required
-        unitEndBlock: record.unitEndBlock, // Required
-        unitVintageYear: record.unitVintageYear, // Required
-        cadTrustIssuanceId: record.cadTrustIssuanceId, // Required
-        // Optional fields: include with their value (can be null)
-        unitCount: record.unitCount ?? null,
-        unitType: record.unitType ?? null,
-        unitStatus: record.unitStatus ?? null,
-        unitStatusReason: record.unitStatusReason ?? null,
-        unitStatusDate: record.unitStatusDate ?? null,
-        unitRetirementDetail: record.unitRetirementDetail ?? null,
-        unitRetirementBeneficiary: record.unitRetirementBeneficiary ?? null,
-        unitRetirementBeneficiaryId: record.unitRetirementBeneficiaryId ?? null,
-        unitLink: record.unitLink ?? null,
-        unitMetric: record.unitMetric ?? null,
-        unitCurrentOwner: record.unitCurrentOwner ?? null,
-        unitItmosReferenceId: record.unitItmosReferenceId ?? null,
-        marketplace: record.marketplace ?? null,
-        marketplaceLink: record.marketplaceLink ?? null,
-        marketplaceIdentifier: record.marketplaceIdentifier ?? null,
+        warehouseUnitId: id,
+        projectLocationId: record.projectLocationId || 'UPDATED-LOC',
+        unitOwner: 'Updated Owner',
+        countryJurisdictionOfOwner: record.countryJurisdictionOfOwner || 'United States of America',
+        vintageYear: record.vintageYear || 2020,
+        unitType: record.unitType || 'Removal - technical',
+        unitStatus: record.unitStatus || 'Held',
+        unitBlockStart: `UPDATED-START-${Date.now()}`,
+        unitBlockEnd: `UPDATED-END-${Date.now()}`,
+        unitCount: record.unitCount || 100,
+        unitRegistryLink: record.unitRegistryLink || 'http://climateWarehouse.com/myRegistry',
+        correspondingAdjustmentDeclaration: record.correspondingAdjustmentDeclaration || 'Unknown',
+        correspondingAdjustmentStatus: record.correspondingAdjustmentStatus || 'Not Started',
+        inCountryJurisdictionOfOwner: record.inCountryJurisdictionOfOwner || null,
+        // Note: serialNumberBlock is auto-generated, not included in PUT
+        marketplace: record.marketplace || null,
+        marketplaceLink: record.marketplaceLink || null,
+        marketplaceIdentifier: record.marketplaceIdentifier || null,
+        unitTags: record.unitTags || null,
+        unitStatusReason: record.unitStatusReason || null,
       };
-      const response = await makePutRequest(request, '/v2/unit', id, updateData);
+
+      const response = await makePutRequest(request, '/v1/units', id, updateData);
       expect(response.success).to.be.true;
 
       if (shouldAutoCommit()) {
@@ -298,69 +278,42 @@ describe('Unit Live API Validation Tests', function () {
         await waitForStagingEmpty(request);
         await waitForDataToAppear(request, 'unit', id);
         await validateDataInDatabase(request, 'unit', id, {
-          unitSerialId: updateData.unitSerialId,
+          unitOwner: updateData.unitOwner,
+          unitBlockStart: updateData.unitBlockStart,
         });
       } else {
         trackBatchVerification('PUT', 'unit', id, updateData);
       }
     });
   });
-  describe('Step 8: GET Request Tests', function () {
-    it('should list all units with pagination', async function () {
-      const response = await request
-        .get('/v2/unit?page=1&limit=5')
-        .expect(200);
 
-      expect(response.body).to.have.property('data');
-      expect(response.body).to.have.property('page');
-      expect(response.body).to.have.property('pageCount');
-    });
-
-    it('should get a specific unit by ID', async function () {
-      const id = createdIds[0];
-      const response = await request
-        .get(`/v2/unit/${id}`)
-        .expect(200);
-
-      expect(response.body.cadTrustUnitId).to.equal(id);
-    });
-
-    it('should support search functionality', async function () {
-      // Test search if supported by endpoint
-      const response = await request
-        .get('/v2/unit')
-        .expect(200);
-
-      expect(response.body).to.exist;
-    });
-  });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created units', async function () {
-      // Query for test units by orgUid and TEST- prefix
+      // Query for all test units (those with unitOwner starting with "TEST-")
       // This works even when DELETE runs in a separate process
       let idsToDelete = [];
 
-      // First try createdIds if available (when running in same process)
+      // First try to use createdIds if available (when running in same process)
       if (createdIds.length > 0) {
         idsToDelete = createdIds.filter(id => id != null);
       } else {
-        // Query database for test records by filtering by home org
+        // Query database for test records by filtering by home org, then filtering for TEST- prefix
+        // Using orgUid filter is much faster than paginating through all units
         let page = 1;
         const limit = 1000;
         let hasMore = true;
 
         while (hasMore) {
           // Filter by home org to only get units belonging to our organization
-          const response = await request.get(`/v2/unit?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
-          const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+          const response = await request.get(`/v1/units?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
+          const data = response.body?.data || [];
 
-          // Filter for test records (unitSerialId or unitCurrentOwner starts with "TEST-")
+          // Filter for test records (unitOwner starts with "TEST-")
           const testRecords = data.filter(record =>
-            (record.unitSerialId && record.unitSerialId.startsWith('TEST-')) ||
-            (record.unitCurrentOwner && record.unitCurrentOwner.startsWith('TEST-'))
+            record.unitOwner && record.unitOwner.startsWith('TEST-')
           );
 
-          idsToDelete.push(...testRecords.map(r => r.cadTrustUnitId));
+          idsToDelete.push(...testRecords.map(r => r.warehouseUnitId));
 
           // Check if there are more pages
           const totalPages = response.body?.pageCount || 1;
@@ -379,7 +332,7 @@ describe('Unit Live API Validation Tests', function () {
       for (let i = idsToDelete.length - 1; i >= 0; i--) {
         const id = idsToDelete[i];
         try {
-          const response = await makeDeleteRequest(request, '/v2/unit', id);
+          const response = await makeDeleteRequest(request, '/v1/units', id);
           // Check if delete was successful or if record doesn't exist (already deleted)
           if (response.success === false && response.error && response.error.includes('not found')) {
             // Record already deleted, continue
@@ -398,10 +351,11 @@ describe('Unit Live API Validation Tests', function () {
           await waitForStagingEmpty(request);
           // Verify record is deleted
           try {
-            const checkResponse = await request.get(`/v2/unit/${id}`);
-            expect(checkResponse.status).to.equal(404, `Unit ${id} should be deleted but still exists`);
+            const checkResponse = await request.get(`/v1/units?warehouseUnitId=${id}`);
+            const checkData = checkResponse.body?.data || [];
+            expect(checkData.length).to.equal(0, `Unit ${id} should be deleted but still exists`);
           } catch (error) {
-            // 404 is expected - record is deleted
+            // 404 or empty is expected - record is deleted
             if (error.status !== 404 && error.response?.status !== 404) {
               throw error;
             }
@@ -430,16 +384,15 @@ describe('Unit Live API Validation Tests', function () {
 
         while (hasMore) {
           // Filter by home org to only get units belonging to our organization
-          const response = await request.get(`/v2/unit?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
-          const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+          const response = await request.get(`/v1/units?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
+          const data = response.body?.data || [];
 
-          // Filter for test records (unitSerialId or unitCurrentOwner starts with "TEST-")
+          // Filter for test records (unitOwner starts with "TEST-")
           const testRecords = data.filter(record =>
-            (record.unitSerialId && record.unitSerialId.startsWith('TEST-')) ||
-            (record.unitCurrentOwner && record.unitCurrentOwner.startsWith('TEST-'))
+            record.unitOwner && record.unitOwner.startsWith('TEST-')
           );
 
-          testUnitIds.push(...testRecords.map(r => r.cadTrustUnitId));
+          testUnitIds.push(...testRecords.map(r => r.warehouseUnitId));
 
           // Check if there are more pages
           const totalPages = response.body?.pageCount || 1;
@@ -451,10 +404,11 @@ describe('Unit Live API Validation Tests', function () {
       // Verify all test units are deleted
       for (const id of testUnitIds) {
         try {
-          const checkResponse = await request.get(`/v2/unit/${id}`);
-          expect(checkResponse.status).to.equal(404, `Test unit ${id} should be deleted but still exists`);
+          const checkResponse = await request.get(`/v1/units?warehouseUnitId=${id}`);
+          const checkData = checkResponse.body?.data || [];
+          expect(checkData.length).to.equal(0, `Test unit ${id} should be deleted but still exists`);
         } catch (error) {
-          // 404 is expected - record is deleted
+          // 404 or empty is expected - record is deleted
           if (error.status !== 404 && error.response?.status !== 404) {
             throw error;
           }

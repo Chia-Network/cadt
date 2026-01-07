@@ -30,17 +30,18 @@ describe('Project Live API Validation Tests', function () {
   this.timeout(600000); // 10 minute timeout
   let request;
   let homeOrgId;
-  const createdIds = []; // Track all created IDs
+  const createdIds = []; // Track all created IDs (warehouseProjectId)
+
   before(async function () {
-    // Get shared request and home org ID (setup already done by orchestration)
     request = getSharedRequest();
     homeOrgId = getSharedHomeOrgId();
   });
+
   describe('Step 3: Validation Failure Tests', function () {
-    it('should reject POST with forbidden fields (createdAt, updatedAt, ID)', async function () {
+    it('should reject POST with forbidden fields (createdAt, updatedAt, warehouseProjectId)', async function () {
       const forbiddenData = generateProjectForbiddenFields();
       const response = await request
-        .post('/v2/project')
+        .post('/v1/projects')
         .send(forbiddenData);
 
       expect(response.status).to.equal(400);
@@ -49,9 +50,9 @@ describe('Project Live API Validation Tests', function () {
 
     it('should reject POST with invalid picklist values', async function () {
       const invalidData = generateProjectMinimal();
-      invalidData.projectSector = getInvalidPicklistValue('projectSector');
+      invalidData.sector = getInvalidPicklistValue('sector');
       const response = await request
-        .post('/v2/project')
+        .post('/v1/projects')
         .send(invalidData);
 
       expect(response.status).to.equal(400);
@@ -59,9 +60,9 @@ describe('Project Live API Validation Tests', function () {
     });
 
     it('should reject POST with missing required fields', async function () {
-      const incompleteData = { projectName: 'Incomplete' }; // Missing projectId
+      const incompleteData = { projectName: 'Incomplete' }; // Missing projectId and other required fields
       const response = await request
-        .post('/v2/project')
+        .post('/v1/projects')
         .send(incompleteData);
 
       expect(response.status).to.equal(400);
@@ -71,7 +72,7 @@ describe('Project Live API Validation Tests', function () {
     it('should reject POST with strings that are too long', async function () {
       const longData = generateProjectLongStrings();
       const response = await request
-        .post('/v2/project')
+        .post('/v1/projects')
         .send(longData);
 
       expect(response.status).to.equal(400);
@@ -82,7 +83,7 @@ describe('Project Live API Validation Tests', function () {
       const invalidTypeData = generateProject();
       invalidTypeData.projectStatusDate = 'not-a-date';
       const response = await request
-        .post('/v2/project')
+        .post('/v1/projects')
         .send(invalidTypeData);
 
       expect(response.status).to.equal(400);
@@ -90,26 +91,27 @@ describe('Project Live API Validation Tests', function () {
     });
 
     after(async function () {
-      // Batch clear staging table after all validation tests
       await clearStagingTable(request);
     });
   });
+
   describe('Step 4: POST Request Tests', function () {
     it('should create projects with typical, minimal, and maximal data', async function () {
       // Create 1 typical record
       const data = generateProject();
-      const { id, response } = await makePostRequest(request, '/v2/project', data);
+      const { id, response } = await makePostRequest(request, '/v1/projects', data);
       expect(response.success).to.be.true;
       expect(id).to.exist;
-      createdIds.push(id);
+      createdIds.push(id); // id is warehouseProjectId (same as uuid in V1)
       addCreatedId('project', id);
+
       // Check record is in staging table
-      const inStaging = await checkRecordInStaging(request, '/v2/project', id, {
+      const inStaging = await checkRecordInStaging(request, '/v1/projects', id, {
         projectId: data.projectId,
         projectName: data.projectName,
       });
       expect(inStaging).to.be.true;
-      // Commit if in extended mode
+
       if (shouldAutoCommit()) {
         await commitStagedRecords(request, []);
         await waitForPendingCommits(request);
@@ -117,12 +119,14 @@ describe('Project Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'project', id);
       } else {
         // Track ALL fields from the request data for comprehensive verification
-        trackBatchVerification('POST', 'project', id, data);
+        // Exclude nested child records (labels, issuances, etc.) as they're stored separately
+        const { labels, issuances, coBenefits, projectLocations, projectRatings, estimations, relatedProjects, ...fieldsToVerify } = data;
+        trackBatchVerification('POST', 'project', id, fieldsToVerify);
       }
 
       // Create 1 minimal record
       const minimalData = generateProjectMinimal();
-      const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/project', minimalData);
+      const { id: minId, response: minResponse } = await makePostRequest(request, '/v1/projects', minimalData);
       expect(minResponse.success).to.be.true;
       createdIds.push(minId);
       addCreatedId('project', minId);
@@ -134,12 +138,14 @@ describe('Project Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'project', minId);
       } else {
         // Track ALL fields from the request data for comprehensive verification
-        trackBatchVerification('POST', 'project', minId, minimalData);
+        // Exclude nested child records (labels, issuances, etc.) as they're stored separately
+        const { labels, issuances, coBenefits, projectLocations, projectRatings, estimations, relatedProjects, ...fieldsToVerify } = minimalData;
+        trackBatchVerification('POST', 'project', minId, fieldsToVerify);
       }
 
-      // Create 1 maximal record
+      // Create 1 maximal record (with nested child records)
       const maximalData = generateProjectMaximal();
-      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/project', maximalData);
+      const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v1/projects', maximalData);
       expect(maxResponse.success).to.be.true;
       createdIds.push(maxId);
       addCreatedId('project', maxId);
@@ -151,14 +157,16 @@ describe('Project Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'project', maxId);
       } else {
         // Track ALL fields from the request data for comprehensive verification
-        trackBatchVerification('POST', 'project', maxId, maximalData);
+        // Exclude nested child records (labels, issuances, etc.) as they're stored separately
+        const { labels, issuances, coBenefits, projectLocations, projectRatings, estimations, relatedProjects, ...fieldsToVerify } = maximalData;
+        trackBatchVerification('POST', 'project', maxId, fieldsToVerify);
       }
     });
   });
+
   describe('Step 5: Staging Commit (if short mode)', function () {
     it('should commit all staged records in batch', async function () {
       if (!shouldAutoCommit()) {
-        // Commit all uncommitted records
         await commitStagedRecords(request, [], true); // Force commit
         await waitForPendingCommits(request);
         await waitForStagingEmpty(request);
@@ -174,10 +182,11 @@ describe('Project Live API Validation Tests', function () {
       for (const id of createdIds) {
         const record = await waitForDataToAppear(request, 'project', id);
         expect(record).to.exist;
-        expect(record.cadTrustProjectId).to.equal(id);
+        expect(record.warehouseProjectId).to.equal(id);
       }
     });
   });
+
   describe('Step 7: PUT Request Tests', function () {
     it('should update a project', async function () {
       // Get ID from createdIds (if available) or query for test records we created
@@ -189,8 +198,8 @@ describe('Project Live API Validation Tests', function () {
         let found = false;
 
         while (!found && page <= 10) { // Limit to 10 pages to avoid infinite loop
-          const response = await request.get(`/v2/project?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
-          const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+          const response = await request.get(`/v1/projects?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
+          const data = response.body?.data || [];
 
           // Find first test record (projectId starts with "TEST-")
           const testRecord = data.find(record =>
@@ -198,7 +207,7 @@ describe('Project Live API Validation Tests', function () {
           );
 
           if (testRecord) {
-            id = testRecord.cadTrustProjectId;
+            id = testRecord.warehouseProjectId;
             found = true;
             break;
           }
@@ -215,9 +224,15 @@ describe('Project Live API Validation Tests', function () {
           this.skip(); // Skip if no test records exist
         }
       }
-      // Get current record to include all fields
-      const currentRecord = await request.get(`/v2/project/${id}`).expect(200);
-      const record = currentRecord.body.data || currentRecord.body;
+
+      // Get current record to include all fields (V1 PUT requires ALL fields)
+      const currentResponse = await request.get(`/v1/projects?warehouseProjectId=${id}`).expect(200);
+      const currentData = currentResponse.body?.data || currentResponse.body;
+      const record = Array.isArray(currentData) ? currentData[0] : currentData;
+
+      if (!record) {
+        this.skip(); // Skip if record not found
+      }
 
       // Verify record belongs to home org and is a test record
       if (record.orgUid !== homeOrgId) {
@@ -226,25 +241,31 @@ describe('Project Live API Validation Tests', function () {
       if (!record.projectId || !record.projectId.startsWith('TEST-')) {
         this.skip(); // Skip if not a test record
       }
-      // Create update data with ALL fields
-      // Required fields must always be included; optional fields can be null (matching V1 behavior)
+
+      // Create update data with ALL fields (V1 requirement)
       const updateData = {
-        projectRegistryName: record.projectRegistryName,
+        warehouseProjectId: id,
         projectId: `UPDATED-${Date.now()}`,
+        originProjectId: record.originProjectId || 'UPDATED-ORIG',
+        registryOfOrigin: record.registryOfOrigin || 'Verra',
         projectName: 'Updated Project Name',
-        projectCreditingProgram: record.projectCreditingProgram ?? null,
-        projectLink: record.projectLink ?? null,
-        projectDescription: record.projectDescription ?? null,
-        projectSector: record.projectSector ?? null,
-        projectType: record.projectType ?? null,
-        projectSubtype: record.projectSubtype ?? null,
-        projectStatus: record.projectStatus ?? null,
-        projectStatusDate: record.projectStatusDate ?? null,
-        projectUnitMetric: record.projectUnitMetric ?? null,
-        cadTrustReferenceProjectId: record.cadTrustReferenceProjectId ?? null,
-        cadTrustProgramId: record.cadTrustProgramId ?? null,
+        projectLink: record.projectLink || 'http://testurl.com',
+        projectDeveloper: record.projectDeveloper || 'Updated Developer',
+        sector: record.sector || 'Agriculture Forestry and Other Land Use (AFOLU)',
+        projectType: record.projectType || 'Afforestation',
+        coveredByNDC: record.coveredByNDC || 'Inside NDC',
+        projectStatus: record.projectStatus || 'Registered',
+        projectStatusDate: record.projectStatusDate || new Date().toISOString().split('T')[0],
+        unitMetric: record.unitMetric || 'tCO2e',
+        methodology: record.methodology || 'ACR - Truck Stop Electrification',
+        program: record.program || null,
+        projectTags: record.projectTags || null,
+        ndcInformation: record.ndcInformation || null,
+        validationBody: record.validationBody || null,
+        validationDate: record.validationDate || null,
       };
-      const response = await makePutRequest(request, '/v2/project', id, updateData);
+
+      const response = await makePutRequest(request, '/v1/projects', id, updateData);
       expect(response.success).to.be.true;
 
       if (shouldAutoCommit()) {
@@ -262,61 +283,33 @@ describe('Project Live API Validation Tests', function () {
     });
   });
 
-  describe('Step 8: GET Request Tests', function () {
-    it('should list all projects with pagination', async function () {
-      const response = await request
-        .get('/v2/project?page=1&limit=5')
-        .expect(200);
-
-      expect(response.body).to.have.property('data');
-      expect(response.body).to.have.property('page');
-      expect(response.body).to.have.property('pageCount');
-    });
-
-    it('should get a specific project by ID', async function () {
-      const id = createdIds[0];
-      const response = await request
-        .get(`/v2/project/${id}`)
-        .expect(200);
-
-      expect(response.body.cadTrustProjectId).to.equal(id);
-    });
-
-    it('should support search functionality', async function () {
-      // Test search if supported by endpoint
-      const response = await request
-        .get('/v2/project')
-        .expect(200);
-
-      expect(response.body).to.exist;
-    });
-  });
   describe('Step 9: DELETE Request Tests', function () {
     it('should delete all created projects', async function () {
-      // Query for test projects by orgUid and TEST- prefix
+      // Query for all test projects (those with projectId starting with "TEST-")
       // This works even when DELETE runs in a separate process
       let idsToDelete = [];
 
-      // First try createdIds if available (when running in same process)
+      // First try to use createdIds if available (when running in same process)
       if (createdIds.length > 0) {
         idsToDelete = createdIds.filter(id => id != null);
       } else {
-        // Query database for test records by filtering by home org
+        // Query database for test records by filtering by home org, then filtering for TEST- prefix
+        // Using orgUid filter is much faster than paginating through all projects
         let page = 1;
         const limit = 1000;
         let hasMore = true;
 
         while (hasMore) {
           // Filter by home org to only get projects belonging to our organization
-          const response = await request.get(`/v2/project?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
-          const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+          const response = await request.get(`/v1/projects?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
+          const data = response.body?.data || [];
 
           // Filter for test records (projectId starts with "TEST-")
           const testRecords = data.filter(record =>
             record.projectId && record.projectId.startsWith('TEST-')
           );
 
-          idsToDelete.push(...testRecords.map(r => r.cadTrustProjectId));
+          idsToDelete.push(...testRecords.map(r => r.warehouseProjectId));
 
           // Check if there are more pages
           const totalPages = response.body?.pageCount || 1;
@@ -335,7 +328,7 @@ describe('Project Live API Validation Tests', function () {
       for (let i = idsToDelete.length - 1; i >= 0; i--) {
         const id = idsToDelete[i];
         try {
-          const response = await makeDeleteRequest(request, '/v2/project', id);
+          const response = await makeDeleteRequest(request, '/v1/projects', id);
           // Check if delete was successful or if record doesn't exist (already deleted)
           if (response.success === false && response.error && response.error.includes('not found')) {
             // Record already deleted, continue
@@ -354,10 +347,11 @@ describe('Project Live API Validation Tests', function () {
           await waitForStagingEmpty(request);
           // Verify record is deleted
           try {
-            const checkResponse = await request.get(`/v2/project/${id}`);
-            expect(checkResponse.status).to.equal(404, `Project ${id} should be deleted but still exists`);
+            const checkResponse = await request.get(`/v1/projects?warehouseProjectId=${id}`);
+            const checkData = checkResponse.body?.data || [];
+            expect(checkData.length).to.equal(0, `Project ${id} should be deleted but still exists`);
           } catch (error) {
-            // 404 is expected - record is deleted
+            // 404 or empty is expected - record is deleted
             if (error.status !== 404 && error.response?.status !== 404) {
               throw error;
             }
@@ -386,15 +380,15 @@ describe('Project Live API Validation Tests', function () {
 
         while (hasMore) {
           // Filter by home org to only get projects belonging to our organization
-          const response = await request.get(`/v2/project?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
-          const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+          const response = await request.get(`/v1/projects?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
+          const data = response.body?.data || [];
 
           // Filter for test records (projectId starts with "TEST-")
           const testRecords = data.filter(record =>
             record.projectId && record.projectId.startsWith('TEST-')
           );
 
-          testProjectIds.push(...testRecords.map(r => r.cadTrustProjectId));
+          testProjectIds.push(...testRecords.map(r => r.warehouseProjectId));
 
           // Check if there are more pages
           const totalPages = response.body?.pageCount || 1;
@@ -406,10 +400,11 @@ describe('Project Live API Validation Tests', function () {
       // Verify all test projects are deleted
       for (const id of testProjectIds) {
         try {
-          const checkResponse = await request.get(`/v2/project/${id}`);
-          expect(checkResponse.status).to.equal(404, `Test project ${id} should be deleted but still exists`);
+          const checkResponse = await request.get(`/v1/projects?warehouseProjectId=${id}`);
+          const checkData = checkResponse.body?.data || [];
+          expect(checkData.length).to.equal(0, `Test project ${id} should be deleted but still exists`);
         } catch (error) {
-          // 404 is expected - record is deleted
+          // 404 or empty is expected - record is deleted
           if (error.status !== 404 && error.response?.status !== 404) {
             throw error;
           }

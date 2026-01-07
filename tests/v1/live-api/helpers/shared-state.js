@@ -6,7 +6,6 @@
 import { addVerificationRecord as addVerificationRecordToFile, getVerificationState, clearVerificationState as clearVerificationStateFile } from './verification-state.js';
 
 // Test execution mode: 'extended' (commit per resource) or 'short' (batch commits across all resources)
-// Defaults to 'extended' for backward compatibility
 let testMode = process.env.TEST_MODE || 'extended';
 
 /**
@@ -33,49 +32,26 @@ export const getTestMode = () => testMode;
 export const shouldAutoCommit = () => testMode === 'extended';
 
 const createdIds = {
-  methodology: [],
-  program: [],
   project: [],
-  validation: [],
-  verification: [],
-  issuance: [],
   unit: [],
-  location: [],
-  estimation: [],
-  rating: [],
-  'co-benefit': [],
-  label: [],
-  stakeholder: [],
-  'project-methodology': [],
-  'stakeholder-projects': [],
-  'unit-label': [],
-  'aef-t1-submission': [],
-  'aef-t2-authorizations': [],
-  'aef-t3-actions': [],
-  'aef-t4-holdings': [],
-  'aef-t5-authorized-entities': [],
 };
 
 // Track records created/updated/deleted for batch verification
-// Structure: { type: { id: { operation: 'POST'|'PUT'|'DELETE', expectedData?: object } } }
 const batchVerificationRecords = {};
 
 /**
  * Track a record for batch verification
  * @param {string} operation - 'POST', 'PUT', or 'DELETE'
  * @param {string} type - Resource type
- * @param {string|object} id - Record ID (string for single key, object for composite key)
+ * @param {string} id - Record ID (warehouseProjectId or warehouseUnitId)
  * @param {object} expectedData - Expected data for POST/PUT operations
  */
 export const trackBatchVerification = (operation, type, id, expectedData = null) => {
-  // Store composite keys as JSON strings, single keys as strings
-  const idKey = typeof id === 'object' ? JSON.stringify(id) : id;
-
   // Store in memory (for same-process access)
   if (!batchVerificationRecords[type]) {
     batchVerificationRecords[type] = {};
   }
-  batchVerificationRecords[type][idKey] = {
+  batchVerificationRecords[type][id] = {
     operation,
     expectedData,
   };
@@ -118,8 +94,8 @@ export const clearBatchVerificationRecords = () => {
 
 /**
  * Add a created ID to the shared state
- * @param {string} type - Resource type (e.g., 'methodology', 'project')
- * @param {string|object} id - The created ID (UUID string or composite key object)
+ * @param {string} type - Resource type (e.g., 'project', 'unit')
+ * @param {string} id - The created ID (warehouseProjectId or warehouseUnitId)
  */
 export const addCreatedId = (type, id) => {
   if (!createdIds[type]) {
@@ -130,17 +106,17 @@ export const addCreatedId = (type, id) => {
 
 /**
  * Get created IDs for a specific type
- * @param {string} type - Resource type (e.g., 'methodology', 'project')
- * @returns {Array<string|object>} Array of IDs for that type
+ * @param {string} type - Resource type (e.g., 'project', 'unit')
+ * @returns {Array<string>} Array of IDs for that type
  */
 export const getCreatedIds = (type) => {
   return createdIds[type] || [];
 };
 
 /**
- * Get the first created ID for a specific type (useful for getting a single parent entity)
+ * Get the first created ID for a specific type
  * @param {string} type - Resource type
- * @returns {string|object|null} First ID or null if none exist
+ * @returns {string|null} First ID or null if none exist
  */
 export const getFirstCreatedId = (type) => {
   const ids = createdIds[type] || [];
@@ -148,58 +124,21 @@ export const getFirstCreatedId = (type) => {
 };
 
 /**
- * Mapping of resource types to their primary key field names
- */
-const PRIMARY_KEY_FIELDS = {
-  'methodology': 'cadTrustMethodologyId',
-  'program': 'cadTrustProgramId',
-  'project': 'cadTrustProjectId',
-  'validation': 'cadTrustValidationId',
-  'verification': 'cadTrustVerificationId',
-  'issuance': 'cadTrustIssuanceId',
-  'unit': 'cadTrustUnitId',
-  'location': 'cadTrustLocationId',
-  'estimation': 'cadTrustEstimationId',
-  'rating': 'cadTrustRatingId',
-  'co-benefit': 'cadTrustCoBenefitId',
-  'label': 'cadTrustLabelId',
-  'stakeholder': 'cadTrustStakeholderId',
-  'project-methodology': 'cadTrustProjectMethodologyId',
-  'stakeholder-projects': 'cadTrustStakeholderProjectId',
-  'unit-label': 'cadTrustUnitLabelId',
-  'aef-t1-submission': 'cadTrustAefT1SubmissionId',
-  'aef-t2-authorizations': 'cadTrustAefT2AuthorizationsId',
-  'aef-t3-actions': 'cadTrustAefT3ActionsId',
-  'aef-t4-holdings': 'cadTrustAefT4HoldingsId',
-  'aef-t5-authorized-entities': 'cadTrustAefT5AuthorizedEntitiesId',
-};
-
-/**
  * Get the first record ID from the database for a specific type
- * This is useful for PUT/DELETE tests that run in separate processes
  * @param {Object} request - supertest request instance
- * @param {string} type - Resource type (e.g., 'methodology', 'project')
+ * @param {string} type - Resource type (e.g., 'project', 'unit')
  * @returns {Promise<string|null>} First record ID or null if none exist
  */
 export const getFirstRecordIdFromDatabase = async (request, type) => {
   try {
-    const response = await request.get(`/v2/${type}`);
-    const data = Array.isArray(response.body)
-      ? response.body
-      : (response.body?.data || []);
+    const endpoint = type === 'project' ? '/v1/projects?page=1&limit=1' : '/v1/units?page=1&limit=1';
+    const response = await request.get(endpoint);
+    const data = response.body?.data || [];
 
     if (response.status === 200 && Array.isArray(data) && data.length > 0) {
       const firstRecord = data[0];
-      const idField = PRIMARY_KEY_FIELDS[type];
-      if (idField && firstRecord[idField]) {
-        return firstRecord[idField];
-      }
-      // Fallback: try to find ID field
-      const foundIdField = Object.keys(firstRecord).find(key =>
-        key.toLowerCase().includes('id') &&
-        (key.toLowerCase().includes(type.toLowerCase()) || key === 'id')
-      );
-      return foundIdField ? firstRecord[foundIdField] : null;
+      const idField = type === 'project' ? 'warehouseProjectId' : 'warehouseUnitId';
+      return firstRecord[idField] || null;
     }
     return null;
   } catch (error) {
@@ -209,35 +148,21 @@ export const getFirstRecordIdFromDatabase = async (request, type) => {
 
 /**
  * Get all record IDs from the database for a specific type
- * This is useful for DELETE tests that run in separate processes
  * @param {Object} request - supertest request instance
- * @param {string} type - Resource type (e.g., 'methodology', 'project')
+ * @param {string} type - Resource type (e.g., 'project', 'unit')
  * @returns {Promise<string[]>} Array of record IDs
  */
 export const getAllRecordIdsFromDatabase = async (request, type) => {
   try {
-    const response = await request.get(`/v2/${type}`);
-    const data = Array.isArray(response.body)
-      ? response.body
-      : (response.body?.data || []);
+    const endpoint = type === 'project' ? '/v1/projects?page=1&limit=1000' : '/v1/units?page=1&limit=1000';
+    const response = await request.get(endpoint);
+    const data = response.body?.data || [];
 
     if (response.status === 200 && Array.isArray(data) && data.length > 0) {
-      const idField = PRIMARY_KEY_FIELDS[type];
-      if (idField) {
-        return data
-          .map(record => record[idField])
-          .filter(id => id != null);
-      }
-      // Fallback: try to find ID field
-      const foundIdField = Object.keys(data[0] || {}).find(key =>
-        key.toLowerCase().includes('id') &&
-        (key.toLowerCase().includes(type.toLowerCase()) || key === 'id')
-      );
-      if (foundIdField) {
-        return data
-          .map(record => record[foundIdField])
-          .filter(id => id != null);
-      }
+      const idField = type === 'project' ? 'warehouseProjectId' : 'warehouseUnitId';
+      return data
+        .map(record => record[idField])
+        .filter(id => id != null);
     }
     return [];
   } catch (error) {
@@ -247,34 +172,12 @@ export const getAllRecordIdsFromDatabase = async (request, type) => {
 
 /**
  * Get all created IDs in reverse dependency order for cleanup
- * @returns {Array<{type: string, id: string|object}>}
+ * @returns {Array<{type: string, id: string}>}
  */
 export const getAllCreatedIds = () => {
   const all = [];
-  // Delete in reverse dependency order
-  const deleteOrder = [
-    'unit-label',
-    'stakeholder-projects',
-    'project-methodology',
-    'unit',
-    'issuance',
-    'verification',
-    'validation',
-    'aef-t4-holdings',
-    'aef-t3-actions',
-    'aef-t2-authorizations',
-    'aef-t5-authorized-entities',
-    'aef-t1-submission',
-    'co-benefit',
-    'estimation',
-    'rating',
-    'label',
-    'stakeholder',
-    'project',
-    'program',
-    'methodology',
-    'location',
-  ];
+  // Delete in reverse dependency order: units first, then projects
+  const deleteOrder = ['unit', 'project'];
 
   for (const type of deleteOrder) {
     if (createdIds[type] && createdIds[type].length > 0) {
@@ -297,7 +200,6 @@ export const clearAllCreatedIds = () => {
 };
 
 // Track endpoints being tested for logging
-// Structure: { POST: ['/v2/co-benefit', '/v2/co-benefit', ...], PUT: [...], DELETE: [...] }
 const testedEndpoints = {
   POST: [],
   PUT: [],
@@ -307,7 +209,7 @@ const testedEndpoints = {
 /**
  * Track an endpoint being tested
  * @param {string} method - HTTP method (POST, PUT, DELETE)
- * @param {string} endpoint - Endpoint path (e.g., '/v2/co-benefit')
+ * @param {string} endpoint - Endpoint path (e.g., '/v1/projects')
  */
 export const trackTestEndpoint = (method, endpoint) => {
   if (testedEndpoints[method]) {
@@ -318,7 +220,7 @@ export const trackTestEndpoint = (method, endpoint) => {
 /**
  * Get all tracked endpoints for a method
  * @param {string} method - HTTP method (POST, PUT, DELETE)
- * @returns {Array<string>} Array of endpoint paths (may contain duplicates)
+ * @returns {Array<string>} Array of endpoint paths
  */
 export const getTestedEndpoints = (method) => {
   return testedEndpoints[method] || [];

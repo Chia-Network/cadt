@@ -8,7 +8,7 @@ export default {
   projectLink: 'https://www.nature.com/articles/s41467-021-21560-2',
   projectDeveloper:
     "NParks' National Biodiversity Centre, National Parks Board, Ridgeview Residential College",
-  sector: 'Transport',
+  sector: 'Transportation and storage',
   projectType: 'Organic Waste Composting',
   projectTags: 'Wetlands, Reforestation, Million trees',
   coveredByNDC: 'Inside NDC',

@@ -2,7 +2,6 @@
 /**
  * Orchestration file for short test mode (batch commits)
  * Runs all POST requests first, then commits, then PUT requests, then commits, then DELETE requests, then commits
- * Based on run-batched-tests.js but adapted for new structure
  */
 
 import { spawn } from 'child_process';
@@ -12,39 +11,11 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Test files ordered by dependency: prerequisites must come before dependents
-// Order matches natural user workflow: create base entities first, then relationships
+// Test files ordered by dependency: projects before units (units reference projects via projectLocationId)
 const testFiles = [
-  // Base entities (no dependencies)
-  'methodology-validation.live.spec.js',      // No deps
-  'program-validation.live.spec.js',         // No deps
-  'stakeholder-validation.live.spec.js',      // No deps
-  'label-validation.live.spec.js',           // No deps
-
-  // Project and its direct dependents
-  'project-validation.live.spec.js',         // Needs program (optional)
-  'location-validation.live.spec.js',        // Needs project
-  'estimation-validation.live.spec.js',      // Needs project
-  'rating-validation.live.spec.js',          // Needs project
-  'co-benefit-validation.live.spec.js',      // Needs project
-  'validation-validation.live.spec.js',      // Needs project
-
-  // Verification and its dependents
-  'verification-validation.live.spec.js',     // Needs project, optionally validation
-  'issuance-validation.live.spec.js',        // Needs verification + methodology
-  'unit-validation.live.spec.js',            // Needs issuance
-
-  // Relationship tables (composite keys)
-  'project-methodology-validation.live.spec.js',  // Needs project + methodology
-  'stakeholder-projects-validation.live.spec.js',  // Needs stakeholder + project
-  'unit-label-validation.live.spec.js',            // Needs unit + label
-
-  // AEF endpoints (need to check dependencies)
-  'aef-t1-submission-validation.live.spec.js',
-  'aef-t2-authorizations-validation.live.spec.js',
-  'aef-t3-actions-validation.live.spec.js',
-  'aef-t4-holdings-validation.live.spec.js',
-  'aef-t5-authorized-entities-validation.live.spec.js',
+  'project-validation.live.spec.js',
+  'unit-validation.live.spec.js',
+  'staging-validation.live.spec.js',
 ];
 
 async function runMochaTests(grepPattern, phaseName, filesToRun = null) {
@@ -90,50 +61,18 @@ async function runMochaTests(grepPattern, phaseName, filesToRun = null) {
   });
 }
 
-// Map camelCase type names to kebab-case API endpoint paths
-const TYPE_TO_ENDPOINT = {
-  coBenefit: 'co-benefit',
-  'co-benefit': 'co-benefit',
-  projectMethodology: 'project-methodology',
-  'project-methodology': 'project-methodology',
-  stakeholderProjects: 'stakeholder-projects',
-  'stakeholder-projects': 'stakeholder-projects',
-  unitLabel: 'unit-label',
-  'unit-label': 'unit-label',
-  aefT1Submission: 'aef-t1-submission',
-  'aef-t1-submission': 'aef-t1-submission',
-  aefT2Authorizations: 'aef-t2-authorizations',
-  'aef-t2-authorizations': 'aef-t2-authorizations',
-  aefT3Actions: 'aef-t3-actions',
-  'aef-t3-actions': 'aef-t3-actions',
-  aefT4Holdings: 'aef-t4-holdings',
-  'aef-t4-holdings': 'aef-t4-holdings',
-  aefT5AuthorizedEntities: 'aef-t5-authorized-entities',
-  'aef-t5-authorized-entities': 'aef-t5-authorized-entities',
-};
-
-/**
- * Convert type name to API endpoint path
- * @param {string} type - Type name (camelCase or kebab-case)
- * @returns {string} - Endpoint path (kebab-case)
- */
-function getEndpointPath(type) {
-  return TYPE_TO_ENDPOINT[type] || type;
-}
-
 async function commitAndWait(phase) {
-  const { getLiveApiRequest, commitStagedRecords, waitForPendingCommits, waitForStagingEmpty, waitForBatchToAppear, validateDataInDatabase } = await import('./helpers/live-api-helpers.js');
+  const { getLiveApiRequest, commitStagedRecords, waitForPendingCommits, waitForStagingEmpty, waitForBatchToAppear } = await import('./helpers/live-api-helpers.js');
   const { getAllCreatedIds, getBatchVerificationRecords, clearBatchVerificationRecords } = await import('./helpers/shared-state.js');
 
   const request = await getLiveApiRequest();
 
   // Check if staging table has records before committing
-  const stagingResponse = await request.get('/v2/staging');
+  const stagingResponse = await request.get('/v1/staging');
   const records = Array.isArray(stagingResponse.body) ? stagingResponse.body : (stagingResponse.body?.data || []);
 
   if (records.length === 0) {
     console.log(`\n=== No staged records to commit for ${phase} phase ===`);
-    clearBatchVerificationRecords(); // Still clear verification records
     return;
   }
 
@@ -157,21 +96,21 @@ async function commitAndWait(phase) {
   const verifyTimestamp = new Date().toISOString();
   console.log(`[${verifyTimestamp}] Verifying ${phase} operations...`);
 
+  const { validateDataInDatabase } = await import('./helpers/live-api-helpers.js');
+
   let verifiedCount = 0;
   let failedCount = 0;
   const failures = [];
 
   // Iterate through all tracked records by type
-  for (const [type, typeRecords] of Object.entries(verificationRecords)) {
-    const endpointPath = getEndpointPath(type);
-
-    for (const [id, recordInfo] of Object.entries(typeRecords)) {
+  for (const [type, records] of Object.entries(verificationRecords)) {
+    for (const [id, recordInfo] of Object.entries(records)) {
       const { operation, expectedData } = recordInfo;
 
       try {
         if (operation === 'POST' || operation === 'PUT') {
           // Verify record exists and data matches
-          const isValid = await validateDataInDatabase(request, endpointPath, id, expectedData || {});
+          const isValid = await validateDataInDatabase(request, type, id, expectedData || {});
           if (isValid) {
             verifiedCount++;
             console.log(`  ✓ Verified ${operation} ${type}/${id}`);
@@ -184,19 +123,27 @@ async function commitAndWait(phase) {
         } else if (operation === 'DELETE') {
           // Verify record does NOT exist
           try {
-            // V2 uses direct ID in path with correct endpoint
-            const endpoint = `/v2/${endpointPath}/${id}`;
-            const response = await request.get(endpoint);
+            let endpoint;
+            if (type === 'project' || type === 'projects') {
+              endpoint = `/v1/projects?warehouseProjectId=${id}`;
+            } else if (type === 'unit' || type === 'units') {
+              endpoint = `/v1/units?warehouseUnitId=${id}`;
+            } else {
+              throw new Error(`Unknown type: ${type}`);
+            }
 
-            // If we get here without error and status is 200, record still exists
-            if (response.status === 200 && response.body) {
+            const response = await request.get(endpoint);
+            const data = response.body?.data || response.body;
+            const records = Array.isArray(data) ? data : (data ? [data] : []);
+
+            if (records.length === 0) {
+              verifiedCount++;
+              console.log(`  ✓ Verified DELETE ${type}/${id} (record not found as expected)`);
+            } else {
               failedCount++;
               const errorMsg = `DELETE ${type}/${id}: Record still exists`;
               failures.push(errorMsg);
               console.error(`  ❌ ${errorMsg}`);
-            } else {
-              verifiedCount++;
-              console.log(`  ✓ Verified DELETE ${type}/${id} (record not found as expected)`);
             }
           } catch (error) {
             // If GET fails with 404 or similar, that's good - record is deleted
@@ -236,36 +183,6 @@ async function commitAndWait(phase) {
   console.log(`[${verifyTimestamp}] ✓ ${phase} phase complete\n`);
 }
 
-// Test files that have no dependencies (can validate without parent records)
-const baseTestFiles = [
-  'methodology-validation.live.spec.js',
-  'program-validation.live.spec.js',
-  'stakeholder-validation.live.spec.js',
-  'label-validation.live.spec.js',
-  'project-validation.live.spec.js',
-  // AEF endpoints (no parent dependencies)
-  'aef-t1-submission-validation.live.spec.js',
-  'aef-t2-authorizations-validation.live.spec.js',
-  'aef-t5-authorized-entities-validation.live.spec.js',
-];
-
-// Test files that depend on parent records existing
-const childTestFiles = [
-  'location-validation.live.spec.js',        // Needs project
-  'estimation-validation.live.spec.js',      // Needs project
-  'rating-validation.live.spec.js',          // Needs project
-  'co-benefit-validation.live.spec.js',      // Needs project
-  'validation-validation.live.spec.js',      // Needs project
-  'verification-validation.live.spec.js',     // Needs project
-  'issuance-validation.live.spec.js',        // Needs verification + methodology
-  'unit-validation.live.spec.js',            // Needs issuance
-  'project-methodology-validation.live.spec.js',  // Needs project + methodology
-  'stakeholder-projects-validation.live.spec.js',  // Needs stakeholder + project
-  'unit-label-validation.live.spec.js',            // Needs unit + label
-  'aef-t3-actions-validation.live.spec.js',        // Needs aef-t2
-  'aef-t4-holdings-validation.live.spec.js',       // Needs aef-t2
-];
-
 async function main() {
   try {
     console.log('\n=== Short Test Mode (Batch Commits) ===\n');
@@ -279,29 +196,21 @@ async function main() {
     clearVerificationState(); // Clear any previous verification state
     console.log('');
 
-    // Phase 1: Validation Failures for BASE entities (no parent dependencies)
-    console.log('--- Running validation failures for base entities ---');
-    await runMochaTests('Step 3: Validation Failure Tests', 'Base Validation Failures', baseTestFiles);
-    console.log('Clearing staging table after base validation failure tests...');
+    // Phase 0: Validation Failure Tests
+    await runMochaTests('Step 3: Validation Failure Tests', 'Validation Failures');
+    console.log('Clearing staging table after validation failure tests...');
     await clearStagingTable(request);
     console.log('');
 
-    // Phase 2: POST tests for ALL entities (creates parent records)
+    // Phase 1: POST tests
     await runMochaTests('Step 4: POST Request Tests', 'POST Operations');
     await commitAndWait('POST');
 
-    // Phase 3: Validation Failures for CHILD entities (now parent records exist)
-    console.log('--- Running validation failures for child entities ---');
-    await runMochaTests('Step 3: Validation Failure Tests', 'Child Validation Failures', childTestFiles);
-    console.log('Clearing staging table after child validation failure tests...');
-    await clearStagingTable(request);
-    console.log('');
-
-    // Phase 4: PUT tests
+    // Phase 2: PUT tests
     await runMochaTests('Step 7: PUT Request Tests', 'PUT Operations');
     await commitAndWait('PUT');
 
-    // Phase 5: DELETE tests
+    // Phase 3: DELETE tests
     await runMochaTests('Step 9: DELETE Request Tests', 'DELETE Operations');
     await commitAndWait('DELETE');
 

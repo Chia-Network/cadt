@@ -14,13 +14,23 @@ export const pullPickListValues = async () => {
   if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
     downloadedPickList = PickListStub;
   } else {
-    const governanceData = await Governance.findOne({
-      where: { metaKey: 'pickList' },
-      raw: true,
-    });
+    try {
+      const governanceData = await Governance.findOne({
+        where: { metaKey: 'pickList' },
+        raw: true,
+      });
 
-    if (_.get(governanceData, 'metaValue')) {
-      downloadedPickList = JSON.parse(governanceData.metaValue);
+      if (_.get(governanceData, 'metaValue')) {
+        downloadedPickList = JSON.parse(governanceData.metaValue);
+      } else {
+        // Fallback to hardcoded picklist if governance node doesn't provide one
+        logger.info('[v1]: Picklist not found in governance data, using hardcoded fallback picklist');
+        downloadedPickList = PickListStub;
+      }
+    } catch (error) {
+      // Fallback to hardcoded picklist on error (can't connect, parse error, etc.)
+      logger.warn(`[v1]: Error retrieving picklist from governance, using hardcoded fallback: ${error.message}`);
+      downloadedPickList = PickListStub;
     }
   }
 

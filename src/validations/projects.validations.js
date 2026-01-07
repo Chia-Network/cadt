@@ -51,10 +51,12 @@ export const baseSchema = {
     .required(),
   registryOfOrigin: Joi.string().required(),
   program: Joi.string().allow(null).optional(),
-  projectName: Joi.string().required(),
+  projectName: Joi.string().max(500).required(),
   projectLink: Joi.string().required(),
   projectDeveloper: Joi.string().required(),
-  sector: Joi.string().required(),
+  sector: Joi.string()
+    .custom(pickListValidation('projectSector', 'sector'))
+    .required(),
   projectType: Joi.string().required(),
   projectTags: Joi.string().allow(null).optional(),
   coveredByNDC: Joi.string()
