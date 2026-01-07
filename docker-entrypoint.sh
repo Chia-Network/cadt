@@ -27,7 +27,7 @@ create_config_if_not_exists() {
     if [ ! -f "$config_path" ]; then
         # Use Node to convert defaultConfig.js to YAML
         # Use a temporary .mjs file to properly handle ES module imports with top-level await
-        local temp_script=$(mktemp /tmp/create-config-XXXXXX.mjs)
+        local temp_script=$(mktemp /app/create-config-XXXXXX.mjs)
         cat > "$temp_script" << 'EOF'
 import yaml from "js-yaml";
 import fs from "fs";

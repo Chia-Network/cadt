@@ -473,10 +473,47 @@ export const validateDataInDatabase = async (request, type, id, expectedData) =>
     const actualData = response.body;
 
     // Compare expected fields with actual data
+    // We verify all fields we sent, but ignore fields the API adds (like cadTrustProjectId, createdAt, updatedAt)
     for (const [key, expectedValue] of Object.entries(expectedData)) {
+      // Skip nested child records - they're stored in separate tables
+      if (Array.isArray(expectedValue)) {
+        continue;
+      }
+
+      // Skip if this is a nested object (child records)
+      if (expectedValue && typeof expectedValue === 'object' && !Array.isArray(expectedValue) && !(expectedValue instanceof Date)) {
+        continue;
+      }
+
       const actualValue = actualData[key];
+
+      // Handle null/undefined equivalence
+      if (expectedValue === null && (actualValue === null || actualValue === undefined)) {
+        continue;
+      }
+      if (expectedValue === undefined && (actualValue === null || actualValue === undefined)) {
+        continue;
+      }
+
+      // Handle date comparisons - API may return full ISO datetime for date-only inputs
+      if (typeof expectedValue === 'string' && typeof actualValue === 'string') {
+        // Check if both look like dates
+        const expectedIsDate = /^\d{4}-\d{2}-\d{2}/.test(expectedValue);
+        const actualIsDate = /^\d{4}-\d{2}-\d{2}/.test(actualValue);
+
+        if (expectedIsDate && actualIsDate) {
+          // Compare just the date portion (YYYY-MM-DD)
+          const expectedDatePart = expectedValue.substring(0, 10);
+          const actualDatePart = actualValue.substring(0, 10);
+          if (expectedDatePart === actualDatePart) {
+            continue; // Dates match
+          }
+        }
+      }
+
+      // Strict comparison - any mismatch is a failure
       if (actualValue !== expectedValue) {
-        console.error(`  Field mismatch: ${key} - expected: ${expectedValue}, actual: ${actualValue}`);
+        console.error(`  Field mismatch: ${key} - expected: ${JSON.stringify(expectedValue)}, actual: ${JSON.stringify(actualValue)}`);
         return false;
       }
     }

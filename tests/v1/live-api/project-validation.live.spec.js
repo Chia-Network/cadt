@@ -55,13 +55,8 @@ describe('Project Live API Validation Tests', function () {
         .post('/v1/projects')
         .send(invalidData);
 
-      // V1 may or may not validate picklist values - check if it rejects or accepts
-      if (response.status === 400) {
-        expect(response.body.success).to.be.false;
-      } else {
-        // If API accepts invalid picklist, that's acceptable for now
-        this.skip();
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with missing required fields', async function () {
@@ -80,13 +75,8 @@ describe('Project Live API Validation Tests', function () {
         .post('/v1/projects')
         .send(longData);
 
-      // V1 may or may not validate string length - check if it rejects or accepts
-      if (response.status === 400) {
-        expect(response.body.success).to.be.false;
-      } else {
-        // If API accepts long strings, that's acceptable for now
-        this.skip();
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with invalid data types', async function () {
@@ -128,10 +118,10 @@ describe('Project Live API Validation Tests', function () {
         await waitForStagingEmpty(request);
         await waitForDataToAppear(request, 'project', id);
       } else {
-        trackBatchVerification('POST', 'project', id, {
-          projectId: data.projectId,
-          projectName: data.projectName,
-        });
+        // Track ALL fields from the request data for comprehensive verification
+        // Exclude nested child records (labels, issuances, etc.) as they're stored separately
+        const { labels, issuances, coBenefits, projectLocations, projectRatings, estimations, relatedProjects, ...fieldsToVerify } = data;
+        trackBatchVerification('POST', 'project', id, fieldsToVerify);
       }
 
       // Create 1 minimal record
@@ -147,10 +137,10 @@ describe('Project Live API Validation Tests', function () {
         await waitForStagingEmpty(request);
         await waitForDataToAppear(request, 'project', minId);
       } else {
-        trackBatchVerification('POST', 'project', minId, {
-          projectId: minimalData.projectId,
-          projectName: minimalData.projectName,
-        });
+        // Track ALL fields from the request data for comprehensive verification
+        // Exclude nested child records (labels, issuances, etc.) as they're stored separately
+        const { labels, issuances, coBenefits, projectLocations, projectRatings, estimations, relatedProjects, ...fieldsToVerify } = minimalData;
+        trackBatchVerification('POST', 'project', minId, fieldsToVerify);
       }
 
       // Create 1 maximal record (with nested child records)
@@ -166,10 +156,10 @@ describe('Project Live API Validation Tests', function () {
         await waitForStagingEmpty(request);
         await waitForDataToAppear(request, 'project', maxId);
       } else {
-        trackBatchVerification('POST', 'project', maxId, {
-          projectId: maximalData.projectId,
-          projectName: maximalData.projectName,
-        });
+        // Track ALL fields from the request data for comprehensive verification
+        // Exclude nested child records (labels, issuances, etc.) as they're stored separately
+        const { labels, issuances, coBenefits, projectLocations, projectRatings, estimations, relatedProjects, ...fieldsToVerify } = maximalData;
+        trackBatchVerification('POST', 'project', maxId, fieldsToVerify);
       }
     });
   });
@@ -199,12 +189,39 @@ describe('Project Live API Validation Tests', function () {
 
   describe('Step 7: PUT Request Tests', function () {
     it('should update a project', async function () {
-      // Get ID from createdIds (if available) or query database for existing record
+      // Get ID from createdIds (if available) or query for test records we created
       let id = createdIds[0];
       if (!id) {
-        id = await getFirstRecordIdFromDatabase(request, 'project');
+        // Query for test records by filtering by home org and TEST- prefix
+        let page = 1;
+        const limit = 100;
+        let found = false;
+
+        while (!found && page <= 10) { // Limit to 10 pages to avoid infinite loop
+          const response = await request.get(`/v1/projects?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
+          const data = response.body?.data || [];
+
+          // Find first test record (projectId starts with "TEST-")
+          const testRecord = data.find(record =>
+            record.projectId && record.projectId.startsWith('TEST-')
+          );
+
+          if (testRecord) {
+            id = testRecord.warehouseProjectId;
+            found = true;
+            break;
+          }
+
+          // Check if there are more pages
+          const totalPages = response.body?.pageCount || 1;
+          if (page >= totalPages || data.length < limit) {
+            break;
+          }
+          page++;
+        }
+
         if (!id) {
-          this.skip(); // Skip if no records exist
+          this.skip(); // Skip if no test records exist
         }
       }
 
@@ -215,6 +232,14 @@ describe('Project Live API Validation Tests', function () {
 
       if (!record) {
         this.skip(); // Skip if record not found
+      }
+
+      // Verify record belongs to home org and is a test record
+      if (record.orgUid !== homeOrgId) {
+        this.skip(); // Skip if record doesn't belong to home org
+      }
+      if (!record.projectId || !record.projectId.startsWith('TEST-')) {
+        this.skip(); // Skip if not a test record
       }
 
       // Create update data with ALL fields (V1 requirement)
@@ -268,14 +293,15 @@ describe('Project Live API Validation Tests', function () {
       if (createdIds.length > 0) {
         idsToDelete = createdIds.filter(id => id != null);
       } else {
-        // Query database for test records by searching for TEST- prefix in projectId
-        // V1 doesn't support filtering by projectId directly, so we need to get all and filter
+        // Query database for test records by filtering by home org, then filtering for TEST- prefix
+        // Using orgUid filter is much faster than paginating through all projects
         let page = 1;
         const limit = 1000;
         let hasMore = true;
 
         while (hasMore) {
-          const response = await request.get(`/v1/projects?page=${page}&limit=${limit}`).expect(200);
+          // Filter by home org to only get projects belonging to our organization
+          const response = await request.get(`/v1/projects?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
           const data = response.body?.data || [];
 
           // Filter for test records (projectId starts with "TEST-")
@@ -319,6 +345,17 @@ describe('Project Live API Validation Tests', function () {
           await commitStagedRecords(request, []);
           await waitForPendingCommits(request);
           await waitForStagingEmpty(request);
+          // Verify record is deleted
+          try {
+            const checkResponse = await request.get(`/v1/projects?warehouseProjectId=${id}`);
+            const checkData = checkResponse.body?.data || [];
+            expect(checkData.length).to.equal(0, `Project ${id} should be deleted but still exists`);
+          } catch (error) {
+            // 404 or empty is expected - record is deleted
+            if (error.status !== 404 && error.response?.status !== 404) {
+              throw error;
+            }
+          }
         } else {
           trackBatchVerification('DELETE', 'project', id);
         }
@@ -327,19 +364,57 @@ describe('Project Live API Validation Tests', function () {
   });
 
   describe('Step 10: Final Validation', function () {
-    it('should verify all projects are deleted', async function () {
-      const response = await request.get('/v1/projects?page=1&limit=1').expect(200);
-      const data = response.body?.data || [];
-      // All test projects should be deleted
-      // Note: There might be other projects in the database, so we just verify our created ones are gone
-      for (const id of createdIds) {
+    it('should verify all test projects are deleted', async function () {
+      // Query for test projects by orgUid and TEST- prefix to verify they're all deleted
+      // This works even when DELETE runs in a separate process
+      let testProjectIds = [];
+
+      // First try createdIds if available
+      if (createdIds.length > 0) {
+        testProjectIds = createdIds.filter(id => id != null);
+      } else {
+        // Query database for test records by filtering by home org
+        let page = 1;
+        const limit = 1000;
+        let hasMore = true;
+
+        while (hasMore) {
+          // Filter by home org to only get projects belonging to our organization
+          const response = await request.get(`/v1/projects?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
+          const data = response.body?.data || [];
+
+          // Filter for test records (projectId starts with "TEST-")
+          const testRecords = data.filter(record =>
+            record.projectId && record.projectId.startsWith('TEST-')
+          );
+
+          testProjectIds.push(...testRecords.map(r => r.warehouseProjectId));
+
+          // Check if there are more pages
+          const totalPages = response.body?.pageCount || 1;
+          hasMore = page < totalPages && data.length === limit;
+          page++;
+        }
+      }
+
+      // Verify all test projects are deleted
+      for (const id of testProjectIds) {
         try {
           const checkResponse = await request.get(`/v1/projects?warehouseProjectId=${id}`);
           const checkData = checkResponse.body?.data || [];
-          expect(checkData.length).to.equal(0);
+          expect(checkData.length).to.equal(0, `Test project ${id} should be deleted but still exists`);
         } catch (error) {
-          // 404 or empty is expected
+          // 404 or empty is expected - record is deleted
+          if (error.status !== 404 && error.response?.status !== 404) {
+            throw error;
+          }
         }
+      }
+
+      if (testProjectIds.length > 0) {
+        console.log(`✓ Verified ${testProjectIds.length} test project(s) are deleted`);
+      } else {
+        console.log('✓ No test projects found to verify (all deleted or none created)');
       }
     });
   });

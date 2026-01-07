@@ -3,6 +3,8 @@
  * Used for cleanup at the end of test run
  */
 
+import { addVerificationRecord as addVerificationRecordToFile, getVerificationState, clearVerificationState as clearVerificationStateFile } from './verification-state.js';
+
 // Test execution mode: 'extended' (commit per resource) or 'short' (batch commits across all resources)
 // Defaults to 'extended' for backward compatibility
 let testMode = process.env.TEST_MODE || 'extended';
@@ -66,22 +68,39 @@ const batchVerificationRecords = {};
  * @param {object} expectedData - Expected data for POST/PUT operations
  */
 export const trackBatchVerification = (operation, type, id, expectedData = null) => {
+  // Store composite keys as JSON strings, single keys as strings
+  const idKey = typeof id === 'object' ? JSON.stringify(id) : id;
+
+  // Store in memory (for same-process access)
   if (!batchVerificationRecords[type]) {
     batchVerificationRecords[type] = {};
   }
-  // Store composite keys as JSON strings, single keys as strings
-  const idKey = typeof id === 'object' ? JSON.stringify(id) : id;
   batchVerificationRecords[type][idKey] = {
     operation,
     expectedData,
   };
+
+  // Also persist to file (for cross-process access in short mode)
+  if (testMode === 'short') {
+    addVerificationRecordToFile(operation, type, id, expectedData);
+  }
 };
 
 /**
  * Get all records tracked for batch verification
+ * Always reads from file first (for cross-process access), then falls back to in-memory
  * @returns {object} Records organized by type and id
  */
 export const getBatchVerificationRecords = () => {
+  // Always try to read from file first (orchestration process doesn't have TEST_MODE set)
+  const fileRecords = getVerificationState();
+
+  // If file has records, use those (cross-process communication)
+  if (Object.keys(fileRecords).length > 0) {
+    return fileRecords;
+  }
+
+  // Fall back to in-memory records (same-process)
   return batchVerificationRecords;
 };
 
@@ -89,9 +108,12 @@ export const getBatchVerificationRecords = () => {
  * Clear batch verification records (call after each phase)
  */
 export const clearBatchVerificationRecords = () => {
+  // Clear in-memory records
   for (const key in batchVerificationRecords) {
     delete batchVerificationRecords[key];
   }
+  // Always clear file (orchestration process doesn't have TEST_MODE set)
+  clearVerificationStateFile();
 };
 
 /**

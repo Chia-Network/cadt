@@ -75,13 +75,8 @@ describe('Unit Live API Validation Tests', function () {
         .post('/v1/units')
         .send(longData);
 
-      // V1 may or may not validate string length - check if it rejects or accepts
-      if (response.status === 400) {
-        expect(response.body.success).to.be.false;
-      } else {
-        // If API accepts long strings, that's acceptable for now
-        this.skip();
-      }
+      expect(response.status).to.equal(400);
+      expect(response.body.success).to.be.false;
     });
 
     it('should reject POST with invalid data types', async function () {
@@ -123,10 +118,10 @@ describe('Unit Live API Validation Tests', function () {
         await waitForStagingEmpty(request);
         await waitForDataToAppear(request, 'unit', id);
       } else {
-        trackBatchVerification('POST', 'unit', id, {
-          unitOwner: data.unitOwner,
-          unitBlockStart: data.unitBlockStart,
-        });
+        // Track ALL fields from the request data for comprehensive verification
+        // Exclude nested child records (labels) as they're stored separately
+        const { labels, ...fieldsToVerify } = data;
+        trackBatchVerification('POST', 'unit', id, fieldsToVerify);
       }
 
       // Create 1 minimal record
@@ -142,10 +137,10 @@ describe('Unit Live API Validation Tests', function () {
         await waitForStagingEmpty(request);
         await waitForDataToAppear(request, 'unit', minId);
       } else {
-        trackBatchVerification('POST', 'unit', minId, {
-          unitOwner: minimalData.unitOwner,
-          unitBlockStart: minimalData.unitBlockStart,
-        });
+        // Track ALL fields from the request data for comprehensive verification
+        // Exclude nested child records (labels) as they're stored separately
+        const { labels, ...fieldsToVerify } = minimalData;
+        trackBatchVerification('POST', 'unit', minId, fieldsToVerify);
       }
 
       // Create 1 maximal record
@@ -161,10 +156,10 @@ describe('Unit Live API Validation Tests', function () {
         await waitForStagingEmpty(request);
         await waitForDataToAppear(request, 'unit', maxId);
       } else {
-        trackBatchVerification('POST', 'unit', maxId, {
-          unitOwner: maximalData.unitOwner,
-          unitBlockStart: maximalData.unitBlockStart,
-        });
+        // Track ALL fields from the request data for comprehensive verification
+        // Exclude nested child records (labels) as they're stored separately
+        const { labels, ...fieldsToVerify } = maximalData;
+        trackBatchVerification('POST', 'unit', maxId, fieldsToVerify);
       }
     });
   });
@@ -194,27 +189,40 @@ describe('Unit Live API Validation Tests', function () {
 
   describe('Step 7: PUT Request Tests', function () {
     it('should update a unit', async function () {
-      // Get ID from createdIds (if available) - only update records we created
+      // Get ID from createdIds (if available) or query for test records we created
       let id = createdIds[0];
       if (!id) {
-        // Try to find a record from the home org
-        const allIds = await getAllRecordIdsFromDatabase(request, 'unit');
-        // Check each ID to find one from home org
-        for (const testId of allIds) {
-          try {
-            const checkResponse = await request.get(`/v1/units?warehouseUnitId=${testId}`);
-            const checkData = checkResponse.body?.data || checkResponse.body;
-            const checkRecord = Array.isArray(checkData) ? checkData[0] : checkData;
-            if (checkRecord && checkRecord.orgUid === homeOrgId) {
-              id = testId;
-              break;
-            }
-          } catch (error) {
-            continue;
+        // Query for test records by filtering by home org and TEST- prefix
+        let page = 1;
+        const limit = 100;
+        let found = false;
+
+        while (!found && page <= 10) { // Limit to 10 pages to avoid infinite loop
+          const response = await request.get(`/v1/units?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
+          const data = response.body?.data || [];
+
+          // Find first test record (unitOwner or unitSerialId starts with "TEST-")
+          const testRecord = data.find(record =>
+            (record.unitOwner && record.unitOwner.startsWith('TEST-')) ||
+            (record.unitSerialId && record.unitSerialId.startsWith('TEST-'))
+          );
+
+          if (testRecord) {
+            id = testRecord.warehouseUnitId;
+            found = true;
+            break;
           }
+
+          // Check if there are more pages
+          const totalPages = response.body?.pageCount || 1;
+          if (page >= totalPages || data.length < limit) {
+            break;
+          }
+          page++;
         }
+
         if (!id) {
-          this.skip(); // Skip if no records from home org exist
+          this.skip(); // Skip if no test records exist
         }
       }
 
@@ -227,9 +235,14 @@ describe('Unit Live API Validation Tests', function () {
         this.skip(); // Skip if record not found
       }
 
-      // Verify record belongs to home org
+      // Verify record belongs to home org and is a test record
       if (record.orgUid !== homeOrgId) {
         this.skip(); // Skip if record doesn't belong to home org
+      }
+      const isTestRecord = (record.unitOwner && record.unitOwner.startsWith('TEST-')) ||
+                           (record.unitSerialId && record.unitSerialId.startsWith('TEST-'));
+      if (!isTestRecord) {
+        this.skip(); // Skip if not a test record
       }
 
       // Create update data with ALL fields (V1 requirement)
@@ -284,14 +297,15 @@ describe('Unit Live API Validation Tests', function () {
       if (createdIds.length > 0) {
         idsToDelete = createdIds.filter(id => id != null);
       } else {
-        // Query database for test records by searching for TEST- prefix in unitOwner
-        // V1 doesn't support filtering by unitOwner directly, so we need to get all and filter
+        // Query database for test records by filtering by home org, then filtering for TEST- prefix
+        // Using orgUid filter is much faster than paginating through all units
         let page = 1;
         const limit = 1000;
         let hasMore = true;
 
         while (hasMore) {
-          const response = await request.get(`/v1/units?page=${page}&limit=${limit}`).expect(200);
+          // Filter by home org to only get units belonging to our organization
+          const response = await request.get(`/v1/units?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
           const data = response.body?.data || [];
 
           // Filter for test records (unitOwner starts with "TEST-")
@@ -335,6 +349,17 @@ describe('Unit Live API Validation Tests', function () {
           await commitStagedRecords(request, []);
           await waitForPendingCommits(request);
           await waitForStagingEmpty(request);
+          // Verify record is deleted
+          try {
+            const checkResponse = await request.get(`/v1/units?warehouseUnitId=${id}`);
+            const checkData = checkResponse.body?.data || [];
+            expect(checkData.length).to.equal(0, `Unit ${id} should be deleted but still exists`);
+          } catch (error) {
+            // 404 or empty is expected - record is deleted
+            if (error.status !== 404 && error.response?.status !== 404) {
+              throw error;
+            }
+          }
         } else {
           trackBatchVerification('DELETE', 'unit', id);
         }
@@ -343,16 +368,57 @@ describe('Unit Live API Validation Tests', function () {
   });
 
   describe('Step 10: Final Validation', function () {
-    it('should verify all units are deleted', async function () {
-      // All test units should be deleted
-      for (const id of createdIds) {
+    it('should verify all test units are deleted', async function () {
+      // Query for test units by orgUid and TEST- prefix to verify they're all deleted
+      // This works even when DELETE runs in a separate process
+      let testUnitIds = [];
+
+      // First try createdIds if available
+      if (createdIds.length > 0) {
+        testUnitIds = createdIds.filter(id => id != null);
+      } else {
+        // Query database for test records by filtering by home org
+        let page = 1;
+        const limit = 1000;
+        let hasMore = true;
+
+        while (hasMore) {
+          // Filter by home org to only get units belonging to our organization
+          const response = await request.get(`/v1/units?page=${page}&limit=${limit}&orgUid=${homeOrgId}`).expect(200);
+          const data = response.body?.data || [];
+
+          // Filter for test records (unitOwner starts with "TEST-")
+          const testRecords = data.filter(record =>
+            record.unitOwner && record.unitOwner.startsWith('TEST-')
+          );
+
+          testUnitIds.push(...testRecords.map(r => r.warehouseUnitId));
+
+          // Check if there are more pages
+          const totalPages = response.body?.pageCount || 1;
+          hasMore = page < totalPages && data.length === limit;
+          page++;
+        }
+      }
+
+      // Verify all test units are deleted
+      for (const id of testUnitIds) {
         try {
           const checkResponse = await request.get(`/v1/units?warehouseUnitId=${id}`);
           const checkData = checkResponse.body?.data || [];
-          expect(checkData.length).to.equal(0);
+          expect(checkData.length).to.equal(0, `Test unit ${id} should be deleted but still exists`);
         } catch (error) {
-          // 404 or empty is expected
+          // 404 or empty is expected - record is deleted
+          if (error.status !== 404 && error.response?.status !== 404) {
+            throw error;
+          }
         }
+      }
+
+      if (testUnitIds.length > 0) {
+        console.log(`✓ Verified ${testUnitIds.length} test unit(s) are deleted`);
+      } else {
+        console.log('✓ No test units found to verify (all deleted or none created)');
       }
     });
   });

@@ -95,7 +95,89 @@ async function commitAndWait(phase) {
   const verificationRecords = getBatchVerificationRecords();
   const verifyTimestamp = new Date().toISOString();
   console.log(`[${verifyTimestamp}] Verifying ${phase} operations...`);
-  // Verification logic would go here
+
+  const { validateDataInDatabase } = await import('./helpers/live-api-helpers.js');
+
+  let verifiedCount = 0;
+  let failedCount = 0;
+  const failures = [];
+
+  // Iterate through all tracked records by type
+  for (const [type, records] of Object.entries(verificationRecords)) {
+    for (const [id, recordInfo] of Object.entries(records)) {
+      const { operation, expectedData } = recordInfo;
+
+      try {
+        if (operation === 'POST' || operation === 'PUT') {
+          // Verify record exists and data matches
+          const isValid = await validateDataInDatabase(request, type, id, expectedData || {});
+          if (isValid) {
+            verifiedCount++;
+            console.log(`  ✓ Verified ${operation} ${type}/${id}`);
+          } else {
+            failedCount++;
+            const errorMsg = `${operation} ${type}/${id}: Data mismatch`;
+            failures.push(errorMsg);
+            console.error(`  ❌ ${errorMsg}`);
+          }
+        } else if (operation === 'DELETE') {
+          // Verify record does NOT exist
+          try {
+            let endpoint;
+            if (type === 'project' || type === 'projects') {
+              endpoint = `/v1/projects?warehouseProjectId=${id}`;
+            } else if (type === 'unit' || type === 'units') {
+              endpoint = `/v1/units?warehouseUnitId=${id}`;
+            } else {
+              throw new Error(`Unknown type: ${type}`);
+            }
+
+            const response = await request.get(endpoint);
+            const data = response.body?.data || response.body;
+            const records = Array.isArray(data) ? data : (data ? [data] : []);
+
+            if (records.length === 0) {
+              verifiedCount++;
+              console.log(`  ✓ Verified DELETE ${type}/${id} (record not found as expected)`);
+            } else {
+              failedCount++;
+              const errorMsg = `DELETE ${type}/${id}: Record still exists`;
+              failures.push(errorMsg);
+              console.error(`  ❌ ${errorMsg}`);
+            }
+          } catch (error) {
+            // If GET fails with 404 or similar, that's good - record is deleted
+            if (error.status === 404 || error.response?.status === 404) {
+              verifiedCount++;
+              console.log(`  ✓ Verified DELETE ${type}/${id} (record not found as expected)`);
+            } else {
+              // Some other error occurred
+              failedCount++;
+              const errorMsg = `DELETE ${type}/${id}: Error checking - ${error.message}`;
+              failures.push(errorMsg);
+              console.error(`  ❌ ${errorMsg}`);
+            }
+          }
+        }
+      } catch (error) {
+        failedCount++;
+        const errorMsg = `${operation} ${type}/${id}: ${error.message}`;
+        failures.push(errorMsg);
+        console.error(`  ❌ ${errorMsg}`);
+      }
+    }
+  }
+
+  if (failedCount > 0) {
+    console.error(`\n❌ Verification failed: ${failedCount} record(s) failed verification`);
+    console.error('Failures:');
+    failures.forEach(failure => console.error(`  - ${failure}`));
+    throw new Error(`Verification failed: ${failedCount} of ${verifiedCount + failedCount} record(s) failed`);
+  } else if (verifiedCount > 0) {
+    console.log(`✓ Verified ${verifiedCount} record(s) successfully`);
+  } else {
+    console.log('No records to verify');
+  }
 
   clearBatchVerificationRecords();
   console.log(`[${verifyTimestamp}] ✓ ${phase} phase complete\n`);
@@ -105,11 +187,13 @@ async function main() {
   try {
     console.log('\n=== Short Test Mode (Batch Commits) ===\n');
 
-    // Clear staging table before starting tests
+    // Clear staging table and verification state before starting tests
     const { getLiveApiRequest, clearStagingTable } = await import('./helpers/live-api-helpers.js');
+    const { clearVerificationState } = await import('./helpers/verification-state.js');
     const request = await getLiveApiRequest();
     console.log('Clearing staging table before tests...');
     await clearStagingTable(request);
+    clearVerificationState(); // Clear any previous verification state
     console.log('');
 
     // Phase 0: Validation Failure Tests

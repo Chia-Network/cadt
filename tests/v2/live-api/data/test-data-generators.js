@@ -241,7 +241,7 @@ export const generateProject = (cadTrustProgramId = null) => {
   const uniqueId = getUniqueId();
   const data = {
     projectRegistryName: 'VCS',
-    projectId: `PROJ-${uniqueId}`,
+    projectId: `TEST-PROJ-${uniqueId}`,
     projectName: `Test Project ${uniqueId}`,
     projectLink: 'https://example.com/project',
     projectDescription: 'Test project description',
@@ -260,7 +260,7 @@ export const generateProjectMinimal = () => {
   const uniqueId = getUniqueId();
   return {
     projectRegistryName: 'CAR',
-    projectId: `MIN-PROJ-${uniqueId}`,
+    projectId: `TEST-MIN-PROJ-${uniqueId}`,
     projectName: `Min Project ${uniqueId}`,
   };
 };
@@ -269,7 +269,7 @@ export const generateProjectMaximal = (cadTrustProgramId = null) => {
   const uniqueId = getUniqueId();
   const data = {
     projectRegistryName: 'Gold Standard',
-    projectId: `MAX-PROJ-${uniqueId}`,
+    projectId: `TEST-MAX-PROJ-${uniqueId}`,
     projectCreditingProgram: 'Test Crediting Program',
     projectName: `Max Project ${uniqueId}`,
     projectLink: `https://example.com/project/${getLongString(200)}`,
@@ -295,7 +295,7 @@ export const generateProjectLongStrings = () => ({
 
 export const generateProjectInvalidForeignKey = () => ({
   projectRegistryName: 'VCS',
-  projectId: `PROJ-${getUniqueId()}`,
+  projectId: `TEST-PROJ-${getUniqueId()}`,
   projectName: 'Invalid FK Project',
   cadTrustProgramId: getNonExistentId(),
 });
@@ -769,7 +769,7 @@ export const generateValidationForbiddenFields = (cadTrustProjectId) => ({
 // ============================================================================
 
 export const generateUnit = (cadTrustIssuanceId) => ({
-  unitSerialId: `UNIT-${getUniqueId()}`,
+  unitSerialId: `TEST-UNIT-${getUniqueId()}`,
   unitStartBlock: '1000',
   unitEndBlock: '2000',
   unitCount: 1000,
@@ -783,7 +783,7 @@ export const generateUnit = (cadTrustIssuanceId) => ({
   unitRetirementBeneficiaryId: 'BEN-123',
   unitLink: 'https://example.com/unit',
   unitMetric: 'tCO2e',
-  unitCurrentOwner: 'Test Owner',
+  unitCurrentOwner: `TEST-OWNER-${getUniqueId()}`,
   unitItmosReferenceId: 'ITMOS-123',
   marketplace: 'Test Marketplace',
   marketplaceLink: 'https://example.com/marketplace',
@@ -792,7 +792,7 @@ export const generateUnit = (cadTrustIssuanceId) => ({
 });
 
 export const generateUnitMinimal = (cadTrustIssuanceId) => ({
-  unitSerialId: `MIN-UNIT-${getUniqueId()}`,
+  unitSerialId: `TEST-MIN-UNIT-${getUniqueId()}`,
   unitStartBlock: '1000',
   unitEndBlock: '2000',
   unitVintageYear: 2024,
@@ -800,7 +800,7 @@ export const generateUnitMinimal = (cadTrustIssuanceId) => ({
 });
 
 export const generateUnitMaximal = (cadTrustIssuanceId) => ({
-  unitSerialId: `MAX-UNIT-${getUniqueId()}`,
+  unitSerialId: `TEST-MAX-UNIT-${getUniqueId()}`,
   unitStartBlock: '1000',
   unitEndBlock: '2000',
   unitCount: 999999.99,
