@@ -7,7 +7,7 @@ export default {
   originProjectId: 'Singapore National Registry',
   projectLink: 'UPDATED',
   projectDeveloper: 'UPDATED',
-  sector: 'Energy demand',
+  sector: 'Electricity; gas, steam and air conditioning supply',
   projectType: 'Organic Waste Composting',
   projectTags: 'UPDATED',
   coveredByNDC: 'Outside NDC',
