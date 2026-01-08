@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           stable_version=$(gh release list --limit 1 --order desc --exclude-pre-releases --json tagName --jq ".[].tagName")
-          echo "Latest release is $stable_version"
+          echo "Latest stable release is $stable_version"
 
           # Extract the major, minor, and patch versions
           IFS='.' read -r major minor patch <<< "$stable_version"
@@ -43,39 +43,46 @@ jobs:
           new_patch=$((patch + 1))
 
           new_version="$major.$minor.$new_patch"
+          echo "Looking for RC releases for version $new_version"
 
-          rc_version=$(gh release list --json tagName --jq ".[] | select(.tagName | test(\"${new_version}-rc*\")) | .tagName")
-          echo "Latest release candidate is $rc_version"
+          # Get all RC releases for this version and find the highest RC number
+          # Use proper regex escaping for dots and match rc followed by digits
+          escaped_version=$(echo "$new_version" | sed 's/\./\\./g')
+          rc_releases=$(gh release list --json tagName --jq "[.[] | select(.tagName | test(\"^${escaped_version}-rc[0-9]+$\")) | .tagName] | .[]")
 
-          if [[ -z ${rc_version} ]]; then
-            # Construct the new version string using new_version
+          echo "Found RC releases:"
+          echo "$rc_releases"
+
+          if [[ -z ${rc_releases} ]]; then
+            # No existing RC releases, start at rc1
             version="${new_version}-rc1"
-
-            echo "New version: $version"
-
+            echo "No existing RC releases found. New version: $version"
           else
-            # Extract the major, minor, patch, and rc parts
-            IFS='.-' read -r major minor patch rc <<< "$rc_version"
+            # Find the highest RC number from all matching releases
+            highest_rc=$(echo "$rc_releases" | grep -oP "rc\K[0-9]+" | sort -n | tail -1)
+            echo "Highest existing RC number: $highest_rc"
 
-            # Extract just the number of the rc
-            rc_number="${rc#rc}"
-
-            # Increment the rc number
-            rc_number=$((rc_number +1))
-
-            # Construct the new version string
-            version="$major.$minor.$patch-rc$rc_number"
-
+            # Increment the RC number
+            rc_number=$((highest_rc + 1))
+            version="${new_version}-rc${rc_number}"
             echo "New version: $version"
-
           fi
 
+          # Check if this tag already exists
           if [ $(git tag -l "$version") ]; then
-            echo "$version tag exists, deleting..."
-            git tag -d $version
-            git push --delete origin $version
+            echo "Tag $version already exists."
+            # Check if a release exists for this tag
+            if gh release view "$version" > /dev/null 2>&1; then
+              echo "Release also exists. Nothing to do."
+              exit 0
+            else
+              echo "Tag exists but release does not. Deleting orphaned tag and recreating..."
+              git tag -d $version
+              git push --delete origin $version
+            fi
           fi
-          echo "Tag does not exist. Creating and pushing tag"
+
+          echo "Creating and pushing tag $version"
           rm -f CHANGELOG.md
           npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0
           changes=$(npx conventional-changelog-cli -r 1 | tail -n +2)
