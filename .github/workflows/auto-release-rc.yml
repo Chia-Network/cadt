@@ -47,7 +47,8 @@ jobs:
 
           # Get all RC releases for this version and find the highest RC number
           # Use proper regex escaping for dots and match rc followed by digits
-          escaped_version=$(echo "$new_version" | sed 's/\./\\./g')
+          # Need double backslash for jq string escaping: \\\\ in sed -> \\ in output -> \ in jq string -> \. in regex
+          escaped_version=$(echo "$new_version" | sed 's/\./\\\\./g')
           rc_releases=$(gh release list --json tagName --jq "[.[] | select(.tagName | test(\"^${escaped_version}-rc[0-9]+$\")) | .tagName] | .[]")
 
           echo "Found RC releases:"
