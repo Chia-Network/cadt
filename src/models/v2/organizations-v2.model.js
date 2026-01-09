@@ -445,20 +445,11 @@ class OrganizationsV2 extends Model {
         }
       }
 
-      // Create new V2 stores (completely new store IDs, different from V1)
-      loggerV2.verbose('[v2]: upgradeFromV1() is creating new V2 orgUid store');
-      const newV2OrgUid = USE_SIMULATOR
-        ? 'v2-org-uid-' + Date.now()
-        : await datalayer.createDataLayerStore();
-
+      // Create new V2 registry store (v2 data store - different from V1)
+      // CRITICAL: Reuse v1OrgUid and v1FileStoreId - do NOT create new stores for these
       loggerV2.verbose('[v2]: upgradeFromV1() is creating new V2 registryId store');
       const newV2RegistryStoreId = USE_SIMULATOR
         ? 'v2-registry-' + Date.now()
-        : await datalayer.createDataLayerStore();
-
-      loggerV2.verbose('[v2]: upgradeFromV1() is creating new V2 file store');
-      const newV2FileStoreId = USE_SIMULATOR
-        ? 'v2-filestore-' + Date.now()
         : await datalayer.createDataLayerStore();
 
       // CRITICAL: Use existing dataModelVersionStoreId singleton (do NOT create new one)
@@ -468,45 +459,22 @@ class OrganizationsV2 extends Model {
         loggerV2.error(
           '[v2]: upgrade from V1 to V2 organization process failed. removing failed V2 organization records. please try again',
         );
-        await OrganizationsV2.destroy({ where: { org_uid: newV2OrgUid } });
+        await OrganizationsV2.destroy({ where: { org_uid: v1OrgUid } });
         await OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } });
       };
 
       if (!USE_SIMULATOR) {
         loggerV2.info(
-          '[v2]: upgrade from V1 to V2 organization process is waiting for all store creations to confirm on the blockchain',
+          '[v2]: upgrade from V1 to V2 organization process is waiting for V2 registry store creation to confirm on the blockchain',
         );
         await new Promise((resolve) => setTimeout(() => resolve(), 30000));
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
       loggerV2.verbose(
-        `[v2]: the blockchain reported new V2 organization stores orgUid: ${newV2OrgUid}, ` +
-          `registryId: ${newV2RegistryStoreId} have confirmed. `,
+        `[v2]: the blockchain reported new V2 registry store ${newV2RegistryStoreId} has confirmed. ` +
+          `Reusing V1 orgUid: ${v1OrgUid} and V1 fileStoreId: ${v1FileStoreId}`,
       );
-      loggerV2.info(
-        `[v2]: committing V2 organization data to orgUid store ${newV2OrgUid}`,
-      );
-
-      // Set up V2 orgUid store (completely new store)
-      await datalayer.syncDataLayer(
-        newV2OrgUid,
-        {
-          registryId: sharedDataModelVersionStoreId, // Points to SHARED singleton
-          fileStoreId: newV2FileStoreId, // NEW file store (separate from V1)
-          name,
-          icon,
-        },
-        revertUpgradeIfFailed,
-      );
-
-      if (!USE_SIMULATOR) {
-        loggerV2.info(
-          '[v2]: upgrade from V1 to V2 organization process is waiting for organization data committed to orgUid store to confirm on the blockchain',
-        );
-        await new Promise((resolve) => setTimeout(() => resolve(), 30000));
-        await datalayer.waitForAllTransactionsToConfirm();
-      }
 
       // CRITICAL: Check if singleton already has v2 key (idempotent upgrade)
       // singletonHasV2Key was already declared above - reuse it here
@@ -557,13 +525,14 @@ class OrganizationsV2 extends Model {
       }
 
       loggerV2.info('[v2]: adding new V2 home organization to CADT database');
+      // CRITICAL: Use v1OrgUid and v1FileStoreId - shared identity between v1 and v2
       await OrganizationsV2.create({
-        org_uid: newV2OrgUid,
+        org_uid: v1OrgUid, // SAME as V1 - shared org_uid
         data_model_version_store_id: sharedDataModelVersionStoreId, // SAME as V1 - shared singleton
-        registry_id: newV2RegistryStoreId, // NEW registry store
+        registry_id: newV2RegistryStoreId, // NEW registry store for v2 data
         is_home: true,
         subscribed: USE_SIMULATOR,
-        file_store_subscribed: newV2FileStoreId, // NEW file store
+        file_store_subscribed: v1FileStoreId, // SAME as V1 - shared file store
         name,
         icon,
       });
@@ -574,15 +543,16 @@ class OrganizationsV2 extends Model {
           {
             subscribed: true,
           },
-          { where: { org_uid: newV2OrgUid } },
+          { where: { org_uid: v1OrgUid } },
         );
       };
 
       if (!USE_SIMULATOR) {
         loggerV2.info('[v2]: Waiting for V2 Organization upgrade to be confirmed');
         // In non-simulator mode, use callback-based getStoreData to wait for confirmation
+        // We check the v1OrgUid store since that's the shared orgUid store
         datalayer.getStoreData(
-          newV2OrgUid,
+          v1OrgUid,
           onConfirm,
           revertUpgradeIfFailed,
         );
@@ -592,7 +562,7 @@ class OrganizationsV2 extends Model {
         await onConfirm();
       }
 
-      return newV2OrgUid;
+      return v1OrgUid;
     } catch (error) {
       loggerV2.error(
         `[v2]: upgrade from V1 to V2 organization process failed. removing failed V2 organization records. please try again. Error: ${error.message}`,

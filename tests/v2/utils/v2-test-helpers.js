@@ -8,22 +8,28 @@ import datalayer from '../../../src/datalayer/index.js';
 import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
 import { getChiaRoot } from '../../../src/utils/chia-root.js';
 
+const USE_SIMULATOR = process.env.USE_SIMULATOR === 'true';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
 // V2-specific test utilities
 export const waitForV2DataLayerSync = () => {
   return new Promise((resolve) => {
+    // In simulator mode, data syncs instantly - no need for long waits
+    // Real datalayer mode still uses the full 50-second wait for blockchain confirmations
+    const waitTime = USE_SIMULATOR ? 500 : TEST_WAIT_TIME * 5;
     setTimeout(() => {
       resolve();
-    }, TEST_WAIT_TIME * 5);
+    }, waitTime);
   });
 };
 
 /**
  * Commit V2 staging records and wait for sync to complete
- * Follows V1's proven pattern: simple 50-second fixed delay
  *
- * Like V1, this provides enough time for the scheduler to:
+ * In simulator mode: Uses a short 500ms wait (data syncs instantly)
+ * In real datalayer mode: Uses 50-second fixed delay for blockchain confirmations
+ *
+ * The wait allows time for the scheduler to:
  * - Run truncateStaging to clean up committed records
  * - Sync data from simulator to main tables
  * - Complete all background processing
@@ -49,9 +55,9 @@ export const commitV2StagingAndWait = async () => {
   const committedCount = await StagingV2.count({ where: { committed: true } });
   console.log(`[TEST commitV2StagingAndWait] IMMEDIATELY AFTER COMMIT: ${postCommitCount} uncommitted, ${committedCount} committed`);
 
-  // Wait for sync using V1's proven pattern: simple fixed delay
-  // TEST_WAIT_TIME * 5 = (POLLING_INTERVAL * 2) * 5 = (5000 * 2) * 5 = 50 seconds
-  console.log(`[TEST commitV2StagingAndWait] Starting 50-second wait for sync...`);
+  // Wait for sync - in simulator mode this is 500ms, in real mode it's 50 seconds
+  const waitDescription = USE_SIMULATOR ? '500ms (simulator mode)' : '50 seconds (real datalayer)';
+  console.log(`[TEST commitV2StagingAndWait] Starting ${waitDescription} wait for sync...`);
   await waitForV2DataLayerSync();
 
   // Check staging state after wait
@@ -70,11 +76,14 @@ export const commitV2StagingAndWait = async () => {
  * Commit V2 staging records and poll until condition is met
  * Uses smart polling to pass as soon as sync completes, with configurable timeout
  *
+ * In simulator mode: Uses 500ms intervals (10 attempts = 5s total)
+ * In real datalayer mode: Uses 5s intervals (10 attempts = 50s total)
+ *
  * @param {Function} checkFn - Async function that returns true when sync is complete
  *                             Example: async () => (await UnitV2.findByPk(unitId))?.marketplace === 'expected'
  * @param {Object} options - Configuration options
- * @param {number} options.interval - Time between checks in ms (default: 5000ms = 5s)
- * @param {number} options.maxAttempts - Maximum number of attempts (default: 10 = 50s total)
+ * @param {number} options.interval - Time between checks in ms (default: 500ms simulator, 5000ms real)
+ * @param {number} options.maxAttempts - Maximum number of attempts (default: 10)
  * @param {string} options.description - Description for error/log messages (default: "Sync operation")
  * @returns {Promise<Object>} Response from commit API
  * @throws {Error} If condition not met within timeout
@@ -93,8 +102,10 @@ export const commitV2StagingAndWaitForCondition = async (checkFn, options = {}) 
   const app = (await import('../../../src/server.js')).default;
   const { StagingV2 } = await import('../../../src/models/v2/index.js');
 
-  const interval = options.interval || 5000; // 5 seconds between checks (matches scheduler)
-  const maxAttempts = options.maxAttempts || 10; // 10 attempts = 50 seconds total
+  // In simulator mode, use shorter intervals since data syncs instantly
+  const defaultInterval = USE_SIMULATOR ? 500 : 5000;
+  const interval = options.interval || defaultInterval;
+  const maxAttempts = options.maxAttempts || 10;
   const description = options.description || 'Sync operation';
 
   // Count uncommitted staging records before commit
@@ -625,23 +636,25 @@ export const commitV2Staging = async () => {
 /**
  * Wait for V2 sync to complete by polling
  *
- * Follows V1's proven pattern with smart polling:
- * - Default: 50 seconds total timeout (10 attempts × 5 seconds)
+ * Smart polling with early exit:
+ * - In simulator mode: Uses shorter intervals (500ms default, 10 attempts = 5s total)
+ * - In real datalayer mode: Uses longer intervals (5s default, 10 attempts = 50s total)
  * - Waits FIRST, then checks (gives scheduler time to run)
  * - Exits early when checkFn returns true
- * - Matches V1's TEST_WAIT_TIME * 5 (POLLING_INTERVAL * 2 * 5)
  *
  * @param {Function} checkFn - Function that returns true when sync is complete (e.g., () => record exists)
  * @param {Object} options - Configuration options
- * @param {number} options.interval - Time between checks in ms (default: 5000ms = 5s, matches scheduler)
- * @param {number} options.maxAttempts - Maximum number of attempts (default: 10 = 50s total, matches V1)
+ * @param {number} options.interval - Time between checks in ms (default: 500ms simulator, 5000ms real)
+ * @param {number} options.maxAttempts - Maximum number of attempts (default: 10)
  * @param {string} options.description - Description for error message (default: "Sync operation")
  * @returns {Promise<void>}
  * @throws {Error} If sync doesn't complete within maxAttempts
  */
 export const waitForV2Sync = async (checkFn = null, options = {}) => {
-  const interval = options.interval || 5000; // 5 seconds between checks (matches scheduler interval)
-  const maxAttempts = options.maxAttempts || 10; // 10 attempts = 50 seconds (matches V1's TEST_WAIT_TIME * 5)
+  // In simulator mode, use shorter intervals since data syncs instantly
+  const defaultInterval = USE_SIMULATOR ? 500 : 5000;
+  const interval = options.interval || defaultInterval;
+  const maxAttempts = options.maxAttempts || 10;
   const description = options.description || 'Sync operation';
 
   // If no checkFn provided, just wait for the full duration (backward compatibility with V1 pattern)
