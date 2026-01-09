@@ -22,7 +22,7 @@ separation between temporary updates and permanent, public changes, maintaining 
 **V2 Features:**
 - V2 operations are isolated from V1 - V2 data does not affect V1 data and vice versa
 - V1 and V2 can run simultaneously
-- V2 supports upgrading existing V1 organizations to V2. This will not migrate the data, but simply create a new store for V2 alongside the existing V1 store.
+- V2 supports upgrading existing V1 organizations to V2. The upgrade preserves the same organization identity (org_uid) while creating a new V2 data store. V1 and V2 share the same org_uid, meaning organization metadata (name, icon) is shared. Data stores remain separate - V1 data is not migrated to V2.
 
 Please also see the following related documents:
 
