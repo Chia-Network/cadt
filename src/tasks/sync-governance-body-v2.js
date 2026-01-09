@@ -16,6 +16,13 @@ dotenv.config({ quiet: true });
 
 const task = new Task('sync-governance-meta-v2', async () => {
   try {
+    // Skip governance sync in simulator mode - no datalayer to sync from
+    // Fallback picklist will be used instead
+    if (CONFIG.USE_SIMULATOR) {
+      loggerV2.debug('[v2]: Simulator mode - skipping governance sync (using fallback picklist)');
+      return;
+    }
+
     await assertDataLayerAvailable();
     await assertWalletIsSynced();
 
