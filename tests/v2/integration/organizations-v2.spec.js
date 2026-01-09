@@ -380,10 +380,12 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       expect(v2Org.is_home).to.be.ok;
       expect(v2Org.is_home).to.equal(1);
 
-      // Verify V2 org has completely different store IDs than V1
-      expect(v2Org.org_uid).to.not.equal(v1Org.orgUid);
+      // Verify V2 org shares org_uid and file_store with V1 (shared identity)
+      expect(v2Org.org_uid).to.equal(v1Org.orgUid); // SAME org_uid - shared identity
+      expect(v2Org.file_store_subscribed).to.equal(v1Org.fileStoreId); // SAME file store - shared
+
+      // Verify V2 registry is different (new v2 data store)
       expect(v2Org.registry_id).to.not.equal(v1Org.registryId);
-      expect(v2Org.file_store_subscribed).to.not.equal(v1Org.fileStoreId);
 
       // Verify singleton is SHARED (same store ID)
       expect(v2Org.data_model_version_store_id).to.equal(v1Org.dataModelVersionStoreId);
@@ -405,24 +407,25 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       expect(singletonMap.v1).to.equal(v1Org.registryId);
       expect(singletonMap.v2).to.equal(v2Org.registry_id);
 
-      // Verify V2 orgUid store contains correct data
-      // In simulator mode, data should be immediately available after syncDataLayer
-      const v2OrgUidStoreData = await getStoreDataForTest(v2Org.org_uid);
-      expect(v2OrgUidStoreData).to.exist;
-      expect(v2OrgUidStoreData).to.not.be.instanceOf(Error);
-      expect(v2OrgUidStoreData.keys_values).to.exist;
-      expect(v2OrgUidStoreData.keys_values.length).to.be.greaterThan(0);
+      // Verify shared orgUid store (V1's store, now used by both V1 and V2)
+      // Since V2 reuses V1's orgUid store, the store data should still be V1's original data
+      // In simulator mode, data should be immediately available
+      const sharedOrgUidStoreData = await getStoreDataForTest(v2Org.org_uid);
+      expect(sharedOrgUidStoreData).to.exist;
+      expect(sharedOrgUidStoreData).to.not.be.instanceOf(Error);
+      expect(sharedOrgUidStoreData.keys_values).to.exist;
+      expect(sharedOrgUidStoreData.keys_values.length).to.be.greaterThan(0);
 
-      const decodedV2OrgUidStore = decodeDataLayerResponse(v2OrgUidStoreData);
-      const v2OrgUidStoreMap = {};
-      decodedV2OrgUidStore.forEach(({ key, value }) => {
-        v2OrgUidStoreMap[key] = value;
+      const decodedSharedOrgUidStore = decodeDataLayerResponse(sharedOrgUidStoreData);
+      const sharedOrgUidStoreMap = {};
+      decodedSharedOrgUidStore.forEach(({ key, value }) => {
+        sharedOrgUidStoreMap[key] = value;
       });
 
-      expect(v2OrgUidStoreMap.registryId).to.equal(v1DataModelVersionStoreId); // Points to shared singleton
-      expect(v2OrgUidStoreMap.fileStoreId).to.equal(v2Org.file_store_subscribed); // NEW file store
-      expect(v2OrgUidStoreMap.name).to.equal(v1Org.name);
-      expect(v2OrgUidStoreMap.icon).to.equal(v1Org.icon);
+      expect(sharedOrgUidStoreMap.registryId).to.equal(v1DataModelVersionStoreId); // Points to shared singleton
+      expect(sharedOrgUidStoreMap.fileStoreId).to.equal(v1FileStoreId); // SAME file store - shared with V1
+      expect(sharedOrgUidStoreMap.name).to.equal(v1Org.name);
+      expect(sharedOrgUidStoreMap.icon).to.equal(v1Org.icon);
 
       // Verify V1 org remains unchanged
       const v1OrgAfter = await Organization.findOne({
@@ -546,31 +549,21 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       await waitForOrgCreation();
 
       // Create V2 org (simulating partial upgrade - org created but singleton update failed)
-      const v2OrgUid = USE_SIMULATOR ? 'test-v2-org-partial' : await datalayer.createDataLayerStore();
+      // With shared org_uid architecture, V2 org uses v1OrgUid (not a separate store)
       const v2RegistryId = USE_SIMULATOR ? 'test-registry-v2-partial' : await datalayer.createDataLayerStore();
-      const v2FileStoreId = USE_SIMULATOR ? 'test-filestore-v2-partial' : await datalayer.createDataLayerStore();
 
       const v2Org = await OrganizationsV2.create({
-        org_uid: v2OrgUid,
+        org_uid: v1OrgUid, // SAME as V1 - shared org_uid
         name: v1Org.name,
         icon: v1Org.icon,
         is_home: true,
         subscribed: true,
         registry_id: v2RegistryId,
         data_model_version_store_id: v1DataModelVersionStoreId, // Shared singleton
-        file_store_subscribed: v2FileStoreId,
+        file_store_subscribed: v1FileStoreId, // SAME as V1 - shared file store
       });
 
-      // Set up V2 orgUid store
-      await datalayer.syncDataLayer(
-        v2OrgUid,
-        {
-          registryId: v1DataModelVersionStoreId,
-          fileStoreId: v2FileStoreId,
-          name: v1Org.name,
-          icon: v1Org.icon,
-        },
-      );
+      // Note: No need to sync V2 orgUid store - we reuse V1's orgUid store
 
       await waitForOrgCreation();
 
@@ -584,7 +577,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       expect(singletonMapBefore.v1).to.equal(v1RegistryId);
       expect(singletonMapBefore.v2).to.be.undefined; // v2 key missing
 
-      // Re-run upgrade - should complete the partial upgrade
+      // Re-run upgrade - should complete the partial upgrade by adding v2 key to singleton
       const response = await supertest(app)
         .post('/v2/organizations/upgrade')
         .expect(200);
@@ -609,14 +602,14 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       expect(singletonMapAfter.v1).to.equal(v1RegistryId);
       expect(singletonMapAfter.v2).to.equal(v2RegistryId); // v2 key now added
 
-      // Verify V2 org still exists and is unchanged
+      // Verify V2 org still exists and is unchanged (uses v1OrgUid as org_uid)
       const v2OrgAfter = await OrganizationsV2.findOne({
-        where: { org_uid: v2OrgUid },
+        where: { org_uid: v1OrgUid },
         raw: true,
       });
 
       expect(v2OrgAfter).to.exist;
-      expect(v2OrgAfter.org_uid).to.equal(v2OrgUid);
+      expect(v2OrgAfter.org_uid).to.equal(v1OrgUid); // Same as V1
       expect(v2OrgAfter.registry_id).to.equal(v2RegistryId);
     }).timeout(TEST_WAIT_TIME * 15);
   });
@@ -728,6 +721,123 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       expect(singletonMap.v2).to.equal(v2Org.registry_id);
       expect(v2Org.data_model_version_store_id).to.equal(v1Org.dataModelVersionStoreId); // Shared singleton
     }).timeout(TEST_WAIT_TIME * 15);
+  });
+
+  describe('POST /v2/organizations/upgrade - Shared org_uid', function () {
+    it('should use same org_uid as v1 organization', async function () {
+      // Create V1 org
+      const v1OrgUid = USE_SIMULATOR ? 'test-v1-shared-org' : await datalayer.createDataLayerStore();
+      const v1RegistryId = USE_SIMULATOR ? 'test-v1-registry-shared' : await datalayer.createDataLayerStore();
+      const v1DataModelVersionStoreId = USE_SIMULATOR ? 'test-v1-singleton-shared' : await datalayer.createDataLayerStore();
+      const v1FileStoreId = USE_SIMULATOR ? 'test-v1-filestore-shared' : await datalayer.createDataLayerStore();
+
+      const v1Org = await Organization.create({
+        orgUid: v1OrgUid,
+        name: 'V1 Org for Shared org_uid Test',
+        icon: 'v1-icon',
+        isHome: true,
+        subscribed: true,
+        synced: true,
+        registryId: v1RegistryId,
+        dataModelVersionStoreId: v1DataModelVersionStoreId,
+        fileStoreId: v1FileStoreId,
+      });
+
+      // Create singleton with v1 key
+      await datalayer.syncDataLayer(v1DataModelVersionStoreId, { v1: v1RegistryId });
+
+      // Set up V1 orgUid store
+      await datalayer.syncDataLayer(v1OrgUid, {
+        registryId: v1DataModelVersionStoreId,
+        fileStoreId: v1FileStoreId,
+        name: v1Org.name,
+        icon: v1Org.icon,
+      });
+
+      await waitForOrgCreation();
+
+      // Upgrade to V2
+      const response = await supertest(app)
+        .post('/v2/organizations/upgrade')
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+
+      await waitForOrgCreation();
+
+      // Verify v2 org has same org_uid as v1
+      const v2Org = await OrganizationsV2.findOne({ where: { is_home: true }, raw: true });
+      expect(v2Org).to.exist;
+      expect(v2Org.org_uid).to.equal(v1Org.orgUid);
+
+      // Verify v2 org has same file_store as v1
+      expect(v2Org.file_store_subscribed).to.equal(v1Org.fileStoreId);
+
+      // Verify v2 org has different registry (v2 data store)
+      expect(v2Org.registry_id).to.not.equal(v1Org.registryId);
+    }).timeout(TEST_WAIT_TIME * 15);
+
+    it('should share name/icon updates between v1 and v2 via shared orgUid store', async function () {
+      // Create V1 org
+      const v1OrgUid = USE_SIMULATOR ? 'test-v1-shared-meta' : await datalayer.createDataLayerStore();
+      const v1RegistryId = USE_SIMULATOR ? 'test-v1-registry-meta' : await datalayer.createDataLayerStore();
+      const v1DataModelVersionStoreId = USE_SIMULATOR ? 'test-v1-singleton-meta' : await datalayer.createDataLayerStore();
+      const v1FileStoreId = USE_SIMULATOR ? 'test-v1-filestore-meta' : await datalayer.createDataLayerStore();
+
+      await Organization.create({
+        orgUid: v1OrgUid,
+        name: 'Original Name',
+        icon: 'original-icon',
+        isHome: true,
+        subscribed: true,
+        synced: true,
+        registryId: v1RegistryId,
+        dataModelVersionStoreId: v1DataModelVersionStoreId,
+        fileStoreId: v1FileStoreId,
+      });
+
+      // Create singleton with v1 key
+      await datalayer.syncDataLayer(v1DataModelVersionStoreId, { v1: v1RegistryId });
+
+      // Set up V1 orgUid store
+      await datalayer.syncDataLayer(v1OrgUid, {
+        registryId: v1DataModelVersionStoreId,
+        fileStoreId: v1FileStoreId,
+        name: 'Original Name',
+        icon: 'original-icon',
+      });
+
+      await waitForOrgCreation();
+
+      // Upgrade to V2
+      await supertest(app).post('/v2/organizations/upgrade').expect(200);
+      await waitForOrgCreation();
+
+      // Update V2 name via API
+      const newName = 'Updated Name';
+      await supertest(app)
+        .put('/v2/organizations/edit')
+        .send({ name: newName })
+        .expect(200);
+
+      // Verify V2 org has updated name in database
+      const v2Org = await OrganizationsV2.findOne({ where: { is_home: true }, raw: true });
+      expect(v2Org.name).to.equal(newName);
+
+      // Verify orgUid store has updated name (shared store used by both V1 and V2)
+      const orgUidStoreData = await getStoreDataForTest(v1OrgUid);
+      expect(orgUidStoreData).to.exist;
+      expect(orgUidStoreData.keys_values).to.exist;
+
+      const decodedOrgUidStore = decodeDataLayerResponse(orgUidStoreData);
+      const orgUidStoreMap = {};
+      decodedOrgUidStore.forEach(({ key, value }) => {
+        orgUidStoreMap[key] = value;
+      });
+
+      // The orgUid store should have the updated name (V1 sync would see this)
+      expect(orgUidStoreMap.name).to.equal(newName);
+    }).timeout(TEST_WAIT_TIME * 20);
   });
 
   describe('Phase 16.8: OrganizationsV2 Model - Read Operations', function () {
@@ -2540,6 +2650,14 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
           where: { org_uid: v2OrgUid },
           raw: true,
         });
+
+        // Verify V2 org uses the same org_uid as V1 (shared identity)
+        expect(v2OrgUid).to.equal(v1OrgUid);
+        expect(v2Org.org_uid).to.equal(v1Org.orgUid);
+
+        // Verify V2 org uses the same file store as V1 (shared file store)
+        expect(v2Org.file_store_subscribed).to.equal(v1FileStoreId);
+        expect(v2Org.file_store_subscribed).to.equal(v1Org.fileStoreId);
 
         // Verify V2 org uses the same singleton (shared singleton)
         expect(v2Org.data_model_version_store_id).to.equal(v1DataModelVersionStoreId);

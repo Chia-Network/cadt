@@ -67,7 +67,7 @@ SHARED orgUid store  <-- REUSE v1 orgUid
 ├── name: "Organization Name"
 ├── icon: "<icon data>"
 ├── registryId: <dataModelVersionStoreId>  (points to singleton)
-└── fileStoreId: <v1FileStoreId>
+└── fileStoreId: <v1FileStoreId> (will have v1 and v2 files)
 
 dataModelVersionStoreId (singleton - SHARED)
 ├── v1: <v1RegistryStoreId>
@@ -79,14 +79,13 @@ v1RegistryStoreId
 v2RegistryStoreId
 └── (actual v2 climate data)
 
-v1FileStoreId (v1 files)
-v2FileStoreId (v2 files - stored in OrganizationsV2.file_store_subscribed)
+v1FileStoreId (v1 and v2 files)
 ```
 
 Key differences:
 1. **No new orgUid store created** - reuse v1's
 2. **Same org_uid value** in both Organization (v1) and OrganizationsV2 tables
-3. **v2 file store ID stored only in database**, not in orgUid store
+3. **filestore is shared between v1 and v2, zero difference in the filestore functionality between v1 and v2**
 
 ---
 
@@ -116,24 +115,21 @@ const v1DataModelVersionStoreId = v1Org.dataModelVersionStoreId;
 // 2. Create new v2 registry store (still needed)
 const newV2RegistryStoreId = await datalayer.createDataLayerStore();
 
-// 3. Create new v2 file store (still needed)
-const newV2FileStoreId = await datalayer.createDataLayerStore();
-
-// 4. Add v2 key to shared singleton (already doing this)
+// 3. Add v2 key to shared singleton (already doing this)
 await datalayer.syncDataLayer(
   v1DataModelVersionStoreId,
   { v2: newV2RegistryStoreId },
   revertUpgradeIfFailed,
 );
 
-// 5. Store in OrganizationsV2 table with SAME org_uid
+// 4. Store in OrganizationsV2 table with SAME org_uid and V1 file store ID
 await OrganizationsV2.create({
   org_uid: v1OrgUid,  // <-- SAME as v1, not new
   data_model_version_store_id: v1DataModelVersionStoreId,
   registry_id: newV2RegistryStoreId,
   is_home: true,
   subscribed: USE_SIMULATOR,
-  file_store_subscribed: newV2FileStoreId,
+  file_store_subscribed: v1FileStoreId, // <-- use v1 file store ID
   name,
   icon,
 });
@@ -228,19 +224,7 @@ Note: `org_uid` is same, but `registry_id` is different (v2 data store).
 
 ## File Store Decision
 
-### Option A: Separate File Stores (Recommended)
-
-- v2 creates new file store during upgrade
-- v2 file store ID stored in `OrganizationsV2.file_store_subscribed` field
-- No changes to orgUid store needed
-
-**Pros:**
-- Clean separation between v1 and v2 files
-- No risk of format conflicts
-- Already implemented this way
-
-**Cons:**
-- Files not shared (users must re-upload for v2)
+We have chosen option B
 
 ### Option B: Share File Store
 
@@ -253,8 +237,6 @@ Note: `org_uid` is same, but `registry_id` is different (v2 data store).
 **Cons:**
 - Could have v1/v2 file format differences
 - Potential conflicts
-
-**Recommendation:** Keep separate file stores. The architecture already supports storing v2 file store ID in the database without modifying the shared orgUid store.
 
 ---
 
@@ -270,11 +252,6 @@ Update the V2 Features section (around line 25):
 **Proposed:**
 > V2 supports upgrading existing V1 organizations to V2. The upgrade preserves the same organization identity (org_uid) while creating a new V2 data store. V1 and V2 share the same org_uid, meaning organization metadata (name, icon) is shared. Data stores remain separate - V1 data is not migrated to V2.
 
-### Additional Documentation Notes
-
-- Clarify that upgrading adds v2 capability to existing organization identity
-- Note that name/icon changes in v2 are reflected in v1 (and vice versa)
-- Explain that subscribers identify organizations by the same org_uid regardless of v1/v2
 
 ---
 
@@ -327,7 +304,7 @@ describe('POST /v2/organizations/upgrade - Shared org_uid', () => {
 | `upgradeFromV1()` | Creates new v2 orgUid store | Reuses v1 orgUid | Simplifies architecture |
 | `subscribeToOrganization()` | No change | No change | Works as-is |
 | Edit name/icon | Updates separate stores | Updates shared store | v1 sees v2 changes |
-| File store | Creates new v2 file store | Keep separate (stored in DB) | No conflict |
+| File store | Creates new v2 file store | Use shared v1 filestore | No conflict |
 | Governance | Uses orgUid for identity | Same orgUid | Better continuity |
 | Sync tasks | Separate orgUid stores | Shared store | Consistent data |
 | Tests | Expect different org_uids | Expect same org_uid | Update assertions |
@@ -337,14 +314,8 @@ describe('POST /v2/organizations/upgrade - Shared org_uid', () => {
 
 ## Open Questions
 
-1. **File store sharing:** Should v2 share the v1 file store, or keep separate?
-   - **Current recommendation:** Keep separate
-
-2. **orgUid store updates:** Should we update the orgUid store keys (like adding `fileStoreIdV2`), or just store v2 file store ID only in the database?
-   - **Current recommendation:** Store only in database
-
 3. **v2 subscriber fallback:** When a v2 subscriber discovers an org, should we support fallback to v1 data if v2 doesn't exist, or keep v2-only strict?
-   - **Current recommendation:** Keep v2-only strict (current behavior)
+   - **answer:** Keep v2-only strict (current behavior)
 
 ---
 
