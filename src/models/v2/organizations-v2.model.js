@@ -443,6 +443,21 @@ class OrganizationsV2 extends Model {
           loggerV2.info('[v2]: Singleton v2 key added successfully. Upgrade complete.');
           return existingV2Org.org_uid;
         }
+      } else if (singletonHasV2Key) {
+        // CRITICAL: Singleton has v2 key but no V2 org in database
+        // This means a previous upgrade completed on the blockchain but the database was reset/cleared
+        // We cannot create a new v2 registry store because the singleton already points to an existing one
+        // User needs to either:
+        // 1. Re-subscribe to the existing v2 organization, or
+        // 2. Delete the v2 key from the singleton (requires blockchain transaction)
+        const existingV2RegistryId = singletonData.v2;
+        throw new Error(
+          `Cannot upgrade: The singleton store already has a v2 key pointing to registry ${existingV2RegistryId}. ` +
+            `This indicates a previous V2 upgrade was completed but the local database was reset. ` +
+            `To resolve this, either: ` +
+            `(1) Re-subscribe to the existing V2 organization using the original org_uid, or ` +
+            `(2) Delete the v2 key from the singleton store ${v1DataModelVersionStoreId} and try again.`,
+        );
       }
 
       // Create new V2 registry store (v2 data store - different from V1)
