@@ -8,9 +8,9 @@ export const ProjectV2Types = {
   projectLink: 'TEXT',
   projectDescription: 'TEXT',
   projectSector: 'STRING',
-  projectType: 'STRING',
+  projectType: 'TEXT', // JSON array of strings
   projectSubtype: 'STRING',
-  projectStatus: 'STRING',
+  projectStatus: 'TEXT', // JSON array of strings
   projectStatusDate: 'DATEONLY',
   projectUnitMetric: 'STRING',
   cadTrustReferenceProjectId: 'STRING',

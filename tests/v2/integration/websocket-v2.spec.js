@@ -70,7 +70,7 @@ describe('Phase 29: Websocket Support for V2 Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-WS-001',
         projectName: 'Test Project',
-        projectType: 'CARBON_CREDIT',
+        projectType: ['CARBON_CREDIT'],
       });
 
       // Give a moment for the change to be emitted
@@ -112,7 +112,7 @@ describe('Phase 29: Websocket Support for V2 Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-WS-UPSERT-001',
         projectName: 'Test Project Upsert',
-        projectType: 'CARBON_CREDIT',
+        projectType: ['CARBON_CREDIT'],
       });
 
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -145,7 +145,7 @@ describe('Phase 29: Websocket Support for V2 Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-WS-DESTROY-001',
         projectName: 'Test Project',
-        projectType: 'CARBON_CREDIT',
+        projectType: ['CARBON_CREDIT'],
       });
 
       let changeEmitted = false;

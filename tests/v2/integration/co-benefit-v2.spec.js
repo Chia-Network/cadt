@@ -38,8 +38,8 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-COBENEFIT-001',
       projectSector: 'Energy industries (renewable-/ non renewable sources)',
-      projectType: 'Energy efficiency',
-      projectStatus: 'Registered',
+      projectType: ['Energy efficiency'],
+      projectStatus: ['Registered'],
       projectUnitMetric: 'tCO2e',
       cadTrustProgramId: testProgramId,
     });
@@ -339,8 +339,8 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJ-COBENEFIT-002',
         projectSector: 'Energy industries (renewable-/ non renewable sources)',
-        projectType: 'Energy efficiency',
-        projectStatus: 'Registered',
+        projectType: ['Energy efficiency'],
+        projectStatus: ['Registered'],
         projectUnitMetric: 'tCO2e',
         cadTrustProgramId: testProgramId,
       });

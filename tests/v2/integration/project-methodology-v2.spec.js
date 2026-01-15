@@ -39,8 +39,8 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-PROJMETH-001',
       projectSector: 'Energy industries (renewable-/ non renewable sources)',
-      projectType: 'Energy efficiency',
-      projectStatus: 'Registered',
+      projectType: ['Energy efficiency'],
+      projectStatus: ['Registered'],
       projectUnitMetric: 'tCO2e',
       cadTrustProgramId: testProgramId,
     });
@@ -458,8 +458,8 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJ-PROJMETH-002',
         projectSector: 'Energy industries (renewable-/ non renewable sources)',
-        projectType: 'Energy efficiency',
-        projectStatus: 'Registered',
+        projectType: ['Energy efficiency'],
+        projectStatus: ['Registered'],
         projectUnitMetric: 'tCO2e',
         cadTrustProgramId: testProgramId,
       });
