@@ -39,8 +39,8 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-STAKEPROJ-001',
       projectSector: 'Energy industries (renewable-/ non renewable sources)',
-      projectType: 'Energy efficiency',
-      projectStatus: 'Registered',
+      projectType: ['Energy efficiency'],
+      projectStatus: ['Registered'],
       projectUnitMetric: 'tCO2e',
       cadTrustProgramId: testProgramId,
     });
@@ -352,8 +352,8 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJ-STAKEPROJ-002',
         projectSector: 'Energy industries (renewable-/ non renewable sources)',
-        projectType: 'Energy efficiency',
-        projectStatus: 'Registered',
+        projectType: ['Energy efficiency'],
+        projectStatus: ['Registered'],
         projectUnitMetric: 'tCO2e',
         cadTrustProgramId: testProgramId,
       });

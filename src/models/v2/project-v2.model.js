@@ -381,6 +381,9 @@ class ProjectV2 extends Model {
 
                 const exists = Boolean(existingRecord);
 
+                // Handle array fields (projectType, projectStatus) and child records
+                ProjectV2.updateProjectPropertiesV2(row);
+
                 // Handle child records
                 await ProjectV2.updateModelChildIdsV2(
                   modelAssociations,
@@ -857,10 +860,54 @@ class ProjectV2 extends Model {
 
   /**
    * Helper to update project properties from CSV (V2 version)
+   * Handles conversion of string fields to arrays and child record processing
    * @private
    */
   static updateProjectPropertiesV2(project) {
     if (typeof project !== 'object') return;
+
+    // Handle array fields (projectType and projectStatus)
+    // These can come from CSV as:
+    // 1. Single value: "Solar" → ["Solar"]
+    // 2. JSON array string: '["Solar","Wind"]' → ["Solar", "Wind"]
+    // 3. Pipe-separated: "Solar|Wind" → ["Solar", "Wind"]
+    const arrayFields = ['projectType', 'projectStatus'];
+
+    arrayFields.forEach((key) => {
+      if (project[key] !== undefined && project[key] !== null) {
+        if (typeof project[key] === 'string') {
+          const trimmedValue = project[key].trim();
+          
+          // Try to parse as JSON array first
+          if (trimmedValue.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmedValue);
+              if (Array.isArray(parsed)) {
+                project[key] = parsed;
+                return;
+              }
+            } catch {
+              // Not valid JSON, continue to other parsing methods
+            }
+          }
+          
+          // Check for pipe-separated values (e.g., "Solar|Wind")
+          if (trimmedValue.includes('|')) {
+            project[key] = trimmedValue.split('|').map(v => v.trim()).filter(v => v);
+          } else if (trimmedValue) {
+            // Single value - wrap in array
+            project[key] = [trimmedValue];
+          } else {
+            // Empty string - set to null
+            project[key] = null;
+          }
+        } else if (!Array.isArray(project[key])) {
+          // If it's some other type, wrap in array
+          project[key] = [project[key]];
+        }
+        // If already an array, leave as is
+      }
+    });
 
     // Handle child record arrays
     const childRecordKeys = ['locations', 'estimations', 'ratings', 'coBenefits'];
@@ -936,9 +983,30 @@ ProjectV2.init(
       field: 'project_sector',
     },
     projectType: {
-      type: Sequelize.STRING,
+      type: Sequelize.TEXT,
       allowNull: true,
       field: 'project_type',
+      // Stored as JSON string in DB, returned as array to API
+      get() {
+        const rawValue = this.getDataValue('projectType');
+        if (!rawValue) return null;
+        try {
+          return JSON.parse(rawValue);
+        } catch {
+          // If it's not valid JSON, return as single-item array for backwards compatibility
+          return [rawValue];
+        }
+      },
+      set(value) {
+        if (value === null || value === undefined) {
+          this.setDataValue('projectType', null);
+        } else if (Array.isArray(value)) {
+          this.setDataValue('projectType', JSON.stringify(value));
+        } else {
+          // If a string is passed, wrap it in an array
+          this.setDataValue('projectType', JSON.stringify([value]));
+        }
+      },
     },
     projectSubtype: {
       type: Sequelize.STRING,
@@ -946,9 +1014,30 @@ ProjectV2.init(
       field: 'project_subtype',
     },
     projectStatus: {
-      type: Sequelize.STRING,
+      type: Sequelize.TEXT,
       allowNull: true,
       field: 'project_status',
+      // Stored as JSON string in DB, returned as array to API
+      get() {
+        const rawValue = this.getDataValue('projectStatus');
+        if (!rawValue) return null;
+        try {
+          return JSON.parse(rawValue);
+        } catch {
+          // If it's not valid JSON, return as single-item array for backwards compatibility
+          return [rawValue];
+        }
+      },
+      set(value) {
+        if (value === null || value === undefined) {
+          this.setDataValue('projectStatus', null);
+        } else if (Array.isArray(value)) {
+          this.setDataValue('projectStatus', JSON.stringify(value));
+        } else {
+          // If a string is passed, wrap it in an array
+          this.setDataValue('projectStatus', JSON.stringify([value]));
+        }
+      },
     },
     projectStatusDate: {
       type: Sequelize.DATEONLY,

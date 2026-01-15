@@ -312,5 +312,192 @@ describe('Config Migration', () => {
       expect(fs.existsSync(`${v1ConfigFile}.old`)).to.be.false;
     });
   });
+
+  describe('Version-specific fields migration', () => {
+    it('should NOT include version-specific fields in APP section', () => {
+      // Create V1 config with version-specific fields in APP (old format)
+      fs.mkdirSync(v1ConfigDir, { recursive: true });
+      const v1Config = {
+        APP: {
+          CW_PORT: 31311,
+          LOG_LEVEL: 'debug',
+          // These fields were in APP in old v1 configs but should NOT be in new APP
+          READ_ONLY: true,
+          CADT_API_KEY: 'my-api-key',
+          IS_GOVERNANCE_BODY: true,
+          ENABLE: true,
+        },
+        GOVERNANCE: {
+          GOVERNANCE_BODY_ID: 'test-governance-id',
+        },
+        MIRROR_DB: {
+          DB_USERNAME: 'test_user',
+        },
+      };
+      fs.writeFileSync(v1ConfigFile, yaml.dump(v1Config), 'utf8');
+
+      // Run migration
+      migrateConfigFiles();
+
+      // Load and verify unified config
+      const unifiedConfig = yaml.load(fs.readFileSync(unifiedConfigFile, 'utf8'));
+
+      // APP should NOT have version-specific fields
+      expect(unifiedConfig.APP).to.not.have.property('READ_ONLY');
+      expect(unifiedConfig.APP).to.not.have.property('CADT_API_KEY');
+      expect(unifiedConfig.APP).to.not.have.property('IS_GOVERNANCE_BODY');
+      expect(unifiedConfig.APP).to.not.have.property('ENABLE');
+
+      // APP should have shared config fields
+      expect(unifiedConfig.APP.CW_PORT).to.equal(31311);
+      expect(unifiedConfig.APP.LOG_LEVEL).to.equal('debug');
+
+      // V1 should have the version-specific fields
+      expect(unifiedConfig.V1.READ_ONLY).to.equal(true);
+      expect(unifiedConfig.V1.CADT_API_KEY).to.equal('my-api-key');
+      expect(unifiedConfig.V1.IS_GOVERNANCE_BODY).to.equal(true);
+      expect(unifiedConfig.V1.ENABLE).to.equal(true);
+    });
+
+    it('should NOT have MIRROR_DB or GOVERNANCE at root level', () => {
+      // Create V1 config with root-level MIRROR_DB and GOVERNANCE (old format)
+      fs.mkdirSync(v1ConfigDir, { recursive: true });
+      const v1Config = {
+        APP: {
+          CW_PORT: 31311,
+        },
+        MIRROR_DB: {
+          DB_USERNAME: 'test_user',
+        },
+        GOVERNANCE: {
+          GOVERNANCE_BODY_ID: 'test-governance-id',
+        },
+      };
+      fs.writeFileSync(v1ConfigFile, yaml.dump(v1Config), 'utf8');
+
+      // Run migration
+      migrateConfigFiles();
+
+      // Load and verify unified config
+      const unifiedConfig = yaml.load(fs.readFileSync(unifiedConfigFile, 'utf8'));
+
+      // Root level should ONLY have APP, V1, V2
+      expect(Object.keys(unifiedConfig)).to.have.members(['APP', 'V1', 'V2']);
+      expect(unifiedConfig).to.not.have.property('MIRROR_DB');
+      expect(unifiedConfig).to.not.have.property('GOVERNANCE');
+
+      // MIRROR_DB and GOVERNANCE should be inside V1 section
+      expect(unifiedConfig.V1.MIRROR_DB.DB_USERNAME).to.equal('test_user');
+      expect(unifiedConfig.V1.GOVERNANCE.GOVERNANCE_BODY_ID).to.equal('test-governance-id');
+    });
+  });
+
+  describe('CADT_API_KEY inheritance', () => {
+    it('should always have CADT_API_KEY in V2 section', () => {
+      // Create V1 config without CADT_API_KEY
+      fs.mkdirSync(v1ConfigDir, { recursive: true });
+      const v1Config = {
+        APP: {
+          CW_PORT: 31311,
+        },
+      };
+      fs.writeFileSync(v1ConfigFile, yaml.dump(v1Config), 'utf8');
+
+      // Run migration
+      migrateConfigFiles();
+
+      // Load and verify unified config
+      const unifiedConfig = yaml.load(fs.readFileSync(unifiedConfigFile, 'utf8'));
+
+      // V2 should always have CADT_API_KEY (even if null)
+      expect(unifiedConfig.V2).to.have.property('CADT_API_KEY');
+    });
+
+    it('should inherit CADT_API_KEY from V1 to V2 when migrating V1-only config', () => {
+      // Create V1 config with CADT_API_KEY set
+      fs.mkdirSync(v1ConfigDir, { recursive: true });
+      const v1Config = {
+        APP: {
+          CW_PORT: 31311,
+          CADT_API_KEY: 'my-secret-api-key',
+        },
+      };
+      fs.writeFileSync(v1ConfigFile, yaml.dump(v1Config), 'utf8');
+
+      // Run migration
+      migrateConfigFiles();
+
+      // Load and verify unified config
+      const unifiedConfig = yaml.load(fs.readFileSync(unifiedConfigFile, 'utf8'));
+
+      // V1 should have the CADT_API_KEY
+      expect(unifiedConfig.V1.CADT_API_KEY).to.equal('my-secret-api-key');
+
+      // V2 should inherit the same CADT_API_KEY from V1
+      expect(unifiedConfig.V2.CADT_API_KEY).to.equal('my-secret-api-key');
+    });
+
+    it('should NOT inherit GOVERNANCE_BODY_ID from V1 to V2 when migrating V1-only config', () => {
+      // Create V1 config with custom GOVERNANCE_BODY_ID
+      fs.mkdirSync(v1ConfigDir, { recursive: true });
+      const v1Config = {
+        APP: {
+          CW_PORT: 31311,
+        },
+        GOVERNANCE: {
+          GOVERNANCE_BODY_ID: 'custom-governance-body-id',
+        },
+      };
+      fs.writeFileSync(v1ConfigFile, yaml.dump(v1Config), 'utf8');
+
+      // Run migration
+      migrateConfigFiles();
+
+      // Load and verify unified config
+      const unifiedConfig = yaml.load(fs.readFileSync(unifiedConfigFile, 'utf8'));
+
+      // V1 should have the custom GOVERNANCE_BODY_ID
+      expect(unifiedConfig.V1.GOVERNANCE.GOVERNANCE_BODY_ID).to.equal('custom-governance-body-id');
+
+      // V2 should NOT inherit GOVERNANCE_BODY_ID - should use default instead
+      // V2 governance may be different from V1, so it must be explicitly set
+      expect(unifiedConfig.V2.GOVERNANCE.GOVERNANCE_BODY_ID).to.equal(defaultConfig.V2.GOVERNANCE.GOVERNANCE_BODY_ID);
+      expect(unifiedConfig.V2.GOVERNANCE.GOVERNANCE_BODY_ID).to.not.equal('custom-governance-body-id');
+    });
+
+    it('should NOT inherit CADT_API_KEY from V1 when V2 config exists with its own value', () => {
+      // Create V1 config
+      fs.mkdirSync(v1ConfigDir, { recursive: true });
+      const v1Config = {
+        APP: {
+          CW_PORT: 31311,
+          CADT_API_KEY: 'v1-api-key',
+        },
+      };
+      fs.writeFileSync(v1ConfigFile, yaml.dump(v1Config), 'utf8');
+
+      // Create V2 config with different CADT_API_KEY
+      fs.mkdirSync(v2ConfigDir, { recursive: true });
+      const v2Config = {
+        APP: {
+          CW_PORT: 31312,
+          CADT_API_KEY: 'v2-api-key',
+        },
+      };
+      fs.writeFileSync(v2ConfigFile, yaml.dump(v2Config), 'utf8');
+
+      // Run migration
+      migrateConfigFiles();
+
+      // Load and verify unified config
+      const unifiedConfig = yaml.load(fs.readFileSync(unifiedConfigFile, 'utf8'));
+
+      // V1 should have its own CADT_API_KEY
+      expect(unifiedConfig.V1.CADT_API_KEY).to.equal('v1-api-key');
+
+      // V2 should have its own CADT_API_KEY (not inherited from V1)
+      expect(unifiedConfig.V2.CADT_API_KEY).to.equal('v2-api-key');
+    });
+  });
 });
 

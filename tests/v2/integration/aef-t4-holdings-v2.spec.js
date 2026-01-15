@@ -43,8 +43,8 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-AEFT4-001',
       projectSector: 'Energy industries (renewable-/ non renewable sources)',
-      projectType: 'Energy efficiency',
-      projectStatus: 'Registered',
+      projectType: ['Energy efficiency'],
+      projectStatus: ['Registered'],
       projectUnitMetric: 'tCO2e',
       cadTrustProgramId: testProgramId,
     });

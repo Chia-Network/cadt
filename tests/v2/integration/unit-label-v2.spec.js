@@ -48,8 +48,8 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-UNITLABEL-001',
       projectSector: 'Energy industries (renewable-/ non renewable sources)',
-      projectType: 'Energy efficiency',
-      projectStatus: 'Registered',
+      projectType: ['Energy efficiency'],
+      projectStatus: ['Registered'],
       projectUnitMetric: 'tCO2e',
       cadTrustProgramId: testProgramId,
     });

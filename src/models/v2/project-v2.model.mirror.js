@@ -90,9 +90,30 @@ ProjectV2Mirror.init(
       field: 'project_sector',
     },
     projectType: {
-      type: Sequelize.STRING,
+      type: Sequelize.TEXT,
       allowNull: true,
       field: 'project_type',
+      // Stored as JSON string in DB, returned as array to API
+      get() {
+        const rawValue = this.getDataValue('projectType');
+        if (!rawValue) return null;
+        try {
+          return JSON.parse(rawValue);
+        } catch {
+          // If it's not valid JSON, return as single-item array for backwards compatibility
+          return [rawValue];
+        }
+      },
+      set(value) {
+        if (value === null || value === undefined) {
+          this.setDataValue('projectType', null);
+        } else if (Array.isArray(value)) {
+          this.setDataValue('projectType', JSON.stringify(value));
+        } else {
+          // If a string is passed, wrap it in an array
+          this.setDataValue('projectType', JSON.stringify([value]));
+        }
+      },
     },
     projectSubtype: {
       type: Sequelize.STRING,
@@ -100,9 +121,30 @@ ProjectV2Mirror.init(
       field: 'project_subtype',
     },
     projectStatus: {
-      type: Sequelize.STRING,
+      type: Sequelize.TEXT,
       allowNull: true,
       field: 'project_status',
+      // Stored as JSON string in DB, returned as array to API
+      get() {
+        const rawValue = this.getDataValue('projectStatus');
+        if (!rawValue) return null;
+        try {
+          return JSON.parse(rawValue);
+        } catch {
+          // If it's not valid JSON, return as single-item array for backwards compatibility
+          return [rawValue];
+        }
+      },
+      set(value) {
+        if (value === null || value === undefined) {
+          this.setDataValue('projectStatus', null);
+        } else if (Array.isArray(value)) {
+          this.setDataValue('projectStatus', JSON.stringify(value));
+        } else {
+          // If a string is passed, wrap it in an array
+          this.setDataValue('projectStatus', JSON.stringify([value]));
+        }
+      },
     },
     projectStatusDate: {
       type: Sequelize.DATEONLY,

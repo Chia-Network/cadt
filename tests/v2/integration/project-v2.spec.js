@@ -66,9 +66,9 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectLink: 'https://example.com/project',
         projectDescription: 'Test project description',
         projectSector: 'Agriculture',
-        projectType: 'Landfill gas',
+        projectType: ['Landfill gas'],
         projectSubtype: 'Test Subtype',
-        projectStatus: 'Listed',
+        projectStatus: ['Listed'],
         projectStatusDate: '2024-01-01',
         projectUnitMetric: 'tCO2e',
         cadTrustReferenceProjectId: 'REF-001',
@@ -242,7 +242,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-TYPE',
         projectId: 'INVALID-TYPE-001',
         projectName: 'Invalid Type Project',
-        projectType: 'InvalidType',
+        projectType: ['InvalidType'],
       };
 
       const response = await supertest(app)
@@ -254,12 +254,28 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body.error).to.include('projectType');
     });
 
-    it('should accept project with valid V2 projectType', async function () {
+    it('should accept project with valid V2 projectType array', async function () {
       const validData = {
         projectRegistryName: 'VALID-TYPE',
         projectId: 'VALID-TYPE-001',
         projectName: 'Valid Type Project',
-        projectType: 'Landfill gas',
+        projectType: ['Landfill gas'],
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(validData)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+    });
+
+    it('should accept project with multiple valid V2 projectTypes', async function () {
+      const validData = {
+        projectRegistryName: 'VALID-MULTI-TYPE',
+        projectId: 'VALID-MULTI-TYPE-001',
+        projectName: 'Valid Multi-Type Project',
+        projectType: ['Landfill gas', 'Solar', 'Wind'],
       };
 
       const response = await supertest(app)
@@ -275,7 +291,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-STATUS',
         projectId: 'INVALID-STATUS-001',
         projectName: 'Invalid Status Project',
-        projectStatus: 'InvalidStatus',
+        projectStatus: ['InvalidStatus'],
       };
 
       const response = await supertest(app)
@@ -287,12 +303,28 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body.error).to.include('projectStatus');
     });
 
-    it('should accept project with valid V2 projectStatus', async function () {
+    it('should accept project with valid V2 projectStatus array', async function () {
       const validData = {
         projectRegistryName: 'VALID-STATUS',
         projectId: 'VALID-STATUS-001',
         projectName: 'Valid Status Project',
-        projectStatus: 'Listed',
+        projectStatus: ['Listed'],
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(validData)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+    });
+
+    it('should accept project with multiple valid V2 projectStatuses', async function () {
+      const validData = {
+        projectRegistryName: 'VALID-MULTI-STATUS',
+        projectId: 'VALID-MULTI-STATUS-001',
+        projectName: 'Valid Multi-Status Project',
+        projectStatus: ['Listed', 'Registered'],
       };
 
       const response = await supertest(app)
@@ -469,8 +501,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectId: 'DB-PROJECT-001',
         projectName: 'Database Project',
         projectSector: 'Agriculture',
-        projectType: 'Landfill gas',
-        projectStatus: 'Listed',
+        projectType: ['Landfill gas'],
+        projectStatus: ['Listed'],
         projectUnitMetric: 'tCO2e',
         cadTrustProgramId: testProgram.cadTrustProgramId,
         orgUid: homeOrgId,
@@ -560,9 +592,9 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectLink: 'https://example.com/updated',
         projectDescription: 'Updated description',
         projectSector: 'Energy industries (renewable-/ non renewable sources)',
-        projectType: 'Wind',
+        projectType: ['Wind'],
         projectSubtype: 'Updated Subtype',
-        projectStatus: 'Registered',
+        projectStatus: ['Registered'],
         projectStatusDate: '2024-02-01',
         projectUnitMetric: 'gCO2eq/kWh',
         cadTrustReferenceProjectId: 'UPDATED-REF-001',
@@ -724,8 +756,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
           projectId: 'TRANSFER-001',
           projectName: 'Transfer Test Project',
           projectSector: 'Agriculture',
-          projectType: 'Landfill gas',
-          projectStatus: 'Listed',
+          projectType: ['Landfill gas'],
+          projectStatus: ['Listed'],
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
           orgUid: homeOrgId,
@@ -775,8 +807,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
           projectId: 'TRANSFER-002',
           projectName: 'Test Project',
           projectSector: 'Agriculture',
-          projectType: 'Landfill gas',
-          projectStatus: 'Listed',
+          projectType: ['Landfill gas'],
+          projectStatus: ['Listed'],
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
           orgUid: homeOrgId,
@@ -891,8 +923,8 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
           projectId: 'CSV-UPDATE-001',
           projectName: 'Original Name 1',
           projectSector: 'Agriculture',
-          projectType: 'Landfill gas',
-          projectStatus: 'Listed',
+          projectType: ['Landfill gas'],
+          projectStatus: ['Listed'],
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
           orgUid: homeOrgId,
@@ -903,8 +935,8 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
           projectId: 'CSV-UPDATE-002',
           projectName: 'Original Name 2',
           projectSector: 'Energy',
-          projectType: 'Energy efficiency',
-          projectStatus: 'Registered',
+          projectType: ['Energy efficiency'],
+          projectStatus: ['Registered'],
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
           orgUid: homeOrgId,
@@ -956,8 +988,8 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectId: 'QUERY-001',
             projectName: 'Query Test Project 1',
             projectSector: 'Agriculture',
-            projectType: 'Landfill gas',
-            projectStatus: 'Listed',
+            projectType: ['Landfill gas'],
+            projectStatus: ['Listed'],
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
             orgUid: homeOrgId,
@@ -967,8 +999,8 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectId: 'QUERY-002',
             projectName: 'Query Test Project 2',
             projectSector: 'Energy',
-            projectType: 'Energy efficiency',
-            projectStatus: 'Registered',
+            projectType: ['Energy efficiency'],
+            projectStatus: ['Registered'],
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
             orgUid: homeOrgId,
@@ -978,8 +1010,8 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectId: 'QUERY-003',
             projectName: 'Query Test Project 3',
             projectSector: 'Manufacturing',
-            projectType: 'Renewable energy',
-            projectStatus: 'Listed',
+            projectType: ['Renewable energy'],
+            projectStatus: ['Listed'],
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
             orgUid: homeOrgId,
@@ -996,8 +1028,8 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectId: 'ORG-FILTER-001',
             projectName: 'Org Filter Project 1',
             projectSector: 'Agriculture',
-            projectType: 'Landfill gas',
-            projectStatus: 'Listed',
+            projectType: ['Landfill gas'],
+            projectStatus: ['Listed'],
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
             orgUid: homeOrgId,

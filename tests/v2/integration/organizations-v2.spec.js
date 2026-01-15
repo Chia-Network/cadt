@@ -838,6 +838,67 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       // The orgUid store should have the updated name (V1 sync would see this)
       expect(orgUidStoreMap.name).to.equal(newName);
     }).timeout(TEST_WAIT_TIME * 20);
+
+    it('should fail upgrade if singleton already has v2 key but no V2 org in database', async function () {
+      // This tests the scenario where:
+      // 1. A previous upgrade completed (v2 key added to singleton)
+      // 2. The database was reset/cleared
+      // 3. User tries to upgrade again
+      // Expected: Error telling user the singleton already has v2 key
+
+      // Create V1 org
+      const v1OrgUid = USE_SIMULATOR ? 'test-v1-orphan-v2' : await datalayer.createDataLayerStore();
+      const v1RegistryId = USE_SIMULATOR ? 'test-v1-registry-orphan' : await datalayer.createDataLayerStore();
+      const v1DataModelVersionStoreId = USE_SIMULATOR ? 'test-v1-singleton-orphan' : await datalayer.createDataLayerStore();
+      const v1FileStoreId = USE_SIMULATOR ? 'test-v1-filestore-orphan' : await datalayer.createDataLayerStore();
+      const existingV2RegistryId = USE_SIMULATOR ? 'orphan-v2-registry' : 'orphan-v2-registry-store-id';
+
+      await Organization.create({
+        orgUid: v1OrgUid,
+        name: 'V1 Org with Orphan V2 Key',
+        icon: 'v1-icon',
+        isHome: true,
+        subscribed: true,
+        synced: true,
+        registryId: v1RegistryId,
+        dataModelVersionStoreId: v1DataModelVersionStoreId,
+        fileStoreId: v1FileStoreId,
+      });
+
+      // Create singleton with BOTH v1 and v2 keys (simulating previous upgrade)
+      // This simulates the scenario where a v2 upgrade already happened on the blockchain
+      await datalayer.syncDataLayer(v1DataModelVersionStoreId, {
+        v1: v1RegistryId,
+        v2: existingV2RegistryId, // v2 key already exists from previous upgrade
+      });
+
+      // Set up V1 orgUid store
+      await datalayer.syncDataLayer(v1OrgUid, {
+        registryId: v1DataModelVersionStoreId,
+        fileStoreId: v1FileStoreId,
+        name: 'V1 Org with Orphan V2 Key',
+        icon: 'v1-icon',
+      });
+
+      await waitForOrgCreation();
+
+      // Verify NO V2 org exists in database (simulates database reset)
+      const existingV2Org = await OrganizationsV2.findOne({ where: { is_home: true }, raw: true });
+      expect(existingV2Org).to.be.null;
+
+      // Try to upgrade - should fail because singleton already has v2 key
+      const response = await supertest(app)
+        .post('/v2/organizations/upgrade')
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('singleton store already has a v2 key');
+      expect(response.body.error).to.include(existingV2RegistryId);
+
+      // Verify V2 org was NOT created
+      const v2OrgAfter = await OrganizationsV2.findOne({ where: { is_home: true }, raw: true });
+      expect(v2OrgAfter).to.be.null;
+    }).timeout(TEST_WAIT_TIME * 15);
   });
 
   describe('Phase 16.8: OrganizationsV2 Model - Read Operations', function () {

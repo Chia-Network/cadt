@@ -246,9 +246,9 @@ export const generateProject = (cadTrustProgramId = null) => {
     projectLink: 'https://example.com/project',
     projectDescription: 'Test project description',
     projectSector: 'Energy demand',
-    projectType: 'Solar',
+    projectType: ['Solar'],
     projectSubtype: 'Solar',
-    projectStatus: 'Registered',
+    projectStatus: ['Registered'],
     projectStatusDate: '2024-01-15',
     projectUnitMetric: 'tCO2e',
   };
@@ -275,9 +275,9 @@ export const generateProjectMaximal = (cadTrustProgramId = null) => {
     projectLink: `https://example.com/project/${getLongString(200)}`,
     projectDescription: getLongString(1000),
     projectSector: 'Afforestation and reforestation',
-    projectType: 'Afforestation',
+    projectType: ['Afforestation', 'Reforestation'],
     projectSubtype: 'Native Species',
-    projectStatus: 'Validated',
+    projectStatus: ['Validated', 'Registered'],
     projectStatusDate: '2024-12-31',
     projectUnitMetric: 'tCO2e',
   };

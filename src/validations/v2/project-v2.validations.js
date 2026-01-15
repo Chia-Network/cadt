@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { pickListValidationV2 } from '../../utils/v2-validation-utils.js';
+import { pickListValidationV2, pickListArrayValidationV2 } from '../../utils/v2-validation-utils.js';
 
 // Validation schema for project - same for both create and update
 // V2 follows V1 pattern: update requests include ALL fields, not just changed ones
@@ -19,16 +19,18 @@ export const projectV2Schema = Joi.object({
     .allow(null)
     .custom(pickListValidationV2('projectSector'))
     .optional(),
-  projectType: Joi.string()
-    .max(255)
+  // projectType is an array of strings, each validated against the projectType picklist
+  projectType: Joi.array()
+    .items(Joi.string().max(255))
     .allow(null)
-    .custom(pickListValidationV2('projectType'))
+    .custom(pickListArrayValidationV2('projectType'))
     .optional(),
   projectSubtype: Joi.string().max(255).allow(null).optional(),
-  projectStatus: Joi.string()
-    .max(255)
+  // projectStatus is an array of strings, each validated against the projectStatus picklist
+  projectStatus: Joi.array()
+    .items(Joi.string().max(255))
     .allow(null)
-    .custom(pickListValidationV2('projectStatus'))
+    .custom(pickListArrayValidationV2('projectStatus'))
     .optional(),
   projectStatusDate: Joi.date().allow(null).optional(),
   projectUnitMetric: Joi.string()
