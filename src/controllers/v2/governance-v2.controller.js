@@ -38,10 +38,11 @@ export const findAll = async (req, res) => {
 /**
  * Check if governance body exists
  * Queries MetaV2 for 'governanceBodyId' to verify governance body is set up
+ * Returns the main governance body ID if one exists (the ID to share with other instances)
  *
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
- * @returns {Promise<Object>} JSON response with created status
+ * @returns {Promise<Object>} JSON response with created status and governance body ID
  */
 export const isCreated = async (req, res) => {
   try {
@@ -50,9 +51,15 @@ export const isCreated = async (req, res) => {
     });
 
     if (results) {
+      // Get the main governance body ID (the one to share with other instances)
+      const mainGovernanceBodyId = await MetaV2.findOne({
+        where: { meta_key: 'mainGoveranceBodyId' },
+      });
+
       return res.json({
         created: true,
         success: true,
+        governanceBodyId: mainGovernanceBodyId?.meta_value || null,
       });
     } else {
       return res.json({

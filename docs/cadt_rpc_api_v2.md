@@ -1052,17 +1052,36 @@ Response
 
 #### Check if governance body exists
 
+Check if this CADT instance has created a governance body. If a governance body exists, the response includes the `governanceBodyId` which is the DataLayer store ID that other CADT instances should use in their `GOVERNANCE_BODY_ID` configuration to subscribe to this governance body.
+
 Request
 ```shell
 curl --location --request GET 'localhost:31310/v2/governance/exists' --header 'Content-Type: application/json'
 ```
 
-Response
+Response (when governance body exists)
 ```json
 {
-  "exists": true
+  "created": true,
+  "success": true,
+  "governanceBodyId": "23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e"
 }
 ```
+
+Response (when governance body does not exist)
+```json
+{
+  "created": false,
+  "success": true
+}
+```
+
+**Response Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `created` | boolean | Whether a governance body has been created on this instance |
+| `success` | boolean | Whether the request was successful |
+| `governanceBodyId` | string | (Only present when `created: true`) The DataLayer store ID to share with other CADT instances for their `GOVERNANCE_BODY_ID` config |
 
 ---
 
@@ -1377,7 +1396,7 @@ Response
 
 ### Additional Governance Resources
 
-- GET `/v2/governance/exists` - determine if the instance is a governance body
+- GET `/v2/governance/exists` - determine if the instance is a governance body and get the governance body ID to share with other instances
 - GET `/v2/governance` - get all governance data. picklist orgList, pickList, and glossary data stringified in the metaValue attribute
 - GET `/v2/governance/sync` - sync governance data from other governance bodies
 - GET `/v2/governance/meta/picklist` - get governance picklist data

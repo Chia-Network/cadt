@@ -36,9 +36,15 @@ export const isCreated = async (req, res) => {
     });
 
     if (results) {
+      // Get the main governance body ID (the one to share with other instances)
+      const mainGovernanceBodyId = await Meta.findOne({
+        where: { metaKey: 'mainGoveranceBodyId' },
+      });
+
       return res.json({
         created: true,
         success: true,
+        governanceBodyId: mainGovernanceBodyId?.metaValue || null,
       });
     } else {
       return res.json({
