@@ -1172,14 +1172,27 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         const { StagingV2 } = await import('../../../src/models/v2/index.js');
         const { v4: uuidv4 } = await import('uuid');
 
+        // Clean up any existing records first to ensure clean state
+        await StagingV2.destroy({ where: {} });
+
         // Create a committed staging record (pending commit)
+        const testUuid = uuidv4();
         await StagingV2.create({
-          uuid: uuidv4(),
+          uuid: testUuid,
           table: 'program',
           action: 'INSERT',
           data: JSON.stringify([{ test: 'data' }]),
           committed: true,
         });
+
+        // Verify the record was created with correct committed status
+        const createdRecord = await StagingV2.findOne({ where: { uuid: testUuid } });
+        expect(createdRecord).to.exist;
+        expect(createdRecord.committed).to.be.true;
+
+        // Count committed records directly to verify
+        const committedCount = await StagingV2.count({ where: { committed: true } });
+        expect(committedCount).to.be.greaterThan(0);
 
         const response = await supertest(app)
           .get('/v2/organizations/status')
