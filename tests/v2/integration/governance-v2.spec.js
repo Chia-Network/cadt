@@ -297,11 +297,17 @@ describe('V2 Governance Model Tests', function () {
     });
 
     describe('isCreated', function () {
-      it('should return created: true when governanceBodyId exists in MetaV2', async function () {
+      it('should return created: true and governanceBodyId when governance body exists in MetaV2', async function () {
+        const mainGovernanceBodyId = 'test-main-governance-body-id';
         // Create governanceBodyId in MetaV2
         await MetaV2.create({
           meta_key: 'governanceBodyId',
           meta_value: 'test-governance-body-id',
+        });
+        // Create mainGoveranceBodyId (the one to share)
+        await MetaV2.create({
+          meta_key: 'mainGoveranceBodyId',
+          meta_value: mainGovernanceBodyId,
         });
 
         const req = { body: {} };
@@ -309,6 +315,7 @@ describe('V2 Governance Model Tests', function () {
           json: (data) => {
             expect(data).to.have.property('created', true);
             expect(data).to.have.property('success', true);
+            expect(data).to.have.property('governanceBodyId', mainGovernanceBodyId);
           },
           status: () => res,
         };
@@ -317,6 +324,7 @@ describe('V2 Governance Model Tests', function () {
 
         // Clean up
         await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
+        await MetaV2.destroy({ where: { meta_key: 'mainGoveranceBodyId' } });
       });
 
       it('should return created: false when governanceBodyId does not exist', async function () {
@@ -328,11 +336,35 @@ describe('V2 Governance Model Tests', function () {
           json: (data) => {
             expect(data).to.have.property('created', false);
             expect(data).to.have.property('success', true);
+            expect(data).to.not.have.property('governanceBodyId');
           },
           status: () => res,
         };
 
         await governanceController.isCreated(req, res);
+      });
+
+      it('should return governanceBodyId as null when mainGoveranceBodyId does not exist', async function () {
+        // Create governanceBodyId but not mainGoveranceBodyId
+        await MetaV2.create({
+          meta_key: 'governanceBodyId',
+          meta_value: 'test-governance-body-id',
+        });
+
+        const req = { body: {} };
+        const res = {
+          json: (data) => {
+            expect(data).to.have.property('created', true);
+            expect(data).to.have.property('success', true);
+            expect(data).to.have.property('governanceBodyId', null);
+          },
+          status: () => res,
+        };
+
+        await governanceController.isCreated(req, res);
+
+        // Clean up
+        await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
       });
     });
 
@@ -484,10 +516,15 @@ describe('V2 Governance Model Tests', function () {
     });
 
     describe('GET /v2/governance/exists', function () {
-      it('should return created: true when governanceBodyId exists', async function () {
+      it('should return created: true and governanceBodyId when governance body exists', async function () {
+        const mainGovernanceBodyId = 'test-main-governance-body-id';
         await MetaV2.create({
           meta_key: 'governanceBodyId',
           meta_value: 'test-governance-body-id',
+        });
+        await MetaV2.create({
+          meta_key: 'mainGoveranceBodyId',
+          meta_value: mainGovernanceBodyId,
         });
 
         const response = await supertest(app)
@@ -496,9 +533,11 @@ describe('V2 Governance Model Tests', function () {
 
         expect(response.body).to.have.property('created', true);
         expect(response.body).to.have.property('success', true);
+        expect(response.body).to.have.property('governanceBodyId', mainGovernanceBodyId);
 
         // Clean up
         await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
+        await MetaV2.destroy({ where: { meta_key: 'mainGoveranceBodyId' } });
       });
 
       it('should return created: false when governanceBodyId does not exist', async function () {
@@ -510,6 +549,31 @@ describe('V2 Governance Model Tests', function () {
 
         expect(response.body).to.have.property('created', false);
         expect(response.body).to.have.property('success', true);
+        expect(response.body).to.not.have.property('governanceBodyId');
+      });
+
+      it('should return governanceBodyId to share after creating governance body', async function () {
+        const { Meta } = await import('../../../src/models/index.js');
+        await Meta.destroy({ where: { metaKey: 'mainGoveranceBodyId' } });
+
+        await withConfigOverride(
+          async () => {
+            // Create governance body first
+            await GovernanceV2.createGoveranceBody();
+
+            // Check exists endpoint returns the ID to share
+            const response = await supertest(app)
+              .get('/v2/governance/exists')
+              .expect(200);
+
+            expect(response.body).to.have.property('created', true);
+            expect(response.body).to.have.property('success', true);
+            expect(response.body).to.have.property('governanceBodyId');
+            expect(response.body.governanceBodyId).to.be.a('string');
+            expect(response.body.governanceBodyId.length).to.be.greaterThan(0);
+          },
+          { V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } } },
+        );
       });
     });
 
