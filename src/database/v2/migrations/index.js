@@ -36,6 +36,9 @@ import CreateFilestoreV2 from './20250110120030-create-filestore-v2.js';
 import CreateFts5TablesV2 from './20250110120031-create-fts5-tables-v2.js';
 import CreateFts5TriggersV2 from './20250110120032-create-fts5-triggers-v2.js';
 
+// V2 Data Table Alterations
+import RenameIssuanceMethodologyToProjectMethodologyV2 from './20250110120034-rename-issuance-methodology-to-project-methodology-v2.js';
+
 export const migrations = [
   {
     migration: CreateStagingV2,
@@ -156,5 +159,9 @@ export const migrations = [
   {
     migration: CreateFts5TriggersV2,
     name: '20250110120032-create-fts5-triggers-v2',
+  },
+  {
+    migration: RenameIssuanceMethodologyToProjectMethodologyV2,
+    name: '20250110120034-rename-issuance-methodology-to-project-methodology-v2',
   },
 ];

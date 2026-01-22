@@ -63,10 +63,10 @@ IssuanceV2Mirror.init(
       allowNull: false,
       field: 'cad_trust_verification_id',
     },
-    cadTrustMethodologyId: {
+    cadTrustProjectMethodologyId: {
       type: Sequelize.STRING,
       allowNull: false,
-      field: 'cad_trust_methodology_id',
+      field: 'cad_trust_project_methodology_id',
     },
     cadTrustLocationId: {
       type: Sequelize.INTEGER,

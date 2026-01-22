@@ -144,7 +144,7 @@ issuance_date date
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 cad_trust_verification_id varchar [not null, note: 'Foreign key to verification table']
-cad_trust_methodology_id varchar [not null, note: 'references methodology UUID']
+cad_trust_project_methodology_id varchar [not null, note: 'Foreign key to project_methodology table']
 cad_trust_location_id varchar [note: 'Foreign key to location table']
 }
 
@@ -427,7 +427,7 @@ Ref: program.cad_trust_program_id < project.cad_trust_program_id
 Ref: validation.cad_trust_validation_id < verification.cad_trust_validation_id
 Ref: verification.cad_trust_verification_id < issuance.cad_trust_verification_id
 
-Ref: methodology.cad_trust_methodology_id < issuance.cad_trust_methodology_id
+Ref: project_methodology.cad_trust_project_methodology_id < issuance.cad_trust_project_methodology_id
 
 Ref: issuance.cad_trust_issuance_id < unit.cad_trust_issuance_id
 

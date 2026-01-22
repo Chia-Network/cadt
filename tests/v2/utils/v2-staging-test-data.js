@@ -216,6 +216,7 @@ export const generateV2ProjectMethodologyData = async (overrides = {}) => {
   await ensurePicklistsInitialized();
 
   return {
+    cad_trust_project_methodology_id: generateUuid(),
     cad_trust_project_id: generateUuid(), // Should be provided via overrides
     cad_trust_methodology_id: generateUuid(), // Should be provided via overrides
     project_methodology_date: generateDate(),
@@ -420,10 +421,17 @@ export const generateV2CompleteProjectDataset = async (overrides = {}) => {
     cad_trust_project_id: project.cad_trust_project_id,
     cad_trust_validation_id: validation.cad_trust_validation_id,
   });
+  // Create project-methodology relationship first
+  const projectMethodology = await generateV2ProjectMethodologyData({
+    ...overrides.projectMethodology,
+    cad_trust_project_id: project.cad_trust_project_id,
+    cad_trust_methodology_id: methodology.cad_trust_methodology_id,
+  });
+
   const issuance = await generateV2IssuanceData({
     ...overrides.issuance,
     cad_trust_verification_id: verification.cad_trust_verification_id,
-    cad_trust_methodology_id: methodology.cad_trust_methodology_id,
+    cad_trust_project_methodology_id: projectMethodology.cad_trust_project_methodology_id,
     cad_trust_location_id: location.cad_trust_location_id,
   });
 
@@ -439,11 +447,6 @@ export const generateV2CompleteProjectDataset = async (overrides = {}) => {
   const coBenefit = await generateV2CoBenefitData({
     ...overrides.coBenefit,
     cad_trust_project_id: project.cad_trust_project_id,
-  });
-  const projectMethodology = await generateV2ProjectMethodologyData({
-    ...overrides.projectMethodology,
-    cad_trust_project_id: project.cad_trust_project_id,
-    cad_trust_methodology_id: methodology.cad_trust_methodology_id,
   });
 
   return {

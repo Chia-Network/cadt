@@ -639,41 +639,41 @@ export const generateUnitLabelForbiddenFields = (cadTrustLabelId, cadTrustUnitId
 // ISSUANCE GENERATORS
 // ============================================================================
 
-export const generateIssuance = (cadTrustVerificationId, cadTrustMethodologyId, cadTrustLocationId = null) => {
+export const generateIssuance = (cadTrustVerificationId, cadTrustProjectMethodologyId, cadTrustLocationId = null) => {
   const data = {
     issuanceId: `ISS-${getUniqueId()}`,
     issuanceDate: '2024-01-15',
     cadTrustVerificationId,
-    cadTrustMethodologyId,
+    cadTrustProjectMethodologyId,
   };
   if (cadTrustLocationId) data.cadTrustLocationId = cadTrustLocationId;
   return data;
 };
 
-export const generateIssuanceMinimal = (cadTrustVerificationId, cadTrustMethodologyId) => ({
+export const generateIssuanceMinimal = (cadTrustVerificationId, cadTrustProjectMethodologyId) => ({
   issuanceId: `MIN-ISS-${getUniqueId()}`,
   cadTrustVerificationId,
-  cadTrustMethodologyId,
+  cadTrustProjectMethodologyId,
 });
 
-export const generateIssuanceMaximal = (cadTrustVerificationId, cadTrustMethodologyId, cadTrustLocationId) => ({
+export const generateIssuanceMaximal = (cadTrustVerificationId, cadTrustProjectMethodologyId, cadTrustLocationId) => ({
   issuanceId: `MAX-ISS-${getUniqueId()}`,
   issuanceDate: '2024-12-31',
   cadTrustVerificationId,
-  cadTrustMethodologyId,
+  cadTrustProjectMethodologyId,
   cadTrustLocationId,
 });
 
 export const generateIssuanceInvalidForeignKey = () => ({
   issuanceId: 'INVALID-ISS',
   cadTrustVerificationId: getNonExistentId(),
-  cadTrustMethodologyId: getNonExistentId(),
+  cadTrustProjectMethodologyId: getNonExistentId(),
 });
 
-export const generateIssuanceForbiddenFields = (cadTrustVerificationId, cadTrustMethodologyId) => ({
+export const generateIssuanceForbiddenFields = (cadTrustVerificationId, cadTrustProjectMethodologyId) => ({
   issuanceId: 'FORBIDDEN-ISS',
   cadTrustVerificationId,
-  cadTrustMethodologyId,
+  cadTrustProjectMethodologyId,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
   cadTrustIssuanceId: uuidv4(),

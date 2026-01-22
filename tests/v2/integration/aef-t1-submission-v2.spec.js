@@ -177,11 +177,10 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
           aefT1SubmissionReportYear: 2024,
           aefT1SubmissionSubmissionDate: 'invalid-date',
         });
-        // If we get here, Sequelize accepted the invalid date, which is unexpected
-        expect.fail('Sequelize should have rejected invalid date format');
+        expect.fail('Should have rejected invalid date format');
       } catch (error) {
-        // Sequelize might not validate date format strictly, so we accept any error
         expect(error).to.exist;
+        expect(error.message).to.include('ISO format');
       }
     });
 

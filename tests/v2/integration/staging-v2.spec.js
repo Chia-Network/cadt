@@ -7,6 +7,7 @@ import {
   OrganizationsV2,
   ProgramV2,
   MethodologyV2,
+  ProjectMethodologyV2,
   ProjectV2,
   ValidationV2,
   VerificationV2,
@@ -1531,17 +1532,25 @@ describe('V2 Staging Integration Tests', function () {
         methodologyType: methodologyDataSnake.methodology_type,
       });
 
+      // Create project-methodology join record
+      const projectMethodology = await ProjectMethodologyV2.create({
+        cadTrustProjectMethodologyId: uuidv4(),
+        cadTrustProjectId: testProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      });
+
       // Create issuance
       const issuanceDataSnake = await generateV2IssuanceData({
         cad_trust_verification_id: testVerificationId,
-        cad_trust_methodology_id: methodology.cadTrustMethodologyId,
+        cad_trust_project_methodology_id: projectMethodology.cadTrustProjectMethodologyId,
       });
       const issuance = await IssuanceV2.create({
         cadTrustIssuanceId: issuanceDataSnake.cad_trust_issuance_id,
         issuanceId: issuanceDataSnake.issuance_id,
         issuanceDate: issuanceDataSnake.issuance_date,
         cadTrustVerificationId: issuanceDataSnake.cad_trust_verification_id,
-        cadTrustMethodologyId: issuanceDataSnake.cad_trust_methodology_id,
+        cadTrustProjectMethodologyId: issuanceDataSnake.cad_trust_project_methodology_id,
       });
       testIssuanceId = issuance.cadTrustIssuanceId;
 

@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { AefT3ActionsV2, AefT3ActionsV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, AefT2AuthorizationsV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { AefT3ActionsV2, AefT3ActionsV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, AefT2AuthorizationsV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -75,17 +75,21 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
     });
     testVerificationId = verification.cadTrustVerificationId;
 
+    // Create test project-methodology join record
+    const projectMethodology = await ProjectMethodologyV2.create({
+      cadTrustProjectMethodologyId: uuidv4(),
+      cadTrustProjectId: testProjectId,
+      cadTrustMethodologyId: testMethodologyId,
+      projectMethodologyDate: '2024-01-01',
+    });
+
     // Create test issuance
     const issuance = await IssuanceV2.create({
       cadTrustIssuanceId: uuidv4(),
       issuanceId: 'TEST-ISS-AEFT3-001',
       issuanceDate: '2024-01-01',
-      issuanceQuantity: 1000.5,
-      issuanceUnit: 'tCO2e',
-      issuanceStatus: 'Active',
-      issuanceDescription: 'Test issuance description',
       cadTrustVerificationId: testVerificationId,
-      cadTrustMethodologyId: testMethodologyId,
+      cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
     });
     testIssuanceId = issuance.cadTrustIssuanceId;
 

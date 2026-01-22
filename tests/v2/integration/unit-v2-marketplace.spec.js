@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, UnitV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, UnitV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -67,11 +67,17 @@ describe('V2 Unit API - Marketplace Features', function () {
       methodologyType: 'Methodology for Afforestation and Reforestation',
     });
 
+    const testProjectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+      cadTrustProjectId: testProject.cadTrustProjectId,
+      cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      projectMethodologyDate: '2024-01-01',
+    }));
+
     testIssuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
       issuanceId: 'TEST-ISSUANCE-MARKETPLACE',
       issuanceDate: '2024-01-01',
       cadTrustVerificationId: testVerification.cadTrustVerificationId,
-      cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
     }));
   });
 
@@ -116,11 +122,17 @@ describe('V2 Unit API - Marketplace Features', function () {
       methodologyType: 'Methodology for Afforestation and Reforestation',
     });
 
+    const testProjectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+      cadTrustProjectId: testProject.cadTrustProjectId,
+      cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      projectMethodologyDate: '2024-01-01',
+    }));
+
     testIssuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
       issuanceId: 'TEST-ISSUANCE-MARKETPLACE',
       issuanceDate: '2024-01-01',
       cadTrustVerificationId: testVerification.cadTrustVerificationId,
-      cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
     }));
   });
 

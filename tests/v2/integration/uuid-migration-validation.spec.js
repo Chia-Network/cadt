@@ -11,6 +11,7 @@ import {
   UnitV2,
   LocationV2,
   MethodologyV2,
+  ProjectMethodologyV2,
 } from '../../../src/models/v2/index.js';
 
 import {
@@ -211,10 +212,16 @@ describe('V2 UUID Migration Validation Tests', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
+      const projectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      }));
+
       const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISSUANCE-001',
         cadTrustVerificationId: verification.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
       }));
 
       expect(issuance.cadTrustIssuanceId).to.exist;
@@ -259,10 +266,16 @@ describe('V2 UUID Migration Validation Tests', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
+      const projectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      }));
+
       const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISSUANCE-001',
         cadTrustVerificationId: verification.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
       }));
 
       const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
@@ -396,10 +409,16 @@ describe('V2 UUID Migration Validation Tests', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
+      const projectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      }));
+
       const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISSUANCE-001',
         cadTrustVerificationId: verification.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
       }));
 
       const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
@@ -425,7 +444,7 @@ describe('V2 UUID Migration Validation Tests', function () {
       // Verify all foreign key relationships are maintained with UUIDs
       expect(unit.cadTrustIssuanceId).to.equal(issuance.cadTrustIssuanceId);
       expect(issuance.cadTrustVerificationId).to.equal(verification.cadTrustVerificationId);
-      expect(issuance.cadTrustMethodologyId).to.equal(methodology.cadTrustMethodologyId);
+      expect(issuance.cadTrustProjectMethodologyId).to.equal(projectMethodology.cadTrustProjectMethodologyId);
       expect(verification.cadTrustProjectId).to.equal(project.cadTrustProjectId);
       expect(verification.cadTrustValidationId).to.equal(validation.cadTrustValidationId);
       expect(validation.cadTrustProjectId).to.equal(project.cadTrustProjectId);
