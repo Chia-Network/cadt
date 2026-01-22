@@ -195,7 +195,8 @@ jobs:
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
             echo "Current balance: $BALANCE (attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS)"
             if [ "$BALANCE" != "0" ] && [ "$BALANCE" != "null" ] && [ -n "$BALANCE" ]; then
-              echo "Wallet funded! Balance: $BALANCE mojos"
+              XCH_BALANCE=$(echo "scale=12; $BALANCE / 1000000000000" | bc)
+              echo "Wallet funded! Balance: $BALANCE mojos ($XCH_BALANCE XCH)"
               break
             fi
             ATTEMPT=$((ATTEMPT + 1))
@@ -213,6 +214,12 @@ jobs:
           pm2 start npm --no-autorestart --name "cadt" -- start
           sleep 5
 
+      - name: Show CADT logs before tests
+        shell: bash
+        run: |
+          echo "Last 100 lines of CADT logs:"
+          pm2 logs cadt --lines 100 --nostream
+
       - name: npm live api tests
         run: |
           echo "########################################################"
@@ -228,6 +235,12 @@ jobs:
           echo "########################################################"
           npm run test:v2:live:organization:delete
 
+      - name: Show CADT logs after tests
+        if: always()
+        shell: bash
+        run: |
+          echo "Last 50 lines of CADT logs:"
+          pm2 logs cadt --lines 50 --nostream
 
   # test-v2-live-api:
   #   name: v2 live api tests
