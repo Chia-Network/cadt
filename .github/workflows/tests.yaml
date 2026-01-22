@@ -178,6 +178,8 @@ jobs:
         shell: bash
         run: |
           chia start wallet data data_layer_http
+          sleep 10
+          tail ~/.chia/mainnet/logs/debug.log
 
       - name: Faucet
         shell: bash
