@@ -574,8 +574,14 @@ const createRetryableRequest = (makeRequest, method, path) => {
     },
     expect(a, b) {
       // expect() can have multiple signatures: expect(status), expect(field, value), etc.
-      chainMethods.push({ name: 'expect', args: b !== undefined ? [a, b] : [a] });
-      pendingRequest = pendingRequest.expect(a, b);
+      // Only pass second argument if it's actually provided (not undefined)
+      if (b !== undefined) {
+        chainMethods.push({ name: 'expect', args: [a, b] });
+        pendingRequest = pendingRequest.expect(a, b);
+      } else {
+        chainMethods.push({ name: 'expect', args: [a] });
+        pendingRequest = pendingRequest.expect(a);
+      }
       return wrapper;
     },
     query(data) {

@@ -180,6 +180,7 @@ jobs:
           chia start wallet data data_layer_http
           sleep 10
           tail ~/.chia/mainnet/log/debug.log
+          chia wallet show
 
       - name: Faucet
         shell: bash
@@ -208,11 +209,16 @@ jobs:
             sleep 10
           done
 
+      - name: Show wallet balance after funding from faucet
+        shell: bash
+        run: |
+          chia wallet show
+
       - name: Start CADT
         shell: bash
         run: |
           pm2 start npm --no-autorestart --name "cadt" -- start
-          sleep 5
+          sleep 30
 
       - name: Show CADT logs before tests
         shell: bash
