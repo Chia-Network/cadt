@@ -90,7 +90,7 @@ jobs:
       - name: npm tests
         run: npm run test:v2
 
-test-v1-live-api:
+  test-v1-live-api:
     name: v1 live api tests
     runs-on: ubuntu-latest
     container:
