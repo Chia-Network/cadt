@@ -525,15 +525,181 @@ export const validateDataInDatabase = async (request, type, id, expectedData) =>
   }
 };
 
+// Wallet sync retry configuration
+const WALLET_SYNC_RETRY_INTERVAL = 10000; // 10 seconds
+const WALLET_SYNC_MAX_WAIT = 1800000; // 30 minutes
+
+/**
+ * Check if response indicates wallet is syncing
+ * @param {Object} response - HTTP response object
+ * @returns {boolean} - true if wallet sync error detected
+ */
+const isWalletSyncError = (response) => {
+  if (!response) return false;
+
+  // Check response body for wallet sync messages
+  const body = response.body || {};
+  const message = (body.message || body.error || '').toLowerCase();
+
+  return (
+    message.includes('wallet is syncing') ||
+    message.includes('wallet syncing') ||
+    message.includes('wait for it to sync') ||
+    message.includes('wallet not synced')
+  );
+};
+
+/**
+ * Create a retryable request wrapper that automatically retries on wallet sync errors
+ * @param {Function} makeRequest - Function that creates the supertest request
+ * @param {string} method - HTTP method name (POST, PUT, DELETE)
+ * @param {string} path - Request path
+ * @returns {Object} - Chainable request wrapper with retry logic
+ */
+const createRetryableRequest = (makeRequest, method, path) => {
+  let pendingRequest = makeRequest();
+  const chainMethods = []; // Store chained method calls for replay
+
+  const wrapper = {
+    // Proxy common chainable methods to capture them for replay
+    send(data) {
+      chainMethods.push({ name: 'send', args: [data] });
+      pendingRequest = pendingRequest.send(data);
+      return wrapper;
+    },
+    set(field, val) {
+      chainMethods.push({ name: 'set', args: [field, val] });
+      pendingRequest = pendingRequest.set(field, val);
+      return wrapper;
+    },
+    expect(a, b) {
+      // expect() can have multiple signatures: expect(status), expect(field, value), etc.
+      chainMethods.push({ name: 'expect', args: b !== undefined ? [a, b] : [a] });
+      pendingRequest = pendingRequest.expect(a, b);
+      return wrapper;
+    },
+    query(data) {
+      chainMethods.push({ name: 'query', args: [data] });
+      pendingRequest = pendingRequest.query(data);
+      return wrapper;
+    },
+    attach(field, file, options) {
+      chainMethods.push({ name: 'attach', args: [field, file, options] });
+      pendingRequest = pendingRequest.attach(field, file, options);
+      return wrapper;
+    },
+    field(name, val) {
+      chainMethods.push({ name: 'field', args: [name, val] });
+      pendingRequest = pendingRequest.field(name, val);
+      return wrapper;
+    },
+    type(type) {
+      chainMethods.push({ name: 'type', args: [type] });
+      pendingRequest = pendingRequest.type(type);
+      return wrapper;
+    },
+    accept(type) {
+      chainMethods.push({ name: 'accept', args: [type] });
+      pendingRequest = pendingRequest.accept(type);
+      return wrapper;
+    },
+    timeout(ms) {
+      chainMethods.push({ name: 'timeout', args: [ms] });
+      pendingRequest = pendingRequest.timeout(ms);
+      return wrapper;
+    },
+
+    // Make this wrapper thenable with retry logic
+    then(onFulfilled, onRejected) {
+      const startTime = Date.now();
+
+      const executeWithRetry = async () => {
+        while (true) {
+          try {
+            const response = await pendingRequest;
+
+            // Check if response indicates wallet sync error
+            if (isWalletSyncError(response)) {
+              const elapsed = Date.now() - startTime;
+              if (elapsed < WALLET_SYNC_MAX_WAIT) {
+                const elapsedSec = Math.floor(elapsed / 1000);
+                console.log(`[${getTimestamp()}] ⏳ Wallet syncing detected, retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
+                await new Promise(resolve => setTimeout(resolve, WALLET_SYNC_RETRY_INTERVAL));
+
+                // Recreate and replay the request
+                pendingRequest = makeRequest();
+                for (const { name, args } of chainMethods) {
+                  pendingRequest = pendingRequest[name](...args);
+                }
+                continue;
+              } else {
+                console.log(`[${getTimestamp()}] ❌ Wallet sync timeout after ${Math.floor(elapsed / 1000)}s`);
+              }
+            }
+
+            return response;
+          } catch (error) {
+            // Handle error responses (when expect() fails due to status mismatch)
+            // The error object may have a .response property with the actual response
+            const errorResponse = error.response || error;
+
+            if (isWalletSyncError(errorResponse)) {
+              const elapsed = Date.now() - startTime;
+              if (elapsed < WALLET_SYNC_MAX_WAIT) {
+                const elapsedSec = Math.floor(elapsed / 1000);
+                console.log(`[${getTimestamp()}] ⏳ Wallet syncing detected (error response), retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
+                await new Promise(resolve => setTimeout(resolve, WALLET_SYNC_RETRY_INTERVAL));
+
+                // Recreate and replay the request
+                pendingRequest = makeRequest();
+                for (const { name, args } of chainMethods) {
+                  pendingRequest = pendingRequest[name](...args);
+                }
+                continue;
+              } else {
+                console.log(`[${getTimestamp()}] ❌ Wallet sync timeout after ${Math.floor(elapsed / 1000)}s`);
+              }
+            }
+
+            // Not a wallet sync error, re-throw
+            throw error;
+          }
+        }
+      };
+
+      return executeWithRetry().then(onFulfilled, onRejected);
+    },
+
+    // Support catch for promise-like behavior
+    catch(onRejected) {
+      return this.then(undefined, onRejected);
+    },
+
+    // Support finally for promise-like behavior
+    finally(onFinally) {
+      return this.then(
+        value => Promise.resolve(onFinally()).then(() => value),
+        reason => Promise.resolve(onFinally()).then(() => { throw reason; })
+      );
+    },
+  };
+
+  return wrapper;
+};
+
 /**
  * Convenience function to get live API request instance
  * Also checks server health
+ *
+ * The returned request object has POST/PUT/DELETE methods wrapped with:
+ * - Request logging with timestamps
+ * - Automatic retry on wallet sync errors (10s interval, 30 min timeout)
  */
 export const getLiveApiRequest = async () => {
   const request = createLiveApiRequest();
   await waitForServer(request);
 
-  // Wrap request methods to track endpoints and log timestamps
+  // Wrap request methods to track endpoints, log timestamps, and add wallet sync retry
   // Only wrap if not already wrapped (check for our custom property)
   if (request._wrappedForLogging) {
     return request;
@@ -546,19 +712,19 @@ export const getLiveApiRequest = async () => {
   request.post = function(path) {
     trackTestEndpoint('POST', path);
     console.log(`[${getTimestamp()}] POST ${path}`);
-    return originalPost(path);
+    return createRetryableRequest(() => originalPost(path), 'POST', path);
   };
 
   request.put = function(path) {
     trackTestEndpoint('PUT', path);
     console.log(`[${getTimestamp()}] PUT ${path}`);
-    return originalPut(path);
+    return createRetryableRequest(() => originalPut(path), 'PUT', path);
   };
 
   request.delete = function(path) {
     trackTestEndpoint('DELETE', path);
     console.log(`[${getTimestamp()}] DELETE ${path}`);
-    return originalDelete(path);
+    return createRetryableRequest(() => originalDelete(path), 'DELETE', path);
   };
 
   // Mark as wrapped to prevent duplicate wrapping

@@ -116,10 +116,10 @@ test-v1-live-api:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq
+      - name: Install yq and jq
         run: |
           apt-get update
-          apt-get install -y yq
+          apt-get install -y yq jq
 
       - name: Install Chia and chia-tools
         shell: bash
@@ -145,15 +145,15 @@ test-v1-live-api:
         shell: bash
         run: |
           # Run cadt momentarily to create config file
-          pm2 start npm --no-autorestart --name "core-registry-cadt" -- start
+          pm2 start npm --no-autorestart --name "cadt" -- start
           sleep 10
-          pm2 logs core-registry-cadt --nostream
-          pm2 stop core-registry-cadt
+          pm2 logs cadt --nostream
+          pm2 stop cadt
 
           # Remove cadt databases to reset system
           echo "Removing cadt databases to reset system..."
-          rm -f ~/.chia/mainnet/core-registry/cadt/v1/data.sqlite3*
-          rm -f ~/.chia/mainnet/core-registry/cadt/v2/data.sqlite3*
+          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
+          rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
 
           # Configure CADT to most verbose logs
           echo "Configuring CADT config.yaml..."
@@ -165,22 +165,66 @@ test-v1-live-api:
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = "true"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.ENABLE = "false"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.ENABLE = "true"' ~/.chia/mainnet/cadt/config.yaml
 
+          # Show the config file
+          echo "Showing the config file after configuration ... (this is the final config file)"
+          cat ~/.chia/mainnet/cadt/config.yaml
 
-      # - name: npm live api tests
-      #   run: |
-      #     echo "########################################################"
-      #     echo "Running organization creation tests"
-      #     echo "########################################################"
-      #     npm run test:v2:live:organization:create
-      #     echo "########################################################"
-      #     echo "Running data tests"
-      #     echo "########################################################"
-      #     npm run test:v2:live:data:short
-      #     echo "########################################################"
-      #     echo "Running organization deletion tests"
-      #     echo "########################################################"
-      #     npm run test:v2:live:organization:delete
+          # Clean up any existing PM2 processes with the same name
+          pm2 delete cadt 2>/dev/null || true
+
+      - name: Start Chia
+        shell: bash
+        run: |
+          chia start wallet data data_layer_http
+
+      - name: Faucet
+        shell: bash
+        run: |
+          CHIA_WALLET_ADDRESS=$(chia wallet get_address)
+          echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
+          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":.001}' "${{ secrets.TESTNETA_FAUCET }}"
+
+          echo "Waiting for wallet to receive funds..."
+          MAX_ATTEMPTS=60  # 60 attempts * 10 seconds = 10 minutes
+          ATTEMPT=0
+          while true; do
+            BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
+            echo "Current balance: $BALANCE (attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS)"
+            if [ "$BALANCE" != "0" ] && [ "$BALANCE" != "null" ] && [ -n "$BALANCE" ]; then
+              echo "Wallet funded! Balance: $BALANCE mojos"
+              break
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              exit 1
+            fi
+            echo "Balance still zero, waiting 10 seconds..."
+            sleep 10
+          done
+
+      - name: Start CADT
+        shell: bash
+        run: |
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 5
+
+      - name: npm live api tests
+        run: |
+          echo "########################################################"
+          echo "Running organization creation tests"
+          echo "########################################################"
+          npm run test:v2:live:organization:create
+          echo "########################################################"
+          echo "Running data tests"
+          echo "########################################################"
+          npm run test:v2:live:data:short
+          echo "########################################################"
+          echo "Running organization deletion tests"
+          echo "########################################################"
+          npm run test:v2:live:organization:delete
 
 
   # test-v2-live-api:
@@ -238,15 +282,15 @@ test-v1-live-api:
   #       shell: bash
   #       run: |
   #         # Run cadt momentarily to create config file
-  #         pm2 start npm --no-autorestart --name "core-registry-cadt" -- start
+  #         pm2 start npm --no-autorestart --name "cadt" -- start
   #         sleep 10
-  #         pm2 logs core-registry-cadt --nostream
-  #         pm2 stop core-registry-cadt
+  #         pm2 logs cadt --nostream
+  #         pm2 stop cadt
 
   #         # Remove cadt databases to reset system
   #         echo "Removing cadt databases to reset system..."
-  #         rm -f ~/.chia/mainnet/core-registry/cadt/v1/data.sqlite3*
-  #         rm -f ~/.chia/mainnet/core-registry/cadt/v2/data.sqlite3*
+  #         rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
+  #         rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
 
   #         # Configure CADT to most verbose logs
   #         echo "Configuring CADT config.yaml..."
