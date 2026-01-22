@@ -162,10 +162,10 @@ jobs:
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = "true"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.ENABLE = "false"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.ENABLE = "true"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
 
           # Show the config file
           echo "Showing the config file after configuration ... (this is the final config file)"
@@ -179,7 +179,7 @@ jobs:
         run: |
           chia start wallet data data_layer_http
           sleep 10
-          tail ~/.chia/mainnet/logs/debug.log
+          tail ~/.chia/mainnet/log/debug.log
 
       - name: Faucet
         shell: bash
