@@ -119,7 +119,7 @@ jobs:
       - name: Install yq and jq
         run: |
           apt-get update
-          apt-get install -y yq jq
+          apt-get install -y yq jq bc
 
       - name: Install Chia and chia-tools
         shell: bash
