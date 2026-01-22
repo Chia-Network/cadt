@@ -257,6 +257,10 @@ jobs:
             sleep 30
           done
 
+          echo "Waiting 15 minutes for datalayer subscriptions to sync..."
+
+          sleep 900 # wait 15 minutes
+
           echo ""
           echo "=========================================="
           echo "Final Status Check"
