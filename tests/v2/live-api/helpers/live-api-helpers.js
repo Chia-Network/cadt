@@ -56,7 +56,8 @@ export const getLiveApiConfig = () => {
   }
 
   const port = config?.APP?.CW_PORT || 31310;
-  const baseUrl = `http://localhost:${port}`;
+  // Use 127.0.0.1 instead of localhost for more reliable connections in containers
+  const baseUrl = `http://127.0.0.1:${port}`;
 
   console.log(`Using API endpoint: ${baseUrl} (port: ${port})`);
 

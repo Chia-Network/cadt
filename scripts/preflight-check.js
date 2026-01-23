@@ -162,45 +162,74 @@ const checkConfigFile = async () => {
 };
 
 /**
- * Check server connection
+ * Check server connection with retries
+ * Retries a few times since the server may still be starting up
  */
 const checkServerConnection = async () => {
   log(`Checking server connection on port ${PORT}...`);
 
-  try {
-    const response = await httpRequest(`http://localhost:${PORT}/health`);
+  const maxRetries = 5;
+  const retryDelay = 3000; // 3 seconds between retries
+  let lastError = null;
 
-    if (response.status === 200) {
-      results.serverConnection = {
-        status: 'success',
-        message: `Server reachable on port ${PORT}`,
-      };
-      log(`Server is reachable on port ${PORT}`, 'success');
-      return true;
-    } else {
-      results.serverConnection = {
-        status: 'warning',
-        message: `Server responded with status ${response.status}`,
-      };
-      log(`Server responded with unexpected status: ${response.status}`, 'warning');
-      return true; // Server is reachable, just not healthy
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Use 127.0.0.1 instead of localhost for more reliable connections in containers
+      const response = await httpRequest(`http://127.0.0.1:${PORT}/health`);
+
+      if (response.status === 200) {
+        results.serverConnection = {
+          status: 'success',
+          message: `Server reachable on port ${PORT}`,
+        };
+        log(`Server is reachable on port ${PORT}`, 'success');
+        return true;
+      } else if (response.status === 400) {
+        // 400 means server IS running but Chia services aren't ready
+        const errorMsg = response.body?.error || response.body?.message || 'Chia services not ready';
+        results.serverConnection = {
+          status: 'warning',
+          message: `Server running but returned 400: ${errorMsg}`,
+        };
+        log(`Server is running but Chia services not ready: ${errorMsg}`, 'warning');
+        return true; // Server IS reachable, will let health checks provide more detail
+      } else {
+        results.serverConnection = {
+          status: 'warning',
+          message: `Server responded with status ${response.status}`,
+        };
+        log(`Server responded with status: ${response.status}`, 'warning');
+        return true; // Server is reachable, just not healthy
+      }
+    } catch (err) {
+      lastError = err;
+      if (err.code === 'ECONNREFUSED') {
+        if (attempt < maxRetries) {
+          log(`Connection refused (attempt ${attempt}/${maxRetries}), retrying in ${retryDelay / 1000}s...`, 'warning');
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      } else {
+        // Other errors - don't retry
+        break;
+      }
     }
-  } catch (err) {
-    if (err.code === 'ECONNREFUSED') {
-      results.serverConnection = {
-        status: 'error',
-        message: `Connection refused on port ${PORT} - server not running?`,
-      };
-      log(`Connection refused on port ${PORT} - is CADT server running?`, 'error');
-    } else {
-      results.serverConnection = {
-        status: 'error',
-        message: `Connection error: ${err.message}`,
-      };
-      log(`Connection error: ${err.message}`, 'error');
-    }
-    return false;
   }
+
+  // All retries exhausted
+  if (lastError?.code === 'ECONNREFUSED') {
+    results.serverConnection = {
+      status: 'error',
+      message: `Connection refused on port ${PORT} after ${maxRetries} attempts - server not running?`,
+    };
+    log(`Connection refused on port ${PORT} after ${maxRetries} attempts - is CADT server running?`, 'error');
+  } else {
+    results.serverConnection = {
+      status: 'error',
+      message: `Connection error: ${lastError?.message || 'Unknown error'}`,
+    };
+    log(`Connection error: ${lastError?.message || 'Unknown error'}`, 'error');
+  }
+  return false;
 };
 
 /**
@@ -210,7 +239,7 @@ const checkRootHealth = async () => {
   log('Checking root /health endpoint...');
 
   try {
-    const response = await httpRequest(`http://localhost:${PORT}/health`);
+    const response = await httpRequest(`http://127.0.0.1:${PORT}/health`);
 
     if (response.status === 200) {
       results.rootHealth = {
@@ -266,7 +295,7 @@ const checkV1Health = async () => {
   log('Checking V1 /v1/health endpoint...');
 
   try {
-    const response = await httpRequest(`http://localhost:${PORT}/v1/health`);
+    const response = await httpRequest(`http://127.0.0.1:${PORT}/v1/health`);
 
     if (response.status === 200) {
       results.v1Health = {
@@ -320,7 +349,7 @@ const checkV2Health = async () => {
   log('Checking V2 /v2/health endpoint...');
 
   try {
-    const response = await httpRequest(`http://localhost:${PORT}/v2/health`);
+    const response = await httpRequest(`http://127.0.0.1:${PORT}/v2/health`);
 
     if (response.status === 200) {
       results.v2Health = {
