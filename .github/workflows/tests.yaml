@@ -158,6 +158,8 @@ jobs:
           # Configure CADT to most verbose logs
           echo "Configuring CADT config.yaml..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          # Set network to testnet to match the Chia network configuration
+          yq -yi '.APP.CHIA_NETWORK = "TESTNET"' ~/.chia/mainnet/cadt/config.yaml
           # Use 127.0.0.1 instead of localhost for more reliable binding in containers
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
