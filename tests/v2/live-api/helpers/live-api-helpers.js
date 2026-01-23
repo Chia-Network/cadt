@@ -75,24 +75,194 @@ export const createLiveApiRequest = () => {
 /**
  * Check if server is running by hitting health endpoint
  * Retries with timeout if server not ready
+ * Provides detailed diagnostics on failure
  */
 export const waitForServer = async (request, maxWaitTime = 30000) => {
   const startTime = Date.now();
   const interval = 2000; // Check every 2 seconds
 
+  // Track diagnostic info for better error reporting
+  let lastV2Response = null;
+  let lastV1Response = null;
+  let lastRootHealthResponse = null;
+  let lastError = null;
+  let connectionRefusedCount = 0;
+
+  console.log(`[${getTimestamp()}] Checking server health (timeout: ${maxWaitTime}ms)...`);
+
   while (Date.now() - startTime < maxWaitTime) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
+    // Try V2 health endpoint
     try {
       const response = await request.get('/v2/health');
+      lastV2Response = {
+        status: response.status,
+        body: response.body,
+        timestamp: getTimestamp(),
+      };
+
       if (response.status === 200) {
+        console.log(`[${getTimestamp()}] ✓ Server ready (V2 health check passed)`);
+        return true;
+      }
+
+      // Log non-200 responses to help diagnose issues
+      if (response.status === 403) {
+        console.log(`[${getTimestamp()}] V2 health returned 403 - V2 API may be disabled, trying V1...`);
+      } else if (response.status === 400) {
+        console.log(`[${getTimestamp()}] V2 health returned 400: ${response.body?.message || response.body?.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      lastError = error;
+      const isConnectionRefused = error.code === 'ECONNREFUSED' ||
+        error.message?.includes('ECONNREFUSED') ||
+        error.message?.includes('connect ECONNREFUSED');
+
+      if (isConnectionRefused) {
+        connectionRefusedCount++;
+        if (connectionRefusedCount <= 3 || connectionRefusedCount % 5 === 0) {
+          console.log(`[${getTimestamp()}] Connection refused (${connectionRefusedCount}x) - server may not be running yet (${elapsed}s elapsed)`);
+        }
+      }
+    }
+
+    // Try V1 health endpoint as fallback
+    try {
+      const response = await request.get('/v1/health');
+      lastV1Response = {
+        status: response.status,
+        body: response.body,
+        timestamp: getTimestamp(),
+      };
+
+      if (response.status === 200) {
+        console.log(`[${getTimestamp()}] ✓ Server ready (V1 health check passed - note: V2 may be disabled)`);
         return true;
       }
     } catch (error) {
-      // Server not ready yet, continue waiting
+      // V1 also failed - continue
     }
+
+    // Try root health endpoint as last resort
+    try {
+      const response = await request.get('/health');
+      lastRootHealthResponse = {
+        status: response.status,
+        body: response.body,
+        timestamp: getTimestamp(),
+      };
+
+      if (response.status === 200) {
+        // Root health works but versioned endpoints don't - this is informative
+        console.log(`[${getTimestamp()}] Root /health works, but V1/V2 health endpoints failed - possible middleware issue`);
+      }
+    } catch (error) {
+      // Root health also failed
+    }
+
     await new Promise(resolve => setTimeout(resolve, interval));
   }
 
-  throw new Error(`Server not ready after ${maxWaitTime}ms`);
+  // Build detailed error message with diagnostics
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const diagnostics = buildServerDiagnostics(lastV2Response, lastV1Response, lastRootHealthResponse, lastError, connectionRefusedCount);
+
+  throw new Error(
+    `Server not ready after ${maxWaitTime}ms (${elapsed}s)\n\n` +
+    `=== SERVER HEALTH DIAGNOSTICS ===\n${diagnostics}\n` +
+    `=================================\n\n` +
+    `Troubleshooting tips:\n` +
+    `- If connection refused: Check that CADT server is running (pm2 status, pm2 logs cadt)\n` +
+    `- If 403 "V2 API disabled": Check config.yaml has V2.ENABLE = true\n` +
+    `- If 400 "Chia Exception": Check Chia services are running and synced (chia show -s, chia wallet show)\n` +
+    `- If wallet syncing: Wait for wallet to sync before running tests\n` +
+    `- If datalayer unavailable: Ensure data_layer service is running (chia start data)`
+  );
+};
+
+/**
+ * Build diagnostic information from health check responses
+ */
+const buildServerDiagnostics = (v2Response, v1Response, rootResponse, lastError, connectionRefusedCount) => {
+  const lines = [];
+
+  // Connection status
+  if (connectionRefusedCount > 0) {
+    lines.push(`Connection Status: REFUSED (${connectionRefusedCount} times)`);
+    lines.push(`  → Server may not be running or wrong port`);
+  } else {
+    lines.push(`Connection Status: Server reachable`);
+  }
+
+  // V2 Health
+  lines.push('');
+  lines.push('V2 Health (/v2/health):');
+  if (v2Response) {
+    lines.push(`  Status: ${v2Response.status}`);
+    if (v2Response.status === 403) {
+      lines.push(`  → V2 API is disabled in config`);
+      lines.push(`  → Set V2.ENABLE = true in config.yaml`);
+    } else if (v2Response.status === 400) {
+      const msg = v2Response.body?.message || v2Response.body?.error || 'Unknown';
+      lines.push(`  Error: ${msg}`);
+      if (msg.includes('Chia Exception')) {
+        const detail = v2Response.body?.error || '';
+        lines.push(`  Detail: ${detail}`);
+        if (detail.includes('DataLayer') || detail.includes('datalayer')) {
+          lines.push(`  → DataLayer service may not be running`);
+        }
+        if (detail.includes('wallet') || detail.includes('syncing')) {
+          lines.push(`  → Wallet may still be syncing`);
+        }
+      }
+    } else {
+      lines.push(`  Response: ${JSON.stringify(v2Response.body)}`);
+    }
+  } else {
+    lines.push(`  No response received`);
+  }
+
+  // V1 Health
+  lines.push('');
+  lines.push('V1 Health (/v1/health):');
+  if (v1Response) {
+    lines.push(`  Status: ${v1Response.status}`);
+    if (v1Response.status === 403) {
+      lines.push(`  → V1 API is disabled in config`);
+    } else if (v1Response.status === 400) {
+      const msg = v1Response.body?.message || v1Response.body?.error || 'Unknown';
+      lines.push(`  Error: ${msg}`);
+    } else if (v1Response.status === 200) {
+      lines.push(`  ✓ V1 is working (but test may require V2)`);
+    }
+  } else {
+    lines.push(`  No response received`);
+  }
+
+  // Root Health
+  lines.push('');
+  lines.push('Root Health (/health):');
+  if (rootResponse) {
+    lines.push(`  Status: ${rootResponse.status}`);
+    if (rootResponse.status === 200) {
+      lines.push(`  ✓ Server is running but middleware blocking V1/V2`);
+    }
+  } else {
+    lines.push(`  No response received`);
+  }
+
+  // Last error
+  if (lastError) {
+    lines.push('');
+    lines.push('Last Error:');
+    lines.push(`  ${lastError.message || lastError}`);
+    if (lastError.code) {
+      lines.push(`  Code: ${lastError.code}`);
+    }
+  }
+
+  return lines.join('\n');
 };
 
 /**

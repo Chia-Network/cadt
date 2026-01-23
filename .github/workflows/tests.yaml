@@ -164,7 +164,8 @@ jobs:
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+          # Enable both V1 and V2 since the live API tests cover organization creation for both versions
+          yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
 
           # Show the config file
@@ -257,9 +258,9 @@ jobs:
             sleep 30
           done
 
-          echo "Waiting 15 minutes for datalayer subscriptions to sync..."
+          echo "Waiting 20 seconds for sync and startup..."
 
-          sleep 900 # wait 15 minutes
+          sleep 20 # wait 20 seconds
 
           echo ""
           echo "=========================================="
@@ -288,6 +289,27 @@ jobs:
           echo "Last 100 lines of CADT logs:"
           pm2 logs cadt --lines 100 --nostream
 
+      - name: Pre-flight check
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Running pre-flight checks before live API tests"
+          echo "########################################################"
+          # Run pre-flight check - requires both V1 and V2 since tests cover both
+          npm run preflight-check:v1v2 || {
+            echo ""
+            echo "########################################################"
+            echo "PRE-FLIGHT CHECK FAILED - Showing CADT logs for debugging:"
+            echo "########################################################"
+            pm2 logs cadt --lines 100 --nostream || true
+            echo ""
+            echo "########################################################"
+            echo "Config file contents:"
+            echo "########################################################"
+            cat ~/.chia/mainnet/cadt/config.yaml || true
+            exit 1
+          }
+
       - name: npm live api tests
         run: |
           echo "########################################################"
@@ -309,6 +331,23 @@ jobs:
         run: |
           echo "Last 50 lines of CADT logs:"
           pm2 logs cadt --lines 50 --nostream
+
+      - name: Stop CADT
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping CADT pm2 process..."
+          pm2 stop cadt || true
+          pm2 delete cadt || true
+          echo "CADT stopped"
+
+      - name: Stop Chia services
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping all Chia services..."
+          chia stop all -d || true
+          echo "Chia services stopped"
 
   # test-v2-live-api:
   #   name: v2 live api tests
