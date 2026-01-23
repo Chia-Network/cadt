@@ -289,6 +289,31 @@ jobs:
           echo "Last 100 lines of CADT logs:"
           pm2 logs cadt --lines 100 --nostream
 
+      - name: Show process and port status
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Process and Port Status"
+          echo "########################################################"
+          echo ""
+          echo "PM2 process list:"
+          pm2 list || true
+          echo ""
+          echo "CADT process details:"
+          pm2 show cadt || true
+          echo ""
+          echo "All listening TCP ports:"
+          ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null || echo "Could not get port info"
+          echo ""
+          echo "Checking if port 31310 is listening:"
+          ss -tlnp 2>/dev/null | grep :31310 || netstat -tlnp 2>/dev/null | grep :31310 || echo "Port 31310 not found in listeners"
+          echo ""
+          echo "Testing connection to localhost:31310:"
+          curl -v --max-time 5 http://localhost:31310/health 2>&1 || echo "curl to localhost:31310 failed"
+          echo ""
+          echo "Testing connection to 127.0.0.1:31310:"
+          curl -v --max-time 5 http://127.0.0.1:31310/health 2>&1 || echo "curl to 127.0.0.1:31310 failed"
+
       - name: Pre-flight check
         shell: bash
         run: |
@@ -299,14 +324,20 @@ jobs:
           npm run preflight-check:v1v2 || {
             echo ""
             echo "########################################################"
-            echo "PRE-FLIGHT CHECK FAILED - Showing CADT logs for debugging:"
+            echo "PRE-FLIGHT CHECK FAILED - Showing additional debug info:"
             echo "########################################################"
+            echo ""
+            echo "PM2 status:"
+            pm2 list || true
+            echo ""
+            echo "CADT pm2 logs (last 100 lines):"
             pm2 logs cadt --lines 100 --nostream || true
             echo ""
-            echo "########################################################"
             echo "Config file contents:"
-            echo "########################################################"
             cat ~/.chia/mainnet/cadt/config.yaml || true
+            echo ""
+            echo "Node processes:"
+            ps aux | grep -E "node|cadt" | grep -v grep || true
             exit 1
           }
 
@@ -340,6 +371,16 @@ jobs:
           pm2 stop cadt || true
           pm2 delete cadt || true
           echo "CADT stopped"
+
+      - name: Delete all mirrors
+        shell: bash
+        run: |
+          echo "Deleting all mirrors..."
+          chia-tools data delete-mirrors --all
+          sleep 120 # wait 2 minutes for mirrors to be deleted
+
+          echo "Confirming mirrors are deleted..."
+          chia-tools data show-my-mirrors
 
       - name: Stop Chia services
         if: always()

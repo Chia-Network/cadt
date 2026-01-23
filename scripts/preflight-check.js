@@ -37,11 +37,12 @@ const TIMEOUT = parseInt(getArg('--timeout', '10000'), 10);
 // Status tracking
 const results = {
   configFile: { status: 'pending', message: '' },
+  pm2Status: { status: 'pending', message: '' },
+  portListeners: { status: 'pending', message: '' },
   serverConnection: { status: 'pending', message: '' },
   rootHealth: { status: 'pending', message: '' },
   v1Health: { status: 'pending', message: '' },
   v2Health: { status: 'pending', message: '' },
-  chiaServices: { status: 'pending', message: '' },
 };
 
 /**
@@ -375,6 +376,118 @@ const checkV2Health = async () => {
 };
 
 /**
+ * Check pm2 process status (if pm2 is available)
+ */
+const checkPm2Status = async () => {
+  log('Checking pm2 process status...');
+
+  try {
+    const { execSync } = await import('child_process');
+
+    // Get pm2 list in JSON format
+    try {
+      const pm2Output = execSync('pm2 jlist 2>/dev/null', { encoding: 'utf8', timeout: 5000 });
+      const processes = JSON.parse(pm2Output);
+
+      const cadtProcess = processes.find(p => p.name === 'cadt');
+      if (cadtProcess) {
+        const status = cadtProcess.pm2_env?.status || 'unknown';
+        const uptime = cadtProcess.pm2_env?.pm_uptime;
+        const restarts = cadtProcess.pm2_env?.restart_time || 0;
+
+        log(`pm2 'cadt' process found:`, 'success');
+        log(`  Status: ${status}`);
+        log(`  PID: ${cadtProcess.pid || 'N/A'}`);
+        log(`  Restarts: ${restarts}`);
+        if (uptime) {
+          const uptimeSec = Math.floor((Date.now() - uptime) / 1000);
+          log(`  Uptime: ${uptimeSec}s`);
+        }
+
+        results.pm2Status = {
+          status: status === 'online' ? 'success' : 'warning',
+          message: `Process ${status}, PID: ${cadtProcess.pid || 'N/A'}, restarts: ${restarts}`,
+        };
+      } else {
+        log('pm2 cadt process not found', 'warning');
+        results.pm2Status = {
+          status: 'warning',
+          message: 'cadt process not found in pm2',
+        };
+      }
+    } catch (e) {
+      log(`pm2 not available or error: ${e.message}`, 'warning');
+      results.pm2Status = {
+        status: 'warning',
+        message: `pm2 check failed: ${e.message}`,
+      };
+    }
+
+    // Check what's listening on the port
+    log(`Checking what's listening on port ${PORT}...`);
+    try {
+      // Try ss first (more common on modern Linux)
+      let portOutput;
+      try {
+        portOutput = execSync(`ss -tlnp 2>/dev/null | grep :${PORT} || true`, { encoding: 'utf8', timeout: 5000 });
+      } catch {
+        // Fall back to netstat
+        portOutput = execSync(`netstat -tlnp 2>/dev/null | grep :${PORT} || true`, { encoding: 'utf8', timeout: 5000 });
+      }
+
+      if (portOutput && portOutput.trim()) {
+        log(`Port ${PORT} listeners:`, 'info');
+        portOutput.trim().split('\n').forEach(line => {
+          log(`  ${line.trim()}`);
+        });
+        results.portListeners = {
+          status: 'success',
+          message: `Found listeners on port ${PORT}`,
+        };
+      } else {
+        log(`Nothing listening on port ${PORT}`, 'warning');
+        results.portListeners = {
+          status: 'error',
+          message: `No process listening on port ${PORT}`,
+        };
+      }
+    } catch (e) {
+      log(`Could not check port listeners: ${e.message}`, 'warning');
+      results.portListeners = {
+        status: 'warning',
+        message: `Port check failed: ${e.message}`,
+      };
+    }
+
+    // Check all listening TCP ports
+    log('Checking all listening TCP ports...');
+    try {
+      let allPorts;
+      try {
+        allPorts = execSync('ss -tlnp 2>/dev/null | head -20 || true', { encoding: 'utf8', timeout: 5000 });
+      } catch {
+        allPorts = execSync('netstat -tlnp 2>/dev/null | head -20 || true', { encoding: 'utf8', timeout: 5000 });
+      }
+
+      if (allPorts && allPorts.trim()) {
+        log('All TCP listeners (first 20):');
+        allPorts.trim().split('\n').forEach(line => {
+          log(`  ${line.trim()}`);
+        });
+      }
+    } catch (e) {
+      log(`Could not list all ports: ${e.message}`, 'warning');
+    }
+  } catch (e) {
+    log(`Process check failed: ${e.message}`, 'error');
+    results.pm2Status = {
+      status: 'error',
+      message: `Process check failed: ${e.message}`,
+    };
+  }
+};
+
+/**
  * Print final summary
  */
 const printSummary = () => {
@@ -391,6 +504,8 @@ const printSummary = () => {
 
   const checks = [
     ['Config File', results.configFile],
+    ['PM2 Status', results.pm2Status],
+    ['Port Listeners', results.portListeners],
     ['Server Connection', results.serverConnection],
     ['Root Health', results.rootHealth],
     ['V1 Health', results.v1Health],
@@ -435,12 +550,19 @@ const main = async () => {
 
   // Run checks
   await checkConfigFile();
+
+  // Check pm2 and port status first - this helps diagnose connection issues
+  await checkPm2Status();
+
   const serverReachable = await checkServerConnection();
 
   if (serverReachable) {
     await checkRootHealth();
     await checkV1Health();
     await checkV2Health();
+  } else {
+    // Server not reachable - the pm2/port checks above will help diagnose why
+    log('Server not reachable - see pm2 and port status above for diagnostics', 'error');
   }
 
   // Print summary and exit with appropriate code
