@@ -2678,7 +2678,7 @@ Response
 
 Functionality: Create, read, update, and delete issuance records
 
-**Note**: By default, GET requests return only issuance data. Associated models (verification, methodology, location) are not included unless explicitly requested via query parameters.
+**Note**: By default, GET requests return only issuance data. Associated models (verification, projectMethodology, location) are not included unless explicitly requested via query parameters.
 
 <a id="issuance-get-examples"></a>
 ### GET Examples
@@ -2701,7 +2701,7 @@ Response
       "issuanceId": "ISS-001",
       "issuanceDate": "2022-01-02T00:00:00.000Z",
       "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-      "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+      "cadTrustProjectMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
       "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
       "createdAt": "2022-03-12T08:58:43.271Z",
       "updatedAt": "2022-03-12T08:58:43.271Z"
@@ -2726,7 +2726,7 @@ Response
   "issuanceId": "ISS-001",
   "issuanceDate": "2022-01-02T00:00:00.000Z",
   "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-  "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustProjectMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011",
   "createdAt": "2022-03-12T08:58:43.271Z",
   "updatedAt": "2022-03-12T08:58:43.271Z"
@@ -2746,7 +2746,7 @@ Fields:
 |:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
 | issuanceId | String | x | | Unique identifier for the issuance |
 | cadTrustVerificationId | String | x | | CAD Trust verification identifier. Must be a valid UUID |
-| cadTrustMethodologyId | String | x | | CAD Trust methodology identifier |
+| cadTrustProjectMethodologyId | String | x | | CAD Trust project methodology identifier. Must be a valid UUID referencing the project_methodology table |
 | issuanceDate | Date | | | Date of the issuance (ISO 8601 format) |
 | cadTrustLocationId | String | | | CAD Trust location identifier. Must be a valid UUID |
 
@@ -2758,7 +2758,7 @@ curl --location --request POST 'localhost:31310/v2/issuance' \
   "issuanceId": "ISS-001",
   "issuanceDate": "2022-01-02",
   "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-  "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustProjectMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011"
 }'
 ```
@@ -2794,7 +2794,7 @@ curl --location --request PUT 'localhost:31310/v2/issuance/d9f58b08-af25-461c-88
   "issuanceId": "ISS-001",
   "issuanceDate": "2022-01-02",
   "cadTrustVerificationId": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-  "cadTrustMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
+  "cadTrustProjectMethodologyId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "cadTrustLocationId": "8182100d-7794-4df7-b3b3-758391d13011"
 }'
 ```
@@ -2802,7 +2802,7 @@ curl --location --request PUT 'localhost:31310/v2/issuance/d9f58b08-af25-461c-88
 Response
 ```json
 {
-  "message": "Issuance update added to staging",
+  "message": "Issuance update staged successfully",
   "success": true
 }
 ```

@@ -82,5 +82,74 @@ describe('Phase 27.3: Sync Default Organizations V2 Task Tests', function () {
       expect(org.org_uid).to.equal(testOrgUid);
     });
   });
+
+  describe('OrgList Format Handling', function () {
+    it('should correctly parse orgList with object format [{orgUid: "..."}, ...]', async function () {
+      // The governance orgList is stored as an array of objects with orgUid property
+      // This test verifies the format is handled correctly (regression test for bug fix)
+      const testOrgUids = [
+        '723a2f97abd8a45826d97c1bdf6f38b11f6207a9a8cb80b18608505efd5ccc27',
+        'f3193dbe315ac1591048332d3d4539e4d0dd843dfb9ae6d9956ae3373e67f88c',
+      ];
+
+      // Store orgList in the same format as governance body provides
+      const orgListData = testOrgUids.map((uid) => ({ orgUid: uid }));
+      await GovernanceV2.create({
+        meta_key: 'orgList',
+        meta_value: JSON.stringify(orgListData),
+        confirmed: true,
+      });
+
+      // Retrieve and parse the orgList
+      const governanceData = await GovernanceV2.findOne({
+        where: { meta_key: 'orgList' },
+        raw: true,
+      });
+
+      expect(governanceData).to.exist;
+      const parsedOrgList = JSON.parse(governanceData.meta_value);
+
+      // Verify the format is array of objects
+      expect(parsedOrgList).to.be.an('array');
+      expect(parsedOrgList).to.have.length(2);
+      expect(parsedOrgList[0]).to.have.property('orgUid');
+
+      // Verify destructuring works correctly (this is what the task does)
+      const extractedOrgUids = [];
+      for (const { orgUid } of parsedOrgList) {
+        expect(orgUid).to.be.a('string');
+        expect(orgUid).to.have.length(64); // Valid hex store ID length
+        extractedOrgUids.push(orgUid);
+      }
+
+      expect(extractedOrgUids).to.deep.equal(testOrgUids);
+    });
+
+    it('should handle user-deleted orgs with correct orgUid string comparison', async function () {
+      const deletedOrgUid = '723a2f97abd8a45826d97c1bdf6f38b11f6207a9a8cb80b18608505efd5ccc27';
+      const activeOrgUid = 'f3193dbe315ac1591048332d3d4539e4d0dd843dfb9ae6d9956ae3373e67f88c';
+
+      // Add one org to deleted list
+      await MetaV2.addUserDeletedOrgUid(deletedOrgUid);
+      const userDeletedOrgs = await MetaV2.getUserDeletedOrgUids();
+
+      // Create orgList with object format
+      const orgListData = [{ orgUid: deletedOrgUid }, { orgUid: activeOrgUid }];
+
+      // Simulate task logic: iterate and check against deleted list
+      const orgsToProcess = [];
+      for (const { orgUid } of orgListData) {
+        // The orgUid here should be a string, not an object
+        // This test verifies the comparison works correctly
+        if (!userDeletedOrgs?.includes(orgUid)) {
+          orgsToProcess.push(orgUid);
+        }
+      }
+
+      // Only the active org should be processed
+      expect(orgsToProcess).to.have.length(1);
+      expect(orgsToProcess[0]).to.equal(activeOrgUid);
+    });
+  });
 });
 

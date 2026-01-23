@@ -58,7 +58,7 @@ ProgramV2.associate({ ProgramV2, ProjectV2 });
 ProjectV2.associate({ ProgramV2, ProjectV2, ValidationV2, LocationV2, EstimationV2, RatingV2, CoBenefitV2, ProjectMethodologyV2, StakeholderProjectV2 });
 ValidationV2.associate({ ProjectV2, ValidationV2 });
 VerificationV2.associate({ ProjectV2, ValidationV2, VerificationV2 });
-IssuanceV2.associate({ VerificationV2, MethodologyV2, LocationV2, IssuanceV2, UnitV2 });
+IssuanceV2.associate({ VerificationV2, ProjectMethodologyV2, LocationV2, IssuanceV2, UnitV2 });
 UnitV2.associate({ IssuanceV2, UnitV2, UnitLabelV2, AefT5AuthorizedEntitiesV2 });
 LocationV2.associate({ ProjectV2, LocationV2 });
 EstimationV2.associate({ ProjectV2, EstimationV2 });

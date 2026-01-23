@@ -7,6 +7,7 @@ import {
   IssuanceV2,
   VerificationV2,
   MethodologyV2,
+  ProjectMethodologyV2,
 } from '../../../src/models/v2/index.js';
 import { OrganizationsV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -32,6 +33,7 @@ describe('Phase 29: Websocket Support for V2 Tests', function () {
     await StagingV2.destroy({ where: {} });
     await IssuanceV2.destroy({ where: {} });
     await VerificationV2.destroy({ where: {} });
+    await ProjectMethodologyV2.destroy({ where: {} });
     await MethodologyV2.destroy({ where: {} });
     await OrganizationsV2.destroy({ where: {} });
   });
@@ -210,13 +212,21 @@ describe('Phase 29: Websocket Support for V2 Tests', function () {
         methodologyName: 'Test Methodology',
       });
 
+      const dummyProjectId = uuidv4();
+      const projectMethodology = await ProjectMethodologyV2.create({
+        cadTrustProjectMethodologyId: uuidv4(),
+        cadTrustProjectId: dummyProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      });
+
       // Create issuance (required for unit)
       const issuance = await IssuanceV2.create({
         cadTrustIssuanceId: uuidv4(),
         issuanceId: 'TEST-ISS-WS-001',
         issuanceDate: '2024-01-01',
         cadTrustVerificationId: verification.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
       });
 
       let changeEmitted = false;
@@ -280,13 +290,21 @@ describe('Phase 29: Websocket Support for V2 Tests', function () {
         methodologyName: 'Test Methodology',
       });
 
+      const dummyProjectId = uuidv4();
+      const projectMethodology = await ProjectMethodologyV2.create({
+        cadTrustProjectMethodologyId: uuidv4(),
+        cadTrustProjectId: dummyProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      });
+
       // Create issuance (required for unit)
       const issuance = await IssuanceV2.create({
         cadTrustIssuanceId: uuidv4(),
         issuanceId: 'TEST-ISS-WS-UPSERT-001',
         issuanceDate: '2024-01-01',
         cadTrustVerificationId: verification.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
       });
 
       let changeEmitted = false;
@@ -351,13 +369,21 @@ describe('Phase 29: Websocket Support for V2 Tests', function () {
         methodologyName: 'Test Methodology',
       });
 
+      const dummyProjectId = uuidv4();
+      const projectMethodology = await ProjectMethodologyV2.create({
+        cadTrustProjectMethodologyId: uuidv4(),
+        cadTrustProjectId: dummyProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      });
+
       // Create issuance (required for unit)
       const issuance = await IssuanceV2.create({
         cadTrustIssuanceId: uuidv4(),
         issuanceId: 'TEST-ISS-WS-DESTROY-001',
         issuanceDate: '2024-01-01',
         cadTrustVerificationId: verification.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
       });
 
       const unit = await UnitV2.create({

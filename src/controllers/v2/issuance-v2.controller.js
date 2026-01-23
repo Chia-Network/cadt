@@ -4,7 +4,7 @@ import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
 
-import { StagingV2, IssuanceV2, VerificationV2, MethodologyV2, OrganizationsV2, ProjectV2, LocationV2 } from '../../models/v2/index.js';
+import { StagingV2, IssuanceV2, VerificationV2, ProjectMethodologyV2, OrganizationsV2, ProjectV2, LocationV2 } from '../../models/v2/index.js';
 
 import {
   optionallyPaginatedResponse,
@@ -82,9 +82,9 @@ export const create = async (req, res) => {
         `cadTrustVerificationId '${newRecord.cadTrustVerificationId}' does not exist. Please create the verification first or use a valid cadTrustVerificationId`,
       );
       await assertRecordExistanceOrStaged(
-        MethodologyV2,
-        newRecord.cadTrustMethodologyId,
-        `cadTrustMethodologyId '${newRecord.cadTrustMethodologyId}' does not exist. Please create the methodology first or use a valid cadTrustMethodologyId`,
+        ProjectMethodologyV2,
+        newRecord.cadTrustProjectMethodologyId,
+        `cadTrustProjectMethodologyId '${newRecord.cadTrustProjectMethodologyId}' does not exist. Please create the project methodology first or use a valid cadTrustProjectMethodologyId`,
       );
     } catch (err) {
       return res.status(400).json({
@@ -111,7 +111,7 @@ export const create = async (req, res) => {
       issuance_id: newRecord.issuanceId,
       issuance_date: newRecord.issuanceDate,
       cad_trust_verification_id: newRecord.cadTrustVerificationId,
-      cad_trust_methodology_id: newRecord.cadTrustMethodologyId,
+      cad_trust_project_methodology_id: newRecord.cadTrustProjectMethodologyId,
       cad_trust_location_id: newRecord.cadTrustLocationId,
     };
 
@@ -239,9 +239,9 @@ export const update = async (req, res) => {
         `cadTrustVerificationId '${updateData.cadTrustVerificationId}' does not exist. Please create the verification first or use a valid cadTrustVerificationId`,
       );
       await assertRecordExistanceOrStaged(
-        MethodologyV2,
-        updateData.cadTrustMethodologyId,
-        `cadTrustMethodologyId '${updateData.cadTrustMethodologyId}' does not exist. Please create the methodology first or use a valid cadTrustMethodologyId`,
+        ProjectMethodologyV2,
+        updateData.cadTrustProjectMethodologyId,
+        `cadTrustProjectMethodologyId '${updateData.cadTrustProjectMethodologyId}' does not exist. Please create the project methodology first or use a valid cadTrustProjectMethodologyId`,
       );
     } catch (err) {
       return res.status(400).json({
@@ -264,7 +264,7 @@ export const update = async (req, res) => {
     if (updateData.issuanceId !== undefined) dbUpdateData.issuance_id = updateData.issuanceId;
     if (updateData.issuanceDate !== undefined) dbUpdateData.issuance_date = updateData.issuanceDate;
     if (updateData.cadTrustVerificationId !== undefined) dbUpdateData.cad_trust_verification_id = updateData.cadTrustVerificationId;
-    if (updateData.cadTrustMethodologyId !== undefined) dbUpdateData.cad_trust_methodology_id = updateData.cadTrustMethodologyId;
+    if (updateData.cadTrustProjectMethodologyId !== undefined) dbUpdateData.cad_trust_project_methodology_id = updateData.cadTrustProjectMethodologyId;
     if (updateData.cadTrustLocationId !== undefined) dbUpdateData.cad_trust_location_id = updateData.cadTrustLocationId;
 
     // Stage the update

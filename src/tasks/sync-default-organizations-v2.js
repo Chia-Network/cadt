@@ -52,7 +52,7 @@ const task = new Task('sync-default-organizations-v2', async () => {
       const defaultOrgList = await getDefaultOrganizationListV2();
       const userDeletedOrgs = await MetaV2.getUserDeletedOrgUids();
 
-      for (const orgUid of defaultOrgList) {
+      for (const { orgUid } of defaultOrgList) {
         if (userDeletedOrgs?.includes(orgUid)) {
           loggerV2.verbose(
             `default organization ${orgUid} has been explicitly removed from this instance. not adding or checking that it exists`,
@@ -82,7 +82,7 @@ const task = new Task('sync-default-organizations-v2', async () => {
     }
   } catch (error) {
     loggerV2.error(
-      `failed to validate default organization records and subscriptions. Error ${error.message}. ` +
+      `[v2]: failed to validate default organization records and subscriptions. Error ${error.message}. ` +
         `Retrying in ${CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300} seconds`,
     );
   }

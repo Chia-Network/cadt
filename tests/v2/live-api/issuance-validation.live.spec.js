@@ -40,11 +40,11 @@ describe('Issuance Live API Validation Tests', function () {
   describe('Step 3: Validation Failure Tests', function () {
     it('should reject POST with forbidden fields (createdAt, updatedAt, ID)', async function () {
       const verificationId = getFirstCreatedId('verification');
-      const methodologyId = getFirstCreatedId('methodology');
-      if (!verificationId || !methodologyId) {
+      const projectMethodologyId = getFirstCreatedId('projectMethodology');
+      if (!verificationId || !projectMethodologyId) {
         this.skip();
       }
-      const forbiddenData = generateIssuanceForbiddenFields(verificationId, methodologyId);
+      const forbiddenData = generateIssuanceForbiddenFields(verificationId, projectMethodologyId);
       const response = await request
         .post('/v2/issuance')
         .send(forbiddenData);
@@ -75,11 +75,11 @@ describe('Issuance Live API Validation Tests', function () {
 
     it('should reject POST with strings that are too long', async function () {
       const verificationId = getFirstCreatedId('verification');
-      const methodologyId = getFirstCreatedId('methodology');
-      if (!verificationId || !methodologyId) {
+      const projectMethodologyId = getFirstCreatedId('projectMethodology');
+      if (!verificationId || !projectMethodologyId) {
         this.skip();
       }
-      const longData = generateIssuance(verificationId, methodologyId);
+      const longData = generateIssuance(verificationId, projectMethodologyId);
       longData.issuanceId = getLongString(500);
       const response = await request
         .post('/v2/issuance')
@@ -96,18 +96,18 @@ describe('Issuance Live API Validation Tests', function () {
   });
   describe('Step 4: POST Request Tests', function () {
     it('should create issuances with typical, minimal, and maximal data', async function () {
-      // Get verification and methodology IDs from earlier tests
+      // Get verification and projectMethodology IDs from earlier tests
       const verificationId = getFirstCreatedId('verification');
-      const methodologyId = getFirstCreatedId('methodology');
-      if (!verificationId || !methodologyId) {
-        throw new Error('Verification or Methodology ID not found. Ensure verification-validation.spec.js and methodology-validation.spec.js run before issuance-validation.spec.js');
+      const projectMethodologyId = getFirstCreatedId('projectMethodology');
+      if (!verificationId || !projectMethodologyId) {
+        throw new Error('Verification or ProjectMethodology ID not found. Ensure verification-validation.spec.js and project-methodology-validation.spec.js run before issuance-validation.spec.js');
       }
       // Optionally get location ID if available
       const locationIds = getCreatedIds('location');
       const locationId = locationIds.length > 0 ? locationIds[0] : null;
 
       // Create 1 typical record
-      const data = generateIssuance(verificationId, methodologyId, locationId);
+      const data = generateIssuance(verificationId, projectMethodologyId, locationId);
       const { id, response } = await makePostRequest(request, '/v2/issuance', data);
       expect(response.success).to.be.true;
       expect(id).to.exist;
@@ -131,7 +131,7 @@ describe('Issuance Live API Validation Tests', function () {
       }
 
       // Create 1 minimal record
-      const minimalData = generateIssuanceMinimal(verificationId, methodologyId);
+      const minimalData = generateIssuanceMinimal(verificationId, projectMethodologyId);
       const { id: minId, response: minResponse } = await makePostRequest(request, '/v2/issuance', minimalData);
       expect(minResponse.success).to.be.true;
       createdIds.push(minId);
@@ -149,7 +149,7 @@ describe('Issuance Live API Validation Tests', function () {
       }
 
       // Create 1 maximal record
-      const maximalData = generateIssuanceMaximal(verificationId, methodologyId, locationId);
+      const maximalData = generateIssuanceMaximal(verificationId, projectMethodologyId, locationId);
       const { id: maxId, response: maxResponse } = await makePostRequest(request, '/v2/issuance', maximalData);
       expect(maxResponse.success).to.be.true;
       createdIds.push(maxId);
@@ -209,7 +209,7 @@ describe('Issuance Live API Validation Tests', function () {
         issuanceId: record.issuanceId,
         issuanceDate: record.issuanceDate ?? null,
         cadTrustVerificationId: record.cadTrustVerificationId,
-        cadTrustMethodologyId: record.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: record.cadTrustProjectMethodologyId,
         cadTrustLocationId: record.cadTrustLocationId ?? null,
       };
       const response = await makePutRequest(request, '/v2/issuance', id, updateData);

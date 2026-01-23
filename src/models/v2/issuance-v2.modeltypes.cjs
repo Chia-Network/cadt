@@ -4,7 +4,7 @@ export const IssuanceV2Types = {
   issuanceId: 'STRING',
   issuanceDate: 'DATEONLY',
   cadTrustVerificationId: 'INTEGER',
-  cadTrustMethodologyId: 'STRING',
+  cadTrustProjectMethodologyId: 'STRING',
   cadTrustLocationId: 'INTEGER',
   createdAt: 'DATE',
   updatedAt: 'DATE',

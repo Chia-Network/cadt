@@ -21,6 +21,20 @@ module.exports = {
   aefT1SubmissionSubmissionDate: {
     type: Sequelize.DATEONLY,
     allowNull: false,
+    set(value) {
+      if (value !== null && value !== undefined) {
+        // Validate ISO date format (YYYY-MM-DD) before Sequelize/moment.js tries to parse
+        const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!isoDateRegex.test(value)) {
+          throw new Error('aefT1SubmissionSubmissionDate must be in ISO format (YYYY-MM-DD)');
+        }
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          throw new Error('aefT1SubmissionSubmissionDate is not a valid date');
+        }
+      }
+      this.setDataValue('aefT1SubmissionSubmissionDate', value);
+    },
   },
   aefT1SubmissionReviewStatus: {
     type: Sequelize.TEXT,

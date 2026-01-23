@@ -280,6 +280,7 @@ export const addUuidIfNeeded = (modelName, data) => {
     UnitV2: 'cadTrustUnitId',
     ProjectV2: 'cadTrustProjectId',
     LocationV2: 'cadTrustLocationId',
+    ProjectMethodologyV2: 'cadTrustProjectMethodologyId',
   };
 
   const uuidField = uuidFields[modelName];
@@ -290,14 +291,14 @@ export const addUuidIfNeeded = (modelName, data) => {
 };
 
 /**
- * Create a complete test program chain: Program → Project → Validation → Verification → Methodology → Issuance
+ * Create a complete test program chain: Program → Project → Validation → Verification → Methodology → ProjectMethodology → Issuance
  * This is a common pattern used in many tests for creating test dependencies.
  *
  * @param {Object} options - Optional configuration
  * @param {string} options.programName - Program name (default: 'Test Program')
  * @param {string} options.projectName - Project name (default: 'Test Project')
  * @param {string} options.projectId - Project ID (default: 'TEST-PROJECT-001')
- * @returns {Promise<Object>} Object containing all created records: { program, project, validation, verification, methodology, issuance }
+ * @returns {Promise<Object>} Object containing all created records: { program, project, validation, verification, methodology, projectMethodology, issuance }
  */
 export const createV2TestProgramChain = async (options = {}) => {
   const {
@@ -306,6 +307,7 @@ export const createV2TestProgramChain = async (options = {}) => {
     ValidationV2,
     VerificationV2,
     MethodologyV2,
+    ProjectMethodologyV2,
     IssuanceV2,
   } = await import('../../../src/models/v2/index.js');
 
@@ -360,12 +362,21 @@ export const createV2TestProgramChain = async (options = {}) => {
     ...options.methodologyOverrides,
   });
 
-  // Create issuance
+  // Create project-methodology join record (links project to methodology)
+  const projectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+    cadTrustProjectId: project.cadTrustProjectId,
+    cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+    projectMethodologyDate: '2024-01-01',
+    projectMethodologyDescription: `Test Project Methodology ${testId}`,
+    ...options.projectMethodologyOverrides,
+  }));
+
+  // Create issuance (references ProjectMethodology, not Methodology directly)
   const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
     issuanceId: `TEST-ISSUANCE-${testId}`,
     issuanceDate: options.issuanceDate || '2024-01-01',
     cadTrustVerificationId: verification.cadTrustVerificationId,
-    cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+    cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
     ...options.issuanceOverrides,
   }));
 
@@ -375,6 +386,7 @@ export const createV2TestProgramChain = async (options = {}) => {
     validation,
     verification,
     methodology,
+    projectMethodology,
     issuance,
   };
 };

@@ -11,6 +11,7 @@ import {
   ValidationV2,
   VerificationV2,
   MethodologyV2,
+  ProjectMethodologyV2,
 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -119,6 +120,14 @@ describe('V2 FTS5 Integration Tests', function () {
       methodologyType: 'Methodology for Afforestation and Reforestation',
     });
 
+    // Create project-methodology join records
+    const projectMethodology1 = await ProjectMethodologyV2.create({
+      cadTrustProjectMethodologyId: uuidv4(),
+      cadTrustProjectId: testProject1.cadTrustProjectId,
+      cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      projectMethodologyDate: '2024-01-01',
+    });
+
     // Create test verifications for project2
     const testValidation2 = await ValidationV2.create({
       cadTrustValidationId: uuidv4(),
@@ -136,13 +145,20 @@ describe('V2 FTS5 Integration Tests', function () {
       cadTrustValidationId: testValidation2.cadTrustValidationId,
     });
 
+    const projectMethodology2 = await ProjectMethodologyV2.create({
+      cadTrustProjectMethodologyId: uuidv4(),
+      cadTrustProjectId: testProject2.cadTrustProjectId,
+      cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      projectMethodologyDate: '2024-01-01',
+    });
+
     // Create test issuances (issuance links to project through verification)
     testIssuance1 = await IssuanceV2.create({
       cadTrustIssuanceId: uuidv4(),
       issuanceId: 'ISS-001',
       issuanceDate: '2024-01-01',
       cadTrustVerificationId: testVerification1.cadTrustVerificationId,
-      cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      cadTrustProjectMethodologyId: projectMethodology1.cadTrustProjectMethodologyId,
     });
 
     testIssuance2 = await IssuanceV2.create({
@@ -150,7 +166,7 @@ describe('V2 FTS5 Integration Tests', function () {
       issuanceId: 'ISS-002',
       issuanceDate: '2024-01-01',
       cadTrustVerificationId: testVerification2.cadTrustVerificationId,
-      cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      cadTrustProjectMethodologyId: projectMethodology2.cadTrustProjectMethodologyId,
     });
 
     // Create test units

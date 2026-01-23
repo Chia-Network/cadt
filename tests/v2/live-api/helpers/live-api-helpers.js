@@ -56,7 +56,8 @@ export const getLiveApiConfig = () => {
   }
 
   const port = config?.APP?.CW_PORT || 31310;
-  const baseUrl = `http://localhost:${port}`;
+  // Use 127.0.0.1 instead of localhost for more reliable connections in containers
+  const baseUrl = `http://127.0.0.1:${port}`;
 
   console.log(`Using API endpoint: ${baseUrl} (port: ${port})`);
 
@@ -75,24 +76,194 @@ export const createLiveApiRequest = () => {
 /**
  * Check if server is running by hitting health endpoint
  * Retries with timeout if server not ready
+ * Provides detailed diagnostics on failure
  */
 export const waitForServer = async (request, maxWaitTime = 30000) => {
   const startTime = Date.now();
   const interval = 2000; // Check every 2 seconds
 
+  // Track diagnostic info for better error reporting
+  let lastV2Response = null;
+  let lastV1Response = null;
+  let lastRootHealthResponse = null;
+  let lastError = null;
+  let connectionRefusedCount = 0;
+
+  console.log(`[${getTimestamp()}] Checking server health (timeout: ${maxWaitTime}ms)...`);
+
   while (Date.now() - startTime < maxWaitTime) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
+    // Try V2 health endpoint
     try {
       const response = await request.get('/v2/health');
+      lastV2Response = {
+        status: response.status,
+        body: response.body,
+        timestamp: getTimestamp(),
+      };
+
       if (response.status === 200) {
+        console.log(`[${getTimestamp()}] ✓ Server ready (V2 health check passed)`);
+        return true;
+      }
+
+      // Log non-200 responses to help diagnose issues
+      if (response.status === 403) {
+        console.log(`[${getTimestamp()}] V2 health returned 403 - V2 API may be disabled, trying V1...`);
+      } else if (response.status === 400) {
+        console.log(`[${getTimestamp()}] V2 health returned 400: ${response.body?.message || response.body?.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      lastError = error;
+      const isConnectionRefused = error.code === 'ECONNREFUSED' ||
+        error.message?.includes('ECONNREFUSED') ||
+        error.message?.includes('connect ECONNREFUSED');
+
+      if (isConnectionRefused) {
+        connectionRefusedCount++;
+        if (connectionRefusedCount <= 3 || connectionRefusedCount % 5 === 0) {
+          console.log(`[${getTimestamp()}] Connection refused (${connectionRefusedCount}x) - server may not be running yet (${elapsed}s elapsed)`);
+        }
+      }
+    }
+
+    // Try V1 health endpoint as fallback
+    try {
+      const response = await request.get('/v1/health');
+      lastV1Response = {
+        status: response.status,
+        body: response.body,
+        timestamp: getTimestamp(),
+      };
+
+      if (response.status === 200) {
+        console.log(`[${getTimestamp()}] ✓ Server ready (V1 health check passed - note: V2 may be disabled)`);
         return true;
       }
     } catch (error) {
-      // Server not ready yet, continue waiting
+      // V1 also failed - continue
     }
+
+    // Try root health endpoint as last resort
+    try {
+      const response = await request.get('/health');
+      lastRootHealthResponse = {
+        status: response.status,
+        body: response.body,
+        timestamp: getTimestamp(),
+      };
+
+      if (response.status === 200) {
+        // Root health works but versioned endpoints don't - this is informative
+        console.log(`[${getTimestamp()}] Root /health works, but V1/V2 health endpoints failed - possible middleware issue`);
+      }
+    } catch (error) {
+      // Root health also failed
+    }
+
     await new Promise(resolve => setTimeout(resolve, interval));
   }
 
-  throw new Error(`Server not ready after ${maxWaitTime}ms`);
+  // Build detailed error message with diagnostics
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const diagnostics = buildServerDiagnostics(lastV2Response, lastV1Response, lastRootHealthResponse, lastError, connectionRefusedCount);
+
+  throw new Error(
+    `Server not ready after ${maxWaitTime}ms (${elapsed}s)\n\n` +
+    `=== SERVER HEALTH DIAGNOSTICS ===\n${diagnostics}\n` +
+    `=================================\n\n` +
+    `Troubleshooting tips:\n` +
+    `- If connection refused: Check that CADT server is running (pm2 status, pm2 logs cadt)\n` +
+    `- If 403 "V2 API disabled": Check config.yaml has V2.ENABLE = true\n` +
+    `- If 400 "Chia Exception": Check Chia services are running and synced (chia show -s, chia wallet show)\n` +
+    `- If wallet syncing: Wait for wallet to sync before running tests\n` +
+    `- If datalayer unavailable: Ensure data_layer service is running (chia start data)`
+  );
+};
+
+/**
+ * Build diagnostic information from health check responses
+ */
+const buildServerDiagnostics = (v2Response, v1Response, rootResponse, lastError, connectionRefusedCount) => {
+  const lines = [];
+
+  // Connection status
+  if (connectionRefusedCount > 0) {
+    lines.push(`Connection Status: REFUSED (${connectionRefusedCount} times)`);
+    lines.push(`  → Server may not be running or wrong port`);
+  } else {
+    lines.push(`Connection Status: Server reachable`);
+  }
+
+  // V2 Health
+  lines.push('');
+  lines.push('V2 Health (/v2/health):');
+  if (v2Response) {
+    lines.push(`  Status: ${v2Response.status}`);
+    if (v2Response.status === 403) {
+      lines.push(`  → V2 API is disabled in config`);
+      lines.push(`  → Set V2.ENABLE = true in config.yaml`);
+    } else if (v2Response.status === 400) {
+      const msg = v2Response.body?.message || v2Response.body?.error || 'Unknown';
+      lines.push(`  Error: ${msg}`);
+      if (msg.includes('Chia Exception')) {
+        const detail = v2Response.body?.error || '';
+        lines.push(`  Detail: ${detail}`);
+        if (detail.includes('DataLayer') || detail.includes('datalayer')) {
+          lines.push(`  → DataLayer service may not be running`);
+        }
+        if (detail.includes('wallet') || detail.includes('syncing')) {
+          lines.push(`  → Wallet may still be syncing`);
+        }
+      }
+    } else {
+      lines.push(`  Response: ${JSON.stringify(v2Response.body)}`);
+    }
+  } else {
+    lines.push(`  No response received`);
+  }
+
+  // V1 Health
+  lines.push('');
+  lines.push('V1 Health (/v1/health):');
+  if (v1Response) {
+    lines.push(`  Status: ${v1Response.status}`);
+    if (v1Response.status === 403) {
+      lines.push(`  → V1 API is disabled in config`);
+    } else if (v1Response.status === 400) {
+      const msg = v1Response.body?.message || v1Response.body?.error || 'Unknown';
+      lines.push(`  Error: ${msg}`);
+    } else if (v1Response.status === 200) {
+      lines.push(`  ✓ V1 is working (but test may require V2)`);
+    }
+  } else {
+    lines.push(`  No response received`);
+  }
+
+  // Root Health
+  lines.push('');
+  lines.push('Root Health (/health):');
+  if (rootResponse) {
+    lines.push(`  Status: ${rootResponse.status}`);
+    if (rootResponse.status === 200) {
+      lines.push(`  ✓ Server is running but middleware blocking V1/V2`);
+    }
+  } else {
+    lines.push(`  No response received`);
+  }
+
+  // Last error
+  if (lastError) {
+    lines.push('');
+    lines.push('Last Error:');
+    lines.push(`  ${lastError.message || lastError}`);
+    if (lastError.code) {
+      lines.push(`  Code: ${lastError.code}`);
+    }
+  }
+
+  return lines.join('\n');
 };
 
 /**
@@ -525,15 +696,187 @@ export const validateDataInDatabase = async (request, type, id, expectedData) =>
   }
 };
 
+// Wallet sync retry configuration
+const WALLET_SYNC_RETRY_INTERVAL = 10000; // 10 seconds
+const WALLET_SYNC_MAX_WAIT = 1800000; // 30 minutes
+
+/**
+ * Check if response indicates wallet is syncing
+ * @param {Object} response - HTTP response object
+ * @returns {boolean} - true if wallet sync error detected
+ */
+const isWalletSyncError = (response) => {
+  if (!response) return false;
+
+  // Check response body for wallet sync messages
+  const body = response.body || {};
+  const message = (body.message || body.error || '').toLowerCase();
+
+  return (
+    message.includes('wallet is syncing') ||
+    message.includes('wallet syncing') ||
+    message.includes('wait for it to sync') ||
+    message.includes('wallet not synced')
+  );
+};
+
+/**
+ * Create a retryable request wrapper that automatically retries on wallet sync errors
+ * @param {Function} makeRequest - Function that creates the supertest request
+ * @param {string} method - HTTP method name (POST, PUT, DELETE)
+ * @param {string} path - Request path
+ * @returns {Object} - Chainable request wrapper with retry logic
+ */
+const createRetryableRequest = (makeRequest, method, path) => {
+  let pendingRequest = makeRequest();
+  const chainMethods = []; // Store chained method calls for replay
+
+  const wrapper = {
+    // Proxy common chainable methods to capture them for replay
+    send(data) {
+      chainMethods.push({ name: 'send', args: [data] });
+      pendingRequest = pendingRequest.send(data);
+      return wrapper;
+    },
+    set(field, val) {
+      chainMethods.push({ name: 'set', args: [field, val] });
+      pendingRequest = pendingRequest.set(field, val);
+      return wrapper;
+    },
+    expect(a, b) {
+      // expect() can have multiple signatures: expect(status), expect(field, value), etc.
+      // Only pass second argument if it's actually provided (not undefined)
+      if (b !== undefined) {
+        chainMethods.push({ name: 'expect', args: [a, b] });
+        pendingRequest = pendingRequest.expect(a, b);
+      } else {
+        chainMethods.push({ name: 'expect', args: [a] });
+        pendingRequest = pendingRequest.expect(a);
+      }
+      return wrapper;
+    },
+    query(data) {
+      chainMethods.push({ name: 'query', args: [data] });
+      pendingRequest = pendingRequest.query(data);
+      return wrapper;
+    },
+    attach(field, file, options) {
+      chainMethods.push({ name: 'attach', args: [field, file, options] });
+      pendingRequest = pendingRequest.attach(field, file, options);
+      return wrapper;
+    },
+    field(name, val) {
+      chainMethods.push({ name: 'field', args: [name, val] });
+      pendingRequest = pendingRequest.field(name, val);
+      return wrapper;
+    },
+    type(type) {
+      chainMethods.push({ name: 'type', args: [type] });
+      pendingRequest = pendingRequest.type(type);
+      return wrapper;
+    },
+    accept(type) {
+      chainMethods.push({ name: 'accept', args: [type] });
+      pendingRequest = pendingRequest.accept(type);
+      return wrapper;
+    },
+    timeout(ms) {
+      chainMethods.push({ name: 'timeout', args: [ms] });
+      pendingRequest = pendingRequest.timeout(ms);
+      return wrapper;
+    },
+
+    // Make this wrapper thenable with retry logic
+    then(onFulfilled, onRejected) {
+      const startTime = Date.now();
+
+      const executeWithRetry = async () => {
+        while (true) {
+          try {
+            const response = await pendingRequest;
+
+            // Check if response indicates wallet sync error
+            if (isWalletSyncError(response)) {
+              const elapsed = Date.now() - startTime;
+              if (elapsed < WALLET_SYNC_MAX_WAIT) {
+                const elapsedSec = Math.floor(elapsed / 1000);
+                console.log(`[${getTimestamp()}] ⏳ Wallet syncing detected, retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
+                await new Promise(resolve => setTimeout(resolve, WALLET_SYNC_RETRY_INTERVAL));
+
+                // Recreate and replay the request
+                pendingRequest = makeRequest();
+                for (const { name, args } of chainMethods) {
+                  pendingRequest = pendingRequest[name](...args);
+                }
+                continue;
+              } else {
+                console.log(`[${getTimestamp()}] ❌ Wallet sync timeout after ${Math.floor(elapsed / 1000)}s`);
+              }
+            }
+
+            return response;
+          } catch (error) {
+            // Handle error responses (when expect() fails due to status mismatch)
+            // The error object may have a .response property with the actual response
+            const errorResponse = error.response || error;
+
+            if (isWalletSyncError(errorResponse)) {
+              const elapsed = Date.now() - startTime;
+              if (elapsed < WALLET_SYNC_MAX_WAIT) {
+                const elapsedSec = Math.floor(elapsed / 1000);
+                console.log(`[${getTimestamp()}] ⏳ Wallet syncing detected (error response), retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
+                await new Promise(resolve => setTimeout(resolve, WALLET_SYNC_RETRY_INTERVAL));
+
+                // Recreate and replay the request
+                pendingRequest = makeRequest();
+                for (const { name, args } of chainMethods) {
+                  pendingRequest = pendingRequest[name](...args);
+                }
+                continue;
+              } else {
+                console.log(`[${getTimestamp()}] ❌ Wallet sync timeout after ${Math.floor(elapsed / 1000)}s`);
+              }
+            }
+
+            // Not a wallet sync error, re-throw
+            throw error;
+          }
+        }
+      };
+
+      return executeWithRetry().then(onFulfilled, onRejected);
+    },
+
+    // Support catch for promise-like behavior
+    catch(onRejected) {
+      return this.then(undefined, onRejected);
+    },
+
+    // Support finally for promise-like behavior
+    finally(onFinally) {
+      return this.then(
+        value => Promise.resolve(onFinally()).then(() => value),
+        reason => Promise.resolve(onFinally()).then(() => { throw reason; })
+      );
+    },
+  };
+
+  return wrapper;
+};
+
 /**
  * Convenience function to get live API request instance
  * Also checks server health
+ *
+ * The returned request object has POST/PUT/DELETE methods wrapped with:
+ * - Request logging with timestamps
+ * - Automatic retry on wallet sync errors (10s interval, 30 min timeout)
  */
 export const getLiveApiRequest = async () => {
   const request = createLiveApiRequest();
   await waitForServer(request);
 
-  // Wrap request methods to track endpoints and log timestamps
+  // Wrap request methods to track endpoints, log timestamps, and add wallet sync retry
   // Only wrap if not already wrapped (check for our custom property)
   if (request._wrappedForLogging) {
     return request;
@@ -546,19 +889,19 @@ export const getLiveApiRequest = async () => {
   request.post = function(path) {
     trackTestEndpoint('POST', path);
     console.log(`[${getTimestamp()}] POST ${path}`);
-    return originalPost(path);
+    return createRetryableRequest(() => originalPost(path), 'POST', path);
   };
 
   request.put = function(path) {
     trackTestEndpoint('PUT', path);
     console.log(`[${getTimestamp()}] PUT ${path}`);
-    return originalPut(path);
+    return createRetryableRequest(() => originalPut(path), 'PUT', path);
   };
 
   request.delete = function(path) {
     trackTestEndpoint('DELETE', path);
     console.log(`[${getTimestamp()}] DELETE ${path}`);
-    return originalDelete(path);
+    return createRetryableRequest(() => originalDelete(path), 'DELETE', path);
   };
 
   // Mark as wrapped to prevent duplicate wrapping

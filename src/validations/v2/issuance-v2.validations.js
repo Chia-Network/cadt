@@ -7,7 +7,7 @@ export const issuanceV2Schema = Joi.object({
   issuanceId: Joi.string().required(),
   issuanceDate: Joi.date().allow(null).optional(),
   cadTrustVerificationId: Joi.string().uuid().required(),
-  cadTrustMethodologyId: Joi.string().required(),
+  cadTrustProjectMethodologyId: Joi.string().uuid().required(),
   cadTrustLocationId: Joi.string().uuid().allow(null).optional(),
   // Note: createdAt and updatedAt are automatically managed by Sequelize
   // Note: cadTrustIssuanceId is auto-generated UUID

@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -18,7 +18,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
   this.timeout(30000);
 
   let testVerification;
-  let testMethodology;
+  let testProjectMethodology;
 
   before(async function () {
     console.log('Setting up V2 test environment...');
@@ -28,7 +28,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
     await createV2TestHomeOrg();
     const homeOrgId = await getV2HomeOrgId();
 
-    // Create a test program, project, validation, verification, and methodology for foreign key validation
+    // Create a test program, project, validation, verification, methodology, and project_methodology for foreign key validation
     const testProgram = await ProgramV2.create({
       programName: 'Test Program for Issuance',
       programRegistry: 'Test Registry',
@@ -59,11 +59,18 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       cadTrustValidationId: testValidation.cadTrustValidationId,
     }));
 
-    testMethodology = await MethodologyV2.create({
+    const testMethodology = await MethodologyV2.create({
       methodologyCode: 'TEST-METHOD-001',
       methodologyName: 'Test Methodology for Issuance',
       methodologyType: 'Methodology for Afforestation and Reforestation',
     });
+
+    testProjectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+      cadTrustProjectId: testProject.cadTrustProjectId,
+      cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      projectMethodologyDate: '2024-01-01',
+      projectMethodologyDescription: 'Test project methodology for issuance tests',
+    }));
   });
 
   after(async function () {
@@ -109,11 +116,18 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       cadTrustValidationId: testValidation.cadTrustValidationId,
     }));
 
-    testMethodology = await MethodologyV2.create({
+    const testMethodology = await MethodologyV2.create({
       methodologyCode: 'TEST-METHODOLOGY-001',
       methodologyName: 'Test Methodology for Issuance',
       methodologyType: 'Methodology for Afforestation and Reforestation',
     });
+
+    testProjectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+      cadTrustProjectId: testProject.cadTrustProjectId,
+      cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+      projectMethodologyDate: '2024-01-01',
+      projectMethodologyDescription: 'Test project methodology for issuance tests',
+    }));
   });
 
   describe('POST /v2/issuance (Create)', function () {
@@ -122,7 +136,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
         issuanceId: 'TEST-ISSUANCE-001',
         issuanceDate: '2024-01-01',
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
       };
 
       const response = await supertest(app)
@@ -154,14 +168,14 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       expect(stagedData[0].issuance_id).to.equal('TEST-ISSUANCE-001');
       expect(stagedData[0].issuance_date).to.equal('2024-01-01');
       expect(stagedData[0].cad_trust_verification_id).to.equal(testVerification.cadTrustVerificationId);
-      expect(stagedData[0].cad_trust_methodology_id).to.equal(testMethodology.cadTrustMethodologyId);
+      expect(stagedData[0].cad_trust_project_methodology_id).to.equal(testProjectMethodology.cadTrustProjectMethodologyId);
     });
 
     it('should create issuance with minimal required data', async function () {
       const minimalData = {
         issuanceId: 'MIN-ISSUANCE-001',
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
       };
 
       const response = await supertest(app)
@@ -177,7 +191,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
     it('should reject issuance without required issuanceId', async function () {
       const invalidData = {
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
       };
 
       const response = await supertest(app)
@@ -192,7 +206,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
     it('should reject issuance without required cadTrustVerificationId', async function () {
       const invalidData = {
         issuanceId: 'MISSING-VERIFICATION-FK',
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
       };
 
       const response = await supertest(app)
@@ -204,9 +218,9 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       expect(response.body.error).to.include('cadTrustVerificationId');
     });
 
-    it('should reject issuance without required cadTrustMethodologyId', async function () {
+    it('should reject issuance without required cadTrustProjectMethodologyId', async function () {
       const invalidData = {
-        issuanceId: 'MISSING-METHODOLOGY-FK',
+        issuanceId: 'MISSING-PROJECT-METHODOLOGY-FK',
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
       };
 
@@ -216,14 +230,14 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('cadTrustMethodologyId');
+      expect(response.body.error).to.include('cadTrustProjectMethodologyId');
     });
 
     it('should reject issuance with invalid issuanceDate format', async function () {
       const invalidData = {
         issuanceId: 'INVALID-DATE',
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
         issuanceDate: 'not-a-date',
       };
 
@@ -241,7 +255,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       const invalidData = {
         issuanceId: 'INVALID-VERIFICATION-FK',
         cadTrustVerificationId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
       };
 
       const response = await supertest(app)
@@ -258,7 +272,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       const validData = {
         issuanceId: 'VALID-VERIFICATION-FK',
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
       };
 
       const response = await supertest(app)
@@ -269,11 +283,11 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       expect(response.body.success).to.be.true;
     });
 
-    it('should reject issuance with invalid cadTrustMethodologyId', async function () {
+    it('should reject issuance with invalid cadTrustProjectMethodologyId', async function () {
       const invalidData = {
-        issuanceId: 'INVALID-METHODOLOGY-FK',
+        issuanceId: 'INVALID-PROJECT-METHODOLOGY-FK',
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustMethodologyId: 'INVALID-METHODOLOGY-ID',
+        cadTrustProjectMethodologyId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent
       };
 
       const response = await supertest(app)
@@ -282,15 +296,15 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
         .expect(400);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.error).to.include('cadTrustMethodologyId');
+      expect(response.body.error).to.include('cadTrustProjectMethodologyId');
       expect(response.body.error).to.include('does not exist');
     });
 
-    it('should accept issuance with valid cadTrustMethodologyId', async function () {
+    it('should accept issuance with valid cadTrustProjectMethodologyId', async function () {
       const validData = {
-        issuanceId: 'VALID-METHODOLOGY-FK',
+        issuanceId: 'VALID-PROJECT-METHODOLOGY-FK',
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
       };
 
       const response = await supertest(app)
@@ -305,7 +319,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       const invalidData = {
         issuanceId: 'FORBIDDEN-FIELD',
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
         createdAt: '2024-01-01T00:00:00Z',
       };
 
@@ -322,7 +336,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       const invalidData = {
         issuanceId: 'FORBIDDEN-FIELD',
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
         updatedAt: '2024-01-01T00:00:00Z',
       };
 
@@ -363,7 +377,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       const updateData = {
         issuanceId: 'Updated ID',
         cadTrustVerificationId: testVerification.cadTrustVerificationId,
-        cadTrustMethodologyId: testMethodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
       };
 
       const response = await supertest(app)

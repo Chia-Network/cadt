@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { ProjectV2, ProgramV2, ValidationV2, VerificationV2, IssuanceV2, UnitV2, MethodologyV2 } from '../../../src/models/v2/index.js';
+import { ProjectV2, ProgramV2, ValidationV2, VerificationV2, IssuanceV2, UnitV2, MethodologyV2, ProjectMethodologyV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -81,11 +81,17 @@ describe('V2 Project API - Marketplace Features', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
+      const projectMethodology1 = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: project1.cadTrustProjectId,
+        cadTrustMethodologyId: methodology1.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      }));
+
       const issuance1 = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISS-1',
         issuanceDate: '2024-01-01',
         cadTrustVerificationId: verification1.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology1.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology1.cadTrustProjectMethodologyId,
       }));
 
       // Create unit with marketplace identifier for project 1 (directly in DB)
@@ -124,11 +130,17 @@ describe('V2 Project API - Marketplace Features', function () {
         cadTrustValidationId: validation2.cadTrustValidationId,
       }));
 
+      const projectMethodology2 = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: project2.cadTrustProjectId,
+        cadTrustMethodologyId: methodology1.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      }));
+
       const issuance2 = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISS-2',
         issuanceDate: '2024-01-01',
         cadTrustVerificationId: verification2.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology1.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology2.cadTrustProjectMethodologyId,
       }));
 
       // Create unit without marketplace identifier for project 2 (directly in DB)
@@ -209,11 +221,17 @@ describe('V2 Project API - Marketplace Features', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
+      const projectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      }));
+
       const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISS-TOKENIZED',
         issuanceDate: '2024-01-01',
         cadTrustVerificationId: verification.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
       }));
 
       // Create tokenized unit (directly in DB)
@@ -273,11 +291,17 @@ describe('V2 Project API - Marketplace Features', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
+      const projectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      }));
+
       const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISS-METHOD',
         issuanceDate: '2024-01-01',
         cadTrustVerificationId: verification.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
       }));
 
       // Create unit with marketplace identifier (directly in DB)
@@ -338,11 +362,17 @@ describe('V2 Project API - Marketplace Features', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
+      const projectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      }));
+
       const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISS-MULTIPLE',
         issuanceDate: '2024-01-01',
         cadTrustVerificationId: verification.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
       }));
 
       // Create multiple units with marketplace identifiers (directly in DB)
@@ -409,11 +439,17 @@ describe('V2 Project API - Marketplace Features', function () {
         methodologyType: 'Methodology for Afforestation and Reforestation',
       });
 
+      const projectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      }));
+
       const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
         issuanceId: 'TEST-ISS-UPDATE',
         issuanceDate: '2024-01-01',
         cadTrustVerificationId: verification.cadTrustVerificationId,
-        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
       }));
 
       // Create unit without marketplace identifier (directly in DB)

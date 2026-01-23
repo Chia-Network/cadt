@@ -50,10 +50,10 @@ class IssuanceV2 extends Model {
       as: 'verification',
     });
 
-    // Issuance belongs to Methodology
-    IssuanceV2.belongsTo(models.MethodologyV2, {
-      foreignKey: 'cadTrustMethodologyId',
-      as: 'methodology',
+    // Issuance belongs to ProjectMethodology
+    IssuanceV2.belongsTo(models.ProjectMethodologyV2, {
+      foreignKey: 'cadTrustProjectMethodologyId',
+      as: 'projectMethodology',
     });
 
     // Issuance has many Units
@@ -250,10 +250,10 @@ IssuanceV2.init(
       allowNull: false,
       field: 'cad_trust_verification_id',
     },
-    cadTrustMethodologyId: {
+    cadTrustProjectMethodologyId: {
       type: Sequelize.STRING,
       allowNull: false,
-      field: 'cad_trust_methodology_id',
+      field: 'cad_trust_project_methodology_id',
     },
     cadTrustLocationId: {
       type: Sequelize.STRING(36),
