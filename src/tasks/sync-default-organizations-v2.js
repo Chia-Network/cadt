@@ -67,9 +67,18 @@ const task = new Task('sync-default-organizations-v2', async () => {
 
         if (!organization) {
           loggerV2.debug(
-            `default organization ${orgUid} was NOT found in the organizations table. running the import process to correct`,
+            `[v2]: default organization ${orgUid} was NOT found in the organizations table. running the import process to correct`,
           );
-          await OrganizationsV2.importOrganization(orgUid);
+          try {
+            await OrganizationsV2.importOrganization(orgUid);
+            loggerV2.info(`[v2]: Successfully imported default organization ${orgUid}`);
+          } catch (importError) {
+            // Log error but continue to next org - this org will be retried on next task run
+            // This prevents one slow/failed import from blocking all other orgs
+            loggerV2.warn(
+              `[v2]: Failed to import default organization ${orgUid}: ${importError.message}. Will retry on next task run.`,
+            );
+          }
         } else {
           const orgReduced = { ...organization };
           delete orgReduced.icon;
