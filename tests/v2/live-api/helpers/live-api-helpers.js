@@ -56,10 +56,12 @@ export const getLiveApiConfig = () => {
   }
 
   const port = config?.APP?.CW_PORT || 31310;
-  // Use 127.0.0.1 instead of localhost for more reliable connections in containers
-  const baseUrl = `http://127.0.0.1:${port}`;
+  // Allow TEST_API_HOST env var to override, default to localhost for local dev
+  // CI can set TEST_API_HOST=127.0.0.1 if needed for container environments
+  const host = process.env.TEST_API_HOST || 'localhost';
+  const baseUrl = `http://${host}:${port}`;
 
-  console.log(`Using API endpoint: ${baseUrl} (port: ${port})`);
+  console.log(`Using API endpoint: ${baseUrl} (host: ${host}, port: ${port})`);
 
   cachedConfig = { baseUrl, port, config };
   return cachedConfig;

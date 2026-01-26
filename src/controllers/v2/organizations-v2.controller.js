@@ -64,52 +64,58 @@ export const create = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
 
-    // Check if V1 home org exists in database
-    const v1Org = await Organization.findOne({
-      where: { isHome: true },
-      raw: true,
-    });
+    // Check if V1 home org exists in database (only if V1 is enabled)
+    // When V1 is disabled, the V1 organizations table may not exist
+    const configV1 = getConfig();
+    const enableV1 = configV1?.ENABLE !== false; // Default to true if not set
 
-    if (v1Org) {
-      // V1 org exists - check for V1 singleton in datalayer
-      if (v1Org.dataModelVersionStoreId) {
-        try {
-          const singletonData = await getStoreDataPromise(
-            v1Org.dataModelVersionStoreId,
-          );
-
-          // Handle simulator mode - getStoreData might return Error object or false
-          if (singletonData && !(singletonData instanceof Error) && singletonData.keys_values) {
-            // Check if singleton has v1 key
-            const hasV1Key = singletonData.keys_values.some((kv) => {
-              try {
-                const decodedKey = decodeHex(kv.key);
-                return decodedKey === 'v1';
-              } catch {
-                return false;
-              }
-            });
-
-            if (hasV1Key) {
-              return res.status(400).json({
-                message:
-                  'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
-                success: false,
-              });
-            }
-          }
-        } catch (error) {
-          // If getStoreData fails, we still error because V1 org exists
-          loggerV2.debug(`[v2]: Failed to check V1 singleton: ${error.message}`);
-        }
-      }
-
-      // If V1 org exists but no singleton check possible, still error
-      return res.status(400).json({
-        message:
-          'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
-        success: false,
+    if (enableV1) {
+      const v1Org = await Organization.findOne({
+        where: { isHome: true },
+        raw: true,
       });
+
+      if (v1Org) {
+        // V1 org exists - check for V1 singleton in datalayer
+        if (v1Org.dataModelVersionStoreId) {
+          try {
+            const singletonData = await getStoreDataPromise(
+              v1Org.dataModelVersionStoreId,
+            );
+
+            // Handle simulator mode - getStoreData might return Error object or false
+            if (singletonData && !(singletonData instanceof Error) && singletonData.keys_values) {
+              // Check if singleton has v1 key
+              const hasV1Key = singletonData.keys_values.some((kv) => {
+                try {
+                  const decodedKey = decodeHex(kv.key);
+                  return decodedKey === 'v1';
+                } catch {
+                  return false;
+                }
+              });
+
+              if (hasV1Key) {
+                return res.status(400).json({
+                  message:
+                    'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
+                  success: false,
+                });
+              }
+            }
+          } catch (error) {
+            // If getStoreData fails, we still error because V1 org exists
+            loggerV2.debug(`[v2]: Failed to check V1 singleton: ${error.message}`);
+          }
+        }
+
+        // If V1 org exists but no singleton check possible, still error
+        return res.status(400).json({
+          message:
+            'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
+          success: false,
+        });
+      }
     }
 
     // Check if V2 home org already exists
@@ -200,6 +206,17 @@ export const upgrade = async (req, res) => {
     // Note: assertWalletIsSyncedV2 and assertNoPendingCommitsExcludingTransfers don't exist yet
     // await assertWalletIsSyncedV2();
     // await assertNoPendingCommitsExcludingTransfers();
+
+    // Check if V1 is enabled before accessing V1 tables
+    const configV1 = getConfig();
+    const enableV1 = configV1?.ENABLE !== false;
+
+    if (!enableV1) {
+      return res.status(400).json({
+        message: 'V1 is disabled. Cannot upgrade from V1 when V1 is not enabled.',
+        success: false,
+      });
+    }
 
     // Check if V1 home org exists
     const v1Org = await Organization.findOne({

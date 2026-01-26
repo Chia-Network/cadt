@@ -347,6 +347,8 @@ jobs:
           }
 
       - name: npm live api tests
+        env:
+          TEST_API_HOST: 127.0.0.1
         run: |
           echo "########################################################"
           echo "Running organization creation tests"
@@ -610,6 +612,8 @@ jobs:
           }
 
       - name: V1 live api tests
+        env:
+          TEST_API_HOST: 127.0.0.1
         run: |
           echo "########################################################"
           echo "Running V1 organization creation tests"
@@ -858,6 +862,8 @@ jobs:
           }
 
       - name: V1 to V2 upgrade test
+        env:
+          TEST_API_HOST: 127.0.0.1
         run: |
           echo "########################################################"
           echo "Running V1 organization creation and upgrade to V2 test"

@@ -147,48 +147,54 @@ class OrganizationsV2 extends Model {
         return await OrganizationsV2._resumeOrganizationCreation(state, MetaV2);
       }
 
-      // CRITICAL: Check for V1 home org in database
-      const v1Org = await Organization.findOne({
-        where: { isHome: true },
-        raw: true,
-      });
+      // CRITICAL: Check for V1 home org in database (only if V1 is enabled)
+      // When V1 is disabled, the V1 organizations table may not exist
+      const configV1 = getConfig();
+      const enableV1 = configV1?.ENABLE !== false; // Default to true if not set
 
-      if (v1Org) {
-        // V1 org exists - check for V1 singleton in datalayer
-        if (v1Org.dataModelVersionStoreId) {
-          try {
-            const singletonData = await getStoreDataPromise(
-              v1Org.dataModelVersionStoreId,
-            );
+      if (enableV1) {
+        const v1Org = await Organization.findOne({
+          where: { isHome: true },
+          raw: true,
+        });
 
-            // Handle simulator mode - getStoreData might return Error object or false
-            if (singletonData && !(singletonData instanceof Error) && singletonData.keys_values) {
-              // Check if singleton has v1 key
-              const hasV1Key = singletonData.keys_values.some((kv) => {
-                try {
-                  const decodedKey = decodeHex(kv.key);
-                  return decodedKey === 'v1';
-                } catch {
-                  return false;
+        if (v1Org) {
+          // V1 org exists - check for V1 singleton in datalayer
+          if (v1Org.dataModelVersionStoreId) {
+            try {
+              const singletonData = await getStoreDataPromise(
+                v1Org.dataModelVersionStoreId,
+              );
+
+              // Handle simulator mode - getStoreData might return Error object or false
+              if (singletonData && !(singletonData instanceof Error) && singletonData.keys_values) {
+                // Check if singleton has v1 key
+                const hasV1Key = singletonData.keys_values.some((kv) => {
+                  try {
+                    const decodedKey = decodeHex(kv.key);
+                    return decodedKey === 'v1';
+                  } catch {
+                    return false;
+                  }
+                });
+
+                if (hasV1Key) {
+                  throw new Error(
+                    'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
+                  );
                 }
-              });
-
-              if (hasV1Key) {
-                throw new Error(
-                  'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
-                );
               }
+            } catch (error) {
+              // If getStoreData fails, we still error because V1 org exists
+              loggerV2.debug(`[v2]: Failed to check V1 singleton: ${error.message}`);
             }
-          } catch (error) {
-            // If getStoreData fails, we still error because V1 org exists
-            loggerV2.debug(`[v2]: Failed to check V1 singleton: ${error.message}`);
           }
-        }
 
-        // If V1 org exists but no singleton check possible, still error
-        throw new Error(
-          'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
-        );
+          // If V1 org exists but no singleton check possible, still error
+          throw new Error(
+            'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
+          );
+        }
       }
 
       // Initialize state for new creation
@@ -617,6 +623,16 @@ class OrganizationsV2 extends Model {
   static async upgradeFromV1(name, icon) {
     try {
       loggerV2.info('[v2]: Upgrading from V1 to V2 Organization, This could take a while.');
+
+      // CRITICAL: Check if V1 is enabled before accessing V1 tables
+      const configV1 = getConfig();
+      const enableV1 = configV1?.ENABLE !== false;
+
+      if (!enableV1) {
+        throw new Error(
+          'V1 is disabled. Cannot upgrade from V1 when V1 is not enabled.',
+        );
+      }
 
       // CRITICAL: Check if V1 home org exists
       const v1Org = await Organization.findOne({
