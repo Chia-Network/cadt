@@ -43,6 +43,7 @@ import {
 import {
   processingSyncRegistriesTransactionMutexV2,
 } from '../../utils/v2-mutex-utils.js';
+import wallet from '../../datalayer/wallet.js';
 import { isDlStoreSynced } from '../../utils/datalayer-utils.js';
 import {
   ORG_CREATION_STATES,
@@ -221,6 +222,17 @@ class OrganizationsV2 extends Model {
         });
       }
 
+      // Wait for sufficient spendable coins before starting store creation
+      // Each store requires ~3001 mojos, and we create 4 stores in parallel
+      // Need 4 coins * 3001 mojos = 12,004 mojos minimum, use 15,000 for safety buffer
+      const coinCheck = await wallet.waitForSpendableCoins(15000, 300000, 10000);
+      if (!coinCheck.success) {
+        throw new Error(
+          `Cannot create organization: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
+          'Please ensure wallet has sufficient balance and no pending transactions.',
+        );
+      }
+
       // Execute the creation process
       return await OrganizationsV2._executeOrganizationCreation(state, MetaV2);
     } catch (error) {
@@ -255,6 +267,15 @@ class OrganizationsV2 extends Model {
       // Reset startedAt for new retry attempt
       state = updateState(state, { startedAt: new Date().toISOString() });
       await saveCreationState(state, MetaV2);
+    }
+
+    // Wait for sufficient spendable coins before resuming store creation
+    const coinCheck = await wallet.waitForSpendableCoins(15000, 300000, 10000);
+    if (!coinCheck.success) {
+      throw new Error(
+        `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
+        'Please ensure wallet has sufficient balance and no pending transactions.',
+      );
     }
 
     return await OrganizationsV2._executeOrganizationCreation(state, MetaV2);

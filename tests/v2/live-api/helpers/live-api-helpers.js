@@ -964,6 +964,7 @@ export const getLiveApiRequest = async (options = {}) => {
 /**
  * Wait for V2 organization to be created and ready
  * Polls GET /v2/organizations until organization appears and is synced
+ * Also checks /v2/organizations/status for creation progress details
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
  * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
@@ -973,8 +974,6 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
   const startTime = Date.now();
   const interval = 10000; // Check every 10 seconds
   const timestamp = getTimestamp();
-  let lastOrgCount = 0;
-  let lastLogTime = 0;
 
   console.log(`[${timestamp}] Waiting for V2 organization to be ready...`);
   if (orgName) {
@@ -984,28 +983,54 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
   }
 
   while (Date.now() - startTime < maxWaitTime) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
     try {
+      // First, check creation status endpoint for detailed progress
+      try {
+        const statusResponse = await request.get('/v2/organizations/status');
+        if (statusResponse.status === 200 && statusResponse.body) {
+          const status = statusResponse.body;
+          // Only log if there's active creation or interesting state
+          if (status.state || status.name || status.stores) {
+            console.log(`  [${elapsed}s] Creation status: state=${status.state || 'unknown'}, name="${status.name || 'unnamed'}"`);
+            if (status.stores) {
+              const storeNames = Object.keys(status.stores);
+              const storesSummary = storeNames.map(name => {
+                const store = status.stores[name];
+                return `${name}:${store.created ? 'created' : 'pending'}/${store.confirmed ? 'confirmed' : 'unconfirmed'}`;
+              }).join(', ');
+              console.log(`    Stores: ${storesSummary}`);
+            }
+            if (status.message) {
+              console.log(`    Message: ${status.message}`);
+            }
+          }
+        }
+      } catch (statusError) {
+        // Status endpoint might not exist or may fail - that's okay
+        if (statusError.response?.status !== 404 && statusError.response?.status !== 403) {
+          console.log(`  [${elapsed}s] Status check error: ${statusError.message}`);
+        }
+      }
+
+      // Now check organizations list
       const response = await request.get('/v2/organizations');
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
       if (response.status === 200 && response.body && typeof response.body === 'object') {
         // Response is an object keyed by org_uid: { "org_uid": { org data }, ... }
         const orgs = Object.values(response.body);
 
-        // Log organization status periodically (every 60 seconds) or when count changes
-        const shouldLogStatus = (Date.now() - lastLogTime > 60000) || (orgs.length !== lastOrgCount);
-        if (shouldLogStatus) {
-          lastLogTime = Date.now();
-          lastOrgCount = orgs.length;
-          console.log(`  [${elapsed}s] Found ${orgs.length} organization(s) in V2:`);
-          orgs.forEach((o, i) => {
-            const name = o.name || o.orgName || 'unnamed';
-            const uid = o.org_uid || o.orgUid || 'no-uid';
-            const isHome = o.is_home || o.isHome || false;
-            const synced = o.synced !== undefined ? o.synced : 'unknown';
-            console.log(`    ${i + 1}. "${name}" (uid: ${uid.substring(0, 8)}..., isHome: ${isHome}, synced: ${synced})`);
-          });
-        }
+        // Always log organization status for debugging
+        console.log(`  [${elapsed}s] Found ${orgs.length} organization(s) in V2:`);
+        orgs.forEach((o, i) => {
+          const name = o.name || o.orgName || 'unnamed';
+          const uid = o.org_uid || o.orgUid || 'no-uid';
+          const isHome = o.is_home || o.isHome || false;
+          const synced = o.synced !== undefined ? o.synced : 'unknown';
+          const uidDisplay = uid === 'PENDING' ? 'PENDING' : `${uid.substring(0, 8)}...`;
+          console.log(`    ${i + 1}. "${name}" (uid: ${uidDisplay}, isHome: ${isHome}, synced: ${synced})`);
+        });
 
         // Find matching organization
         let org = null;
@@ -1028,8 +1053,11 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
             }
           }
         } else {
-          // Find home org
-          org = orgs.find(o => o.is_home === true || o.isHome === true);
+          // Find home org (but not PENDING placeholder)
+          org = orgs.find(o =>
+            (o.is_home === true || o.isHome === true) &&
+            (o.org_uid !== 'PENDING' && o.orgUid !== 'PENDING')
+          );
         }
 
         if (org) {
@@ -1037,7 +1065,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           const isSynced = org.synced === true;
           const orgUid = org.org_uid || org.orgUid;
 
-          if (isSynced && orgUid) {
+          if (isSynced && orgUid && orgUid !== 'PENDING') {
             console.log(`✓ V2 Organization ready: ${orgUid}`);
             console.log(`  Name: ${org.name || org.orgName}`);
             console.log(`  isHome: ${org.is_home || org.isHome}`);
@@ -1047,13 +1075,15 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
               organization: org,
             };
           } else {
-            if (elapsed % 30 < 10) { // Log every ~30 seconds
-              console.log(`  [${elapsed}s] Organization found but not synced yet (synced=${isSynced})`);
-            }
+            console.log(`  [${elapsed}s] Organization found but not ready yet (uid=${orgUid}, synced=${isSynced})`);
           }
         } else {
-          if (elapsed % 60 < 10) { // Log every ~60 seconds
-            console.log(`  Organization "${orgName || 'home'}" not found yet (${elapsed}s elapsed)`);
+          // Check if there's a PENDING org (creation in progress)
+          const pendingOrg = orgs.find(o => o.org_uid === 'PENDING' || o.orgUid === 'PENDING');
+          if (pendingOrg) {
+            console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
+          } else {
+            console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
           }
         }
       } else {
@@ -1063,8 +1093,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
         }
       }
     } catch (error) {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`  Error checking organizations: ${error.message} (${elapsed}s elapsed)`);
+      console.log(`  [${elapsed}s] Error checking organizations: ${error.message}`);
     }
 
     await new Promise(resolve => setTimeout(resolve, interval));
@@ -1087,6 +1116,16 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
     console.log(`Could not get final org state: ${e.message}`);
   }
 
+  // Also try to get final creation status
+  try {
+    const finalStatusResponse = await request.get('/v2/organizations/status');
+    if (finalStatusResponse.status === 200 && finalStatusResponse.body) {
+      console.log(`Final creation status: ${JSON.stringify(finalStatusResponse.body, null, 2)}`);
+    }
+  } catch (e) {
+    console.log(`Could not get final creation status: ${e.message}`);
+  }
+
   throw new Error(
     `Timeout waiting for V2 organization to be ready after ${elapsed}s (${maxWaitTime}ms). ` +
     `Organization creation may be taking longer than expected.`
@@ -1096,6 +1135,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
 /**
  * Wait for V1 organization to be created and ready
  * Polls GET /v1/organizations until organization appears
+ * Also checks /v1/organizations/create/status for creation progress details
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
  * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
@@ -1105,8 +1145,6 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
   const startTime = Date.now();
   const interval = 10000; // Check every 10 seconds
   const timestamp = getTimestamp();
-  let lastOrgCount = 0;
-  let lastLogTime = 0;
 
   console.log(`[${timestamp}] Waiting for V1 organization to be ready...`);
   if (orgName) {
@@ -1116,9 +1154,39 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
   }
 
   while (Date.now() - startTime < maxWaitTime) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
     try {
+      // First, check creation status endpoint for detailed progress
+      try {
+        const statusResponse = await request.get('/v1/organizations/create/status');
+        if (statusResponse.status === 200 && statusResponse.body) {
+          const status = statusResponse.body;
+          // Only log if there's active creation or interesting state
+          if (status.state || status.name || status.stores) {
+            console.log(`  [${elapsed}s] Creation status: state=${status.state || 'unknown'}, name="${status.name || 'unnamed'}"`);
+            if (status.stores) {
+              const storeNames = Object.keys(status.stores);
+              const storesSummary = storeNames.map(name => {
+                const store = status.stores[name];
+                return `${name}:${store.created ? 'created' : 'pending'}/${store.confirmed ? 'confirmed' : 'unconfirmed'}`;
+              }).join(', ');
+              console.log(`    Stores: ${storesSummary}`);
+            }
+            if (status.message) {
+              console.log(`    Message: ${status.message}`);
+            }
+          }
+        }
+      } catch (statusError) {
+        // Status endpoint might not exist or may fail - that's okay
+        if (statusError.response?.status !== 404 && statusError.response?.status !== 403) {
+          console.log(`  [${elapsed}s] Status check error: ${statusError.message}`);
+        }
+      }
+
+      // Now check organizations list
       const response = await request.get('/v1/organizations');
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
       if (response.status === 200) {
         // V1 response format may be array or object
@@ -1126,20 +1194,16 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
           ? response.body
           : (response.body?.data || []);
 
-        // Log organization status periodically (every 60 seconds) or when count changes
-        const shouldLogStatus = (Date.now() - lastLogTime > 60000) || (orgs.length !== lastOrgCount);
-        if (shouldLogStatus) {
-          lastLogTime = Date.now();
-          lastOrgCount = orgs.length;
-          console.log(`  [${elapsed}s] Found ${orgs.length} organization(s) in V1:`);
-          orgs.forEach((o, i) => {
-            const name = o.name || o.orgName || 'unnamed';
-            const uid = o.orgUid || o.org_uid || 'no-uid';
-            const isHome = o.isHome || o.is_home || false;
-            const synced = o.synced !== undefined ? o.synced : 'unknown';
-            console.log(`    ${i + 1}. "${name}" (uid: ${uid.substring(0, 8)}..., isHome: ${isHome}, synced: ${synced})`);
-          });
-        }
+        // Always log organization status for debugging
+        console.log(`  [${elapsed}s] Found ${orgs.length} organization(s) in V1:`);
+        orgs.forEach((o, i) => {
+          const name = o.name || o.orgName || 'unnamed';
+          const uid = o.orgUid || o.org_uid || 'no-uid';
+          const isHome = o.isHome || o.is_home || false;
+          const synced = o.synced !== undefined ? o.synced : 'unknown';
+          const uidDisplay = uid === 'PENDING' ? 'PENDING' : `${uid.substring(0, 8)}...`;
+          console.log(`    ${i + 1}. "${name}" (uid: ${uidDisplay}, isHome: ${isHome}, synced: ${synced})`);
+        });
 
         // Find matching organization
         let org = null;
@@ -1162,13 +1226,16 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
             }
           }
         } else {
-          // Find home org
-          org = orgs.find(o => o.isHome === true || o.is_home === true);
+          // Find home org (but not PENDING placeholder)
+          org = orgs.find(o =>
+            (o.isHome === true || o.is_home === true) &&
+            (o.orgUid !== 'PENDING' && o.org_uid !== 'PENDING')
+          );
         }
 
         if (org) {
           const orgUid = org.orgUid || org.org_uid;
-          if (orgUid) {
+          if (orgUid && orgUid !== 'PENDING') {
             console.log(`✓ V1 Organization ready: ${orgUid}`);
             console.log(`  Name: ${org.name || org.orgName}`);
             console.log(`  isHome: ${org.isHome || org.is_home}`);
@@ -1177,10 +1244,16 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
               orgUid,
               organization: org,
             };
+          } else {
+            console.log(`  [${elapsed}s] Organization found but not ready yet (uid=${orgUid})`);
           }
         } else {
-          if (elapsed % 60 < 10) { // Log every ~60 seconds
-            console.log(`  Organization "${orgName || 'home'}" not found yet (${elapsed}s elapsed)`);
+          // Check if there's a PENDING org (creation in progress)
+          const pendingOrg = orgs.find(o => o.orgUid === 'PENDING' || o.org_uid === 'PENDING');
+          if (pendingOrg) {
+            console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
+          } else {
+            console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
           }
         }
       } else {
@@ -1190,8 +1263,7 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
         }
       }
     } catch (error) {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`  Error checking organizations: ${error.message} (${elapsed}s elapsed)`);
+      console.log(`  [${elapsed}s] Error checking organizations: ${error.message}`);
     }
 
     await new Promise(resolve => setTimeout(resolve, interval));
@@ -1214,6 +1286,16 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
     }
   } catch (e) {
     console.log(`Could not get final org state: ${e.message}`);
+  }
+
+  // Also try to get final creation status
+  try {
+    const finalStatusResponse = await request.get('/v1/organizations/create/status');
+    if (finalStatusResponse.status === 200 && finalStatusResponse.body) {
+      console.log(`Final creation status: ${JSON.stringify(finalStatusResponse.body, null, 2)}`);
+    }
+  } catch (e) {
+    console.log(`Could not get final creation status: ${e.message}`);
   }
 
   throw new Error(
