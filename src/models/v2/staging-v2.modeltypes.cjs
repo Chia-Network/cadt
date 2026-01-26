@@ -23,11 +23,13 @@ module.exports = {
     type: Sequelize.BOOLEAN,
     allowNull: false,
     defaultValue: false,
+    field: 'failed_commit', // Explicit field mapping to ensure correct column name
   },
   is_transfer: {
     type: Sequelize.BOOLEAN,
     allowNull: false,
     defaultValue: false,
+    field: 'is_transfer', // Explicit field mapping to ensure correct column name
   },
   created_at: {
     type: Sequelize.DATE,

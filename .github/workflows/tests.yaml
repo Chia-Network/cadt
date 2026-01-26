@@ -365,8 +365,15 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "Last 50 lines of CADT logs:"
-          pm2 logs cadt --lines 50 --nostream
+          echo "=========================================="
+          echo "CADT stdout logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
+          echo ""
+          echo "=========================================="
+          echo "CADT stderr logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
 
       - name: Stop CADT
         if: always()
@@ -617,8 +624,15 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "Last 50 lines of CADT logs:"
-          pm2 logs cadt --lines 50 --nostream
+          echo "=========================================="
+          echo "CADT stdout logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
+          echo ""
+          echo "=========================================="
+          echo "CADT stderr logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
 
       - name: Stop CADT
         if: always()
@@ -854,8 +868,15 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "Last 50 lines of CADT logs:"
-          pm2 logs cadt --lines 50 --nostream
+          echo "=========================================="
+          echo "CADT stdout logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
+          echo ""
+          echo "=========================================="
+          echo "CADT stderr logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
 
       - name: Stop CADT
         if: always()
