@@ -41,6 +41,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
   - [GET Examples](#organizations-get-examples)
     - [List all organizations](#list-all-organizations)
     - [Get organization status](#get-organization-status)
+    - [Get organization creation status](#get-organization-creation-status)
     - [Get organization metadata](#get-organization-metadata)
   - [POST Examples](#organizations-post-examples)
     - [Create a V2 organization](#create-a-v2-organization)
@@ -404,6 +405,64 @@ Response
 
 ---
 
+#### Get organization creation status
+
+Returns the status of any in-progress, completed, or failed organization creation process. This endpoint is useful for monitoring the progress of organization creation, which involves creating multiple blockchain stores.
+
+**Organization creation now uses parallel store creation, significantly reducing the time required compared to sequential creation.**
+
+Request
+```sh
+curl --location --request GET 'localhost:31310/v2/organizations/creation-status' --header 'Content-Type: application/json'
+```
+
+Response when no creation is in progress:
+```json
+{
+  "inProgress": false,
+  "state": null,
+  "message": "No organization creation in progress",
+  "success": true
+}
+```
+
+Response when creation is in progress:
+```json
+{
+  "inProgress": true,
+  "state": "STORES_CREATING",
+  "message": "Creating stores on blockchain (2/4 created, 1/4 confirmed)",
+  "progress": 12,
+  "retryCount": 0,
+  "maxRetries": 3,
+  "startedAt": "2026-01-26T12:00:00.000Z",
+  "updatedAt": "2026-01-26T12:01:30.000Z",
+  "stores": {
+    "orgUid": { "id": "abc123...", "confirmed": true, "dataWritten": false },
+    "registry": { "id": "def456...", "confirmed": false, "dataWritten": false },
+    "dataModelVersion": { "id": null, "confirmed": false, "dataWritten": false },
+    "fileStore": { "id": null, "confirmed": false, "dataWritten": false }
+  },
+  "error": null,
+  "success": true
+}
+```
+
+Response states:
+| State | Description |
+|:------|:------------|
+| INITIALIZING | Starting creation, saving initial parameters |
+| STORES_CREATING | Creating 4 blockchain stores in parallel |
+| STORES_CONFIRMED | All stores created and confirmed on blockchain |
+| DATA_PUSHING | Pushing data to stores in parallel |
+| FINALIZING | Updating database with final organization record |
+| COMPLETE | Organization creation finished successfully |
+| FAILED | Organization creation failed after max retries |
+
+**Crash Recovery:** If the server crashes or restarts during organization creation, it will automatically attempt to resume from where it left off. The server will retry up to 3 times before marking the creation as failed.
+
+---
+
 #### Get organization metadata
 
 Request
@@ -436,9 +495,10 @@ POST Options:
 
 #### Create a V2 organization
 
-- Please note that creating an organization takes approximately 30 minutes.
+- Organization creation now uses **parallel store creation**, which is significantly faster than the previous sequential method.
 - The request will resolve and the organization will complete in the background.
-- The status of the organization creation can be tracked via a GET request to `organizations` and searching for the PENDING orgUid.
+- **Track the status of organization creation using the `/v2/organizations/creation-status` endpoint.**
+- If the server crashes or restarts during creation, it will automatically attempt to resume from where it left off (up to 3 retries).
 - V2 organizations can be created with either a JSON body or by uploading a file containing organization data.
 
 **Using JSON body:**

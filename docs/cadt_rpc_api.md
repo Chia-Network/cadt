@@ -263,6 +263,63 @@ Response
 - POST `/organizations/mirror` - add a mirror for a datalayer store via the store ID
 - GET `/organizations/metadata` - get an organizations metadata using the OrgUid
 - GET `/organizations/status` - the sync status of an organization via the OrgUid
+- GET `/organizations/creation-status` - get the status of in-progress or recently completed/failed organization creation (see below)
+
+#### Get Organization Creation Status
+
+Returns the status of any in-progress, completed, or failed organization creation process. This endpoint is useful for monitoring the progress of organization creation, which involves creating multiple blockchain stores.
+
+**Organization creation now uses parallel store creation, significantly reducing the time required compared to sequential creation.**
+
+Request
+```sh
+curl --location --request GET 'localhost:31310/v1/organizations/creation-status' --header 'Content-Type: application/json'
+```
+
+Response when no creation is in progress:
+```json
+{
+  "inProgress": false,
+  "state": null,
+  "message": "No organization creation in progress",
+  "success": true
+}
+```
+
+Response when creation is in progress:
+```json
+{
+  "inProgress": true,
+  "state": "STORES_CREATING",
+  "message": "Creating stores on blockchain (2/4 created, 1/4 confirmed)",
+  "progress": 12,
+  "retryCount": 0,
+  "maxRetries": 3,
+  "startedAt": "2026-01-26T12:00:00.000Z",
+  "updatedAt": "2026-01-26T12:01:30.000Z",
+  "stores": {
+    "orgUid": { "id": "abc123...", "confirmed": true, "dataWritten": false },
+    "registry": { "id": "def456...", "confirmed": false, "dataWritten": false },
+    "dataModelVersion": { "id": null, "confirmed": false, "dataWritten": false },
+    "fileStore": { "id": null, "confirmed": false, "dataWritten": false }
+  },
+  "error": null,
+  "success": true
+}
+```
+
+Response states:
+| State | Description |
+|:------|:------------|
+| INITIALIZING | Starting creation, saving initial parameters |
+| STORES_CREATING | Creating 4 blockchain stores in parallel |
+| STORES_CONFIRMED | All stores created and confirmed on blockchain |
+| DATA_PUSHING | Pushing data to stores in parallel |
+| FINALIZING | Updating database with final organization record |
+| COMPLETE | Organization creation finished successfully |
+| FAILED | Organization creation failed after max retries |
+
+**Crash Recovery:** If the server crashes or restarts during organization creation, it will automatically attempt to resume from where it left off. The server will retry up to 3 times before marking the creation as failed.
 
 ---
 

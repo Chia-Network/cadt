@@ -202,3 +202,4 @@ const runMirrorCheck = async () => {
 };
 
 export default job;
+export { runMirrorCheck };

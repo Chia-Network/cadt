@@ -233,13 +233,141 @@ const getActiveNetwork = async () => {
   }
 };
 
+/**
+ * Get coin records from the wallet (includes coin IDs)
+ * @returns {Promise<{success: boolean, coin_records: Array}>} Object with coin_records array and success flag
+ */
+const getCoinRecords = async () => {
+  if (USE_SIMULATOR) {
+    // In simulator mode, return mock coins
+    return {
+      success: true,
+      coin_records: [
+        {
+          id: '0xmockcoinid1234567890',
+          amount: 1000000000000,
+          spent_height: 0,
+        },
+      ],
+    };
+  }
+
+  const { cert, key, timeout } = getBaseOptions();
+
+  try {
+    const response = await superagent
+      .post(`${rpcUrl}/get_coin_records`)
+      .send({ wallet_id: 1 })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout);
+
+    const data = response.body || JSON.parse(response.text);
+
+    if (data.success) {
+      return data;
+    }
+
+    logger.error('Failed to get coin records:', data);
+    return { success: false, coin_records: [] };
+  } catch (error) {
+    logger.error('Error getting coin records:', error);
+    return { success: false, coin_records: [] };
+  }
+};
+
+/**
+ * Get the wallet balance in mojos
+ * @returns {Promise<number|null>} Wallet balance in mojos or null on error
+ */
+const getWalletBalanceMojos = async () => {
+  if (USE_SIMULATOR) {
+    return 999000000000000; // Mock balance for simulator
+  }
+
+  const { cert, key, timeout } = getBaseOptions();
+
+  try {
+    const response = await superagent
+      .post(`${rpcUrl}/get_wallet_balance`)
+      .send({ wallet_id: 1 })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout);
+
+    const data = response.body || JSON.parse(response.text);
+
+    if (data.success) {
+      return data.wallet_balance?.spendable_balance || 0;
+    }
+
+    return null;
+  } catch (error) {
+    logger.error('Error getting wallet balance in mojos:', error);
+    return null;
+  }
+};
+
+/**
+ * Split a coin into multiple smaller coins
+ * @param {string} targetCoinId - The coin ID to split (hex string, with or without 0x prefix)
+ * @param {number} numberOfCoins - Number of new coins to create
+ * @param {number} amountPerCoin - Amount per new coin in mojos
+ * @param {number} fee - Transaction fee in mojos
+ * @returns {Promise<{success: boolean, error?: string}>} Result of the split operation
+ */
+const splitCoins = async (targetCoinId, numberOfCoins, amountPerCoin, fee = 0) => {
+  if (USE_SIMULATOR) {
+    logger.info(`[SIMULATOR] Would split coin into ${numberOfCoins} new coins`);
+    return { success: true };
+  }
+
+  const { cert, key, timeout } = getBaseOptions();
+
+  // Ensure coin ID has 0x prefix
+  const formattedCoinId = targetCoinId.startsWith('0x')
+    ? targetCoinId
+    : `0x${targetCoinId}`;
+
+  try {
+    const response = await superagent
+      .post(`${rpcUrl}/split_coins`)
+      .send({
+        wallet_id: 1,
+        target_coin_id: formattedCoinId,
+        number_of_coins: numberOfCoins,
+        amount_per_coin: amountPerCoin,
+        fee: fee,
+      })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout);
+
+    const data = response.body || JSON.parse(response.text);
+
+    if (data.success) {
+      logger.info(`Successfully initiated coin split: ${numberOfCoins} new coins of ${amountPerCoin} mojos each`);
+      return { success: true, transactions: data.transactions };
+    }
+
+    logger.error('Failed to split coins:', data.error || data);
+    return { success: false, error: data.error || 'Unknown error' };
+  } catch (error) {
+    logger.error('Error splitting coins:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
 export default {
   hasUnconfirmedTransactions,
   walletIsSynced,
   walletIsAvailable,
   getPublicAddress,
   getWalletBalance,
+  getWalletBalanceMojos,
   waitForAllTransactionsToConfirm,
   getActiveNetwork,
   getLastWalletSyncError,
+  getCoinRecords,
+  splitCoins,
 };

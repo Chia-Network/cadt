@@ -10,6 +10,7 @@ import mirrorCheck from './mirror-check.js';
 import resetAuditTable from './reset-audit-table.js';
 import validateOrganizationTableAndSubscriptions from './validate-organization-table-and-subscriptions.js';
 import cleanUpFailedOrg from './clean-up-failed-org.js';
+import coinManagement from './coin-management.js';
 
 // V2 background tasks
 import syncGovernanceBodyV2 from './sync-governance-body-v2.js';
@@ -31,6 +32,18 @@ const addJobToScheduler = (job) => {
 };
 
 const start = (enableV1 = true, enableV2 = true) => {
+  // Add coin management task (runs regardless of V1/V2 as it manages shared wallet)
+  // Only add it once, and only if at least one version is enabled
+  if (enableV1 || enableV2) {
+    if (scheduler.existsById(coinManagement.id)) {
+      scheduler.stopById(coinManagement.id);
+      scheduler.removeById(coinManagement.id);
+    }
+    jobRegistry[coinManagement.id] = coinManagement;
+    scheduler.addSimpleIntervalJob(coinManagement);
+    logger.info('[COIN_MANAGEMENT] Coin management task registered');
+  }
+
   // add default jobs (V1) if enabled
   if (enableV1) {
     const defaultJobs = [

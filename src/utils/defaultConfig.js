@@ -20,6 +20,7 @@ export const defaultConfig = {
       PICKLIST_SYNC_TASK_INTERVAL: 60,
       MIRROR_CHECK_TASK_INTERVAL: 86460,
       VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL: 1800,
+      COIN_MANAGEMENT_TASK_INTERVAL: 21600, // 6 hours in seconds
     },
     /**
      * limits to prevent loop bound DOS attack
