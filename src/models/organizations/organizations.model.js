@@ -769,6 +769,25 @@ class Organization extends Model {
    * @returns {Promise<void>}
    */
   static async importOrganization(orgUid, isHome = false) {
+    // Check if store is synced BEFORE acquiring mutex to avoid blocking other operations
+    // If store is not synced, skip import - it will be retried on next task run
+    if (!USE_SIMULATOR) {
+      try {
+        const syncStatus = await datalayer.getSyncStatus(orgUid);
+        if (!isDlStoreSynced(syncStatus?.sync_status)) {
+          logger.info(
+            `[v1]: Skipping import of organization ${orgUid} - store not yet synced. Will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        logger.warn(
+          `[v1]: Could not check sync status for ${orgUid}, skipping import: ${error.message}`,
+        );
+        return;
+      }
+    }
+
     logger.verbose('[v1]: acquiring mutex to import organization');
     const releaseMutex = await addOrDeleteOrganizationRecordMutex.acquire();
 

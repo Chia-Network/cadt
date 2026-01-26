@@ -39,8 +39,10 @@ import {
 } from '../../datalayer/persistance.js';
 import {
   addOrDeleteOrganizationRecordMutex,
-  processingSyncRegistriesTransactionMutex,
 } from '../../utils/model-utils.js';
+import {
+  processingSyncRegistriesTransactionMutexV2,
+} from '../../utils/v2-mutex-utils.js';
 import { isDlStoreSynced } from '../../utils/datalayer-utils.js';
 import {
   ORG_CREATION_STATES,
@@ -1379,6 +1381,25 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<void>}
    */
   static async importOrganization(orgUid, isHome = false) {
+    // Check if store is synced BEFORE acquiring mutex to avoid blocking other operations
+    // If store is not synced, skip import - it will be retried on next task run
+    if (!USE_SIMULATOR) {
+      try {
+        const syncStatus = await datalayer.getSyncStatus(orgUid);
+        if (!isDlStoreSynced(syncStatus?.sync_status)) {
+          loggerV2.info(
+            `[v2]: Skipping import of organization ${orgUid} - store not yet synced. Will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        loggerV2.warn(
+          `[v2]: Could not check sync status for ${orgUid}, skipping import: ${error.message}`,
+        );
+        return;
+      }
+    }
+
     loggerV2.verbose('[v2]: Acquiring mutex to import organization');
     const releaseMutex = await addOrDeleteOrganizationRecordMutex.acquire();
 
@@ -1692,10 +1713,10 @@ class OrganizationsV2 extends Model {
       await addOrDeleteOrganizationRecordMutex.acquire();
 
     loggerV2.verbose(
-      '[v2]: acquiring processingSyncRegistriesTransaction mutex to delete organization',
+      '[v2]: acquiring processingSyncRegistriesTransactionV2 mutex to delete organization',
     );
     const releaseAuditTransactionMutex =
-      await processingSyncRegistriesTransactionMutex.acquire();
+      await processingSyncRegistriesTransactionMutexV2.acquire();
 
     const transaction = await sequelizeV2.transaction();
     try {

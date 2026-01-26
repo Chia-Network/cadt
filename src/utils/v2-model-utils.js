@@ -1,6 +1,5 @@
 'use strict';
 
-import { Mutex } from 'async-mutex';
 import {
   ProgramV2,
   MethodologyV2,
@@ -56,19 +55,10 @@ export const ModelKeysV2 = {
 // getV2PrimaryKeyField moved to v2-primary-key-utils.js to avoid circular dependency
 export { getV2PrimaryKeyField } from './v2-primary-key-utils.js';
 
-/**
- * Mutex which must be acquired to run the sync-registries-v2 task job.
- * This mutex exists to prevent multiple registry sync tasks from running at the same time
- * and overloading the chia RPC's or causing a SQLite locking error due to multiple task
- * instances trying to commit large update transactions.
- * @type {Mutex}
- */
-export const syncRegistriesTaskMutexV2 = new Mutex();
-
-/**
- * Mutex which must be acquired when writing registry update information until the transaction
- * has been committed. Audit model update transactions are large and lock the DB for long periods.
- * @type {Mutex}
- */
-export const processingSyncRegistriesTransactionMutexV2 = new Mutex();
+// Re-export mutexes from v2-mutex-utils.js to avoid circular dependency issues
+// (v2-model-utils imports models, models import mutex -> would cause circular dependency)
+export {
+  syncRegistriesTaskMutexV2,
+  processingSyncRegistriesTransactionMutexV2,
+} from './v2-mutex-utils.js';
 
