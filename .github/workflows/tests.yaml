@@ -90,8 +90,8 @@ jobs:
       - name: npm tests
         run: npm run test:v2
 
-  test-v2-live-api:
-    name: v2 live api tests
+  test-v1-live-api:
+    name: v1 live api tests
     runs-on: ubuntu-latest
     container:
       image: node:20.16
@@ -119,7 +119,7 @@ jobs:
       - name: Install yq and jq
         run: |
           apt-get update
-          apt-get install -y yq jq bc
+          apt-get install -y yq jq bc iproute2
 
       - name: Install Chia and chia-tools
         shell: bash
@@ -158,20 +158,14 @@ jobs:
           # Configure CADT to most verbose logs
           echo "Configuring CADT config.yaml..."
           yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
-          # Set network to testnet to match the Chia network configuration
-          # Value must be lowercase - the check uses case-sensitive .includes()
-          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
-          # Use 127.0.0.1 instead of localhost for more reliable binding in containers
-          yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          # Enable V2 for V2 live API tests
-          yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
 
           # Show the config file
           echo "Showing the config file after configuration ... (this is the final config file)"
@@ -263,9 +257,9 @@ jobs:
             sleep 30
           done
 
-          echo "Waiting 20 seconds for sync and startup..."
+          echo "Waiting 15 minutes for datalayer subscriptions to sync..."
 
-          sleep 20 # wait 20 seconds
+          sleep 900 # wait 15 minutes
 
           echo ""
           echo "=========================================="
@@ -294,58 +288,6 @@ jobs:
           echo "Last 100 lines of CADT logs:"
           pm2 logs cadt --lines 100 --nostream
 
-      - name: Show process and port status
-        shell: bash
-        run: |
-          echo "########################################################"
-          echo "Process and Port Status"
-          echo "########################################################"
-          echo ""
-          echo "PM2 process list:"
-          pm2 list || true
-          echo ""
-          echo "CADT process details:"
-          pm2 show cadt || true
-          echo ""
-          echo "All listening TCP ports:"
-          ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null || echo "Could not get port info"
-          echo ""
-          echo "Checking if port 31310 is listening:"
-          ss -tlnp 2>/dev/null | grep :31310 || netstat -tlnp 2>/dev/null | grep :31310 || echo "Port 31310 not found in listeners"
-          echo ""
-          echo "Testing connection to localhost:31310:"
-          curl -v --max-time 5 http://localhost:31310/health 2>&1 || echo "curl to localhost:31310 failed"
-          echo ""
-          echo "Testing connection to 127.0.0.1:31310:"
-          curl -v --max-time 5 http://127.0.0.1:31310/health 2>&1 || echo "curl to 127.0.0.1:31310 failed"
-
-      - name: Pre-flight check
-        shell: bash
-        run: |
-          echo "########################################################"
-          echo "Running pre-flight checks before V2 live API tests"
-          echo "########################################################"
-          # Run pre-flight check - requires V2 for this job
-          npm run preflight-check:v2 || {
-            echo ""
-            echo "########################################################"
-            echo "PRE-FLIGHT CHECK FAILED - Showing additional debug info:"
-            echo "########################################################"
-            echo ""
-            echo "PM2 status:"
-            pm2 list || true
-            echo ""
-            echo "CADT pm2 logs (last 100 lines):"
-            pm2 logs cadt --lines 100 --nostream || true
-            echo ""
-            echo "Config file contents:"
-            cat ~/.chia/mainnet/cadt/config.yaml || true
-            echo ""
-            echo "Node processes:"
-            ps aux | grep -E "node|cadt" | grep -v grep || true
-            exit 1
-          }
-
       - name: npm live api tests
         run: |
           echo "########################################################"
@@ -368,515 +310,94 @@ jobs:
           echo "Last 50 lines of CADT logs:"
           pm2 logs cadt --lines 50 --nostream
 
-      - name: Stop CADT
-        if: always()
-        shell: bash
-        run: |
-          echo "Stopping CADT pm2 process..."
-          pm2 stop cadt || true
-          pm2 delete cadt || true
-          echo "CADT stopped"
-
-      - name: Delete all mirrors
-        if: always()
-        shell: bash
-        run: |
-          echo "Deleting all mirrors..."
-          chia-tools data delete-mirrors --all
-          sleep 120 # wait 2 minutes for mirrors to be deleted
-
-          echo "Confirming mirrors are deleted..."
-          chia-tools data show-my-mirrors
-
-      - name: Show wallet balance (v2)
-        if: always()
-        shell: bash
-        run: |
-          echo "Wallet balance at end of job:"
-          chia wallet show || echo "Failed to show wallet"
-
-      - name: Stop Chia services (v2)
-        if: always()
-        shell: bash
-        run: |
-          echo "Stopping all Chia services..."
-          chia stop all -d || true
-          echo "Chia services stopped"
-
-  test-v1-live-api:
-    name: v1 live api tests
-    runs-on: ubuntu-latest
-    container:
-      image: node:20.16
-
-    steps:
-      - uses: Chia-Network/actions/clean-workspace@main
-
-      - name: Checkout Code
-        uses: actions/checkout@v6
-
-      - name: Ignore Husky
-        run: npm pkg delete scripts.prepare
-
-      - name: Install Mocha
-        run: npm install --save-dev mocha
-
-      - name: npm install
-        run: npm install
-
-      - name: install global packages
-        run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
-
-      - name: Show home directory
-        run: ls -lah ~
-
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc
-
-      - name: Install Chia and chia-tools
-        shell: bash
-        run: |
-          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
-
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
-
-          apt-get install -y chia-blockchain-cli chia-tools
-
-      - name: Configure Chia
-        shell: bash
-        run: |
-          chia init
-          chia keys generate -l "functional_tests"
-          chia-tools network switch testneta
-          chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia configure -log-level INFO
-
-      - name: Configure CADT
-        shell: bash
-        run: |
-          # Run cadt momentarily to create config file
-          pm2 start npm --no-autorestart --name "cadt" -- start
-          sleep 10
-          pm2 logs cadt --nostream
-          pm2 stop cadt
-
-          # Remove cadt databases to reset system
-          echo "Removing cadt databases to reset system..."
-          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
-          rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
-
-          # Configure CADT to most verbose logs
-          echo "Configuring CADT config.yaml..."
-          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
-          # Set network to testnet to match the Chia network configuration
-          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
-          # Use 127.0.0.1 instead of localhost for more reliable binding in containers
-          yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          # Enable V1 only for V1 live API tests
-          yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
-
-          # Show the config file
-          echo "Showing the config file after configuration..."
-          cat ~/.chia/mainnet/cadt/config.yaml
-
-          # Clean up any existing PM2 processes with the same name
-          pm2 delete cadt 2>/dev/null || true
-
-      - name: Start Chia
-        shell: bash
-        run: |
-          chia start wallet data data_layer_http
-          sleep 10
-          tail ~/.chia/mainnet/log/debug.log
-          chia wallet show
-
-      - name: Faucet
-        shell: bash
-        run: |
-          CHIA_WALLET_ADDRESS=$(chia wallet get_address)
-          echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.001}' "${{ secrets.TESTNETA_FAUCET }}"
-
-          echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60
-          ATTEMPT=0
-          while true; do
-            BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
-            echo "Current balance: $BALANCE (attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS)"
-            if [ "$BALANCE" != "0" ] && [ "$BALANCE" != "null" ] && [ -n "$BALANCE" ]; then
-              XCH_BALANCE=$(echo "scale=12; $BALANCE / 1000000000000" | bc)
-              echo "Wallet funded! Balance: $BALANCE mojos ($XCH_BALANCE XCH)"
-              break
-            fi
-            ATTEMPT=$((ATTEMPT + 1))
-            if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
-              exit 1
-            fi
-            echo "Balance still zero, waiting 10 seconds..."
-            sleep 10
-          done
-
-      - name: Show wallet balance after funding
-        shell: bash
-        run: |
-          chia wallet show
-
-      - name: Start CADT
-        shell: bash
-        run: |
-          pm2 start npm --no-autorestart --name "cadt" -- start
-          sleep 30
-
-      - name: Wait for wallet sync and datalayer readiness
-        shell: bash
-        run: |
-          echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
-          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
-          START_TIME=$(date +%s)
-
-          while true; do
-            CURRENT_TIME=$(date +%s)
-            ELAPSED=$((CURRENT_TIME - START_TIME))
-            REMAINING=$((WAIT_SECONDS - ELAPSED))
-
-            if [ "$REMAINING" -le 0 ]; then
-              echo "Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
-              break
-            fi
-
-            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
-            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
-            WALLET_SYNCING=$(echo "$WALLET_STATUS" | jq -r '.syncing // true')
-
-            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s)"
-
-            if [ "$WALLET_SYNCED" = "true" ]; then
-              echo "Wallet is synced!"
-              echo "Waiting additional 60 seconds for datalayer to sync..."
-              sleep 60
-              break
-            fi
-
-            echo "Wallet still syncing, waiting 30 seconds..."
-            sleep 30
-          done
-
-          echo "Final status check..."
-          chia rpc wallet get_sync_status || echo "Failed to get wallet sync status"
-          chia wallet show || echo "Failed to show wallet"
-
-      - name: Show CADT logs before tests
-        shell: bash
-        run: |
-          echo "Last 100 lines of CADT logs:"
-          pm2 logs cadt --lines 100 --nostream
-
-      - name: Pre-flight check
-        shell: bash
-        run: |
-          echo "########################################################"
-          echo "Running pre-flight checks before V1 live API tests"
-          echo "########################################################"
-          # Run pre-flight check - requires V1 only
-          npm run preflight-check:v1 || {
-            echo ""
-            echo "########################################################"
-            echo "PRE-FLIGHT CHECK FAILED - Showing additional debug info:"
-            echo "########################################################"
-            pm2 list || true
-            pm2 logs cadt --lines 100 --nostream || true
-            cat ~/.chia/mainnet/cadt/config.yaml || true
-            exit 1
-          }
-
-      - name: V1 live api tests
-        run: |
-          echo "########################################################"
-          echo "Running V1 organization creation tests"
-          echo "########################################################"
-          npm run test:v1:live:organization:create
-          echo "########################################################"
-          echo "Running V1 data tests"
-          echo "########################################################"
-          npm run test:v1:live:data:short
-
-      - name: Show CADT logs after tests
-        if: always()
-        shell: bash
-        run: |
-          echo "Last 50 lines of CADT logs:"
-          pm2 logs cadt --lines 50 --nostream
-
-      - name: Stop CADT
-        if: always()
-        shell: bash
-        run: |
-          echo "Stopping CADT pm2 process..."
-          pm2 stop cadt || true
-          pm2 delete cadt || true
-          echo "CADT stopped"
-
-      - name: Show wallet balance (v1)
-        if: always()
-        shell: bash
-        run: |
-          echo "Wallet balance at end of job:"
-          chia wallet show || echo "Failed to show wallet"
-
-      - name: Stop Chia services (v1)
-        if: always()
-        shell: bash
-        run: |
-          echo "Stopping all Chia services..."
-          chia stop all -d || true
-          echo "Chia services stopped"
-
-  test-v1-to-v2-upgrade:
-    name: v1 to v2 upgrade test
-    runs-on: ubuntu-latest
-    container:
-      image: node:20.16
-
-    steps:
-      - uses: Chia-Network/actions/clean-workspace@main
-
-      - name: Checkout Code
-        uses: actions/checkout@v6
-
-      - name: Ignore Husky
-        run: npm pkg delete scripts.prepare
-
-      - name: Install Mocha
-        run: npm install --save-dev mocha
-
-      - name: npm install
-        run: npm install
-
-      - name: install global packages
-        run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
-
-      - name: Show home directory
-        run: ls -lah ~
-
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc
-
-      - name: Install Chia and chia-tools
-        shell: bash
-        run: |
-          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
-
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
-
-          apt-get install -y chia-blockchain-cli chia-tools
-
-      - name: Configure Chia
-        shell: bash
-        run: |
-          chia init
-          chia keys generate -l "functional_tests"
-          chia-tools network switch testneta
-          chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia configure -log-level INFO
-
-      - name: Configure CADT
-        shell: bash
-        run: |
-          # Run cadt momentarily to create config file
-          pm2 start npm --no-autorestart --name "cadt" -- start
-          sleep 10
-          pm2 logs cadt --nostream
-          pm2 stop cadt
-
-          # Remove cadt databases to reset system
-          echo "Removing cadt databases to reset system..."
-          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
-          rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
-
-          # Configure CADT to most verbose logs
-          echo "Configuring CADT config.yaml..."
-          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
-          # Set network to testnet to match the Chia network configuration
-          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
-          # Use 127.0.0.1 instead of localhost for more reliable binding in containers
-          yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          # Enable both V1 and V2 for upgrade tests (need V1 to create, V2 for upgrade)
-          yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
-
-          # Show the config file
-          echo "Showing the config file after configuration..."
-          cat ~/.chia/mainnet/cadt/config.yaml
-
-          # Clean up any existing PM2 processes with the same name
-          pm2 delete cadt 2>/dev/null || true
-
-      - name: Start Chia
-        shell: bash
-        run: |
-          chia start wallet data data_layer_http
-          sleep 10
-          tail ~/.chia/mainnet/log/debug.log
-          chia wallet show
-
-      - name: Faucet
-        shell: bash
-        run: |
-          CHIA_WALLET_ADDRESS=$(chia wallet get_address)
-          echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.001}' "${{ secrets.TESTNETA_FAUCET }}"
-
-          echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60
-          ATTEMPT=0
-          while true; do
-            BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
-            echo "Current balance: $BALANCE (attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS)"
-            if [ "$BALANCE" != "0" ] && [ "$BALANCE" != "null" ] && [ -n "$BALANCE" ]; then
-              XCH_BALANCE=$(echo "scale=12; $BALANCE / 1000000000000" | bc)
-              echo "Wallet funded! Balance: $BALANCE mojos ($XCH_BALANCE XCH)"
-              break
-            fi
-            ATTEMPT=$((ATTEMPT + 1))
-            if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
-              exit 1
-            fi
-            echo "Balance still zero, waiting 10 seconds..."
-            sleep 10
-          done
-
-      - name: Show wallet balance after funding
-        shell: bash
-        run: |
-          chia wallet show
-
-      - name: Start CADT
-        shell: bash
-        run: |
-          pm2 start npm --no-autorestart --name "cadt" -- start
-          sleep 30
-
-      - name: Wait for wallet sync and datalayer readiness
-        shell: bash
-        run: |
-          echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
-          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
-          START_TIME=$(date +%s)
-
-          while true; do
-            CURRENT_TIME=$(date +%s)
-            ELAPSED=$((CURRENT_TIME - START_TIME))
-            REMAINING=$((WAIT_SECONDS - ELAPSED))
-
-            if [ "$REMAINING" -le 0 ]; then
-              echo "Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
-              break
-            fi
-
-            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
-            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
-            WALLET_SYNCING=$(echo "$WALLET_STATUS" | jq -r '.syncing // true')
-
-            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s)"
-
-            if [ "$WALLET_SYNCED" = "true" ]; then
-              echo "Wallet is synced!"
-              echo "Waiting additional 60 seconds for datalayer to sync..."
-              sleep 60
-              break
-            fi
-
-            echo "Wallet still syncing, waiting 30 seconds..."
-            sleep 30
-          done
-
-          echo "Final status check..."
-          chia rpc wallet get_sync_status || echo "Failed to get wallet sync status"
-          chia wallet show || echo "Failed to show wallet"
-
-      - name: Show CADT logs before tests
-        shell: bash
-        run: |
-          echo "Last 100 lines of CADT logs:"
-          pm2 logs cadt --lines 100 --nostream
-
-      - name: Pre-flight check
-        shell: bash
-        run: |
-          echo "########################################################"
-          echo "Running pre-flight checks before V1 to V2 upgrade test"
-          echo "########################################################"
-          # Run pre-flight check - requires both V1 and V2 for upgrade
-          npm run preflight-check:v1v2 || {
-            echo ""
-            echo "########################################################"
-            echo "PRE-FLIGHT CHECK FAILED - Showing additional debug info:"
-            echo "########################################################"
-            pm2 list || true
-            pm2 logs cadt --lines 100 --nostream || true
-            cat ~/.chia/mainnet/cadt/config.yaml || true
-            exit 1
-          }
-
-      - name: V1 to V2 upgrade test
-        run: |
-          echo "########################################################"
-          echo "Running V1 organization creation and upgrade to V2 test"
-          echo "########################################################"
-          npm run test:v1:live:organization:upgrade
-
-      - name: Show CADT logs after tests
-        if: always()
-        shell: bash
-        run: |
-          echo "Last 50 lines of CADT logs:"
-          pm2 logs cadt --lines 50 --nostream
-
-      - name: Stop CADT
-        if: always()
-        shell: bash
-        run: |
-          echo "Stopping CADT pm2 process..."
-          pm2 stop cadt || true
-          pm2 delete cadt || true
-          echo "CADT stopped"
-
-      - name: Show wallet balance (upgrade)
-        if: always()
-        shell: bash
-        run: |
-          echo "Wallet balance at end of job:"
-          chia wallet show || echo "Failed to show wallet"
-
-      - name: Stop Chia services (upgrade)
-        if: always()
-        shell: bash
-        run: |
-          echo "Stopping all Chia services..."
-          chia stop all -d || true
-          echo "Chia services stopped"
+  # test-v2-live-api:
+  #   name: v2 live api tests
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: node:20.16
+
+  #   steps:
+  #     - uses: Chia-Network/actions/clean-workspace@main
+
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v6
+
+  #     - name: Ignore Husky
+  #       run: npm pkg delete scripts.prepare
+
+  #     - name: Install Mocha
+  #       run: npm install --save-dev mocha
+
+  #     - name: npm install
+  #       run: npm install
+
+  #     - name: install global packages
+  #       run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
+  #     - name: Show home directory
+  #       run: ls -lah ~
+
+  #     - name: Install yq
+  #       run: |
+  #         apt-get update
+  #         apt-get install -y yq
+
+  #     - name: Install Chia and chia-tools
+  #       shell: bash
+  #       run: |
+  #         curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
+
+  #         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+  #         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+  #         apt-get update
+
+  #         apt-get install -y chia-blockchain-cli chia-tools
+
+  #     - name: Configure Chia
+  #       shell: bash
+  #       run: |
+  #         chia init
+  #         chia keys generate -l "functional_tests"
+  #         chia-tools network switch testneta
+  #         chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+  #         chia configure -log-level INFO
+
+  #     - name: Configure CADT
+  #       shell: bash
+  #       run: |
+  #         # Run cadt momentarily to create config file
+  #         pm2 start npm --no-autorestart --name "cadt" -- start
+  #         sleep 10
+  #         pm2 logs cadt --nostream
+  #         pm2 stop cadt
+
+  #         # Remove cadt databases to reset system
+  #         echo "Removing cadt databases to reset system..."
+  #         rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
+  #         rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
+
+  #         # Configure CADT to most verbose logs
+  #         echo "Configuring CADT config.yaml..."
+  #         yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = "true"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+  #         yq -yi '.V2.ENABLE = "false"' ~/.chia/mainnet/cadt/config.yaml
+
+
+  #     # - name: npm live api tests
+  #     #   run: |
+  #     #     echo "########################################################"
+  #     #     echo "Running organization creation tests"
+  #     #     echo "########################################################"
+  #     #     npm run test:v2:live:organization:create
+  #     #     echo "########################################################"
+  #     #     echo "Running data tests"
+  #     #     echo "########################################################"
+  #     #     npm run test:v2:live:data:short
+  #     #     echo "########################################################"
+  #     #     echo "Running organization deletion tests"
+  #     #     echo "########################################################"
+  #     #     npm run test:v2:live:organization:delete
