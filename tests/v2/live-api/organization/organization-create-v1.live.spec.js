@@ -25,7 +25,8 @@ describe('V1 Organization Creation Tests', function () {
     // Clear any existing organization state
     clearOrganizationState();
 
-    request = await getLiveApiRequest();
+    // Use V1 API version for health checks since V2 is disabled for V1 tests
+    request = await getLiveApiRequest({ apiVersion: 'v1' });
   });
 
   describe('V1 Organization Creation', function () {

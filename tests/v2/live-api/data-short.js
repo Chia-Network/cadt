@@ -125,7 +125,8 @@ async function commitAndWait(phase) {
   const { getLiveApiRequest, commitStagedRecords, waitForPendingCommits, waitForStagingEmpty, waitForBatchToAppear, validateDataInDatabase } = await import('./helpers/live-api-helpers.js');
   const { getAllCreatedIds, getBatchVerificationRecords, clearBatchVerificationRecords } = await import('./helpers/shared-state.js');
 
-  const request = await getLiveApiRequest();
+  // Use V2 API version for health checks since this uses V2 endpoints
+  const request = await getLiveApiRequest({ apiVersion: 'v2' });
 
   // Check if staging table has records before committing
   const stagingResponse = await request.get('/v2/staging');
@@ -273,7 +274,8 @@ async function main() {
     // Clear staging table and verification state before starting tests
     const { getLiveApiRequest, clearStagingTable } = await import('./helpers/live-api-helpers.js');
     const { clearVerificationState } = await import('./helpers/verification-state.js');
-    const request = await getLiveApiRequest();
+    // Use V2 API version for health checks since this uses V2 endpoints
+    const request = await getLiveApiRequest({ apiVersion: 'v2' });
     console.log('Clearing staging table before tests...');
     await clearStagingTable(request);
     clearVerificationState(); // Clear any previous verification state

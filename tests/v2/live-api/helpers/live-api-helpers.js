@@ -77,8 +77,14 @@ export const createLiveApiRequest = () => {
  * Check if server is running by hitting health endpoint
  * Retries with timeout if server not ready
  * Provides detailed diagnostics on failure
+ *
+ * @param {Object} request - supertest request instance
+ * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 30000)
+ * @param {Object} options - Options
+ * @param {string} options.apiVersion - API version to check: 'v1', 'v2', or 'any' (default: 'any')
  */
-export const waitForServer = async (request, maxWaitTime = 30000) => {
+export const waitForServer = async (request, maxWaitTime = 30000, options = {}) => {
+  const { apiVersion = 'any' } = options;
   const startTime = Date.now();
   const interval = 2000; // Check every 2 seconds
 
@@ -89,77 +95,111 @@ export const waitForServer = async (request, maxWaitTime = 30000) => {
   let lastError = null;
   let connectionRefusedCount = 0;
 
-  console.log(`[${getTimestamp()}] Checking server health (timeout: ${maxWaitTime}ms)...`);
+  console.log(`[${getTimestamp()}] Checking server health (timeout: ${maxWaitTime}ms, apiVersion: ${apiVersion})...`);
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
-    // Try V2 health endpoint
-    try {
-      const response = await request.get('/v2/health');
-      lastV2Response = {
-        status: response.status,
-        body: response.body,
-        timestamp: getTimestamp(),
-      };
+    // For V2 or 'any', try V2 health endpoint
+    if (apiVersion === 'v2' || apiVersion === 'any') {
+      try {
+        const response = await request.get('/v2/health');
+        lastV2Response = {
+          status: response.status,
+          body: response.body,
+          timestamp: getTimestamp(),
+        };
 
-      if (response.status === 200) {
-        console.log(`[${getTimestamp()}] ✓ Server ready (V2 health check passed)`);
-        return true;
-      }
+        if (response.status === 200) {
+          console.log(`[${getTimestamp()}] ✓ Server ready (V2 health check passed)`);
+          return true;
+        }
 
-      // Log non-200 responses to help diagnose issues
-      if (response.status === 403) {
-        console.log(`[${getTimestamp()}] V2 health returned 403 - V2 API may be disabled, trying V1...`);
-      } else if (response.status === 400) {
-        console.log(`[${getTimestamp()}] V2 health returned 400: ${response.body?.message || response.body?.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      lastError = error;
-      const isConnectionRefused = error.code === 'ECONNREFUSED' ||
-        error.message?.includes('ECONNREFUSED') ||
-        error.message?.includes('connect ECONNREFUSED');
+        // Log non-200 responses to help diagnose issues
+        if (response.status === 403) {
+          if (apiVersion === 'v2') {
+            console.log(`[${getTimestamp()}] V2 health returned 403 - V2 API is disabled`);
+          }
+          // For 'any', silently continue to try other endpoints
+        } else if (response.status === 400) {
+          console.log(`[${getTimestamp()}] V2 health returned 400: ${response.body?.message || response.body?.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        lastError = error;
+        const isConnectionRefused = error.code === 'ECONNREFUSED' ||
+          error.message?.includes('ECONNREFUSED') ||
+          error.message?.includes('connect ECONNREFUSED');
 
-      if (isConnectionRefused) {
-        connectionRefusedCount++;
-        if (connectionRefusedCount <= 3 || connectionRefusedCount % 5 === 0) {
-          console.log(`[${getTimestamp()}] Connection refused (${connectionRefusedCount}x) - server may not be running yet (${elapsed}s elapsed)`);
+        if (isConnectionRefused) {
+          connectionRefusedCount++;
+          if (connectionRefusedCount <= 3 || connectionRefusedCount % 5 === 0) {
+            console.log(`[${getTimestamp()}] Connection refused (${connectionRefusedCount}x) - server may not be running yet (${elapsed}s elapsed)`);
+          }
         }
       }
     }
 
-    // Try V1 health endpoint as fallback
-    try {
-      const response = await request.get('/v1/health');
-      lastV1Response = {
-        status: response.status,
-        body: response.body,
-        timestamp: getTimestamp(),
-      };
+    // For V1 or 'any', try V1 endpoint
+    // Note: V1 doesn't have a /v1/health endpoint, so we check /v1/organizations instead
+    if (apiVersion === 'v1' || apiVersion === 'any') {
+      try {
+        const response = await request.get('/v1/organizations');
+        lastV1Response = {
+          status: response.status,
+          body: response.body,
+          timestamp: getTimestamp(),
+        };
 
-      if (response.status === 200) {
-        console.log(`[${getTimestamp()}] ✓ Server ready (V1 health check passed - note: V2 may be disabled)`);
-        return true;
+        if (response.status === 200) {
+          console.log(`[${getTimestamp()}] ✓ Server ready (V1 API responding)`);
+          return true;
+        }
+
+        if (response.status === 403) {
+          if (apiVersion === 'v1') {
+            console.log(`[${getTimestamp()}] V1 API returned 403 - V1 API is disabled`);
+          }
+        } else if (response.status === 400) {
+          // 400 usually means Chia services not ready - this is a transient state
+          console.log(`[${getTimestamp()}] V1 API returned 400: ${response.body?.message || response.body?.error || 'Chia services may not be ready'}`);
+        }
+      } catch (error) {
+        // V1 also failed - continue
+        if (apiVersion === 'v1') {
+          lastError = error;
+          const isConnectionRefused = error.code === 'ECONNREFUSED' ||
+            error.message?.includes('ECONNREFUSED') ||
+            error.message?.includes('connect ECONNREFUSED');
+
+          if (isConnectionRefused) {
+            connectionRefusedCount++;
+            if (connectionRefusedCount <= 3 || connectionRefusedCount % 5 === 0) {
+              console.log(`[${getTimestamp()}] Connection refused (${connectionRefusedCount}x) - server may not be running yet (${elapsed}s elapsed)`);
+            }
+          }
+        }
       }
-    } catch (error) {
-      // V1 also failed - continue
     }
 
-    // Try root health endpoint as last resort
-    try {
-      const response = await request.get('/health');
-      lastRootHealthResponse = {
-        status: response.status,
-        body: response.body,
-        timestamp: getTimestamp(),
-      };
+    // Try root health endpoint as last resort (for 'any' mode)
+    if (apiVersion === 'any') {
+      try {
+        const response = await request.get('/health');
+        lastRootHealthResponse = {
+          status: response.status,
+          body: response.body,
+          timestamp: getTimestamp(),
+        };
 
-      if (response.status === 200) {
-        // Root health works but versioned endpoints don't - this is informative
-        console.log(`[${getTimestamp()}] Root /health works, but V1/V2 health endpoints failed - possible middleware issue`);
+        if (response.status === 200) {
+          // Root health works - server is running
+          // For 'any' mode, this means server is up but specific APIs might be disabled
+          console.log(`[${getTimestamp()}] ✓ Server ready (root health check passed)`);
+          return true;
+        }
+      } catch (error) {
+        // Root health also failed
       }
-    } catch (error) {
-      // Root health also failed
     }
 
     await new Promise(resolve => setTimeout(resolve, interval));
@@ -175,7 +215,8 @@ export const waitForServer = async (request, maxWaitTime = 30000) => {
     `=================================\n\n` +
     `Troubleshooting tips:\n` +
     `- If connection refused: Check that CADT server is running (pm2 status, pm2 logs cadt)\n` +
-    `- If 403 "V2 API disabled": Check config.yaml has V2.ENABLE = true\n` +
+    `- If V1 403: Check config.yaml has V1.ENABLE = true\n` +
+    `- If V2 403: Check config.yaml has V2.ENABLE = true\n` +
     `- If 400 "Chia Exception": Check Chia services are running and synced (chia show -s, chia wallet show)\n` +
     `- If wallet syncing: Wait for wallet to sync before running tests\n` +
     `- If datalayer unavailable: Ensure data_layer service is running (chia start data)`
@@ -224,18 +265,22 @@ const buildServerDiagnostics = (v2Response, v1Response, rootResponse, lastError,
     lines.push(`  No response received`);
   }
 
-  // V1 Health
+  // V1 API status (checked via /v1/organizations since V1 has no health endpoint)
   lines.push('');
-  lines.push('V1 Health (/v1/health):');
+  lines.push('V1 API (/v1/organizations):');
   if (v1Response) {
     lines.push(`  Status: ${v1Response.status}`);
     if (v1Response.status === 403) {
       lines.push(`  → V1 API is disabled in config`);
+      lines.push(`  → Set V1.ENABLE = true in config.yaml`);
     } else if (v1Response.status === 400) {
       const msg = v1Response.body?.message || v1Response.body?.error || 'Unknown';
       lines.push(`  Error: ${msg}`);
+      lines.push(`  → Chia services may not be ready`);
     } else if (v1Response.status === 200) {
-      lines.push(`  ✓ V1 is working (but test may require V2)`);
+      lines.push(`  ✓ V1 API is enabled and responding`);
+    } else if (v1Response.status === 404) {
+      lines.push(`  → V1 endpoint not found (unexpected)`);
     }
   } else {
     lines.push(`  No response received`);
@@ -871,10 +916,14 @@ const createRetryableRequest = (makeRequest, method, path) => {
  * The returned request object has POST/PUT/DELETE methods wrapped with:
  * - Request logging with timestamps
  * - Automatic retry on wallet sync errors (10s interval, 30 min timeout)
+ *
+ * @param {Object} options - Options
+ * @param {string} options.apiVersion - API version to check: 'v1', 'v2', or 'any' (default: 'any')
  */
-export const getLiveApiRequest = async () => {
+export const getLiveApiRequest = async (options = {}) => {
+  const { apiVersion = 'any' } = options;
   const request = createLiveApiRequest();
-  await waitForServer(request);
+  await waitForServer(request, 30000, { apiVersion });
 
   // Wrap request methods to track endpoints, log timestamps, and add wallet sync retry
   // Only wrap if not already wrapped (check for our custom property)

@@ -14,7 +14,8 @@ describe('Delete All Test Data', function () {
   let homeOrgId;
 
   before(async function () {
-    request = await getLiveApiRequest();
+    // Use V2 API version for health checks since this test uses V2 endpoints
+    request = await getLiveApiRequest({ apiVersion: 'v2' });
     homeOrgId = await getHomeOrgId(request);
   });
 

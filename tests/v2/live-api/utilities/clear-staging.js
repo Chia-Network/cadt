@@ -18,7 +18,8 @@ const getTimestamp = () => {
 async function main() {
   try {
     console.log('Connecting to API...');
-    const request = await getLiveApiRequest();
+    // Use V2 API version for health checks since this uses V2 endpoints
+    const request = await getLiveApiRequest({ apiVersion: 'v2' });
 
     // First, reset committed records (committed: true)
     console.log('Resetting committed records...');

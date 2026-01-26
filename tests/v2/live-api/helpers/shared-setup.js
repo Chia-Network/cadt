@@ -26,7 +26,8 @@ export async function runSharedSetup(skipEmptyCheck = false) {
 
   try {
     // Step 1: Ensure home organization exists - FAIL FAST if it doesn't
-    sharedRequest = await getLiveApiRequest();
+    // Use V2 API version for health checks since we use V2 endpoints
+    sharedRequest = await getLiveApiRequest({ apiVersion: 'v2' });
     sharedHomeOrgId = await getHomeOrgId(sharedRequest);
     console.log(`✓ Home organization found: ${sharedHomeOrgId}`);
 
