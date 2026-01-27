@@ -213,12 +213,21 @@ jobs:
           echo "========================================"
           echo "WAITING FOR SPLIT CONFIRMATION"
           echo "========================================"
+          echo "Will check every 30 seconds with full debug output"
+          echo ""
           MAX_WAIT_SECONDS=600  # 10 minutes
           START_TIME=$(date +%s)
+          CHECK_NUM=0
           
           while true; do
             CURRENT_TIME=$(date +%s)
             ELAPSED=$((CURRENT_TIME - START_TIME))
+            CHECK_NUM=$((CHECK_NUM + 1))
+            
+            echo ""
+            echo "========================================"
+            echo "CHECK #${CHECK_NUM} at ${ELAPSED}s"
+            echo "========================================"
             
             if [ "$ELAPSED" -ge "$MAX_WAIT_SECONDS" ]; then
               echo ""
@@ -230,16 +239,71 @@ jobs:
               exit 1
             fi
             
-            # Check current coin state
+            # Get current wallet sync status
+            echo ""
+            echo "--- Wallet Sync Status ---"
+            chia rpc wallet get_sync_status
+            
+            # Get and display ALL coin records (raw JSON)
+            echo ""
+            echo "--- RAW Coin Records JSON ---"
             CURRENT_COINS=$(chia rpc wallet get_coin_records '{"wallet_id": 1}')
+            echo "$CURRENT_COINS" | jq '.'
             
-            # Check if original coin is spent
-            ORIGINAL_STILL_UNSPENT=$(echo "$CURRENT_COINS" | jq -r ".coin_records[] | select(.id == \"$ORIGINAL_COIN\") | select(.spent_height == 0) | .id" 2>/dev/null)
+            # Show coin count breakdown
+            echo ""
+            echo "--- Coin Analysis ---"
+            TOTAL_COINS=$(echo "$CURRENT_COINS" | jq '.coin_records | length')
+            UNSPENT_COUNT=$(echo "$CURRENT_COINS" | jq '[.coin_records[] | select(.spent_height == 0)] | length')
+            SPENT_COUNT=$(echo "$CURRENT_COINS" | jq '[.coin_records[] | select(.spent_height != 0)] | length')
+            echo "Total coin records: $TOTAL_COINS"
+            echo "Unspent coins (spent_height == 0): $UNSPENT_COUNT"
+            echo "Spent coins (spent_height != 0): $SPENT_COUNT"
             
-            # Count unspent coins >= 10000 mojos
+            # Show each unspent coin with its amount
+            echo ""
+            echo "--- Unspent Coins Detail ---"
+            echo "$CURRENT_COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .amount, spent_height: .spent_height}'
+            
+            # Check original coin status
+            echo ""
+            echo "--- Original Coin Status ---"
+            echo "Looking for original coin: $ORIGINAL_COIN"
+            ORIGINAL_COIN_INFO=$(echo "$CURRENT_COINS" | jq ".coin_records[] | select(.id == \"$ORIGINAL_COIN\")")
+            if [ -n "$ORIGINAL_COIN_INFO" ] && [ "$ORIGINAL_COIN_INFO" != "null" ]; then
+              echo "Original coin found:"
+              echo "$ORIGINAL_COIN_INFO" | jq '{id: .id, amount: .amount, spent_height: .spent_height}'
+              ORIGINAL_SPENT_HEIGHT=$(echo "$ORIGINAL_COIN_INFO" | jq -r '.spent_height')
+              if [ "$ORIGINAL_SPENT_HEIGHT" = "0" ]; then
+                echo "Status: UNSPENT (spent_height=0)"
+                ORIGINAL_STILL_UNSPENT="yes"
+              else
+                echo "Status: SPENT at height $ORIGINAL_SPENT_HEIGHT"
+                ORIGINAL_STILL_UNSPENT=""
+              fi
+            else
+              echo "Original coin NOT FOUND in coin records!"
+              ORIGINAL_STILL_UNSPENT=""
+            fi
+            
+            # Count usable coins
+            echo ""
+            echo "--- Usable Coins Count (amount >= 10000 mojos) ---"
             USABLE_COINS=$(echo "$CURRENT_COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.amount >= 10000)] | length')
+            echo "Usable coins count: $USABLE_COINS"
+            echo "Coins that qualify:"
+            echo "$CURRENT_COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.amount >= 10000) | {id: .id, amount: .amount}]'
             
-            echo "[${ELAPSED}s] Original coin unspent: $([ -n \"$ORIGINAL_STILL_UNSPENT\" ] && echo 'yes' || echo 'no'), Usable coins (>=10000 mojos): $USABLE_COINS"
+            # Get recent transactions
+            echo ""
+            echo "--- Last 5 Transactions ---"
+            chia rpc wallet get_transactions '{"wallet_id": 1, "start": 0, "end": 5}' | jq '.transactions[] | {name: .name, confirmed: .confirmed, confirmed_at_height: .confirmed_at_height, amount: .amount, fee_amount: .fee_amount, type: .type, additions_count: (.additions | length), removals_count: (.removals | length)}'
+            
+            # Summary line
+            echo ""
+            echo "========================================"
+            echo "SUMMARY: Original unspent: $([ -n \"$ORIGINAL_STILL_UNSPENT\" ] && echo 'YES' || echo 'NO'), Usable coins (>=10000): $USABLE_COINS"
+            echo "========================================"
             
             # Success: original coin spent AND we have at least 2 usable coins
             if [ -z "$ORIGINAL_STILL_UNSPENT" ] && [ "$USABLE_COINS" -ge 2 ]; then
@@ -249,16 +313,12 @@ jobs:
               echo "========================================"
               echo "Original coin has been spent and $USABLE_COINS new usable coins are available."
               echo "This proves transactions CAN be confirmed with synced=true (syncing may be true)."
-              echo ""
-              echo "Final coin state:"
-              echo "$CURRENT_COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .amount}'
-              echo ""
-              echo "Wallet status:"
-              chia rpc wallet get_sync_status
               break
             fi
             
-            sleep 15
+            echo ""
+            echo "Split not yet confirmed. Waiting 30 seconds before next check..."
+            sleep 30
           done
 
       - name: Show wallet state BEFORE starting CADT
@@ -538,6 +598,10 @@ jobs:
             -e "Getting generator for" \
             -e "SubscriptionConfig" \
             -e "sub epoch.*start weight is" \
+            -e "Puzzle at index" \
+            -e "Attempting to acquire lock" \
+            -e "watchdog.observers.inotify_buffer" \
+            -e "filelock" \
             || echo "No Chia debug log found or all lines filtered"
 
       - name: Show wallet transaction history
