@@ -602,6 +602,7 @@ jobs:
             -e "Attempting to acquire lock" \
             -e "watchdog.observers.inotify_buffer" \
             -e "filelock" \
+            -e "Adding derivation record" \
             || echo "No Chia debug log found or all lines filtered"
 
       - name: Show wallet transaction history
