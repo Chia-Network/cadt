@@ -65,10 +65,10 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectName: 'Test Project',
         projectLink: 'https://example.com/project',
         projectDescription: 'Test project description',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         projectType: ['Landfill gas'],
         projectSubtype: 'Test Subtype',
-        projectStatus: ['Listed'],
+        projectStatus: 'Listed',
         projectStatusDate: '2024-01-01',
         projectUnitMetric: 'tCO2e',
         cadTrustReferenceProjectId: 'REF-001',
@@ -103,7 +103,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].project_name).to.equal('Test Project');
       expect(stagedData[0].project_registry_name).to.equal('Test Registry');
-      expect(stagedData[0].project_sector).to.equal('Agriculture');
+      expect(stagedData[0].project_sector).to.deep.equal(['Agriculture']);
       expect(stagedData[0].cad_trust_program_id).to.equal(testProgram.cadTrustProgramId);
     });
 
@@ -209,7 +209,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-SECTOR',
         projectId: 'INVALID-SECTOR-001',
         projectName: 'Invalid Sector Project',
-        projectSector: 'InvalidSector',
+        projectSector: ['InvalidSector'],
       };
 
       const response = await supertest(app)
@@ -221,12 +221,28 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body.error).to.include('projectSector');
     });
 
-    it('should accept project with valid V2 projectSector', async function () {
+    it('should accept project with valid V2 projectSector array', async function () {
       const validData = {
         projectRegistryName: 'VALID-SECTOR',
         projectId: 'VALID-SECTOR-001',
         projectName: 'Valid Sector Project',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(validData)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+    });
+
+    it('should accept project with multiple valid V2 projectSectors', async function () {
+      const validData = {
+        projectRegistryName: 'VALID-MULTI-SECTOR',
+        projectId: 'VALID-MULTI-SECTOR-001',
+        projectName: 'Valid Multi-Sector Project',
+        projectSector: ['Agriculture', 'Energy'],
       };
 
       const response = await supertest(app)
@@ -291,7 +307,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-STATUS',
         projectId: 'INVALID-STATUS-001',
         projectName: 'Invalid Status Project',
-        projectStatus: ['InvalidStatus'],
+        projectStatus: 'InvalidStatus',
       };
 
       const response = await supertest(app)
@@ -303,28 +319,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body.error).to.include('projectStatus');
     });
 
-    it('should accept project with valid V2 projectStatus array', async function () {
+    it('should accept project with valid V2 projectStatus', async function () {
       const validData = {
         projectRegistryName: 'VALID-STATUS',
         projectId: 'VALID-STATUS-001',
         projectName: 'Valid Status Project',
-        projectStatus: ['Listed'],
-      };
-
-      const response = await supertest(app)
-        .post('/v2/project')
-        .send(validData)
-        .expect(200);
-
-      expect(response.body.success).to.be.true;
-    });
-
-    it('should accept project with multiple valid V2 projectStatuses', async function () {
-      const validData = {
-        projectRegistryName: 'VALID-MULTI-STATUS',
-        projectId: 'VALID-MULTI-STATUS-001',
-        projectName: 'Valid Multi-Status Project',
-        projectStatus: ['Listed', 'Registered'],
+        projectStatus: 'Listed',
       };
 
       const response = await supertest(app)
@@ -500,9 +500,9 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'Database Registry',
         projectId: 'DB-PROJECT-001',
         projectName: 'Database Project',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         projectType: ['Landfill gas'],
-        projectStatus: ['Listed'],
+        projectStatus: 'Listed',
         projectUnitMetric: 'tCO2e',
         cadTrustProgramId: testProgram.cadTrustProgramId,
         orgUid: homeOrgId,
@@ -516,7 +516,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(response.body).to.have.length(1);
       expect(response.body[0].projectName).to.equal('Database Project');
       expect(response.body[0].projectRegistryName).to.equal('Database Registry');
-      expect(response.body[0].projectSector).to.equal('Agriculture');
+      expect(response.body[0].projectSector).to.deep.equal(['Agriculture']);
       expect(response.body[0].program).to.exist;
       expect(response.body[0].program.programName).to.equal('Test Program for Project');
     });
@@ -539,7 +539,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'Get Test Registry',
         projectId: 'GET-TEST-001',
         projectName: 'Get Test Project',
-        projectSector: 'Energy industries (renewable-/ non renewable sources)',
+        projectSector: ['Energy industries (renewable-/ non renewable sources)'],
         cadTrustProgramId: testProgram.cadTrustProgramId,
         orgUid: homeOrgId,
       }));
@@ -550,7 +550,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
       expect(response.body.projectName).to.equal('Get Test Project');
       expect(response.body.projectRegistryName).to.equal('Get Test Registry');
-      expect(response.body.projectSector).to.equal('Energy industries (renewable-/ non renewable sources)');
+      expect(response.body.projectSector).to.deep.equal(['Energy industries (renewable-/ non renewable sources)']);
       expect(response.body.program).to.exist;
       expect(response.body.program.programName).to.equal('Test Program for Project');
     });
@@ -580,7 +580,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'Original Registry',
         projectId: 'ORIGINAL-001',
         projectName: 'Original Name',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         orgUid: homeOrgId,
       }));
 
@@ -591,10 +591,10 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectName: 'Updated Name',
         projectLink: 'https://example.com/updated',
         projectDescription: 'Updated description',
-        projectSector: 'Energy industries (renewable-/ non renewable sources)',
+        projectSector: ['Energy industries (renewable-/ non renewable sources)'],
         projectType: ['Wind'],
         projectSubtype: 'Updated Subtype',
-        projectStatus: ['Registered'],
+        projectStatus: 'Registered',
         projectStatusDate: '2024-02-01',
         projectUnitMetric: 'gCO2eq/kWh',
         cadTrustReferenceProjectId: 'UPDATED-REF-001',
@@ -628,7 +628,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(stagedData[0].cad_trust_project_id).to.equal(project.cadTrustProjectId);
       expect(stagedData[0].project_name).to.equal('Updated Name');
       expect(stagedData[0].project_registry_name).to.equal('Updated Registry');
-      expect(stagedData[0].project_sector).to.equal('Energy industries (renewable-/ non renewable sources)');
+      expect(stagedData[0].project_sector).to.deep.equal(['Energy industries (renewable-/ non renewable sources)']);
       expect(stagedData[0].cad_trust_program_id).to.equal(testProgram.cadTrustProgramId);
       // Verify org_uid is automatically set in update
       expect(stagedData[0]).to.have.property('org_uid');
@@ -642,7 +642,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'Original Registry',
         projectId: 'ORIGINAL-002',
         projectName: 'Original Name',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         orgUid: homeOrgId,
       }));
 
@@ -669,7 +669,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'Original Registry',
         projectId: 'ORIGINAL-003',
         projectName: 'Original Name',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         orgUid: homeOrgId,
       }));
 
@@ -755,9 +755,9 @@ describe('V2 Project API - Basic CRUD Tests', function () {
           projectRegistryName: 'Transfer Test Registry',
           projectId: 'TRANSFER-001',
           projectName: 'Transfer Test Project',
-          projectSector: 'Agriculture',
+          projectSector: ['Agriculture'],
           projectType: ['Landfill gas'],
-          projectStatus: ['Listed'],
+          projectStatus: 'Listed',
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
           orgUid: homeOrgId,
@@ -806,9 +806,9 @@ describe('V2 Project API - Basic CRUD Tests', function () {
           projectRegistryName: 'Test Registry',
           projectId: 'TRANSFER-002',
           projectName: 'Test Project',
-          projectSector: 'Agriculture',
+          projectSector: ['Agriculture'],
           projectType: ['Landfill gas'],
-          projectStatus: ['Listed'],
+          projectStatus: 'Listed',
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
           orgUid: homeOrgId,
@@ -922,9 +922,9 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
           projectRegistryName: 'Test Registry',
           projectId: 'CSV-UPDATE-001',
           projectName: 'Original Name 1',
-          projectSector: 'Agriculture',
+          projectSector: ['Agriculture'],
           projectType: ['Landfill gas'],
-          projectStatus: ['Listed'],
+          projectStatus: 'Listed',
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
           orgUid: homeOrgId,
@@ -934,9 +934,9 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
           projectRegistryName: 'Test Registry',
           projectId: 'CSV-UPDATE-002',
           projectName: 'Original Name 2',
-          projectSector: 'Energy',
+          projectSector: ['Energy'],
           projectType: ['Energy efficiency'],
-          projectStatus: ['Registered'],
+          projectStatus: 'Registered',
           projectUnitMetric: 'tCO2e',
           cadTrustProgramId: testProgram.cadTrustProgramId,
           orgUid: homeOrgId,
@@ -987,9 +987,9 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectRegistryName: 'Query Test Registry',
             projectId: 'QUERY-001',
             projectName: 'Query Test Project 1',
-            projectSector: 'Agriculture',
+            projectSector: ['Agriculture'],
             projectType: ['Landfill gas'],
-            projectStatus: ['Listed'],
+            projectStatus: 'Listed',
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
             orgUid: homeOrgId,
@@ -998,9 +998,9 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectRegistryName: 'Query Test Registry',
             projectId: 'QUERY-002',
             projectName: 'Query Test Project 2',
-            projectSector: 'Energy',
+            projectSector: ['Energy'],
             projectType: ['Energy efficiency'],
-            projectStatus: ['Registered'],
+            projectStatus: 'Registered',
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
             orgUid: homeOrgId,
@@ -1009,9 +1009,9 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectRegistryName: 'Query Test Registry',
             projectId: 'QUERY-003',
             projectName: 'Query Test Project 3',
-            projectSector: 'Manufacturing',
+            projectSector: ['Manufacturing'],
             projectType: ['Renewable energy'],
-            projectStatus: ['Listed'],
+            projectStatus: 'Listed',
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
             orgUid: homeOrgId,
@@ -1027,9 +1027,9 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
             projectRegistryName: 'Org Filter Registry',
             projectId: 'ORG-FILTER-001',
             projectName: 'Org Filter Project 1',
-            projectSector: 'Agriculture',
+            projectSector: ['Agriculture'],
             projectType: ['Landfill gas'],
-            projectStatus: ['Listed'],
+            projectStatus: 'Listed',
             projectUnitMetric: 'tCO2e',
             cadTrustProgramId: testProgram.cadTrustProgramId,
             orgUid: homeOrgId,
@@ -1071,12 +1071,12 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
       it('should filter by single field using generic filter', async function () {
         const response = await supertest(app)
           .get('/v2/project')
-          .query({ filter: 'projectSector:Agriculture:eq', page: 1, limit: 10 })
+          .query({ filter: 'projectStatus:Listed:eq', page: 1, limit: 10 })
           .expect(200);
 
         expect(response.body.data).to.be.an('array');
         response.body.data.forEach(project => {
-          expect(project.projectSector).to.equal('Agriculture');
+          expect(project.projectStatus).to.equal('Listed');
         });
       });
 
@@ -1271,13 +1271,13 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
       it('should accept valid filter parameter format (anchored regex)', async function () {
         const response = await supertest(app)
           .get('/v2/project')
-          .query({ filter: 'projectSector:Agriculture:eq', page: 1, limit: 10 })
+          .query({ filter: 'projectStatus:Listed:eq', page: 1, limit: 10 })
           .expect(200);
 
         expect(response.body.data).to.be.an('array');
         // Filter should work correctly with anchored regex
         response.body.data.forEach(project => {
-          expect(project.projectSector).to.equal('Agriculture');
+          expect(project.projectStatus).to.equal('Listed');
         });
       });
 

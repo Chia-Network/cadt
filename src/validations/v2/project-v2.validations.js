@@ -14,10 +14,11 @@ export const projectV2Schema = Joi.object({
     .allow(null, '')
     .optional(),
   projectDescription: Joi.string().max(2000).allow(null).optional(),
-  projectSector: Joi.string()
-    .max(255)
+  // projectSector is an array of strings, each validated against the projectSector picklist
+  projectSector: Joi.array()
+    .items(Joi.string().max(255))
     .allow(null)
-    .custom(pickListValidationV2('projectSector'))
+    .custom(pickListArrayValidationV2('projectSector'))
     .optional(),
   // projectType is an array of strings, each validated against the projectType picklist
   projectType: Joi.array()
@@ -26,11 +27,10 @@ export const projectV2Schema = Joi.object({
     .custom(pickListArrayValidationV2('projectType'))
     .optional(),
   projectSubtype: Joi.string().max(255).allow(null).optional(),
-  // projectStatus is an array of strings, each validated against the projectStatus picklist
-  projectStatus: Joi.array()
-    .items(Joi.string().max(255))
+  projectStatus: Joi.string()
+    .max(255)
     .allow(null)
-    .custom(pickListArrayValidationV2('projectStatus'))
+    .custom(pickListValidationV2('projectStatus'))
     .optional(),
   projectStatusDate: Joi.date().allow(null).optional(),
   projectUnitMetric: Joi.string()

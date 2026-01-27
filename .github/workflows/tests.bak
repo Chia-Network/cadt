@@ -193,7 +193,7 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.001}' "${{ secrets.TESTNETA_FAUCET }}"
+          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=60  # 60 attempts * 10 seconds = 10 minutes
@@ -524,7 +524,7 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.001}' "${{ secrets.TESTNETA_FAUCET }}"
+          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=60
@@ -783,7 +783,7 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.001}' "${{ secrets.TESTNETA_FAUCET }}"
+          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=60

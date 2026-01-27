@@ -42,9 +42,9 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
       projectName: 'Test Project for AEF-T2',
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-AEFT2-001',
-      projectSector: 'Energy industries (renewable-/ non renewable sources)',
+      projectSector: ['Energy industries (renewable-/ non renewable sources)'],
       projectType: ['Energy efficiency'],
-      projectStatus: ['Registered'],
+      projectStatus: 'Registered',
       projectUnitMetric: 'tCO2e',
       cadTrustProgramId: testProgramId,
     });

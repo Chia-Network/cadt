@@ -108,6 +108,44 @@ const walletIsSynced = async () => {
 // Export function to check last error (for assertWalletIsSynced)
 const getLastWalletSyncError = () => lastWalletSyncError;
 
+/**
+ * Get the full wallet sync status object
+ * @returns {Promise<{success: boolean, synced?: boolean, syncing?: boolean, genesis_initialized?: boolean}>}
+ */
+const getSyncStatus = async () => {
+  // In simulator mode, return synced status
+  if (USE_SIMULATOR) {
+    return {
+      success: true,
+      synced: true,
+      syncing: false,
+      genesis_initialized: true,
+    };
+  }
+
+  try {
+    const { cert, key, timeout } = getBaseOptions();
+
+    const response = await superagent
+      .post(`${rpcUrl}/get_sync_status`)
+      .send({})
+      .key(key)
+      .cert(cert)
+      .timeout(timeout);
+
+    const data = response.body || JSON.parse(response.text);
+    return {
+      success: data.success || false,
+      synced: data.synced,
+      syncing: data.syncing,
+      genesis_initialized: data.genesis_initialized,
+    };
+  } catch (error) {
+    logger.error(`Error getting wallet sync status: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+};
+
 const walletIsAvailable = async () => {
   return await walletIsSynced();
 };
@@ -483,6 +521,7 @@ export default {
   waitForSpendableCoins,
   getActiveNetwork,
   getLastWalletSyncError,
+  getSyncStatus,
   getCoinRecords,
   splitCoins,
 };

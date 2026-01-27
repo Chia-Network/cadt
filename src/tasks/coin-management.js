@@ -162,6 +162,25 @@ const runCoinManagement = async () => {
 
     logger.info(`[COIN_MANAGEMENT] Largest coin: ${largestCoinAmount} mojos, ID: ${coinId}`);
 
+    // Double-check wallet sync status before attempting split
+    // This is critical because split_coins RPC can accept requests but won't broadcast if wallet isn't synced
+    logger.info('[COIN_MANAGEMENT] Verifying wallet sync status before split...');
+    const syncStatus = await wallet.getSyncStatus();
+    if (!syncStatus.success) {
+      logger.error('[COIN_MANAGEMENT] Could not get wallet sync status. Aborting split attempt.');
+      return;
+    }
+    
+    const isSynced = syncStatus.synced === true && syncStatus.syncing !== true;
+    if (!isSynced) {
+      logger.warn(
+        `[COIN_MANAGEMENT] Wallet is not synced (synced=${syncStatus.synced}, syncing=${syncStatus.syncing}). ` +
+        `Aborting coin split - will retry on next interval when wallet is synced.`
+      );
+      return;
+    }
+    logger.info('[COIN_MANAGEMENT] Wallet sync verified. Proceeding with coin split.');
+
     // Calculate how many coins we need and can create
     const coinsNeeded = TARGET_COIN_COUNT - coinCount;
     const requiredAmount = (coinsNeeded * COIN_SIZE) + SPLIT_FEE;

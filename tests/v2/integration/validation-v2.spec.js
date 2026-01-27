@@ -40,7 +40,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Validation',
-      projectSector: 'Agriculture',
+      projectSector: ['Agriculture'],
       cadTrustProgramId: testProgram.cadTrustProgramId,
     });
   });
@@ -69,7 +69,7 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Validation',
-      projectSector: 'Agriculture',
+      projectSector: ['Agriculture'],
       cadTrustProgramId: testProgram.cadTrustProgramId,
     }));
   });

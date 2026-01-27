@@ -42,7 +42,7 @@ describe('V2 Unit API - Marketplace Features', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-MARKETPLACE',
       projectName: 'Test Project for Marketplace',
-      projectSector: 'Agriculture',
+      projectSector: ['Agriculture'],
       cadTrustProgramId: testProgram.cadTrustProgramId,
       orgUid: homeOrgId,
     }));
@@ -97,7 +97,7 @@ describe('V2 Unit API - Marketplace Features', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-MARKETPLACE',
       projectName: 'Test Project for Marketplace',
-      projectSector: 'Agriculture',
+      projectSector: ['Agriculture'],
       cadTrustProgramId: testProgram.cadTrustProgramId,
       orgUid: homeOrgId,
     }));

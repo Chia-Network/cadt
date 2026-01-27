@@ -1217,7 +1217,7 @@ describe('V2 Governance Model Tests', function () {
               aefT2AuthorizationsSector: ['Agriculture'],
               projectType: ['Energy'],
               aefT2AuthorizationsActivityType: ['Energy'],
-              projectStatus: ['Active'],
+              projectStatus: 'Active',
               projectUnitMetric: ['tCO2e'],
               unitMetric: ['tCO2e'],
               validationBody: ['Body1'],

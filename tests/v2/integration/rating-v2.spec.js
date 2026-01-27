@@ -36,9 +36,9 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       projectName: 'Test Project for Rating',
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-RATING-001',
-      projectSector: 'Energy industries (renewable-/ non renewable sources)',
+      projectSector: ['Energy industries (renewable-/ non renewable sources)'],
       projectType: ['Energy efficiency'],
-      projectStatus: ['Registered'],
+      projectStatus: 'Registered',
       projectUnitMetric: 'tCO2e',
       cadTrustProgramId: testProgramId,
     });

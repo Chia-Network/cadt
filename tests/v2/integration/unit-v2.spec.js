@@ -45,7 +45,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Unit',
-      projectSector: 'Agriculture',
+      projectSector: ['Agriculture'],
       cadTrustProgramId: testProgram.cadTrustProgramId,
       orgUid: homeOrgId,
     }));
@@ -107,7 +107,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Unit',
-      projectSector: 'Agriculture',
+      projectSector: ['Agriculture'],
       cadTrustProgramId: testProgram.cadTrustProgramId,
       orgUid: homeOrgId,
     }));
@@ -854,7 +854,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-ADV-PROJECT',
         projectName: 'Test Project for Advanced',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         cadTrustProgramId: testProgram.cadTrustProgramId,
         orgUid: homeOrgId,
       }));

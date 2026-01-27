@@ -1,9 +1,6 @@
 name: Coin Splitting Debug Test
 
 on:
-  push:
-    branches:
-      - '**'
   pull_request:
     branches:
       - '**'
@@ -80,7 +77,7 @@ jobs:
           echo "Wallet address: $CHIA_WALLET_ADDRESS"
           echo ""
           echo "Requesting 0.001 XCH from faucet..."
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.001}' "${{ secrets.TESTNETA_FAUCET }}"
+          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.00001}' "${{ secrets.TESTNETA_FAUCET }}"
           echo ""
           echo ""
           echo "Waiting for wallet to receive funds..."
@@ -103,15 +100,18 @@ jobs:
             sleep 10
           done
 
-      - name: Wait for wallet sync
+      - name: Wait for wallet sync (REQUIRED)
         shell: bash
         run: |
           echo "========================================"
           echo "STEP 2: WAITING FOR WALLET TO SYNC"
           echo "========================================"
-          MAX_WAIT_MINUTES=10
+          echo "NOTE: Wallet MUST be synced before starting CADT"
+          echo ""
+          MAX_WAIT_MINUTES=20
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
+          SYNCED=false
 
           while true; do
             CURRENT_TIME=$(date +%s)
@@ -119,24 +119,51 @@ jobs:
             REMAINING=$((WAIT_SECONDS - ELAPSED))
 
             if [ "$REMAINING" -le 0 ]; then
-              echo "Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
-              break
+              echo ""
+              echo "========================================" 
+              echo "ERROR: Wallet did not sync within $MAX_WAIT_MINUTES minutes!"
+              echo "========================================"
+              echo "Final wallet status:"
+              chia rpc wallet get_sync_status || true
+              echo ""
+              echo "This test requires the wallet to be synced before CADT can perform coin splitting."
+              echo "FAILING TEST - wallet not synced"
+              exit 1
             fi
 
             WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
             WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
             WALLET_SYNCING=$(echo "$WALLET_STATUS" | jq -r '.syncing // true')
 
-            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s)"
+            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s, remaining: ${REMAINING}s)"
 
-            if [ "$WALLET_SYNCED" = "true" ]; then
+            if [ "$WALLET_SYNCED" = "true" ] && [ "$WALLET_SYNCING" = "false" ]; then
               echo ""
               echo "✓ Wallet is synced!"
+              SYNCED=true
               break
             fi
 
-            sleep 10
+            sleep 15
           done
+
+          # Final verification
+          echo ""
+          echo "Verifying wallet sync status..."
+          FINAL_STATUS=$(chia rpc wallet get_sync_status)
+          echo "$FINAL_STATUS"
+          FINAL_SYNCED=$(echo "$FINAL_STATUS" | jq -r '.synced // false')
+          FINAL_SYNCING=$(echo "$FINAL_STATUS" | jq -r '.syncing // true')
+          
+          if [ "$FINAL_SYNCED" != "true" ] || [ "$FINAL_SYNCING" = "true" ]; then
+            echo ""
+            echo "ERROR: Wallet sync verification failed!"
+            echo "synced=$FINAL_SYNCED, syncing=$FINAL_SYNCING"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✓ Wallet sync verified. Proceeding with test."
 
       - name: Show wallet state BEFORE starting CADT
         shell: bash
@@ -175,29 +202,32 @@ jobs:
           echo "========================================"
           echo "STEP 4: CONFIGURE CADT"
           echo "========================================"
-          # Run cadt momentarily to create config file
-          pm2 start npm --no-autorestart --name "cadt" -- start
-          sleep 10
-          pm2 stop cadt
-          pm2 delete cadt || true
-
-          # Remove databases
-          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
-          rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
-
-          # Configure CADT with debug logging
-          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
-
+          
+          # Create CADT config directory structure manually (without starting CADT)
+          # This avoids triggering coin management during config setup
+          mkdir -p ~/.chia/mainnet/cadt/v1
+          mkdir -p ~/.chia/mainnet/cadt/v2
+          
+          # Create config file from scratch with all required settings
+          cat > ~/.chia/mainnet/cadt/config.yaml << 'EOF'
+APP:
+  LOG_LEVEL: debug
+  CHIA_NETWORK: testnet
+  BIND_ADDRESS: 127.0.0.1
+  DATALAYER_HOST: https://127.0.0.1:8562
+  WALLET_HOST: https://127.0.0.1:9256
+  DATALAYER_FILE_SERVER_URL: https://127.0.0.1:8575
+  AUTO_MIRROR_EXTERNAL_STORES: true
+V1:
+  ENABLE: false
+  GOVERNANCE:
+    GOVERNANCE_BODY_ID: 29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f
+V2:
+  ENABLE: true
+  GOVERNANCE:
+    GOVERNANCE_BODY_ID: 29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f
+EOF
+          
           echo ""
           echo "CADT config.yaml:"
           cat ~/.chia/mainnet/cadt/config.yaml
@@ -211,11 +241,11 @@ jobs:
           echo ""
           echo "Starting CADT at $(date)..."
           pm2 start npm --no-autorestart --name "cadt" -- start
-          
+
           echo ""
           echo "Waiting 60 seconds for CADT to run initial coin management..."
           sleep 60
-          
+
           echo ""
           echo "--- CADT logs after 60 seconds ---"
           pm2 logs cadt --lines 300 --nostream

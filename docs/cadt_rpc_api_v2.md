@@ -1839,10 +1839,10 @@ Response
       "projectName":"Stop Desertification",
       "projectLink":"https://desertificationtest.com",
       "projectDescription":"A project to stop desertification",
-      "projectSector":"Fugitive emissions from fuel (solid, oil and gas)",
+      "projectSector":["Fugitive emissions from fuel (solid, oil and gas)"],
       "projectType":["Coal bed/mine methane"],
       "projectSubtype":"Methane Capture",
-      "projectStatus":["Registered"],
+      "projectStatus":"Registered",
       "projectStatusDate":"2022-02-02T00:00:00.000Z",
       "projectUnitMetric":"tCO2e",
       "cadTrustReferenceProjectId":"REF-001",
@@ -1880,10 +1880,10 @@ Response
   "projectName":"Stop Deforestation",
   "projectLink":"http://testurl.com",
   "projectDescription":"A project to stop deforestation",
-  "projectSector":"Agriculture, forestry and other land use (AFOLU)",
+  "projectSector":["Agriculture, forestry and other land use (AFOLU)"],
   "projectType":["Afforestation"],
   "projectSubtype":"Soil Carbon",
-  "projectStatus":["Listed"],
+  "projectStatus":"Listed",
   "projectStatusDate":"2022-03-02T00:00:00.000Z",
   "projectUnitMetric":"tCO2e",
   "cadTrustReferenceProjectId":"REF-555",
@@ -1914,7 +1914,7 @@ Response
       "cadTrustProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
       "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
       "projectName":"Stop Desertification",
-      "projectStatus":["Registered"]
+      "projectStatus":"Registered"
     }
   ]
 }
@@ -1937,7 +1937,7 @@ Response
   "data": [
     {
       "projectName":"Stop Deforestation",
-      "projectStatus":["Listed"]
+      "projectStatus":"Listed"
     }
   ]
 }
@@ -1963,10 +1963,10 @@ Response
   "projectName":"Stop Deforestation",
   "projectLink":"http://testurl.com",
   "projectDescription":"A project to stop deforestation",
-  "projectSector":"Agriculture, forestry and other land use (AFOLU)",
+  "projectSector":["Agriculture, forestry and other land use (AFOLU)"],
   "projectType":["Afforestation"],
   "projectSubtype":"Soil Carbon",
-  "projectStatus":["Listed"],
+  "projectStatus":"Listed",
   "projectStatusDate":"2022-03-02T00:00:00.000Z",
   "projectUnitMetric":"tCO2e",
   "cadTrustReferenceProjectId":"REF-555",
@@ -2043,10 +2043,10 @@ Fields:
 | projectCreditingProgram | String | | | Name of the crediting program |
 | projectLink | String | | | URL link to the project. Must be a valid URI |
 | projectDescription | String | | | Description of the project |
-| projectSector | String | | x | Project sector |
+| projectSector | Array[String] | | x | Array of project sectors. Each value must be from the projectSector picklist |
 | projectType | Array[String] | | x | Array of project types. Each value must be from the projectType picklist |
 | projectSubtype | String | | | Subtype of the project |
-| projectStatus | Array[String] | | x | Array of project statuses. Each value must be from the projectStatus picklist |
+| projectStatus | String | | x | Project status. Must be from the projectStatus picklist |
 | projectStatusDate | Date | | | Date when the project status was set (ISO 8601 format) |
 | projectUnitMetric | String | | x | Unit metric for the project |
 | cadTrustReferenceProjectId | String | | | CAD Trust reference project identifier |
@@ -2065,10 +2065,10 @@ curl --location --request POST 'localhost:31310/v2/project' \
         "projectLink": "http://testurl.com",
         "projectDescription": "Sample project description",
         "projectCreditingProgram": "Gold Standard Program",
-        "projectSector": "Manufacturing industries",
+        "projectSector": ["Manufacturing industries"],
         "projectType": ["Reforestation", "Afforestation"],
         "projectSubtype": "Forest Conservation",
-        "projectStatus": ["Registered"],
+        "projectStatus": "Registered",
         "projectStatusDate": "2022-03-12",
         "projectUnitMetric": "tCO2e",
         "cadTrustReferenceProjectId": "REF-001",
@@ -2090,17 +2090,17 @@ Response
 
 #### Batch upload projects from CSV
 
-**Array Field Formatting**: For array fields like `projectType` and `projectStatus`, the CSV can use any of these formats:
+**Array Field Formatting**: For array fields like `projectType` and `projectSector`, the CSV can use any of these formats:
 - **Single value**: `Solar` → becomes `["Solar"]`
 - **JSON array**: `["Solar","Wind"]` → becomes `["Solar","Wind"]`
 - **Pipe-separated**: `Solar|Wind` → becomes `["Solar","Wind"]`
 
 Example CSV content:
 ```csv
-projectRegistryName,projectId,projectName,projectType,projectStatus
-VCS,PROJ-001,Solar Farm Project,Solar,Registered
-VCS,PROJ-002,Multi-Type Project,Solar|Wind,Listed|Validated
-VCS,PROJ-003,JSON Format,"[""Afforestation"",""Reforestation""]","[""Registered""]"
+projectRegistryName,projectId,projectName,projectType,projectSector,projectStatus
+VCS,PROJ-001,Solar Farm Project,Solar,Energy,Registered
+VCS,PROJ-002,Multi-Type Project,Solar|Wind,Energy|Agriculture,Listed
+VCS,PROJ-003,JSON Format,"[""Afforestation"",""Reforestation""]","[""Agriculture""]",Validated
 ```
 
 Request
@@ -2142,10 +2142,10 @@ curl --location -g --request PUT 'http://localhost:31310/v2/project/51ca9638-22b
     "projectLink": "http://testurl.com",
     "projectDescription": "Updated project description",
     "projectCreditingProgram": "Verra Program",
-    "projectSector": "Mining/mineral production",
+    "projectSector": ["Mining/mineral production"],
     "projectType": ["Afforestation", "Reforestation"],
     "projectSubtype": "Reforestation",
-    "projectStatus": ["Listed", "Validated"],
+    "projectStatus": "Listed",
     "projectStatusDate": "2022-03-19",
     "projectUnitMetric": "tCO2e",
     "cadTrustReferenceProjectId": "REF-987",
