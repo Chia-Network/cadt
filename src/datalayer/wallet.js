@@ -376,6 +376,7 @@ const splitCoins = async (targetCoinId, numberOfCoins, amountPerCoin, fee = 0) =
         number_of_coins: numberOfCoins,
         amount_per_coin: amountPerCoin,
         fee: fee,
+        push: true,  // Required to actually submit the transaction
       })
       .key(key)
       .cert(cert)

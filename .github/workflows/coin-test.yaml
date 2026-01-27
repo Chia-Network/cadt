@@ -196,14 +196,16 @@ jobs:
           fi
           
           # Try a simple split: split into 2 coins of 10000 mojos each
+          # IMPORTANT: push=true is required to actually submit the transaction!
           echo ""
           echo "========================================"
           echo "ATTEMPTING SIMPLE COIN SPLIT"
           echo "========================================"
           echo "Splitting coin $ORIGINAL_COIN into 2 coins of 10000 mojos each (fee: 1000 mojos)"
+          echo "NOTE: Using push=true to actually submit the transaction"
           echo ""
           
-          SPLIT_RESULT=$(chia rpc wallet split_coins "{\"wallet_id\": 1, \"target_coin_id\": \"$ORIGINAL_COIN\", \"number_of_coins\": 2, \"amount_per_coin\": 10000, \"fee\": 1000}" 2>&1)
+          SPLIT_RESULT=$(chia rpc wallet split_coins "{\"wallet_id\": 1, \"target_coin_id\": \"$ORIGINAL_COIN\", \"number_of_coins\": 2, \"amount_per_coin\": 10000, \"fee\": 1000, \"push\": true}" 2>&1)
           SPLIT_EXIT_CODE=$?
           
           echo "Split RPC response:"
@@ -227,6 +229,9 @@ jobs:
           fi
           
           echo ""
+          echo "========================================"
+          echo "✓ SPLIT TRANSACTION ACCEPTED!"
+          echo "========================================"
           echo "Split transaction accepted by wallet. Now waiting for confirmation..."
           echo ""
           
@@ -627,6 +632,8 @@ jobs:
             -e "Received message: WSMessage" \
             -e "DataLayer subscription update pool" \
             -e "register_service" \
+            -e "Cannot connect to host 127.0.0.1" \
+            -e "Failed to connect to PeerInfo" \
             || echo "No Chia debug log found or all lines filtered"
 
       - name: Show wallet transaction history
