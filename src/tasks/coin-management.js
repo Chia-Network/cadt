@@ -18,6 +18,10 @@ const SPLIT_FEE = 3000;            // Fee for the split transaction
 // 6 hours in seconds
 const SIX_HOURS_IN_SECONDS = 6 * 60 * 60;
 
+// Wait for split confirmation settings
+const SPLIT_CONFIRMATION_TIMEOUT_MS = 600000; // 10 minutes
+const SPLIT_CONFIRMATION_POLL_INTERVAL_MS = 15000; // 15 seconds
+
 /**
  * Get the currency symbol based on network (XCH for mainnet, TXCH for testnet)
  * @returns {Promise<string>} Currency symbol
@@ -43,6 +47,59 @@ const getCurrencySymbol = async () => {
 const formatMojos = (mojos, symbol) => {
   const xch = mojos / 1000000000000;
   return `${xch.toFixed(12)} ${symbol} (${mojos} mojos)`;
+};
+
+/**
+ * Wait for a coin split transaction to confirm by checking for new coins
+ * @param {number} expectedNewCoins - Number of new coins expected from the split
+ * @param {string} originalCoinId - The ID of the coin that was split (to verify it's spent)
+ * @returns {Promise<boolean>} True if split confirmed, false if timeout
+ */
+const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
+  const startTime = Date.now();
+  
+  logger.info(`[COIN_MANAGEMENT] Waiting for split transaction to confirm (expecting ${expectedNewCoins} new coins of ${COIN_SIZE}+ mojos)...`);
+  
+  while (Date.now() - startTime < SPLIT_CONFIRMATION_TIMEOUT_MS) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    
+    try {
+      const coinsResult = await wallet.getCoinRecords();
+      
+      if (!coinsResult.success || !coinsResult.coin_records) {
+        logger.warn('[COIN_MANAGEMENT] Could not get coin records while waiting for confirmation, retrying...');
+        await new Promise((resolve) => setTimeout(resolve, SPLIT_CONFIRMATION_POLL_INTERVAL_MS));
+        continue;
+      }
+      
+      const allCoins = coinsResult.coin_records || [];
+      const unspentCoins = allCoins.filter((coin) => coin.spent_height === 0);
+      const usableCoins = unspentCoins.filter((coin) => coin.amount >= COIN_SIZE);
+      
+      // Check if the original coin has been spent (no longer in unspent list)
+      const originalCoinStillUnspent = unspentCoins.some((coin) => coin.id === originalCoinId);
+      
+      if (!originalCoinStillUnspent && usableCoins.length >= expectedNewCoins) {
+        logger.info(`[COIN_MANAGEMENT] Split confirmed! Found ${usableCoins.length} usable coins (${elapsed}s elapsed)`);
+        return true;
+      }
+      
+      // Log progress every poll
+      if (originalCoinStillUnspent) {
+        logger.info(`[COIN_MANAGEMENT] Waiting for split to confirm... original coin still unspent (${elapsed}s elapsed)`);
+      } else {
+        logger.info(`[COIN_MANAGEMENT] Split in progress... found ${usableCoins.length}/${expectedNewCoins} expected coins (${elapsed}s elapsed)`);
+      }
+      
+    } catch (error) {
+      logger.warn(`[COIN_MANAGEMENT] Error checking split confirmation: ${error.message}`);
+    }
+    
+    await new Promise((resolve) => setTimeout(resolve, SPLIT_CONFIRMATION_POLL_INTERVAL_MS));
+  }
+  
+  logger.warn(`[COIN_MANAGEMENT] Timeout waiting for split confirmation after ${SPLIT_CONFIRMATION_TIMEOUT_MS / 1000}s`);
+  return false;
 };
 
 /**
@@ -131,7 +188,12 @@ const runCoinManagement = async () => {
       // Create as many as we can
       const splitResult = await wallet.splitCoins(coinId, maxPossibleCoins, COIN_SIZE, SPLIT_FEE);
       if (splitResult.success) {
-        logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. ${maxPossibleCoins} new coins of ${COIN_SIZE} mojos will be created once the transaction confirms.`);
+        logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. Waiting for ${maxPossibleCoins} new coins of ${COIN_SIZE} mojos to confirm...`);
+        // Wait for the split to confirm before returning
+        const confirmed = await waitForSplitConfirmation(maxPossibleCoins, coinId);
+        if (!confirmed) {
+          logger.warn('[COIN_MANAGEMENT] Split transaction may still be pending. Coins will be available once confirmed.');
+        }
       } else {
         logger.error(`[COIN_MANAGEMENT] Failed to split coins: ${splitResult.error}`);
       }
@@ -144,7 +206,12 @@ const runCoinManagement = async () => {
     const splitResult = await wallet.splitCoins(coinId, coinsNeeded, COIN_SIZE, SPLIT_FEE);
 
     if (splitResult.success) {
-      logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. ${coinsNeeded} new coins of ${COIN_SIZE} mojos will be created once the transaction confirms.`);
+      logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. Waiting for ${coinsNeeded} new coins of ${COIN_SIZE} mojos to confirm...`);
+      // Wait for the split to confirm before returning
+      const confirmed = await waitForSplitConfirmation(coinsNeeded, coinId);
+      if (!confirmed) {
+        logger.warn('[COIN_MANAGEMENT] Split transaction may still be pending. Coins will be available once confirmed.');
+      }
     } else {
       logger.error(`[COIN_MANAGEMENT] Failed to split coins: ${splitResult.error}`);
     }
