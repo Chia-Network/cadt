@@ -56,10 +56,10 @@ const walletIsSynced = async () => {
     const data = response.body || JSON.parse(response.text);
 
     if (data.success) {
-      // Check both synced and syncing fields for robustness
-      // Wallet is considered synced if synced is true AND (syncing is false or undefined)
-      // Some wallet RPC versions may not include syncing field
-      const isSynced = data.synced === true && (data.syncing === false || data.syncing === undefined);
+      // Only check synced=true
+      // The syncing flag may remain true indefinitely on testnets while the wallet
+      // continues to sync new blocks, but transactions can still be performed
+      const isSynced = data.synced === true;
 
       if (!isSynced) {
         logger.debug(`Wallet sync status: synced=${data.synced}, syncing=${data.syncing}, genesis_initialized=${data.genesis_initialized}`);
