@@ -982,6 +982,9 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
     console.log(`  Looking for home organization`);
   }
 
+  // Track if we've seen a PENDING org - if it disappears, creation failed
+  let sawPendingOrg = false;
+
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
@@ -1081,7 +1084,26 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           // Check if there's a PENDING org (creation in progress)
           const pendingOrg = orgs.find(o => o.org_uid === 'PENDING' || o.orgUid === 'PENDING');
           if (pendingOrg) {
+            sawPendingOrg = true;
             console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
+          } else if (sawPendingOrg && orgs.length === 0) {
+            // We had a PENDING org but now it's gone with no replacement - creation failed
+            console.log(`  [${elapsed}s] ❌ PENDING organization disappeared - creation failed!`);
+            
+            // Try to get more details about what went wrong
+            try {
+              const statusResponse = await request.get('/v2/organizations/status');
+              if (statusResponse.body) {
+                console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
+              }
+            } catch (e) {
+              console.log(`  Could not get final status: ${e.message}`);
+            }
+            
+            throw new Error(
+              `Organization creation failed. PENDING organization was cleaned up after ${elapsed}s. ` +
+              `Check server logs for details about why creation failed.`
+            );
           } else {
             console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
           }
@@ -1152,6 +1174,9 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
   } else {
     console.log(`  Looking for home organization`);
   }
+
+  // Track if we've seen a PENDING org - if it disappears, creation failed
+  let sawPendingOrg = false;
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -1251,7 +1276,26 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
           // Check if there's a PENDING org (creation in progress)
           const pendingOrg = orgs.find(o => o.orgUid === 'PENDING' || o.org_uid === 'PENDING');
           if (pendingOrg) {
+            sawPendingOrg = true;
             console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
+          } else if (sawPendingOrg && orgs.length === 0) {
+            // We had a PENDING org but now it's gone with no replacement - creation failed
+            console.log(`  [${elapsed}s] ❌ PENDING organization disappeared - creation failed!`);
+            
+            // Try to get more details about what went wrong
+            try {
+              const statusResponse = await request.get('/v1/organizations/create/status');
+              if (statusResponse.body) {
+                console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
+              }
+            } catch (e) {
+              console.log(`  Could not get final status: ${e.message}`);
+            }
+            
+            throw new Error(
+              `Organization creation failed. PENDING organization was cleaned up after ${elapsed}s. ` +
+              `Check server logs for details about why creation failed.`
+            );
           } else {
             console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
           }

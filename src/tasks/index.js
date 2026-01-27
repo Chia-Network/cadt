@@ -10,7 +10,7 @@ import mirrorCheck from './mirror-check.js';
 import resetAuditTable from './reset-audit-table.js';
 import validateOrganizationTableAndSubscriptions from './validate-organization-table-and-subscriptions.js';
 import cleanUpFailedOrg from './clean-up-failed-org.js';
-import coinManagement from './coin-management.js';
+import coinManagement, { runCoinManagement } from './coin-management.js';
 
 // V2 background tasks
 import syncGovernanceBodyV2 from './sync-governance-body-v2.js';
@@ -31,17 +31,29 @@ const addJobToScheduler = (job) => {
   scheduler.addSimpleIntervalJob(job);
 };
 
-const start = (enableV1 = true, enableV2 = true) => {
+const start = async (enableV1 = true, enableV2 = true) => {
   // Add coin management task (runs regardless of V1/V2 as it manages shared wallet)
   // Only add it once, and only if at least one version is enabled
   if (enableV1 || enableV2) {
+    // Run coin management FIRST and wait for completion before starting other tasks
+    // This ensures coins are split before any tasks that might need them (like mirror creation)
+    logger.info('[COIN_MANAGEMENT] Running initial coin management before starting other tasks...');
+    try {
+      await runCoinManagement();
+      logger.info('[COIN_MANAGEMENT] Initial coin management completed');
+    } catch (error) {
+      // Log but don't fail startup - coin management will retry on next interval
+      logger.warn(`[COIN_MANAGEMENT] Initial coin management failed: ${error.message}. Will retry on next interval.`);
+    }
+
+    // Now register the scheduled job for future runs
     if (scheduler.existsById(coinManagement.id)) {
       scheduler.stopById(coinManagement.id);
       scheduler.removeById(coinManagement.id);
     }
     jobRegistry[coinManagement.id] = coinManagement;
     scheduler.addSimpleIntervalJob(coinManagement);
-    logger.info('[COIN_MANAGEMENT] Coin management task registered');
+    logger.info('[COIN_MANAGEMENT] Coin management task registered for periodic runs');
   }
 
   // add default jobs (V1) if enabled

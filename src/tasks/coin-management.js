@@ -228,12 +228,14 @@ const task = new Task('coin-management', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    // Run every 6 hours, and run immediately on startup
+    // Run every 6 hours - NOT immediately on startup (we call runCoinManagement manually first)
     seconds: APP_CONFIG?.TASKS?.COIN_MANAGEMENT_TASK_INTERVAL || SIX_HOURS_IN_SECONDS,
-    runImmediately: true,
+    runImmediately: false,
   },
   task,
   { id: 'coin-management', preventOverrun: true },
 );
 
+// Export runCoinManagement for direct invocation during startup
+export { runCoinManagement };
 export default job;

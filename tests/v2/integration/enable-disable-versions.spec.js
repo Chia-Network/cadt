@@ -59,7 +59,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     // IMPORTANT: Re-enable both V1 and V2 schedulers for subsequent tests
     // This test suite explicitly disables schedulers to test that functionality
     // but we need to restore them for other tests that depend on the scheduler
-    scheduler.start(true, true);
+    await scheduler.start(true, true);
   });
 
   // Helper function to write unified config
@@ -244,13 +244,13 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       scheduler.stopAll();
     });
 
-    it('should register V1 tasks when ENABLE is true in V1 config', function () {
+    it('should register V1 tasks when ENABLE is true in V1 config', async function () {
       writeUnifiedConfig(true, true);
 
       if (getConfig.cache) getConfig.cache.clear();
       if (getChiaRoot.cache) getChiaRoot.cache.clear();
 
-      scheduler.start(true, false);
+      await scheduler.start(true, false);
 
       // Check that V1 tasks are registered
       // Note: job IDs must match the actual IDs defined in the task files
@@ -271,8 +271,8 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       });
     });
 
-    it('should not register V1 tasks when ENABLE is false in V1 config', function () {
-      scheduler.start(false, true);
+    it('should not register V1 tasks when ENABLE is false in V1 config', async function () {
+      await scheduler.start(false, true);
 
       // Check that V1 tasks are NOT registered
       const v1TaskIds = [
@@ -292,8 +292,8 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       });
     });
 
-    it('should register V2 tasks when ENABLE is true in V2 config', function () {
-      scheduler.start(false, true);
+    it('should register V2 tasks when ENABLE is true in V2 config', async function () {
+      await scheduler.start(false, true);
 
       // Check that V2 tasks are registered
       const v2TaskIds = [
@@ -311,8 +311,8 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       });
     });
 
-    it('should not register V2 tasks when ENABLE is false in V2 config', function () {
-      scheduler.start(true, false);
+    it('should not register V2 tasks when ENABLE is false in V2 config', async function () {
+      await scheduler.start(true, false);
 
       // Check that V2 tasks are NOT registered
       const v2TaskIds = [
@@ -330,8 +330,8 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       });
     });
 
-    it('should register both V1 and V2 tasks when both are enabled', function () {
-      scheduler.start(true, true);
+    it('should register both V1 and V2 tasks when both are enabled', async function () {
+      await scheduler.start(true, true);
 
       // Check V1 tasks
       expect(scheduler.jobRegistry['sync-governance-meta']).to.exist;
@@ -342,8 +342,8 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       expect(scheduler.jobRegistry['mirror-check-v2']).to.exist;
     });
 
-    it('should register neither when both are disabled', function () {
-      scheduler.start(false, false);
+    it('should register neither when both are disabled', async function () {
+      await scheduler.start(false, false);
 
       // Check that no tasks are registered
       expect(Object.keys(scheduler.jobRegistry)).to.have.length(0);
@@ -421,7 +421,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
 
       // Scheduler should only register V2 tasks
       scheduler.stopAll();
-      scheduler.start(false, true);
+      await scheduler.start(false, true);
 
       expect(scheduler.jobRegistry['sync-registries-v2']).to.exist;
       expect(scheduler.jobRegistry['sync-registries']).to.not.exist;
@@ -443,7 +443,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
 
       // Scheduler should only register V1 tasks
       scheduler.stopAll();
-      scheduler.start(true, false);
+      await scheduler.start(true, false);
 
       expect(scheduler.jobRegistry['sync-registries']).to.exist;
       expect(scheduler.jobRegistry['sync-registries-v2']).to.not.exist;
@@ -465,7 +465,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
 
       // Scheduler should register no tasks
       scheduler.stopAll();
-      scheduler.start(false, false);
+      await scheduler.start(false, false);
 
       expect(Object.keys(scheduler.jobRegistry)).to.have.length(0);
     });

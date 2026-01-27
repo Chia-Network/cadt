@@ -71,8 +71,9 @@ export const initializeDatabases = async () => {
     logger.info('All database migrations completed');
 
     // Start scheduler after migrations complete
-    setTimeout(() => {
-      scheduler.start(enableV1, enableV2);
+    // Note: scheduler.start is async - it runs coin management first before starting other tasks
+    setTimeout(async () => {
+      await scheduler.start(enableV1, enableV2);
     }, 5000);
   }).catch((error) => {
     logger.error('Error initializing databases:', error);
