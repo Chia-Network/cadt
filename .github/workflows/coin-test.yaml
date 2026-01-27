@@ -120,7 +120,7 @@ jobs:
 
             if [ "$REMAINING" -le 0 ]; then
               echo ""
-              echo "========================================" 
+              echo "========================================"
               echo "ERROR: Wallet did not sync within $MAX_WAIT_MINUTES minutes!"
               echo "========================================"
               echo "Final wallet status:"
@@ -154,14 +154,14 @@ jobs:
           echo "$FINAL_STATUS"
           FINAL_SYNCED=$(echo "$FINAL_STATUS" | jq -r '.synced // false')
           FINAL_SYNCING=$(echo "$FINAL_STATUS" | jq -r '.syncing // true')
-          
+
           if [ "$FINAL_SYNCED" != "true" ] || [ "$FINAL_SYNCING" = "true" ]; then
             echo ""
             echo "ERROR: Wallet sync verification failed!"
             echo "synced=$FINAL_SYNCED, syncing=$FINAL_SYNCING"
             exit 1
           fi
-          
+
           echo ""
           echo "✓ Wallet sync verified. Proceeding with test."
 
@@ -202,32 +202,33 @@ jobs:
           echo "========================================"
           echo "STEP 4: CONFIGURE CADT"
           echo "========================================"
-          
+
           # Create CADT config directory structure manually (without starting CADT)
           # This avoids triggering coin management during config setup
           mkdir -p ~/.chia/mainnet/cadt/v1
           mkdir -p ~/.chia/mainnet/cadt/v2
-          
+
           # Create config file from scratch with all required settings
-          cat > ~/.chia/mainnet/cadt/config.yaml << 'EOF'
-APP:
-  LOG_LEVEL: debug
-  CHIA_NETWORK: testnet
-  BIND_ADDRESS: 127.0.0.1
-  DATALAYER_HOST: https://127.0.0.1:8562
-  WALLET_HOST: https://127.0.0.1:9256
-  DATALAYER_FILE_SERVER_URL: https://127.0.0.1:8575
-  AUTO_MIRROR_EXTERNAL_STORES: true
-V1:
-  ENABLE: false
-  GOVERNANCE:
-    GOVERNANCE_BODY_ID: 29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f
-V2:
-  ENABLE: true
-  GOVERNANCE:
-    GOVERNANCE_BODY_ID: 29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f
-EOF
-          
+          # Using printf to avoid YAML parsing issues with heredoc
+          printf '%s\n' \
+            'APP:' \
+            '  LOG_LEVEL: debug' \
+            '  CHIA_NETWORK: testnet' \
+            '  BIND_ADDRESS: 127.0.0.1' \
+            '  DATALAYER_HOST: https://127.0.0.1:8562' \
+            '  WALLET_HOST: https://127.0.0.1:9256' \
+            '  DATALAYER_FILE_SERVER_URL: https://127.0.0.1:8575' \
+            '  AUTO_MIRROR_EXTERNAL_STORES: true' \
+            'V1:' \
+            '  ENABLE: false' \
+            '  GOVERNANCE:' \
+            '    GOVERNANCE_BODY_ID: 29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f' \
+            'V2:' \
+            '  ENABLE: true' \
+            '  GOVERNANCE:' \
+            '    GOVERNANCE_BODY_ID: 29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f' \
+            > ~/.chia/mainnet/cadt/config.yaml
+
           echo ""
           echo "CADT config.yaml:"
           cat ~/.chia/mainnet/cadt/config.yaml
