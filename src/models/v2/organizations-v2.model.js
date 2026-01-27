@@ -223,15 +223,16 @@ class OrganizationsV2 extends Model {
       }
 
       // Wait for sufficient spendable coins before starting store creation
-      // Each store requires ~3001 mojos, and we create 4 stores in parallel
-      // Need 4 coins * 3001 mojos = 12,004 mojos minimum, use 15,000 for safety buffer
-      const coinCheck = await wallet.waitForSpendableCoins(15000, 300000, 10000);
+      // We need 4 SEPARATE coins (one per parallel store creation), each with at least 3500 mojos
+      // (store creation costs ~3001 mojos, using 3500 for safety buffer)
+      const coinCheck = await wallet.waitForSpendableCoins(4, 3500, 300000, 10000);
       if (!coinCheck.success) {
         throw new Error(
           `Cannot create organization: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
-          'Please ensure wallet has sufficient balance and no pending transactions.',
+          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
         );
       }
+      loggerV2.info(`[v2]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
 
       // Execute the creation process
       return await OrganizationsV2._executeOrganizationCreation(state, MetaV2);
@@ -270,13 +271,15 @@ class OrganizationsV2 extends Model {
     }
 
     // Wait for sufficient spendable coins before resuming store creation
-    const coinCheck = await wallet.waitForSpendableCoins(15000, 300000, 10000);
+    // We need 4 SEPARATE coins (one per parallel store creation), each with at least 3500 mojos
+    const coinCheck = await wallet.waitForSpendableCoins(4, 3500, 300000, 10000);
     if (!coinCheck.success) {
       throw new Error(
         `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
-        'Please ensure wallet has sufficient balance and no pending transactions.',
+        'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
       );
     }
+    loggerV2.info(`[v2]: Resuming org creation, ${coinCheck.coinCount} coins available`);
 
     return await OrganizationsV2._executeOrganizationCreation(state, MetaV2);
   }

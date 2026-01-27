@@ -361,38 +361,42 @@ const splitCoins = async (targetCoinId, numberOfCoins, amountPerCoin, fee = 0) =
 /**
  * Wait for sufficient spendable coins to be available for organization creation.
  * Organization creation requires 4 stores created in parallel, each needing ~3001 mojos.
- * This function waits for:
- * 1. No pending transactions (so coins are spendable)
- * 2. Sufficient spendable balance
- *
- * @param {number} requiredMojos - Minimum required mojos (default: 15000 for 4 stores + buffer)
+ * 
+ * This function checks ACTUAL coin records, not just spendable_balance, because:
+ * - spendable_balance doesn't always reflect pending transactions correctly
+ * - We need multiple separate coins for parallel store creation
+ * 
+ * @param {number} requiredCoins - Number of separate coins needed (default: 4 for parallel store creation)
+ * @param {number} minMojosPerCoin - Minimum mojos per coin (default: 3500 for store creation + buffer)
  * @param {number} maxWaitMs - Maximum wait time in milliseconds (default: 5 minutes)
  * @param {number} pollIntervalMs - Polling interval in milliseconds (default: 10 seconds)
- * @returns {Promise<{success: boolean, balance?: number, error?: string}>}
+ * @returns {Promise<{success: boolean, coinCount?: number, error?: string}>}
  */
 const waitForSpendableCoins = async (
-  requiredMojos = 15000,
+  requiredCoins = 4,
+  minMojosPerCoin = 3500,
   maxWaitMs = 300000,
   pollIntervalMs = 10000,
 ) => {
   if (USE_SIMULATOR) {
-    return { success: true, balance: 999000000000000 };
+    return { success: true, coinCount: 10, balance: 999000000000000 };
   }
 
   const startTime = Date.now();
   let lastLogTime = 0;
 
   logger.info(
-    `[v2]: Waiting for spendable coins (need ${requiredMojos} mojos, timeout: ${maxWaitMs / 1000}s)`,
+    `[v2]: Waiting for ${requiredCoins} coins of at least ${minMojosPerCoin} mojos each (timeout: ${maxWaitMs / 1000}s)`,
   );
 
   while (Date.now() - startTime < maxWaitMs) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
     try {
       // Check for pending transactions first
       const hasPending = await hasUnconfirmedTransactions();
 
       if (hasPending) {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
         // Log every 30 seconds
         if (Date.now() - lastLogTime > 30000) {
           lastLogTime = Date.now();
@@ -404,28 +408,51 @@ const waitForSpendableCoins = async (
         continue;
       }
 
-      // Check spendable balance
-      const balance = await getWalletBalanceMojos();
+      // Get actual coin records to count usable coins
+      const coinResult = await getCoinRecords();
 
-      if (balance === null) {
-        logger.warn('[v2]: Could not get wallet balance, retrying...');
+      if (!coinResult.success || !coinResult.coin_records) {
+        logger.warn('[v2]: Could not get coin records, retrying...');
         await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
         continue;
       }
 
-      if (balance >= requiredMojos) {
-        logger.info(
-          `[v2]: Sufficient spendable coins available: ${balance} mojos (need ${requiredMojos})`,
-        );
-        return { success: true, balance };
-      }
+      // Count coins that are unspent and have sufficient balance
+      // Filter to coins that are unspent (spent_height === 0 or undefined)
+      const usableCoins = coinResult.coin_records.filter((coin) => {
+        const isUnspent = !coin.spent_height || coin.spent_height === 0;
+        const hasSufficientBalance = coin.amount >= minMojosPerCoin;
+        return isUnspent && hasSufficientBalance;
+      });
 
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      // Log every 30 seconds
+      const totalBalance = usableCoins.reduce((sum, coin) => sum + coin.amount, 0);
+
+      // Log status every 30 seconds or when count changes
       if (Date.now() - lastLogTime > 30000) {
         lastLogTime = Date.now();
         logger.info(
-          `[v2]: Insufficient spendable balance: ${balance} mojos (need ${requiredMojos}), waiting... (${elapsed}s elapsed)`,
+          `[v2]: Found ${usableCoins.length} usable coins (need ${requiredCoins}) with total ${totalBalance} mojos (${elapsed}s elapsed)`,
+        );
+        if (usableCoins.length > 0 && usableCoins.length < 10) {
+          // Log individual coins for debugging
+          usableCoins.forEach((coin, i) => {
+            logger.debug(`[v2]:   Coin ${i + 1}: ${coin.amount} mojos, id: ${coin.id?.substring(0, 16)}...`);
+          });
+        }
+      }
+
+      if (usableCoins.length >= requiredCoins) {
+        logger.info(
+          `[v2]: Sufficient coins available: ${usableCoins.length} coins of ${minMojosPerCoin}+ mojos (need ${requiredCoins})`,
+        );
+        return { success: true, coinCount: usableCoins.length, balance: totalBalance };
+      }
+
+      // Not enough coins yet - check if we should warn about coin management
+      if (elapsed > 60 && usableCoins.length < requiredCoins) {
+        logger.warn(
+          `[v2]: Only ${usableCoins.length}/${requiredCoins} usable coins available after ${elapsed}s. ` +
+          `Coin management may need to split coins first.`,
         );
       }
     } catch (error) {
@@ -441,7 +468,7 @@ const waitForSpendableCoins = async (
   );
   return {
     success: false,
-    error: `Timeout waiting for spendable coins after ${elapsed}s. Required: ${requiredMojos} mojos`,
+    error: `Timeout waiting for ${requiredCoins} coins of ${minMojosPerCoin}+ mojos after ${elapsed}s`,
   };
 };
 
