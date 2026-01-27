@@ -377,6 +377,15 @@ jobs:
           echo "=========================================="
           cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
 
+      - name: Show Chia debug log after tests
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "Chia debug log (last 500 lines):"
+          echo "=========================================="
+          tail -n 500 ~/.chia/mainnet/log/debug.log || echo "No Chia debug log found"
+
       - name: Stop CADT
         if: always()
         shell: bash
@@ -638,6 +647,15 @@ jobs:
           echo "=========================================="
           cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
 
+      - name: Show Chia debug log after tests
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "Chia debug log (last 500 lines):"
+          echo "=========================================="
+          tail -n 500 ~/.chia/mainnet/log/debug.log || echo "No Chia debug log found"
+
       - name: Stop CADT
         if: always()
         shell: bash
@@ -883,6 +901,15 @@ jobs:
           echo "CADT stderr logs (full):"
           echo "=========================================="
           cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+
+      - name: Show Chia debug log after tests
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "Chia debug log (last 500 lines):"
+          echo "=========================================="
+          tail -n 500 ~/.chia/mainnet/log/debug.log || echo "No Chia debug log found"
 
       - name: Stop CADT
         if: always()
