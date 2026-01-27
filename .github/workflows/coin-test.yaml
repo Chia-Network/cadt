@@ -213,7 +213,7 @@ jobs:
           echo "========================================"
           echo "WAITING FOR SPLIT CONFIRMATION"
           echo "========================================"
-          MAX_WAIT_SECONDS=300  # 5 minutes
+          MAX_WAIT_SECONDS=600  # 10 minutes
           START_TIME=$(date +%s)
           
           while true; do
@@ -537,6 +537,7 @@ jobs:
             -e "_coin_subscriptions" \
             -e "Getting generator for" \
             -e "SubscriptionConfig" \
+            -e "sub epoch.*start weight is" \
             || echo "No Chia debug log found or all lines filtered"
 
       - name: Show wallet transaction history
