@@ -76,7 +76,7 @@ jobs:
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Wallet address: $CHIA_WALLET_ADDRESS"
           echo ""
-          echo "Requesting 0.001 XCH from faucet..."
+          echo "Requesting 0.00001 XCH (10,000,000 mojos) from faucet..."
           curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.00001}' "${{ secrets.TESTNETA_FAUCET }}"
           echo ""
           echo ""
@@ -162,14 +162,14 @@ jobs:
           echo "$COINS" | jq '.'
           
           # Find an unspent coin
-          UNSPENT_COIN=$(echo "$COINS" | jq -r '.coin_records[] | select(.spent_height == 0) | .id' | head -1)
-          COIN_AMOUNT=$(echo "$COINS" | jq -r ".coin_records[] | select(.id == \"$UNSPENT_COIN\") | .coin.amount")
+          ORIGINAL_COIN=$(echo "$COINS" | jq -r '.coin_records[] | select(.spent_height == 0) | .id' | head -1)
+          COIN_AMOUNT=$(echo "$COINS" | jq -r ".coin_records[] | select(.id == \"$ORIGINAL_COIN\") | .amount")
           
           echo ""
-          echo "Found unspent coin: $UNSPENT_COIN"
+          echo "Found unspent coin: $ORIGINAL_COIN"
           echo "Coin amount: $COIN_AMOUNT mojos"
           
-          if [ -z "$UNSPENT_COIN" ] || [ "$UNSPENT_COIN" = "null" ]; then
+          if [ -z "$ORIGINAL_COIN" ] || [ "$ORIGINAL_COIN" = "null" ]; then
             echo "ERROR: No unspent coin found!"
             exit 1
           fi
@@ -179,10 +179,10 @@ jobs:
           echo "========================================"
           echo "ATTEMPTING SIMPLE COIN SPLIT"
           echo "========================================"
-          echo "Splitting coin $UNSPENT_COIN into 2 coins of 10000 mojos each (fee: 1000 mojos)"
+          echo "Splitting coin $ORIGINAL_COIN into 2 coins of 10000 mojos each (fee: 1000 mojos)"
           echo ""
           
-          SPLIT_RESULT=$(chia rpc wallet split_coins "{\"wallet_id\": 1, \"target_coin_id\": \"$UNSPENT_COIN\", \"number_of_coins\": 2, \"amount_per_coin\": 10000, \"fee\": 1000}" 2>&1)
+          SPLIT_RESULT=$(chia rpc wallet split_coins "{\"wallet_id\": 1, \"target_coin_id\": \"$ORIGINAL_COIN\", \"number_of_coins\": 2, \"amount_per_coin\": 10000, \"fee\": 1000}" 2>&1)
           SPLIT_EXIT_CODE=$?
           
           echo "Split RPC response:"
@@ -190,38 +190,76 @@ jobs:
           echo ""
           echo "Exit code: $SPLIT_EXIT_CODE"
           
-          # Check if split was successful
+          # Check if split was accepted
           SPLIT_SUCCESS=$(echo "$SPLIT_RESULT" | jq -r '.success // false' 2>/dev/null || echo "false")
           
-          if [ "$SPLIT_SUCCESS" = "true" ]; then
+          if [ "$SPLIT_SUCCESS" != "true" ]; then
             echo ""
             echo "========================================"
-            echo "✓ SPLIT TRANSACTION ACCEPTED!"
-            echo "========================================"
-            echo "The wallet accepted the split transaction while synced=true."
-            echo "This proves transactions CAN be done without waiting for syncing=false."
-            
-            # Get the transaction ID if available
-            TX_ID=$(echo "$SPLIT_RESULT" | jq -r '.transaction_id // "N/A"' 2>/dev/null)
-            echo "Transaction ID: $TX_ID"
-          else
-            echo ""
-            echo "========================================"
-            echo "✗ SPLIT TRANSACTION FAILED"
+            echo "✗ SPLIT TRANSACTION REJECTED"
             echo "========================================"
             echo "The wallet rejected the split transaction."
-            echo "Error details above."
-            
-            # Check if the error mentions syncing
             if echo "$SPLIT_RESULT" | grep -qi "sync"; then
-              echo ""
               echo "The error mentions 'sync' - wallet may need syncing=false after all."
             fi
+            exit 1
           fi
           
           echo ""
-          echo "Final wallet status:"
-          chia rpc wallet get_sync_status
+          echo "Split transaction accepted by wallet. Now waiting for confirmation..."
+          echo ""
+          
+          # Wait for the split to confirm (original coin spent + new coins appear)
+          echo "========================================"
+          echo "WAITING FOR SPLIT CONFIRMATION"
+          echo "========================================"
+          MAX_WAIT_SECONDS=300  # 5 minutes
+          START_TIME=$(date +%s)
+          
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            
+            if [ "$ELAPSED" -ge "$MAX_WAIT_SECONDS" ]; then
+              echo ""
+              echo "========================================"
+              echo "✗ TIMEOUT: Split not confirmed after ${MAX_WAIT_SECONDS}s"
+              echo "========================================"
+              echo "Final coin state:"
+              chia rpc wallet get_coin_records '{"wallet_id": 1}' | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .amount}'
+              exit 1
+            fi
+            
+            # Check current coin state
+            CURRENT_COINS=$(chia rpc wallet get_coin_records '{"wallet_id": 1}')
+            
+            # Check if original coin is spent
+            ORIGINAL_STILL_UNSPENT=$(echo "$CURRENT_COINS" | jq -r ".coin_records[] | select(.id == \"$ORIGINAL_COIN\") | select(.spent_height == 0) | .id" 2>/dev/null)
+            
+            # Count unspent coins >= 10000 mojos
+            USABLE_COINS=$(echo "$CURRENT_COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.amount >= 10000)] | length')
+            
+            echo "[${ELAPSED}s] Original coin unspent: $([ -n \"$ORIGINAL_STILL_UNSPENT\" ] && echo 'yes' || echo 'no'), Usable coins (>=10000 mojos): $USABLE_COINS"
+            
+            # Success: original coin spent AND we have at least 2 usable coins
+            if [ -z "$ORIGINAL_STILL_UNSPENT" ] && [ "$USABLE_COINS" -ge 2 ]; then
+              echo ""
+              echo "========================================"
+              echo "✓ SPLIT CONFIRMED!"
+              echo "========================================"
+              echo "Original coin has been spent and $USABLE_COINS new usable coins are available."
+              echo "This proves transactions CAN be confirmed with synced=true (syncing may be true)."
+              echo ""
+              echo "Final coin state:"
+              echo "$CURRENT_COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .amount}'
+              echo ""
+              echo "Wallet status:"
+              chia rpc wallet get_sync_status
+              break
+            fi
+            
+            sleep 15
+          done
 
       - name: Show wallet state BEFORE starting CADT
         shell: bash
@@ -243,13 +281,13 @@ jobs:
           COINS=$(chia rpc wallet get_coin_records '{"wallet_id": 1}')
           TOTAL_COINS=$(echo "$COINS" | jq '.coin_records | length')
           UNSPENT_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0)] | length')
-          LARGE_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.coin.amount >= 10000)] | length')
+          LARGE_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.amount >= 10000)] | length')
           echo "Total coins: $TOTAL_COINS"
           echo "Unspent coins: $UNSPENT_COINS"
           echo "Unspent coins >= 10000 mojos: $LARGE_COINS"
           echo ""
           echo "--- Unspent Coins Detail ---"
-          echo "$COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .coin.amount, confirmed_height: .confirmed_block_height}'
+          echo "$COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .amount, confirmed_height: .confirmed_block_height}'
           echo ""
           echo "--- Recent Transactions ---"
           chia rpc wallet get_transactions '{"wallet_id": 1, "start": 0, "end": 10}' | jq '.transactions[] | {name: .name, confirmed: .confirmed, amount: .amount, type: .type}' || echo "No transactions yet"
@@ -329,13 +367,13 @@ jobs:
           echo "--- Coin Summary ---"
           TOTAL_COINS=$(echo "$COINS" | jq '.coin_records | length')
           UNSPENT_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0)] | length')
-          LARGE_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.coin.amount >= 10000)] | length')
+          LARGE_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.amount >= 10000)] | length')
           echo "Total coins: $TOTAL_COINS"
           echo "Unspent coins: $UNSPENT_COINS"
           echo "Unspent coins >= 10000 mojos: $LARGE_COINS"
           echo ""
           echo "--- Unspent Coins Detail ---"
-          echo "$COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .coin.amount, confirmed_height: .confirmed_block_height}'
+          echo "$COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .amount, confirmed_height: .confirmed_block_height}'
           echo ""
           echo "--- All Transactions ---"
           chia rpc wallet get_transactions '{"wallet_id": 1, "start": 0, "end": 30}' | jq '.transactions[] | {name: .name, confirmed: .confirmed, amount: .amount, type: .type, sent: .sent, created_at_time: .created_at_time}'
@@ -365,13 +403,13 @@ jobs:
           echo "--- Coin Summary ---"
           TOTAL_COINS=$(echo "$COINS" | jq '.coin_records | length')
           UNSPENT_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0)] | length')
-          LARGE_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.coin.amount >= 10000)] | length')
+          LARGE_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.amount >= 10000)] | length')
           echo "Total coins: $TOTAL_COINS"
           echo "Unspent coins: $UNSPENT_COINS"
           echo "Unspent coins >= 10000 mojos: $LARGE_COINS"
           echo ""
           echo "--- Unspent Coins Detail ---"
-          echo "$COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .coin.amount, confirmed_height: .confirmed_block_height}'
+          echo "$COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .amount, confirmed_height: .confirmed_block_height}'
           echo ""
           echo "--- CADT logs (coin management related) ---"
           pm2 logs cadt --lines 100 --nostream | grep -i "coin" || echo "No coin-related logs found"
@@ -401,13 +439,13 @@ jobs:
           echo "--- Coin Summary ---"
           TOTAL_COINS=$(echo "$COINS" | jq '.coin_records | length')
           UNSPENT_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0)] | length')
-          LARGE_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.coin.amount >= 10000)] | length')
+          LARGE_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.amount >= 10000)] | length')
           echo "Total coins: $TOTAL_COINS"
           echo "Unspent coins: $UNSPENT_COINS"
           echo "Unspent coins >= 10000 mojos: $LARGE_COINS"
           echo ""
           echo "--- Unspent Coins Detail ---"
-          echo "$COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .coin.amount, confirmed_height: .confirmed_block_height}'
+          echo "$COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .amount, confirmed_height: .confirmed_block_height}'
 
       - name: Wait 4 more minutes (total T+10 minutes)
         shell: bash
@@ -439,7 +477,7 @@ jobs:
           echo "========================================"
           TOTAL_COINS=$(echo "$COINS" | jq '.coin_records | length')
           UNSPENT_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0)] | length')
-          LARGE_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.coin.amount >= 10000)] | length')
+          LARGE_COINS=$(echo "$COINS" | jq '[.coin_records[] | select(.spent_height == 0) | select(.amount >= 10000)] | length')
           echo ""
           echo "Total coins in wallet: $TOTAL_COINS"
           echo "Unspent coins: $UNSPENT_COINS"
@@ -452,7 +490,7 @@ jobs:
           fi
           echo ""
           echo "--- Unspent Coins Detail ---"
-          echo "$COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .coin.amount, confirmed_height: .confirmed_block_height}'
+          echo "$COINS" | jq '.coin_records[] | select(.spent_height == 0) | {id: .id, amount: .amount, confirmed_height: .confirmed_block_height}'
           echo ""
           echo "--- All Transactions (chronological) ---"
           chia rpc wallet get_transactions '{"wallet_id": 1, "start": 0, "end": 50}' | jq '.transactions | sort_by(.created_at_time) | .[] | {name: .name, confirmed: .confirmed, amount: .amount, type: .type, sent: .sent, created_at_time: .created_at_time, fee_amount: .fee_amount}'
@@ -471,14 +509,35 @@ jobs:
           echo "========================================"
           cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
 
-      - name: Show Chia debug log
+      - name: Show Chia debug log (filtered)
         if: always()
         shell: bash
         run: |
           echo "========================================"
-          echo "CHIA DEBUG LOG (last 1500 lines)"
+          echo "CHIA DEBUG LOG (filtered, last 5000 lines)"
           echo "========================================"
-          tail -n 1500 ~/.chia/mainnet/log/debug.log || echo "No Chia debug log found"
+          echo "Filtering out noisy messages (connections, block headers, cache, keyring locks)..."
+          echo ""
+          tail -n 5000 ~/.chia/mainnet/log/debug.log 2>/dev/null | grep -v \
+            -e "Connecting: wss://127.0.0.1" \
+            -e "respond_block_headers from" \
+            -e "Time for request request_block_headers" \
+            -e "get_timestamp_for_height_from_peer add to cache" \
+            -e "request_puzzle_solution to peer" \
+            -e "acquired on.*keyring.yaml.lock" \
+            -e "released on.*keyring.yaml.lock" \
+            -e "request_header_blocks" \
+            -e "coin_state_update" \
+            -e "new_signage_point_or_end_of_sub_slot" \
+            -e "request_removal_proof" \
+            -e "RespondToCoinUpdates" \
+            -e "register_interest_in_coin" \
+            -e "request_children to peer" \
+            -e "respond_to_coin_update" \
+            -e "_coin_subscriptions" \
+            -e "Getting generator for" \
+            -e "SubscriptionConfig" \
+            || echo "No Chia debug log found or all lines filtered"
 
       - name: Show wallet transaction history
         if: always()
