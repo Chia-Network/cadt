@@ -1115,6 +1115,11 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
         }
       }
     } catch (error) {
+      // Re-throw fatal errors (like PENDING org disappeared) - don't swallow them
+      if (error.message.includes('PENDING organization was cleaned up') ||
+          error.message.includes('Organization creation failed')) {
+        throw error;
+      }
       console.log(`  [${elapsed}s] Error checking organizations: ${error.message}`);
     }
 
@@ -1307,6 +1312,11 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
         }
       }
     } catch (error) {
+      // Re-throw fatal errors (like PENDING org disappeared) - don't swallow them
+      if (error.message.includes('PENDING organization was cleaned up') ||
+          error.message.includes('Organization creation failed')) {
+        throw error;
+      }
       console.log(`  [${elapsed}s] Error checking organizations: ${error.message}`);
     }
 
