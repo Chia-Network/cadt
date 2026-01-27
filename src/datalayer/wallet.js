@@ -355,7 +355,10 @@ const getWalletBalanceMojos = async () => {
  * @returns {Promise<{success: boolean, error?: string}>} Result of the split operation
  */
 const splitCoins = async (targetCoinId, numberOfCoins, amountPerCoin, fee = 0) => {
-  if (USE_SIMULATOR) {
+  // Check simulator mode - check both config AND env var directly
+  // (env var check needed because config may be memoized before env var was set)
+  const isSimulator = getWalletConfig().USE_SIMULATOR || process.env.USE_SIMULATOR === 'true';
+  if (isSimulator) {
     logger.info(`[SIMULATOR] Would split coin into ${numberOfCoins} new coins`);
     return { success: true };
   }
