@@ -10,8 +10,10 @@ import wallet from '../datalayer/wallet.js';
 const CONFIG = getConfig();
 const APP_CONFIG = CONFIG.APP;
 
-// Target number of coins to maintain in the wallet
-const TARGET_COIN_COUNT = 10;
+// Coin management constants
+const TARGET_COIN_COUNT = 12;      // Number of coins to maintain
+const COIN_SIZE = 10000;           // Size of each coin in mojos (enough for DataLayer operations)
+const SPLIT_FEE = 3000;            // Fee for the split transaction
 
 // 6 hours in seconds
 const SIX_HOURS_IN_SECONDS = 6 * 60 * 60;
@@ -45,6 +47,7 @@ const formatMojos = (mojos, symbol) => {
 
 /**
  * Check wallet coin count and split if necessary
+ * Creates 12 coins of 10000 mojos each for DataLayer operations
  */
 const runCoinManagement = async () => {
   logger.info('[COIN_MANAGEMENT] Starting coin management check');
@@ -68,23 +71,19 @@ const runCoinManagement = async () => {
       return;
     }
 
-    // Filter to only unspent coins (spent_height === 0)
+    // Filter to only unspent coins with sufficient size (spent_height === 0)
     const allCoins = coinsResult.coin_records || [];
     const unspentCoins = allCoins.filter((coin) => coin.spent_height === 0);
-    const coinCount = unspentCoins.length;
+    const usableCoins = unspentCoins.filter((coin) => coin.amount >= COIN_SIZE);
+    const coinCount = usableCoins.length;
 
-    logger.info(`[COIN_MANAGEMENT] Current unspent coin count: ${coinCount}`);
+    logger.info(`[COIN_MANAGEMENT] Current usable coin count: ${coinCount} (of ${unspentCoins.length} total unspent)`);
 
-    // If we have enough coins, no action needed
+    // If we have enough usable coins, no action needed
     if (coinCount >= TARGET_COIN_COUNT) {
-      logger.info(`[COIN_MANAGEMENT] Wallet has ${coinCount} coins, which meets the target of ${TARGET_COIN_COUNT}. No action needed.`);
+      logger.info(`[COIN_MANAGEMENT] Wallet has ${coinCount} usable coins (${COIN_SIZE}+ mojos each), which meets the target of ${TARGET_COIN_COUNT}. No action needed.`);
       return;
     }
-
-    // Calculate the coin size needed
-    const defaultFee = APP_CONFIG.DEFAULT_FEE || 3000;
-    const defaultCoinAmount = APP_CONFIG.DEFAULT_COIN_AMOUNT || 300;
-    const coinSize = defaultCoinAmount + defaultFee;
 
     // Find the largest coin to split
     if (unspentCoins.length === 0) {
@@ -93,12 +92,7 @@ const runCoinManagement = async () => {
     }
 
     // Sort coins by amount (descending) to find the largest
-    const sortedCoins = [...unspentCoins].sort((a, b) => {
-      const amountA = a.amount || 0;
-      const amountB = b.amount || 0;
-      return amountB - amountA;
-    });
-
+    const sortedCoins = [...unspentCoins].sort((a, b) => (b.amount || 0) - (a.amount || 0));
     const largestCoin = sortedCoins[0];
     const largestCoinAmount = largestCoin.amount || 0;
     const coinId = largestCoin.id;
@@ -111,51 +105,46 @@ const runCoinManagement = async () => {
 
     logger.info(`[COIN_MANAGEMENT] Largest coin: ${largestCoinAmount} mojos, ID: ${coinId}`);
 
-    // Calculate how many coins we can create
-    // We need: (numberOfCoins * coinSize) + fee <= largestCoinAmount
-    // The split_coins RPC creates numberOfCoins new coins plus a remainder
+    // Calculate how many coins we need and can create
     const coinsNeeded = TARGET_COIN_COUNT - coinCount;
-    const feeForSplit = defaultFee;
+    const requiredAmount = (coinsNeeded * COIN_SIZE) + SPLIT_FEE;
 
-    // Calculate max coins we can create
-    // Total required = (numberOfCoins * coinSize) + fee
-    const maxPossibleCoins = Math.floor((largestCoinAmount - feeForSplit) / coinSize);
-
-    if (maxPossibleCoins < 1) {
+    // Check if we have enough mojos in the largest coin
+    if (largestCoinAmount < requiredAmount) {
       const currencySymbol = await getCurrencySymbol();
+      const maxPossibleCoins = Math.floor((largestCoinAmount - SPLIT_FEE) / COIN_SIZE);
+      
+      if (maxPossibleCoins < 1) {
+        logger.warn(
+          `[COIN_MANAGEMENT] WARNING: Largest coin (${formatMojos(largestCoinAmount, currencySymbol)}) is too small to split. ` +
+          `Need at least ${formatMojos(COIN_SIZE + SPLIT_FEE, currencySymbol)} to create one ${COIN_SIZE} mojo coin.`
+        );
+        return;
+      }
+
       logger.warn(
-        `[COIN_MANAGEMENT] WARNING: Largest coin (${formatMojos(largestCoinAmount, currencySymbol)}) is too small to split. ` +
-        `Each new coin requires ${formatMojos(coinSize, currencySymbol)} (DEFAULT_COIN_AMOUNT + DEFAULT_FEE).`
+        `[COIN_MANAGEMENT] WARNING: Insufficient balance to create ${coinsNeeded} coins. ` +
+        `Need ${formatMojos(requiredAmount, currencySymbol)} but largest coin only has ${formatMojos(largestCoinAmount, currencySymbol)}. ` +
+        `Creating ${maxPossibleCoins} coins instead.`
       );
+      
+      // Create as many as we can
+      const splitResult = await wallet.splitCoins(coinId, maxPossibleCoins, COIN_SIZE, SPLIT_FEE);
+      if (splitResult.success) {
+        logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. ${maxPossibleCoins} new coins of ${COIN_SIZE} mojos will be created once the transaction confirms.`);
+      } else {
+        logger.error(`[COIN_MANAGEMENT] Failed to split coins: ${splitResult.error}`);
+      }
       return;
     }
 
-    // Determine actual number of coins to create
-    const coinsToCreate = Math.min(coinsNeeded, maxPossibleCoins, TARGET_COIN_COUNT);
+    // We have enough - create the coins we need
+    logger.info(`[COIN_MANAGEMENT] Splitting coin ${coinId} into ${coinsNeeded} new coins of ${COIN_SIZE} mojos each (fee: ${SPLIT_FEE} mojos)`);
 
-    // Check if we can create the target number of coins
-    const currencySymbol = await getCurrencySymbol();
-
-    if (coinsToCreate < coinsNeeded) {
-      // Calculate remaining transactions possible
-      const currentBalance = await wallet.getWalletBalanceMojos();
-      const remainingTransactions = Math.floor((currentBalance || largestCoinAmount) / coinSize);
-
-      logger.warn(
-        `[COIN_MANAGEMENT] WARNING: Insufficient balance to create ${TARGET_COIN_COUNT} coins. ` +
-        `Creating ${coinsToCreate} coins instead. ` +
-        `There are approximately ${remainingTransactions} transactions worth of ${currencySymbol} remaining in the wallet. ` +
-        `Consider adding more funds to ensure CADT can operate efficiently.`
-      );
-    }
-
-    // Perform the coin split
-    logger.info(`[COIN_MANAGEMENT] Splitting coin ${coinId} into ${coinsToCreate} new coins of ${coinSize} mojos each`);
-
-    const splitResult = await wallet.splitCoins(coinId, coinsToCreate, coinSize, feeForSplit);
+    const splitResult = await wallet.splitCoins(coinId, coinsNeeded, COIN_SIZE, SPLIT_FEE);
 
     if (splitResult.success) {
-      logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. ${coinsToCreate} new coins will be created once the transaction confirms.`);
+      logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. ${coinsNeeded} new coins of ${COIN_SIZE} mojos will be created once the transaction confirms.`);
     } else {
       logger.error(`[COIN_MANAGEMENT] Failed to split coins: ${splitResult.error}`);
     }
