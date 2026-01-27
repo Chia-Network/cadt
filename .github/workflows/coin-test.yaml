@@ -77,7 +77,28 @@ jobs:
           echo "Wallet address: $CHIA_WALLET_ADDRESS"
           echo ""
           echo "Requesting 0.00001 XCH (10,000,000 mojos) from faucet..."
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.00001}' "${{ secrets.TESTNETA_FAUCET }}"
+          
+          FAUCET_URL="${{ secrets.TESTNETA_FAUCET }}"
+          FAUCET_DATA='{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.00001}'
+          
+          # Try normal DNS request first
+          if curl -sf -X POST -H "Content-Type: application/json" -d "$FAUCET_DATA" "$FAUCET_URL"; then
+            echo ""
+            echo "Faucet request succeeded via DNS"
+          else
+            echo ""
+            echo "DNS request failed, trying IP fallback (207.228.216.205)..."
+            # Extract path from URL and use IP with Host header
+            FAUCET_PATH=$(echo "$FAUCET_URL" | sed 's|https://[^/]*/|/|')
+            FAUCET_HOST=$(echo "$FAUCET_URL" | sed 's|https://||' | sed 's|/.*||')
+            curl -sf -X POST \
+              -H "Content-Type: application/json" \
+              -H "Host: $FAUCET_HOST" \
+              -d "$FAUCET_DATA" \
+              "https://207.228.216.205${FAUCET_PATH}" \
+              --insecure || echo "IP fallback also failed"
+          fi
+          
           echo ""
           echo ""
           echo "Waiting for wallet to receive funds..."
@@ -603,6 +624,9 @@ jobs:
             -e "watchdog.observers.inotify_buffer" \
             -e "filelock" \
             -e "Adding derivation record" \
+            -e "Received message: WSMessage" \
+            -e "DataLayer subscription update pool" \
+            -e "register_service" \
             || echo "No Chia debug log found or all lines filtered"
 
       - name: Show wallet transaction history
