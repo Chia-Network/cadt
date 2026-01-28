@@ -997,8 +997,25 @@ ProjectV2.init(
           this.setDataValue('projectSector', null);
         } else if (Array.isArray(value)) {
           this.setDataValue('projectSector', JSON.stringify(value));
+        } else if (typeof value === 'string') {
+          // Check if the string is already a valid JSON array
+          const trimmedValue = value.trim();
+          if (trimmedValue.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmedValue);
+              if (Array.isArray(parsed)) {
+                // It's already a valid JSON array string, store as-is
+                this.setDataValue('projectSector', trimmedValue);
+                return;
+              }
+            } catch {
+              // Not valid JSON, fall through to wrap in array
+            }
+          }
+          // Plain string - wrap it in an array
+          this.setDataValue('projectSector', JSON.stringify([value]));
         } else {
-          // If a string is passed, wrap it in an array
+          // For any other type, wrap in array
           this.setDataValue('projectSector', JSON.stringify([value]));
         }
       },
@@ -1023,8 +1040,25 @@ ProjectV2.init(
           this.setDataValue('projectType', null);
         } else if (Array.isArray(value)) {
           this.setDataValue('projectType', JSON.stringify(value));
+        } else if (typeof value === 'string') {
+          // Check if the string is already a valid JSON array
+          const trimmedValue = value.trim();
+          if (trimmedValue.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmedValue);
+              if (Array.isArray(parsed)) {
+                // It's already a valid JSON array string, store as-is
+                this.setDataValue('projectType', trimmedValue);
+                return;
+              }
+            } catch {
+              // Not valid JSON, fall through to wrap in array
+            }
+          }
+          // Plain string - wrap it in an array
+          this.setDataValue('projectType', JSON.stringify([value]));
         } else {
-          // If a string is passed, wrap it in an array
+          // For any other type, wrap in array
           this.setDataValue('projectType', JSON.stringify([value]));
         }
       },
