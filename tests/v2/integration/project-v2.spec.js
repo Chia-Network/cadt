@@ -1076,7 +1076,8 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
 
         expect(response.body.data).to.be.an('array');
         response.body.data.forEach(project => {
-          expect(project.projectStatus).to.equal('Listed');
+          // projectStatus is stored as JSON array, getter returns array
+          expect(project.projectStatus).to.deep.equal(['Listed']);
         });
       });
 
@@ -1088,7 +1089,10 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
 
         expect(response.body.data).to.be.an('array');
         response.body.data.forEach(project => {
-          expect(['Listed', 'Registered']).to.include(project.projectStatus);
+          // projectStatus is stored as JSON array, check if any element is in allowed values
+          const allowedStatuses = ['Listed', 'Registered'];
+          const hasValidStatus = project.projectStatus.some(status => allowedStatuses.includes(status));
+          expect(hasValidStatus).to.be.true;
         });
       });
 
@@ -1276,8 +1280,9 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
 
         expect(response.body.data).to.be.an('array');
         // Filter should work correctly with anchored regex
+        // projectStatus is stored as JSON array, getter returns array
         response.body.data.forEach(project => {
-          expect(project.projectStatus).to.equal('Listed');
+          expect(project.projectStatus).to.deep.equal(['Listed']);
         });
       });
 

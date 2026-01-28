@@ -248,7 +248,7 @@ export const generateProject = (cadTrustProgramId = null) => {
     projectSector: ['Energy demand'],
     projectType: ['Solar'],
     projectSubtype: 'Solar',
-    projectStatus: 'Registered',
+    projectStatus: ['Registered'],
     projectStatusDate: '2024-01-15',
     projectUnitMetric: 'tCO2e',
   };
@@ -277,7 +277,7 @@ export const generateProjectMaximal = (cadTrustProgramId = null) => {
     projectSector: ['Afforestation and reforestation'],
     projectType: ['Afforestation', 'Reforestation'],
     projectSubtype: 'Native Species',
-    projectStatus: 'Validated',
+    projectStatus: ['Validated'],
     projectStatusDate: '2024-12-31',
     projectUnitMetric: 'tCO2e',
   };

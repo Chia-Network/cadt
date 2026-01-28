@@ -1035,9 +1035,47 @@ ProjectV2.init(
       field: 'project_subtype',
     },
     projectStatus: {
-      type: Sequelize.STRING,
+      type: Sequelize.TEXT,
       allowNull: true,
       field: 'project_status',
+      // Stored as JSON string in DB, returned as array to API
+      get() {
+        const rawValue = this.getDataValue('projectStatus');
+        if (!rawValue) return null;
+        try {
+          return JSON.parse(rawValue);
+        } catch {
+          // If it's not valid JSON, return as single-item array for backwards compatibility
+          return [rawValue];
+        }
+      },
+      set(value) {
+        if (value === null || value === undefined) {
+          this.setDataValue('projectStatus', null);
+        } else if (Array.isArray(value)) {
+          this.setDataValue('projectStatus', JSON.stringify(value));
+        } else if (typeof value === 'string') {
+          // Check if the string is already a valid JSON array
+          const trimmedValue = value.trim();
+          if (trimmedValue.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmedValue);
+              if (Array.isArray(parsed)) {
+                // It's already a valid JSON array string, store as-is
+                this.setDataValue('projectStatus', trimmedValue);
+                return;
+              }
+            } catch {
+              // Not valid JSON, fall through to wrap in array
+            }
+          }
+          // Plain string - wrap it in an array
+          this.setDataValue('projectStatus', JSON.stringify([value]));
+        } else {
+          // For any other type, wrap in array
+          this.setDataValue('projectStatus', JSON.stringify([value]));
+        }
+      },
     },
     projectStatusDate: {
       type: Sequelize.DATEONLY,

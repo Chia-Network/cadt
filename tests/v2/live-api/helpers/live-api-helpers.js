@@ -1001,7 +1001,9 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
               const storeNames = Object.keys(status.stores);
               const storesSummary = storeNames.map(name => {
                 const store = status.stores[name];
-                return `${name}:${store.created ? 'created' : 'pending'}/${store.confirmed ? 'confirmed' : 'unconfirmed'}`;
+                // Check if store has ID (id !== null means store is created)
+                const hasId = store.id !== null && store.id !== undefined;
+                return `${name}:${hasId ? 'created' : 'pending'}/${store.confirmed ? 'confirmed' : 'unconfirmed'}`;
               }).join(', ');
               console.log(`    Stores: ${storesSummary}`);
             }
@@ -1199,7 +1201,9 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
               const storeNames = Object.keys(status.stores);
               const storesSummary = storeNames.map(name => {
                 const store = status.stores[name];
-                return `${name}:${store.created ? 'created' : 'pending'}/${store.confirmed ? 'confirmed' : 'unconfirmed'}`;
+                // Check if store has ID (id !== null means store is created)
+                const hasId = store.id !== null && store.id !== undefined;
+                return `${name}:${hasId ? 'created' : 'pending'}/${store.confirmed ? 'confirmed' : 'unconfirmed'}`;
               }).join(', ');
               console.log(`    Stores: ${storesSummary}`);
             }

@@ -89,7 +89,7 @@ export const generateV2ProjectData = async (overrides = {}) => {
     project_sector: [getRandomPicklistValue('projectSector') || 'Energy'],
     project_type: [getRandomPicklistValue('projectType') || 'Renewable Energy'],
     project_subtype: 'Solar',
-    project_status: getRandomPicklistValue('projectStatus') || 'Active',
+    project_status: JSON.stringify([getRandomPicklistValue('projectStatus') || 'Active']),
     project_status_date: generateDate(),
     project_unit_metric: getRandomPicklistValue('projectUnitMetric') || 'tCO2e',
     cad_trust_reference_project_id: `REF-${Date.now()}`,

@@ -180,19 +180,38 @@ const getWalletBalance = async () => {
   }
 };
 
-const waitForAllTransactionsToConfirm = async () => {
+const waitForAllTransactionsToConfirm = async (startTime = null, maxWaitMs = 1800000) => {
   if (USE_SIMULATOR) {
     return true;
   }
 
-  const unconfirmedTransactions = await hasUnconfirmedTransactions();
-  await new Promise((resolve) => setTimeout(() => resolve(), 15000));
-
-  if (unconfirmedTransactions) {
-    return waitForAllTransactionsToConfirm();
+  // Initialize start time on first call
+  if (startTime === null) {
+    startTime = Date.now();
   }
 
-  return true;
+  // Check for timeout (default 30 minutes)
+  const elapsed = Date.now() - startTime;
+  if (elapsed > maxWaitMs) {
+    logger.warn(`waitForAllTransactionsToConfirm timed out after ${Math.round(elapsed / 1000)}s - proceeding anyway`);
+    return true;
+  }
+
+  try {
+    const unconfirmedTransactions = await hasUnconfirmedTransactions();
+    await new Promise((resolve) => setTimeout(() => resolve(), 15000));
+
+    if (unconfirmedTransactions) {
+      return waitForAllTransactionsToConfirm(startTime, maxWaitMs);
+    }
+
+    return true;
+  } catch (error) {
+    // If we can't check transactions (wallet unavailable), wait and retry
+    logger.warn(`Error checking transactions: ${error.message} - retrying...`);
+    await new Promise((resolve) => setTimeout(() => resolve(), 15000));
+    return waitForAllTransactionsToConfirm(startTime, maxWaitMs);
+  }
 };
 
 const hasUnconfirmedTransactions = async () => {
