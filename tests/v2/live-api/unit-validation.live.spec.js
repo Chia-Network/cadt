@@ -108,8 +108,9 @@ describe('Unit Live API Validation Tests', function () {
   });
   describe('Step 4: POST Request Tests', function () {
     it('should create units with typical, minimal, and maximal data', async function () {
-      // Get issuance ID from earlier test (issuance-validation.spec.js runs before this)
+      // Get issuance ID from earlier test (automatically checks file for cross-process access)
       const issuanceId = getFirstCreatedId('issuance');
+      
       if (!issuanceId) {
         throw new Error('Issuance ID not found. Ensure issuance-validation.spec.js runs before unit-validation.spec.js');
       }

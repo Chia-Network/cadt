@@ -1,9 +1,19 @@
 /**
  * Shared state to track all created IDs across test files
+ * Uses both in-memory state (for same-process access) and file-based state (for cross-process access)
  * Used for cleanup at the end of test run
  */
 
-import { addVerificationRecord as addVerificationRecordToFile, getVerificationState, clearVerificationState as clearVerificationStateFile } from './verification-state.js';
+import { 
+  addVerificationRecord as addVerificationRecordToFile, 
+  getVerificationState, 
+  clearVerificationState as clearVerificationStateFile,
+  getCreatedIdsByType,
+  getFirstCreatedIdFromFile,
+  addCreatedIdToFile,
+  clearCreatedIdsFromFile,
+  clearAllState,
+} from './verification-state.js';
 
 // Test execution mode: 'extended' (commit per resource) or 'short' (batch commits across all resources)
 // Defaults to 'extended' for backward compatibility
@@ -118,33 +128,51 @@ export const clearBatchVerificationRecords = () => {
 
 /**
  * Add a created ID to the shared state
+ * Persists to both in-memory state (same-process) and file (cross-process)
  * @param {string} type - Resource type (e.g., 'methodology', 'project')
  * @param {string|object} id - The created ID (UUID string or composite key object)
  */
 export const addCreatedId = (type, id) => {
+  // Add to in-memory state
   if (!createdIds[type]) {
     createdIds[type] = [];
   }
   createdIds[type].push(id);
+  
+  // Also persist to file for cross-process access
+  addCreatedIdToFile(type, id);
 };
 
 /**
  * Get created IDs for a specific type
+ * Checks in-memory state first, falls back to file for cross-process access
  * @param {string} type - Resource type (e.g., 'methodology', 'project')
  * @returns {Array<string|object>} Array of IDs for that type
  */
 export const getCreatedIds = (type) => {
-  return createdIds[type] || [];
+  // Check in-memory first (same process)
+  const memoryIds = createdIds[type] || [];
+  if (memoryIds.length > 0) {
+    return memoryIds;
+  }
+  // Fall back to file (cross-process)
+  return getCreatedIdsByType(type);
 };
 
 /**
  * Get the first created ID for a specific type (useful for getting a single parent entity)
+ * Checks in-memory state first, falls back to file for cross-process access
  * @param {string} type - Resource type
  * @returns {string|object|null} First ID or null if none exist
  */
 export const getFirstCreatedId = (type) => {
-  const ids = createdIds[type] || [];
-  return ids.length > 0 ? ids[0] : null;
+  // Check in-memory first (same process)
+  const memoryIds = createdIds[type] || [];
+  if (memoryIds.length > 0) {
+    return memoryIds[0];
+  }
+  // Fall back to file (cross-process)
+  return getFirstCreatedIdFromFile(type);
 };
 
 /**
@@ -289,11 +317,34 @@ export const getAllCreatedIds = () => {
 
 /**
  * Clear all tracked IDs (useful for test cleanup)
+ * Clears both in-memory and file state
  */
 export const clearAllCreatedIds = () => {
+  // Clear in-memory
   for (const key in createdIds) {
     createdIds[key] = [];
   }
+  // Clear file
+  clearCreatedIdsFromFile();
+};
+
+/**
+ * Clear ALL shared state (IDs, verification records, tested endpoints)
+ * Call this at the beginning of a fresh test run
+ */
+export const clearAllSharedState = () => {
+  // Clear in-memory
+  for (const key in createdIds) {
+    createdIds[key] = [];
+  }
+  for (const key in batchVerificationRecords) {
+    delete batchVerificationRecords[key];
+  }
+  testedEndpoints.POST = [];
+  testedEndpoints.PUT = [];
+  testedEndpoints.DELETE = [];
+  // Clear file (removes entire file)
+  clearAllState();
 };
 
 // Track endpoints being tested for logging

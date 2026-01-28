@@ -1,7 +1,13 @@
 /**
- * Shared state for batch verification records across test runs
- * Stores verification records in a JSON file so they persist between separate test executions
- * State file location: tests/v2/live-api/.verification-state.json
+ * Unified shared state for cross-process test communication
+ * Stores both verification records and created IDs in a JSON file
+ * State file location: tests/v2/live-api/.test-state.json
+ * 
+ * Structure:
+ * {
+ *   verificationRecords: { type: { id: { operation, expectedData } } },
+ *   createdIds: { type: [id1, id2, ...] }
+ * }
  */
 
 import fs from 'fs';
@@ -10,49 +16,66 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const STATE_FILE = path.join(__dirname, '../.verification-state.json');
+const STATE_FILE = path.join(__dirname, '../.test-state.json');
 
 /**
- * Get verification state from file
- * @returns {object} Verification records organized by type and id
+ * Get full state from file
+ * @returns {object} Full state object
  */
-export const getVerificationState = () => {
+const getFullState = () => {
   try {
     if (fs.existsSync(STATE_FILE)) {
       const content = fs.readFileSync(STATE_FILE, 'utf8');
       return JSON.parse(content);
     }
   } catch (error) {
-    console.warn(`⚠️  Error reading verification state file: ${error.message}`);
+    console.warn(`⚠️  Error reading test state file: ${error.message}`);
   }
-
-  return {};
+  return { verificationRecords: {}, createdIds: {} };
 };
 
 /**
- * Save verification state to file
- * @param {object} state - Verification records organized by type and id
+ * Save full state to file
+ * @param {object} state - Full state object
  */
-export const saveVerificationState = (state) => {
+const saveFullState = (state) => {
   try {
     fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf8');
   } catch (error) {
-    console.error(`❌ Error saving verification state file: ${error.message}`);
+    console.error(`❌ Error saving test state file: ${error.message}`);
     throw error;
   }
 };
 
+// ============================================
+// VERIFICATION RECORDS (for batch verification)
+// ============================================
+
 /**
- * Clear verification state file
+ * Get verification state from file
+ * @returns {object} Verification records organized by type and id
+ */
+export const getVerificationState = () => {
+  return getFullState().verificationRecords || {};
+};
+
+/**
+ * Save verification state to file (legacy compatibility)
+ * @param {object} state - Verification records organized by type and id
+ */
+export const saveVerificationState = (state) => {
+  const fullState = getFullState();
+  fullState.verificationRecords = state;
+  saveFullState(fullState);
+};
+
+/**
+ * Clear verification state (but keep createdIds)
  */
 export const clearVerificationState = () => {
-  try {
-    if (fs.existsSync(STATE_FILE)) {
-      fs.unlinkSync(STATE_FILE);
-    }
-  } catch (error) {
-    console.warn(`⚠️  Error clearing verification state file: ${error.message}`);
-  }
+  const fullState = getFullState();
+  fullState.verificationRecords = {};
+  saveFullState(fullState);
 };
 
 /**
@@ -63,15 +86,89 @@ export const clearVerificationState = () => {
  * @param {object} expectedData - Expected data for POST/PUT operations
  */
 export const addVerificationRecord = (operation, type, id, expectedData = null) => {
-  const state = getVerificationState();
-  if (!state[type]) {
-    state[type] = {};
+  const fullState = getFullState();
+  if (!fullState.verificationRecords) {
+    fullState.verificationRecords = {};
+  }
+  if (!fullState.verificationRecords[type]) {
+    fullState.verificationRecords[type] = {};
   }
   // Store composite keys as JSON strings, single keys as strings
   const idKey = typeof id === 'object' ? JSON.stringify(id) : id;
-  state[type][idKey] = {
+  fullState.verificationRecords[type][idKey] = {
     operation,
     expectedData,
   };
-  saveVerificationState(state);
+  saveFullState(fullState);
+};
+
+// ============================================
+// CREATED IDS (for cross-process ID sharing)
+// ============================================
+
+/**
+ * Get all created IDs from file
+ * @returns {object} Created IDs organized by type: { type: [id1, id2, ...] }
+ */
+export const getCreatedIdsFromFile = () => {
+  return getFullState().createdIds || {};
+};
+
+/**
+ * Get created IDs for a specific type from file
+ * @param {string} type - Resource type
+ * @returns {Array} Array of IDs for that type
+ */
+export const getCreatedIdsByType = (type) => {
+  const createdIds = getCreatedIdsFromFile();
+  return createdIds[type] || [];
+};
+
+/**
+ * Get the first created ID for a specific type from file
+ * @param {string} type - Resource type
+ * @returns {string|object|null} First ID or null if none exist
+ */
+export const getFirstCreatedIdFromFile = (type) => {
+  const ids = getCreatedIdsByType(type);
+  return ids.length > 0 ? ids[0] : null;
+};
+
+/**
+ * Add a created ID to the file state
+ * @param {string} type - Resource type
+ * @param {string|object} id - The created ID
+ */
+export const addCreatedIdToFile = (type, id) => {
+  const fullState = getFullState();
+  if (!fullState.createdIds) {
+    fullState.createdIds = {};
+  }
+  if (!fullState.createdIds[type]) {
+    fullState.createdIds[type] = [];
+  }
+  fullState.createdIds[type].push(id);
+  saveFullState(fullState);
+};
+
+/**
+ * Clear created IDs (but keep verificationRecords)
+ */
+export const clearCreatedIdsFromFile = () => {
+  const fullState = getFullState();
+  fullState.createdIds = {};
+  saveFullState(fullState);
+};
+
+/**
+ * Clear ALL state (both verification records and created IDs)
+ */
+export const clearAllState = () => {
+  try {
+    if (fs.existsSync(STATE_FILE)) {
+      fs.unlinkSync(STATE_FILE);
+    }
+  } catch (error) {
+    console.warn(`⚠️  Error clearing test state file: ${error.message}`);
+  }
 };
