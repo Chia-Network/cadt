@@ -51,7 +51,9 @@ const waitForDataLayerAvailable = async (maxWaitMs = 300000, pollIntervalMs = 50
     attempt++;
     try {
       // Dynamically import to avoid circular dependency issues
-      const datalayer = await import('../datalayer/writeService.js');
+      const datalayerModule = await import('../datalayer/writeService.js');
+      // Access the default export which contains dataLayerAvailable
+      const datalayer = datalayerModule.default;
       const isAvailable = await datalayer.dataLayerAvailable();
       
       if (isAvailable) {

@@ -45,8 +45,8 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // Startup state middleware - blocks requests until CADT is fully ready
 // This runs early in the chain but after body parsing
 app.use(async function (req, res, next) {
-  // Always allow health endpoint
-  if (req.path === '/health') {
+  // Always allow health endpoints
+  if (req.path === '/health' || req.path === '/v2/health') {
     return next();
   }
 
@@ -113,6 +113,11 @@ app.use((req, res, next) => {
 
 // Common assertions on every endpoint
 app.use(async function (req, res, next) {
+  // Skip assertions for health endpoints
+  if (req.path === '/health' || req.path === '/v2/health') {
+    return next();
+  }
+
   try {
     await assertChiaNetworkMatchInConfiguration();
     await assertDataLayerAvailable();
