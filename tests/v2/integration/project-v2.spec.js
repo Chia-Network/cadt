@@ -242,7 +242,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'VALID-MULTI-SECTOR',
         projectId: 'VALID-MULTI-SECTOR-001',
         projectName: 'Valid Multi-Sector Project',
-        projectSector: ['Agriculture', 'Energy'],
+        projectSector: ['Agriculture', 'Energy demand'],
       };
 
       const response = await supertest(app)

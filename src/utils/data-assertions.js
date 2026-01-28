@@ -18,7 +18,7 @@ export const assertChiaNetworkMatchInConfiguration = async () => {
 
     if (!network.includes(CHIA_NETWORK)) {
       throw new Error(
-        `Your node is on ${network} but your climate warehouse is set to ${CHIA_NETWORK}, please change your config so they match`,
+        `Your node is on ${network} but CADT is set to ${CHIA_NETWORK}, please change your config so they match`,
       );
     }
   }
@@ -107,7 +107,7 @@ export const assertWalletIsAvailable = async () => {
   if (!USE_SIMULATOR) {
     if (!(await datalayer.walletIsAvailable())) {
       throw new Error(
-        'Your wallet is not available, please turn it on to continue using climate warehouse',
+        'Your wallet is not available, please turn it on to continue using CADT',
       );
     }
   }

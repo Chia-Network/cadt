@@ -339,13 +339,36 @@ export const homeOrgSyncStatus = async (req, res) => {
     await assertV2HomeOrgExists();
     await assertWalletIsSynced();
 
-    const walletSynced = await datalayer.walletIsSynced();
     const homeOrg = await OrganizationsV2.getHomeOrg();
     const pendingCommitsCount = await StagingV2.count({
       where: { committed: true },
     });
 
-    const { sync_status } = await datalayer.getSyncStatus(homeOrg.org_uid);
+    // In simulator mode, assume wallet is synced and profile is synced
+    let walletSynced = true;
+    let homeOrgProfileSynced = true;
+
+    if (!USE_SIMULATOR) {
+      walletSynced = await datalayer.walletIsSynced();
+      
+      // Get sync status - may fail or return undefined if store isn't synced yet
+      try {
+        const syncResult = await datalayer.getSyncStatus(homeOrg.org_uid);
+        const syncStatus = syncResult?.sync_status;
+        
+        if (syncStatus && syncStatus.target_root_hash !== undefined) {
+          homeOrgProfileSynced =
+            syncStatus.target_root_hash === homeOrg.org_hash?.split('0x')?.[1];
+        } else {
+          // Store not synced yet or sync status not available
+          homeOrgProfileSynced = false;
+        }
+      } catch (syncError) {
+        // Sync status not available yet - store might still be initializing
+        loggerV2.debug(`[v2]: Could not get sync status for home org: ${syncError.message}`);
+        homeOrgProfileSynced = false;
+      }
+    }
 
     return res.json({
       ready:
@@ -354,8 +377,7 @@ export const homeOrgSyncStatus = async (req, res) => {
         wallet_synced: walletSynced,
         home_org_synced: Boolean(homeOrg?.synced),
         pending_commits: pendingCommitsCount,
-        home_org_profile_synced:
-          sync_status.target_root_hash === homeOrg.org_hash?.split('0x')?.[1],
+        home_org_profile_synced: homeOrgProfileSynced,
       },
       success: true,
     });

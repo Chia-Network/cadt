@@ -1,6 +1,6 @@
 # CADT RPC API Guide
 
-This page lists commands and examples from the Climate Warehouse RPC API.
+This page lists commands and examples from the CADT RPC API.
 
 When using this guide, it is important to understand the workflow CADT employs for managing climate data updates via RPCs.
 The CADT paradigm ensures that all updates first go into local "staging", which is private and not shared with

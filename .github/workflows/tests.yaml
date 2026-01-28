@@ -377,14 +377,46 @@ jobs:
           echo "=========================================="
           cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
 
-      - name: Show Chia debug log after tests
+      - name: Show Chia debug log after tests (filtered)
         if: always()
         shell: bash
         run: |
           echo "=========================================="
-          echo "Chia debug log (last 500 lines):"
+          echo "Chia debug log (filtered, last 5000 lines):"
           echo "=========================================="
-          tail -n 500 ~/.chia/mainnet/log/debug.log || echo "No Chia debug log found"
+          echo "Filtering out noisy messages..."
+          echo ""
+          tail -n 5000 ~/.chia/mainnet/log/debug.log 2>/dev/null | grep -v \
+            -e "Connecting: wss://127.0.0.1" \
+            -e "respond_block_headers from" \
+            -e "Time for request request_block_headers" \
+            -e "get_timestamp_for_height_from_peer add to cache" \
+            -e "request_puzzle_solution to peer" \
+            -e "acquired on.*keyring.yaml.lock" \
+            -e "released on.*keyring.yaml.lock" \
+            -e "request_header_blocks" \
+            -e "coin_state_update" \
+            -e "new_signage_point_or_end_of_sub_slot" \
+            -e "request_removal_proof" \
+            -e "RespondToCoinUpdates" \
+            -e "register_interest_in_coin" \
+            -e "request_children to peer" \
+            -e "respond_to_coin_update" \
+            -e "_coin_subscriptions" \
+            -e "Getting generator for" \
+            -e "SubscriptionConfig" \
+            -e "sub epoch.*start weight is" \
+            -e "Puzzle at index" \
+            -e "Attempting to acquire lock" \
+            -e "watchdog.observers.inotify_buffer" \
+            -e "filelock" \
+            -e "Adding derivation record" \
+            -e "Received message: WSMessage" \
+            -e "DataLayer subscription update pool" \
+            -e "register_service" \
+            -e "Cannot connect to host 127.0.0.1" \
+            -e "Failed to connect to PeerInfo" \
+            || echo "No Chia debug log found or all lines filtered"
 
       - name: Stop CADT
         if: always()
@@ -647,14 +679,46 @@ jobs:
           echo "=========================================="
           cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
 
-      - name: Show Chia debug log after tests
+      - name: Show Chia debug log after tests (filtered)
         if: always()
         shell: bash
         run: |
           echo "=========================================="
-          echo "Chia debug log (last 500 lines):"
+          echo "Chia debug log (filtered, last 5000 lines):"
           echo "=========================================="
-          tail -n 500 ~/.chia/mainnet/log/debug.log || echo "No Chia debug log found"
+          echo "Filtering out noisy messages..."
+          echo ""
+          tail -n 5000 ~/.chia/mainnet/log/debug.log 2>/dev/null | grep -v \
+            -e "Connecting: wss://127.0.0.1" \
+            -e "respond_block_headers from" \
+            -e "Time for request request_block_headers" \
+            -e "get_timestamp_for_height_from_peer add to cache" \
+            -e "request_puzzle_solution to peer" \
+            -e "acquired on.*keyring.yaml.lock" \
+            -e "released on.*keyring.yaml.lock" \
+            -e "request_header_blocks" \
+            -e "coin_state_update" \
+            -e "new_signage_point_or_end_of_sub_slot" \
+            -e "request_removal_proof" \
+            -e "RespondToCoinUpdates" \
+            -e "register_interest_in_coin" \
+            -e "request_children to peer" \
+            -e "respond_to_coin_update" \
+            -e "_coin_subscriptions" \
+            -e "Getting generator for" \
+            -e "SubscriptionConfig" \
+            -e "sub epoch.*start weight is" \
+            -e "Puzzle at index" \
+            -e "Attempting to acquire lock" \
+            -e "watchdog.observers.inotify_buffer" \
+            -e "filelock" \
+            -e "Adding derivation record" \
+            -e "Received message: WSMessage" \
+            -e "DataLayer subscription update pool" \
+            -e "register_service" \
+            -e "Cannot connect to host 127.0.0.1" \
+            -e "Failed to connect to PeerInfo" \
+            || echo "No Chia debug log found or all lines filtered"
 
       - name: Stop CADT
         if: always()
@@ -902,14 +966,46 @@ jobs:
           echo "=========================================="
           cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
 
-      - name: Show Chia debug log after tests
+      - name: Show Chia debug log after tests (filtered)
         if: always()
         shell: bash
         run: |
           echo "=========================================="
-          echo "Chia debug log (last 500 lines):"
+          echo "Chia debug log (filtered, last 5000 lines):"
           echo "=========================================="
-          tail -n 500 ~/.chia/mainnet/log/debug.log || echo "No Chia debug log found"
+          echo "Filtering out noisy messages..."
+          echo ""
+          tail -n 5000 ~/.chia/mainnet/log/debug.log 2>/dev/null | grep -v \
+            -e "Connecting: wss://127.0.0.1" \
+            -e "respond_block_headers from" \
+            -e "Time for request request_block_headers" \
+            -e "get_timestamp_for_height_from_peer add to cache" \
+            -e "request_puzzle_solution to peer" \
+            -e "acquired on.*keyring.yaml.lock" \
+            -e "released on.*keyring.yaml.lock" \
+            -e "request_header_blocks" \
+            -e "coin_state_update" \
+            -e "new_signage_point_or_end_of_sub_slot" \
+            -e "request_removal_proof" \
+            -e "RespondToCoinUpdates" \
+            -e "register_interest_in_coin" \
+            -e "request_children to peer" \
+            -e "respond_to_coin_update" \
+            -e "_coin_subscriptions" \
+            -e "Getting generator for" \
+            -e "SubscriptionConfig" \
+            -e "sub epoch.*start weight is" \
+            -e "Puzzle at index" \
+            -e "Attempting to acquire lock" \
+            -e "watchdog.observers.inotify_buffer" \
+            -e "filelock" \
+            -e "Adding derivation record" \
+            -e "Received message: WSMessage" \
+            -e "DataLayer subscription update pool" \
+            -e "register_service" \
+            -e "Cannot connect to host 127.0.0.1" \
+            -e "Failed to connect to PeerInfo" \
+            || echo "No Chia debug log found or all lines filtered"
 
       - name: Stop CADT
         if: always()

@@ -17,6 +17,9 @@ import app from '../middleware';
 let migrationsReady = false;
 let migrationsReadyPromise = null;
 
+// Track when initial coin management is complete (needed for write operations)
+let coinManagementReady = false;
+
 /**
  * Initialize databases and run migrations
  * Returns a promise that resolves when all migrations are complete
@@ -74,6 +77,10 @@ export const initializeDatabases = async () => {
     // Note: scheduler.start is async - it runs coin management first before starting other tasks
     setTimeout(async () => {
       await scheduler.start(enableV1, enableV2);
+      // Mark coin management as ready after scheduler.start completes
+      // (scheduler.start awaits runCoinManagement before starting other tasks)
+      coinManagementReady = true;
+      logger.info('Initial coin management completed - write operations now available');
     }, 5000);
   }).catch((error) => {
     logger.error('Error initializing databases:', error);
@@ -89,6 +96,14 @@ export const initializeDatabases = async () => {
  */
 export const areMigrationsReady = () => {
   return migrationsReady;
+};
+
+/**
+ * Check if initial coin management is complete
+ * @returns {boolean} True if coin management has completed and write operations are available
+ */
+export const isCoinManagementReady = () => {
+  return coinManagementReady;
 };
 
 /**
