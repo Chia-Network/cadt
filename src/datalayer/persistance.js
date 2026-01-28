@@ -1072,6 +1072,8 @@ const getSyncStatus = async (storeId) => {
     return {
       sync_status: {
         generation: 10000,
+        target_generation: 10000,
+        target_root_hash: '0000000000000000000000000000000000000000000000000000000000000000',
       },
     };
   }
