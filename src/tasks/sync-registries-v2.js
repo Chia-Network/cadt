@@ -333,7 +333,13 @@ const syncOrganizationAuditV2 = async (organization) => {
     if (!CONFIG.USE_SIMULATOR) {
       await new Promise((resolve) => setTimeout(resolve, 30000));
 
-      if (
+      // For home org, we can skip sync_status validation since we created the data locally
+      // DataLayer may not have processed our own updates yet, which is fine
+      if (isHomeOrg) {
+        loggerV2.debug(
+          `[v2]: Home org sync_status check skipped - data is local (generation=${sync_status?.generation}, target_generation=${sync_status?.target_generation})`,
+        );
+      } else if (
         sync_status &&
         sync_status?.generation &&
         sync_status?.target_generation
@@ -348,23 +354,27 @@ const syncOrganizationAuditV2 = async (organization) => {
         return;
       }
 
-      const orgRequiredResetDueToInvalidGenerationIndex =
-        await orgGenerationMismatchCheckV2(
-          organization.org_uid,
-          auditTableHighestProcessedGenerationIndex,
-          rootHistoryHighestGenerationIndex,
-          sync_status.generation,
-          sync_status.target_generation,
-        );
+      // Skip generation mismatch check for home org - we trust our own data
+      if (!isHomeOrg) {
+        const orgRequiredResetDueToInvalidGenerationIndex =
+          await orgGenerationMismatchCheckV2(
+            organization.org_uid,
+            auditTableHighestProcessedGenerationIndex,
+            rootHistoryHighestGenerationIndex,
+            sync_status.generation,
+            sync_status.target_generation,
+          );
 
-      if (orgRequiredResetDueToInvalidGenerationIndex) {
-        loggerV2.info(
-          `${organization.name} was ahead of datalayer and needed to resync a few generations. trying again shortly...`,
-        );
-        return;
+        if (orgRequiredResetDueToInvalidGenerationIndex) {
+          loggerV2.info(
+            `${organization.name} was ahead of datalayer and needed to resync a few generations. trying again shortly...`,
+          );
+          return;
+        }
       }
 
-      if (toBeProcessedDatalayerGenerationIndex > sync_status.generation) {
+      // For home org, we don't need to check if DataLayer has caught up - we created the data
+      if (!isHomeOrg && toBeProcessedDatalayerGenerationIndex > sync_status.generation) {
         const warningMsg = [
           `Generation ${toBeProcessedDatalayerGenerationIndex + 1} does not exist in ${organization.name} (registry store ${organization.registry_id}) root history`,
           `DataLayer not yet caught up to generation ${auditTableHighestProcessedGenerationIndex + 1}. The the highest generation datalayer has synced is ${sync_status.generation}.`,
