@@ -213,10 +213,10 @@ export const generateLocationMaximal = (cadTrustProjectId) => ({
 
 export const generateLocationLongStrings = (cadTrustProjectId) => ({
   locationCountry: 'United States of America',
-  locationRegion: getLongString(255),
-  locationGis: getLongString(10000),
+  locationRegion: getLongString(300), // Exceeds max of 255
+  locationGis: getLongString(15000), // Exceeds max of 10000
   locationMapType: 'GeoJSON',
-  locationMapFileLink: `https://example.com/${getLongString(400)}`,
+  locationMapFileLink: `https://example.com/${getLongString(600)}`, // Exceeds max of 500
   cadTrustProjectId,
 });
 
@@ -338,7 +338,7 @@ export const generateEstimationMaximal = (cadTrustProjectId) => ({
 export const generateEstimationLongStrings = (cadTrustProjectId) => ({
   estimationStartDate: '2024-01-01',
   estimationEndDate: '2024-12-31',
-  estimationReferenceNo: getLongString(255),
+  estimationReferenceNo: getLongString(300), // Exceeds max of 255
   cadTrustProjectId,
 });
 
@@ -390,9 +390,9 @@ export const generateRatingMaximal = (cadTrustProjectId) => ({
 });
 
 export const generateRatingLongStrings = (cadTrustProjectId) => ({
-  ratingName: getLongString(255),
-  ratingValue: getLongString(255),
-  ratingLink: `https://example.com/${getLongString(400)}`,
+  ratingName: getLongString(300), // Exceeds max of 255
+  ratingValue: getLongString(300), // Exceeds max of 255
+  ratingLink: `https://example.com/${getLongString(600)}`, // Exceeds max of 500
   cadTrustProjectId,
 });
 

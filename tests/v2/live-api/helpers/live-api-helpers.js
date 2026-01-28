@@ -984,9 +984,13 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
 
   // Track if we've seen a PENDING org - if it disappears, creation failed
   let sawPendingOrg = false;
+  // Track consecutive polls with no orgs and no creation in progress
+  let noProgressCount = 0;
+  const noProgressThreshold = 6; // After 60 seconds (6 x 10s interval) with no progress, fail fast
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    let creationInProgress = false;
 
     try {
       // First, check creation status endpoint for detailed progress
@@ -994,6 +998,24 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
         const statusResponse = await request.get('/v2/organizations/status');
         if (statusResponse.status === 200 && statusResponse.body) {
           const status = statusResponse.body;
+          
+          // Check for FAILED state - fail fast
+          if (status.state === 'FAILED') {
+            console.log(`  [${elapsed}s] ❌ Organization creation FAILED!`);
+            console.log(`  Error: ${status.error || 'Unknown error'}`);
+            console.log(`  Status: ${JSON.stringify(status, null, 2)}`);
+            throw new Error(
+              `Organization creation failed with state FAILED after ${elapsed}s. ` +
+              `Error: ${status.error || 'Unknown error'}`
+            );
+          }
+          
+          // Check if there's active creation
+          if (status.inProgress || (status.state && status.state !== 'COMPLETE' && status.state !== 'FAILED')) {
+            creationInProgress = true;
+            noProgressCount = 0; // Reset counter - we have progress
+          }
+          
           // Only log if there's active creation or interesting state
           if (status.state || status.name || status.stores) {
             console.log(`  [${elapsed}s] Creation status: state=${status.state || 'unknown'}, name="${status.name || 'unnamed'}"`);
@@ -1087,6 +1109,8 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           const pendingOrg = orgs.find(o => o.org_uid === 'PENDING' || o.orgUid === 'PENDING');
           if (pendingOrg) {
             sawPendingOrg = true;
+            creationInProgress = true;
+            noProgressCount = 0; // Reset counter
             console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
           } else if (sawPendingOrg && orgs.length === 0) {
             // We had a PENDING org but now it's gone with no replacement - creation failed
@@ -1108,6 +1132,29 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
             );
           } else {
             console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
+            
+            // Track no progress - if no PENDING org and no creation in progress for too long, fail fast
+            if (!creationInProgress && orgs.length === 0) {
+              noProgressCount++;
+              if (noProgressCount >= noProgressThreshold) {
+                console.log(`  [${elapsed}s] ❌ No organization creation progress detected after ${noProgressCount * 10}s`);
+                
+                // Try to get status
+                try {
+                  const statusResponse = await request.get('/v2/organizations/status');
+                  if (statusResponse.body) {
+                    console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
+                  }
+                } catch (e) {
+                  console.log(`  Could not get final status: ${e.message}`);
+                }
+                
+                throw new Error(
+                  `Organization creation appears to have failed. No PENDING organization or creation progress detected after ${elapsed}s. ` +
+                  `Check server logs for details about why creation failed.`
+                );
+              }
+            }
           }
         }
       } else {
@@ -1117,9 +1164,11 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
         }
       }
     } catch (error) {
-      // Re-throw fatal errors (like PENDING org disappeared) - don't swallow them
+      // Re-throw fatal errors (like PENDING org disappeared or no progress) - don't swallow them
       if (error.message.includes('PENDING organization was cleaned up') ||
-          error.message.includes('Organization creation failed')) {
+          error.message.includes('Organization creation failed') ||
+          error.message.includes('Organization creation appears to have failed') ||
+          error.message.includes('creation FAILED')) {
         throw error;
       }
       console.log(`  [${elapsed}s] Error checking organizations: ${error.message}`);
@@ -1184,9 +1233,13 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
 
   // Track if we've seen a PENDING org - if it disappears, creation failed
   let sawPendingOrg = false;
+  // Track consecutive polls with no orgs and no creation in progress
+  let noProgressCount = 0;
+  const noProgressThreshold = 6; // After 60 seconds (6 x 10s interval) with no progress, fail fast
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    let creationInProgress = false;
 
     try {
       // First, check creation status endpoint for detailed progress
@@ -1194,6 +1247,24 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
         const statusResponse = await request.get('/v1/organizations/creation-status');
         if (statusResponse.status === 200 && statusResponse.body) {
           const status = statusResponse.body;
+          
+          // Check for FAILED state - fail fast
+          if (status.state === 'FAILED') {
+            console.log(`  [${elapsed}s] ❌ Organization creation FAILED!`);
+            console.log(`  Error: ${status.error || 'Unknown error'}`);
+            console.log(`  Status: ${JSON.stringify(status, null, 2)}`);
+            throw new Error(
+              `Organization creation failed with state FAILED after ${elapsed}s. ` +
+              `Error: ${status.error || 'Unknown error'}`
+            );
+          }
+          
+          // Check if there's active creation
+          if (status.inProgress || (status.state && status.state !== 'COMPLETE' && status.state !== 'FAILED')) {
+            creationInProgress = true;
+            noProgressCount = 0; // Reset counter - we have progress
+          }
+          
           // Only log if there's active creation or interesting state
           if (status.state || status.name || status.stores) {
             console.log(`  [${elapsed}s] Creation status: state=${status.state || 'unknown'}, name="${status.name || 'unnamed'}"`);
@@ -1286,6 +1357,8 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
           const pendingOrg = orgs.find(o => o.orgUid === 'PENDING' || o.org_uid === 'PENDING');
           if (pendingOrg) {
             sawPendingOrg = true;
+            creationInProgress = true;
+            noProgressCount = 0; // Reset counter
             console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
           } else if (sawPendingOrg && orgs.length === 0) {
             // We had a PENDING org but now it's gone with no replacement - creation failed
@@ -1307,6 +1380,29 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
             );
           } else {
             console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
+            
+            // Track no progress - if no PENDING org and no creation in progress for too long, fail fast
+            if (!creationInProgress && orgs.length === 0) {
+              noProgressCount++;
+              if (noProgressCount >= noProgressThreshold) {
+                console.log(`  [${elapsed}s] ❌ No organization creation progress detected after ${noProgressCount * 10}s`);
+                
+                // Try to get status
+                try {
+                  const statusResponse = await request.get('/v1/organizations/creation-status');
+                  if (statusResponse.body) {
+                    console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
+                  }
+                } catch (e) {
+                  console.log(`  Could not get final status: ${e.message}`);
+                }
+                
+                throw new Error(
+                  `Organization creation appears to have failed. No PENDING organization or creation progress detected after ${elapsed}s. ` +
+                  `Check server logs for details about why creation failed.`
+                );
+              }
+            }
           }
         }
       } else {
@@ -1316,9 +1412,11 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
         }
       }
     } catch (error) {
-      // Re-throw fatal errors (like PENDING org disappeared) - don't swallow them
+      // Re-throw fatal errors (like PENDING org disappeared or no progress) - don't swallow them
       if (error.message.includes('PENDING organization was cleaned up') ||
-          error.message.includes('Organization creation failed')) {
+          error.message.includes('Organization creation failed') ||
+          error.message.includes('Organization creation appears to have failed') ||
+          error.message.includes('creation FAILED')) {
         throw error;
       }
       console.log(`  [${elapsed}s] Error checking organizations: ${error.message}`);
