@@ -29,13 +29,15 @@ const testFiles = [
   'co-benefit-validation.live.spec.js',      // Needs project
   'validation-validation.live.spec.js',      // Needs project
 
+  // Project-methodology (needs project + methodology, must come before issuance)
+  'project-methodology-validation.live.spec.js',  // Needs project + methodology
+
   // Verification and its dependents
   'verification-validation.live.spec.js',     // Needs project, optionally validation
-  'issuance-validation.live.spec.js',        // Needs verification + methodology
+  'issuance-validation.live.spec.js',        // Needs verification + project-methodology
   'unit-validation.live.spec.js',            // Needs issuance
 
-  // Relationship tables (composite keys)
-  'project-methodology-validation.live.spec.js',  // Needs project + methodology
+  // Remaining relationship tables (composite keys)
   'stakeholder-projects-validation.live.spec.js',  // Needs stakeholder + project
   'unit-label-validation.live.spec.js',            // Needs unit + label
 
@@ -257,10 +259,10 @@ const childTestFiles = [
   'rating-validation.live.spec.js',          // Needs project
   'co-benefit-validation.live.spec.js',      // Needs project
   'validation-validation.live.spec.js',      // Needs project
+  'project-methodology-validation.live.spec.js',  // Needs project + methodology (must be before issuance)
   'verification-validation.live.spec.js',     // Needs project
-  'issuance-validation.live.spec.js',        // Needs verification + methodology
+  'issuance-validation.live.spec.js',        // Needs verification + project-methodology
   'unit-validation.live.spec.js',            // Needs issuance
-  'project-methodology-validation.live.spec.js',  // Needs project + methodology
   'stakeholder-projects-validation.live.spec.js',  // Needs stakeholder + project
   'unit-label-validation.live.spec.js',            // Needs unit + label
   'aef-t3-actions-validation.live.spec.js',        // Needs aef-t2

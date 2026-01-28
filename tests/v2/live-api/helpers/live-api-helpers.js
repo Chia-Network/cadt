@@ -1162,7 +1162,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
 /**
  * Wait for V1 organization to be created and ready
  * Polls GET /v1/organizations until organization appears
- * Also checks /v1/organizations/create/status for creation progress details
+ * Also checks /v1/organizations/creation-status for creation progress details
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
  * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
@@ -1189,7 +1189,7 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
     try {
       // First, check creation status endpoint for detailed progress
       try {
-        const statusResponse = await request.get('/v1/organizations/create/status');
+        const statusResponse = await request.get('/v1/organizations/creation-status');
         if (statusResponse.status === 200 && statusResponse.body) {
           const status = statusResponse.body;
           // Only log if there's active creation or interesting state
@@ -1289,7 +1289,7 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
             
             // Try to get more details about what went wrong
             try {
-              const statusResponse = await request.get('/v1/organizations/create/status');
+              const statusResponse = await request.get('/v1/organizations/creation-status');
               if (statusResponse.body) {
                 console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
               }
@@ -1344,7 +1344,7 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
 
   // Also try to get final creation status
   try {
-    const finalStatusResponse = await request.get('/v1/organizations/create/status');
+    const finalStatusResponse = await request.get('/v1/organizations/creation-status');
     if (finalStatusResponse.status === 200 && finalStatusResponse.body) {
       console.log(`Final creation status: ${JSON.stringify(finalStatusResponse.body, null, 2)}`);
     }
