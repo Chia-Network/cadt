@@ -2,6 +2,9 @@
  * Shared setup that runs once before all tests
  * Checks for home organization and validates database is empty
  * If home org doesn't exist, exits with failure
+ * 
+ * NOTE: State file clearing is handled by the orchestration file (data-short.js),
+ * NOT here, to avoid clearing state between test phases.
  */
 
 import {
@@ -9,7 +12,6 @@ import {
   getHomeOrgId,
   checkDatabaseEmpty,
 } from './live-api-helpers.js';
-import { clearAllState } from './verification-state.js';
 
 let setupComplete = false;
 let sharedRequest = null;
@@ -35,9 +37,6 @@ export async function runSharedSetup(skipEmptyCheck = false) {
     // Step 2: Check database is empty - FAIL FAST if it's not (skip for PUT/DELETE phases)
     if (!skipEmptyCheck) {
       await checkDatabaseEmpty(sharedRequest);
-      // Clear shared state file for fresh test run
-      clearAllState();
-      console.log('✓ Cleared shared state file for fresh test run');
     } else {
       console.log('✓ Skipping empty database check (PUT/DELETE phase)');
     }

@@ -271,14 +271,16 @@ async function main() {
   try {
     console.log('\n=== Short Test Mode (Batch Commits) ===\n');
 
-    // Clear staging table and verification state before starting tests
+    // Clear staging table and ALL shared state before starting tests
     const { getLiveApiRequest, clearStagingTable } = await import('./helpers/live-api-helpers.js');
-    const { clearVerificationState } = await import('./helpers/verification-state.js');
+    const { clearAllState } = await import('./helpers/verification-state.js');
     // Use V2 API version for health checks since this uses V2 endpoints
     const request = await getLiveApiRequest({ apiVersion: 'v2' });
     console.log('Clearing staging table before tests...');
     await clearStagingTable(request);
-    clearVerificationState(); // Clear any previous verification state
+    // Clear ALL shared state (verification records AND created IDs) for fresh test run
+    clearAllState();
+    console.log('✓ Cleared all shared state for fresh test run');
     console.log('');
 
     // Phase 1: Validation Failures for BASE entities (no parent dependencies)
