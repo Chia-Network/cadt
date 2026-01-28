@@ -68,7 +68,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectSector: ['Agriculture'],
         projectType: ['Landfill gas'],
         projectSubtype: 'Test Subtype',
-        projectStatus: 'Listed',
+        projectStatus: ['Listed'],
         projectStatusDate: '2024-01-01',
         projectUnitMetric: 'tCO2e',
         cadTrustReferenceProjectId: 'REF-001',
@@ -307,7 +307,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-STATUS',
         projectId: 'INVALID-STATUS-001',
         projectName: 'Invalid Status Project',
-        projectStatus: 'InvalidStatus',
+        projectStatus: ['InvalidStatus'],
       };
 
       const response = await supertest(app)
@@ -324,7 +324,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'VALID-STATUS',
         projectId: 'VALID-STATUS-001',
         projectName: 'Valid Status Project',
-        projectStatus: 'Listed',
+        projectStatus: ['Listed'],
       };
 
       const response = await supertest(app)
@@ -594,7 +594,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectSector: ['Energy industries (renewable-/ non renewable sources)'],
         projectType: ['Wind'],
         projectSubtype: 'Updated Subtype',
-        projectStatus: 'Registered',
+        projectStatus: ['Registered'],
         projectStatusDate: '2024-02-01',
         projectUnitMetric: 'gCO2eq/kWh',
         cadTrustReferenceProjectId: 'UPDATED-REF-001',

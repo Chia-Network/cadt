@@ -866,12 +866,12 @@ class ProjectV2 extends Model {
   static updateProjectPropertiesV2(project) {
     if (typeof project !== 'object') return;
 
-    // Handle array fields (projectType and projectSector)
+    // Handle array fields (projectType, projectSector, projectStatus)
     // These can come from CSV as:
     // 1. Single value: "Solar" → ["Solar"]
     // 2. JSON array string: '["Solar","Wind"]' → ["Solar", "Wind"]
     // 3. Pipe-separated: "Solar|Wind" → ["Solar", "Wind"]
-    const arrayFields = ['projectType', 'projectSector'];
+    const arrayFields = ['projectType', 'projectSector', 'projectStatus'];
 
     arrayFields.forEach((key) => {
       if (project[key] !== undefined && project[key] !== null) {

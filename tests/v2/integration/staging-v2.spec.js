@@ -607,6 +607,7 @@ describe('V2 Staging Integration Tests', function () {
         cad_trust_program_id: programId,
       });
       // Convert to camelCase for API (simplified - would need all fields)
+      // Note: project_status is stored as JSON string in staging, but API expects array
       const projectData = {
         projectRegistryName: projectDataSnake.project_registry_name,
         projectId: projectDataSnake.project_id,
@@ -617,7 +618,7 @@ describe('V2 Staging Integration Tests', function () {
         projectSector: projectDataSnake.project_sector,
         projectType: projectDataSnake.project_type,
         projectSubtype: projectDataSnake.project_subtype,
-        projectStatus: projectDataSnake.project_status,
+        projectStatus: JSON.parse(projectDataSnake.project_status),
         projectStatusDate: projectDataSnake.project_status_date,
         projectUnitMetric: projectDataSnake.project_unit_metric,
         cadTrustReferenceProjectId: projectDataSnake.cad_trust_reference_project_id,
