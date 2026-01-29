@@ -5582,7 +5582,7 @@ Implement the core `syncOrganizationAuditV2` function that processes registry da
 
 1. **Get root history and sync status**:
    - Get root history from datalayer: `datalayer.getRootHistory(organization.registry_id)`
-   - Get sync status: `datalayer.getSyncStatus(organization.registry_id)`
+   - Get sync status: `datalayer.getDataLayerStoreSyncStatus(organization.registry_id)`
    - Validate root history exists
 
 2. **Find last processed generation**:
@@ -6087,7 +6087,7 @@ Create comprehensive end-to-end tests that simulate real datalayer interactions 
 1. **Datalayer Mocking/Simulation**:
    - Mock `datalayer.getRootHistory()` to return simulated root history
    - Mock `datalayer.getRootDiff()` to return simulated kv diffs
-   - Mock `datalayer.getSyncStatus()` to return sync status
+   - Mock `datalayer.getDataLayerStoreSyncStatus()` to return sync status
    - Support multiple generations and root hashes
 
 2. **Test Data Setup**:

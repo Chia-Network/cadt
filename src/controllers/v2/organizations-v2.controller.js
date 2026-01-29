@@ -353,7 +353,7 @@ export const homeOrgSyncStatus = async (req, res) => {
       
       // Get sync status - may fail or return undefined if store isn't synced yet
       try {
-        const syncResult = await datalayer.getSyncStatus(homeOrg.org_uid);
+        const syncResult = await datalayer.getDataLayerStoreSyncStatus(homeOrg.org_uid);
         const syncStatus = syncResult?.sync_status;
         
         if (syncStatus && syncStatus.target_root_hash !== undefined) {

@@ -53,13 +53,13 @@ describe('Coin Management Task Tests', function () {
       expect(wallet.getActiveNetwork).to.be.a('function');
     });
 
-    it('should have getSyncStatus function available', function () {
-      expect(wallet.getSyncStatus).to.be.a('function');
+    it('should have getWalletBlockchainSyncStatus function available', function () {
+      expect(wallet.getWalletBlockchainSyncStatus).to.be.a('function');
     });
 
     it('should return sync status in simulator mode', async function () {
-      // In simulator mode, getSyncStatus should return a synced status
-      const result = await wallet.getSyncStatus();
+      // In simulator mode, getWalletBlockchainSyncStatus should return a synced status
+      const result = await wallet.getWalletBlockchainSyncStatus();
       expect(result).to.have.property('success');
       // In simulator mode, wallet sync check is bypassed so success may be false
       // This just tests the function exists and returns expected structure

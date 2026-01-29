@@ -26,7 +26,7 @@ export const homeOrgSyncStatus = async (req, res) => {
       where: { commited: true },
     });
 
-    const { sync_status } = await datalayer.getSyncStatus(homeOrg.orgUid);
+    const { sync_status } = await datalayer.getDataLayerStoreSyncStatus(homeOrg.orgUid);
 
     return res.json({
       ready:

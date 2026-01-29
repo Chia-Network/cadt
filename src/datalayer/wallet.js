@@ -109,10 +109,12 @@ const walletIsSynced = async () => {
 const getLastWalletSyncError = () => lastWalletSyncError;
 
 /**
- * Get the full wallet sync status object
+ * Get the wallet's blockchain synchronization status.
+ * This checks if the wallet is synced with the Chia blockchain.
+ * NOT to be confused with DataLayer store sync status (use getDataLayerStoreSyncStatus for that).
  * @returns {Promise<{success: boolean, synced?: boolean, syncing?: boolean, genesis_initialized?: boolean}>}
  */
-const getSyncStatus = async () => {
+const getWalletBlockchainSyncStatus = async () => {
   // In simulator mode, return synced status
   if (USE_SIMULATOR) {
     return {
@@ -544,7 +546,7 @@ export default {
   waitForSpendableCoins,
   getActiveNetwork,
   getLastWalletSyncError,
-  getSyncStatus,
+  getWalletBlockchainSyncStatus,
   getCoinRecords,
   splitCoins,
 };
