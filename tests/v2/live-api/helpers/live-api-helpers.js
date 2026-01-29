@@ -987,6 +987,10 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
   // Track consecutive polls with no orgs and no creation in progress
   let noProgressCount = 0;
   const noProgressThreshold = 6; // After 60 seconds (6 x 10s interval) with no progress, fail fast
+  // Track stuck state - if we're in the same state for too long, fail
+  let lastState = null;
+  let lastStateChangeTime = Date.now();
+  const stuckStateThresholdMs = 300000; // 5 minutes stuck in same state = fail
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -1014,6 +1018,32 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           if (status.inProgress || (status.state && status.state !== 'COMPLETE' && status.state !== 'FAILED')) {
             creationInProgress = true;
             noProgressCount = 0; // Reset counter - we have progress
+            
+            // Track state changes to detect stuck creation
+            const currentState = status.state;
+            const storesInfo = status.stores ? JSON.stringify(
+              Object.fromEntries(
+                Object.entries(status.stores).map(([k, v]) => [k, { id: v.id, confirmed: v.confirmed }])
+              )
+            ) : null;
+            const stateKey = `${currentState}|${storesInfo}`;
+            
+            if (stateKey !== lastState) {
+              lastState = stateKey;
+              lastStateChangeTime = Date.now();
+            } else {
+              // Check if stuck in same state for too long
+              const stuckDuration = Date.now() - lastStateChangeTime;
+              if (stuckDuration > stuckStateThresholdMs) {
+                console.log(`  [${elapsed}s] ❌ Organization creation appears stuck!`);
+                console.log(`  State '${currentState}' has not changed for ${Math.round(stuckDuration / 1000)}s`);
+                console.log(`  Status: ${JSON.stringify(status, null, 2)}`);
+                throw new Error(
+                  `Organization creation appears stuck at state '${currentState}' for ${Math.round(stuckDuration / 1000)}s. ` +
+                  `Wallet or blockchain may not be responding. Check server logs for details.`
+                );
+              }
+            }
           }
           
           // Only log if there's active creation or interesting state
@@ -1035,6 +1065,10 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           }
         }
       } catch (statusError) {
+        // Re-throw stuck state errors
+        if (statusError.message?.includes('appears stuck')) {
+          throw statusError;
+        }
         // Status endpoint might not exist or may fail - that's okay
         if (statusError.response?.status !== 404 && statusError.response?.status !== 403) {
           console.log(`  [${elapsed}s] Status check error: ${statusError.message}`);
@@ -1164,10 +1198,11 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
         }
       }
     } catch (error) {
-      // Re-throw fatal errors (like PENDING org disappeared or no progress) - don't swallow them
+      // Re-throw fatal errors (like PENDING org disappeared, no progress, or stuck state) - don't swallow them
       if (error.message.includes('PENDING organization was cleaned up') ||
           error.message.includes('Organization creation failed') ||
           error.message.includes('Organization creation appears to have failed') ||
+          error.message.includes('appears stuck') ||
           error.message.includes('creation FAILED')) {
         throw error;
       }
@@ -1236,6 +1271,10 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
   // Track consecutive polls with no orgs and no creation in progress
   let noProgressCount = 0;
   const noProgressThreshold = 6; // After 60 seconds (6 x 10s interval) with no progress, fail fast
+  // Track stuck state - if we're in the same state for too long, fail
+  let lastState = null;
+  let lastStateChangeTime = Date.now();
+  const stuckStateThresholdMs = 300000; // 5 minutes stuck in same state = fail
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -1263,6 +1302,32 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
           if (status.inProgress || (status.state && status.state !== 'COMPLETE' && status.state !== 'FAILED')) {
             creationInProgress = true;
             noProgressCount = 0; // Reset counter - we have progress
+            
+            // Track state changes to detect stuck creation
+            const currentState = status.state;
+            const storesInfo = status.stores ? JSON.stringify(
+              Object.fromEntries(
+                Object.entries(status.stores).map(([k, v]) => [k, { id: v.id, confirmed: v.confirmed }])
+              )
+            ) : null;
+            const stateKey = `${currentState}|${storesInfo}`;
+            
+            if (stateKey !== lastState) {
+              lastState = stateKey;
+              lastStateChangeTime = Date.now();
+            } else {
+              // Check if stuck in same state for too long
+              const stuckDuration = Date.now() - lastStateChangeTime;
+              if (stuckDuration > stuckStateThresholdMs) {
+                console.log(`  [${elapsed}s] ❌ Organization creation appears stuck!`);
+                console.log(`  State '${currentState}' has not changed for ${Math.round(stuckDuration / 1000)}s`);
+                console.log(`  Status: ${JSON.stringify(status, null, 2)}`);
+                throw new Error(
+                  `Organization creation appears stuck at state '${currentState}' for ${Math.round(stuckDuration / 1000)}s. ` +
+                  `Wallet or blockchain may not be responding. Check server logs for details.`
+                );
+              }
+            }
           }
           
           // Only log if there's active creation or interesting state
@@ -1284,6 +1349,10 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
           }
         }
       } catch (statusError) {
+        // Re-throw stuck state errors
+        if (statusError.message?.includes('appears stuck')) {
+          throw statusError;
+        }
         // Status endpoint might not exist or may fail - that's okay
         if (statusError.response?.status !== 404 && statusError.response?.status !== 403) {
           console.log(`  [${elapsed}s] Status check error: ${statusError.message}`);
@@ -1294,10 +1363,19 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
       const response = await request.get('/v1/organizations');
 
       if (response.status === 200) {
-        // V1 response format may be array or object
-        const orgs = Array.isArray(response.body)
-          ? response.body
-          : (response.body?.data || []);
+        // V1 response format is a map keyed by orgUid: {"orgUid": {...}, ...}
+        // Convert to array using Object.values()
+        let orgs;
+        if (Array.isArray(response.body)) {
+          orgs = response.body;
+        } else if (response.body?.data) {
+          orgs = response.body.data;
+        } else if (typeof response.body === 'object' && response.body !== null) {
+          // V1 returns a map keyed by orgUid - convert to array
+          orgs = Object.values(response.body);
+        } else {
+          orgs = [];
+        }
 
         // Always log organization status for debugging
         console.log(`  [${elapsed}s] Found ${orgs.length} organization(s) in V1:`);
@@ -1412,10 +1490,11 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
         }
       }
     } catch (error) {
-      // Re-throw fatal errors (like PENDING org disappeared or no progress) - don't swallow them
+      // Re-throw fatal errors (like PENDING org disappeared, no progress, or stuck state) - don't swallow them
       if (error.message.includes('PENDING organization was cleaned up') ||
           error.message.includes('Organization creation failed') ||
           error.message.includes('Organization creation appears to have failed') ||
+          error.message.includes('appears stuck') ||
           error.message.includes('creation FAILED')) {
         throw error;
       }
