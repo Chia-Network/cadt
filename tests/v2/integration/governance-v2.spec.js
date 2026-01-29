@@ -1215,8 +1215,8 @@ describe('V2 Governance Model Tests', function () {
             const pickListData = {
               projectSector: ['Agriculture'],
               aefT2AuthorizationsSector: ['Agriculture'],
-              projectType: ['Energy'],
-              aefT2AuthorizationsActivityType: ['Energy'],
+              projectType: ['Energy demand'],
+              aefT2AuthorizationsActivityType: ['Energy demand'],
               projectStatus: ['Active'],
               projectUnitMetric: ['tCO2e'],
               unitMetric: ['tCO2e'],

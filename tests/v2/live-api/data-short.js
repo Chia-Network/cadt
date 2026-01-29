@@ -29,13 +29,15 @@ const testFiles = [
   'co-benefit-validation.live.spec.js',      // Needs project
   'validation-validation.live.spec.js',      // Needs project
 
+  // Project-methodology (needs project + methodology, must come before issuance)
+  'project-methodology-validation.live.spec.js',  // Needs project + methodology
+
   // Verification and its dependents
   'verification-validation.live.spec.js',     // Needs project, optionally validation
-  'issuance-validation.live.spec.js',        // Needs verification + methodology
+  'issuance-validation.live.spec.js',        // Needs verification + project-methodology
   'unit-validation.live.spec.js',            // Needs issuance
 
-  // Relationship tables (composite keys)
-  'project-methodology-validation.live.spec.js',  // Needs project + methodology
+  // Remaining relationship tables (composite keys)
   'stakeholder-projects-validation.live.spec.js',  // Needs stakeholder + project
   'unit-label-validation.live.spec.js',            // Needs unit + label
 
@@ -125,7 +127,8 @@ async function commitAndWait(phase) {
   const { getLiveApiRequest, commitStagedRecords, waitForPendingCommits, waitForStagingEmpty, waitForBatchToAppear, validateDataInDatabase } = await import('./helpers/live-api-helpers.js');
   const { getAllCreatedIds, getBatchVerificationRecords, clearBatchVerificationRecords } = await import('./helpers/shared-state.js');
 
-  const request = await getLiveApiRequest();
+  // Use V2 API version for health checks since this uses V2 endpoints
+  const request = await getLiveApiRequest({ apiVersion: 'v2' });
 
   // Check if staging table has records before committing
   const stagingResponse = await request.get('/v2/staging');
@@ -256,10 +259,10 @@ const childTestFiles = [
   'rating-validation.live.spec.js',          // Needs project
   'co-benefit-validation.live.spec.js',      // Needs project
   'validation-validation.live.spec.js',      // Needs project
+  'project-methodology-validation.live.spec.js',  // Needs project + methodology (must be before issuance)
   'verification-validation.live.spec.js',     // Needs project
-  'issuance-validation.live.spec.js',        // Needs verification + methodology
+  'issuance-validation.live.spec.js',        // Needs verification + project-methodology
   'unit-validation.live.spec.js',            // Needs issuance
-  'project-methodology-validation.live.spec.js',  // Needs project + methodology
   'stakeholder-projects-validation.live.spec.js',  // Needs stakeholder + project
   'unit-label-validation.live.spec.js',            // Needs unit + label
   'aef-t3-actions-validation.live.spec.js',        // Needs aef-t2
@@ -270,13 +273,16 @@ async function main() {
   try {
     console.log('\n=== Short Test Mode (Batch Commits) ===\n');
 
-    // Clear staging table and verification state before starting tests
+    // Clear staging table and ALL shared state before starting tests
     const { getLiveApiRequest, clearStagingTable } = await import('./helpers/live-api-helpers.js');
-    const { clearVerificationState } = await import('./helpers/verification-state.js');
-    const request = await getLiveApiRequest();
+    const { clearAllState } = await import('./helpers/verification-state.js');
+    // Use V2 API version for health checks since this uses V2 endpoints
+    const request = await getLiveApiRequest({ apiVersion: 'v2' });
     console.log('Clearing staging table before tests...');
     await clearStagingTable(request);
-    clearVerificationState(); // Clear any previous verification state
+    // Clear ALL shared state (verification records AND created IDs) for fresh test run
+    clearAllState();
+    console.log('✓ Cleared all shared state for fresh test run');
     console.log('');
 
     // Phase 1: Validation Failures for BASE entities (no parent dependencies)

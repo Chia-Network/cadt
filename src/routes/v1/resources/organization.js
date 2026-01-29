@@ -112,4 +112,8 @@ OrganizationRouter.get('/status', (req, res) => {
   return OrganizationController.homeOrgSyncStatus(req, res);
 });
 
+OrganizationRouter.get('/creation-status', (req, res) => {
+  return OrganizationController.getCreationStatus(req, res);
+});
+
 export { OrganizationRouter };

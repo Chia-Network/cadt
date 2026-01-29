@@ -39,11 +39,41 @@ import {
 } from '../../datalayer/persistance.js';
 import {
   addOrDeleteOrganizationRecordMutex,
-  processingSyncRegistriesTransactionMutex,
 } from '../../utils/model-utils.js';
+import {
+  processingSyncRegistriesTransactionMutexV2,
+} from '../../utils/v2-mutex-utils.js';
+import wallet from '../../datalayer/wallet.js';
 import { isDlStoreSynced } from '../../utils/datalayer-utils.js';
+import {
+  ORG_CREATION_STATES,
+  STORE_TYPES,
+  ORG_CREATION_CONFIG,
+  createInitialState,
+  updateState,
+  markStoreCreated,
+  markStoreConfirmed,
+  markStoreDataWritten,
+  allStoresCreated,
+  allStoresConfirmed,
+  allDataWritten,
+  getStoresToCreate,
+  getStoresAwaitingConfirmation,
+  getStoresNeedingData,
+  hasTimedOut,
+  incrementRetryCount,
+  hasExceededMaxRetries,
+  markAsFailed,
+  getStatusSummary,
+  logState,
+  saveCreationState,
+  loadCreationState,
+  clearCreationState,
+  hasInProgressCreation,
+} from '../../utils/organization-creation-state.js';
 
 import ModelTypes from './organizations-v2.modeltypes.cjs';
+import { runMirrorCheckV2 } from '../../tasks/mirror-check-v2.js';
 
 class OrganizationsV2 extends Model {
   static async create(values, options) {
@@ -78,6 +108,8 @@ class OrganizationsV2 extends Model {
 
   /**
    * Create a V2 home organization (for new users only)
+   * Uses parallel store creation for faster organization setup.
+   *
    * @param {string} name - Organization name
    * @param {string} icon - Organization icon (base64 string)
    * @param {string} dataVersion - Data version (defaults to 'v2')
@@ -85,8 +117,11 @@ class OrganizationsV2 extends Model {
    * @throws {Error} If V1 org exists or V2 org already exists
    */
   static async createHomeOrganization(name, icon, dataVersion = 'v2') {
+    // Import MetaV2 for state persistence
+    const { MetaV2 } = await import('./index.js');
+
     try {
-      loggerV2.info('[v2]: Creating New V2 Organization, This could take a while.');
+      loggerV2.info('[v2]: Creating New V2 Organization using parallel store creation.');
 
       // Ensure name is provided
       if (!name) {
@@ -94,7 +129,6 @@ class OrganizationsV2 extends Model {
       }
 
       // Icon is optional - use provided value or default to empty string
-      // Icon can be any string (URL, base64-encoded data, etc.) or empty
       const iconValue = icon !== undefined && icon !== null ? icon : '';
 
       // Check for existing V2 home org
@@ -103,201 +137,506 @@ class OrganizationsV2 extends Model {
         raw: true,
       });
 
-      if (existingV2Org) {
+      if (existingV2Org && existingV2Org.org_uid !== 'PENDING') {
         loggerV2.info('[v2]: V2 home organization already exists');
         return existingV2Org.org_uid;
       }
 
-      // CRITICAL: Check for V1 home org in database
-      const v1Org = await Organization.findOne({
-        where: { isHome: true },
+      // Check for in-progress creation (for recovery)
+      let state = await loadCreationState(MetaV2, 'v2');
+      if (state && state.state !== ORG_CREATION_STATES.COMPLETE && state.state !== ORG_CREATION_STATES.FAILED) {
+        loggerV2.info('[v2]: Found in-progress organization creation, resuming...');
+        // Resume from where we left off
+        return await OrganizationsV2._resumeOrganizationCreation(state, MetaV2);
+      }
+
+      // CRITICAL: Check for V1 home org in database (only if V1 is enabled)
+      // When V1 is disabled, the V1 organizations table may not exist
+      const configV1 = getConfig();
+      const enableV1 = configV1?.ENABLE !== false; // Default to true if not set
+
+      if (enableV1) {
+        const v1Org = await Organization.findOne({
+          where: { isHome: true },
+          raw: true,
+        });
+
+        if (v1Org) {
+          // V1 org exists - check for V1 singleton in datalayer
+          if (v1Org.dataModelVersionStoreId) {
+            try {
+              const singletonData = await getStoreDataPromise(
+                v1Org.dataModelVersionStoreId,
+              );
+
+              // Handle simulator mode - getStoreData might return Error object or false
+              if (singletonData && !(singletonData instanceof Error) && singletonData.keys_values) {
+                // Check if singleton has v1 key
+                const hasV1Key = singletonData.keys_values.some((kv) => {
+                  try {
+                    const decodedKey = decodeHex(kv.key);
+                    return decodedKey === 'v1';
+                  } catch {
+                    return false;
+                  }
+                });
+
+                if (hasV1Key) {
+                  throw new Error(
+                    'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
+                  );
+                }
+              }
+            } catch (error) {
+              // If getStoreData fails, we still error because V1 org exists
+              loggerV2.debug(`[v2]: Failed to check V1 singleton: ${error.message}`);
+            }
+          }
+
+          // If V1 org exists but no singleton check possible, still error
+          throw new Error(
+            'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
+          );
+        }
+      }
+
+      // Initialize state for new creation
+      state = createInitialState(name, iconValue, dataVersion, 'v2');
+      await saveCreationState(state, MetaV2);
+
+      // Create PENDING record in database
+      const existingPending = await OrganizationsV2.findOne({
+        where: { org_uid: 'PENDING' },
         raw: true,
       });
 
-      if (v1Org) {
-        // V1 org exists - check for V1 singleton in datalayer
-        if (v1Org.dataModelVersionStoreId) {
-          try {
-            const singletonData = await getStoreDataPromise(
-              v1Org.dataModelVersionStoreId,
-            );
+      if (!existingPending) {
+        await OrganizationsV2.create({
+          org_uid: 'PENDING',
+          registry_id: null,
+          data_model_version_store_id: null,
+          is_home: true,
+          subscribed: false,
+          name: '',
+          icon: '',
+        });
+      }
 
-            // Handle simulator mode - getStoreData might return Error object or false
-            if (singletonData && !(singletonData instanceof Error) && singletonData.keys_values) {
-              // Check if singleton has v1 key
-              // keys_values is an array of {key: hex, value: hex} objects
-              const hasV1Key = singletonData.keys_values.some((kv) => {
-                try {
-                  const decodedKey = decodeHex(kv.key);
-                  return decodedKey === 'v1';
-                } catch {
-                  return false;
-                }
-              });
-
-              if (hasV1Key) {
-                throw new Error(
-                  'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
-                );
-              }
-            }
-          } catch (error) {
-            // If getStoreData fails, we still error because V1 org exists
-            loggerV2.debug(`[v2]: Failed to check V1 singleton: ${error.message}`);
-          }
-        }
-
-        // If V1 org exists but no singleton check possible, still error
+      // Wait for sufficient spendable coins before starting store creation
+      // We need 4 SEPARATE coins (one per parallel store creation), each with at least 10000 mojos
+      // This matches COIN_SIZE in coin-management.js (10000 mojos per coin)
+      const coinCheck = await wallet.waitForSpendableCoins(4, 10000, 300000, 10000);
+      if (!coinCheck.success) {
         throw new Error(
-          'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
+          `Cannot create organization: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
+          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
         );
       }
+      loggerV2.info(`[v2]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
 
-      // Create PENDING record
-      await OrganizationsV2.create({
-        org_uid: 'PENDING',
-        registry_id: null,
-        data_model_version_store_id: null,
-        is_home: true,
-        subscribed: false,
-        name: '',
-        icon: '',
-      });
+      // Execute the creation process
+      return await OrganizationsV2._executeOrganizationCreation(state, MetaV2);
+    } catch (error) {
+      loggerV2.error(
+        `[v2]: create V2 organization process failed. Error: ${error.message}`,
+      );
+      // Clean up PENDING record but preserve state for potential recovery
+      await OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } });
+      throw error;
+    }
+  }
 
-      loggerV2.verbose('[v2]: createHomeOrg() is creating organization (orgUid) store');
-      const newOrganizationId = USE_SIMULATOR
-        ? 'f1c54511-865e-4611-976c-7c3c1f704662'
-        : await datalayer.createDataLayerStore();
+  /**
+   * Resume an in-progress organization creation (for crash recovery)
+   * @param {Object} state - The saved state object
+   * @param {Object} MetaV2 - The MetaV2 model
+   * @returns {Promise<string>} The organization UID
+   * @private
+   */
+  static async _resumeOrganizationCreation(state, MetaV2) {
+    logState(state, `Resuming from state: ${state.state}`);
 
-      loggerV2.verbose('[v2]: createHomeOrg() is creating registryId store');
-      const registryStoreId = USE_SIMULATOR
-        ? 'e9241e7e-b4bd-4cde-ae35-5b42235f9d3b'
-        : await datalayer.createDataLayerStore();
+    // Check for timeout
+    if (hasTimedOut(state)) {
+      state = incrementRetryCount(state);
+      if (hasExceededMaxRetries(state)) {
+        state = markAsFailed(state, 'Organization creation timed out after maximum retries');
+        await saveCreationState(state, MetaV2);
+        await OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } });
+        throw new Error('Organization creation failed: timed out after maximum retries');
+      }
+      // Reset startedAt for new retry attempt
+      state = updateState(state, { startedAt: new Date().toISOString() });
+      await saveCreationState(state, MetaV2);
+    }
 
-      loggerV2.verbose('[v2]: createHomeOrg() is creating dataModelVersionId store');
-      const dataModelVersionStoreId = USE_SIMULATOR
-        ? 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
-        : await datalayer.createDataLayerStore();
+    // Wait for sufficient spendable coins before resuming store creation
+    // We need 4 SEPARATE coins (one per parallel store creation), each with at least 10000 mojos
+    // This matches COIN_SIZE in coin-management.js (10000 mojos per coin)
+    const coinCheck = await wallet.waitForSpendableCoins(4, 10000, 300000, 10000);
+    if (!coinCheck.success) {
+      throw new Error(
+        `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
+        'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
+      );
+    }
+    loggerV2.info(`[v2]: Resuming org creation, ${coinCheck.coinCount} coins available`);
 
-      loggerV2.verbose('[v2]: createHomeOrg() is creating file store');
-      const fileStoreId = USE_SIMULATOR
-        ? 'f1a2b3c4-d5e6-7890-abcd-ef1234567890'
-        : await datalayer.createDataLayerStore();
+    return await OrganizationsV2._executeOrganizationCreation(state, MetaV2);
+  }
 
-      const revertOrganizationIfFailed = async () => {
-        loggerV2.error(
-          '[v2]: create V2 organization process failed. removing failed home organization records. please try again',
-        );
-        await Promise.all([
-          OrganizationsV2.destroy({ where: { org_uid: newOrganizationId } }),
-          OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } }),
-        ]);
-      };
+  /**
+   * Execute the organization creation process from the current state
+   * @param {Object} state - The current state object
+   * @param {Object} MetaV2 - The MetaV2 model
+   * @returns {Promise<string>} The organization UID
+   * @private
+   */
+  static async _executeOrganizationCreation(state, MetaV2) {
+    try {
+      // PHASE 1: Create stores in parallel
+      if (state.state === ORG_CREATION_STATES.INITIALIZING ||
+          state.state === ORG_CREATION_STATES.STORES_CREATING) {
+        state = updateState(state, { state: ORG_CREATION_STATES.STORES_CREATING });
+        await saveCreationState(state, MetaV2);
 
-      if (!USE_SIMULATOR) {
-        loggerV2.info(
-          '[v2]: create V2 organization process is waiting for all store creations to confirm on the blockchain',
-        );
-        await new Promise((resolve) => setTimeout(() => resolve(), 30000));
-        await datalayer.waitForAllTransactionsToConfirm();
+        state = await OrganizationsV2._createStoresInParallel(state, MetaV2);
       }
 
-      loggerV2.verbose(
-        `[v2]: the blockchain reported new V2 organization stores orgUid: ${newOrganizationId}, ` +
-          `dataModelVersionStore: ${dataModelVersionStoreId}, registryId: ${registryStoreId} have confirmed. `,
-      );
-      loggerV2.info(
-        `[v2]: committing V2 organization data to orgUid store ${newOrganizationId}`,
-      );
-
-      // Sync the organization store
-      await datalayer.syncDataLayer(
-        newOrganizationId,
-        {
-          registryId: dataModelVersionStoreId, // Points to singleton
-          fileStoreId,
-          name,
-          icon: iconValue,
-        },
-        revertOrganizationIfFailed,
-      );
-
-      if (!USE_SIMULATOR) {
-        loggerV2.info(
-          '[v2]: create V2 organization process is waiting for organization data committed to orgUid store to confirm on the blockchain',
-        );
-        await new Promise((resolve) => setTimeout(() => resolve(), 30000));
-        await datalayer.waitForAllTransactionsToConfirm();
+      // Wait for all stores to be confirmed
+      if (state.state === ORG_CREATION_STATES.STORES_CREATING) {
+        state = await OrganizationsV2._waitForStoresConfirmation(state, MetaV2);
       }
 
-      loggerV2.info(
-        `[v2]: committing registry data model version data to data model version store ${dataModelVersionStoreId}`,
-      );
+      // PHASE 2: Push data to stores in parallel
+      if (state.state === ORG_CREATION_STATES.STORES_CONFIRMED ||
+          state.state === ORG_CREATION_STATES.DATA_PUSHING) {
+        state = updateState(state, { state: ORG_CREATION_STATES.DATA_PUSHING });
+        await saveCreationState(state, MetaV2);
 
-      // CRITICAL: Create singleton with only v2 key (not v1)
-      await datalayer.syncDataLayer(
-        dataModelVersionStoreId,
-        {
-          [dataVersion]: registryStoreId, // Only v2 key for new users
-        },
-        revertOrganizationIfFailed,
-      );
-
-      if (!USE_SIMULATOR) {
-        loggerV2.info(
-          '[v2]: create V2 organization process is waiting for data model version to confirm on the blockchain',
-        );
-        await new Promise((resolve) => setTimeout(() => resolve(), 30000));
-        await datalayer.waitForAllTransactionsToConfirm();
+        state = await OrganizationsV2._pushDataInParallel(state, MetaV2);
       }
 
-      loggerV2.info('[v2]: adding new V2 home organization to CADT database');
+      // Wait for data to be confirmed
+      if (state.state === ORG_CREATION_STATES.DATA_PUSHING) {
+        if (!USE_SIMULATOR) {
+          logState(state, 'Waiting for data updates to confirm on blockchain');
+          await datalayer.waitForAllTransactionsToConfirm();
+        }
+      }
+
+      // PHASE 3: Finalize
+      state = updateState(state, { state: ORG_CREATION_STATES.FINALIZING });
+      await saveCreationState(state, MetaV2);
+
+      const orgUid = state.stores[STORE_TYPES.ORG_UID].id;
+      const registryId = state.stores[STORE_TYPES.REGISTRY].id;
+      const dataModelVersionStoreId = state.stores[STORE_TYPES.DATA_MODEL_VERSION].id;
+      const fileStoreId = state.stores[STORE_TYPES.FILE_STORE].id;
+
+      logState(state, 'Adding new V2 home organization to CADT database');
+
+      // Remove any existing org with this UID (in case of partial creation)
+      await OrganizationsV2.destroy({ where: { org_uid: orgUid } });
+
       await Promise.all([
         OrganizationsV2.create({
-          org_uid: newOrganizationId,
+          org_uid: orgUid,
           data_model_version_store_id: dataModelVersionStoreId,
-          registry_id: registryStoreId,
+          registry_id: registryId,
           is_home: true,
           subscribed: USE_SIMULATOR,
           file_store_subscribed: fileStoreId,
-          name,
-          icon: iconValue,
+          name: state.name,
+          icon: state.icon,
         }),
         OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } }),
       ]);
 
-      const onConfirm = async () => {
-        loggerV2.info('[v2]: V2 Organization confirmed, you are ready to go');
-        await OrganizationsV2.update(
-          {
-            subscribed: true,
-          },
-          { where: { org_uid: newOrganizationId } },
-        );
-      };
-
+      // Mark subscribed after confirmation
       if (!USE_SIMULATOR) {
-        loggerV2.info('[v2]: Waiting for New V2 Organization to be confirmed');
-        // In non-simulator mode, use callback-based getStoreData to wait for confirmation
-        datalayer.getStoreData(
-          newOrganizationId,
-          onConfirm,
-          revertOrganizationIfFailed,
-        );
+        logState(state, 'Waiting for final confirmation');
+        await new Promise((resolve, reject) => {
+          datalayer.getStoreData(
+            orgUid,
+            async () => {
+              logState(state, 'V2 Organization confirmed, you are ready to go');
+              await OrganizationsV2.update(
+                { subscribed: true },
+                { where: { org_uid: orgUid } },
+              );
+              resolve();
+            },
+            (error) => reject(new Error(error)),
+          );
+        });
       } else {
-        // In simulator mode, data is immediately available
-        // Await the update to ensure it completes before returning
-        await onConfirm();
+        await OrganizationsV2.update(
+          { subscribed: true },
+          { where: { org_uid: orgUid } },
+        );
       }
 
-      return newOrganizationId;
+      // Trigger mirror check to create mirrors for the new organization immediately
+      // Wrapped in try-catch so mirror failures don't fail org creation
+      // The periodic mirror-check task will retry if this fails
+      try {
+        logState(state, 'Triggering mirror check to create mirrors for new organization');
+        await runMirrorCheckV2();
+        logState(state, 'Mirror check completed successfully');
+      } catch (mirrorError) {
+        logState(state, `Mirror check failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
+      }
+
+      // Mark complete and clear state
+      state = updateState(state, { state: ORG_CREATION_STATES.COMPLETE });
+      await clearCreationState(MetaV2, 'v2');
+
+      logState(state, `Organization creation complete. orgUid: ${orgUid}`);
+      return orgUid;
     } catch (error) {
-      loggerV2.error(
-        `[v2]: create V2 organization process failed. removing failed home organization records. please try again. Error: ${error.message}`,
-      );
-      await OrganizationsV2.destroy({ where: { is_home: true } });
+      logState(state, `Error during creation: ${error.message}`, 'error');
       throw error;
     }
+  }
+
+  /**
+   * Create all stores in parallel
+   * @param {Object} state - Current state
+   * @param {Object} MetaV2 - The MetaV2 model
+   * @returns {Promise<Object>} Updated state
+   * @private
+   */
+  static async _createStoresInParallel(state, MetaV2) {
+    const storesToCreate = getStoresToCreate(state);
+
+    if (storesToCreate.length === 0) {
+      logState(state, 'All stores already created');
+      return state;
+    }
+
+    logState(state, `Creating ${storesToCreate.length} stores in parallel`);
+
+    // In simulator mode, use fixed IDs
+    if (USE_SIMULATOR) {
+      const simulatorIds = {
+        [STORE_TYPES.ORG_UID]: 'f1c54511-865e-4611-976c-7c3c1f704662',
+        [STORE_TYPES.REGISTRY]: 'e9241e7e-b4bd-4cde-ae35-5b42235f9d3b',
+        [STORE_TYPES.DATA_MODEL_VERSION]: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        [STORE_TYPES.FILE_STORE]: 'f1a2b3c4-d5e6-7890-abcd-ef1234567890',
+      };
+
+      for (const storeType of storesToCreate) {
+        state = markStoreCreated(state, storeType, simulatorIds[storeType]);
+        state = markStoreConfirmed(state, storeType);
+      }
+      await saveCreationState(state, MetaV2);
+      return state;
+    }
+
+    // Create all stores in parallel
+    const createPromises = storesToCreate.map(async (storeType) => {
+      try {
+        logState(state, `Creating ${storeType} store`);
+        const storeId = await datalayer.createDataLayerStore();
+        logState(state, `Created ${storeType} store: ${storeId}`);
+        return { storeType, storeId, success: true };
+      } catch (error) {
+        logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
+        return { storeType, storeId: null, success: false, error: error.message };
+      }
+    });
+
+    const results = await Promise.all(createPromises);
+
+    // Update state with created store IDs
+    for (const result of results) {
+      if (result.success) {
+        state = markStoreCreated(state, result.storeType, result.storeId);
+      }
+    }
+    await saveCreationState(state, MetaV2);
+
+    // Check if all stores were created
+    const failed = results.filter((r) => !r.success);
+    if (failed.length > 0) {
+      const failedTypes = failed.map((f) => f.storeType).join(', ');
+      throw new Error(`Failed to create stores: ${failedTypes}`);
+    }
+
+    return state;
+  }
+
+  /**
+   * Wait for all stores to be confirmed on the blockchain
+   * @param {Object} state - Current state
+   * @param {Object} MetaV2 - The MetaV2 model
+   * @returns {Promise<Object>} Updated state
+   * @private
+   */
+  static async _waitForStoresConfirmation(state, MetaV2) {
+    if (USE_SIMULATOR) {
+      // In simulator mode, stores are immediately confirmed
+      state = updateState(state, { state: ORG_CREATION_STATES.STORES_CONFIRMED });
+      await saveCreationState(state, MetaV2);
+      return state;
+    }
+
+    const storesAwaitingConfirmation = getStoresAwaitingConfirmation(state);
+    if (storesAwaitingConfirmation.length === 0) {
+      logState(state, 'All stores already confirmed');
+      state = updateState(state, { state: ORG_CREATION_STATES.STORES_CONFIRMED });
+      await saveCreationState(state, MetaV2);
+      return state;
+    }
+
+    logState(state, `Waiting for ${storesAwaitingConfirmation.length} stores to confirm`);
+
+    // Wait for all transactions to clear first
+    await datalayer.waitForAllTransactionsToConfirm();
+
+    // Then check each store's confirmation status in parallel
+    const confirmPromises = storesAwaitingConfirmation.map(async (storeType) => {
+      const storeId = state.stores[storeType].id;
+      const startTime = Date.now();
+      const timeout = ORG_CREATION_CONFIG.STORE_CONFIRMATION_TIMEOUT_MS;
+
+      while (Date.now() - startTime < timeout) {
+        try {
+          const { confirmed } = await getRoot(storeId);
+          if (confirmed) {
+            logState(state, `Store ${storeType} (${storeId}) confirmed`);
+            return { storeType, confirmed: true };
+          }
+        } catch (error) {
+          logState(state, `Error checking ${storeType} confirmation: ${error.message}`, 'debug');
+        }
+        await new Promise((resolve) => setTimeout(resolve, ORG_CREATION_CONFIG.CONFIRMATION_POLL_INTERVAL_MS));
+      }
+
+      return { storeType, confirmed: false };
+    });
+
+    const results = await Promise.all(confirmPromises);
+
+    // Update state with confirmation status
+    for (const result of results) {
+      if (result.confirmed) {
+        state = markStoreConfirmed(state, result.storeType);
+      }
+    }
+    await saveCreationState(state, MetaV2);
+
+    // Check if all stores confirmed
+    if (allStoresConfirmed(state)) {
+      state = updateState(state, { state: ORG_CREATION_STATES.STORES_CONFIRMED });
+      await saveCreationState(state, MetaV2);
+      logState(state, 'All stores confirmed on blockchain');
+    } else {
+      const unconfirmed = results.filter((r) => !r.confirmed).map((r) => r.storeType);
+      throw new Error(`Stores failed to confirm within timeout: ${unconfirmed.join(', ')}`);
+    }
+
+    return state;
+  }
+
+  /**
+   * Push data to stores in parallel
+   * @param {Object} state - Current state
+   * @param {Object} MetaV2 - The MetaV2 model
+   * @returns {Promise<Object>} Updated state
+   * @private
+   */
+  static async _pushDataInParallel(state, MetaV2) {
+    const storesNeedingData = getStoresNeedingData(state);
+
+    if (storesNeedingData.length === 0) {
+      logState(state, 'All store data already written');
+      return state;
+    }
+
+    logState(state, `Pushing data to ${storesNeedingData.length} stores in parallel`);
+
+    const orgUidStoreId = state.stores[STORE_TYPES.ORG_UID].id;
+    const dataModelVersionStoreId = state.stores[STORE_TYPES.DATA_MODEL_VERSION].id;
+    const registryStoreId = state.stores[STORE_TYPES.REGISTRY].id;
+    const fileStoreId = state.stores[STORE_TYPES.FILE_STORE].id;
+
+    const pushPromises = [];
+
+    // Push data to org store if needed
+    if (storesNeedingData.includes(STORE_TYPES.ORG_UID)) {
+      pushPromises.push(
+        (async () => {
+          try {
+            logState(state, `Pushing data to orgUid store ${orgUidStoreId}`);
+            await datalayer.syncDataLayer(
+              orgUidStoreId,
+              {
+                registryId: dataModelVersionStoreId, // Points to singleton
+                fileStoreId,
+                name: state.name,
+                icon: state.icon,
+              },
+              () => {}, // No revert needed - we have state tracking now
+            );
+            return { storeType: STORE_TYPES.ORG_UID, success: true };
+          } catch (error) {
+            return { storeType: STORE_TYPES.ORG_UID, success: false, error: error.message };
+          }
+        })(),
+      );
+    }
+
+    // Push data to dataModelVersion store if needed
+    if (storesNeedingData.includes(STORE_TYPES.DATA_MODEL_VERSION)) {
+      pushPromises.push(
+        (async () => {
+          try {
+            logState(state, `Pushing data to dataModelVersion store ${dataModelVersionStoreId}`);
+            await datalayer.syncDataLayer(
+              dataModelVersionStoreId,
+              {
+                [state.dataVersion]: registryStoreId, // Only v2 key for new users
+              },
+              () => {},
+            );
+            return { storeType: STORE_TYPES.DATA_MODEL_VERSION, success: true };
+          } catch (error) {
+            return { storeType: STORE_TYPES.DATA_MODEL_VERSION, success: false, error: error.message };
+          }
+        })(),
+      );
+    }
+
+    const results = await Promise.all(pushPromises);
+
+    // Update state with data written status
+    for (const result of results) {
+      if (result.success) {
+        state = markStoreDataWritten(state, result.storeType);
+      }
+    }
+    await saveCreationState(state, MetaV2);
+
+    // Check for failures
+    const failed = results.filter((r) => !r.success);
+    if (failed.length > 0) {
+      const failedTypes = failed.map((f) => `${f.storeType}: ${f.error}`).join(', ');
+      throw new Error(`Failed to push data to stores: ${failedTypes}`);
+    }
+
+    return state;
+  }
+
+  /**
+   * Get the current status of organization creation
+   * @returns {Promise<Object>} Status summary object
+   */
+  static async getCreationStatus() {
+    const { MetaV2 } = await import('./index.js');
+    const state = await loadCreationState(MetaV2, 'v2');
+    return getStatusSummary(state);
   }
 
   /**
@@ -311,6 +650,16 @@ class OrganizationsV2 extends Model {
   static async upgradeFromV1(name, icon) {
     try {
       loggerV2.info('[v2]: Upgrading from V1 to V2 Organization, This could take a while.');
+
+      // CRITICAL: Check if V1 is enabled before accessing V1 tables
+      const configV1 = getConfig();
+      const enableV1 = configV1?.ENABLE !== false;
+
+      if (!enableV1) {
+        throw new Error(
+          'V1 is disabled. Cannot upgrade from V1 when V1 is not enabled.',
+        );
+      }
 
       // CRITICAL: Check if V1 home org exists
       const v1Org = await Organization.findOne({
@@ -552,14 +901,25 @@ class OrganizationsV2 extends Model {
         icon,
       });
 
-      const onConfirm = () => {
+      const onConfirm = async () => {
         loggerV2.info('[v2]: V2 Organization upgrade confirmed, you are ready to go');
-        OrganizationsV2.update(
+        await OrganizationsV2.update(
           {
             subscribed: true,
           },
           { where: { org_uid: v1OrgUid } },
         );
+
+        // Trigger mirror check to create mirrors for the upgraded organization immediately
+        // Wrapped in try-catch so mirror failures don't fail org upgrade
+        // The periodic mirror-check task will retry if this fails
+        try {
+          loggerV2.info('[v2]: Triggering mirror check to create mirrors for upgraded organization');
+          await runMirrorCheckV2();
+          loggerV2.info('[v2]: Mirror check completed successfully');
+        } catch (mirrorError) {
+          loggerV2.warn(`[v2]: Mirror check failed (will be retried by periodic task): ${mirrorError.message}`);
+        }
       };
 
       if (!USE_SIMULATOR) {
@@ -1046,6 +1406,25 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<void>}
    */
   static async importOrganization(orgUid, isHome = false) {
+    // Check if store is synced BEFORE acquiring mutex to avoid blocking other operations
+    // If store is not synced, skip import - it will be retried on next task run
+    if (!USE_SIMULATOR) {
+      try {
+        const syncStatus = await datalayer.getSyncStatus(orgUid);
+        if (!isDlStoreSynced(syncStatus?.sync_status)) {
+          loggerV2.info(
+            `[v2]: Skipping import of organization ${orgUid} - store not yet synced. Will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        loggerV2.warn(
+          `[v2]: Could not check sync status for ${orgUid}, skipping import: ${error.message}`,
+        );
+        return;
+      }
+    }
+
     loggerV2.verbose('[v2]: Acquiring mutex to import organization');
     const releaseMutex = await addOrDeleteOrganizationRecordMutex.acquire();
 
@@ -1359,10 +1738,10 @@ class OrganizationsV2 extends Model {
       await addOrDeleteOrganizationRecordMutex.acquire();
 
     loggerV2.verbose(
-      '[v2]: acquiring processingSyncRegistriesTransaction mutex to delete organization',
+      '[v2]: acquiring processingSyncRegistriesTransactionV2 mutex to delete organization',
     );
     const releaseAuditTransactionMutex =
-      await processingSyncRegistriesTransactionMutex.acquire();
+      await processingSyncRegistriesTransactionMutexV2.acquire();
 
     const transaction = await sequelizeV2.transaction();
     try {

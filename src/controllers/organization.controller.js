@@ -48,6 +48,28 @@ export const homeOrgSyncStatus = async (req, res) => {
   }
 };
 
+/**
+ * Get organization creation status
+ * Returns the status of any in-progress or recently completed/failed organization creation.
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+export const getCreationStatus = async (req, res) => {
+  try {
+    const status = await Organization.getCreationStatus();
+    return res.json({
+      ...status,
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: 'Error getting organization creation status',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
 export const editHomeOrg = async (req, res) => {
   try {
     await assertIfReadOnlyMode();

@@ -289,21 +289,20 @@ const checkRootHealth = async () => {
 };
 
 /**
- * Check V1 API is enabled
- * Note: V1 doesn't have a /health endpoint, so we check /v1/organizations instead
+ * Check V1 API is enabled via /v1/health endpoint
  */
 const checkV1Health = async () => {
-  log('Checking V1 API status via /v1/organizations...');
+  log('Checking V1 /v1/health endpoint...');
 
   try {
-    const response = await httpRequest(`http://127.0.0.1:${PORT}/v1/organizations`);
+    const response = await httpRequest(`http://127.0.0.1:${PORT}/v1/health`);
 
     if (response.status === 200) {
       results.v1Health = {
         status: 'success',
-        message: 'V1 API is enabled and responding',
+        message: 'V1 health check passed',
       };
-      log('V1 API is enabled and responding', 'success');
+      log('V1 health check passed', 'success');
       return true;
     } else if (response.status === 403) {
       const errorMsg = response.body?.error || response.body?.message || 'V1 API disabled';
@@ -318,15 +317,12 @@ const checkV1Health = async () => {
     } else if (response.status === 400) {
       const errorMsg = response.body?.error || response.body?.message || 'Unknown';
       results.v1Health = {
-        status: 'warning',
-        message: `V1 API returned 400: ${errorMsg}`,
+        status: 'error',
+        message: `V1 health returned 400: ${errorMsg}`,
         response: response.body,
       };
-      log(`V1 API returned 400: ${errorMsg}`, 'warning');
-      log('  → This may indicate Chia services are not ready', 'info');
-      // 400 usually means Chia exception - V1 is enabled but services not ready
-      // This is OK for preflight - the tests will wait for services
-      return true;
+      log(`V1 health returned 400: ${errorMsg}`, 'error');
+      return false;
     } else {
       results.v1Health = {
         status: 'warning',

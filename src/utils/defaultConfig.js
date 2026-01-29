@@ -15,11 +15,12 @@ export const defaultConfig = {
     AUTO_MIRROR_EXTERNAL_STORES: true,
     LOG_LEVEL: 'info',
     TASKS: {
-      GOVERNANCE_SYNC_TASK_INTERVAL: 86400,
+      GOVERNANCE_SYNC_TASK_INTERVAL: 3600, // 1 hour - governance data rarely changes
       ORGANIZATION_META_SYNC_TASK_INTERVAL: 300,
       PICKLIST_SYNC_TASK_INTERVAL: 60,
-      MIRROR_CHECK_TASK_INTERVAL: 86460,
+      MIRROR_CHECK_TASK_INTERVAL: 300, // 5 minutes - check mirrors frequently
       VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL: 1800,
+      COIN_MANAGEMENT_TASK_INTERVAL: 21600, // 6 hours in seconds
     },
     /**
      * limits to prevent loop bound DOS attack

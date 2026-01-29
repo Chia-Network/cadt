@@ -40,7 +40,7 @@ describe('Issuance Live API Validation Tests', function () {
   describe('Step 3: Validation Failure Tests', function () {
     it('should reject POST with forbidden fields (createdAt, updatedAt, ID)', async function () {
       const verificationId = getFirstCreatedId('verification');
-      const projectMethodologyId = getFirstCreatedId('projectMethodology');
+      const projectMethodologyId = getFirstCreatedId('project-methodology');
       if (!verificationId || !projectMethodologyId) {
         this.skip();
       }
@@ -75,7 +75,7 @@ describe('Issuance Live API Validation Tests', function () {
 
     it('should reject POST with strings that are too long', async function () {
       const verificationId = getFirstCreatedId('verification');
-      const projectMethodologyId = getFirstCreatedId('projectMethodology');
+      const projectMethodologyId = getFirstCreatedId('project-methodology');
       if (!verificationId || !projectMethodologyId) {
         this.skip();
       }
@@ -96,9 +96,10 @@ describe('Issuance Live API Validation Tests', function () {
   });
   describe('Step 4: POST Request Tests', function () {
     it('should create issuances with typical, minimal, and maximal data', async function () {
-      // Get verification and projectMethodology IDs from earlier tests
+      // Get verification and projectMethodology IDs (automatically checks file for cross-process access)
       const verificationId = getFirstCreatedId('verification');
-      const projectMethodologyId = getFirstCreatedId('projectMethodology');
+      const projectMethodologyId = getFirstCreatedId('project-methodology');
+      
       if (!verificationId || !projectMethodologyId) {
         throw new Error('Verification or ProjectMethodology ID not found. Ensure verification-validation.spec.js and project-methodology-validation.spec.js run before issuance-validation.spec.js');
       }

@@ -42,6 +42,47 @@ app.use(
 app.use(express.json({ limit: '5mb' }));
 app.use(bodyParser.urlencoded({ extended: false }));
 
+// Startup state middleware - blocks requests until CADT is fully ready
+// This runs early in the chain but after body parsing
+app.use(async function (req, res, next) {
+  // Always allow health endpoints
+  if (req.path === '/health' || req.path === '/v1/health' || req.path === '/v2/health') {
+    return next();
+  }
+
+  // Skip startup checks in simulator mode (for testing)
+  if (USE_SIMULATOR) {
+    return next();
+  }
+
+  // Import startup state checkers
+  const { areMigrationsReady, isCoinManagementReady } = await import('./routes/index.js');
+
+  // Block ALL requests until migrations are complete
+  if (!areMigrationsReady()) {
+    return res.status(503).json({
+      message: 'CADT is still starting up. Database migrations are in progress. Please wait a few minutes and try again.',
+      error: 'Service temporarily unavailable during startup',
+      success: false,
+      startupPhase: 'migrations',
+    });
+  }
+
+  // Block WRITE requests until coin management is complete
+  // Write methods: POST, PUT, PATCH, DELETE
+  const isWriteRequest = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
+  if (isWriteRequest && !isCoinManagementReady()) {
+    return res.status(503).json({
+      message: 'CADT is still starting up. Coin management is in progress to prepare for write operations. Please wait a few minutes before writing or editing data.',
+      error: 'Write operations temporarily unavailable during startup',
+      success: false,
+      startupPhase: 'coin_management',
+    });
+  }
+
+  next();
+});
+
 // Request logger middleware
 app.use((req, res, next) => {
   logger.verbose(`Received request: ${req.method} ${req.originalUrl}`, {
@@ -72,6 +113,11 @@ app.use((req, res, next) => {
 
 // Common assertions on every endpoint
 app.use(async function (req, res, next) {
+  // Skip assertions for health endpoints
+  if (req.path === '/health' || req.path === '/v1/health' || req.path === '/v2/health') {
+    return next();
+  }
+
   try {
     await assertChiaNetworkMatchInConfiguration();
     await assertDataLayerAvailable();

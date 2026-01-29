@@ -67,12 +67,17 @@ OrganizationsV2Router.put('/resync', (req, res) => {
   return OrganizationsV2Controller.resyncOrganization(req, res);
 });
 
-// 12. DELETE /v2/organizations/:orgUid - Delete organization (MUST be before /)
+// 12. GET /v2/organizations/creation-status - Get organization creation status (MUST be before /)
+OrganizationsV2Router.get('/creation-status', (req, res) => {
+  return OrganizationsV2Controller.getCreationStatus(req, res);
+});
+
+// 13. DELETE /v2/organizations/:orgUid - Delete organization (MUST be before /)
 OrganizationsV2Router.delete('/:orgUid', (req, res) => {
   return OrganizationsV2Controller.deleteOrganization(req, res);
 });
 
-// 13. Catch-all routes (MUST be last)
+// 14. Catch-all routes (MUST be last)
 // GET /v2/organizations - Get all organizations
 OrganizationsV2Router.get('/', (req, res) => {
   return OrganizationsV2Controller.findAll(req, res);

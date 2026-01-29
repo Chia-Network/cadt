@@ -41,7 +41,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Issuance',
-      projectSector: 'Agriculture',
+      projectSector: ['Agriculture'],
       cadTrustProgramId: testProgram.cadTrustProgramId,
     });
 
@@ -98,7 +98,7 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Issuance',
-      projectSector: 'Agriculture',
+      projectSector: ['Agriculture'],
       cadTrustProgramId: testProgram.cadTrustProgramId,
     });
 

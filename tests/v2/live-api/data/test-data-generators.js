@@ -213,10 +213,10 @@ export const generateLocationMaximal = (cadTrustProjectId) => ({
 
 export const generateLocationLongStrings = (cadTrustProjectId) => ({
   locationCountry: 'United States of America',
-  locationRegion: getLongString(255),
-  locationGis: getLongString(10000),
+  locationRegion: getLongString(300), // Exceeds max of 255
+  locationGis: getLongString(15000), // Exceeds max of 10000
   locationMapType: 'GeoJSON',
-  locationMapFileLink: `https://example.com/${getLongString(400)}`,
+  locationMapFileLink: `https://example.com/${getLongString(600)}`, // Exceeds max of 500
   cadTrustProjectId,
 });
 
@@ -245,7 +245,7 @@ export const generateProject = (cadTrustProgramId = null) => {
     projectName: `Test Project ${uniqueId}`,
     projectLink: 'https://example.com/project',
     projectDescription: 'Test project description',
-    projectSector: 'Energy demand',
+    projectSector: ['Energy demand'],
     projectType: ['Solar'],
     projectSubtype: 'Solar',
     projectStatus: ['Registered'],
@@ -274,10 +274,10 @@ export const generateProjectMaximal = (cadTrustProgramId = null) => {
     projectName: `Max Project ${uniqueId}`,
     projectLink: `https://example.com/project/${getLongString(200)}`,
     projectDescription: getLongString(1000),
-    projectSector: 'Afforestation and reforestation',
+    projectSector: ['Afforestation and reforestation'],
     projectType: ['Afforestation', 'Reforestation'],
     projectSubtype: 'Native Species',
-    projectStatus: ['Validated', 'Registered'],
+    projectStatus: ['Validated'],
     projectStatusDate: '2024-12-31',
     projectUnitMetric: 'tCO2e',
   };
@@ -338,7 +338,7 @@ export const generateEstimationMaximal = (cadTrustProjectId) => ({
 export const generateEstimationLongStrings = (cadTrustProjectId) => ({
   estimationStartDate: '2024-01-01',
   estimationEndDate: '2024-12-31',
-  estimationReferenceNo: getLongString(255),
+  estimationReferenceNo: getLongString(300), // Exceeds max of 255
   cadTrustProjectId,
 });
 
@@ -390,9 +390,9 @@ export const generateRatingMaximal = (cadTrustProjectId) => ({
 });
 
 export const generateRatingLongStrings = (cadTrustProjectId) => ({
-  ratingName: getLongString(255),
-  ratingValue: getLongString(255),
-  ratingLink: `https://example.com/${getLongString(400)}`,
+  ratingName: getLongString(300), // Exceeds max of 255
+  ratingValue: getLongString(300), // Exceeds max of 255
+  ratingLink: `https://example.com/${getLongString(600)}`, // Exceeds max of 500
   cadTrustProjectId,
 });
 

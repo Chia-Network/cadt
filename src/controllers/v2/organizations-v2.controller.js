@@ -64,52 +64,58 @@ export const create = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
 
-    // Check if V1 home org exists in database
-    const v1Org = await Organization.findOne({
-      where: { isHome: true },
-      raw: true,
-    });
+    // Check if V1 home org exists in database (only if V1 is enabled)
+    // When V1 is disabled, the V1 organizations table may not exist
+    const configV1 = getConfig();
+    const enableV1 = configV1?.ENABLE !== false; // Default to true if not set
 
-    if (v1Org) {
-      // V1 org exists - check for V1 singleton in datalayer
-      if (v1Org.dataModelVersionStoreId) {
-        try {
-          const singletonData = await getStoreDataPromise(
-            v1Org.dataModelVersionStoreId,
-          );
-
-          // Handle simulator mode - getStoreData might return Error object or false
-          if (singletonData && !(singletonData instanceof Error) && singletonData.keys_values) {
-            // Check if singleton has v1 key
-            const hasV1Key = singletonData.keys_values.some((kv) => {
-              try {
-                const decodedKey = decodeHex(kv.key);
-                return decodedKey === 'v1';
-              } catch {
-                return false;
-              }
-            });
-
-            if (hasV1Key) {
-              return res.status(400).json({
-                message:
-                  'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
-                success: false,
-              });
-            }
-          }
-        } catch (error) {
-          // If getStoreData fails, we still error because V1 org exists
-          loggerV2.debug(`[v2]: Failed to check V1 singleton: ${error.message}`);
-        }
-      }
-
-      // If V1 org exists but no singleton check possible, still error
-      return res.status(400).json({
-        message:
-          'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
-        success: false,
+    if (enableV1) {
+      const v1Org = await Organization.findOne({
+        where: { isHome: true },
+        raw: true,
       });
+
+      if (v1Org) {
+        // V1 org exists - check for V1 singleton in datalayer
+        if (v1Org.dataModelVersionStoreId) {
+          try {
+            const singletonData = await getStoreDataPromise(
+              v1Org.dataModelVersionStoreId,
+            );
+
+            // Handle simulator mode - getStoreData might return Error object or false
+            if (singletonData && !(singletonData instanceof Error) && singletonData.keys_values) {
+              // Check if singleton has v1 key
+              const hasV1Key = singletonData.keys_values.some((kv) => {
+                try {
+                  const decodedKey = decodeHex(kv.key);
+                  return decodedKey === 'v1';
+                } catch {
+                  return false;
+                }
+              });
+
+              if (hasV1Key) {
+                return res.status(400).json({
+                  message:
+                    'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
+                  success: false,
+                });
+              }
+            }
+          } catch (error) {
+            // If getStoreData fails, we still error because V1 org exists
+            loggerV2.debug(`[v2]: Failed to check V1 singleton: ${error.message}`);
+          }
+        }
+
+        // If V1 org exists but no singleton check possible, still error
+        return res.status(400).json({
+          message:
+            'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
+          success: false,
+        });
+      }
     }
 
     // Check if V2 home org already exists
@@ -200,6 +206,17 @@ export const upgrade = async (req, res) => {
     // Note: assertWalletIsSyncedV2 and assertNoPendingCommitsExcludingTransfers don't exist yet
     // await assertWalletIsSyncedV2();
     // await assertNoPendingCommitsExcludingTransfers();
+
+    // Check if V1 is enabled before accessing V1 tables
+    const configV1 = getConfig();
+    const enableV1 = configV1?.ENABLE !== false;
+
+    if (!enableV1) {
+      return res.status(400).json({
+        message: 'V1 is disabled. Cannot upgrade from V1 when V1 is not enabled.',
+        success: false,
+      });
+    }
 
     // Check if V1 home org exists
     const v1Org = await Organization.findOne({
@@ -322,13 +339,36 @@ export const homeOrgSyncStatus = async (req, res) => {
     await assertV2HomeOrgExists();
     await assertWalletIsSynced();
 
-    const walletSynced = await datalayer.walletIsSynced();
     const homeOrg = await OrganizationsV2.getHomeOrg();
     const pendingCommitsCount = await StagingV2.count({
       where: { committed: true },
     });
 
-    const { sync_status } = await datalayer.getSyncStatus(homeOrg.org_uid);
+    // In simulator mode, assume wallet is synced and profile is synced
+    let walletSynced = true;
+    let homeOrgProfileSynced = true;
+
+    if (!USE_SIMULATOR) {
+      walletSynced = await datalayer.walletIsSynced();
+      
+      // Get sync status - may fail or return undefined if store isn't synced yet
+      try {
+        const syncResult = await datalayer.getSyncStatus(homeOrg.org_uid);
+        const syncStatus = syncResult?.sync_status;
+        
+        if (syncStatus && syncStatus.target_root_hash !== undefined) {
+          homeOrgProfileSynced =
+            syncStatus.target_root_hash === homeOrg.org_hash?.split('0x')?.[1];
+        } else {
+          // Store not synced yet or sync status not available
+          homeOrgProfileSynced = false;
+        }
+      } catch (syncError) {
+        // Sync status not available yet - store might still be initializing
+        loggerV2.debug(`[v2]: Could not get sync status for home org: ${syncError.message}`);
+        homeOrgProfileSynced = false;
+      }
+    }
 
     return res.json({
       ready:
@@ -337,8 +377,7 @@ export const homeOrgSyncStatus = async (req, res) => {
         wallet_synced: walletSynced,
         home_org_synced: Boolean(homeOrg?.synced),
         pending_commits: pendingCommitsCount,
-        home_org_profile_synced:
-          sync_status.target_root_hash === homeOrg.org_hash?.split('0x')?.[1],
+        home_org_profile_synced: homeOrgProfileSynced,
       },
       success: true,
     });
@@ -346,6 +385,29 @@ export const homeOrgSyncStatus = async (req, res) => {
     loggerV2.error(`[v2]: Error getting home org sync status: ${error.message}`);
     res.status(400).json({
       message: error.message,
+      success: false,
+    });
+  }
+};
+
+/**
+ * Get organization creation status
+ * Returns the status of any in-progress or recently completed/failed organization creation.
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+export const getCreationStatus = async (req, res) => {
+  try {
+    const status = await OrganizationsV2.getCreationStatus();
+    return res.json({
+      ...status,
+      success: true,
+    });
+  } catch (error) {
+    loggerV2.error(`[v2]: Error getting creation status: ${error.message}`);
+    res.status(400).json({
+      message: 'Error getting organization creation status',
+      error: error.message,
       success: false,
     });
   }

@@ -19,6 +19,7 @@ testMirror-v2.sqlite3
 **/.organization-state.json
 tests/v1/live-api/.verification-state.json
 tests/v2/live-api/.verification-state.json
+tests/v2/live-api/.test-state.json
 
 # production
 /build

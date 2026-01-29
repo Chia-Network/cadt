@@ -2,6 +2,9 @@
  * Shared setup that runs once before all tests
  * Checks for home organization and validates database is empty
  * If home org doesn't exist, exits with failure
+ * 
+ * NOTE: State file clearing is handled by the orchestration file (data-short.js),
+ * NOT here, to avoid clearing state between test phases.
  */
 
 import {
@@ -26,7 +29,8 @@ export async function runSharedSetup(skipEmptyCheck = false) {
 
   try {
     // Step 1: Ensure home organization exists - FAIL FAST if it doesn't
-    sharedRequest = await getLiveApiRequest();
+    // Use V2 API version for health checks since we use V2 endpoints
+    sharedRequest = await getLiveApiRequest({ apiVersion: 'v2' });
     sharedHomeOrgId = await getHomeOrgId(sharedRequest);
     console.log(`✓ Home organization found: ${sharedHomeOrgId}`);
 

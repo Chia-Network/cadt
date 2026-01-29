@@ -40,7 +40,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Verification',
-      projectSector: 'Agriculture',
+      projectSector: ['Agriculture'],
       cadTrustProgramId: testProgram.cadTrustProgramId,
     });
 
@@ -76,7 +76,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJECT-001',
       projectName: 'Test Project for Verification',
-      projectSector: 'Agriculture',
+      projectSector: ['Agriculture'],
       cadTrustProgramId: testProgram.cadTrustProgramId,
     }));
 

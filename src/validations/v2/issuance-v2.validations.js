@@ -4,7 +4,7 @@ import { pickListValidationV2 } from '../../utils/v2-validation-utils.js';
 // Validation schema for issuance - same for both create and update
 // V2 follows V1 pattern: update requests include ALL fields, not just changed ones
 export const issuanceV2Schema = Joi.object({
-  issuanceId: Joi.string().required(),
+  issuanceId: Joi.string().max(255).required(),
   issuanceDate: Joi.date().allow(null).optional(),
   cadTrustVerificationId: Joi.string().uuid().required(),
   cadTrustProjectMethodologyId: Joi.string().uuid().required(),

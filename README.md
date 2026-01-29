@@ -12,7 +12,7 @@ This project was formerly known as the Climate Warehouse, and you may see this t
 
 The CADT application is designed to run 24/7, much like any other API.  While it is possible to run it on-demand only when API requests need to be made, this guide assumes a permanently running solution.
 
-The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, Datalayer, and Datalayer-HTTP services reside on. CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
+The simplest way to run the CADT application is to use the same machine the Chia Full Node, Wallet, and Datalayer services reside on. A simple webserver to serve Chia Datalayer files is also required.  CADT communicates with the Chia services over an RPC interface.  The RPC interface uses certificates to authenticate, which will work automatically when the CADT application is run as the same user on the same machine as the Chia services.  To run CADT on a separate machine from Chia, a public certificate from the Chia node must be used to authenticate (not yet documented).
 
 Basic Chia installation instructions are provided below, but further installation options, please see the [Chia docs site](https://docs.chia.net/installation/).  For most CADT setups, we recommend the installing the headless `chia-blockchain-cli` package via the `apt` repo and using [systemd](https://docs.chia.net/installation/#systemd).
 
@@ -22,7 +22,13 @@ After the initial installation, it will take anywhere from a few days (most like
 
 ### How to use the API
 
-Please see the [CADT RPC API Guide](docs/cadt_rpc_api.md).
+CADT will be transitioning to version 2 of the API while phasing out version 1 of the API.  For v2 documenentation, please see the [CADT v2 RPC Guide](docs/cadt_rpc_api_v2.md).  For v1, please see the [CADT v1 RPC Guide](docs/cadt_rpc_api.md).
+
+### Upgrading a v1 system to v2
+
+V2 of the CADT API is available on versions above 1.7.25.  When a v2 compatible version is first run, the CADT config file will be migrated from the `~/.chia/mainnet/cadt/v1` directory to the `~/.chia/mainnet/cadt` directory.  This new config file will contain parameters for both the v1 and v2 API.  The v1 and v2 endpoints and sync services can be enabled and disabled individually.
+
+Data cannot be migrated automatically from v1 to v2, but a v1 organization [can be upgraded](/docs/cadt_rpc_api_v2.md#upgrade-v1-organization-to-v2).
 
 ## Installation
 
@@ -86,11 +92,6 @@ sudo systemctl start chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full
 
 For `<USERNAME>`, enter the user that Chia runs as (the user with the `.chia` directory in their home directory).  For example, if the `ubuntu` is where Chia runs, start Chia with `systemctl start chia-wallet@ubuntu`.
 
-Optional:  If using Chia's built-in HTTP server to share datalayer files, start the `chia-data-layer-http` service with
-
-```
-sudo systemctl start chia-data-layer-http@<USERNAME>
-```
 
 7.  Start CADT with systemd
 
@@ -104,18 +105,20 @@ sudo systemctl start cadt@<USERNAME>
 sudo systemctl enable chia-wallet@<USERNAME> chia-data-layer@<USERNAME> chia-full-node@<USERNAME> cadt@<USERNAME>
 ```
 
-If using the built-in HTTP server for datalayer, start it at boot with
-
-```
-sudo systemctl enable chia-data-layer-http@<USERNAME>
-```
-
 9.  View CADT logs to validate
 
 ```
 journalctl -u cadt@<USERNAME> -f
 (ctrl+c to exit)
 ```
+
+10.  Install webserver of choice to serve datalayer files (Nginx documented here)
+
+```sudo apt install nginx
+sudo systemctl enable nginx
+```
+
+See the [Datalayer HTTP File Serving](#datalayer-http-file-serving) section below for information on configuring Nginx.
 
 #### Installation from Source
 
@@ -160,9 +163,7 @@ Without specifying the version number, `apt` will install the latest release can
 
 CADT relies on all participants publicly sharing their data over Chia Datalayer, which includes sharing the Chia-generated `.dat` files over HTTP.  The files are located in `~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>/` (where `<NETWORK>` is the Chia network, usually either "mainnet" or "testneta") and can be shared over any web-accessible HTTP endpoint, including
 
-* Using the built-in datalayer-http service (see [Installation](#installation) instructions below).  Datalayer-http runs on port 8575 by default which may need to be opened in your firewall configuration or forwarded by your router.  Additionally, a static IP address, or stable DNS record, will be required, which is not offered by default on some hosting providers.  On AWS, assign an Elastic IP to the EC2 instance or use an Application Load Balancer to solve this.
-
-* Using Nginx, Apache, Caddy, or any other web server.  This also requires a static IP address, or dynamically assigned DNS record.  Another challenge is that the default location for the .dat files is in the user's home directory, which the web server software will not have read-access to.  One simple solution is
+* Using Nginx, Apache, Caddy, or any other web server.  A static IP address, or stable DNS record, will be required, which is not offered by default on some hosting providers.  On AWS, assign an Elastic IP to the EC2 instance or use an Application Load Balancer to solve this.  Another challenge is that the default location for the .dat files is in the user's home directory, which the web server software will not have read-access to.  One simple solution is
   * `mv ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK> /var/www/` - move the datalayer file directory outside of the home directory
   * `chmod -R 744 /var/www/server_files_location_<NETWORK>` - change permissions on all datalayer files to be read by any user
   * `ln -s /var/www/server_files_location_<NETWORK> ~/.chia/mainnet/data_layer/db/server_files_location_<NETWORK>` - create a shortcut from the old location to the new
@@ -234,36 +235,60 @@ The CADT API uses HTTP and is unencrypted. To add encryption, use a reverse prox
 
 In the `CHIA_ROOT` directory (usually `~/.chia/mainnet` on Linux), CADT will add a directory called `cadt` when the application is first run. The main CADT configuration file is called `config.yaml` and can be found at `~/.chia/mainnet/cadt/config.yaml`. This unified config file has three sections: `APP` (shared configuration), `V1` (V1-specific settings), and `V2` (V2-specific settings). Database files are stored in `cadt/v1` and `cadt/v2` subdirectories. The options in the config file are as follows (the full list of available options can be seen in the [config template](src/utils/defaultConfig.js)):
 
-* **MIRROR_DB**: This section is for configuring the MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the data CADT uses.
-  *  **DB_USERNAME**:  MySQL username
-  *  **DB_PASSWORD**: MySQL password
-  *  **DB_NAME**: MySQL database name
-  *  **DB_HOST**: Hostname of the MySQL database
-* **APP**:  This section is for configuring the CADT application.
+* **APP**: This section contains shared configuration used by both V1 and V2 APIs.
   * **CW_PORT**: CADT port where the API will be available. 31310 by default.
-  * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries.
   * **BIND_ADDRESS**: By default, CADT listens on localhost only. To enable remote connections to CADT, change this to `0.0.0.0` to listen on all network interfaces, or to an IP address to listen on a specific network interface.
   * **DATALAYER_URL**: URL and port to connect to the [Chia DataLayer RPC](https://docs.chia.net/datalayer-rpc). If Chia is installed locally with default settings, https://localhost:8562 will work.
   * **WALLET_URL**: URL and port to connect to the [Chia Wallet RPC](https://docs.chia.net/wallet-rpc). If Chia is installed on the same machine as CADT with default settings, https://localhost:9256 will work.
   * **USE_SIMULATOR**: Developer setting to populate CADT from a governance file and enable some extra APIs. Should always be "false" under normal usage.
-  * **READ_ONLY**: When hosting an Observer node, set it to "true" to prevent any data from being written using the CADT APIs. This makes the application safe to run with public endpoints as it is just displaying publicly available data.  When running a governance node, or a participant node, set to "false" to allow data to be written to the CADT APIs. When "false", additional authentication or access restrictions must be applied to prevent unauthorized alteration of the data.
-  * **CADT_API_KEY**: This key is used by the [CADT UI](https://github.com/Chia-Network/climate-warehouse-ui) to authenticate with the CADT API endpoints. This allows the API to power the UI only without allowing requests missing the API key in the header to access the API.  This can be left blank to allow open access to the API or if access is restricted by other means. The CADT_API_KEY can be set to any value, but we recommend at least a 32-character random string. The CADT_API_KEY can be passed in a request using the `x-api-key` header. See the [RPC documentation](docs/climate_warehouse_rpc_api.md) for examples.
-  * **CHIA_NETWORK**:  CADT can run on Chia mainnet or any testnet. Set to "mainnet" for production instances or "testnet" if using the main Chia testnet.
-  * **USE_DEVELOPMENT_MODE**:  Should be false in most use cases.  If a developer is writing code for the app, this can be changed to "true," which will bypass the need for a governance node.
-  * **IS_GOVERNANCE_BODY**: "True" or "false" toggle to enable/disable mode for this instance being a governing body.
-  * **DEFAULT_FEE**: [Fee](https://docs.chia.net/mempool/) for each transaction on the Chia blockchain in mojos. The default is 300000000 mojos (0.0003 XCH) and can be set higher or lower depending on how [busy](https://dashboard.chia.net/d/46EAA05E/mempool-transactions-and-fees?orgId=1) the Chia network is.  If a fee is set very low, it may cause a delay in transaction processing.
-  * **DEFAULT_COIN_AMOUNT**: Units are mojo. Each DataLayer transaction needs a coin amount, and the default is 300000000 mojo.
-  * **CERTIFICATE_FOLDER_PATH**: If using a custom path for the Chia Blockchain certificates folder, enter the path here to allow CADT to find the certificates and authenticate to the Chia RPC.  CADT assumes the folder structure within the directory specified matches the default Chia SSL directory of `$CHIA_ROOT/config/ssl/`.
-  * **DATALAYER_FILE_SERVER_URL**: Publicly available Chia DataLayer HTTP URL and port, including schema (http:// or https://).  If serving DataLayer files from S3, this would be the public URL of the S3 bucket. Port can be omitted if using standard ports for http or https requests.
+  * **CHIA_NETWORK**: CADT can run on Chia mainnet or any testnet. Set to "mainnet" for production instances or "testnet" if using the main Chia testnet.
+  * **USE_DEVELOPMENT_MODE**: Should be false in most use cases. If a developer is writing code for the app, this can be changed to "true," which will bypass the need for a governance node.
+  * **DEFAULT_FEE**: [Fee](https://docs.chia.net/mempool/) for each transaction on the Chia blockchain in mojos. The default is 3000 mojos and can be set higher or lower depending on how [busy](https://dashboard.chia.net/d/46EAA05E/mempool-transactions-and-fees?orgId=1) the Chia network is. If a fee is set very low, it may cause a delay in transaction processing.
+  * **DEFAULT_COIN_AMOUNT**: Units are mojo. Each DataLayer transaction needs a coin amount, and the default is 300 mojo.
+  * **CERTIFICATE_FOLDER_PATH**: If using a custom path for the Chia Blockchain certificates folder, enter the path here to allow CADT to find the certificates and authenticate to the Chia RPC. CADT assumes the folder structure within the directory specified matches the default Chia SSL directory of `$CHIA_ROOT/config/ssl/`.
+  * **DATALAYER_FILE_SERVER_URL**: Publicly available URL and port where Chia Datalayer [files are served](#datalayer-http-file-serving), including schema (http:// or https://). If serving DataLayer files from S3, this would be the public URL of the S3 bucket. Port can be omitted if using standard ports for http or https requests.
   * **AUTO_SUBSCRIBE_FILESTORE**: Subscribing to the filestore for any organization is optional. To automatically subscribe and sync the filestore to every organization you subscribe to, set this to `true`.
-  * **AUTO_MIRROR_EXTERNAL_STORES**: When set to true (the default), CADT will automatically create mirrors for each store you are subscribed to.  Mirroring all subscriptions using the `DATALAYER_FILE_SERVER_URL` will make the entire CADT network more resiliant and distributed.
-  * **TASKS**: Section for configuring sync intervals
-    * **GOVERNANCE_SYNC_TASK_INTERVAL**:  Syncs new organizations from the governance node.  Default 86400.
-    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**:  Syncs organization data from the blockchain. Default 300.
-    * **PICKLIST_SYNC_TASK_INTERVAL**:  Syncs picklist from the governance node. Default 30.
-    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 86460.
-* **GOVERNANCE**: Section on settings for the Governance body to connect to.
-  * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT network will be connected to.  While there could be multiple governance body IDs, the default of `23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e` is the right ID for most people on mainnet.
+  * **AUTO_MIRROR_EXTERNAL_STORES**: When set to true (the default), CADT will automatically create mirrors for each store you are subscribed to. Mirroring all subscriptions using the `DATALAYER_FILE_SERVER_URL` will make the entire CADT network more resilient and distributed.
+  * **LOG_LEVEL**: Controls verbosity of logging. Common settings are `info` and `debug`. Setting to `silly` will log all queries.
+  * **TASKS**: Section for configuring sync intervals.
+    * **GOVERNANCE_SYNC_TASK_INTERVAL**: Syncs new organizations from the governance node. Default 86400 seconds.
+    * **ORGANIZATION_META_SYNC_TASK_INTERVAL**: Syncs organization data from the blockchain. Default 300 seconds.
+    * **PICKLIST_SYNC_TASK_INTERVAL**: Syncs picklist from the governance node. Default 60 seconds.
+    * **MIRROR_CHECK_TASK_INTERVAL**: Checks if our DataLayer is advertising our `DATALAYER_FILE_SERVER_URL` as a mirror for all subscriptions when `AUTO_MIRROR_EXTERNAL_STORES` is true. Default 86460 seconds.
+    * **VALIDATE_ORGANIZATION_TABLE_TASK_INTERVAL**: Validates the organization table periodically. Default 1800 seconds.
+  * **REQUEST_CONTENT_LIMITS**: Section for configuring request size limits to prevent denial-of-service attacks. These limits control the maximum array lengths in API requests.
+    * **STAGING**:
+      * **EDIT_DATA_LEN**: Maximum number of items in staging edit operations. Default 200.
+    * **UNITS**:
+      * **INCLUDE_COLUMNS_LEN**: Maximum number of columns to include in unit queries. Default 200.
+      * **MARKETPLACE_IDENTIFIERS_LEN**: Maximum number of marketplace identifiers in unit queries. Default 200.
+    * **PROJECTS**:
+      * **INCLUDE_COLUMNS_LEN**: Maximum number of columns to include in project queries. Default 200.
+      * **PROJECT_IDS_LEN**: Maximum number of project IDs in project queries. Default 200.
+* **V1**: This section contains settings specific to the V1 API.
+  * **ENABLE**: Set to `true` to enable the V1 API, or `false` to disable it. Default is `true`.
+  * **READ_ONLY**: When hosting an Observer node, set to `true` to prevent any data from being written using the CADT V1 APIs. This makes the application safe to run with public endpoints as it is just displaying publicly available data. When running a governance node, or a participant node, set to `false` to allow data to be written to the CADT APIs. When `false`, additional authentication or access restrictions must be applied to prevent unauthorized alteration of the data.
+  * **CADT_API_KEY**: This key is used by the [CADT UI](https://github.com/Chia-Network/cadt-ui) to authenticate with the CADT V1 API endpoints. This allows the API to power the UI only without allowing requests missing the API key in the header to access the API. This can be left blank to allow open access to the API or if access is restricted by other means. The CADT_API_KEY can be set to any value, but we recommend at least a 32-character random string. The CADT_API_KEY can be passed in a request using the `x-api-key` header. See the [RPC documentation](docs/cadt_rpc_api.md) for examples.
+  * **IS_GOVERNANCE_BODY**: Set to `true` or `false` to enable/disable governance body mode for the V1 API.
+  * **GOVERNANCE**: Section for governance body settings.
+    * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT V1 network will be connected to. While there could be multiple governance body IDs, the default of `23f6498e015ebcd7190c97df30c032de8deb5c8934fc1caa928bc310e2b8a57e` is the right ID for most people on mainnet.
+  * **MIRROR_DB**: This section is for configuring a MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the V1 data CADT uses.
+    * **DB_USERNAME**: MySQL username.
+    * **DB_PASSWORD**: MySQL password.
+    * **DB_NAME**: MySQL database name.
+    * **DB_HOST**: Hostname of the MySQL database.
+* **V2**: This section contains settings specific to the V2 API.
+  * **ENABLE**: Set to `true` to enable the V2 API, or `false` to disable it. Default is `true`.
+  * **READ_ONLY**: When hosting an Observer node, set to `true` to prevent any data from being written using the CADT V2 APIs. This makes the application safe to run with public endpoints as it is just displaying publicly available data. When running a governance node, or a participant node, set to `false` to allow data to be written to the CADT APIs. When `false`, additional authentication or access restrictions must be applied to prevent unauthorized alteration of the data.
+  * **CADT_API_KEY**: This key is used by the [CADT UI](https://github.com/Chia-Network/cadt-ui) to authenticate with the CADT V2 API endpoints. This allows the API to power the UI only without allowing requests missing the API key in the header to access the API. This can be left blank to allow open access to the API or if access is restricted by other means. The CADT_API_KEY can be set to any value, but we recommend at least a 32-character random string. The CADT_API_KEY can be passed in a request using the `x-api-key` header. See the [RPC documentation](docs/cadt_rpc_api_v2.md) for examples.
+  * **IS_GOVERNANCE_BODY**: Set to `true` or `false` to enable/disable governance body mode for the V2 API.
+  * **GOVERNANCE**: Section for governance body settings.
+    * **GOVERNANCE_BODY_ID**: This determines the governance body your CADT V2 network will be connected to. The V2 governance body may be different from the V1 governance body.
+  * **MIRROR_DB**: This section is for configuring a MySQL-compatible database that can be used for easy querying for report generation. This is optional and only provides a read-only mirror of the V2 data CADT uses.
+    * **DB_USERNAME**: MySQL username.
+    * **DB_PASSWORD**: MySQL password.
+    * **DB_NAME**: MySQL database name.
+    * **DB_HOST**: Hostname of the MySQL database.
 
 ​
 Note that the CADT application will need to be restarted after any changes to the config.yaml file.

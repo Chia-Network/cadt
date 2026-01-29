@@ -866,12 +866,12 @@ class ProjectV2 extends Model {
   static updateProjectPropertiesV2(project) {
     if (typeof project !== 'object') return;
 
-    // Handle array fields (projectType and projectStatus)
+    // Handle array fields (projectType, projectSector, projectStatus)
     // These can come from CSV as:
     // 1. Single value: "Solar" → ["Solar"]
     // 2. JSON array string: '["Solar","Wind"]' → ["Solar", "Wind"]
     // 3. Pipe-separated: "Solar|Wind" → ["Solar", "Wind"]
-    const arrayFields = ['projectType', 'projectStatus'];
+    const arrayFields = ['projectType', 'projectSector', 'projectStatus'];
 
     arrayFields.forEach((key) => {
       if (project[key] !== undefined && project[key] !== null) {
@@ -978,9 +978,47 @@ ProjectV2.init(
       field: 'project_description',
     },
     projectSector: {
-      type: Sequelize.STRING,
+      type: Sequelize.TEXT,
       allowNull: true,
       field: 'project_sector',
+      // Stored as JSON string in DB, returned as array to API
+      get() {
+        const rawValue = this.getDataValue('projectSector');
+        if (!rawValue) return null;
+        try {
+          return JSON.parse(rawValue);
+        } catch {
+          // If it's not valid JSON, return as single-item array for backwards compatibility
+          return [rawValue];
+        }
+      },
+      set(value) {
+        if (value === null || value === undefined) {
+          this.setDataValue('projectSector', null);
+        } else if (Array.isArray(value)) {
+          this.setDataValue('projectSector', JSON.stringify(value));
+        } else if (typeof value === 'string') {
+          // Check if the string is already a valid JSON array
+          const trimmedValue = value.trim();
+          if (trimmedValue.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmedValue);
+              if (Array.isArray(parsed)) {
+                // It's already a valid JSON array string, store as-is
+                this.setDataValue('projectSector', trimmedValue);
+                return;
+              }
+            } catch {
+              // Not valid JSON, fall through to wrap in array
+            }
+          }
+          // Plain string - wrap it in an array
+          this.setDataValue('projectSector', JSON.stringify([value]));
+        } else {
+          // For any other type, wrap in array
+          this.setDataValue('projectSector', JSON.stringify([value]));
+        }
+      },
     },
     projectType: {
       type: Sequelize.TEXT,
@@ -1002,8 +1040,25 @@ ProjectV2.init(
           this.setDataValue('projectType', null);
         } else if (Array.isArray(value)) {
           this.setDataValue('projectType', JSON.stringify(value));
+        } else if (typeof value === 'string') {
+          // Check if the string is already a valid JSON array
+          const trimmedValue = value.trim();
+          if (trimmedValue.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmedValue);
+              if (Array.isArray(parsed)) {
+                // It's already a valid JSON array string, store as-is
+                this.setDataValue('projectType', trimmedValue);
+                return;
+              }
+            } catch {
+              // Not valid JSON, fall through to wrap in array
+            }
+          }
+          // Plain string - wrap it in an array
+          this.setDataValue('projectType', JSON.stringify([value]));
         } else {
-          // If a string is passed, wrap it in an array
+          // For any other type, wrap in array
           this.setDataValue('projectType', JSON.stringify([value]));
         }
       },
@@ -1033,8 +1088,25 @@ ProjectV2.init(
           this.setDataValue('projectStatus', null);
         } else if (Array.isArray(value)) {
           this.setDataValue('projectStatus', JSON.stringify(value));
+        } else if (typeof value === 'string') {
+          // Check if the string is already a valid JSON array
+          const trimmedValue = value.trim();
+          if (trimmedValue.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmedValue);
+              if (Array.isArray(parsed)) {
+                // It's already a valid JSON array string, store as-is
+                this.setDataValue('projectStatus', trimmedValue);
+                return;
+              }
+            } catch {
+              // Not valid JSON, fall through to wrap in array
+            }
+          }
+          // Plain string - wrap it in an array
+          this.setDataValue('projectStatus', JSON.stringify([value]));
         } else {
-          // If a string is passed, wrap it in an array
+          // For any other type, wrap in array
           this.setDataValue('projectStatus', JSON.stringify([value]));
         }
       },

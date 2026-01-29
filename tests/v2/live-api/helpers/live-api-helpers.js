@@ -56,10 +56,12 @@ export const getLiveApiConfig = () => {
   }
 
   const port = config?.APP?.CW_PORT || 31310;
-  // Use 127.0.0.1 instead of localhost for more reliable connections in containers
-  const baseUrl = `http://127.0.0.1:${port}`;
+  // Allow TEST_API_HOST env var to override, default to localhost for local dev
+  // CI can set TEST_API_HOST=127.0.0.1 if needed for container environments
+  const host = process.env.TEST_API_HOST || 'localhost';
+  const baseUrl = `http://${host}:${port}`;
 
-  console.log(`Using API endpoint: ${baseUrl} (port: ${port})`);
+  console.log(`Using API endpoint: ${baseUrl} (host: ${host}, port: ${port})`);
 
   cachedConfig = { baseUrl, port, config };
   return cachedConfig;
@@ -77,8 +79,14 @@ export const createLiveApiRequest = () => {
  * Check if server is running by hitting health endpoint
  * Retries with timeout if server not ready
  * Provides detailed diagnostics on failure
+ *
+ * @param {Object} request - supertest request instance
+ * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 30000)
+ * @param {Object} options - Options
+ * @param {string} options.apiVersion - API version to check: 'v1', 'v2', or 'any' (default: 'any')
  */
-export const waitForServer = async (request, maxWaitTime = 30000) => {
+export const waitForServer = async (request, maxWaitTime = 30000, options = {}) => {
+  const { apiVersion = 'any' } = options;
   const startTime = Date.now();
   const interval = 2000; // Check every 2 seconds
 
@@ -89,77 +97,109 @@ export const waitForServer = async (request, maxWaitTime = 30000) => {
   let lastError = null;
   let connectionRefusedCount = 0;
 
-  console.log(`[${getTimestamp()}] Checking server health (timeout: ${maxWaitTime}ms)...`);
+  console.log(`[${getTimestamp()}] Checking server health (timeout: ${maxWaitTime}ms, apiVersion: ${apiVersion})...`);
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
 
-    // Try V2 health endpoint
-    try {
-      const response = await request.get('/v2/health');
-      lastV2Response = {
-        status: response.status,
-        body: response.body,
-        timestamp: getTimestamp(),
-      };
+    // For V2 or 'any', try V2 health endpoint
+    if (apiVersion === 'v2' || apiVersion === 'any') {
+      try {
+        const response = await request.get('/v2/health');
+        lastV2Response = {
+          status: response.status,
+          body: response.body,
+          timestamp: getTimestamp(),
+        };
 
-      if (response.status === 200) {
-        console.log(`[${getTimestamp()}] ✓ Server ready (V2 health check passed)`);
-        return true;
-      }
+        if (response.status === 200) {
+          console.log(`[${getTimestamp()}] ✓ Server ready (V2 health check passed)`);
+          return true;
+        }
 
-      // Log non-200 responses to help diagnose issues
-      if (response.status === 403) {
-        console.log(`[${getTimestamp()}] V2 health returned 403 - V2 API may be disabled, trying V1...`);
-      } else if (response.status === 400) {
-        console.log(`[${getTimestamp()}] V2 health returned 400: ${response.body?.message || response.body?.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      lastError = error;
-      const isConnectionRefused = error.code === 'ECONNREFUSED' ||
-        error.message?.includes('ECONNREFUSED') ||
-        error.message?.includes('connect ECONNREFUSED');
+        // Log non-200 responses to help diagnose issues
+        if (response.status === 403) {
+          if (apiVersion === 'v2') {
+            console.log(`[${getTimestamp()}] V2 health returned 403 - V2 API is disabled`);
+          }
+          // For 'any', silently continue to try other endpoints
+        } else if (response.status === 400) {
+          console.log(`[${getTimestamp()}] V2 health returned 400: ${response.body?.message || response.body?.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        lastError = error;
+        const isConnectionRefused = error.code === 'ECONNREFUSED' ||
+          error.message?.includes('ECONNREFUSED') ||
+          error.message?.includes('connect ECONNREFUSED');
 
-      if (isConnectionRefused) {
-        connectionRefusedCount++;
-        if (connectionRefusedCount <= 3 || connectionRefusedCount % 5 === 0) {
-          console.log(`[${getTimestamp()}] Connection refused (${connectionRefusedCount}x) - server may not be running yet (${elapsed}s elapsed)`);
+        if (isConnectionRefused) {
+          connectionRefusedCount++;
+          if (connectionRefusedCount <= 3 || connectionRefusedCount % 5 === 0) {
+            console.log(`[${getTimestamp()}] Connection refused (${connectionRefusedCount}x) - server may not be running yet (${elapsed}s elapsed)`);
+          }
         }
       }
     }
 
-    // Try V1 health endpoint as fallback
-    try {
-      const response = await request.get('/v1/health');
-      lastV1Response = {
-        status: response.status,
-        body: response.body,
-        timestamp: getTimestamp(),
-      };
+    // For V1 or 'any', try V1 health endpoint
+    if (apiVersion === 'v1' || apiVersion === 'any') {
+      try {
+        const response = await request.get('/v1/health');
+        lastV1Response = {
+          status: response.status,
+          body: response.body,
+          timestamp: getTimestamp(),
+        };
 
-      if (response.status === 200) {
-        console.log(`[${getTimestamp()}] ✓ Server ready (V1 health check passed - note: V2 may be disabled)`);
-        return true;
+        if (response.status === 200) {
+          console.log(`[${getTimestamp()}] ✓ Server ready (V1 health check passed)`);
+          return true;
+        }
+
+        if (response.status === 403) {
+          if (apiVersion === 'v1') {
+            console.log(`[${getTimestamp()}] V1 health returned 403 - V1 API is disabled`);
+          }
+        } else if (response.status === 400) {
+          console.log(`[${getTimestamp()}] V1 health returned 400: ${response.body?.message || response.body?.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        // V1 also failed - continue
+        if (apiVersion === 'v1') {
+          lastError = error;
+          const isConnectionRefused = error.code === 'ECONNREFUSED' ||
+            error.message?.includes('ECONNREFUSED') ||
+            error.message?.includes('connect ECONNREFUSED');
+
+          if (isConnectionRefused) {
+            connectionRefusedCount++;
+            if (connectionRefusedCount <= 3 || connectionRefusedCount % 5 === 0) {
+              console.log(`[${getTimestamp()}] Connection refused (${connectionRefusedCount}x) - server may not be running yet (${elapsed}s elapsed)`);
+            }
+          }
+        }
       }
-    } catch (error) {
-      // V1 also failed - continue
     }
 
-    // Try root health endpoint as last resort
-    try {
-      const response = await request.get('/health');
-      lastRootHealthResponse = {
-        status: response.status,
-        body: response.body,
-        timestamp: getTimestamp(),
-      };
+    // Try root health endpoint as last resort (for 'any' mode)
+    if (apiVersion === 'any') {
+      try {
+        const response = await request.get('/health');
+        lastRootHealthResponse = {
+          status: response.status,
+          body: response.body,
+          timestamp: getTimestamp(),
+        };
 
-      if (response.status === 200) {
-        // Root health works but versioned endpoints don't - this is informative
-        console.log(`[${getTimestamp()}] Root /health works, but V1/V2 health endpoints failed - possible middleware issue`);
+        if (response.status === 200) {
+          // Root health works - server is running
+          // For 'any' mode, this means server is up but specific APIs might be disabled
+          console.log(`[${getTimestamp()}] ✓ Server ready (root health check passed)`);
+          return true;
+        }
+      } catch (error) {
+        // Root health also failed
       }
-    } catch (error) {
-      // Root health also failed
     }
 
     await new Promise(resolve => setTimeout(resolve, interval));
@@ -175,7 +215,8 @@ export const waitForServer = async (request, maxWaitTime = 30000) => {
     `=================================\n\n` +
     `Troubleshooting tips:\n` +
     `- If connection refused: Check that CADT server is running (pm2 status, pm2 logs cadt)\n` +
-    `- If 403 "V2 API disabled": Check config.yaml has V2.ENABLE = true\n` +
+    `- If V1 403: Check config.yaml has V1.ENABLE = true\n` +
+    `- If V2 403: Check config.yaml has V2.ENABLE = true\n` +
     `- If 400 "Chia Exception": Check Chia services are running and synced (chia show -s, chia wallet show)\n` +
     `- If wallet syncing: Wait for wallet to sync before running tests\n` +
     `- If datalayer unavailable: Ensure data_layer service is running (chia start data)`
@@ -224,18 +265,22 @@ const buildServerDiagnostics = (v2Response, v1Response, rootResponse, lastError,
     lines.push(`  No response received`);
   }
 
-  // V1 Health
+  // V1 API status (checked via /v1/organizations since V1 has no health endpoint)
   lines.push('');
-  lines.push('V1 Health (/v1/health):');
+  lines.push('V1 API (/v1/organizations):');
   if (v1Response) {
     lines.push(`  Status: ${v1Response.status}`);
     if (v1Response.status === 403) {
       lines.push(`  → V1 API is disabled in config`);
+      lines.push(`  → Set V1.ENABLE = true in config.yaml`);
     } else if (v1Response.status === 400) {
       const msg = v1Response.body?.message || v1Response.body?.error || 'Unknown';
       lines.push(`  Error: ${msg}`);
+      lines.push(`  → Chia services may not be ready`);
     } else if (v1Response.status === 200) {
-      lines.push(`  ✓ V1 is working (but test may require V2)`);
+      lines.push(`  ✓ V1 API is enabled and responding`);
+    } else if (v1Response.status === 404) {
+      lines.push(`  → V1 endpoint not found (unexpected)`);
     }
   } else {
     lines.push(`  No response received`);
@@ -871,10 +916,14 @@ const createRetryableRequest = (makeRequest, method, path) => {
  * The returned request object has POST/PUT/DELETE methods wrapped with:
  * - Request logging with timestamps
  * - Automatic retry on wallet sync errors (10s interval, 30 min timeout)
+ *
+ * @param {Object} options - Options
+ * @param {string} options.apiVersion - API version to check: 'v1', 'v2', or 'any' (default: 'any')
  */
-export const getLiveApiRequest = async () => {
+export const getLiveApiRequest = async (options = {}) => {
+  const { apiVersion = 'any' } = options;
   const request = createLiveApiRequest();
-  await waitForServer(request);
+  await waitForServer(request, 30000, { apiVersion });
 
   // Wrap request methods to track endpoints, log timestamps, and add wallet sync retry
   // Only wrap if not already wrapped (check for our custom property)
@@ -913,12 +962,16 @@ export const getLiveApiRequest = async () => {
 /**
  * Wait for V2 organization to be created and ready
  * Polls GET /v2/organizations until organization appears and is synced
+ * Also checks /v2/organizations/status for creation progress details
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
  * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
+ * @param {Object} options - Additional options
+ * @param {boolean} options.isUpgrade - If true, skip fast-fail checks (upgrade is fully async with no status)
  * @returns {Promise<{orgUid: string, organization: object}>} Organization UID and data
  */
-export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000) => {
+export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000, options = {}) => {
+  const { isUpgrade = false } = options;
   const startTime = Date.now();
   const interval = 10000; // Check every 10 seconds
   const timestamp = getTimestamp();
@@ -929,25 +982,148 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
   } else {
     console.log(`  Looking for home organization`);
   }
+  if (isUpgrade) {
+    console.log(`  (Upgrade mode: will wait for org to appear without fast-fail)`);
+  }
+
+  // Track if we've seen a PENDING org - if it disappears, creation failed
+  let sawPendingOrg = false;
+  // Track consecutive polls with no orgs and no creation in progress
+  let noProgressCount = 0;
+  // For upgrades, use a much higher threshold since the process is fully async with no status feedback
+  const noProgressThreshold = isUpgrade ? 60 : 6; // 10 minutes for upgrade, 60 seconds for normal creation
+  // Track stuck state - if we're in the same state for too long, fail
+  let lastState = null;
+  let lastStateChangeTime = Date.now();
+  const stuckStateThresholdMs = 300000; // 5 minutes stuck in same state = fail
 
   while (Date.now() - startTime < maxWaitTime) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    let creationInProgress = false;
+
     try {
+      // First, check creation status endpoint for detailed progress
+      try {
+        const statusResponse = await request.get('/v2/organizations/status');
+        if (statusResponse.status === 200 && statusResponse.body) {
+          const status = statusResponse.body;
+          
+          // Check for FAILED state - fail fast
+          if (status.state === 'FAILED') {
+            console.log(`  [${elapsed}s] ❌ Organization creation FAILED!`);
+            console.log(`  Error: ${status.error || 'Unknown error'}`);
+            console.log(`  Status: ${JSON.stringify(status, null, 2)}`);
+            throw new Error(
+              `Organization creation failed with state FAILED after ${elapsed}s. ` +
+              `Error: ${status.error || 'Unknown error'}`
+            );
+          }
+          
+          // Check if there's active creation
+          if (status.inProgress || (status.state && status.state !== 'COMPLETE' && status.state !== 'FAILED')) {
+            creationInProgress = true;
+            noProgressCount = 0; // Reset counter - we have progress
+            
+            // Track state changes to detect stuck creation
+            const currentState = status.state;
+            const storesInfo = status.stores ? JSON.stringify(
+              Object.fromEntries(
+                Object.entries(status.stores).map(([k, v]) => [k, { id: v.id, confirmed: v.confirmed }])
+              )
+            ) : null;
+            const stateKey = `${currentState}|${storesInfo}`;
+            
+            if (stateKey !== lastState) {
+              lastState = stateKey;
+              lastStateChangeTime = Date.now();
+            } else {
+              // Check if stuck in same state for too long
+              const stuckDuration = Date.now() - lastStateChangeTime;
+              if (stuckDuration > stuckStateThresholdMs) {
+                console.log(`  [${elapsed}s] ❌ Organization creation appears stuck!`);
+                console.log(`  State '${currentState}' has not changed for ${Math.round(stuckDuration / 1000)}s`);
+                console.log(`  Status: ${JSON.stringify(status, null, 2)}`);
+                throw new Error(
+                  `Organization creation appears stuck at state '${currentState}' for ${Math.round(stuckDuration / 1000)}s. ` +
+                  `Wallet or blockchain may not be responding. Check server logs for details.`
+                );
+              }
+            }
+          }
+          
+          // Only log if there's active creation or interesting state
+          if (status.state || status.name || status.stores) {
+            console.log(`  [${elapsed}s] Creation status: state=${status.state || 'unknown'}, name="${status.name || 'unnamed'}"`);
+            if (status.stores) {
+              const storeNames = Object.keys(status.stores);
+              const storesSummary = storeNames.map(name => {
+                const store = status.stores[name];
+                // Check if store has ID (id !== null means store is created)
+                const hasId = store.id !== null && store.id !== undefined;
+                return `${name}:${hasId ? 'created' : 'pending'}/${store.confirmed ? 'confirmed' : 'unconfirmed'}`;
+              }).join(', ');
+              console.log(`    Stores: ${storesSummary}`);
+            }
+            if (status.message) {
+              console.log(`    Message: ${status.message}`);
+            }
+          }
+        }
+      } catch (statusError) {
+        // Re-throw stuck state errors
+        if (statusError.message?.includes('appears stuck')) {
+          throw statusError;
+        }
+        // Status endpoint might not exist or may fail - that's okay
+        if (statusError.response?.status !== 404 && statusError.response?.status !== 403) {
+          console.log(`  [${elapsed}s] Status check error: ${statusError.message}`);
+        }
+      }
+
+      // Now check organizations list
       const response = await request.get('/v2/organizations');
 
       if (response.status === 200 && response.body && typeof response.body === 'object') {
         // Response is an object keyed by org_uid: { "org_uid": { org data }, ... }
         const orgs = Object.values(response.body);
 
+        // Always log organization status for debugging
+        console.log(`  [${elapsed}s] Found ${orgs.length} organization(s) in V2:`);
+        orgs.forEach((o, i) => {
+          const name = o.name || o.orgName || 'unnamed';
+          const uid = o.org_uid || o.orgUid || 'no-uid';
+          const isHome = o.is_home || o.isHome || false;
+          const synced = o.synced !== undefined ? o.synced : 'unknown';
+          const uidDisplay = uid === 'PENDING' ? 'PENDING' : `${uid.substring(0, 8)}...`;
+          console.log(`    ${i + 1}. "${name}" (uid: ${uidDisplay}, isHome: ${isHome}, synced: ${synced})`);
+        });
+
         // Find matching organization
         let org = null;
         if (orgName) {
+          // First try: find by name AND isHome
           org = orgs.find(o =>
             (o.name === orgName || o.orgName === orgName) &&
             (o.is_home === true || o.isHome === true)
           );
+
+          // Second try: if not found, find by name only
+          if (!org) {
+            org = orgs.find(o => o.name === orgName || o.orgName === orgName);
+            if (org) {
+              const isHome = org.is_home || org.isHome || false;
+              if (!isHome) {
+                console.log(`  [${elapsed}s] Found org "${orgName}" but isHome=${isHome}, waiting for it to become home org...`);
+                org = null; // Keep waiting
+              }
+            }
+          }
         } else {
-          // Find home org
-          org = orgs.find(o => o.is_home === true || o.isHome === true);
+          // Find home org (but not PENDING placeholder)
+          org = orgs.find(o =>
+            (o.is_home === true || o.isHome === true) &&
+            (o.org_uid !== 'PENDING' && o.orgUid !== 'PENDING')
+          );
         }
 
         if (org) {
@@ -955,30 +1131,119 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           const isSynced = org.synced === true;
           const orgUid = org.org_uid || org.orgUid;
 
-          if (isSynced && orgUid) {
+          if (isSynced && orgUid && orgUid !== 'PENDING') {
             console.log(`✓ V2 Organization ready: ${orgUid}`);
+            console.log(`  Name: ${org.name || org.orgName}`);
+            console.log(`  isHome: ${org.is_home || org.isHome}`);
+            console.log(`  synced: ${org.synced}`);
             return {
               orgUid,
               organization: org,
             };
           } else {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            console.log(`  Organization found but not synced yet (${elapsed}s elapsed)`);
+            console.log(`  [${elapsed}s] Organization found but not ready yet (uid=${orgUid}, synced=${isSynced})`);
           }
         } else {
-          const elapsed = Math.floor((Date.now() - startTime) / 1000);
-          console.log(`  Organization not found yet (${elapsed}s elapsed)`);
+          // Check if there's a PENDING org (creation in progress)
+          const pendingOrg = orgs.find(o => o.org_uid === 'PENDING' || o.orgUid === 'PENDING');
+          if (pendingOrg) {
+            sawPendingOrg = true;
+            creationInProgress = true;
+            noProgressCount = 0; // Reset counter
+            console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
+          } else if (sawPendingOrg && orgs.length === 0) {
+            // We had a PENDING org but now it's gone with no replacement - creation failed
+            console.log(`  [${elapsed}s] ❌ PENDING organization disappeared - creation failed!`);
+            
+            // Try to get more details about what went wrong
+            try {
+              const statusResponse = await request.get('/v2/organizations/status');
+              if (statusResponse.body) {
+                console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
+              }
+            } catch (e) {
+              console.log(`  Could not get final status: ${e.message}`);
+            }
+            
+            throw new Error(
+              `Organization creation failed. PENDING organization was cleaned up after ${elapsed}s. ` +
+              `Check server logs for details about why creation failed.`
+            );
+          } else {
+            console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
+            
+            // Track no progress - if no PENDING org and no creation in progress for too long, fail fast
+            if (!creationInProgress && orgs.length === 0) {
+              noProgressCount++;
+              if (noProgressCount >= noProgressThreshold) {
+                console.log(`  [${elapsed}s] ❌ No organization creation progress detected after ${noProgressCount * 10}s`);
+                
+                // Try to get status
+                try {
+                  const statusResponse = await request.get('/v2/organizations/status');
+                  if (statusResponse.body) {
+                    console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
+                  }
+                } catch (e) {
+                  console.log(`  Could not get final status: ${e.message}`);
+                }
+                
+                throw new Error(
+                  `Organization creation appears to have failed. No PENDING organization or creation progress detected after ${elapsed}s. ` +
+                  `Check server logs for details about why creation failed.`
+                );
+              }
+            }
+          }
+        }
+      } else {
+        console.log(`  [${elapsed}s] GET /v2/organizations returned status ${response.status}`);
+        if (response.body) {
+          console.log(`  Response: ${JSON.stringify(response.body).substring(0, 200)}`);
         }
       }
     } catch (error) {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`  Error checking organizations: ${error.message} (${elapsed}s elapsed)`);
+      // Re-throw fatal errors (like PENDING org disappeared, no progress, or stuck state) - don't swallow them
+      if (error.message.includes('PENDING organization was cleaned up') ||
+          error.message.includes('Organization creation failed') ||
+          error.message.includes('Organization creation appears to have failed') ||
+          error.message.includes('appears stuck') ||
+          error.message.includes('creation FAILED')) {
+        throw error;
+      }
+      console.log(`  [${elapsed}s] Error checking organizations: ${error.message}`);
     }
 
     await new Promise(resolve => setTimeout(resolve, interval));
   }
 
+  // Timeout - do a final status dump
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  console.log(`\n❌ TIMEOUT after ${elapsed}s waiting for V2 organization`);
+
+  try {
+    const finalResponse = await request.get('/v2/organizations');
+    if (finalResponse.status === 200 && finalResponse.body) {
+      const orgs = Object.values(finalResponse.body);
+      console.log(`Final organization state (${orgs.length} orgs):`);
+      orgs.forEach((o, i) => {
+        console.log(`  ${i + 1}. ${JSON.stringify(o)}`);
+      });
+    }
+  } catch (e) {
+    console.log(`Could not get final org state: ${e.message}`);
+  }
+
+  // Also try to get final creation status
+  try {
+    const finalStatusResponse = await request.get('/v2/organizations/status');
+    if (finalStatusResponse.status === 200 && finalStatusResponse.body) {
+      console.log(`Final creation status: ${JSON.stringify(finalStatusResponse.body, null, 2)}`);
+    }
+  } catch (e) {
+    console.log(`Could not get final creation status: ${e.message}`);
+  }
+
   throw new Error(
     `Timeout waiting for V2 organization to be ready after ${elapsed}s (${maxWaitTime}ms). ` +
     `Organization creation may be taking longer than expected.`
@@ -988,6 +1253,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
 /**
  * Wait for V1 organization to be created and ready
  * Polls GET /v1/organizations until organization appears
+ * Also checks /v1/organizations/creation-status for creation progress details
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
  * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
@@ -1005,51 +1271,278 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
     console.log(`  Looking for home organization`);
   }
 
+  // Track if we've seen a PENDING org - if it disappears, creation failed
+  let sawPendingOrg = false;
+  // Track consecutive polls with no orgs and no creation in progress
+  let noProgressCount = 0;
+  const noProgressThreshold = 6; // After 60 seconds (6 x 10s interval) with no progress, fail fast
+  // Track stuck state - if we're in the same state for too long, fail
+  let lastState = null;
+  let lastStateChangeTime = Date.now();
+  const stuckStateThresholdMs = 300000; // 5 minutes stuck in same state = fail
+
   while (Date.now() - startTime < maxWaitTime) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    let creationInProgress = false;
+
     try {
+      // First, check creation status endpoint for detailed progress
+      try {
+        const statusResponse = await request.get('/v1/organizations/creation-status');
+        if (statusResponse.status === 200 && statusResponse.body) {
+          const status = statusResponse.body;
+          
+          // Check for FAILED state - fail fast
+          if (status.state === 'FAILED') {
+            console.log(`  [${elapsed}s] ❌ Organization creation FAILED!`);
+            console.log(`  Error: ${status.error || 'Unknown error'}`);
+            console.log(`  Status: ${JSON.stringify(status, null, 2)}`);
+            throw new Error(
+              `Organization creation failed with state FAILED after ${elapsed}s. ` +
+              `Error: ${status.error || 'Unknown error'}`
+            );
+          }
+          
+          // Check if there's active creation
+          if (status.inProgress || (status.state && status.state !== 'COMPLETE' && status.state !== 'FAILED')) {
+            creationInProgress = true;
+            noProgressCount = 0; // Reset counter - we have progress
+            
+            // Track state changes to detect stuck creation
+            const currentState = status.state;
+            const storesInfo = status.stores ? JSON.stringify(
+              Object.fromEntries(
+                Object.entries(status.stores).map(([k, v]) => [k, { id: v.id, confirmed: v.confirmed }])
+              )
+            ) : null;
+            const stateKey = `${currentState}|${storesInfo}`;
+            
+            if (stateKey !== lastState) {
+              lastState = stateKey;
+              lastStateChangeTime = Date.now();
+            } else {
+              // Check if stuck in same state for too long
+              const stuckDuration = Date.now() - lastStateChangeTime;
+              if (stuckDuration > stuckStateThresholdMs) {
+                console.log(`  [${elapsed}s] ❌ Organization creation appears stuck!`);
+                console.log(`  State '${currentState}' has not changed for ${Math.round(stuckDuration / 1000)}s`);
+                console.log(`  Status: ${JSON.stringify(status, null, 2)}`);
+                throw new Error(
+                  `Organization creation appears stuck at state '${currentState}' for ${Math.round(stuckDuration / 1000)}s. ` +
+                  `Wallet or blockchain may not be responding. Check server logs for details.`
+                );
+              }
+            }
+          }
+          
+          // Only log if there's active creation or interesting state
+          if (status.state || status.name || status.stores) {
+            console.log(`  [${elapsed}s] Creation status: state=${status.state || 'unknown'}, name="${status.name || 'unnamed'}"`);
+            if (status.stores) {
+              const storeNames = Object.keys(status.stores);
+              const storesSummary = storeNames.map(name => {
+                const store = status.stores[name];
+                // Check if store has ID (id !== null means store is created)
+                const hasId = store.id !== null && store.id !== undefined;
+                return `${name}:${hasId ? 'created' : 'pending'}/${store.confirmed ? 'confirmed' : 'unconfirmed'}`;
+              }).join(', ');
+              console.log(`    Stores: ${storesSummary}`);
+            }
+            if (status.message) {
+              console.log(`    Message: ${status.message}`);
+            }
+          }
+        }
+      } catch (statusError) {
+        // Re-throw stuck state errors
+        if (statusError.message?.includes('appears stuck')) {
+          throw statusError;
+        }
+        // Status endpoint might not exist or may fail - that's okay
+        if (statusError.response?.status !== 404 && statusError.response?.status !== 403) {
+          console.log(`  [${elapsed}s] Status check error: ${statusError.message}`);
+        }
+      }
+
+      // Now check organizations list
       const response = await request.get('/v1/organizations');
 
       if (response.status === 200) {
-        // V1 response format may be array or object
-        const orgs = Array.isArray(response.body)
-          ? response.body
-          : (response.body?.data || []);
+        // V1 response format is a map keyed by orgUid: {"orgUid": {...}, ...}
+        // Convert to array using Object.values()
+        let orgs;
+        if (Array.isArray(response.body)) {
+          orgs = response.body;
+        } else if (response.body?.data) {
+          orgs = response.body.data;
+        } else if (typeof response.body === 'object' && response.body !== null) {
+          // V1 returns a map keyed by orgUid - convert to array
+          orgs = Object.values(response.body);
+        } else {
+          orgs = [];
+        }
+
+        // Always log organization status for debugging
+        console.log(`  [${elapsed}s] Found ${orgs.length} organization(s) in V1:`);
+        orgs.forEach((o, i) => {
+          const name = o.name || o.orgName || 'unnamed';
+          const uid = o.orgUid || o.org_uid || 'no-uid';
+          const isHome = o.isHome || o.is_home || false;
+          const synced = o.synced !== undefined ? o.synced : 'unknown';
+          const uidDisplay = uid === 'PENDING' ? 'PENDING' : `${uid.substring(0, 8)}...`;
+          console.log(`    ${i + 1}. "${name}" (uid: ${uidDisplay}, isHome: ${isHome}, synced: ${synced})`);
+        });
 
         // Find matching organization
         let org = null;
         if (orgName) {
+          // First try: find by name AND isHome
           org = orgs.find(o =>
             (o.name === orgName || o.orgName === orgName) &&
             (o.isHome === true || o.is_home === true)
           );
+
+          // Second try: if not found, find by name only (might not be home yet)
+          if (!org) {
+            org = orgs.find(o => o.name === orgName || o.orgName === orgName);
+            if (org) {
+              const isHome = org.isHome || org.is_home || false;
+              if (!isHome) {
+                console.log(`  [${elapsed}s] Found org "${orgName}" but isHome=${isHome}, waiting for it to become home org...`);
+                org = null; // Keep waiting
+              }
+            }
+          }
         } else {
-          // Find home org
-          org = orgs.find(o => o.isHome === true || o.is_home === true);
+          // Find home org (but not PENDING placeholder)
+          org = orgs.find(o =>
+            (o.isHome === true || o.is_home === true) &&
+            (o.orgUid !== 'PENDING' && o.org_uid !== 'PENDING')
+          );
         }
 
         if (org) {
           const orgUid = org.orgUid || org.org_uid;
-          if (orgUid) {
+          const isSynced = org.synced === true;
+          
+          if (isSynced && orgUid && orgUid !== 'PENDING') {
             console.log(`✓ V1 Organization ready: ${orgUid}`);
+            console.log(`  Name: ${org.name || org.orgName}`);
+            console.log(`  isHome: ${org.isHome || org.is_home}`);
+            console.log(`  synced: ${org.synced}`);
             return {
               orgUid,
               organization: org,
             };
+          } else if (orgUid && orgUid !== 'PENDING') {
+            // Org exists but not synced yet - keep waiting
+            console.log(`  [${elapsed}s] Organization found but not synced yet (uid=${orgUid.substring(0, 8)}..., synced=${org.synced})`);
+          } else {
+            console.log(`  [${elapsed}s] Organization found but not ready yet (uid=${orgUid})`);
           }
         } else {
-          const elapsed = Math.floor((Date.now() - startTime) / 1000);
-          console.log(`  Organization not found yet (${elapsed}s elapsed)`);
+          // Check if there's a PENDING org (creation in progress)
+          const pendingOrg = orgs.find(o => o.orgUid === 'PENDING' || o.org_uid === 'PENDING');
+          if (pendingOrg) {
+            sawPendingOrg = true;
+            creationInProgress = true;
+            noProgressCount = 0; // Reset counter
+            console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
+          } else if (sawPendingOrg && orgs.length === 0) {
+            // We had a PENDING org but now it's gone with no replacement - creation failed
+            console.log(`  [${elapsed}s] ❌ PENDING organization disappeared - creation failed!`);
+            
+            // Try to get more details about what went wrong
+            try {
+              const statusResponse = await request.get('/v1/organizations/creation-status');
+              if (statusResponse.body) {
+                console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
+              }
+            } catch (e) {
+              console.log(`  Could not get final status: ${e.message}`);
+            }
+            
+            throw new Error(
+              `Organization creation failed. PENDING organization was cleaned up after ${elapsed}s. ` +
+              `Check server logs for details about why creation failed.`
+            );
+          } else {
+            console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
+            
+            // Track no progress - if no PENDING org and no creation in progress for too long, fail fast
+            if (!creationInProgress && orgs.length === 0) {
+              noProgressCount++;
+              if (noProgressCount >= noProgressThreshold) {
+                console.log(`  [${elapsed}s] ❌ No organization creation progress detected after ${noProgressCount * 10}s`);
+                
+                // Try to get status
+                try {
+                  const statusResponse = await request.get('/v1/organizations/creation-status');
+                  if (statusResponse.body) {
+                    console.log(`  Final status: ${JSON.stringify(statusResponse.body, null, 2)}`);
+                  }
+                } catch (e) {
+                  console.log(`  Could not get final status: ${e.message}`);
+                }
+                
+                throw new Error(
+                  `Organization creation appears to have failed. No PENDING organization or creation progress detected after ${elapsed}s. ` +
+                  `Check server logs for details about why creation failed.`
+                );
+              }
+            }
+          }
+        }
+      } else {
+        console.log(`  [${elapsed}s] GET /v1/organizations returned status ${response.status}`);
+        if (response.body) {
+          console.log(`  Response: ${JSON.stringify(response.body).substring(0, 200)}`);
         }
       }
     } catch (error) {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`  Error checking organizations: ${error.message} (${elapsed}s elapsed)`);
+      // Re-throw fatal errors (like PENDING org disappeared, no progress, or stuck state) - don't swallow them
+      if (error.message.includes('PENDING organization was cleaned up') ||
+          error.message.includes('Organization creation failed') ||
+          error.message.includes('Organization creation appears to have failed') ||
+          error.message.includes('appears stuck') ||
+          error.message.includes('creation FAILED')) {
+        throw error;
+      }
+      console.log(`  [${elapsed}s] Error checking organizations: ${error.message}`);
     }
 
     await new Promise(resolve => setTimeout(resolve, interval));
   }
 
+  // Timeout - do a final status dump
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  console.log(`\n❌ TIMEOUT after ${elapsed}s waiting for V1 organization`);
+
+  try {
+    const finalResponse = await request.get('/v1/organizations');
+    if (finalResponse.status === 200) {
+      const orgs = Array.isArray(finalResponse.body)
+        ? finalResponse.body
+        : (finalResponse.body?.data || []);
+      console.log(`Final organization state (${orgs.length} orgs):`);
+      orgs.forEach((o, i) => {
+        console.log(`  ${i + 1}. ${JSON.stringify(o)}`);
+      });
+    }
+  } catch (e) {
+    console.log(`Could not get final org state: ${e.message}`);
+  }
+
+  // Also try to get final creation status
+  try {
+    const finalStatusResponse = await request.get('/v1/organizations/creation-status');
+    if (finalStatusResponse.status === 200 && finalStatusResponse.body) {
+      console.log(`Final creation status: ${JSON.stringify(finalStatusResponse.body, null, 2)}`);
+    }
+  } catch (e) {
+    console.log(`Could not get final creation status: ${e.message}`);
+  }
+
   throw new Error(
     `Timeout waiting for V1 organization to be ready after ${elapsed}s (${maxWaitTime}ms). ` +
     `Organization creation may be taking longer than expected.`

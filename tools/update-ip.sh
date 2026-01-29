@@ -123,8 +123,8 @@ else
     NEW_URL="http://${CURRENT_IP}:${PORT}"
 fi
 
-# Path to config file
-CONFIG_FILE="$CHIA_HOME/.chia/mainnet/cadt/v1/config.yaml"
+# Path to unified config file
+CONFIG_FILE="$CHIA_HOME/.chia/mainnet/cadt/config.yaml"
 
 # Check if config file exists
 if [ ! -f "$CONFIG_FILE" ]; then

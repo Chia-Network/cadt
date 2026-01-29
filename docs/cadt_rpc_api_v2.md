@@ -2,7 +2,7 @@
 
 
 
-This page lists commands and examples from the Climate Warehouse RPC API V2.
+This page lists commands and examples from the CADT RPC API V2.
 
 When using this guide, it is important to understand the workflow CADT employs for managing climate data updates via RPCs.
 The CADT paradigm ensures that all updates first go into local "staging", which is private and not shared with
@@ -41,6 +41,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
   - [GET Examples](#organizations-get-examples)
     - [List all organizations](#list-all-organizations)
     - [Get organization status](#get-organization-status)
+    - [Get organization creation status](#get-organization-creation-status)
     - [Get organization metadata](#get-organization-metadata)
   - [POST Examples](#organizations-post-examples)
     - [Create a V2 organization](#create-a-v2-organization)
@@ -404,6 +405,64 @@ Response
 
 ---
 
+#### Get organization creation status
+
+Returns the status of any in-progress, completed, or failed organization creation process. This endpoint is useful for monitoring the progress of organization creation, which involves creating multiple blockchain stores.
+
+**Organization creation now uses parallel store creation, significantly reducing the time required compared to sequential creation.**
+
+Request
+```sh
+curl --location --request GET 'localhost:31310/v2/organizations/creation-status' --header 'Content-Type: application/json'
+```
+
+Response when no creation is in progress:
+```json
+{
+  "inProgress": false,
+  "state": null,
+  "message": "No organization creation in progress",
+  "success": true
+}
+```
+
+Response when creation is in progress:
+```json
+{
+  "inProgress": true,
+  "state": "STORES_CREATING",
+  "message": "Creating stores on blockchain (2/4 created, 1/4 confirmed)",
+  "progress": 12,
+  "retryCount": 0,
+  "maxRetries": 3,
+  "startedAt": "2026-01-26T12:00:00.000Z",
+  "updatedAt": "2026-01-26T12:01:30.000Z",
+  "stores": {
+    "orgUid": { "id": "abc123...", "confirmed": true, "dataWritten": false },
+    "registry": { "id": "def456...", "confirmed": false, "dataWritten": false },
+    "dataModelVersion": { "id": null, "confirmed": false, "dataWritten": false },
+    "fileStore": { "id": null, "confirmed": false, "dataWritten": false }
+  },
+  "error": null,
+  "success": true
+}
+```
+
+Response states:
+| State | Description |
+|:------|:------------|
+| INITIALIZING | Starting creation, saving initial parameters |
+| STORES_CREATING | Creating 4 blockchain stores in parallel |
+| STORES_CONFIRMED | All stores created and confirmed on blockchain |
+| DATA_PUSHING | Pushing data to stores in parallel |
+| FINALIZING | Updating database with final organization record |
+| COMPLETE | Organization creation finished successfully |
+| FAILED | Organization creation failed after max retries |
+
+**Crash Recovery:** If the server crashes or restarts during organization creation, it will automatically attempt to resume from where it left off. The server will retry up to 3 times before marking the creation as failed.
+
+---
+
 #### Get organization metadata
 
 Request
@@ -436,9 +495,10 @@ POST Options:
 
 #### Create a V2 organization
 
-- Please note that creating an organization takes approximately 30 minutes.
+- Organization creation now uses **parallel store creation**, which is significantly faster than the previous sequential method.
 - The request will resolve and the organization will complete in the background.
-- The status of the organization creation can be tracked via a GET request to `organizations` and searching for the PENDING orgUid.
+- **Track the status of organization creation using the `/v2/organizations/creation-status` endpoint.**
+- If the server crashes or restarts during creation, it will automatically attempt to resume from where it left off (up to 3 retries).
 - V2 organizations can be created with either a JSON body or by uploading a file containing organization data.
 
 **Using JSON body:**
@@ -1779,10 +1839,10 @@ Response
       "projectName":"Stop Desertification",
       "projectLink":"https://desertificationtest.com",
       "projectDescription":"A project to stop desertification",
-      "projectSector":"Fugitive emissions from fuel (solid, oil and gas)",
+      "projectSector":["Fugitive emissions from fuel (solid, oil and gas)"],
       "projectType":["Coal bed/mine methane"],
       "projectSubtype":"Methane Capture",
-      "projectStatus":["Registered"],
+      "projectStatus":"Registered",
       "projectStatusDate":"2022-02-02T00:00:00.000Z",
       "projectUnitMetric":"tCO2e",
       "cadTrustReferenceProjectId":"REF-001",
@@ -1820,10 +1880,10 @@ Response
   "projectName":"Stop Deforestation",
   "projectLink":"http://testurl.com",
   "projectDescription":"A project to stop deforestation",
-  "projectSector":"Agriculture, forestry and other land use (AFOLU)",
+  "projectSector":["Agriculture, forestry and other land use (AFOLU)"],
   "projectType":["Afforestation"],
   "projectSubtype":"Soil Carbon",
-  "projectStatus":["Listed"],
+  "projectStatus":"Listed",
   "projectStatusDate":"2022-03-02T00:00:00.000Z",
   "projectUnitMetric":"tCO2e",
   "cadTrustReferenceProjectId":"REF-555",
@@ -1854,7 +1914,7 @@ Response
       "cadTrustProjectId":"9b9bb857-c71b-4649-b805-a289db27dc1c",
       "orgUid":"77641db780adc6c74f1ff357804e26a799e4a09157f426aac588963a39bdb2d9",
       "projectName":"Stop Desertification",
-      "projectStatus":["Registered"]
+      "projectStatus":"Registered"
     }
   ]
 }
@@ -1877,7 +1937,7 @@ Response
   "data": [
     {
       "projectName":"Stop Deforestation",
-      "projectStatus":["Listed"]
+      "projectStatus":"Listed"
     }
   ]
 }
@@ -1903,10 +1963,10 @@ Response
   "projectName":"Stop Deforestation",
   "projectLink":"http://testurl.com",
   "projectDescription":"A project to stop deforestation",
-  "projectSector":"Agriculture, forestry and other land use (AFOLU)",
+  "projectSector":["Agriculture, forestry and other land use (AFOLU)"],
   "projectType":["Afforestation"],
   "projectSubtype":"Soil Carbon",
-  "projectStatus":["Listed"],
+  "projectStatus":"Listed",
   "projectStatusDate":"2022-03-02T00:00:00.000Z",
   "projectUnitMetric":"tCO2e",
   "cadTrustReferenceProjectId":"REF-555",
@@ -1983,10 +2043,10 @@ Fields:
 | projectCreditingProgram | String | | | Name of the crediting program |
 | projectLink | String | | | URL link to the project. Must be a valid URI |
 | projectDescription | String | | | Description of the project |
-| projectSector | String | | x | Project sector |
+| projectSector | Array[String] | | x | Array of project sectors. Each value must be from the projectSector picklist |
 | projectType | Array[String] | | x | Array of project types. Each value must be from the projectType picklist |
 | projectSubtype | String | | | Subtype of the project |
-| projectStatus | Array[String] | | x | Array of project statuses. Each value must be from the projectStatus picklist |
+| projectStatus | String | | x | Project status. Must be from the projectStatus picklist |
 | projectStatusDate | Date | | | Date when the project status was set (ISO 8601 format) |
 | projectUnitMetric | String | | x | Unit metric for the project |
 | cadTrustReferenceProjectId | String | | | CAD Trust reference project identifier |
@@ -2005,10 +2065,10 @@ curl --location --request POST 'localhost:31310/v2/project' \
         "projectLink": "http://testurl.com",
         "projectDescription": "Sample project description",
         "projectCreditingProgram": "Gold Standard Program",
-        "projectSector": "Manufacturing industries",
+        "projectSector": ["Manufacturing industries"],
         "projectType": ["Reforestation", "Afforestation"],
         "projectSubtype": "Forest Conservation",
-        "projectStatus": ["Registered"],
+        "projectStatus": "Registered",
         "projectStatusDate": "2022-03-12",
         "projectUnitMetric": "tCO2e",
         "cadTrustReferenceProjectId": "REF-001",
@@ -2030,17 +2090,17 @@ Response
 
 #### Batch upload projects from CSV
 
-**Array Field Formatting**: For array fields like `projectType` and `projectStatus`, the CSV can use any of these formats:
+**Array Field Formatting**: For array fields like `projectType` and `projectSector`, the CSV can use any of these formats:
 - **Single value**: `Solar` → becomes `["Solar"]`
 - **JSON array**: `["Solar","Wind"]` → becomes `["Solar","Wind"]`
 - **Pipe-separated**: `Solar|Wind` → becomes `["Solar","Wind"]`
 
 Example CSV content:
 ```csv
-projectRegistryName,projectId,projectName,projectType,projectStatus
-VCS,PROJ-001,Solar Farm Project,Solar,Registered
-VCS,PROJ-002,Multi-Type Project,Solar|Wind,Listed|Validated
-VCS,PROJ-003,JSON Format,"[""Afforestation"",""Reforestation""]","[""Registered""]"
+projectRegistryName,projectId,projectName,projectType,projectSector,projectStatus
+VCS,PROJ-001,Solar Farm Project,Solar,Energy,Registered
+VCS,PROJ-002,Multi-Type Project,Solar|Wind,Energy|Agriculture,Listed
+VCS,PROJ-003,JSON Format,"[""Afforestation"",""Reforestation""]","[""Agriculture""]",Validated
 ```
 
 Request
@@ -2082,10 +2142,10 @@ curl --location -g --request PUT 'http://localhost:31310/v2/project/51ca9638-22b
     "projectLink": "http://testurl.com",
     "projectDescription": "Updated project description",
     "projectCreditingProgram": "Verra Program",
-    "projectSector": "Mining/mineral production",
+    "projectSector": ["Mining/mineral production"],
     "projectType": ["Afforestation", "Reforestation"],
     "projectSubtype": "Reforestation",
-    "projectStatus": ["Listed", "Validated"],
+    "projectStatus": "Listed",
     "projectStatusDate": "2022-03-19",
     "projectUnitMetric": "tCO2e",
     "cadTrustReferenceProjectId": "REF-987",

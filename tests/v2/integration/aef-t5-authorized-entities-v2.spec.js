@@ -41,9 +41,9 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
       projectName: 'Test Project for AEF-T5',
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-AEFT5-001',
-      projectSector: 'Energy industries (renewable-/ non renewable sources)',
+      projectSector: ['Energy industries (renewable-/ non renewable sources)'],
       projectType: ['Energy efficiency'],
-      projectStatus: ['Registered'],
+      projectStatus: 'Registered',
       projectUnitMetric: 'tCO2e',
       cadTrustProgramId: testProgramId,
     });

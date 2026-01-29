@@ -36,9 +36,9 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
       projectName: 'Test Project for Estimation',
       projectRegistryName: 'Test Registry',
       projectId: 'TEST-PROJ-EST-001',
-      projectSector: 'Energy industries (renewable-/ non renewable sources)',
+      projectSector: ['Energy industries (renewable-/ non renewable sources)'],
       projectType: ['Energy efficiency'],
-      projectStatus: ['Registered'],
+      projectStatus: 'Registered',
       projectUnitMetric: 'tCO2e',
       cadTrustProgramId: testProgramId,
     });

@@ -93,7 +93,8 @@ async function main() {
 
     // Clear staging table before starting tests
     const { getLiveApiRequest, clearStagingTable } = await import('../helpers/live-api-helpers.js');
-    const request = await getLiveApiRequest();
+    // Use V2 API version for health checks since this uses V2 endpoints
+    const request = await getLiveApiRequest({ apiVersion: 'v2' });
     console.log('Clearing staging table before tests...');
     await clearStagingTable(request);
     console.log('✓ Staging table cleared\n');

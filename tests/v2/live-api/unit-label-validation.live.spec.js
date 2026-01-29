@@ -79,9 +79,10 @@ describe('UnitLabel Live API Validation Tests', function () {
 
   describe('Step 4: POST Request Tests', function () {
     it('should create unit-label relationships', async function () {
-      // Get label and unit IDs from earlier tests
+      // Get label and unit IDs from earlier tests (automatically checks file for cross-process access)
       const labelIds = getCreatedIds('label');
       const unitIds = getCreatedIds('unit');
+      
       if (labelIds.length === 0 || unitIds.length === 0) {
         throw new Error('Label or Unit IDs not found. Ensure label-validation.spec.js and unit-validation.spec.js run before unit-label-validation.spec.js');
       }

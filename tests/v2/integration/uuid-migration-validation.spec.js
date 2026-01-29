@@ -101,7 +101,7 @@ describe('V2 UUID Migration Validation Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         cadTrustProgramId: program.cadTrustProgramId,
       });
 
@@ -123,7 +123,7 @@ describe('V2 UUID Migration Validation Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
@@ -152,7 +152,7 @@ describe('V2 UUID Migration Validation Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
@@ -188,7 +188,7 @@ describe('V2 UUID Migration Validation Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
@@ -242,7 +242,7 @@ describe('V2 UUID Migration Validation Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
@@ -308,7 +308,7 @@ describe('V2 UUID Migration Validation Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
@@ -352,7 +352,7 @@ describe('V2 UUID Migration Validation Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 
@@ -385,7 +385,7 @@ describe('V2 UUID Migration Validation Tests', function () {
         projectRegistryName: 'Test Registry',
         projectId: 'TEST-PROJECT-001',
         projectName: 'Test Project',
-        projectSector: 'Agriculture',
+        projectSector: ['Agriculture'],
         cadTrustProgramId: program.cadTrustProgramId,
       }));
 

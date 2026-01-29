@@ -79,9 +79,9 @@ export const generateTestData = {
     projectId: `TEST-PROJECT-${Date.now()}`,
     projectName: 'Test Project',
     projectDescription: 'Test project description',
-    projectSector: getRandomPicklistValue('projectSector'),
-    projectType: getRandomPicklistValue('projectType'),
-    projectStatus: getRandomPicklistValue('projectStatus'),
+    projectSector: [getRandomPicklistValue('projectSector')],
+    projectType: [getRandomPicklistValue('projectType')],
+    projectStatus: [getRandomPicklistValue('projectStatus')],
     projectUnitMetric: getRandomPicklistValue('projectUnitMetric'),
   }),
 
