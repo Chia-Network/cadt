@@ -168,7 +168,7 @@ const syncOrganizationAuditV2 = async (organization) => {
       rootHistory.length - 1 !== sync_status?.generation
     ) {
       loggerV2.warn(
-        `[v2]: Root history mismatch for ${organization.name}: rootHistory.length-1=${rootHistory.length - 1} vs sync_status.generation=${sync_status?.generation}. Waiting for datalayer to sync.`,
+        `[v2]: Root history mismatch for ${organization.name} (registryId: ${organization.registry_id}): rootHistory.length-1=${rootHistory.length - 1} vs sync_status.generation=${sync_status?.generation}. Waiting for datalayer to sync.`,
       );
       return;
     } else if (
@@ -177,7 +177,7 @@ const syncOrganizationAuditV2 = async (organization) => {
       rootHistory.length - 1 !== sync_status?.target_generation
     ) {
       loggerV2.debug(
-        `[v2]: Target generation mismatch for ${organization.name}: rootHistory.length-1=${rootHistory.length - 1} vs target_generation=${sync_status?.target_generation}. Waiting for datalayer to sync.`,
+        `[v2]: Target generation mismatch for ${organization.name} (registryId: ${organization.registry_id}): rootHistory.length-1=${rootHistory.length - 1} vs target_generation=${sync_status?.target_generation}. Waiting for datalayer to sync.`,
       );
       return;
     }
