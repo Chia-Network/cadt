@@ -165,7 +165,7 @@ const runCoinManagement = async () => {
     // Double-check wallet sync status before attempting split
     // Only require synced=true (syncing flag may stay true indefinitely on testnets)
     logger.info('[COIN_MANAGEMENT] Verifying wallet sync status before split...');
-    const syncStatus = await wallet.getSyncStatus();
+    const syncStatus = await wallet.getWalletBlockchainSyncStatus();
     if (!syncStatus.success) {
       logger.error('[COIN_MANAGEMENT] Could not get wallet sync status. Aborting split attempt.');
       return;

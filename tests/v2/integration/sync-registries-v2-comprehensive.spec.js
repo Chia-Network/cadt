@@ -110,7 +110,7 @@ describe('Phase 27.14: Comprehensive Sync Registries V2 Tests', function () {
     // Store original datalayer methods for restoration
     originalGetRootHistory = datalayer.getRootHistory;
     originalGetRootDiff = datalayer.getRootDiff;
-    originalGetSyncStatus = datalayer.getSyncStatus;
+    originalGetSyncStatus = datalayer.getDataLayerStoreSyncStatus;
   });
 
   after(async function () {
@@ -122,7 +122,7 @@ describe('Phase 27.14: Comprehensive Sync Registries V2 Tests', function () {
       datalayer.getRootDiff = originalGetRootDiff;
     }
     if (originalGetSyncStatus) {
-      datalayer.getSyncStatus = originalGetSyncStatus;
+      datalayer.getDataLayerStoreSyncStatus = originalGetSyncStatus;
     }
   });
 
@@ -154,7 +154,7 @@ describe('Phase 27.14: Comprehensive Sync Registries V2 Tests', function () {
       // Mock root history with single generation
       const rootHistory = createMockRootHistory(1, true);
       datalayer.getRootHistory = () => Promise.resolve(rootHistory);
-      datalayer.getSyncStatus = () =>
+      datalayer.getDataLayerStoreSyncStatus = () =>
         Promise.resolve({
           sync_status: { generation: 0, target_generation: 0 },
         });

@@ -238,7 +238,7 @@ const syncOrganizationAudit = async (organization) => {
     logger.debug(`[v1]: querying datalayer for ${organization.name} root history`);
     const rootHistory = await datalayer.getRootHistory(organization.registryId);
     logger.debug(`[v1]: querying datalayer for ${organization.name} sync status`);
-    const { sync_status } = await datalayer.getSyncStatus(
+    const { sync_status } = await datalayer.getDataLayerStoreSyncStatus(
       organization.registryId,
     );
 

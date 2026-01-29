@@ -1062,12 +1062,14 @@ const cancelOffer = async (tradeId) => {
  */
 
 /**
- * Fetches the synchronization status for a given store.
+ * Fetches the DataLayer store synchronization status for a given store.
+ * This checks how synced a specific DataLayer store is (generation, target_generation, etc.).
+ * NOT to be confused with wallet blockchain sync status (use getWalletBlockchainSyncStatus for that).
  *
- * @param {string} storeId - The identifier of the store.
+ * @param {string} storeId - The identifier of the DataLayer store.
  * @returns {Promise<{sync_status: SyncStatus} | boolean>} - A promise that resolves to an object containing the sync status or `false` if the status cannot be retrieved.
  */
-const getSyncStatus = async (storeId) => {
+const getDataLayerStoreSyncStatus = async (storeId) => {
   if (CONFIG.USE_SIMULATOR) {
     return {
       sync_status: {
@@ -1131,6 +1133,6 @@ export {
   takeOffer,
   clearPendingRoots,
   getValue,
-  getSyncStatus,
+  getDataLayerStoreSyncStatus,
   checkWalletBalanceForMirror,
 };

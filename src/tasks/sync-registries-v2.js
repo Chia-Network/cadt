@@ -138,7 +138,7 @@ const syncOrganizationAuditV2 = async (organization) => {
       organization.registry_id,
     );
     loggerV2.debug(`querying datalayer for ${organization.name} sync status`);
-    const syncResult = await datalayer.getSyncStatus(
+    const syncResult = await datalayer.getDataLayerStoreSyncStatus(
       organization.registry_id,
     );
     const sync_status = syncResult?.sync_status;

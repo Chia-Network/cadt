@@ -1410,7 +1410,7 @@ class OrganizationsV2 extends Model {
     // If store is not synced, skip import - it will be retried on next task run
     if (!USE_SIMULATOR) {
       try {
-        const syncStatus = await datalayer.getSyncStatus(orgUid);
+        const syncStatus = await datalayer.getDataLayerStoreSyncStatus(orgUid);
         if (!isDlStoreSynced(syncStatus?.sync_status)) {
           loggerV2.info(
             `[v2]: Skipping import of organization ${orgUid} - store not yet synced. Will retry on next task run.`,
