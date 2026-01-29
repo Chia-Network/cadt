@@ -141,11 +141,10 @@ export const waitForServer = async (request, maxWaitTime = 30000, options = {}) 
       }
     }
 
-    // For V1 or 'any', try V1 endpoint
-    // Note: V1 doesn't have a /v1/health endpoint, so we check /v1/organizations instead
+    // For V1 or 'any', try V1 health endpoint
     if (apiVersion === 'v1' || apiVersion === 'any') {
       try {
-        const response = await request.get('/v1/organizations');
+        const response = await request.get('/v1/health');
         lastV1Response = {
           status: response.status,
           body: response.body,
@@ -153,17 +152,16 @@ export const waitForServer = async (request, maxWaitTime = 30000, options = {}) 
         };
 
         if (response.status === 200) {
-          console.log(`[${getTimestamp()}] ✓ Server ready (V1 API responding)`);
+          console.log(`[${getTimestamp()}] ✓ Server ready (V1 health check passed)`);
           return true;
         }
 
         if (response.status === 403) {
           if (apiVersion === 'v1') {
-            console.log(`[${getTimestamp()}] V1 API returned 403 - V1 API is disabled`);
+            console.log(`[${getTimestamp()}] V1 health returned 403 - V1 API is disabled`);
           }
         } else if (response.status === 400) {
-          // 400 usually means Chia services not ready - this is a transient state
-          console.log(`[${getTimestamp()}] V1 API returned 400: ${response.body?.message || response.body?.error || 'Chia services may not be ready'}`);
+          console.log(`[${getTimestamp()}] V1 health returned 400: ${response.body?.message || response.body?.error || 'Unknown error'}`);
         }
       } catch (error) {
         // V1 also failed - continue

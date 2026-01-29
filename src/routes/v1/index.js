@@ -16,6 +16,15 @@ import {
   OfferRouter,
 } from './resources';
 
+// Simple health check for V1 - doesn't require wallet or datalayer to be synced
+// This allows tests to verify V1 API is enabled without waiting for Chia services
+V1Router.get('/health', (req, res) => {
+  res.status(200).json({
+    message: 'V1 API is running',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 V1Router.use('/projects', ProjectRouter);
 V1Router.use('/units', UnitRouter);
 V1Router.use('/staging', StagingRouter);
