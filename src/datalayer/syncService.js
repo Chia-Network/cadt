@@ -105,7 +105,7 @@ const getSubscribedStoreData = async (
     if (!USE_SIMULATOR) {
       let synced = false;
       while (!synced) {
-        const syncStatus = await dataLayer.getSyncStatus(storeId);
+        const syncStatus = await dataLayer.getDataLayerStoreSyncStatus(storeId);
         synced = isDlStoreSynced(syncStatus?.sync_status);
 
         if (!synced) {

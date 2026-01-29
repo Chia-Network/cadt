@@ -186,8 +186,8 @@ const removeMirror = (storeId, coinId) => {
   return dataLayer.removeMirror(storeId, coinId);
 };
 
-const getSyncStatus = (orgUid) => {
-  return dataLayer.getSyncStatus(orgUid);
+const getDataLayerStoreSyncStatus = (storeId) => {
+  return dataLayer.getDataLayerStoreSyncStatus(storeId);
 };
 
 const getValue = async (storeId, key) => {
@@ -207,5 +207,5 @@ export default {
   upsertDataLayer,
   removeMirror,
   getValue,
-  getSyncStatus,
+  getDataLayerStoreSyncStatus,
 };

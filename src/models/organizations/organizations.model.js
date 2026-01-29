@@ -16,7 +16,7 @@ import { assertStoreIsOwned } from '../../utils/data-assertions';
 import {
   getRoot,
   getSubscriptions,
-  getSyncStatus,
+  getDataLayerStoreSyncStatus,
 } from '../../datalayer/persistance.js';
 import {
   addOrDeleteOrganizationRecordMutex,
@@ -712,7 +712,7 @@ class Organization extends Model {
     }
 
     // note that we only update the data model version store hash here because the other two store hashes are updated elsewhere
-    const dataModelVersionStoreSyncStatus = await getSyncStatus(
+    const dataModelVersionStoreSyncStatus = await getDataLayerStoreSyncStatus(
       datalayerDataModelVersionStoreId,
     );
 
@@ -773,7 +773,7 @@ class Organization extends Model {
     // If store is not synced, skip import - it will be retried on next task run
     if (!USE_SIMULATOR) {
       try {
-        const syncStatus = await datalayer.getSyncStatus(orgUid);
+        const syncStatus = await datalayer.getDataLayerStoreSyncStatus(orgUid);
         if (!isDlStoreSynced(syncStatus?.sync_status)) {
           logger.info(
             `[v1]: Skipping import of organization ${orgUid} - store not yet synced. Will retry on next task run.`,
