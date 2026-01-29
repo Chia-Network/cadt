@@ -135,7 +135,8 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
       expect(upgradeResponse.body.message).to.include('currently being processed');
 
       // Wait for upgraded organization to be ready
-      const result = await waitForV2OrganizationReady(request);
+      // Use isUpgrade: true to skip fast-fail checks - upgrade is fully async with no status endpoint
+      const result = await waitForV2OrganizationReady(request, null, 1800000, { isUpgrade: true });
       const upgradedV2OrgUid = result.orgUid;
 
       // Save to shared state

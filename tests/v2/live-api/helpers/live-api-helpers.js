@@ -966,9 +966,12 @@ export const getLiveApiRequest = async (options = {}) => {
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
  * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
+ * @param {Object} options - Additional options
+ * @param {boolean} options.isUpgrade - If true, skip fast-fail checks (upgrade is fully async with no status)
  * @returns {Promise<{orgUid: string, organization: object}>} Organization UID and data
  */
-export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000) => {
+export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000, options = {}) => {
+  const { isUpgrade = false } = options;
   const startTime = Date.now();
   const interval = 10000; // Check every 10 seconds
   const timestamp = getTimestamp();
@@ -979,12 +982,16 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
   } else {
     console.log(`  Looking for home organization`);
   }
+  if (isUpgrade) {
+    console.log(`  (Upgrade mode: will wait for org to appear without fast-fail)`);
+  }
 
   // Track if we've seen a PENDING org - if it disappears, creation failed
   let sawPendingOrg = false;
   // Track consecutive polls with no orgs and no creation in progress
   let noProgressCount = 0;
-  const noProgressThreshold = 6; // After 60 seconds (6 x 10s interval) with no progress, fail fast
+  // For upgrades, use a much higher threshold since the process is fully async with no status feedback
+  const noProgressThreshold = isUpgrade ? 60 : 6; // 10 minutes for upgrade, 60 seconds for normal creation
   // Track stuck state - if we're in the same state for too long, fail
   let lastState = null;
   let lastStateChangeTime = Date.now();
@@ -1416,7 +1423,9 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
 
         if (org) {
           const orgUid = org.orgUid || org.org_uid;
-          if (orgUid && orgUid !== 'PENDING') {
+          const isSynced = org.synced === true;
+          
+          if (isSynced && orgUid && orgUid !== 'PENDING') {
             console.log(`✓ V1 Organization ready: ${orgUid}`);
             console.log(`  Name: ${org.name || org.orgName}`);
             console.log(`  isHome: ${org.isHome || org.is_home}`);
@@ -1425,6 +1434,9 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
               orgUid,
               organization: org,
             };
+          } else if (orgUid && orgUid !== 'PENDING') {
+            // Org exists but not synced yet - keep waiting
+            console.log(`  [${elapsed}s] Organization found but not synced yet (uid=${orgUid.substring(0, 8)}..., synced=${org.synced})`);
           } else {
             console.log(`  [${elapsed}s] Organization found but not ready yet (uid=${orgUid})`);
           }
