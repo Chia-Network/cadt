@@ -1712,6 +1712,49 @@ class OrganizationsV2 extends Model {
       needsUpdate = true;
     }
 
+    // Update data_model_version_store_hash if store is synced
+    // Skip in simulator mode as there's no real datalayer
+    if (!USE_SIMULATOR) {
+      const dataModelVersionStoreSyncStatus = await datalayer.getDataLayerStoreSyncStatus(
+        storeIds.dataModelVersionStoreId,
+      );
+
+      if (isDlStoreSynced(dataModelVersionStoreSyncStatus?.sync_status)) {
+        const { confirmed, hash } = await getRoot(storeIds.dataModelVersionStoreId);
+        if (confirmed && hash !== organization.data_model_version_store_hash) {
+          loggerV2.info(
+            `[v2]: data model version store ${storeIds.dataModelVersionStoreId} root hash needs to be updated ` +
+              `from ${organization.data_model_version_store_hash} to ${hash}`,
+          );
+          updates.data_model_version_store_hash = hash;
+          needsUpdate = true;
+        } else if (!confirmed) {
+          loggerV2.warn(
+            `[v2]: data model version store ${storeIds.dataModelVersionStoreId} has not been confirmed yet. cannot validate or update hash.`,
+          );
+        }
+      }
+
+      // Update registry_hash if registry store is synced
+      const registrySyncStatus = await datalayer.getDataLayerStoreSyncStatus(registryStoreId);
+
+      if (isDlStoreSynced(registrySyncStatus?.sync_status)) {
+        const { confirmed, hash } = await getRoot(registryStoreId);
+        if (confirmed && hash !== organization.registry_hash) {
+          loggerV2.info(
+            `[v2]: registry store ${registryStoreId} root hash needs to be updated ` +
+              `from ${organization.registry_hash} to ${hash}`,
+          );
+          updates.registry_hash = hash;
+          needsUpdate = true;
+        } else if (!confirmed) {
+          loggerV2.warn(
+            `[v2]: registry store ${registryStoreId} has not been confirmed yet. cannot validate or update hash.`,
+          );
+        }
+      }
+    }
+
     // Update database if discrepancies found
     if (needsUpdate) {
       loggerV2.info(`[v2]: Updating organization ${org_uid} with datalayer data`);

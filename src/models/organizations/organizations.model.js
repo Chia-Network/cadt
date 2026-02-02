@@ -716,7 +716,7 @@ class Organization extends Model {
       datalayerDataModelVersionStoreId,
     );
 
-    if (isDlStoreSynced(dataModelVersionStoreSyncStatus)) {
+    if (isDlStoreSynced(dataModelVersionStoreSyncStatus?.sync_status)) {
       const { confirmed, hash } = await getRoot(
         datalayerDataModelVersionStoreId,
       );

@@ -424,11 +424,11 @@ const splitCoins = async (targetCoinId, numberOfCoins, amountPerCoin, fee = 0) =
 /**
  * Wait for sufficient spendable coins to be available for organization creation.
  * Organization creation requires 4 stores created in parallel, each needing ~3001 mojos.
- * 
+ *
  * This function checks ACTUAL coin records, not just spendable_balance, because:
  * - spendable_balance doesn't always reflect pending transactions correctly
  * - We need multiple separate coins for parallel store creation
- * 
+ *
  * @param {number} requiredCoins - Number of separate coins needed (default: 4 for parallel store creation)
  * @param {number} minMojosPerCoin - Minimum mojos per coin (default: 10000, matching coin-management.js output)
  * @param {number} maxWaitMs - Maximum wait time in milliseconds (default: 5 minutes)
