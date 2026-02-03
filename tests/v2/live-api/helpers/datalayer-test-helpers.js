@@ -254,7 +254,7 @@ export const validateOrganizationStores = async (org, isV2 = true) => {
       console.log(`  ✓ Org store has expected keys: ${keysResult.foundKeys.join(', ')}`);
     }
 
-    // 3. Validate org store values
+    // 3. Validate org store values - name, icon, registryId, and fileStoreId
     const nameResult = await validateStoreKeyValue(orgUid, 'name', orgName);
     details.orgStoreName = nameResult;
     if (!nameResult.valid) {
@@ -270,6 +270,28 @@ export const validateOrganizationStores = async (org, isV2 = true) => {
         errors.push(`Org store 'icon' mismatch: expected '${orgIcon}', got '${iconResult.actualValue}'`);
       } else {
         console.log(`  ✓ Org store 'icon' value matches`);
+      }
+    }
+
+    // Validate registryId in org store matches the actual registry store ID
+    if (registryId) {
+      const registryIdResult = await validateStoreKeyValue(orgUid, 'registryId', registryId);
+      details.orgStoreRegistryId = registryIdResult;
+      if (!registryIdResult.valid) {
+        errors.push(`Org store 'registryId' mismatch: expected '${registryId}', got '${registryIdResult.actualValue}'`);
+      } else {
+        console.log(`  ✓ Org store 'registryId' value matches: ${registryId}`);
+      }
+    }
+
+    // Validate fileStoreId in org store matches the actual file store ID
+    if (fileStoreId) {
+      const fileStoreIdResult = await validateStoreKeyValue(orgUid, 'fileStoreId', fileStoreId);
+      details.orgStoreFileStoreId = fileStoreIdResult;
+      if (!fileStoreIdResult.valid) {
+        errors.push(`Org store 'fileStoreId' mismatch: expected '${fileStoreId}', got '${fileStoreIdResult.actualValue}'`);
+      } else {
+        console.log(`  ✓ Org store 'fileStoreId' value matches: ${fileStoreId}`);
       }
     }
   }

@@ -12,6 +12,9 @@ import {
 } from '../helpers/organization-state.js';
 import { validateOrganizationStores } from '../helpers/datalayer-test-helpers.js';
 
+// Store V1 organization details for comparison after upgrade
+let v1OrganizationDetails = null;
+
 /**
  * V1 to V2 Organization Upgrade Test
  *
@@ -124,6 +127,22 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
         console.error('Datalayer validation errors:', datalayerValidation.errors);
       }
 
+      // Save V1 organization details for comparison after upgrade
+      v1OrganizationDetails = {
+        orgUid: result.organization.orgUid,
+        dataModelVersionStoreId: result.organization.dataModelVersionStoreId,
+        fileStoreId: result.organization.fileStoreId,
+        registryId: result.organization.registryId,
+        orgHash: result.organization.orgHash,
+        dataModelVersionStoreHash: result.organization.dataModelVersionStoreHash,
+        name: result.organization.name,
+      };
+      console.log(`\nV1 Organization details saved for upgrade comparison:`);
+      console.log(`  orgUid: ${v1OrganizationDetails.orgUid}`);
+      console.log(`  dataModelVersionStoreId: ${v1OrganizationDetails.dataModelVersionStoreId}`);
+      console.log(`  fileStoreId: ${v1OrganizationDetails.fileStoreId}`);
+      console.log(`  registryId: ${v1OrganizationDetails.registryId}`);
+
       console.log(`✓ V1 Organization created with all hashes populated: ${v1OrgUid}`);
     });
   });
@@ -189,6 +208,68 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
       }
 
       console.log(`✓ V1 Organization upgraded to V2 with all hashes populated: ${upgradedV2OrgUid}`);
+    });
+
+    it('should maintain shared identity between V1 and V2 organizations', async function () {
+      // This test verifies the critical requirement that V1 and V2 organizations
+      // share certain stores (org store, data model version store, file store)
+      // while having separate registry stores
+
+      if (!v1OrganizationDetails) {
+        throw new Error('V1 organization details not available - V1 creation test must run first');
+      }
+
+      // Get the V2 organization
+      const orgsResponse = await request.get('/v2/organizations');
+      expect(orgsResponse.status).to.equal(200);
+
+      const orgs = Object.values(orgsResponse.body);
+      const v2Org = orgs.find(o => o.is_home === true);
+      expect(v2Org).to.exist;
+
+      console.log(`\nVerifying shared identity between V1 and V2 organizations:`);
+      console.log(`  V1 orgUid: ${v1OrganizationDetails.orgUid}`);
+      console.log(`  V2 org_uid: ${v2Org.org_uid}`);
+
+      // CRITICAL: V1 orgUid must equal V2 org_uid (shared org store identity)
+      expect(v2Org.org_uid).to.equal(
+        v1OrganizationDetails.orgUid,
+        'V2 org_uid must equal V1 orgUid (shared org store identity)',
+      );
+      console.log(`  ✓ org_uid is shared between V1 and V2`);
+
+      // CRITICAL: Data model version store must be shared (singleton)
+      expect(v2Org.data_model_version_store_id).to.equal(
+        v1OrganizationDetails.dataModelVersionStoreId,
+        'V2 data_model_version_store_id must equal V1 dataModelVersionStoreId (shared singleton)',
+      );
+      console.log(`  ✓ data_model_version_store_id is shared between V1 and V2`);
+
+      // File store should be shared (if V1 had one)
+      if (v1OrganizationDetails.fileStoreId) {
+        // V2 uses file_store_subscribed field
+        expect(v2Org.file_store_subscribed).to.equal(
+          v1OrganizationDetails.fileStoreId,
+          'V2 file_store_subscribed must equal V1 fileStoreId (shared file store)',
+        );
+        console.log(`  ✓ file_store is shared between V1 and V2`);
+      }
+
+      // CRITICAL: V2 must have a DIFFERENT registry store than V1
+      expect(v2Org.registry_id).to.not.equal(
+        v1OrganizationDetails.registryId,
+        'V2 registry_id must be different from V1 registryId (V2 has its own registry)',
+      );
+      console.log(`  ✓ V2 has a separate registry store (V1: ${v1OrganizationDetails.registryId}, V2: ${v2Org.registry_id})`);
+
+      // Org hash should be the same (shared org store)
+      expect(v2Org.org_hash).to.equal(
+        v1OrganizationDetails.orgHash,
+        'V2 org_hash must equal V1 orgHash (shared org store)',
+      );
+      console.log(`  ✓ org_hash is the same (shared org store content)`);
+
+      console.log(`\n✓ All shared identity verifications passed`);
     });
   });
 });
