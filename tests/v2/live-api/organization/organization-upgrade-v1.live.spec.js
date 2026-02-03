@@ -10,6 +10,7 @@ import {
   clearOrganizationState,
   getOrganizationState,
 } from '../helpers/organization-state.js';
+import { validateOrganizationStores } from '../helpers/datalayer-test-helpers.js';
 
 /**
  * V1 to V2 Organization Upgrade Test
@@ -48,19 +49,19 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
       const retryDelayMs = 30000; // 30 seconds between retries
       let createResponse;
       let lastError;
-      
+
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         createResponse = await request
           .post('/v1/organizations/create')
           .send(orgData);
 
         // Check if it's a transient wallet sync error
-        const isWalletSyncError = createResponse.status === 400 && 
+        const isWalletSyncError = createResponse.status === 400 &&
           (createResponse.body?.error?.includes('wallet is syncing') ||
            createResponse.body?.error?.includes('wallet is not available') ||
            createResponse.body?.error?.includes('Wallet') ||
            createResponse.body?.message === 'Chia Exception');
-        
+
         if (createResponse.status === 200) {
           break; // Success!
         } else if (isWalletSyncError && attempt < maxRetries) {
@@ -102,7 +103,28 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
       // Verify organization details
       expect(result.organization.name).to.equal(orgData.name);
       expect(result.organization.isHome === true || result.organization.is_home === true).to.be.true;
-      console.log(`✓ V1 Organization created: ${v1OrgUid}`);
+
+      // Verify all hashes are populated during V1 org creation (V1 uses camelCase)
+      expect(result.organization.orgHash).to.be.a('string');
+      expect(result.organization.orgHash).to.match(/^0x[a-f0-9]{64}$/i, 'orgHash should be a valid 32-byte hex hash');
+      console.log(`  orgHash: ${result.organization.orgHash}`);
+
+      expect(result.organization.dataModelVersionStoreHash).to.be.a('string');
+      expect(result.organization.dataModelVersionStoreHash).to.match(/^0x[a-f0-9]{64}$/i, 'dataModelVersionStoreHash should be a valid 32-byte hex hash');
+      console.log(`  dataModelVersionStoreHash: ${result.organization.dataModelVersionStoreHash}`);
+
+      expect(result.organization.registryHash).to.be.a('string');
+      expect(result.organization.registryHash).to.match(/^0x[a-f0-9]{64}$/i, 'registryHash should be a valid 32-byte hex hash');
+      console.log(`  registryHash: ${result.organization.registryHash}`);
+
+      // Validate datalayer stores exist and contain expected data (V1)
+      const datalayerValidation = await validateOrganizationStores(result.organization, false);
+      expect(datalayerValidation.valid).to.be.true;
+      if (!datalayerValidation.valid) {
+        console.error('Datalayer validation errors:', datalayerValidation.errors);
+      }
+
+      console.log(`✓ V1 Organization created with all hashes populated: ${v1OrgUid}`);
     });
   });
 
@@ -145,7 +167,28 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
       // Verify organization details
       expect(result.organization.synced).to.be.true;
       expect(result.organization.is_home).to.be.true;
-      console.log(`✓ V1 Organization upgraded to V2: ${upgradedV2OrgUid}`);
+
+      // Verify all hashes are populated after V2 upgrade (V2 uses snake_case)
+      expect(result.organization.org_hash).to.be.a('string');
+      expect(result.organization.org_hash).to.match(/^0x[a-f0-9]{64}$/i, 'org_hash should be a valid 32-byte hex hash');
+      console.log(`  org_hash: ${result.organization.org_hash}`);
+
+      expect(result.organization.data_model_version_store_hash).to.be.a('string');
+      expect(result.organization.data_model_version_store_hash).to.match(/^0x[a-f0-9]{64}$/i, 'data_model_version_store_hash should be a valid 32-byte hex hash');
+      console.log(`  data_model_version_store_hash: ${result.organization.data_model_version_store_hash}`);
+
+      expect(result.organization.registry_hash).to.be.a('string');
+      expect(result.organization.registry_hash).to.match(/^0x[a-f0-9]{64}$/i, 'registry_hash should be a valid 32-byte hex hash');
+      console.log(`  registry_hash: ${result.organization.registry_hash}`);
+
+      // Validate datalayer stores exist and contain expected data (V2)
+      const datalayerValidation = await validateOrganizationStores(result.organization, true);
+      expect(datalayerValidation.valid).to.be.true;
+      if (!datalayerValidation.valid) {
+        console.error('Datalayer validation errors:', datalayerValidation.errors);
+      }
+
+      console.log(`✓ V1 Organization upgraded to V2 with all hashes populated: ${upgradedV2OrgUid}`);
     });
   });
 });
