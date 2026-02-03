@@ -933,14 +933,25 @@ class OrganizationsV2 extends Model {
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
+      // Get the updated hash of the data model version store (singleton) after adding the v2 key
+      // The hash changes when we add the v2 key, so we can't use the V1 hash
+      const dataModelVersionRoot = await getRoot(sharedDataModelVersionStoreId);
+      const dataModelVersionStoreHash = dataModelVersionRoot?.hash
+        ? (dataModelVersionRoot.hash.startsWith('0x') ? dataModelVersionRoot.hash : `0x${dataModelVersionRoot.hash}`)
+        : '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+      loggerV2.verbose(
+        `[v2]: data model version store ${sharedDataModelVersionStoreId} hash after v2 key addition: ${dataModelVersionStoreHash}`,
+      );
+
       loggerV2.info('[v2]: adding new V2 home organization to CADT database');
       // CRITICAL: Use v1OrgUid and v1FileStoreId - shared identity between v1 and v2
-      // Copy hash fields from V1 org (shared stores have same hashes)
+      // Note: data_model_version_store_hash uses the UPDATED hash (after v2 key addition), not V1 hash
       await OrganizationsV2.create({
         org_uid: v1OrgUid, // SAME as V1 - shared org_uid
         org_hash: v1Org.orgHash, // Copy from V1 - shared org store
         data_model_version_store_id: sharedDataModelVersionStoreId, // SAME as V1 - shared singleton
-        data_model_version_store_hash: v1Org.dataModelVersionStoreHash, // Copy from V1 - shared singleton
+        data_model_version_store_hash: dataModelVersionStoreHash, // Updated hash after adding v2 key
         registry_id: newV2RegistryStoreId, // NEW registry store for v2 data
         registry_hash: newV2RegistryHash, // Hash from datalayer RPC
         is_home: true,
