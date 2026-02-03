@@ -129,11 +129,13 @@ export const stringToHex = (str) => {
 
 /**
  * Convert hex to string
- * @param {string} hex - The hex string to convert
+ * @param {string} hex - The hex string to convert (may have 0x prefix)
  * @returns {string} - Decoded string
  */
 export const hexToString = (hex) => {
-  return Buffer.from(hex, 'hex').toString('utf8');
+  // Strip 0x prefix if present
+  const cleanHex = hex.startsWith('0x') ? hex.slice(2) : hex;
+  return Buffer.from(cleanHex, 'hex').toString('utf8');
 };
 
 /**

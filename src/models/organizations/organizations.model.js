@@ -104,6 +104,7 @@ class Organization extends Model {
         'isHome',
         'subscribed',
         'synced',
+        'fileStoreId',
         'fileStoreSubscribed',
         'registryId',
         'registryHash',

@@ -287,14 +287,21 @@ describe('Organization Creation Status Tests', function () {
         .expect(200);
 
       expect(response.body.success).to.be.true;
-      // V1 returns orgId in the response
-      expect(response.body.orgId).to.exist;
+      // V1 creation is now async - it returns immediately without orgId
+      // The orgId will be available after creation completes
+      expect(response.body.message).to.include('currently being created');
 
-      // Wait a moment for async cleanup
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for org creation to complete (poll for org to exist)
+      let org = null;
+      for (let attempt = 1; attempt <= 20; attempt++) {
+        org = await Organization.findOne({ where: { isHome: true }, raw: true });
+        if (org) {
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
 
       // Verify org was created
-      const org = await Organization.findOne({ where: { isHome: true }, raw: true });
       expect(org).to.exist;
       expect(org.name).to.equal('Test V1 Organization');
       // orgUid is fixed in simulator mode for V1
