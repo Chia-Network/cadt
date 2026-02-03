@@ -273,14 +273,19 @@ export const validateOrganizationStores = async (org, isV2 = true) => {
       }
     }
 
-    // Validate registryId in org store matches the actual registry store ID
-    if (registryId) {
-      const registryIdResult = await validateStoreKeyValue(orgUid, 'registryId', registryId);
-      details.orgStoreRegistryId = registryIdResult;
-      if (!registryIdResult.valid) {
-        errors.push(`Org store 'registryId' mismatch: expected '${registryId}', got '${registryIdResult.actualValue}'`);
+    // NOTE: The org store has a legacy naming issue where the key "registryId" actually
+    // stores the dataModelVersionStoreId value, NOT the actual registry store ID.
+    // This is intentional legacy behavior documented in organizations.model.js:
+    //   "registryId: dataModelVersionStoreId, // registryId is the key named here, but this is the DATA MODEL VERSION store id"
+    // We validate that the key exists (done above), but we validate its VALUE against
+    // dataModelVersionStoreId, not registryId.
+    if (dataModelVersionStoreId) {
+      const registryKeyResult = await validateStoreKeyValue(orgUid, 'registryId', dataModelVersionStoreId);
+      details.orgStoreRegistryKey = registryKeyResult;
+      if (!registryKeyResult.valid) {
+        errors.push(`Org store 'registryId' key value mismatch: expected dataModelVersionStoreId '${dataModelVersionStoreId}', got '${registryKeyResult.actualValue}'`);
       } else {
-        console.log(`  ✓ Org store 'registryId' value matches: ${registryId}`);
+        console.log(`  ✓ Org store 'registryId' key value matches dataModelVersionStoreId (legacy naming): ${dataModelVersionStoreId}`);
       }
     }
 
