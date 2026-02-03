@@ -875,7 +875,7 @@ class OrganizationsV2 extends Model {
       }
 
       // Get the root hash of the newly created V2 registry store
-      const newV2RegistryRoot = await datalayer.getRoot(newV2RegistryStoreId);
+      const newV2RegistryRoot = await getRoot(newV2RegistryStoreId);
       const newV2RegistryHash = newV2RegistryRoot?.hash
         ? (newV2RegistryRoot.hash.startsWith('0x') ? newV2RegistryRoot.hash : `0x${newV2RegistryRoot.hash}`)
         : '0x0000000000000000000000000000000000000000000000000000000000000000';
