@@ -874,8 +874,14 @@ class OrganizationsV2 extends Model {
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
+      // Get the root hash of the newly created V2 registry store
+      const newV2RegistryRoot = await datalayer.getRoot(newV2RegistryStoreId);
+      const newV2RegistryHash = newV2RegistryRoot?.hash
+        ? (newV2RegistryRoot.hash.startsWith('0x') ? newV2RegistryRoot.hash : `0x${newV2RegistryRoot.hash}`)
+        : '0x0000000000000000000000000000000000000000000000000000000000000000';
+
       loggerV2.verbose(
-        `[v2]: the blockchain reported new V2 registry store ${newV2RegistryStoreId} has confirmed. ` +
+        `[v2]: the blockchain reported new V2 registry store ${newV2RegistryStoreId} has confirmed (hash: ${newV2RegistryHash}). ` +
           `Reusing V1 orgUid: ${v1OrgUid} and V1 fileStoreId: ${v1FileStoreId}`,
       );
 
@@ -929,10 +935,14 @@ class OrganizationsV2 extends Model {
 
       loggerV2.info('[v2]: adding new V2 home organization to CADT database');
       // CRITICAL: Use v1OrgUid and v1FileStoreId - shared identity between v1 and v2
+      // Copy hash fields from V1 org (shared stores have same hashes)
       await OrganizationsV2.create({
         org_uid: v1OrgUid, // SAME as V1 - shared org_uid
+        org_hash: v1Org.orgHash, // Copy from V1 - shared org store
         data_model_version_store_id: sharedDataModelVersionStoreId, // SAME as V1 - shared singleton
+        data_model_version_store_hash: v1Org.dataModelVersionStoreHash, // Copy from V1 - shared singleton
         registry_id: newV2RegistryStoreId, // NEW registry store for v2 data
+        registry_hash: newV2RegistryHash, // Hash from datalayer RPC
         is_home: true,
         subscribed: USE_SIMULATOR,
         file_store_subscribed: v1FileStoreId, // SAME as V1 - shared file store
