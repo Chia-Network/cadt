@@ -61,6 +61,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-joi-validation": "^6.1.0",
+    "express-rate-limit": "^8.2.1",
     "joi": "^17.13.3",
     "js-yaml": "^4.1.1",
     "lodash": "^4.17.23",

@@ -2405,8 +2405,10 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       });
 
       it('should return error when organization does not exist', async function () {
+        // Use a valid UUID format that doesn't exist in the database
+        const nonExistentOrgUid = '00000000-0000-0000-0000-000000000000';
         const response = await supertest(app)
-          .delete('/v2/organizations/non-existent-org-uid')
+          .delete(`/v2/organizations/${nonExistentOrgUid}`)
           .expect(400);
 
         expect(response.body).to.have.property('success', false);

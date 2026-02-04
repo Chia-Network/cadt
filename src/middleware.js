@@ -5,6 +5,7 @@ import _ from 'lodash';
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { V1Router } from './routes/v1';
 import { V2Router } from './routes/v2';
 import { getConfig, getConfigV2 } from './utils/config-loader';
@@ -39,6 +40,30 @@ app.use(
     exposedHeaders: Object.values(headerKeys).join(','),
   }),
 );
+
+// Rate limiting - generous limits to prevent abuse while allowing normal usage
+// 1000 requests per 15 minutes per IP (approximately 1 request per second sustained)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // 1000 requests per window
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: (req) => {
+    // Skip rate limiting for health check endpoints
+    return req.path === '/health' || req.path === '/v1/health' || req.path === '/v2/health';
+  },
+  handler: (req, res) => {
+    res.status(429).json({
+      message: 'Too many requests. Please slow down and try again later.',
+      error: 'RATE_LIMIT_EXCEEDED',
+      success: false,
+      retryAfter: Math.ceil(req.rateLimit.resetTime / 1000), // seconds until reset
+    });
+  },
+});
+
+// Apply rate limiting to all routes
+app.use(generalLimiter);
 
 app.use(express.json({ limit: '5mb' }));
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -500,6 +525,36 @@ app.use((err, req, res, next) => {
     if (res.headersSent) {
       logger.warn('[middleware]: Response already sent, cannot handle error');
       return next(err);
+    }
+
+    // Handle Multer file upload errors with user-friendly messages
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      // Determine the limit based on the route
+      let limitDescription = 'the maximum allowed size';
+      if (req.path.includes('/organization') || req.path.includes('/organizations')) {
+        limitDescription = '2MB for organization icons';
+      } else if (req.path.includes('/filestore') || req.path.includes('/file-store')) {
+        limitDescription = '100MB for file store uploads';
+      } else if (req.path.includes('/offer')) {
+        limitDescription = '5MB for offer files';
+      } else if (req.path.includes('/xlsx') || req.path.includes('/batch')) {
+        limitDescription = '25MB for batch/XLSX uploads';
+      }
+
+      return res.status(413).json({
+        message: `File too large. Maximum file size is ${limitDescription}.`,
+        error: 'LIMIT_FILE_SIZE',
+        success: false,
+      });
+    }
+
+    // Handle other Multer errors
+    if (err.code && err.code.startsWith('LIMIT_')) {
+      return res.status(400).json({
+        message: `File upload error: ${err.message}`,
+        error: err.code,
+        success: false,
+      });
     }
 
     if (_.get(err, 'error.details')) {
