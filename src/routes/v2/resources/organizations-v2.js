@@ -9,8 +9,11 @@ import { deleteOrganizationSchema } from '../../../validations/organizations.val
 const validator = joiExpress.createValidator({ passError: true });
 const OrganizationsV2Router = express.Router();
 
-// Configure multer for file uploads (icon)
-const upload = multer({ storage: multer.memoryStorage() });
+// Configure multer for file uploads (icon) with size limit (2MB)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit for organization icons
+});
 
 // Route ordering: More specific routes MUST come before less specific routes
 // This prevents Express from matching the wrong route

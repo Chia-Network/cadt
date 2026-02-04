@@ -14,7 +14,11 @@ import {
 
 const validator = joiExpress.createValidator({ passError: true });
 const ProjectRouter = express.Router();
-const upload = multer();
+
+// Configure multer with file size limit for XLSX/CSV uploads (25MB)
+const upload = multer({
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit for batch uploads
+});
 
 ProjectRouter.get('/', validator.query(projectsGetQuerySchema), (req, res) => {
   return req.query.warehouseProjectId

@@ -5,7 +5,11 @@ import { OfferController } from '../../../controllers';
 import multer from 'multer';
 
 const OfferRouter = express.Router();
-const upload = multer();
+
+// Configure multer with file size limit for offer files (5MB)
+const upload = multer({
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for offer files
+});
 
 OfferRouter.get('/', (req, res) => {
   return OfferController.generateOfferFile(req, res);
