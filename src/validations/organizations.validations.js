@@ -35,3 +35,13 @@ export const addMirrorSchema = Joi.object({
 export const getMetaDataSchema = Joi.object({
   orgUid: Joi.string().required(),
 });
+
+export const deleteOrganizationSchema = Joi.object({
+  orgUid: Joi.string()
+    .required()
+    .pattern(/^[a-fA-F0-9]{64}$/)
+    .messages({
+      'string.pattern.base': 'orgUid must be a valid 64-character hex string',
+      'any.required': 'orgUid is required',
+    }),
+});

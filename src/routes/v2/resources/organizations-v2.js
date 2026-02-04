@@ -2,8 +2,11 @@
 
 import express from 'express';
 import multer from 'multer';
+import joiExpress from 'express-joi-validation';
 import * as OrganizationsV2Controller from '../../../controllers/v2/organizations-v2.controller.js';
+import { deleteOrganizationSchema } from '../../../validations/organizations.validations.js';
 
+const validator = joiExpress.createValidator({ passError: true });
 const OrganizationsV2Router = express.Router();
 
 // Configure multer for file uploads (icon)
@@ -73,9 +76,13 @@ OrganizationsV2Router.get('/creation-status', (req, res) => {
 });
 
 // 13. DELETE /v2/organizations/:orgUid - Delete organization (MUST be before /)
-OrganizationsV2Router.delete('/:orgUid', (req, res) => {
-  return OrganizationsV2Controller.deleteOrganization(req, res);
-});
+OrganizationsV2Router.delete(
+  '/:orgUid',
+  validator.params(deleteOrganizationSchema),
+  (req, res) => {
+    return OrganizationsV2Controller.deleteOrganization(req, res);
+  },
+);
 
 // 14. Catch-all routes (MUST be last)
 // GET /v2/organizations - Get all organizations

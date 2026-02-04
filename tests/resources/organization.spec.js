@@ -59,6 +59,65 @@ describe('Orgainzation Resource CRUD', function () {
     });
   });
 
+  describe('DELETE - Organization Parameter Validation', function () {
+    it('rejects orgUid that is too short', async function () {
+      const response = await supertest(app)
+        .delete('/v1/organizations/abc123')
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+      expect(response.body.errors[0]).to.include('64-character hex string');
+    });
+
+    it('rejects orgUid that is too long', async function () {
+      const tooLongOrgUid = 'a'.repeat(65);
+      const response = await supertest(app)
+        .delete(`/v1/organizations/${tooLongOrgUid}`)
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+      expect(response.body.errors[0]).to.include('64-character hex string');
+    });
+
+    it('rejects orgUid with non-hex characters', async function () {
+      // 64 characters but contains non-hex chars (g, h, z)
+      const invalidOrgUid = 'ghijklmnopqrstuvwxyz01234567890123456789012345678901234567890123';
+      const response = await supertest(app)
+        .delete(`/v1/organizations/${invalidOrgUid}`)
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+      expect(response.body.errors[0]).to.include('64-character hex string');
+    });
+
+    it('rejects orgUid with special characters', async function () {
+      const response = await supertest(app)
+        .delete('/v1/organizations/../../etc/passwd')
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+    });
+
+    it('accepts valid 64-character hex orgUid format', async function () {
+      // Valid format but org doesn't exist - should pass validation but fail on lookup
+      const validOrgUid = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
+      const response = await supertest(app)
+        .delete(`/v1/organizations/${validOrgUid}`)
+        .send();
+
+      // Should NOT be a validation error (400 with "64-character hex string")
+      // Instead should be a "not found" type error since the org doesn't exist
+      if (response.status === 400) {
+        expect(response.body.errors?.[0] || '').to.not.include('64-character hex string');
+        expect(response.body.message).to.include('does not exist');
+      }
+    });
+  });
+
   describe('POST - Creates an organization', function () {
     it('Creates an organization', async function () {
       await Organization.destroy({

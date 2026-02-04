@@ -1,5 +1,6 @@
 'use strict';
 
+import crypto from 'crypto';
 import _ from 'lodash';
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -163,8 +164,23 @@ app.use(function (req, res, next) {
   }
 
   if (CADT_API_KEY && CADT_API_KEY !== '') {
-    const apikey = req.header('x-api-key');
-    if (CADT_API_KEY === apikey) {
+    const apikey = req.header('x-api-key') || '';
+
+    // Use constant-time comparison to prevent timing attacks
+    // If lengths differ, we still do a comparison to avoid leaking length info
+    const expectedBuffer = Buffer.from(CADT_API_KEY);
+    const providedBuffer = Buffer.from(apikey);
+
+    // timingSafeEqual requires equal length buffers, so we compare against
+    // expected key length to avoid leaking the correct key's length
+    const isValidLength = expectedBuffer.length === providedBuffer.length;
+    const bufferToCompare = isValidLength
+      ? providedBuffer
+      : expectedBuffer; // Compare against itself if lengths differ (will pass, but isValidLength is false)
+
+    const isMatch = crypto.timingSafeEqual(expectedBuffer, bufferToCompare) && isValidLength;
+
+    if (isMatch) {
       next();
     } else {
       res.status(403).json({ message: 'CADT API key not found' });
@@ -447,6 +463,36 @@ if (enableV2) {
     });
   });
   logger.info('[v2]: V2 API routes disabled');
+}
+
+// Security warning for missing API keys
+// This is a critical security check - APIs without keys are accessible to anyone
+const v1ApiKeyConfigured = enableV1 && configV1.CADT_API_KEY && configV1.CADT_API_KEY !== '';
+const v2ApiKeyConfigured = enableV2 && configV2.CADT_API_KEY && configV2.CADT_API_KEY !== '';
+
+if (enableV1 && !v1ApiKeyConfigured) {
+  logger.warn('================================================================================');
+  logger.warn('  SECURITY WARNING: V1 API is running WITHOUT an API key!');
+  logger.warn('  All V1 endpoints are accessible without authentication.');
+  logger.warn('  Set CADT_API_KEY in your config file to secure the API.');
+  logger.warn('================================================================================');
+}
+
+if (enableV2 && !v2ApiKeyConfigured) {
+  logger.warn('================================================================================');
+  logger.warn('  SECURITY WARNING: V2 API is running WITHOUT an API key!');
+  logger.warn('  All V2 endpoints are accessible without authentication.');
+  logger.warn('  Set CADT_API_KEY in your config file to secure the API.');
+  logger.warn('================================================================================');
+}
+
+if ((enableV1 && v1ApiKeyConfigured) || (enableV2 && v2ApiKeyConfigured)) {
+  if (enableV1 && v1ApiKeyConfigured) {
+    logger.info('[v1]: API key authentication enabled');
+  }
+  if (enableV2 && v2ApiKeyConfigured) {
+    logger.info('[v2]: API key authentication enabled');
+  }
 }
 
 app.use((err, req, res, next) => {
