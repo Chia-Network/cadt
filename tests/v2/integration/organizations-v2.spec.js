@@ -993,41 +993,56 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       });
 
       it('should return ready: false when pending commits exist', async function () {
-        // Import StagingV2 to create test pending commits
+        // Import StagingV2 and TaskManager to manage background tasks
         const { StagingV2 } = await import('../../../src/models/v2/index.js');
         const { v4: uuidv4 } = await import('uuid');
+        const TaskManager = (await import('../../../src/tasks/index.js')).default;
 
-        // Clean up any existing records first to ensure clean state
-        await StagingV2.destroy({ where: {} });
+        // Stop background tasks to prevent race condition where truncateStagingV2
+        // deletes committed records before we can test them
+        TaskManager.stopAll();
 
-        // Create a committed staging record (pending commit)
-        const testUuid = uuidv4();
-        await StagingV2.create({
-          uuid: testUuid,
-          table: 'program',
-          action: 'INSERT',
-          data: JSON.stringify([{ test: 'data' }]),
-          committed: true,
-        });
+        try {
+          // Clean up any existing records first to ensure clean state
+          await StagingV2.destroy({ where: {} });
 
-        // Verify the record was created with correct committed status
-        const createdRecord = await StagingV2.findOne({ where: { uuid: testUuid } });
-        expect(createdRecord).to.exist;
-        expect(createdRecord.committed).to.be.true;
+          // Create a committed staging record (pending commit)
+          // Note: "committed: true" means committed to datalayer but awaiting cleanup
+          // The status endpoint counts these as pending_commits
+          const testUuid = uuidv4();
+          await StagingV2.create({
+            uuid: testUuid,
+            table: 'program',
+            action: 'INSERT',
+            data: JSON.stringify([{ test: 'data' }]),
+            committed: true,
+          });
 
-        // Count committed records directly to verify
-        const committedCount = await StagingV2.count({ where: { committed: true } });
-        expect(committedCount).to.be.greaterThan(0);
+          // Verify the record was created with correct committed status
+          const createdRecord = await StagingV2.findOne({ where: { uuid: testUuid } });
+          expect(createdRecord).to.exist;
+          expect(createdRecord.committed).to.be.true;
 
-        const response = await supertest(app)
-          .get('/v2/organizations/status')
-          .expect(200);
+          // Count committed records directly to verify
+          const committedCount = await StagingV2.count({ where: { committed: true } });
+          expect(committedCount).to.be.greaterThan(0);
 
-        expect(response.body.ready).to.be.false;
-        expect(response.body.status.pending_commits).to.be.greaterThan(0);
+          const response = await supertest(app)
+            .get('/v2/organizations/status')
+            .expect(200);
 
-        // Clean up
-        await StagingV2.destroy({ where: {} });
+          expect(response.body.ready).to.be.false;
+          expect(response.body.status.pending_commits).to.be.greaterThan(0);
+
+          // Clean up
+          await StagingV2.destroy({ where: {} });
+        } finally {
+          // Restart background tasks
+          const { getConfig, getConfigV2 } = await import('../../../src/utils/config-loader.js');
+          const configV1 = getConfig();
+          const configV2 = getConfigV2();
+          TaskManager.start(configV1?.ENABLE !== false, configV2?.ENABLE !== false);
+        }
       });
 
       it('should return error when no home organization exists', async function () {
