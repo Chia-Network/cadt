@@ -236,6 +236,14 @@ export const resetV2DataTables = async () => {
 export const createV2TestHomeOrg = async () => {
   const { OrganizationsV2 } = await import('../../../src/models/v2/index.js');
 
+  // CRITICAL: First clear any existing home orgs to ensure only one exists
+  // This prevents test interference where other tests create orgs with is_home: true
+  // and findOne({ where: { is_home: true } }) might find the wrong one
+  await OrganizationsV2.update(
+    { is_home: false },
+    { where: { is_home: true } }
+  );
+
   // Create test home organization for V2
   const [org, created] = await OrganizationsV2.upsert({
     org_uid: 'test-home-org-v2',
