@@ -57,47 +57,47 @@ const formatMojos = (mojos, symbol) => {
  */
 const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
   const startTime = Date.now();
-  
+
   logger.info(`[COIN_MANAGEMENT] Waiting for split transaction to confirm (expecting ${expectedNewCoins} new coins of ${COIN_SIZE}+ mojos)...`);
-  
+
   while (Date.now() - startTime < SPLIT_CONFIRMATION_TIMEOUT_MS) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    
+
     try {
       const coinsResult = await wallet.getCoinRecords();
-      
+
       if (!coinsResult.success || !coinsResult.coin_records) {
         logger.warn('[COIN_MANAGEMENT] Could not get coin records while waiting for confirmation, retrying...');
         await new Promise((resolve) => setTimeout(resolve, SPLIT_CONFIRMATION_POLL_INTERVAL_MS));
         continue;
       }
-      
+
       const allCoins = coinsResult.coin_records || [];
       const unspentCoins = allCoins.filter((coin) => coin.spent_height === 0);
       const usableCoins = unspentCoins.filter((coin) => coin.amount >= COIN_SIZE);
-      
+
       // Check if the original coin has been spent (no longer in unspent list)
       const originalCoinStillUnspent = unspentCoins.some((coin) => coin.id === originalCoinId);
-      
+
       if (!originalCoinStillUnspent && usableCoins.length >= expectedNewCoins) {
         logger.info(`[COIN_MANAGEMENT] Split confirmed! Found ${usableCoins.length} usable coins (${elapsed}s elapsed)`);
         return true;
       }
-      
+
       // Log progress every poll
       if (originalCoinStillUnspent) {
         logger.info(`[COIN_MANAGEMENT] Waiting for split to confirm... original coin still unspent (${elapsed}s elapsed)`);
       } else {
         logger.info(`[COIN_MANAGEMENT] Split in progress... found ${usableCoins.length}/${expectedNewCoins} expected coins (${elapsed}s elapsed)`);
       }
-      
+
     } catch (error) {
       logger.warn(`[COIN_MANAGEMENT] Error checking split confirmation: ${error.message}`);
     }
-    
+
     await new Promise((resolve) => setTimeout(resolve, SPLIT_CONFIRMATION_POLL_INTERVAL_MS));
   }
-  
+
   logger.warn(`[COIN_MANAGEMENT] Timeout waiting for split confirmation after ${SPLIT_CONFIRMATION_TIMEOUT_MS / 1000}s`);
   return false;
 };
@@ -170,7 +170,7 @@ const runCoinManagement = async () => {
       logger.error('[COIN_MANAGEMENT] Could not get wallet sync status. Aborting split attempt.');
       return;
     }
-    
+
     // Only check synced=true, ignore syncing flag
     if (syncStatus.synced !== true) {
       logger.warn(
@@ -189,7 +189,7 @@ const runCoinManagement = async () => {
     if (largestCoinAmount < requiredAmount) {
       const currencySymbol = await getCurrencySymbol();
       const maxPossibleCoins = Math.floor((largestCoinAmount - SPLIT_FEE) / COIN_SIZE);
-      
+
       if (maxPossibleCoins < 1) {
         logger.warn(
           `[COIN_MANAGEMENT] WARNING: Largest coin (${formatMojos(largestCoinAmount, currencySymbol)}) is too small to split. ` +
@@ -203,7 +203,7 @@ const runCoinManagement = async () => {
         `Need ${formatMojos(requiredAmount, currencySymbol)} but largest coin only has ${formatMojos(largestCoinAmount, currencySymbol)}. ` +
         `Creating ${maxPossibleCoins} coins instead.`
       );
-      
+
       // Create as many as we can
       const splitResult = await wallet.splitCoins(coinId, maxPossibleCoins, COIN_SIZE, SPLIT_FEE);
       if (splitResult.success) {

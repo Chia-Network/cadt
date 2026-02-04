@@ -9,6 +9,26 @@ const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 import * as testFixtures from '../test-fixtures';
 import { getHomeOrgId } from '../test-fixtures';
 
+/**
+ * Wait for organization to exist in database by polling
+ * @param {string} orgName - Expected organization name
+ * @param {number} maxAttempts - Maximum polling attempts
+ * @param {number} interval - Time between polls in ms
+ * @returns {Promise<Object|null>} The organization or null
+ */
+const waitForOrgWithName = async (orgName, maxAttempts = 20, interval = 500) => {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const org = await Organization.findOne({ where: { name: orgName } });
+    if (org) {
+      return org;
+    }
+    if (attempt < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, interval));
+    }
+  }
+  return null;
+};
+
 describe('Orgainzation Resource CRUD', function () {
   before(async function () {
     await pullPickListValues();
@@ -52,11 +72,18 @@ describe('Orgainzation Resource CRUD', function () {
       });
 
       expect(response.body.message).to.equal(
-        'New organization created successfully.',
+        'New organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.',
       );
+
+      // Wait for org creation to complete (v1 creation is now async)
+      const createdOrg = await waitForOrgWithName('My Org');
+      expect(createdOrg).to.not.be.null;
     }).timeout(TEST_WAIT_TIME * 10);
 
     it('Organization can be retreived from datalayer', async function () {
+      // Wait for org to exist (in case previous test's async creation is still running)
+      await waitForOrgWithName('My Org');
+
       const response = await supertest(app).get(`/v1/organizations`).send();
 
       expect(Object.values(response.body)[0].name).to.equal('My Org');

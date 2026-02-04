@@ -104,6 +104,7 @@ class Organization extends Model {
         'isHome',
         'subscribed',
         'synced',
+        'fileStoreId',
         'fileStoreSubscribed',
         'registryId',
         'registryHash',
@@ -292,6 +293,42 @@ class Organization extends Model {
       const dataModelVersionStoreId = state.stores[STORE_TYPES.DATA_MODEL_VERSION].id;
       const fileStoreId = state.stores[STORE_TYPES.FILE_STORE].id;
 
+      // Get the root hashes of the stores now that they're confirmed
+      let orgHash = null;
+      let dataModelVersionStoreHash = null;
+      let registryHash = null;
+      if (!USE_SIMULATOR) {
+        try {
+          const { confirmed, hash } = await getRoot(orgUid);
+          if (confirmed && hash) {
+            orgHash = hash;
+            logState(state, `Org store hash: ${hash}`);
+          }
+        } catch (error) {
+          logState(state, `Could not get org store hash: ${error.message}`, 'warn');
+        }
+
+        try {
+          const { confirmed, hash } = await getRoot(dataModelVersionStoreId);
+          if (confirmed && hash) {
+            dataModelVersionStoreHash = hash;
+            logState(state, `Data model version store hash: ${hash}`);
+          }
+        } catch (error) {
+          logState(state, `Could not get data model version store hash: ${error.message}`, 'warn');
+        }
+
+        try {
+          const { confirmed, hash } = await getRoot(registryId);
+          if (confirmed && hash) {
+            registryHash = hash;
+            logState(state, `Registry store hash: ${hash}`);
+          }
+        } catch (error) {
+          logState(state, `Could not get registry store hash: ${error.message}`, 'warn');
+        }
+      }
+
       logState(state, 'Adding new home organization to CADT database');
 
       // Remove any existing org with this UID (in case of partial creation)
@@ -300,8 +337,11 @@ class Organization extends Model {
       await Promise.all([
         Organization.create({
           orgUid: orgUid,
+          orgHash,
           dataModelVersionStoreId,
+          dataModelVersionStoreHash,
           registryId: registryId,
+          registryHash,
           isHome: true,
           subscribed: USE_SIMULATOR,
           fileStoreId,
@@ -716,7 +756,7 @@ class Organization extends Model {
       datalayerDataModelVersionStoreId,
     );
 
-    if (isDlStoreSynced(dataModelVersionStoreSyncStatus)) {
+    if (isDlStoreSynced(dataModelVersionStoreSyncStatus?.sync_status)) {
       const { confirmed, hash } = await getRoot(
         datalayerDataModelVersionStoreId,
       );

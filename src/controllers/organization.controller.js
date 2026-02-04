@@ -12,6 +12,7 @@ import {
 
 import { ModelKeys, Audit, Organization, Staging } from '../models';
 import { getOwnedStores, getSubscriptions } from '../datalayer/persistance.js';
+import { logger } from '../config/logger';
 
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
@@ -178,14 +179,20 @@ export const create = async (req, res) => {
 
       const dataModelVersion = 'v1';
 
+      // Call createHomeOrganization asynchronously (don't await)
+      // This allows the HTTP request to return immediately while creation happens in background
+      Organization.createHomeOrganization(name, iconValue, dataModelVersion).catch(
+        (error) => {
+          logger.error(
+            `[v1]: Error creating home organization in background: ${error.message}`,
+          );
+        },
+      );
+
       return res.json({
-        message: 'New organization created successfully.',
+        message:
+          'New organization is currently being created. It can take up to 30 mins. Please do not interrupt this process.',
         success: true,
-        orgId: await Organization.createHomeOrganization(
-          name,
-          iconValue,
-          dataModelVersion,
-        ),
       });
     }
   } catch (error) {

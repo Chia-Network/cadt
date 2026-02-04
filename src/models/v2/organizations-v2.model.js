@@ -334,6 +334,42 @@ class OrganizationsV2 extends Model {
       const dataModelVersionStoreId = state.stores[STORE_TYPES.DATA_MODEL_VERSION].id;
       const fileStoreId = state.stores[STORE_TYPES.FILE_STORE].id;
 
+      // Get the root hashes of the stores now that they're confirmed
+      let orgHash = null;
+      let dataModelVersionStoreHash = null;
+      let registryHash = null;
+      if (!USE_SIMULATOR) {
+        try {
+          const { confirmed, hash } = await getRoot(orgUid);
+          if (confirmed && hash) {
+            orgHash = hash;
+            logState(state, `Org store hash: ${hash}`);
+          }
+        } catch (error) {
+          logState(state, `Could not get org store hash: ${error.message}`, 'warn');
+        }
+
+        try {
+          const { confirmed, hash } = await getRoot(dataModelVersionStoreId);
+          if (confirmed && hash) {
+            dataModelVersionStoreHash = hash;
+            logState(state, `Data model version store hash: ${hash}`);
+          }
+        } catch (error) {
+          logState(state, `Could not get data model version store hash: ${error.message}`, 'warn');
+        }
+
+        try {
+          const { confirmed, hash } = await getRoot(registryId);
+          if (confirmed && hash) {
+            registryHash = hash;
+            logState(state, `Registry store hash: ${hash}`);
+          }
+        } catch (error) {
+          logState(state, `Could not get registry store hash: ${error.message}`, 'warn');
+        }
+      }
+
       logState(state, 'Adding new V2 home organization to CADT database');
 
       // Remove any existing org with this UID (in case of partial creation)
@@ -342,8 +378,11 @@ class OrganizationsV2 extends Model {
       await Promise.all([
         OrganizationsV2.create({
           org_uid: orgUid,
+          org_hash: orgHash,
           data_model_version_store_id: dataModelVersionStoreId,
+          data_model_version_store_hash: dataModelVersionStoreHash,
           registry_id: registryId,
+          registry_hash: registryHash,
           is_home: true,
           subscribed: USE_SIMULATOR,
           file_store_subscribed: fileStoreId,
@@ -835,8 +874,14 @@ class OrganizationsV2 extends Model {
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
+      // Get the root hash of the newly created V2 registry store
+      const newV2RegistryRoot = await getRoot(newV2RegistryStoreId);
+      const newV2RegistryHash = newV2RegistryRoot?.hash
+        ? (newV2RegistryRoot.hash.startsWith('0x') ? newV2RegistryRoot.hash : `0x${newV2RegistryRoot.hash}`)
+        : '0x0000000000000000000000000000000000000000000000000000000000000000';
+
       loggerV2.verbose(
-        `[v2]: the blockchain reported new V2 registry store ${newV2RegistryStoreId} has confirmed. ` +
+        `[v2]: the blockchain reported new V2 registry store ${newV2RegistryStoreId} has confirmed (hash: ${newV2RegistryHash}). ` +
           `Reusing V1 orgUid: ${v1OrgUid} and V1 fileStoreId: ${v1FileStoreId}`,
       );
 
@@ -888,12 +933,27 @@ class OrganizationsV2 extends Model {
         await datalayer.waitForAllTransactionsToConfirm();
       }
 
+      // Get the updated hash of the data model version store (singleton) after adding the v2 key
+      // The hash changes when we add the v2 key, so we can't use the V1 hash
+      const dataModelVersionRoot = await getRoot(sharedDataModelVersionStoreId);
+      const dataModelVersionStoreHash = dataModelVersionRoot?.hash
+        ? (dataModelVersionRoot.hash.startsWith('0x') ? dataModelVersionRoot.hash : `0x${dataModelVersionRoot.hash}`)
+        : '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+      loggerV2.verbose(
+        `[v2]: data model version store ${sharedDataModelVersionStoreId} hash after v2 key addition: ${dataModelVersionStoreHash}`,
+      );
+
       loggerV2.info('[v2]: adding new V2 home organization to CADT database');
       // CRITICAL: Use v1OrgUid and v1FileStoreId - shared identity between v1 and v2
+      // Note: data_model_version_store_hash uses the UPDATED hash (after v2 key addition), not V1 hash
       await OrganizationsV2.create({
         org_uid: v1OrgUid, // SAME as V1 - shared org_uid
+        org_hash: v1Org.orgHash, // Copy from V1 - shared org store
         data_model_version_store_id: sharedDataModelVersionStoreId, // SAME as V1 - shared singleton
+        data_model_version_store_hash: dataModelVersionStoreHash, // Updated hash after adding v2 key
         registry_id: newV2RegistryStoreId, // NEW registry store for v2 data
+        registry_hash: newV2RegistryHash, // Hash from datalayer RPC
         is_home: true,
         subscribed: USE_SIMULATOR,
         file_store_subscribed: v1FileStoreId, // SAME as V1 - shared file store
@@ -1710,6 +1770,49 @@ class OrganizationsV2 extends Model {
     if (organization.file_store_subscribed !== (orgData?.fileStoreId || null)) {
       updates.file_store_subscribed = orgData?.fileStoreId || null;
       needsUpdate = true;
+    }
+
+    // Update data_model_version_store_hash if store is synced
+    // Skip in simulator mode as there's no real datalayer
+    if (!USE_SIMULATOR) {
+      const dataModelVersionStoreSyncStatus = await datalayer.getDataLayerStoreSyncStatus(
+        storeIds.dataModelVersionStoreId,
+      );
+
+      if (isDlStoreSynced(dataModelVersionStoreSyncStatus?.sync_status)) {
+        const { confirmed, hash } = await getRoot(storeIds.dataModelVersionStoreId);
+        if (confirmed && hash !== organization.data_model_version_store_hash) {
+          loggerV2.info(
+            `[v2]: data model version store ${storeIds.dataModelVersionStoreId} root hash needs to be updated ` +
+              `from ${organization.data_model_version_store_hash} to ${hash}`,
+          );
+          updates.data_model_version_store_hash = hash;
+          needsUpdate = true;
+        } else if (!confirmed) {
+          loggerV2.warn(
+            `[v2]: data model version store ${storeIds.dataModelVersionStoreId} has not been confirmed yet. cannot validate or update hash.`,
+          );
+        }
+      }
+
+      // Update registry_hash if registry store is synced
+      const registrySyncStatus = await datalayer.getDataLayerStoreSyncStatus(registryStoreId);
+
+      if (isDlStoreSynced(registrySyncStatus?.sync_status)) {
+        const { confirmed, hash } = await getRoot(registryStoreId);
+        if (confirmed && hash !== organization.registry_hash) {
+          loggerV2.info(
+            `[v2]: registry store ${registryStoreId} root hash needs to be updated ` +
+              `from ${organization.registry_hash} to ${hash}`,
+          );
+          updates.registry_hash = hash;
+          needsUpdate = true;
+        } else if (!confirmed) {
+          loggerV2.warn(
+            `[v2]: registry store ${registryStoreId} has not been confirmed yet. cannot validate or update hash.`,
+          );
+        }
+      }
     }
 
     // Update database if discrepancies found

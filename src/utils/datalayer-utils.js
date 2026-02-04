@@ -127,7 +127,9 @@ export const getMirrorUrl = async () => {
  * @returns {boolean}
  */
 export const isDlStoreSynced = (syncStatus) => {
-  if (syncStatus?.generation && syncStatus?.target_generation) {
+  // Check that both values exist as numbers (including 0)
+  // Using != null to allow 0 values (which are falsy but valid)
+  if (syncStatus?.generation != null && syncStatus?.target_generation != null) {
     return syncStatus.generation === syncStatus.target_generation;
   }
 
