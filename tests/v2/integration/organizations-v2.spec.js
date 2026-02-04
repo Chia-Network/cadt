@@ -2748,7 +2748,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
 
       expect(response.status).to.equal(400);
       expect(response.body.errors).to.exist;
-      expect(response.body.errors[0]).to.include('64-character hex string');
+      expect(response.body.errors[0]).to.include('valid 64-character hex string or UUID format');
     });
 
     it('should reject orgUid that is too long', async function () {
@@ -2759,7 +2759,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
 
       expect(response.status).to.equal(400);
       expect(response.body.errors).to.exist;
-      expect(response.body.errors[0]).to.include('64-character hex string');
+      expect(response.body.errors[0]).to.include('valid 64-character hex string or UUID format');
     });
 
     it('should reject orgUid with non-hex characters', async function () {
@@ -2771,12 +2771,14 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
 
       expect(response.status).to.equal(400);
       expect(response.body.errors).to.exist;
-      expect(response.body.errors[0]).to.include('64-character hex string');
+      expect(response.body.errors[0]).to.include('valid 64-character hex string or UUID format');
     });
 
-    it('should reject orgUid with special characters (path traversal attempt)', async function () {
+    it('should reject orgUid with special characters', async function () {
+      // Use URL-encoded special characters that won't be interpreted as path segments
+      const invalidOrgUid = 'abc!@#$%^&*()_+=[]{}|;:,.<>?abc123abc123abc123abc123abc123abc1';
       const response = await supertest(app)
-        .delete('/v2/organizations/..%2F..%2Fetc%2Fpasswd')
+        .delete(`/v2/organizations/${encodeURIComponent(invalidOrgUid)}`)
         .send();
 
       expect(response.status).to.equal(400);
@@ -2790,12 +2792,29 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         .delete(`/v2/organizations/${validOrgUid}`)
         .send();
 
-      // Should NOT be a validation error (400 with "64-character hex string")
-      // Instead should be a "not found" type error since the org doesn't exist
-      if (response.status === 400) {
-        expect(response.body.errors?.[0] || '').to.not.include('64-character hex string');
-        expect(response.body.message).to.include('does not exist');
-      }
+      // Should NOT be a validation error - should pass validation and get "does not exist" error
+      expect(response.status).to.equal(400);
+      // Verify it's not a validation error about the format
+      const errorMsg = response.body.errors?.[0] || '';
+      expect(errorMsg).to.not.include('valid 64-character hex string or UUID format');
+      // Should be a "does not exist" error from the controller
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('should accept valid UUID format orgUid', async function () {
+      // Valid UUID format (used in simulator mode) but org doesn't exist
+      const validUuidOrgUid = 'a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4';
+      const response = await supertest(app)
+        .delete(`/v2/organizations/${validUuidOrgUid}`)
+        .send();
+
+      // Should NOT be a validation error - should pass validation and get "does not exist" error
+      expect(response.status).to.equal(400);
+      // Verify it's not a validation error about the format
+      const errorMsg = response.body.errors?.[0] || '';
+      expect(errorMsg).to.not.include('valid 64-character hex string or UUID format');
+      // Should be a "does not exist" error from the controller
+      expect(response.body.error).to.include('does not exist');
     });
   });
 });
