@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { AefT4HoldingsV2, AefT4HoldingsV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, AefT2AuthorizationsV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { AefT4HoldingsV2, AefT1SubmissionV2, UnitV2, ProjectV2, AefT2AuthorizationsV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -167,7 +167,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
       };
 
-      const aefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
+      const aefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
 
       expect(aefT4Holdings).to.exist;
       expect(aefT4Holdings.cadTrustAefT4HoldingsId).to.exist;
@@ -210,7 +210,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         aefT4HoldingsVintageYear: 2024,
       };
 
-      const createdAefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
+      const createdAefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
       const foundAefT4Holdings = await AefT4HoldingsV2.findByPk(createdAefT4Holdings.cadTrustAefT4HoldingsId);
 
       expect(foundAefT4Holdings).to.exist;
@@ -268,7 +268,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         aefT4HoldingsVintageYear: 2024,
       };
 
-      const createdAefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
+      const createdAefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
 
       const updateData = {
         aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-003',
@@ -291,7 +291,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
 
       await createdAefT4Holdings.update(updateData);
 
-      const updatedAefT4Holdings = await AefT4HoldingsV2Mirror.findByPk(createdAefT4Holdings.cadTrustAefT4HoldingsId);
+      const updatedAefT4Holdings = await AefT4HoldingsV2.findByPk(createdAefT4Holdings.cadTrustAefT4HoldingsId);
 
       expect(updatedAefT4Holdings.aefT4HoldingsMetric).to.equal('Fuel switching');
       expect(updatedAefT4Holdings.aefT4HoldingsGwpValue).to.equal('2.0');
@@ -315,11 +315,11 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         aefT4HoldingsVintageYear: 2024,
       };
 
-      const createdAefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
+      const createdAefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
 
       await createdAefT4Holdings.destroy();
 
-      const deletedAefT4Holdings = await AefT4HoldingsV2Mirror.findByPk(createdAefT4Holdings.cadTrustAefT4HoldingsId);
+      const deletedAefT4Holdings = await AefT4HoldingsV2.findByPk(createdAefT4Holdings.cadTrustAefT4HoldingsId);
       expect(deletedAefT4Holdings).to.be.null;
     });
   });
@@ -327,7 +327,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
   describe('AEF-T4-Holdings Validation Tests', function () {
     it('should reject AEF-T4-Holdings with missing required fields', async function () {
       try {
-        await AefT4HoldingsV2Mirror.create({
+        await AefT4HoldingsV2.create({
           // Missing required fields
           aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-005',
         });
@@ -362,7 +362,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         cadTrustAefT2AuthorizationsId: null,
       };
 
-      const aefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
+      const aefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
 
       expect(aefT4Holdings).to.exist;
       expect(aefT4Holdings.aefT4HoldingsCoopoerativeApproachId).to.equal('TEST-CA-006');
@@ -393,7 +393,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
       const nonExistentAefT1SubmissionId = uuidv4();
 
       try {
-        await AefT4HoldingsV2Mirror.create({
+        await AefT4HoldingsV2.create({
           aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-007',
           aefT4HoldingsAuthorizationId: 'TEST-AUTH-007',
           aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-007',
@@ -419,7 +419,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
       const nonExistentUnitId = uuidv4();
 
       try {
-        await AefT4HoldingsV2Mirror.create({
+        await AefT4HoldingsV2.create({
           aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-008',
           aefT4HoldingsAuthorizationId: 'TEST-AUTH-008',
           aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-008',
@@ -445,7 +445,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
       const nonExistentProjectId = uuidv4();
 
       try {
-        await AefT4HoldingsV2Mirror.create({
+        await AefT4HoldingsV2.create({
           aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-009',
           aefT4HoldingsAuthorizationId: 'TEST-AUTH-009',
           aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-009',
@@ -471,7 +471,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
       const nonExistentAefT2AuthorizationsId = uuidv4();
 
       try {
-        await AefT4HoldingsV2Mirror.create({
+        await AefT4HoldingsV2.create({
           aefT4HoldingsCoopoerativeApproachId: 'TEST-CA-010',
           aefT4HoldingsAuthorizationId: 'TEST-AUTH-010',
           aefT4HoldingsFirstTransferringPartyId: 'TEST-PARTY-010',
@@ -512,7 +512,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
       };
 
-      const aefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
+      const aefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
 
       expect(aefT4Holdings).to.exist;
       expect(aefT4Holdings.cadTrustAefT1SubmissionId).to.equal(testAefT1SubmissionId);
@@ -542,7 +542,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
         cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
       };
 
-      const createdAefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
+      const createdAefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
 
       const aefT4HoldingsWithAssociations = await AefT4HoldingsV2.findByPk(createdAefT4Holdings.cadTrustAefT4HoldingsId, {
         include: [
@@ -607,7 +607,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
           aefT4HoldingsMitigationType: types[i],
         };
 
-        const aefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
+        const aefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
         expect(aefT4Holdings.aefT4HoldingsMetric).to.equal(metrics[i]);
         expect(aefT4Holdings.aefT4HoldingsMitigationType).to.equal(types[i]);
       }
@@ -631,7 +631,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
           aefT4HoldingsVintageYear: year,
         };
 
-        const aefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
+        const aefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
         expect(aefT4Holdings.aefT4HoldingsVintageYear).to.equal(year);
       }
     });
@@ -654,7 +654,7 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
           aefT4HoldingsVintageYear: 2024,
         };
 
-        const aefT4Holdings = await AefT4HoldingsV2Mirror.create(aefT4HoldingsData);
+        const aefT4Holdings = await AefT4HoldingsV2.create(aefT4HoldingsData);
         expect(aefT4Holdings.aefT4HoldingsQuantityTCo2).to.equal(quantity);
       }
     });

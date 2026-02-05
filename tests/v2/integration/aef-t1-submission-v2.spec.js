@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { AefT1SubmissionV2, AefT1SubmissionV2Mirror, StagingV2 } from '../../../src/models/v2/index.js';
+import { AefT1SubmissionV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
 
@@ -33,7 +33,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
         aefT1SubmissionReferenceReviewReport: 'https://example.com/review-report',
       };
 
-      const aefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+      const aefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
 
       expect(aefT1Submission).to.exist;
       expect(aefT1Submission.cadTrustAefT1SubmissionId).to.exist;
@@ -58,7 +58,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
         aefT1SubmissionSubmissionDate: '2023-12-31',
       };
 
-      const createdAefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+      const createdAefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
       const foundAefT1Submission = await AefT1SubmissionV2.findByPk(createdAefT1Submission.cadTrustAefT1SubmissionId);
 
       expect(foundAefT1Submission).to.exist;
@@ -95,7 +95,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
         aefT1SubmissionSubmissionDate: '2022-06-15',
       };
 
-      const createdAefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+      const createdAefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
 
       const updateData = {
         aefT1SubmissionParty: 'Updated Party',
@@ -111,7 +111,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
 
       await createdAefT1Submission.update(updateData);
 
-      const updatedAefT1Submission = await AefT1SubmissionV2Mirror.findByPk(createdAefT1Submission.cadTrustAefT1SubmissionId);
+      const updatedAefT1Submission = await AefT1SubmissionV2.findByPk(createdAefT1Submission.cadTrustAefT1SubmissionId);
 
       expect(updatedAefT1Submission.aefT1SubmissionParty).to.equal('Updated Party');
       expect(updatedAefT1Submission.aefT1SubmissionVersion).to.equal('3.1');
@@ -130,11 +130,11 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
         aefT1SubmissionSubmissionDate: '2021-03-10',
       };
 
-      const createdAefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+      const createdAefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
 
       await createdAefT1Submission.destroy();
 
-      const deletedAefT1Submission = await AefT1SubmissionV2Mirror.findByPk(createdAefT1Submission.cadTrustAefT1SubmissionId);
+      const deletedAefT1Submission = await AefT1SubmissionV2.findByPk(createdAefT1Submission.cadTrustAefT1SubmissionId);
       expect(deletedAefT1Submission).to.be.null;
     });
   });
@@ -142,7 +142,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
   describe('AEF-T1-Submission Validation Tests', function () {
     it('should reject AEF-T1-Submission with missing required fields', async function () {
       try {
-        await AefT1SubmissionV2Mirror.create({
+        await AefT1SubmissionV2.create({
           // Missing required fields
           aefT1SubmissionParty: 'Test Party',
         });
@@ -155,7 +155,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
 
     it('should reject AEF-T1-Submission with invalid year values', async function () {
       try {
-        await AefT1SubmissionV2Mirror.create({
+        await AefT1SubmissionV2.create({
           aefT1SubmissionParty: 'Test Party',
           aefT1SubmissionVersion: '1.0',
           aefT1SubmissionReportYear: 1800, // Invalid year
@@ -171,7 +171,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
 
     it('should reject AEF-T1-Submission with invalid date format', async function () {
       try {
-        await AefT1SubmissionV2Mirror.create({
+        await AefT1SubmissionV2.create({
           aefT1SubmissionParty: 'Test Party',
           aefT1SubmissionVersion: '1.0',
           aefT1SubmissionReportYear: 2024,
@@ -186,7 +186,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
 
     it('should reject AEF-T1-Submission with invalid URL format', async function () {
       try {
-        await AefT1SubmissionV2Mirror.create({
+        await AefT1SubmissionV2.create({
           aefT1SubmissionParty: 'Test Party',
           aefT1SubmissionVersion: '1.0',
           aefT1SubmissionReportYear: 2024,
@@ -214,7 +214,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
         aefT1SubmissionReferenceReviewReport: null,
       };
 
-      const aefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+      const aefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
 
       expect(aefT1Submission).to.exist;
       expect(aefT1Submission.aefT1SubmissionParty).to.equal('Test Party Minimal');
@@ -245,7 +245,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
           aefT1SubmissionSubmissionDate: dateString,
         };
 
-        const aefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+        const aefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
         expect(aefT1Submission.aefT1SubmissionSubmissionDate).to.equal(dateString);
       }
     });
@@ -261,7 +261,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
           aefT1SubmissionSubmissionDate: '2024-01-01',
         };
 
-        const aefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+        const aefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
         expect(aefT1Submission.aefT1SubmissionReportYear).to.equal(year);
       }
     });
@@ -277,7 +277,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
         aefT1SubmissionResultCheck: longText,
       };
 
-      const aefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+      const aefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
 
       expect(aefT1Submission.aefT1SubmissionReviewStatus).to.equal(longText);
       expect(aefT1Submission.aefT1SubmissionResultCheck).to.equal(longText);
@@ -302,7 +302,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
           aefT1SubmissionReferenceReviewReport: url,
         };
 
-        const aefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+        const aefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
         expect(aefT1Submission.aefT1SubmissionReferenceReviewReport).to.equal(url);
       }
     });
@@ -319,7 +319,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
         aefT1SubmissionNdcLastYear: 2030,
       };
 
-      const aefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+      const aefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
 
       expect(aefT1Submission.aefT1SubmissionNdcFirstYear).to.equal(2020);
       expect(aefT1Submission.aefT1SubmissionNdcLastYear).to.equal(2030);
@@ -343,7 +343,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
           aefT1SubmissionSubmissionDate: '2024-01-01',
         };
 
-        const aefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+        const aefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
         expect(aefT1Submission.aefT1SubmissionParty).to.equal(party);
       }
     });
@@ -365,7 +365,7 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
           aefT1SubmissionSubmissionDate: '2024-01-01',
         };
 
-        const aefT1Submission = await AefT1SubmissionV2Mirror.create(aefT1SubmissionData);
+        const aefT1Submission = await AefT1SubmissionV2.create(aefT1SubmissionData);
         expect(aefT1Submission.aefT1SubmissionVersion).to.equal(version);
       }
     });

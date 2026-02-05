@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { CoBenefitV2, CoBenefitV2Mirror, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { CoBenefitV2, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId, resetV2StagingTable } from '../utils/v2-test-helpers.js';
 
@@ -57,7 +57,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const coBenefit = await CoBenefitV2Mirror.create(coBenefitData);
+      const coBenefit = await CoBenefitV2.create(coBenefitData);
 
       expect(coBenefit).to.exist;
       expect(coBenefit.cadTrustCoBenefitId).to.exist;
@@ -73,7 +73,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdCoBenefit = await CoBenefitV2Mirror.create(coBenefitData);
+      const createdCoBenefit = await CoBenefitV2.create(coBenefitData);
       const foundCoBenefit = await CoBenefitV2.findByPk(createdCoBenefit.cadTrustCoBenefitId);
 
       expect(foundCoBenefit).to.exist;
@@ -104,7 +104,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdCoBenefit = await CoBenefitV2Mirror.create(coBenefitData);
+      const createdCoBenefit = await CoBenefitV2.create(coBenefitData);
 
       const updateData = {
         coBenefitId: 'SDG 15 - Life on land',
@@ -113,7 +113,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
 
       await createdCoBenefit.update(updateData);
 
-      const updatedCoBenefit = await CoBenefitV2Mirror.findByPk(createdCoBenefit.cadTrustCoBenefitId);
+      const updatedCoBenefit = await CoBenefitV2.findByPk(createdCoBenefit.cadTrustCoBenefitId);
 
       expect(updatedCoBenefit.coBenefitId).to.equal('SDG 15 - Life on land');
     });
@@ -124,12 +124,12 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdCoBenefit = await CoBenefitV2Mirror.create(coBenefitData);
+      const createdCoBenefit = await CoBenefitV2.create(coBenefitData);
       const coBenefitId = createdCoBenefit.cadTrustCoBenefitId;
 
       await createdCoBenefit.destroy();
 
-      const deletedCoBenefit = await CoBenefitV2Mirror.findByPk(coBenefitId);
+      const deletedCoBenefit = await CoBenefitV2.findByPk(coBenefitId);
       expect(deletedCoBenefit).to.be.null;
     });
   });
@@ -137,7 +137,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
   describe('Co-Benefit Validation Tests', function () {
     it('should reject co-benefit with missing required fields', async function () {
       try {
-        await CoBenefitV2Mirror.create({
+        await CoBenefitV2.create({
           // Missing coBenefitId, cadTrustProjectId
         });
         expect.fail('Should have thrown validation error');
@@ -149,7 +149,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
 
     it('should reject co-benefit with invalid co-benefit ID', async function () {
       try {
-        await CoBenefitV2Mirror.create({
+        await CoBenefitV2.create({
           coBenefitId: 'INVALID_SDG',
           cadTrustProjectId: testProjectId,
         });
@@ -163,7 +163,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
 
     it('should reject co-benefit with invalid project ID', async function () {
       try {
-        await CoBenefitV2Mirror.create({
+        await CoBenefitV2.create({
           coBenefitId: 'SDG 1 - No poverty',
           cadTrustProjectId: 'invalid-uuid',
         });
@@ -181,7 +181,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
       const nonExistentProjectId = uuidv4();
 
       try {
-        await CoBenefitV2Mirror.create({
+        await CoBenefitV2.create({
           coBenefitId: 'SDG 2 - Zero hunger',
           cadTrustProjectId: nonExistentProjectId,
         });
@@ -199,7 +199,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const coBenefit = await CoBenefitV2Mirror.create(coBenefitData);
+      const coBenefit = await CoBenefitV2.create(coBenefitData);
 
       expect(coBenefit).to.exist;
       expect(coBenefit.cadTrustProjectId).to.equal(testProjectId);
@@ -213,7 +213,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdCoBenefit = await CoBenefitV2Mirror.create(coBenefitData);
+      const createdCoBenefit = await CoBenefitV2.create(coBenefitData);
 
       const coBenefitWithProject = await CoBenefitV2.findByPk(createdCoBenefit.cadTrustCoBenefitId, {
         include: [
@@ -239,7 +239,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const coBenefit = await CoBenefitV2Mirror.create(coBenefitData);
+      const coBenefit = await CoBenefitV2.create(coBenefitData);
 
       expect(coBenefit.cadTrustCoBenefitId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
       expect(coBenefit.cadTrustCoBenefitId).to.have.length(36);
@@ -253,7 +253,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const coBenefit = await CoBenefitV2Mirror.create(coBenefitData);
+      const coBenefit = await CoBenefitV2.create(coBenefitData);
 
       expect(coBenefit.cadTrustCoBenefitId).to.equal(explicitUuid);
     });
@@ -287,7 +287,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
           cadTrustProjectId: testProjectId,
         };
 
-        const coBenefit = await CoBenefitV2Mirror.create(coBenefitData);
+        const coBenefit = await CoBenefitV2.create(coBenefitData);
         expect(coBenefit.coBenefitId).to.equal(sdgValue);
       }
     });
@@ -301,7 +301,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
 
       const createdCoBenefits = [];
       for (const coBenefitId of multipleCoBenefits) {
-        const coBenefit = await CoBenefitV2Mirror.create({
+        const coBenefit = await CoBenefitV2.create({
           coBenefitId,
           cadTrustProjectId: testProjectId,
         });
@@ -324,7 +324,7 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const coBenefit = await CoBenefitV2Mirror.create(coBenefitData);
+      const coBenefit = await CoBenefitV2.create(coBenefitData);
 
       expect(coBenefit.coBenefitId).to.equal(longSdgValue);
       expect(coBenefit.coBenefitId).to.have.length(longSdgValue.length);
@@ -355,8 +355,8 @@ describe('Co-Benefit V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: anotherProject.cadTrustProjectId,
       };
 
-      const coBenefit1 = await CoBenefitV2Mirror.create(coBenefitData1);
-      const coBenefit2 = await CoBenefitV2Mirror.create(coBenefitData2);
+      const coBenefit1 = await CoBenefitV2.create(coBenefitData1);
+      const coBenefit2 = await CoBenefitV2.create(coBenefitData2);
 
       expect(coBenefit1.coBenefitId).to.equal(coBenefit2.coBenefitId);
       expect(coBenefit1.cadTrustProjectId).to.not.equal(coBenefit2.cadTrustProjectId);

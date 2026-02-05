@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StakeholderV2, StakeholderV2Mirror, StagingV2 } from '../../../src/models/v2/index.js';
+import { StakeholderV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 describe('Stakeholder V2 Endpoint Integration Tests', function () {
@@ -25,7 +25,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderLink: 'https://example.com/stakeholder',
       };
 
-      const stakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const stakeholder = await StakeholderV2.create(stakeholderData);
 
       expect(stakeholder).to.exist;
       expect(stakeholder.cadTrustStakeholderId).to.exist;
@@ -43,7 +43,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderLink: 'https://example.com/developer',
       };
 
-      const createdStakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const createdStakeholder = await StakeholderV2.create(stakeholderData);
       const foundStakeholder = await StakeholderV2.findByPk(createdStakeholder.cadTrustStakeholderId);
 
       expect(foundStakeholder).to.exist;
@@ -75,7 +75,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderLink: 'https://example.com/consultant',
       };
 
-      const createdStakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const createdStakeholder = await StakeholderV2.create(stakeholderData);
 
       const updateData = {
         stakeholderName: 'Updated Stakeholder Name',
@@ -85,7 +85,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
 
       await createdStakeholder.update(updateData);
 
-      const updatedStakeholder = await StakeholderV2Mirror.findByPk(createdStakeholder.cadTrustStakeholderId);
+      const updatedStakeholder = await StakeholderV2.findByPk(createdStakeholder.cadTrustStakeholderId);
 
       expect(updatedStakeholder.stakeholderName).to.equal('Updated Stakeholder Name');
       expect(updatedStakeholder.stakeholderType).to.equal('Owner');
@@ -99,12 +99,12 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderLink: 'https://example.com/delete',
       };
 
-      const createdStakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const createdStakeholder = await StakeholderV2.create(stakeholderData);
       const stakeholderId = createdStakeholder.cadTrustStakeholderId;
 
       await createdStakeholder.destroy();
 
-      const deletedStakeholder = await StakeholderV2Mirror.findByPk(stakeholderId);
+      const deletedStakeholder = await StakeholderV2.findByPk(stakeholderId);
       expect(deletedStakeholder).to.be.null;
     });
   });
@@ -112,7 +112,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
   describe('Stakeholder Validation Tests', function () {
     it('should reject stakeholder with missing required fields', async function () {
       try {
-        await StakeholderV2Mirror.create({
+        await StakeholderV2.create({
           // Missing stakeholderName
           stakeholderType: 'Owner',
         });
@@ -125,7 +125,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
 
     it('should reject stakeholder with invalid stakeholder type', async function () {
       try {
-        await StakeholderV2Mirror.create({
+        await StakeholderV2.create({
           stakeholderName: 'Test Stakeholder',
           stakeholderType: 'INVALID_TYPE',
         });
@@ -139,7 +139,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
 
     it('should reject stakeholder with invalid link format', async function () {
       try {
-        await StakeholderV2Mirror.create({
+        await StakeholderV2.create({
           stakeholderName: 'Test Stakeholder',
           stakeholderType: 'Owner',
           stakeholderLink: 'not-a-valid-url',
@@ -159,7 +159,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderLink: null,
       };
 
-      const stakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const stakeholder = await StakeholderV2.create(stakeholderData);
 
       expect(stakeholder).to.exist;
       expect(stakeholder.stakeholderName).to.equal('Test Stakeholder Minimal');
@@ -175,7 +175,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderType: 'Owner',
       };
 
-      const stakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const stakeholder = await StakeholderV2.create(stakeholderData);
       expect(stakeholder.stakeholderType).to.equal('Owner');
     });
 
@@ -185,7 +185,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderType: 'Developer',
       };
 
-      const stakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const stakeholder = await StakeholderV2.create(stakeholderData);
       expect(stakeholder.stakeholderType).to.equal('Developer');
     });
 
@@ -195,7 +195,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderType: 'Consultant',
       };
 
-      const stakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const stakeholder = await StakeholderV2.create(stakeholderData);
       expect(stakeholder.stakeholderType).to.equal('Consultant');
     });
   });
@@ -207,7 +207,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderType: 'Owner',
       };
 
-      const stakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const stakeholder = await StakeholderV2.create(stakeholderData);
 
       expect(stakeholder.cadTrustStakeholderId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
       expect(stakeholder.cadTrustStakeholderId).to.have.length(36);
@@ -221,7 +221,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderType: 'Developer',
       };
 
-      const stakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const stakeholder = await StakeholderV2.create(stakeholderData);
 
       expect(stakeholder.cadTrustStakeholderId).to.equal(explicitUuid);
     });
@@ -235,7 +235,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderType: 'Owner',
       };
 
-      const stakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const stakeholder = await StakeholderV2.create(stakeholderData);
 
       expect(stakeholder.stakeholderName).to.equal(longName);
       expect(stakeholder.stakeholderName).to.have.length(255);
@@ -248,7 +248,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderLink: 'https://www.example.com/path?query=value#fragment',
       };
 
-      const stakeholder = await StakeholderV2Mirror.create(stakeholderData);
+      const stakeholder = await StakeholderV2.create(stakeholderData);
 
       expect(stakeholder.stakeholderLink).to.equal('https://www.example.com/path?query=value#fragment');
     });
@@ -264,8 +264,8 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderType: 'Developer',
       };
 
-      const stakeholder1 = await StakeholderV2Mirror.create(stakeholderData1);
-      const stakeholder2 = await StakeholderV2Mirror.create(stakeholderData2);
+      const stakeholder1 = await StakeholderV2.create(stakeholderData1);
+      const stakeholder2 = await StakeholderV2.create(stakeholderData2);
 
       expect(stakeholder1.stakeholderName).to.equal(stakeholder2.stakeholderName);
       expect(stakeholder1.stakeholderType).to.not.equal(stakeholder2.stakeholderType);
@@ -283,8 +283,8 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
         stakeholderType: 'Owner',
       };
 
-      const stakeholder1 = await StakeholderV2Mirror.create(stakeholderData1);
-      const stakeholder2 = await StakeholderV2Mirror.create(stakeholderData2);
+      const stakeholder1 = await StakeholderV2.create(stakeholderData1);
+      const stakeholder2 = await StakeholderV2.create(stakeholderData2);
 
       expect(stakeholder1.stakeholderType).to.equal(stakeholder2.stakeholderType);
       expect(stakeholder1.stakeholderName).to.not.equal(stakeholder2.stakeholderName);

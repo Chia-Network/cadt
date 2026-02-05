@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { AefT5AuthorizedEntitiesV2, AefT5AuthorizedEntitiesV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { AefT5AuthorizedEntitiesV2, AefT1SubmissionV2, UnitV2, ProjectV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -147,7 +147,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
+      const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.create(aefT5AuthorizedEntitiesData);
 
       expect(aefT5AuthorizedEntities).to.exist;
       expect(aefT5AuthorizedEntities.cadTrustAefT5AuthorizedEntitiesId).to.exist;
@@ -174,7 +174,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         aefT5AuthorizedEntitiesCooperativeApproachId: 'TEST-CA-002',
       };
 
-      const createdAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
+      const createdAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.create(aefT5AuthorizedEntitiesData);
       const foundAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.findByPk(createdAefT5AuthorizedEntities.cadTrustAefT5AuthorizedEntitiesId);
 
       expect(foundAefT5AuthorizedEntities).to.exist;
@@ -211,7 +211,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         aefT5AuthorizedEntitiesCooperativeApproachId: 'TEST-CA-003',
       };
 
-      const createdAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
+      const createdAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.create(aefT5AuthorizedEntitiesData);
 
       const updateData = {
         aefT5AuthorizedEntitiesAuthorizationDate: '2024-04-01',
@@ -226,7 +226,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
 
       await createdAefT5AuthorizedEntities.update(updateData);
 
-      const updatedAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.findByPk(createdAefT5AuthorizedEntities.cadTrustAefT5AuthorizedEntitiesId);
+      const updatedAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.findByPk(createdAefT5AuthorizedEntities.cadTrustAefT5AuthorizedEntitiesId);
 
       expect(updatedAefT5AuthorizedEntities.aefT5AuthorizedEntitiesName).to.equal('Updated Authorized Entity');
       expect(updatedAefT5AuthorizedEntities.aefT5AuthorizedEntitiesIncorporationCountry).to.equal('Canada');
@@ -243,11 +243,11 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         aefT5AuthorizedEntitiesCooperativeApproachId: 'TEST-CA-004',
       };
 
-      const createdAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
+      const createdAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.create(aefT5AuthorizedEntitiesData);
 
       await createdAefT5AuthorizedEntities.destroy();
 
-      const deletedAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.findByPk(createdAefT5AuthorizedEntities.cadTrustAefT5AuthorizedEntitiesId);
+      const deletedAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.findByPk(createdAefT5AuthorizedEntities.cadTrustAefT5AuthorizedEntitiesId);
       expect(deletedAefT5AuthorizedEntities).to.be.null;
     });
   });
@@ -255,7 +255,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
   describe('AEF-T5-Authorized-Entities Validation Tests', function () {
     it('should reject AEF-T5-Authorized-Entities with missing required fields', async function () {
       try {
-        await AefT5AuthorizedEntitiesV2Mirror.create({
+        await AefT5AuthorizedEntitiesV2.create({
           // Missing required fields
           aefT5AuthorizedEntitiesName: 'Test Entity',
         });
@@ -268,7 +268,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
 
     it('should reject AEF-T5-Authorized-Entities with invalid date format', async function () {
       try {
-        await AefT5AuthorizedEntitiesV2Mirror.create({
+        await AefT5AuthorizedEntitiesV2.create({
           aefT5AuthorizedEntitiesAuthorizationDate: 'invalid-date',
           aefT5AuthorizedEntitiesName: 'Test Entity',
           aefT5AuthorizedEntitiesId: 'TEST-AE-005',
@@ -297,7 +297,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         cadTrustProjectId: null,
       };
 
-      const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
+      const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.create(aefT5AuthorizedEntitiesData);
 
       expect(aefT5AuthorizedEntities).to.exist;
       expect(aefT5AuthorizedEntities.aefT5AuthorizedEntitiesName).to.equal('Test Entity Minimal');
@@ -318,7 +318,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
       const nonExistentAefT1SubmissionId = uuidv4();
 
       try {
-        await AefT5AuthorizedEntitiesV2Mirror.create({
+        await AefT5AuthorizedEntitiesV2.create({
           aefT5AuthorizedEntitiesAuthorizationDate: '2024-07-01',
           aefT5AuthorizedEntitiesName: 'Test Entity',
           aefT5AuthorizedEntitiesId: 'TEST-AE-007',
@@ -337,7 +337,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
       const nonExistentUnitId = uuidv4();
 
       try {
-        await AefT5AuthorizedEntitiesV2Mirror.create({
+        await AefT5AuthorizedEntitiesV2.create({
           aefT5AuthorizedEntitiesAuthorizationDate: '2024-08-01',
           aefT5AuthorizedEntitiesName: 'Test Entity',
           aefT5AuthorizedEntitiesId: 'TEST-AE-008',
@@ -356,7 +356,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
       const nonExistentProjectId = uuidv4();
 
       try {
-        await AefT5AuthorizedEntitiesV2Mirror.create({
+        await AefT5AuthorizedEntitiesV2.create({
           aefT5AuthorizedEntitiesAuthorizationDate: '2024-09-01',
           aefT5AuthorizedEntitiesName: 'Test Entity',
           aefT5AuthorizedEntitiesId: 'TEST-AE-009',
@@ -382,7 +382,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
+      const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.create(aefT5AuthorizedEntitiesData);
 
       expect(aefT5AuthorizedEntities).to.exist;
       expect(aefT5AuthorizedEntities.cadTrustAefT1SubmissionId).to.equal(testAefT1SubmissionId);
@@ -403,7 +403,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
+      const createdAefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.create(aefT5AuthorizedEntitiesData);
 
       const aefT5AuthorizedEntitiesWithAssociations = await AefT5AuthorizedEntitiesV2.findByPk(createdAefT5AuthorizedEntities.cadTrustAefT5AuthorizedEntitiesId, {
         include: [
@@ -454,7 +454,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
           aefT5AuthorizedEntitiesCooperativeApproachId: `TEST-CA-${dateString.replace(/-/g, '')}`,
         };
 
-        const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
+        const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.create(aefT5AuthorizedEntitiesData);
         expect(aefT5AuthorizedEntities.aefT5AuthorizedEntitiesAuthorizationDate).to.equal(dateString);
       }
     });
@@ -471,7 +471,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
         aefT5AuthorizedEntitiesAdditionalInformation: longText,
       };
 
-      const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
+      const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.create(aefT5AuthorizedEntitiesData);
 
       expect(aefT5AuthorizedEntities.aefT5AuthorizedEntitiesConditions).to.equal(longText);
       expect(aefT5AuthorizedEntities.aefT5AuthorizedEntitiesChangeConditions).to.equal(longText);
@@ -501,7 +501,7 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
           aefT5AuthorizedEntitiesIncorporationCountry: country,
         };
 
-        const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2Mirror.create(aefT5AuthorizedEntitiesData);
+        const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.create(aefT5AuthorizedEntitiesData);
         expect(aefT5AuthorizedEntities.aefT5AuthorizedEntitiesIncorporationCountry).to.equal(country);
       }
     });

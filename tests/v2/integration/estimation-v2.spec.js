@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { EstimationV2, EstimationV2Mirror, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { EstimationV2, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId, commitV2StagingAndWait, commitV2StagingAndWaitForCondition } from '../utils/v2-test-helpers.js';
 
@@ -59,7 +59,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const estimation = await EstimationV2Mirror.create(estimationData);
+      const estimation = await EstimationV2.create(estimationData);
 
       expect(estimation).to.exist;
       expect(estimation.cadTrustEstimationId).to.exist;
@@ -81,7 +81,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdEstimation = await EstimationV2Mirror.create(estimationData);
+      const createdEstimation = await EstimationV2.create(estimationData);
       const foundEstimation = await EstimationV2.findByPk(createdEstimation.cadTrustEstimationId);
 
       expect(foundEstimation).to.exist;
@@ -119,7 +119,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdEstimation = await EstimationV2Mirror.create(estimationData);
+      const createdEstimation = await EstimationV2.create(estimationData);
 
       const updateData = {
         estimationStartDate: '2024-04-01',
@@ -131,7 +131,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
 
       await createdEstimation.update(updateData);
 
-      const updatedEstimation = await EstimationV2Mirror.findByPk(createdEstimation.cadTrustEstimationId);
+      const updatedEstimation = await EstimationV2.findByPk(createdEstimation.cadTrustEstimationId);
 
       expect(updatedEstimation.estimationStartDate).to.equal('2024-04-01');
       expect(updatedEstimation.estimationEndDate).to.equal('2024-09-30');
@@ -148,12 +148,12 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdEstimation = await EstimationV2Mirror.create(estimationData);
+      const createdEstimation = await EstimationV2.create(estimationData);
       const estimationId = createdEstimation.cadTrustEstimationId;
 
       await createdEstimation.destroy();
 
-      const deletedEstimation = await EstimationV2Mirror.findByPk(estimationId);
+      const deletedEstimation = await EstimationV2.findByPk(estimationId);
       expect(deletedEstimation).to.be.null;
     });
   });
@@ -161,7 +161,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
   describe('Estimation Validation Tests', function () {
     it('should reject estimation with missing required fields', async function () {
       try {
-        await EstimationV2Mirror.create({
+        await EstimationV2.create({
           // Missing estimationStartDate, estimationEndDate, cadTrustProjectId
           estimationUnitCount: 1000,
         });
@@ -174,7 +174,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
 
     it('should reject estimation with invalid date format', async function () {
       try {
-        await EstimationV2Mirror.create({
+        await EstimationV2.create({
           estimationStartDate: 'invalid-date',
           estimationEndDate: '2024-12-31',
           cadTrustProjectId: testProjectId,
@@ -189,7 +189,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
 
     it('should reject estimation with end date before start date', async function () {
       try {
-        await EstimationV2Mirror.create({
+        await EstimationV2.create({
           estimationStartDate: '2024-12-31',
           estimationEndDate: '2024-01-01', // End date before start date
           cadTrustProjectId: testProjectId,
@@ -204,7 +204,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
 
     it('should reject estimation with invalid project ID', async function () {
       try {
-        await EstimationV2Mirror.create({
+        await EstimationV2.create({
           estimationStartDate: '2024-01-01',
           estimationEndDate: '2024-12-31',
           cadTrustProjectId: 'invalid-uuid',
@@ -226,7 +226,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const estimation = await EstimationV2Mirror.create(estimationData);
+      const estimation = await EstimationV2.create(estimationData);
 
       expect(estimation).to.exist;
       expect(estimation.estimationUnitCount).to.be.null;
@@ -239,7 +239,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
       const nonExistentProjectId = uuidv4();
 
       try {
-        await EstimationV2Mirror.create({
+        await EstimationV2.create({
           estimationStartDate: '2024-01-01',
           estimationEndDate: '2024-12-31',
           cadTrustProjectId: nonExistentProjectId,
@@ -259,7 +259,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const estimation = await EstimationV2Mirror.create(estimationData);
+      const estimation = await EstimationV2.create(estimationData);
 
       expect(estimation).to.exist;
       expect(estimation.cadTrustProjectId).to.equal(testProjectId);
@@ -274,7 +274,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdEstimation = await EstimationV2Mirror.create(estimationData);
+      const createdEstimation = await EstimationV2.create(estimationData);
 
       const estimationWithProject = await EstimationV2.findByPk(createdEstimation.cadTrustEstimationId, {
         include: [
@@ -301,7 +301,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const estimation = await EstimationV2Mirror.create(estimationData);
+      const estimation = await EstimationV2.create(estimationData);
 
       expect(estimation.cadTrustEstimationId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
       expect(estimation.cadTrustEstimationId).to.have.length(36);
@@ -316,7 +316,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const estimation = await EstimationV2Mirror.create(estimationData);
+      const estimation = await EstimationV2.create(estimationData);
 
       expect(estimation.cadTrustEstimationId).to.equal(explicitUuid);
     });
@@ -331,7 +331,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const estimation = await EstimationV2Mirror.create(estimationData);
+      const estimation = await EstimationV2.create(estimationData);
 
       expect(estimation.estimationUnitCount).to.equal(1234567.123456);
     });
@@ -344,7 +344,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const estimation = await EstimationV2Mirror.create(estimationData);
+      const estimation = await EstimationV2.create(estimationData);
 
       expect(estimation.estimationUnitCount).to.exist;
       // In SQLite, large decimals might be returned as numbers or Decimal objects

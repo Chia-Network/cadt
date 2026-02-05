@@ -1,4 +1,5 @@
 const Sequelize = require('sequelize');
+const { v4: uuidv4 } = require('uuid');
 
 module.exports = {
   cadTrustProjectMethodologyId: {
@@ -6,6 +7,7 @@ module.exports = {
     primaryKey: true,
     allowNull: false,
     field: 'cad_trust_project_methodology_id',
+    defaultValue: () => uuidv4(),
   },
   cadTrustProjectId: {
     type: Sequelize.UUID,

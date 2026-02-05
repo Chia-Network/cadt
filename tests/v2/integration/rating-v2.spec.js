@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { RatingV2, RatingV2Mirror, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { RatingV2, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId, resetV2StagingTable } from '../utils/v2-test-helpers.js';
 
@@ -59,7 +59,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const rating = await RatingV2Mirror.create(ratingData);
+      const rating = await RatingV2.create(ratingData);
 
       expect(rating).to.exist;
       expect(rating.cadTrustRatingId).to.exist;
@@ -81,7 +81,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdRating = await RatingV2Mirror.create(ratingData);
+      const createdRating = await RatingV2.create(ratingData);
       const foundRating = await RatingV2.findByPk(createdRating.cadTrustRatingId);
 
       expect(foundRating).to.exist;
@@ -119,7 +119,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdRating = await RatingV2Mirror.create(ratingData);
+      const createdRating = await RatingV2.create(ratingData);
 
       const updateData = {
         ratingType: 'CCQI',
@@ -131,7 +131,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
 
       await createdRating.update(updateData);
 
-      const updatedRating = await RatingV2Mirror.findByPk(createdRating.cadTrustRatingId);
+      const updatedRating = await RatingV2.findByPk(createdRating.cadTrustRatingId);
 
       expect(updatedRating.ratingType).to.equal('CCQI');
       expect(updatedRating.ratingName).to.equal('Updated Rating Name');
@@ -148,12 +148,12 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdRating = await RatingV2Mirror.create(ratingData);
+      const createdRating = await RatingV2.create(ratingData);
       const ratingId = createdRating.cadTrustRatingId;
 
       await createdRating.destroy();
 
-      const deletedRating = await RatingV2Mirror.findByPk(ratingId);
+      const deletedRating = await RatingV2.findByPk(ratingId);
       expect(deletedRating).to.be.null;
     });
   });
@@ -161,7 +161,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
   describe('Rating Validation Tests', function () {
     it('should reject rating with missing required fields', async function () {
       try {
-        await RatingV2Mirror.create({
+        await RatingV2.create({
           // Missing ratingName, ratingValue, cadTrustProjectId
           ratingType: 'CDP',
         });
@@ -174,7 +174,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
 
     it('should reject rating with invalid rating type', async function () {
       try {
-        await RatingV2Mirror.create({
+        await RatingV2.create({
           ratingType: 'INVALID_TYPE',
           ratingName: 'Test Rating',
           ratingValue: 'A+',
@@ -190,7 +190,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
 
     it('should reject rating with invalid project ID', async function () {
       try {
-        await RatingV2Mirror.create({
+        await RatingV2.create({
           ratingType: 'CDP',
           ratingName: 'Test Rating',
           ratingValue: 'A+',
@@ -213,7 +213,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const rating = await RatingV2Mirror.create(ratingData);
+      const rating = await RatingV2.create(ratingData);
 
       expect(rating).to.exist;
       expect(rating.ratingType).to.be.null;
@@ -230,7 +230,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const rating = await RatingV2Mirror.create(ratingData);
+      const rating = await RatingV2.create(ratingData);
 
       expect(rating).to.exist;
       expect(rating.ratingLink).to.equal('https://www.example.com/rating-report');
@@ -242,7 +242,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       const nonExistentProjectId = uuidv4();
 
       try {
-        await RatingV2Mirror.create({
+        await RatingV2.create({
           ratingType: 'CDP',
           ratingName: 'Test Rating',
           ratingValue: 'A+',
@@ -264,7 +264,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const rating = await RatingV2Mirror.create(ratingData);
+      const rating = await RatingV2.create(ratingData);
 
       expect(rating).to.exist;
       expect(rating.cadTrustProjectId).to.equal(testProjectId);
@@ -281,7 +281,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdRating = await RatingV2Mirror.create(ratingData);
+      const createdRating = await RatingV2.create(ratingData);
 
       const ratingWithProject = await RatingV2.findByPk(createdRating.cadTrustRatingId, {
         include: [
@@ -309,7 +309,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const rating = await RatingV2Mirror.create(ratingData);
+      const rating = await RatingV2.create(ratingData);
 
       expect(rating.cadTrustRatingId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
       expect(rating.cadTrustRatingId).to.have.length(36);
@@ -325,7 +325,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const rating = await RatingV2Mirror.create(ratingData);
+      const rating = await RatingV2.create(ratingData);
 
       expect(rating.cadTrustRatingId).to.equal(explicitUuid);
     });
@@ -340,7 +340,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const rating = await RatingV2Mirror.create(ratingData);
+      const rating = await RatingV2.create(ratingData);
 
       expect(rating.ratingType).to.equal('CDP');
     });
@@ -353,7 +353,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const rating = await RatingV2Mirror.create(ratingData);
+      const rating = await RatingV2.create(ratingData);
 
       expect(rating.ratingType).to.equal('CCQI');
     });
@@ -369,7 +369,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const rating = await RatingV2Mirror.create(ratingData);
+      const rating = await RatingV2.create(ratingData);
 
       expect(rating.ratingValue).to.equal(longRatingValue);
       expect(rating.ratingValue).to.have.length(255);
@@ -385,7 +385,7 @@ describe('Rating V2 Endpoint Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const rating = await RatingV2Mirror.create(ratingData);
+      const rating = await RatingV2.create(ratingData);
 
       expect(rating.ratingLink).to.equal(longRatingLink);
     });

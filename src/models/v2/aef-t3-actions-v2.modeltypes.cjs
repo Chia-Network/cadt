@@ -5,6 +5,7 @@ module.exports = {
     type: Sequelize.UUID,
     primaryKey: true,
     allowNull: false,
+    defaultValue: Sequelize.UUIDV4,
   },
   aefT3ActionsDate: {
     type: Sequelize.DATEONLY,

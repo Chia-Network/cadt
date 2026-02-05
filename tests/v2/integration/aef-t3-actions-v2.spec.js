@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { AefT3ActionsV2, AefT3ActionsV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, AefT2AuthorizationsV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { AefT3ActionsV2, AefT1SubmissionV2, UnitV2, ProjectV2, AefT2AuthorizationsV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -178,7 +178,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
       };
 
-      const aefT3Actions = await AefT3ActionsV2Mirror.create(aefT3ActionsData);
+      const aefT3Actions = await AefT3ActionsV2.create(aefT3ActionsData);
 
       expect(aefT3Actions).to.exist;
       expect(aefT3Actions.cadTrustAefT3ActionsId).to.exist;
@@ -235,7 +235,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-002',
       };
 
-      const createdAefT3Actions = await AefT3ActionsV2Mirror.create(aefT3ActionsData);
+      const createdAefT3Actions = await AefT3ActionsV2.create(aefT3ActionsData);
       const foundAefT3Actions = await AefT3ActionsV2.findByPk(createdAefT3Actions.cadTrustAefT3ActionsId);
 
       expect(foundAefT3Actions).to.exist;
@@ -302,7 +302,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-003',
       };
 
-      const createdAefT3Actions = await AefT3ActionsV2Mirror.create(aefT3ActionsData);
+      const createdAefT3Actions = await AefT3ActionsV2.create(aefT3ActionsData);
 
       const updateData = {
         aefT3ActionsDate: '2024-05-01',
@@ -336,7 +336,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
 
       await createdAefT3Actions.update(updateData);
 
-      const updatedAefT3Actions = await AefT3ActionsV2Mirror.findByPk(createdAefT3Actions.cadTrustAefT3ActionsId);
+      const updatedAefT3Actions = await AefT3ActionsV2.findByPk(createdAefT3Actions.cadTrustAefT3ActionsId);
 
       expect(updatedAefT3Actions.aefT3ActionsType).to.equal('Fuel switching');
       expect(updatedAefT3Actions.aefT3ActionsSubtype).to.equal('Updated Subtype');
@@ -371,11 +371,11 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         aefT3ActionsAcquiringPartyId: 'ACQUIRE-PARTY-004',
       };
 
-      const createdAefT3Actions = await AefT3ActionsV2Mirror.create(aefT3ActionsData);
+      const createdAefT3Actions = await AefT3ActionsV2.create(aefT3ActionsData);
 
       await createdAefT3Actions.destroy();
 
-      const deletedAefT3Actions = await AefT3ActionsV2Mirror.findByPk(createdAefT3Actions.cadTrustAefT3ActionsId);
+      const deletedAefT3Actions = await AefT3ActionsV2.findByPk(createdAefT3Actions.cadTrustAefT3ActionsId);
       expect(deletedAefT3Actions).to.be.null;
     });
   });
@@ -383,7 +383,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
   describe('AEF-T3-Actions Validation Tests', function () {
     it('should reject AEF-T3-Actions with missing required fields', async function () {
       try {
-        await AefT3ActionsV2Mirror.create({
+        await AefT3ActionsV2.create({
           // Missing required fields
           aefT3ActionsDate: '2024-01-01',
         });
@@ -396,7 +396,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
 
     it('should reject AEF-T3-Actions with invalid date format', async function () {
       try {
-        await AefT3ActionsV2Mirror.create({
+        await AefT3ActionsV2.create({
           aefT3ActionsDate: 'invalid-date',
           aefT3ActionsCoopoerativeApproachId: 'TEST-CA-005',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-005',
@@ -455,7 +455,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         cadTrustAefT2AuthorizationsId: null,
       };
 
-      const aefT3Actions = await AefT3ActionsV2Mirror.create(aefT3ActionsData);
+      const aefT3Actions = await AefT3ActionsV2.create(aefT3ActionsData);
 
       expect(aefT3Actions).to.exist;
       expect(aefT3Actions.aefT3ActionsDate).to.equal('2024-07-01');
@@ -497,7 +497,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       const nonExistentAefT1SubmissionId = uuidv4();
 
       try {
-        await AefT3ActionsV2Mirror.create({
+        await AefT3ActionsV2.create({
           aefT3ActionsDate: '2024-08-01',
           aefT3ActionsCoopoerativeApproachId: 'TEST-CA-007',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-007',
@@ -526,7 +526,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       const nonExistentUnitId = uuidv4();
 
       try {
-        await AefT3ActionsV2Mirror.create({
+        await AefT3ActionsV2.create({
           aefT3ActionsDate: '2024-09-01',
           aefT3ActionsCoopoerativeApproachId: 'TEST-CA-008',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-008',
@@ -555,7 +555,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       const nonExistentProjectId = uuidv4();
 
       try {
-        await AefT3ActionsV2Mirror.create({
+        await AefT3ActionsV2.create({
           aefT3ActionsDate: '2024-10-01',
           aefT3ActionsCoopoerativeApproachId: 'TEST-CA-009',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-009',
@@ -584,7 +584,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
       const nonExistentAefT2AuthorizationsId = uuidv4();
 
       try {
-        await AefT3ActionsV2Mirror.create({
+        await AefT3ActionsV2.create({
           aefT3ActionsDate: '2024-11-01',
           aefT3ActionsCoopoerativeApproachId: 'TEST-CA-010',
           aefT3ActionsAuthorizationId: 'TEST-AUTH-010',
@@ -631,7 +631,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
       };
 
-      const aefT3Actions = await AefT3ActionsV2Mirror.create(aefT3ActionsData);
+      const aefT3Actions = await AefT3ActionsV2.create(aefT3ActionsData);
 
       expect(aefT3Actions).to.exist;
       expect(aefT3Actions.cadTrustAefT1SubmissionId).to.equal(testAefT1SubmissionId);
@@ -664,7 +664,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
         cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
       };
 
-      const createdAefT3Actions = await AefT3ActionsV2Mirror.create(aefT3ActionsData);
+      const createdAefT3Actions = await AefT3ActionsV2.create(aefT3ActionsData);
 
       const aefT3ActionsWithAssociations = await AefT3ActionsV2.findByPk(createdAefT3Actions.cadTrustAefT3ActionsId, {
         include: [
@@ -733,7 +733,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
           aefT3ActionsAcquiringPartyId: `ACQUIRE-PARTY-${dateString.replace(/-/g, '')}`,
         };
 
-        const aefT3Actions = await AefT3ActionsV2Mirror.create(aefT3ActionsData);
+        const aefT3Actions = await AefT3ActionsV2.create(aefT3ActionsData);
         expect(aefT3Actions.aefT3ActionsDate).to.equal(dateString);
       }
     });
@@ -763,7 +763,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
           aefT3ActionsMitigationType: types[i],
         };
 
-        const aefT3Actions = await AefT3ActionsV2Mirror.create(aefT3ActionsData);
+        const aefT3Actions = await AefT3ActionsV2.create(aefT3ActionsData);
         expect(aefT3Actions.aefT3ActionsType).to.equal(types[i]);
         expect(aefT3Actions.aefT3ActionsMetric).to.equal(metrics[i]);
         expect(aefT3Actions.aefT3ActionsMitigationType).to.equal(types[i]);
@@ -792,7 +792,7 @@ describe('AEF-T3-Actions V2 Integration Tests', function () {
           aefT3ActionsItmoUsedYear: year,
         };
 
-        const aefT3Actions = await AefT3ActionsV2Mirror.create(aefT3ActionsData);
+        const aefT3Actions = await AefT3ActionsV2.create(aefT3ActionsData);
         expect(aefT3Actions.aefT3ActionsVintageYear).to.equal(year);
         expect(aefT3Actions.aefT3ActionsItmoUsedYear).to.equal(year);
       }
