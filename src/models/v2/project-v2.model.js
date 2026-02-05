@@ -3,7 +3,8 @@
 import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
 import * as rxjs from 'rxjs';
-import { sequelizeV2 } from '../../database/v2/index.js';
+import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { ProjectV2Mirror } from './project-v2.model.mirror.js';
 import StagingV2 from './staging-v2.model.js';
 import {
   createXlsFromSequelizeResults,
@@ -80,33 +81,48 @@ class ProjectV2 extends Model {
   ];
 
   static async create(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await ProjectV2Mirror.create(values, mirrorOptions);
+    });
+
     const createResult = await super.create(values, options);
     const { org_uid } = values;
     ProjectV2.changes.next(['projects', org_uid]);
-
-    // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     return createResult;
   }
 
   static async upsert(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await ProjectV2Mirror.upsert(values, mirrorOptions);
+    });
+
     const upsertResult = await super.upsert(values, options);
     const { org_uid } = values;
     ProjectV2.changes.next(['projects', org_uid]);
-
-    // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     return upsertResult;
   }
 
   static async destroy(options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await ProjectV2Mirror.destroy(mirrorOptions);
+    });
+
     ProjectV2.changes.next(['projects']);
     const result = await super.destroy(options);
-
-    // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     return result;
   }

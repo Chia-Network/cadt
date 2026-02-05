@@ -2,7 +2,8 @@
 
 import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
-import { sequelizeV2 } from '../../database/v2/index.js';
+import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { IssuanceV2Mirror } from './issuance-v2.model.mirror.js';
 import StagingV2 from './staging-v2.model.js';
 import {
   createXlsFromSequelizeResults,
@@ -14,30 +15,65 @@ import { UnitV2 } from './unit-v2.model.js';
 
 class IssuanceV2 extends Model {
   static async create(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await IssuanceV2Mirror.create(values, mirrorOptions);
+    });
     const result = await super.create(values, options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async bulkCreate(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await IssuanceV2Mirror.bulkCreate(values, mirrorOptions);
+    });
     const result = await super.bulkCreate(values, options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async update(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await IssuanceV2Mirror.update(values, mirrorOptions);
+    });
     const result = await super.update(values, options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async upsert(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await IssuanceV2Mirror.upsert(values, mirrorOptions);
+    });
     const result = await super.upsert(values, options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async destroy(options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await IssuanceV2Mirror.destroy(mirrorOptions);
+    });
     const result = await super.destroy(options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;

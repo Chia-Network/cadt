@@ -7,7 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { Readable } from 'stream';
 import csv from 'csvtojson';
 import xlsx from 'node-xlsx';
-import { sequelizeV2 } from '../../database/v2/index.js';
+import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { UnitV2Mirror } from './unit-v2.model.mirror.js';
 import StagingV2 from './staging-v2.model.js';
 import OrganizationsV2 from './organizations-v2.model.js';
 import {
@@ -48,34 +49,49 @@ class UnitV2 extends Model {
   static getAssociatedModels = () => [{ model: UnitLabelV2, pluralize: true }];
 
   static async create(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await UnitV2Mirror.create(values, mirrorOptions);
+    });
+
     const createResult = await super.create(values, options);
     const { org_uid } = createResult;
     UnitV2.changes.next(['units', org_uid]);
-
-    // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     return createResult;
   }
 
   static async upsert(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await UnitV2Mirror.upsert(values, mirrorOptions);
+    });
+
     const upsertResult = await super.upsert(values, options);
     const { org_uid } = values;
     // Note: Following V1 pattern, upsert emits 'projects' not 'units'
     UnitV2.changes.next(['projects', org_uid]);
 
-    // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 50));
-
     return upsertResult;
   }
 
   static async destroy(options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await UnitV2Mirror.destroy(mirrorOptions);
+    });
+
     UnitV2.changes.next(['units']);
     const result = await super.destroy(options);
-
-    // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     return result;
   }

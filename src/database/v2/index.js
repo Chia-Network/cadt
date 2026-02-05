@@ -3,7 +3,7 @@ import os from 'os';
 import config from '../../config/config.js';
 import { loggerV2 } from '../../config/logger.js';
 import mysql from 'mysql2/promise';
-import { getConfig } from '../../utils/config-loader';
+import { getConfigV2 } from '../../utils/config-loader';
 
 import { migrations } from './migrations';
 import { seeders } from './seeders';
@@ -39,7 +39,7 @@ const mirrorConfig =
 export const sequelizeV2Mirror = new Sequelize(config[mirrorConfig]);
 
 export const mirrorDBEnabledV2 = () => {
-  const CONFIG = getConfig();
+  const CONFIG = getConfigV2();
   if (
     mirrorConfig === 'v2Mirror' &&
     (!CONFIG?.MIRROR_DB?.DB_HOST ||
@@ -227,19 +227,19 @@ export const prepareV2Db = async () => {
 
     if (
       mirrorConfig == 'v2Mirror' &&
-      getConfig().MIRROR_DB.DB_HOST &&
-      getConfig().MIRROR_DB.DB_HOST !== ''
+      getConfigV2().MIRROR_DB?.DB_HOST &&
+      getConfigV2().MIRROR_DB?.DB_HOST !== ''
     ) {
       const connection = await mysql.createConnection({
-        host: getConfig().MIRROR_DB.DB_HOST,
-      port: 3306,
-      user: getConfig().MIRROR_DB.DB_USERNAME,
-      password: getConfig().MIRROR_DB.DB_PASSWORD,
-    });
+        host: getConfigV2().MIRROR_DB.DB_HOST,
+        port: 3306,
+        user: getConfigV2().MIRROR_DB.DB_USERNAME,
+        password: getConfigV2().MIRROR_DB.DB_PASSWORD,
+      });
 
-    await connection.query(
-      `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}_v2\`;`,
-    );
+      await connection.query(
+        `CREATE DATABASE IF NOT EXISTS \`${getConfigV2().MIRROR_DB.DB_NAME}_v2\`;`,
+      );
 
       // Use the exported sequelizeV2Mirror instance instead of creating a new one
       await checkForV2Migrations(sequelizeV2Mirror);

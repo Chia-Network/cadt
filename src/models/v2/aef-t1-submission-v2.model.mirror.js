@@ -1,131 +1,99 @@
 'use strict';
 
 import { Sequelize, Model } from 'sequelize';
-import { sequelizeV2 } from '../../database/v2/index.js';
+import { sequelizeV2Mirror, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
 
-class AefT1SubmissionV2Mirror extends Model {
-  static async create(values, options) {
-    const result = await super.create(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return result;
-  }
+class AefT1SubmissionV2Mirror extends Model {}
 
-  static async bulkCreate(values, options) {
-    const result = await super.bulkCreate(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return result;
-  }
-
-  static async update(values, options) {
-    const result = await super.update(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return result;
-  }
-
-  static async upsert(values, options) {
-    const result = await super.upsert(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return result;
-  }
-
-  static async destroy(options) {
-    const result = await super.destroy(options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return result;
-  }
-}
-
-AefT1SubmissionV2Mirror.init(
-  {
-    cadTrustAefT1SubmissionId: {
-      type: Sequelize.UUID,
-      primaryKey: true,
-      allowNull: false,
-      unique: true,
-      field: 'cad_trust_aef_t1_submission_id',
-      defaultValue: Sequelize.UUIDV4,
-    },
-    aefT1SubmissionParty: {
-      type: Sequelize.STRING,
-      allowNull: false,
-      field: 'aef_t1_submission_party',
-    },
-    aefT1SubmissionVersion: {
-      type: Sequelize.STRING,
-      allowNull: false,
-      field: 'aef_t1_submission_version',
-    },
-    aefT1SubmissionReportYear: {
-      type: Sequelize.INTEGER,
-      allowNull: false,
-      field: 'aef_t1_submission_report_year',
-    },
-    aefT1SubmissionSubmissionDate: {
-      type: Sequelize.DATEONLY,
-      allowNull: false,
-      field: 'aef_t1_submission_submission_date',
-      set(value) {
-        if (value !== null && value !== undefined) {
-          // Validate ISO date format (YYYY-MM-DD) before Sequelize/moment.js tries to parse
-          const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-          if (!isoDateRegex.test(value)) {
-            throw new Error('aefT1SubmissionSubmissionDate must be in ISO format (YYYY-MM-DD)');
-          }
-          const date = new Date(value);
-          if (isNaN(date.getTime())) {
-            throw new Error('aefT1SubmissionSubmissionDate is not a valid date');
-          }
-        }
-        this.setDataValue('aefT1SubmissionSubmissionDate', value);
+safeMirrorDbHandlerV2(() => {
+  AefT1SubmissionV2Mirror.init(
+    {
+      cadTrustAefT1SubmissionId: {
+        type: Sequelize.UUID,
+        primaryKey: true,
+        allowNull: false,
+        unique: true,
+        field: 'cad_trust_aef_t1_submission_id',
+        defaultValue: Sequelize.UUIDV4,
+      },
+      aefT1SubmissionParty: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        field: 'aef_t1_submission_party',
+      },
+      aefT1SubmissionVersion: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        field: 'aef_t1_submission_version',
+      },
+      aefT1SubmissionReportYear: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        field: 'aef_t1_submission_report_year',
+      },
+      aefT1SubmissionSubmissionDate: {
+        type: Sequelize.DATEONLY,
+        allowNull: false,
+        field: 'aef_t1_submission_submission_date',
+      },
+      aefT1SubmissionReviewStatus: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        field: 'aef_t1_submission_review_status',
+      },
+      aefT1SubmissionResultCheck: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        field: 'aef_t1_submission_result_check',
+      },
+      aefT1SubmissionNdcFirstYear: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        field: 'aef_t1_submission_ndc_first_year',
+      },
+      aefT1SubmissionNdcLastYear: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        field: 'aef_t1_submission_ndc_last_year',
+      },
+      aefT1SubmissionReferenceReviewReport: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        field: 'aef_t1_submission_reference_review_report',
+      },
+      createdAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        field: 'created_at',
+        defaultValue: Sequelize.NOW,
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        field: 'updated_at',
+        defaultValue: Sequelize.NOW,
       },
     },
-    aefT1SubmissionReviewStatus: {
-      type: Sequelize.TEXT,
-      allowNull: true,
-      field: 'aef_t1_submission_review_status',
-    },
-    aefT1SubmissionResultCheck: {
-      type: Sequelize.TEXT,
-      allowNull: true,
-      field: 'aef_t1_submission_result_check',
-    },
-    aefT1SubmissionNdcFirstYear: {
-      type: Sequelize.INTEGER,
-      allowNull: true,
-      field: 'aef_t1_submission_ndc_first_year',
-    },
-    aefT1SubmissionNdcLastYear: {
-      type: Sequelize.INTEGER,
-      allowNull: true,
-      field: 'aef_t1_submission_ndc_last_year',
-    },
-    aefT1SubmissionReferenceReviewReport: {
-      type: Sequelize.TEXT,
-      allowNull: true,
-      field: 'aef_t1_submission_reference_review_report',
-    },
-    createdAt: {
-      type: Sequelize.DATE,
-      allowNull: false,
-      field: 'created_at',
-      defaultValue: Sequelize.NOW,
-    },
-    updatedAt: {
-      type: Sequelize.DATE,
-      allowNull: false,
-      field: 'updated_at',
-      defaultValue: Sequelize.NOW,
-    },
-  },
-  {
-    sequelize: sequelizeV2,
-    modelName: 'AefT1SubmissionV2Mirror',
-    tableName: 'aef_t1_submission',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
-    underscored: true,
-  }
-);
+    {
+      sequelize: sequelizeV2Mirror,
+      modelName: 'AefT1SubmissionV2Mirror',
+      tableName: 'aef_t1_submission',
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
+      timezone: '+00:00',
+      define: {
+        charset: 'utf8mb4',
+        collate: 'utf8mb4_general_ci',
+      },
+      dialectOptions: {
+        charset: 'utf8mb4',
+        dateStrings: true,
+        typeCast: true,
+      },
+    }
+  );
+});
 
 export { AefT1SubmissionV2Mirror };

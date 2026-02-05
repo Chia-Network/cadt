@@ -26,6 +26,13 @@ class EstimationV2 extends Model {
   }
 
   static async update(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await EstimationV2Mirror.update(values, mirrorOptions);
+    });
     const result = await super.update(values, options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
@@ -38,6 +45,13 @@ class EstimationV2 extends Model {
   }
 
   static async destroy(options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await EstimationV2Mirror.destroy(mirrorOptions);
+    });
     const result = await super.destroy(options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;

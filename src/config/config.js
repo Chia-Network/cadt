@@ -1,4 +1,4 @@
-import { getConfig } from '../utils/config-loader';
+import { getConfig, getConfigV2 } from '../utils/config-loader';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { logger } from './logger.js';
 import { createHash } from 'crypto';
@@ -83,10 +83,10 @@ export default {
     logging: false,
   },
   v2Mirror: {
-    username: getConfig().MIRROR_DB.DB_USERNAME || '',
-    password: getConfig().MIRROR_DB.DB_PASSWORD || '',
-    database: getConfig().MIRROR_DB.DB_NAME ? `${getConfig().MIRROR_DB.DB_NAME}_v2` : '',
-    host: getConfig().MIRROR_DB.DB_HOST || '',
+    username: getConfigV2().MIRROR_DB?.DB_USERNAME || '',
+    password: getConfigV2().MIRROR_DB?.DB_PASSWORD || '',
+    database: getConfigV2().MIRROR_DB?.DB_NAME ? `${getConfigV2().MIRROR_DB.DB_NAME}_v2` : '',
+    host: getConfigV2().MIRROR_DB?.DB_HOST || '',
     dialect: 'mysql',
     logging: mirrorLogging,
   },

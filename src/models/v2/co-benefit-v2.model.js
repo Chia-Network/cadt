@@ -2,7 +2,8 @@
 
 import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
-import { sequelizeV2 } from '../../database/v2/index.js';
+import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { CoBenefitV2Mirror } from './co-benefit-v2.model.mirror.js';
 import StagingV2 from './staging-v2.model.js';
 import {
   createXlsFromSequelizeResults,
@@ -38,6 +39,13 @@ class CoBenefitV2 extends Model {
   }
 
   static async destroy(options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await CoBenefitV2Mirror.destroy(mirrorOptions);
+    });
     const result = await super.destroy(options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
