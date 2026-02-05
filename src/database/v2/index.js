@@ -51,13 +51,9 @@ loggerV2.info(`[v2]: Mirror DB config selected: ${mirrorConfig} (MySQL configure
 export const sequelizeV2Mirror = new Sequelize(config[mirrorConfig]);
 
 export const mirrorDBEnabledV2 = () => {
-  // Mirror DB is enabled if MySQL is configured, or if we're using SQLite test mode
-  if (mirrorConfig === 'v2Mirror') {
-    // MySQL mode - already verified config exists above
-    return true;
-  }
-  // SQLite test mode - always enabled
-  return true;
+  // Mirror DB is only enabled if MySQL is actually configured
+  // In test mode without MySQL, mirror operations should be no-ops
+  return mysqlMirrorConfigured;
 };
 
 export const safeMirrorDbHandlerV2 = (callback) => {
@@ -262,11 +258,8 @@ export const prepareV2Db = async () => {
         // Don't throw - allow main database to continue
       }
     } else {
-      // SQLite test mode or no mirror configured
-      loggerV2.info('[v2]: No MySQL mirror configured, using SQLite mirror (if enabled)');
-      if (mirrorConfig === 'v2MirrorTest') {
-        await checkForV2Migrations(sequelizeV2Mirror);
-      }
+      // No MySQL mirror configured - mirror operations will be no-ops
+      loggerV2.info('[v2]: No MySQL mirror configured, mirror operations disabled');
     }
 
     loggerV2.info('[v2]: About to run main database migrations (sequelizeV2)...');
