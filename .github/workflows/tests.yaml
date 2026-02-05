@@ -121,6 +121,43 @@ jobs:
           apt-get update
           apt-get install -y yq jq bc iproute2
 
+      - name: Install and configure MySQL for mirror database testing
+        shell: bash
+        run: |
+          echo "Installing MySQL Server..."
+          apt-get install -y mysql-server mysql-client
+
+          echo "Starting MySQL service..."
+          service mysql start
+
+          # Wait for MySQL to be ready
+          echo "Waiting for MySQL to be ready..."
+          for i in {1..30}; do
+            if mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "MySQL is ready!"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 1
+          done
+
+          echo "Creating test database and user..."
+          mysql -u root <<EOF
+          CREATE DATABASE IF NOT EXISTS cadt_mirror_test;
+          CREATE DATABASE IF NOT EXISTS cadt_mirror_test_v2;
+          CREATE USER IF NOT EXISTS 'cadt_test'@'localhost' IDENTIFIED BY 'cadt_test_password';
+          GRANT ALL PRIVILEGES ON cadt_mirror_test.* TO 'cadt_test'@'localhost';
+          GRANT ALL PRIVILEGES ON cadt_mirror_test_v2.* TO 'cadt_test'@'localhost';
+          FLUSH PRIVILEGES;
+          EOF
+
+          echo "Verifying MySQL setup..."
+          mysql -u cadt_test -pcadt_test_password -e "SELECT 1 as test;" || {
+            echo "Failed to connect as test user"
+            exit 1
+          }
+          echo "✓ MySQL mirror database is ready for testing"
+
       - name: Install Chia and chia-tools
         shell: bash
         run: |
@@ -172,6 +209,13 @@ jobs:
           # Enable V2 for V2 live API tests
           yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+
+          # Configure MySQL mirror database for testing
+          echo "Configuring MySQL mirror database..."
+          yq -yi '.MIRROR_DB.DB_HOST = "localhost"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.MIRROR_DB.DB_USERNAME = "cadt_test"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.MIRROR_DB.DB_PASSWORD = "cadt_test_password"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.MIRROR_DB.DB_NAME = "cadt_mirror_test"' ~/.chia/mainnet/cadt/config.yaml
 
           # Show the config file
           echo "Showing the config file after configuration ... (this is the final config file)"
@@ -362,6 +406,36 @@ jobs:
           echo "Running organization deletion tests"
           echo "########################################################"
           npm run test:v2:live:organization:delete
+
+      - name: Show MySQL mirror database status
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "MySQL Mirror Database Status"
+          echo "=========================================="
+          echo ""
+          echo "Checking MySQL service status..."
+          service mysql status || echo "MySQL service status check failed"
+          echo ""
+          echo "Checking mirror database tables..."
+          mysql -u cadt_test -pcadt_test_password -e "USE cadt_mirror_test_v2; SHOW TABLES;" 2>/dev/null || echo "Could not list tables (DB may not have been created yet)"
+          echo ""
+          echo "Record counts in mirror tables:"
+          mysql -u cadt_test -pcadt_test_password cadt_mirror_test_v2 -e "
+            SELECT 'project_mirror' as table_name, COUNT(*) as count FROM project_mirror UNION ALL
+            SELECT 'methodology_mirror', COUNT(*) FROM methodology_mirror UNION ALL
+            SELECT 'program_mirror', COUNT(*) FROM program_mirror UNION ALL
+            SELECT 'unit_mirror', COUNT(*) FROM unit_mirror UNION ALL
+            SELECT 'issuance_mirror', COUNT(*) FROM issuance_mirror UNION ALL
+            SELECT 'verification_mirror', COUNT(*) FROM verification_mirror UNION ALL
+            SELECT 'validation_mirror', COUNT(*) FROM validation_mirror UNION ALL
+            SELECT 'location_mirror', COUNT(*) FROM location_mirror UNION ALL
+            SELECT 'estimation_mirror', COUNT(*) FROM estimation_mirror UNION ALL
+            SELECT 'rating_mirror', COUNT(*) FROM rating_mirror UNION ALL
+            SELECT 'label_mirror', COUNT(*) FROM label_mirror UNION ALL
+            SELECT 'stakeholder_mirror', COUNT(*) FROM stakeholder_mirror;
+          " 2>/dev/null || echo "Could not count records (tables may not exist)"
 
       - name: Show CADT logs after tests
         if: always()
