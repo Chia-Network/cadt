@@ -65,10 +65,15 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
            createResponse.body?.error?.includes('Wallet') ||
            createResponse.body?.message === 'Chia Exception');
 
+        // Check if server is still in startup phase (coin management)
+        const isStartupPhaseError = createResponse.status === 503 &&
+          createResponse.body?.startupPhase === 'coin_management';
+
         if (createResponse.status === 200) {
           break; // Success!
-        } else if (isWalletSyncError && attempt < maxRetries) {
-          console.log(`[Attempt ${attempt}/${maxRetries}] Wallet not ready, retrying in ${retryDelayMs/1000}s...`);
+        } else if ((isWalletSyncError || isStartupPhaseError) && attempt < maxRetries) {
+          const reason = isStartupPhaseError ? 'Server still starting (coin management)' : 'Wallet not ready';
+          console.log(`[Attempt ${attempt}/${maxRetries}] ${reason}, retrying in ${retryDelayMs/1000}s...`);
           console.log(`  Error: ${createResponse.body?.error || createResponse.body?.message}`);
           lastError = createResponse.body?.error || createResponse.body?.message;
           await new Promise(resolve => setTimeout(resolve, retryDelayMs));

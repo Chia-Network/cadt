@@ -766,6 +766,36 @@ const isWalletSyncError = (response) => {
 };
 
 /**
+ * Check if response indicates server is in startup phase (coin management)
+ * @param {Object} response - HTTP response object
+ * @returns {boolean} - true if startup phase error detected
+ */
+const isStartupPhaseError = (response) => {
+  if (!response) return false;
+
+  const body = response.body || {};
+  const status = response.status || response.statusCode;
+
+  // 503 with startupPhase indicates coin management is in progress
+  return status === 503 && body.startupPhase === 'coin_management';
+};
+
+/**
+ * Check if response indicates a retryable transient error (wallet sync or startup phase)
+ * @param {Object} response - HTTP response object
+ * @returns {{retryable: boolean, reason: string}} - whether error is retryable and the reason
+ */
+const isRetryableError = (response) => {
+  if (isStartupPhaseError(response)) {
+    return { retryable: true, reason: 'Server still starting (coin management)' };
+  }
+  if (isWalletSyncError(response)) {
+    return { retryable: true, reason: 'Wallet syncing' };
+  }
+  return { retryable: false, reason: null };
+};
+
+/**
  * Create a retryable request wrapper that automatically retries on wallet sync errors
  * @param {Function} makeRequest - Function that creates the supertest request
  * @param {string} method - HTTP method name (POST, PUT, DELETE)
@@ -840,12 +870,13 @@ const createRetryableRequest = (makeRequest, method, path) => {
           try {
             const response = await pendingRequest;
 
-            // Check if response indicates wallet sync error
-            if (isWalletSyncError(response)) {
+            // Check if response indicates a retryable transient error
+            const { retryable, reason } = isRetryableError(response);
+            if (retryable) {
               const elapsed = Date.now() - startTime;
               if (elapsed < WALLET_SYNC_MAX_WAIT) {
                 const elapsedSec = Math.floor(elapsed / 1000);
-                console.log(`[${getTimestamp()}] ⏳ Wallet syncing detected, retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
+                console.log(`[${getTimestamp()}] ⏳ ${reason} detected, retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
                 await new Promise(resolve => setTimeout(resolve, WALLET_SYNC_RETRY_INTERVAL));
 
                 // Recreate and replay the request
@@ -855,7 +886,7 @@ const createRetryableRequest = (makeRequest, method, path) => {
                 }
                 continue;
               } else {
-                console.log(`[${getTimestamp()}] ❌ Wallet sync timeout after ${Math.floor(elapsed / 1000)}s`);
+                console.log(`[${getTimestamp()}] ❌ Retry timeout after ${Math.floor(elapsed / 1000)}s (last reason: ${reason})`);
               }
             }
 
@@ -865,11 +896,12 @@ const createRetryableRequest = (makeRequest, method, path) => {
             // The error object may have a .response property with the actual response
             const errorResponse = error.response || error;
 
-            if (isWalletSyncError(errorResponse)) {
+            const { retryable, reason } = isRetryableError(errorResponse);
+            if (retryable) {
               const elapsed = Date.now() - startTime;
               if (elapsed < WALLET_SYNC_MAX_WAIT) {
                 const elapsedSec = Math.floor(elapsed / 1000);
-                console.log(`[${getTimestamp()}] ⏳ Wallet syncing detected (error response), retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
+                console.log(`[${getTimestamp()}] ⏳ ${reason} detected (error response), retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
                 await new Promise(resolve => setTimeout(resolve, WALLET_SYNC_RETRY_INTERVAL));
 
                 // Recreate and replay the request
@@ -879,11 +911,11 @@ const createRetryableRequest = (makeRequest, method, path) => {
                 }
                 continue;
               } else {
-                console.log(`[${getTimestamp()}] ❌ Wallet sync timeout after ${Math.floor(elapsed / 1000)}s`);
+                console.log(`[${getTimestamp()}] ❌ Retry timeout after ${Math.floor(elapsed / 1000)}s (last reason: ${reason})`);
               }
             }
 
-            // Not a wallet sync error, re-throw
+            // Not a retryable error, re-throw
             throw error;
           }
         }

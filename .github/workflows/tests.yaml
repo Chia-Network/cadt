@@ -124,20 +124,22 @@ jobs:
       - name: Install and configure MySQL for mirror database testing
         shell: bash
         run: |
-          echo "Installing MySQL Server..."
-          apt-get install -y mysql-server mysql-client
+          echo "Installing MariaDB (MySQL-compatible) Server..."
+          # Use default-mysql-server/client which provides MariaDB on Debian Bookworm
+          # mysql-server and mysql-client packages are not directly available
+          apt-get install -y default-mysql-server default-mysql-client
 
-          echo "Starting MySQL service..."
-          service mysql start
+          echo "Starting MariaDB service..."
+          service mariadb start
 
-          # Wait for MySQL to be ready
-          echo "Waiting for MySQL to be ready..."
+          # Wait for MariaDB to be ready
+          echo "Waiting for MariaDB to be ready..."
           for i in {1..30}; do
             if mysqladmin ping -h localhost --silent 2>/dev/null; then
-              echo "MySQL is ready!"
+              echo "MariaDB is ready!"
               break
             fi
-            echo "Waiting for MySQL... ($i/30)"
+            echo "Waiting for MariaDB... ($i/30)"
             sleep 1
           done
 
@@ -151,12 +153,12 @@ jobs:
           FLUSH PRIVILEGES;
           EOF
 
-          echo "Verifying MySQL setup..."
+          echo "Verifying MariaDB setup..."
           mysql -u cadt_test -pcadt_test_password -e "SELECT 1 as test;" || {
             echo "Failed to connect as test user"
             exit 1
           }
-          echo "✓ MySQL mirror database is ready for testing"
+          echo "✓ MariaDB (MySQL-compatible) mirror database is ready for testing"
 
       - name: Install Chia and chia-tools
         shell: bash
@@ -412,11 +414,11 @@ jobs:
         shell: bash
         run: |
           echo "=========================================="
-          echo "MySQL Mirror Database Status"
+          echo "MySQL/MariaDB Mirror Database Status"
           echo "=========================================="
           echo ""
-          echo "Checking MySQL service status..."
-          service mysql status || echo "MySQL service status check failed"
+          echo "Checking MariaDB service status..."
+          service mariadb status || echo "MariaDB service status check failed"
           echo ""
           echo "Checking mirror database tables..."
           mysql -u cadt_test -pcadt_test_password -e "USE cadt_mirror_test_v2; SHOW TABLES;" 2>/dev/null || echo "Could not list tables (DB may not have been created yet)"
