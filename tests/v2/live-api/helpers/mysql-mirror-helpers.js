@@ -52,9 +52,10 @@ export const getMirrorDbConfig = () => {
     const config = yaml.load(fs.readFileSync(configFile, 'utf8'));
 
     // Check if MIRROR_DB is configured with all required fields
-    const mirrorDb = config?.MIRROR_DB;
+    // For V2 API tests, MIRROR_DB is under V2 section in the unified config
+    const mirrorDb = config?.V2?.MIRROR_DB;
     if (!mirrorDb?.DB_HOST || !mirrorDb?.DB_USERNAME || !mirrorDb?.DB_PASSWORD || !mirrorDb?.DB_NAME) {
-      console.log(`[${getTimestamp()}] MySQL Mirror: MIRROR_DB not fully configured in config.yaml`);
+      console.log(`[${getTimestamp()}] MySQL Mirror: V2.MIRROR_DB not fully configured in config.yaml`);
       cachedConfig = false;
       return null;
     }

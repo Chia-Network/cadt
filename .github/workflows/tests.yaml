@@ -212,12 +212,13 @@ jobs:
           yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
 
-          # Configure MySQL mirror database for testing
-          echo "Configuring MySQL mirror database..."
-          yq -yi '.MIRROR_DB.DB_HOST = "localhost"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.MIRROR_DB.DB_USERNAME = "cadt_test"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.MIRROR_DB.DB_PASSWORD = "cadt_test_password"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.MIRROR_DB.DB_NAME = "cadt_mirror_test"' ~/.chia/mainnet/cadt/config.yaml
+          # Configure MySQL mirror database for V2 testing
+          # MIRROR_DB must be under V2 section for V2 API
+          echo "Configuring MySQL mirror database for V2..."
+          yq -yi '.V2.MIRROR_DB.DB_HOST = "localhost"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.MIRROR_DB.DB_USERNAME = "cadt_test"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.MIRROR_DB.DB_PASSWORD = "cadt_test_password"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.MIRROR_DB.DB_NAME = "cadt_mirror_test"' ~/.chia/mainnet/cadt/config.yaml
 
           # Show the config file
           echo "Showing the config file after configuration ... (this is the final config file)"
