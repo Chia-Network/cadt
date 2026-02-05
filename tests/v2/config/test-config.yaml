@@ -3,7 +3,7 @@ APP:
   BIND_ADDRESS: localhost
   DATALAYER_URL: https://localhost:8562
   WALLET_URL: https://localhost:9256
-  USE_SIMULATOR: false
+  USE_SIMULATOR: true
   CHIA_NETWORK: mainnet
   USE_DEVELOPMENT_MODE: false
   DEFAULT_FEE: 3000

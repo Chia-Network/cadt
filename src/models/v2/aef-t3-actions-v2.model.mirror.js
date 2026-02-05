@@ -92,7 +92,7 @@ safeMirrorDbHandlerV2(() => {
       field: 'aef_t3_actions_applicable_non_ghg_metric',
     },
     aefT3ActionsQuantityTCo2: {
-      type: Sequelize.DECIMAL,
+      type: Sequelize.DECIMAL(20, 6),
       allowNull: false,
       field: 'aef_t3_actions_quantity_t_co2',
     },

@@ -15,24 +15,52 @@ import { loggerV2 } from '../../config/logger.js';
 
 class RatingV2 extends Model {
   static async create(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await RatingV2Mirror.create(values, mirrorOptions);
+    });
     const result = await super.create(values, options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async bulkCreate(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await RatingV2Mirror.bulkCreate(values, mirrorOptions);
+    });
     const result = await super.bulkCreate(values, options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async update(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await RatingV2Mirror.update(values, mirrorOptions);
+    });
     const result = await super.update(values, options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
   static async upsert(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await RatingV2Mirror.upsert(values, mirrorOptions);
+    });
     const result = await super.upsert(values, options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;

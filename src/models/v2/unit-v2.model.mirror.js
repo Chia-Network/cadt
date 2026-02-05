@@ -37,7 +37,7 @@ safeMirrorDbHandlerV2(() => {
         field: 'unit_end_block',
       },
       unitCount: {
-        type: Sequelize.DECIMAL,
+        type: Sequelize.DECIMAL(20, 6),
         allowNull: true,
         field: 'unit_count',
       },

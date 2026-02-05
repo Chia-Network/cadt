@@ -32,14 +32,14 @@ safeMirrorDbHandlerV2(() => {
       field: 'aef_t5_authorized_entities_incorporation_country',
     },
     aefT5AuthorizedEntitiesId: {
-      type: Sequelize.STRING,
+      type: Sequelize.STRING(255),
       allowNull: false,
-      field: 'aef_t5_authorized_entities_Id',
+      field: 'aef_t5_authorized_entities_id',
     },
     aefT5AuthorizedEntitiesCooperativeApproachId: {
       type: Sequelize.STRING,
       allowNull: false,
-      field: 'aef_t5_authorized_entities_cooperative_approach_Id',
+      field: 'aef_t5_authorized_entities_cooperative_approach_id',
     },
     aefT5AuthorizedEntitiesConditions: {
       type: Sequelize.TEXT,

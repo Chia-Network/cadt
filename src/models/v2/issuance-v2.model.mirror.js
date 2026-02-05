@@ -26,17 +26,17 @@ safeMirrorDbHandlerV2(() => {
         field: 'issuance_date',
       },
       cadTrustVerificationId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING(36),
         allowNull: false,
         field: 'cad_trust_verification_id',
       },
       cadTrustProjectMethodologyId: {
-        type: Sequelize.STRING,
+        type: Sequelize.STRING(36),
         allowNull: false,
         field: 'cad_trust_project_methodology_id',
       },
       cadTrustLocationId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING(36),
         allowNull: true,
         field: 'cad_trust_location_id',
       },

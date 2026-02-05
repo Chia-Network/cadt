@@ -30,7 +30,7 @@ export default {
         allowNull: false,
       },
       unit_count: {
-        type: Sequelize.DECIMAL,
+        type: Sequelize.DECIMAL(20, 6),
         allowNull: true,
       },
       unit_type: {

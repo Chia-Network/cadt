@@ -37,7 +37,7 @@ safeMirrorDbHandlerV2(() => {
         field: 'aef_t2_authorizations_version',
       },
       aefT2AuthorizationsQuantity: {
-        type: Sequelize.DECIMAL,
+        type: Sequelize.DECIMAL(20, 6),
         allowNull: true,
         field: 'aef_t2_authorizations_quantity',
       },

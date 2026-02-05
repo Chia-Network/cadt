@@ -54,6 +54,13 @@ class EstimationV2 extends Model {
   }
 
   static async upsert(values, options) {
+    safeMirrorDbHandlerV2(async () => {
+      const mirrorOptions = {
+        ...options,
+        transaction: options?.mirrorTransaction,
+      };
+      await EstimationV2Mirror.upsert(values, mirrorOptions);
+    });
     const result = await super.upsert(values, options);
     await new Promise((resolve) => setTimeout(resolve, 50));
     return result;

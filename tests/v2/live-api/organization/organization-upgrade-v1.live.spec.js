@@ -162,8 +162,33 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
       console.log(`Upgrading V1 organization ${state.v1OrgUid} to V2...`);
 
       // Upgrade V1 to V2
-      const upgradeResponse = await request
-        .post('/v2/organizations/upgrade');
+      // Retry on transient errors (e.g., singleton not yet fully written to blockchain)
+      const maxUpgradeRetries = 6;
+      const upgradeRetryDelayMs = 30000; // 30 seconds between retries
+      let upgradeResponse;
+      let lastUpgradeError;
+
+      for (let attempt = 1; attempt <= maxUpgradeRetries; attempt++) {
+        upgradeResponse = await request.post('/v2/organizations/upgrade');
+
+        // Check if it's a transient singleton validation error (V1 org not fully ready)
+        const isSingletonNotReady = upgradeResponse.status === 400 &&
+          (upgradeResponse.body?.message?.includes('singleton') ||
+           upgradeResponse.body?.message?.includes('not completed') ||
+           upgradeResponse.body?.message?.includes('still be creating'));
+
+        if (upgradeResponse.status === 200) {
+          break; // Success!
+        } else if (isSingletonNotReady && attempt < maxUpgradeRetries) {
+          console.log(`[Upgrade Attempt ${attempt}/${maxUpgradeRetries}] V1 singleton not ready, retrying in ${upgradeRetryDelayMs/1000}s...`);
+          console.log(`  Message: ${upgradeResponse.body?.message}`);
+          lastUpgradeError = upgradeResponse.body?.message;
+          await new Promise(resolve => setTimeout(resolve, upgradeRetryDelayMs));
+        } else {
+          // Non-retryable error or max retries reached
+          break;
+        }
+      }
 
       if (upgradeResponse.status !== 200) {
         console.error(`POST /v2/organizations/upgrade failed with status ${upgradeResponse.status}:`);
@@ -173,6 +198,9 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
         }
         if (upgradeResponse.body?.message) {
           console.error(`Message: ${upgradeResponse.body.message}`);
+        }
+        if (lastUpgradeError) {
+          console.error(`Last retry error: ${lastUpgradeError}`);
         }
       }
 
