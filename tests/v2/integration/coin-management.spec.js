@@ -7,8 +7,9 @@ import wallet from '../../../src/datalayer/wallet.js';
  * Coin Management Task Tests
  *
  * Tests for coin-management background task that ensures the wallet
- * has at least 15 coins of 100000000 mojos each for optimal CADT operation.
- * Coins must exceed xch_spam_amount (default 1000000 mojos) to be usable.
+ * has at least 15 coins for optimal CADT operation.
+ * A coin is "usable" if its amount >= DEFAULT_COIN_AMOUNT + DEFAULT_FEE (must cover both operation and fee).
+ * Coins must also exceed xch_spam_amount (default 1000000 mojos).
  */
 describe('Coin Management Task Tests', function () {
   this.timeout(30000);
@@ -269,19 +270,22 @@ describe('Coin Management Task Tests', function () {
   });
 
   describe('Usable Coin Filtering', function () {
-    const COIN_SIZE = 100000000;
+    const DEFAULT_COIN_AMOUNT = 300;    // DEFAULT_COIN_AMOUNT from config
+    const DEFAULT_FEE = 3000;           // DEFAULT_FEE from config
+    const MIN_USABLE_COIN_SIZE = DEFAULT_COIN_AMOUNT + DEFAULT_FEE; // 3300
 
-    it('should filter coins by minimum size', function () {
+    it('should filter coins by minimum usable size (DEFAULT_COIN_AMOUNT + DEFAULT_FEE)', function () {
       const allUnspentCoins = [
-        { id: '0x1', amount: 50000000, spent_height: 0 },    // Too small
-        { id: '0x2', amount: 100000000, spent_height: 0 },   // Exactly COIN_SIZE
-        { id: '0x3', amount: 150000000, spent_height: 0 },   // Above COIN_SIZE
-        { id: '0x4', amount: 99999999, spent_height: 0 },    // Just below
+        { id: '0x1', amount: 1000, spent_height: 0 },    // Too small
+        { id: '0x2', amount: 3300, spent_height: 0 },    // Exactly MIN_USABLE_COIN_SIZE
+        { id: '0x3', amount: 100000000, spent_height: 0 },  // Well above threshold
+        { id: '0x4', amount: 3299, spent_height: 0 },    // Just below MIN_USABLE_COIN_SIZE
+        { id: '0x5', amount: 5000, spent_height: 0 },    // Above threshold
       ];
 
-      const usableCoins = allUnspentCoins.filter((coin) => coin.amount >= COIN_SIZE);
-      expect(usableCoins).to.have.length(2);
-      expect(usableCoins.map((c) => c.id)).to.deep.equal(['0x2', '0x3']);
+      const usableCoins = allUnspentCoins.filter((coin) => coin.amount >= MIN_USABLE_COIN_SIZE);
+      expect(usableCoins).to.have.length(3);
+      expect(usableCoins.map((c) => c.id)).to.deep.equal(['0x2', '0x3', '0x5']);
     });
 
     it('should identify original coin after split by ID', function () {

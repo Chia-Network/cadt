@@ -15,6 +15,8 @@ const TARGET_COIN_COUNT = 15;      // Number of coins to maintain
 const COIN_SIZE = 100000000;       // Size of each coin in mojos (0.0001 XCH - must exceed xch_spam_amount)
 const MIN_COIN_SIZE = 1000000;     // Minimum acceptable coin size in mojos (matches default xch_spam_amount)
 const SPLIT_FEE = APP_CONFIG.DEFAULT_FEE || 3000; // Fee from config, fallback to 3000 mojos
+const DEFAULT_COIN_AMOUNT = APP_CONFIG.DEFAULT_COIN_AMOUNT || 300; // Coin amount for DataLayer operations from config
+const MIN_USABLE_COIN_SIZE = DEFAULT_COIN_AMOUNT + SPLIT_FEE; // A coin must cover both the operation amount and the fee to be usable
 
 // 6 hours in seconds
 const SIX_HOURS_IN_SECONDS = 6 * 60 * 60;
@@ -59,7 +61,7 @@ const formatMojos = (mojos, symbol) => {
 const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
   const startTime = Date.now();
 
-  logger.info(`[COIN_MANAGEMENT] Waiting for split transaction to confirm (expecting ${expectedNewCoins} new coins of ${COIN_SIZE}+ mojos)...`);
+  logger.info(`[COIN_MANAGEMENT] Waiting for split transaction to confirm (expecting ${expectedNewCoins} new coins of ${MIN_USABLE_COIN_SIZE}+ mojos)...`);
 
   while (Date.now() - startTime < SPLIT_CONFIRMATION_TIMEOUT_MS) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -75,7 +77,7 @@ const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
 
       const allCoins = coinsResult.coin_records || [];
       const unspentCoins = allCoins.filter((coin) => coin.spent_height === 0);
-      const usableCoins = unspentCoins.filter((coin) => coin.amount >= COIN_SIZE);
+      const usableCoins = unspentCoins.filter((coin) => coin.amount >= MIN_USABLE_COIN_SIZE);
 
       // Check if the original coin has been spent (no longer in unspent list)
       const originalCoinStillUnspent = unspentCoins.some((coin) => coin.id === originalCoinId);
@@ -107,6 +109,7 @@ const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
  * Check wallet coin count and split if necessary
  * Creates up to 15 coins of 100000000 mojos each for DataLayer operations
  * Uses DEFAULT_FEE from config for the split transaction fee
+ * A coin is considered "usable" if its amount >= DEFAULT_COIN_AMOUNT + DEFAULT_FEE (must cover both operation and fee)
  * Will not split if resulting coins would be below MIN_COIN_SIZE (1000000 mojos)
  */
 const runCoinManagement = async () => {
@@ -134,14 +137,14 @@ const runCoinManagement = async () => {
     // Filter to only unspent coins with sufficient size (spent_height === 0)
     const allCoins = coinsResult.coin_records || [];
     const unspentCoins = allCoins.filter((coin) => coin.spent_height === 0);
-    const usableCoins = unspentCoins.filter((coin) => coin.amount >= COIN_SIZE);
+    const usableCoins = unspentCoins.filter((coin) => coin.amount >= MIN_USABLE_COIN_SIZE);
     const coinCount = usableCoins.length;
 
     logger.info(`[COIN_MANAGEMENT] Current usable coin count: ${coinCount} (of ${unspentCoins.length} total unspent)`);
 
     // If we have enough usable coins, no action needed
     if (coinCount >= TARGET_COIN_COUNT) {
-      logger.info(`[COIN_MANAGEMENT] Wallet has ${coinCount} usable coins (${COIN_SIZE}+ mojos each), which meets the target of ${TARGET_COIN_COUNT}. No action needed.`);
+      logger.info(`[COIN_MANAGEMENT] Wallet has ${coinCount} usable coins (${MIN_USABLE_COIN_SIZE}+ mojos each), which meets the target of ${TARGET_COIN_COUNT}. No action needed.`);
       return;
     }
 

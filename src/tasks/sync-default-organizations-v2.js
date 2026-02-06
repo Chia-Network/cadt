@@ -71,7 +71,19 @@ const task = new Task('sync-default-organizations-v2', async () => {
           );
           try {
             await OrganizationsV2.importOrganization(orgUid);
-            loggerV2.info(`[v2]: Successfully imported default organization ${orgUid}`);
+            // Verify the org was actually created (importOrganization may return early
+            // if store is not synced yet, without throwing an error)
+            const imported = await OrganizationsV2.findOne({
+              where: { org_uid: orgUid },
+              raw: true,
+            });
+            if (imported) {
+              loggerV2.info(`[v2]: Successfully imported default organization ${orgUid}`);
+            } else {
+              loggerV2.debug(
+                `[v2]: Import of default organization ${orgUid} deferred - store may still be syncing. Will retry on next task run.`,
+              );
+            }
           } catch (importError) {
             // Log error but continue to next org - this org will be retried on next task run
             // This prevents one slow/failed import from blocking all other orgs
@@ -92,14 +104,14 @@ const task = new Task('sync-default-organizations-v2', async () => {
   } catch (error) {
     loggerV2.error(
       `[v2]: failed to validate default organization records and subscriptions. Error ${error.message}. ` +
-        `Retrying in ${CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300} seconds`,
+        `Retrying in ${CONFIG?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 300} seconds`,
     );
   }
 });
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 300,
+    seconds: CONFIG?.TASKS?.ORGANIZATION_META_SYNC_TASK_INTERVAL || 300,
     runImmediately: true,
   },
   task,

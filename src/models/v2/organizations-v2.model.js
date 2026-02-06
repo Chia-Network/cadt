@@ -222,9 +222,8 @@ class OrganizationsV2 extends Model {
       }
 
       // Wait for sufficient spendable coins before starting store creation
-      // We need 4 SEPARATE coins (one per parallel store creation), each with at least 100000000 mojos
-      // This matches COIN_SIZE in coin-management.js (100000000 mojos per coin)
-      const coinCheck = await wallet.waitForSpendableCoins(4, 100000000, 300000, 10000);
+      // We need 4 SEPARATE coins (one per parallel store creation), each large enough to cover COIN_SIZE + fee
+      const coinCheck = await wallet.waitForSpendableCoins(4);
       if (!coinCheck.success) {
         throw new Error(
           `Cannot create organization: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
@@ -270,9 +269,8 @@ class OrganizationsV2 extends Model {
     }
 
     // Wait for sufficient spendable coins before resuming store creation
-    // We need 4 SEPARATE coins (one per parallel store creation), each with at least 100000000 mojos
-    // This matches COIN_SIZE in coin-management.js (100000000 mojos per coin)
-    const coinCheck = await wallet.waitForSpendableCoins(4, 100000000, 300000, 10000);
+    // We need 4 SEPARATE coins (one per parallel store creation), each large enough to cover COIN_SIZE + fee
+    const coinCheck = await wallet.waitForSpendableCoins(4);
     if (!coinCheck.success) {
       throw new Error(
         `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
@@ -1465,9 +1463,22 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<void>}
    */
   static async importOrganization(orgUid, isHome = false) {
-    // Check if store is synced BEFORE acquiring mutex to avoid blocking other operations
-    // If store is not synced, skip import - it will be retried on next task run
+    // Subscribe to the org store first, then check sync status.
+    // This ensures new org stores get subscribed on the first pass so they can
+    // begin syncing, and subsequent runs will find them synced and proceed.
     if (!USE_SIMULATOR) {
+      try {
+        // Subscribe to the store if not already subscribed (no-op if already subscribed)
+        await datalayer.subscribeToStoreOnDataLayer(orgUid);
+      } catch (error) {
+        loggerV2.warn(
+          `[v2]: Could not subscribe to store for ${orgUid}, skipping import: ${error.message}`,
+        );
+        return;
+      }
+
+      // Check if store is synced BEFORE acquiring mutex to avoid blocking other operations
+      // If store is not synced, skip import - it will be retried on next task run
       try {
         const syncStatus = await datalayer.getDataLayerStoreSyncStatus(orgUid);
         if (!isDlStoreSynced(syncStatus?.sync_status)) {
