@@ -47,5 +47,10 @@ alwaysApply: true
 - Most tests should use simulation mode, which does not require datalayer or chia to be running. If running a test in simulation mode results in an error with the datalayer connection, something is wrong which needs to be addressed.
 
 # Documentation
-- We will write documentation in a specific task, not as we go.
+- When making a change to an endpoint, update /docs/cadt_rpc_api_v2.md and /docs/cadt_rpc_api.md
 - Documentation should closely follow the formatting, style, and structure of existing v1 documentation at /docs/cadt_rpc_api.md.  v2 documentation should be in file /docs/cadt_rpc_api_v2.md.
+
+# Git
+- User will push to git, cursor and AI should not write to git
+- use the gh tool to get logs from github actions
+

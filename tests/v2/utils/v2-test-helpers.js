@@ -236,7 +236,40 @@ export const resetV2DataTables = async () => {
 export const createV2TestHomeOrg = async () => {
   const { OrganizationsV2 } = await import('../../../src/models/v2/index.js');
 
-  // Create test home organization for V2
+  // Optimization: Check if our test home org already exists with correct configuration
+  // This avoids unnecessary DB writes in most test runs
+  const existingHomeOrg = await OrganizationsV2.findOne({
+    where: {
+      org_uid: 'test-home-org-v2',
+      is_home: true,
+      subscribed: true,
+    },
+  });
+
+  if (existingHomeOrg) {
+    // Also verify no OTHER orgs have is_home: true (could cause findOne issues)
+    const otherHomeOrgs = await OrganizationsV2.count({
+      where: {
+        is_home: true,
+        org_uid: { [OrganizationsV2.sequelize.Sequelize.Op.ne]: 'test-home-org-v2' },
+      },
+    });
+
+    if (otherHomeOrgs === 0) {
+      // Perfect state - our home org exists and is the only one
+      return existingHomeOrg;
+    }
+  }
+
+  // Need to fix state: clear any existing home orgs to ensure only one exists
+  // This prevents test interference where other tests create orgs with is_home: true
+  // and findOne({ where: { is_home: true } }) might find the wrong one
+  await OrganizationsV2.update(
+    { is_home: false },
+    { where: { is_home: true } }
+  );
+
+  // Create/update test home organization for V2
   const [org, created] = await OrganizationsV2.upsert({
     org_uid: 'test-home-org-v2',
     name: 'Test Home Organization V2',

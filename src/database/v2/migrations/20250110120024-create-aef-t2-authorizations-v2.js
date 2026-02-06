@@ -29,7 +29,7 @@ export default {
         allowNull: true,
       },
       aef_t2_authorizations_quantity: {
-        type: Sequelize.DECIMAL,
+        type: Sequelize.DECIMAL(20, 6),
         allowNull: true,
       },
       aef_t2_authorizations_metric: {

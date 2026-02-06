@@ -430,14 +430,18 @@ const splitCoins = async (targetCoinId, numberOfCoins, amountPerCoin, fee = 0) =
  * - We need multiple separate coins for parallel store creation
  *
  * @param {number} requiredCoins - Number of separate coins needed (default: 4 for parallel store creation)
- * @param {number} minMojosPerCoin - Minimum mojos per coin (default: 10000, matching coin-management.js output)
+ * @param {number} minMojosPerCoin - Minimum mojos per coin (default: DEFAULT_COIN_AMOUNT + DEFAULT_FEE, must cover operation and fee)
  * @param {number} maxWaitMs - Maximum wait time in milliseconds (default: 5 minutes)
  * @param {number} pollIntervalMs - Polling interval in milliseconds (default: 10 seconds)
  * @returns {Promise<{success: boolean, coinCount?: number, error?: string}>}
  */
+const DEFAULT_COIN_AMOUNT = CONFIG.DEFAULT_COIN_AMOUNT || 300;
+const DEFAULT_COIN_FEE = CONFIG.DEFAULT_FEE || 3000;
+const MIN_USABLE_COIN_SIZE = DEFAULT_COIN_AMOUNT + DEFAULT_COIN_FEE;
+
 const waitForSpendableCoins = async (
   requiredCoins = 4,
-  minMojosPerCoin = 10000,
+  minMojosPerCoin = MIN_USABLE_COIN_SIZE,
   maxWaitMs = 300000,
   pollIntervalMs = 10000,
 ) => {

@@ -35,3 +35,18 @@ export const addMirrorSchema = Joi.object({
 export const getMetaDataSchema = Joi.object({
   orgUid: Joi.string().required(),
 });
+
+// orgUid can be either:
+// - 64-character hex string (production datalayer store IDs)
+// - UUID v4 format with hyphens (simulator mode)
+const orgUidPattern = /^([a-fA-F0-9]{64}|[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})$/;
+
+export const deleteOrganizationSchema = Joi.object({
+  orgUid: Joi.string()
+    .required()
+    .pattern(orgUidPattern)
+    .messages({
+      'string.pattern.base': 'orgUid must be a valid 64-character hex string or UUID format',
+      'any.required': 'orgUid is required',
+    }),
+});

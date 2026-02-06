@@ -6,7 +6,7 @@ export default {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('program', {
       cad_trust_program_id: {
-        type: Sequelize.TEXT,
+        type: Sequelize.STRING(36),
         primaryKey: true,
         allowNull: false,
         unique: true,

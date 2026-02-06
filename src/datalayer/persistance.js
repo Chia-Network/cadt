@@ -599,6 +599,42 @@ const getRoot = async (storeId) => {
   }
 };
 
+/**
+ * Get the local root hash of a store. Use for owned or subscribed stores.
+ * Chia get_root returns invalid hash (0x00...) for subscribed stores; get_local_root returns the actual root.
+ * @param {string} storeId - Store ID
+ * @returns {Promise<{ hash?: string, success?: boolean }>}
+ */
+const getLocalRoot = async (storeId) => {
+  if (CONFIG.USE_SIMULATOR || CONFIG.USE_DEVELOPMENT_MODE) {
+    const simulator = await import('./simulator.js');
+    return await simulator.getRoot(storeId);
+  }
+
+  const url = `${CONFIG.DATALAYER_URL}/get_local_root`;
+  const { cert, key, timeout } = getBaseOptions();
+
+  try {
+    const response = await superagent
+      .post(url)
+      .key(key)
+      .cert(cert)
+      .timeout(timeout)
+      .send({ id: storeId });
+
+    const { success, error, traceback, hash } = response.body;
+    if (!success || error || traceback) {
+      throw new Error(`${error}, ${traceback}`);
+    }
+    return { hash, confirmed: true };
+  } catch (error) {
+    logger.debug(
+      `could not get local root for store ${storeId}: ${error.message}`,
+    );
+    return {};
+  }
+};
+
 const getRoots = async (storeIds) => {
   const url = `${CONFIG.DATALAYER_URL}/get_roots`;
   const { cert, key, timeout } = getBaseOptions();
@@ -624,13 +660,18 @@ const getRoots = async (storeIds) => {
   }
 };
 
-const pushChangeListToDataLayer = async (storeId, changelist) => {
+const pushChangeListToDataLayer = async (storeId, changelist, { skipTransactionWait = false } = {}) => {
   let attempts = 0;
   const maxAttempts = 5;
 
   while (attempts < maxAttempts) {
     try {
-      await wallet.waitForAllTransactionsToConfirm();
+      // skipTransactionWait: with coin splitting we maintain multiple coins so back-to-back
+      // transactions work without waiting for the first to confirm. Callers that know they
+      // have available coins (e.g. org creation after coin management) can skip this wait.
+      if (!skipTransactionWait) {
+        await wallet.waitForAllTransactionsToConfirm();
+      }
 
       // Log the changelist being sent (with decoded keys/values for readability)
       logger.debug(`[DATALAYER_RPC] Sending changelist to storeId: ${storeId}`, {
@@ -689,7 +730,22 @@ const pushChangeListToDataLayer = async (storeId, changelist) => {
         return true;
       }
 
-      if (data.error.includes('Key already present')) {
+      // Chia returns this when this store (or wallet) already has a root pending confirmation.
+      // Wait for confirmation then retry the push instead of failing to writeService.
+      if (
+        data.error &&
+        data.error.includes('Already have a pending root waiting for confirmation')
+      ) {
+        logger.info(
+          `Pending root for store ${storeId}; waiting for confirmation then retrying (attempt ${attempts + 1}/${maxAttempts})`,
+        );
+        attempts++;
+        await wallet.waitForAllTransactionsToConfirm();
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+        continue;
+      }
+
+      if (data.error && data.error.includes('Key already present')) {
         logger.info('Pending root detected, waiting 5 seconds and retrying');
         const rootsCleared = await clearPendingRoots(storeId);
 
@@ -1123,6 +1179,7 @@ export {
   dataLayerAvailable,
   getStoreData,
   getRoot,
+  getLocalRoot,
   getRoots,
   pushChangeListToDataLayer,
   createDataLayerStore,

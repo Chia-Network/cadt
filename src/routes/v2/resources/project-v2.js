@@ -3,7 +3,11 @@ import multer from 'multer';
 import * as ProjectV2Controller from '../../../controllers/v2/project-v2.controller.js';
 
 const ProjectV2Router = express.Router();
-const upload = multer();
+
+// Configure multer with file size limit for XLSX/CSV uploads (25MB)
+const upload = multer({
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit for batch uploads
+});
 
 // Advanced routes (must come before generic :id routes)
 // PUT /v2/project/transfer - Transfer project between organizations

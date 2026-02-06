@@ -398,14 +398,10 @@ class GovernanceV2 extends Model {
     try {
       loggerV2.debug('[v2]: running V2 governance model sync()');
 
-      const { GOVERNANCE_BODY_ID } = getConfigV2().GOVERNANCE;
       const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
 
-      if (!GOVERNANCE_BODY_ID) {
-        throw new Error('Missing information in env to sync Governance data');
-      }
-
       // If on simulator or testnet, use the stubbed picklist data and return
+      // Check this FIRST before GOVERNANCE_BODY_ID to avoid errors in test mode
       if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
         loggerV2.info('[v2]: SIMULATOR/TESTNET MODE: Using sample picklist');
         await GovernanceV2.upsert({
@@ -415,6 +411,12 @@ class GovernanceV2 extends Model {
         });
 
         return;
+      }
+
+      const { GOVERNANCE_BODY_ID } = getConfigV2().GOVERNANCE;
+
+      if (!GOVERNANCE_BODY_ID) {
+        throw new Error('Missing information in env to sync Governance data');
       }
 
       const governanceData = await datalayer.getSubscribedStoreData(

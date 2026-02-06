@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { ProjectMethodologyV2, ProjectMethodologyV2Mirror, ProjectV2, ProgramV2, MethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { ProjectMethodologyV2, ProjectV2, ProgramV2, MethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -70,7 +70,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectMethodologyDescription: 'Test project-methodology relationship',
       };
 
-      const projectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+      const projectMethodology = await ProjectMethodologyV2.create(projectMethodologyData);
 
       expect(projectMethodology).to.exist;
       expect(projectMethodology.cadTrustProjectId).to.equal(testProjectId);
@@ -100,7 +100,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectMethodologyDescription: 'Test project-methodology relationship 2',
       };
 
-      const createdProjectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+      const createdProjectMethodology = await ProjectMethodologyV2.create(projectMethodologyData);
       const foundProjectMethodology = await ProjectMethodologyV2.findOne({
         where: {
           cadTrustProjectMethodologyId: projectMethodologyId,
@@ -150,7 +150,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectMethodologyDescription: 'Test project-methodology relationship 3',
       };
 
-      const createdProjectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+      const createdProjectMethodology = await ProjectMethodologyV2.create(projectMethodologyData);
 
       const updateData = {
         projectMethodologyDate: '2024-04-15',
@@ -159,7 +159,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
       await createdProjectMethodology.update(updateData);
 
-      const updatedProjectMethodology = await ProjectMethodologyV2Mirror.findOne({
+      const updatedProjectMethodology = await ProjectMethodologyV2.findOne({
         where: {
           cadTrustProjectMethodologyId: projectMethodologyId,
         },
@@ -186,11 +186,11 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectMethodologyDescription: 'Test project-methodology relationship 4',
       };
 
-      const createdProjectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+      const createdProjectMethodology = await ProjectMethodologyV2.create(projectMethodologyData);
 
       await createdProjectMethodology.destroy();
 
-      const deletedProjectMethodology = await ProjectMethodologyV2Mirror.findOne({
+      const deletedProjectMethodology = await ProjectMethodologyV2.findOne({
         where: {
           cadTrustProjectId: testProjectId,
           cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
@@ -203,7 +203,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
   describe('Project-Methodology Validation Tests', function () {
     it('should reject project-methodology with missing required fields', async function () {
       try {
-        await ProjectMethodologyV2Mirror.create({
+        await ProjectMethodologyV2.create({
           // Missing cadTrustProjectMethodologyId, cadTrustProjectId, cadTrustMethodologyId
           projectMethodologyDate: '2024-01-01',
         });
@@ -216,7 +216,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
     it('should reject project-methodology with invalid project ID', async function () {
       try {
-        await ProjectMethodologyV2Mirror.create({
+        await ProjectMethodologyV2.create({
           cadTrustProjectId: 'invalid-uuid',
           cadTrustMethodologyId: testMethodologyId,
         });
@@ -230,7 +230,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
 
     it('should reject project-methodology with invalid methodology ID', async function () {
       try {
-        await ProjectMethodologyV2Mirror.create({
+        await ProjectMethodologyV2.create({
           cadTrustProjectMethodologyId: uuidv4(),
           cadTrustProjectId: testProjectId,
           cadTrustMethodologyId: 'invalid-uuid',
@@ -260,7 +260,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectMethodologyDescription: null,
       };
 
-      const projectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+      const projectMethodology = await ProjectMethodologyV2.create(projectMethodologyData);
 
       expect(projectMethodology).to.exist;
       expect(projectMethodology.projectMethodologyDate).to.be.null;
@@ -273,7 +273,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       const nonExistentProjectId = uuidv4();
 
       try {
-        await ProjectMethodologyV2Mirror.create({
+        await ProjectMethodologyV2.create({
           cadTrustProjectId: nonExistentProjectId,
           cadTrustMethodologyId: testMethodologyId,
         });
@@ -289,7 +289,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       const nonExistentMethodologyId = uuidv4();
 
       try {
-        await ProjectMethodologyV2Mirror.create({
+        await ProjectMethodologyV2.create({
           cadTrustProjectMethodologyId: uuidv4(),
           cadTrustProjectId: testProjectId,
           cadTrustMethodologyId: nonExistentMethodologyId,
@@ -317,7 +317,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         cadTrustMethodologyId: newMethodology.cadTrustMethodologyId,
       };
 
-      const projectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+      const projectMethodology = await ProjectMethodologyV2.create(projectMethodologyData);
 
       expect(projectMethodology).to.exist;
       expect(projectMethodology.cadTrustProjectId).to.equal(testProjectId);
@@ -348,7 +348,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         ...projectMethodologyData,
         cadTrustProjectMethodologyId: projectMethodologyId,
       };
-      const createdProjectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyDataWithId);
+      const createdProjectMethodology = await ProjectMethodologyV2.create(projectMethodologyDataWithId);
 
       const projectMethodologyWithAssociations = await ProjectMethodologyV2.findOne({
         where: {
@@ -399,11 +399,11 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
       };
 
       // Create first relationship
-      await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+      await ProjectMethodologyV2.create(projectMethodologyData);
 
       // Try to create duplicate with same UUID (should fail)
       try {
-        await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+        await ProjectMethodologyV2.create(projectMethodologyData);
         expect.fail('Should have thrown unique constraint error');
       } catch (error) {
         expect(error.name).to.equal('SequelizeUniqueConstraintError');
@@ -442,8 +442,8 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectMethodologyDescription: 'Second methodology',
       };
 
-      const projectMethodology1 = await ProjectMethodologyV2Mirror.create(projectMethodologyData1);
-      const projectMethodology2 = await ProjectMethodologyV2Mirror.create(projectMethodologyData2);
+      const projectMethodology1 = await ProjectMethodologyV2.create(projectMethodologyData1);
+      const projectMethodology2 = await ProjectMethodologyV2.create(projectMethodologyData2);
 
       expect(projectMethodology1.cadTrustProjectId).to.equal(projectMethodology2.cadTrustProjectId);
       expect(projectMethodology1.cadTrustMethodologyId).to.not.equal(projectMethodology2.cadTrustMethodologyId);
@@ -487,8 +487,8 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectMethodologyDescription: 'Second project',
       };
 
-      const projectMethodology1 = await ProjectMethodologyV2Mirror.create(projectMethodologyData1);
-      const projectMethodology2 = await ProjectMethodologyV2Mirror.create(projectMethodologyData2);
+      const projectMethodology1 = await ProjectMethodologyV2.create(projectMethodologyData1);
+      const projectMethodology2 = await ProjectMethodologyV2.create(projectMethodologyData2);
 
       expect(projectMethodology1.cadTrustProjectId).to.not.equal(projectMethodology2.cadTrustProjectId);
       expect(projectMethodology1.cadTrustMethodologyId).to.equal(projectMethodology2.cadTrustMethodologyId);
@@ -513,7 +513,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectMethodologyDescription: longDescription,
       };
 
-      const projectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+      const projectMethodology = await ProjectMethodologyV2.create(projectMethodologyData);
 
       expect(projectMethodology.projectMethodologyDescription).to.equal(longDescription);
       expect(projectMethodology.projectMethodologyDescription).to.have.length(10000);
@@ -535,7 +535,7 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
         projectMethodologyDate: '2024-12-31',
       };
 
-      const projectMethodology = await ProjectMethodologyV2Mirror.create(projectMethodologyData);
+      const projectMethodology = await ProjectMethodologyV2.create(projectMethodologyData);
 
       expect(projectMethodology.projectMethodologyDate).to.equal('2024-12-31');
     });

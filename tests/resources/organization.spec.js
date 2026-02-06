@@ -59,6 +59,84 @@ describe('Orgainzation Resource CRUD', function () {
     });
   });
 
+  describe('DELETE - Organization Parameter Validation', function () {
+    it('rejects orgUid that is too short', async function () {
+      const response = await supertest(app)
+        .delete('/v1/organizations/abc123')
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+      expect(response.body.errors[0]).to.include('valid 64-character hex string or UUID format');
+    });
+
+    it('rejects orgUid that is too long', async function () {
+      const tooLongOrgUid = 'a'.repeat(65);
+      const response = await supertest(app)
+        .delete(`/v1/organizations/${tooLongOrgUid}`)
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+      expect(response.body.errors[0]).to.include('valid 64-character hex string or UUID format');
+    });
+
+    it('rejects orgUid with non-hex characters', async function () {
+      // 64 characters but contains non-hex chars (g, h, z)
+      const invalidOrgUid = 'ghijklmnopqrstuvwxyz01234567890123456789012345678901234567890123';
+      const response = await supertest(app)
+        .delete(`/v1/organizations/${invalidOrgUid}`)
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+      expect(response.body.errors[0]).to.include('valid 64-character hex string or UUID format');
+    });
+
+    it('rejects orgUid with special characters', async function () {
+      // Use URL-encoded special characters that won't be interpreted as path segments
+      const invalidOrgUid = 'abc!@#$%^&*()_+=[]{}|;:,.<>?abc123abc123abc123abc123abc123abc1';
+      const response = await supertest(app)
+        .delete(`/v1/organizations/${encodeURIComponent(invalidOrgUid)}`)
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+    });
+
+    it('accepts valid 64-character hex orgUid format', async function () {
+      // Valid format but org doesn't exist - should pass validation but fail on lookup
+      const validOrgUid = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
+      const response = await supertest(app)
+        .delete(`/v1/organizations/${validOrgUid}`)
+        .send();
+
+      // Should NOT be a validation error - should pass validation and get "does not exist" error
+      expect(response.status).to.equal(400);
+      // Verify it's not a validation error about the format
+      const errorMsg = response.body.errors?.[0] || '';
+      expect(errorMsg).to.not.include('valid 64-character hex string or UUID format');
+      // Should be a "does not exist" error from the controller
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('accepts valid UUID format orgUid', async function () {
+      // Valid UUID format (used in simulator mode) but org doesn't exist
+      const validUuidOrgUid = 'a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4';
+      const response = await supertest(app)
+        .delete(`/v1/organizations/${validUuidOrgUid}`)
+        .send();
+
+      // Should NOT be a validation error - should pass validation and get "does not exist" error
+      expect(response.status).to.equal(400);
+      // Verify it's not a validation error about the format
+      const errorMsg = response.body.errors?.[0] || '';
+      expect(errorMsg).to.not.include('valid 64-character hex string or UUID format');
+      // Should be a "does not exist" error from the controller
+      expect(response.body.error).to.include('does not exist');
+    });
+  });
+
   describe('POST - Creates an organization', function () {
     it('Creates an organization', async function () {
       await Organization.destroy({

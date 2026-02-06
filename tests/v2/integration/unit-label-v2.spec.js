@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { UnitLabelV2, UnitLabelV2Mirror, LabelV2, UnitV2, IssuanceV2, VerificationV2, ProjectV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { UnitLabelV2, LabelV2, UnitV2, IssuanceV2, VerificationV2, ProjectV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 import TaskManager from '../../../src/tasks/index.js';
@@ -151,7 +151,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelUnitDescription: 'Test unit-label relationship',
       };
 
-      const unitLabel = await UnitLabelV2Mirror.create(unitLabelData);
+      const unitLabel = await UnitLabelV2.create(unitLabelData);
 
       expect(unitLabel).to.exist;
       expect(unitLabel.cadTrustUnitLabelId).to.equal(unitLabelId);
@@ -182,7 +182,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelUnitDescription: 'Test unit-label for read',
       };
 
-      const createdUnitLabel = await UnitLabelV2Mirror.create(unitLabelData);
+      const createdUnitLabel = await UnitLabelV2.create(unitLabelData);
       const foundUnitLabel = await UnitLabelV2.findOne({
         where: {
           cadTrustUnitLabelId: unitLabelId,
@@ -231,7 +231,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelUnitDescription: 'Test unit-label for update',
       };
 
-      const createdUnitLabel = await UnitLabelV2Mirror.create(unitLabelData);
+      const createdUnitLabel = await UnitLabelV2.create(unitLabelData);
 
       const updateData = {
         cadTrustLabelId: createdUnitLabel.cadTrustLabelId, // Keep the same label
@@ -242,7 +242,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
       await createdUnitLabel.update(updateData);
 
-      const updatedUnitLabel = await UnitLabelV2Mirror.findOne({
+      const updatedUnitLabel = await UnitLabelV2.findOne({
         where: {
           cadTrustUnitLabelId: unitLabelId,
         },
@@ -275,11 +275,11 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelUnitDescription: 'Test unit-label for delete',
       };
 
-      const createdUnitLabel = await UnitLabelV2Mirror.create(unitLabelData);
+      const createdUnitLabel = await UnitLabelV2.create(unitLabelData);
 
       await createdUnitLabel.destroy();
 
-      const deletedUnitLabel = await UnitLabelV2Mirror.findOne({
+      const deletedUnitLabel = await UnitLabelV2.findOne({
         where: {
           cadTrustUnitLabelId: unitLabelId,
         },
@@ -291,7 +291,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
   describe('Unit-Label Validation Tests', function () {
     it('should reject unit-label with missing required fields', async function () {
       try {
-        await UnitLabelV2Mirror.create({
+        await UnitLabelV2.create({
           // Missing cadTrustLabelId, cadTrustUnitId
           labelUnitDate: '2024-01-01',
         });
@@ -304,7 +304,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
     it('should reject unit-label with invalid label ID', async function () {
       try {
-        await UnitLabelV2Mirror.create({
+        await UnitLabelV2.create({
           cadTrustLabelId: 'invalid-uuid',
           cadTrustUnitId: testUnitId,
         });
@@ -318,7 +318,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
     it('should reject unit-label with invalid unit ID', async function () {
       try {
-        await UnitLabelV2Mirror.create({
+        await UnitLabelV2.create({
           cadTrustLabelId: testLabelId,
           cadTrustUnitId: 'invalid-uuid',
         });
@@ -332,7 +332,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
     it('should reject unit-label with invalid date format', async function () {
       try {
-        await UnitLabelV2Mirror.create({
+        await UnitLabelV2.create({
           cadTrustLabelId: testLabelId,
           cadTrustUnitId: testUnitId,
           labelUnitDate: 'invalid-date',
@@ -364,7 +364,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelUnitDescription: null,
       };
 
-      const unitLabel = await UnitLabelV2Mirror.create(unitLabelData);
+      const unitLabel = await UnitLabelV2.create(unitLabelData);
 
       expect(unitLabel).to.exist;
       expect(unitLabel.cadTrustUnitLabelId).to.equal(unitLabelId);
@@ -380,7 +380,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       const nonExistentLabelId = uuidv4();
 
       try {
-        await UnitLabelV2Mirror.create({
+        await UnitLabelV2.create({
           cadTrustLabelId: nonExistentLabelId,
           cadTrustUnitId: testUnitId,
         });
@@ -396,7 +396,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       const nonExistentUnitId = uuidv4();
 
       try {
-        await UnitLabelV2Mirror.create({
+        await UnitLabelV2.create({
           cadTrustLabelId: testLabelId,
           cadTrustUnitId: nonExistentUnitId,
         });
@@ -424,7 +424,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         cadTrustUnitId: testUnitId,
       };
 
-      const unitLabel = await UnitLabelV2Mirror.create(unitLabelData);
+      const unitLabel = await UnitLabelV2.create(unitLabelData);
 
       expect(unitLabel).to.exist;
       expect(unitLabel.cadTrustUnitLabelId).to.equal(unitLabelId);
@@ -450,7 +450,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         cadTrustUnitId: testUnitId,
       };
 
-      const createdUnitLabel = await UnitLabelV2Mirror.create(unitLabelData);
+      const createdUnitLabel = await UnitLabelV2.create(unitLabelData);
 
       const unitLabelWithAssociations = await UnitLabelV2.findOne({
         where: {
@@ -500,11 +500,11 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       };
 
       // Create first relationship
-      await UnitLabelV2Mirror.create(unitLabelData);
+      await UnitLabelV2.create(unitLabelData);
 
       // Try to create duplicate with same UUID (should fail)
       try {
-        await UnitLabelV2Mirror.create(unitLabelData);
+        await UnitLabelV2.create(unitLabelData);
         expect.fail('Should have thrown unique constraint error');
       } catch (error) {
         expect(error.name).to.equal('SequelizeUniqueConstraintError');
@@ -555,8 +555,8 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         cadTrustUnitId: anotherUnit.cadTrustUnitId,
       };
 
-      const unitLabel1 = await UnitLabelV2Mirror.create(unitLabelData1);
-      const unitLabel2 = await UnitLabelV2Mirror.create(unitLabelData2);
+      const unitLabel1 = await UnitLabelV2.create(unitLabelData1);
+      const unitLabel2 = await UnitLabelV2.create(unitLabelData2);
 
       expect(unitLabel1.cadTrustLabelId).to.equal(unitLabel2.cadTrustLabelId);
       expect(unitLabel1.cadTrustUnitId).to.not.equal(unitLabel2.cadTrustUnitId);
@@ -590,8 +590,8 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         cadTrustUnitId: testUnitId,
       };
 
-      const unitLabel1 = await UnitLabelV2Mirror.create(unitLabelData1);
-      const unitLabel2 = await UnitLabelV2Mirror.create(unitLabelData2);
+      const unitLabel1 = await UnitLabelV2.create(unitLabelData1);
+      const unitLabel2 = await UnitLabelV2.create(unitLabelData2);
 
       expect(unitLabel1.cadTrustLabelId).to.not.equal(unitLabel2.cadTrustLabelId);
       expect(unitLabel1.cadTrustUnitId).to.equal(unitLabel2.cadTrustUnitId);
@@ -616,7 +616,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelUnitDate: '2024-12-31',
       };
 
-      const unitLabel = await UnitLabelV2Mirror.create(unitLabelData);
+      const unitLabel = await UnitLabelV2.create(unitLabelData);
 
       expect(unitLabel.labelUnitDate).to.equal('2024-12-31');
     });
@@ -639,7 +639,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
         labelUnitDescription: longDescription,
       };
 
-      const unitLabel = await UnitLabelV2Mirror.create(unitLabelData);
+      const unitLabel = await UnitLabelV2.create(unitLabelData);
 
       expect(unitLabel.labelUnitDescription).to.equal(longDescription);
       expect(unitLabel.labelUnitDescription).to.have.length(1000);

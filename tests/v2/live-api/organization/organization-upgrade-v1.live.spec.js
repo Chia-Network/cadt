@@ -46,6 +46,9 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
       };
       v1OrgName = orgData.name;
 
+      // Track V1 org creation timing
+      const v1OrgCreateStartTime = Date.now();
+
       // Create V1 organization (uses /v1/organizations/create endpoint)
       // Retry on transient wallet sync issues
       const maxRetries = 10;
@@ -65,10 +68,15 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
            createResponse.body?.error?.includes('Wallet') ||
            createResponse.body?.message === 'Chia Exception');
 
+        // Check if server is still in startup phase (coin management)
+        const isStartupPhaseError = createResponse.status === 503 &&
+          createResponse.body?.startupPhase === 'coin_management';
+
         if (createResponse.status === 200) {
           break; // Success!
-        } else if (isWalletSyncError && attempt < maxRetries) {
-          console.log(`[Attempt ${attempt}/${maxRetries}] Wallet not ready, retrying in ${retryDelayMs/1000}s...`);
+        } else if ((isWalletSyncError || isStartupPhaseError) && attempt < maxRetries) {
+          const reason = isStartupPhaseError ? 'Server still starting (coin management)' : 'Wallet not ready';
+          console.log(`[Attempt ${attempt}/${maxRetries}] ${reason}, retrying in ${retryDelayMs/1000}s...`);
           console.log(`  Error: ${createResponse.body?.error || createResponse.body?.message}`);
           lastError = createResponse.body?.error || createResponse.body?.message;
           await new Promise(resolve => setTimeout(resolve, retryDelayMs));
@@ -143,6 +151,17 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
       console.log(`  fileStoreId: ${v1OrganizationDetails.fileStoreId}`);
       console.log(`  registryId: ${v1OrganizationDetails.registryId}`);
 
+      // V1 org creation timing report
+      const v1OrgCreateElapsedMs = Date.now() - v1OrgCreateStartTime;
+      const v1OrgCreateMinutes = Math.floor(v1OrgCreateElapsedMs / 60000);
+      const v1OrgCreateSeconds = ((v1OrgCreateElapsedMs % 60000) / 1000).toFixed(1);
+      console.log(`\n╔══════════════════════════════════════════════════════════╗`);
+      console.log(`║  V1 ORGANIZATION CREATION TIMING REPORT (for upgrade)    ║`);
+      console.log(`╠══════════════════════════════════════════════════════════╣`);
+      console.log(`║  Org UID:  ${v1OrgUid}`);
+      console.log(`║  Duration: ${v1OrgCreateMinutes}m ${v1OrgCreateSeconds}s (${v1OrgCreateElapsedMs}ms)`);
+      console.log(`╚══════════════════════════════════════════════════════════╝`);
+
       console.log(`✓ V1 Organization created with all hashes populated: ${v1OrgUid}`);
     });
   });
@@ -154,11 +173,39 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
         throw new Error('No V1 organization was created - cannot test upgrade');
       }
 
+      // Track V2 upgrade timing
+      const v2UpgradeStartTime = Date.now();
+
       console.log(`Upgrading V1 organization ${state.v1OrgUid} to V2...`);
 
       // Upgrade V1 to V2
-      const upgradeResponse = await request
-        .post('/v2/organizations/upgrade');
+      // Retry on transient errors (e.g., singleton not yet fully written to blockchain)
+      const maxUpgradeRetries = 6;
+      const upgradeRetryDelayMs = 30000; // 30 seconds between retries
+      let upgradeResponse;
+      let lastUpgradeError;
+
+      for (let attempt = 1; attempt <= maxUpgradeRetries; attempt++) {
+        upgradeResponse = await request.post('/v2/organizations/upgrade');
+
+        // Check if it's a transient singleton validation error (V1 org not fully ready)
+        const isSingletonNotReady = upgradeResponse.status === 400 &&
+          (upgradeResponse.body?.message?.includes('singleton') ||
+           upgradeResponse.body?.message?.includes('not completed') ||
+           upgradeResponse.body?.message?.includes('still be creating'));
+
+        if (upgradeResponse.status === 200) {
+          break; // Success!
+        } else if (isSingletonNotReady && attempt < maxUpgradeRetries) {
+          console.log(`[Upgrade Attempt ${attempt}/${maxUpgradeRetries}] V1 singleton not ready, retrying in ${upgradeRetryDelayMs/1000}s...`);
+          console.log(`  Message: ${upgradeResponse.body?.message}`);
+          lastUpgradeError = upgradeResponse.body?.message;
+          await new Promise(resolve => setTimeout(resolve, upgradeRetryDelayMs));
+        } else {
+          // Non-retryable error or max retries reached
+          break;
+        }
+      }
 
       if (upgradeResponse.status !== 200) {
         console.error(`POST /v2/organizations/upgrade failed with status ${upgradeResponse.status}:`);
@@ -168,6 +215,9 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
         }
         if (upgradeResponse.body?.message) {
           console.error(`Message: ${upgradeResponse.body.message}`);
+        }
+        if (lastUpgradeError) {
+          console.error(`Last retry error: ${lastUpgradeError}`);
         }
       }
 
@@ -206,6 +256,17 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
       if (!datalayerValidation.valid) {
         console.error('Datalayer validation errors:', datalayerValidation.errors);
       }
+
+      // V2 upgrade timing report
+      const v2UpgradeElapsedMs = Date.now() - v2UpgradeStartTime;
+      const v2UpgradeMinutes = Math.floor(v2UpgradeElapsedMs / 60000);
+      const v2UpgradeSeconds = ((v2UpgradeElapsedMs % 60000) / 1000).toFixed(1);
+      console.log(`\n╔══════════════════════════════════════════════════════════╗`);
+      console.log(`║  V1 TO V2 UPGRADE TIMING REPORT                         ║`);
+      console.log(`╠══════════════════════════════════════════════════════════╣`);
+      console.log(`║  Org UID:          ${upgradedV2OrgUid}`);
+      console.log(`║  Upgrade Duration: ${v2UpgradeMinutes}m ${v2UpgradeSeconds}s (${v2UpgradeElapsedMs}ms)`);
+      console.log(`╚══════════════════════════════════════════════════════════╝`);
 
       console.log(`✓ V1 Organization upgraded to V2 with all hashes populated: ${upgradedV2OrgUid}`);
     });

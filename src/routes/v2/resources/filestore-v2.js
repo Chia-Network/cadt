@@ -7,7 +7,10 @@ import multer from 'multer';
 const validator = joiExpress.createValidator({ passError: true });
 const FilestoreV2Router = express.Router();
 
-const upload = multer();
+// Configure multer with file size limit for file store uploads (100MB)
+const upload = multer({
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit for file store
+});
 
 import * as FilestoreV2Controller from '../../../controllers/v2/filestore-v2.controller.js';
 import {

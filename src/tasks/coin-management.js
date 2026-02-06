@@ -11,9 +11,12 @@ const CONFIG = getConfig();
 const APP_CONFIG = CONFIG.APP;
 
 // Coin management constants
-const TARGET_COIN_COUNT = 12;      // Number of coins to maintain
-const COIN_SIZE = 10000;           // Size of each coin in mojos (enough for DataLayer operations)
-const SPLIT_FEE = 3000;            // Fee for the split transaction
+const TARGET_COIN_COUNT = 15;      // Number of coins to maintain
+const COIN_SIZE = 1000000;         // Size of each coin in mojos (0.000001 XCH - matches xch_spam_amount)
+const MIN_COIN_SIZE = 1000000;     // Minimum acceptable coin size in mojos (matches default xch_spam_amount)
+const SPLIT_FEE = APP_CONFIG.DEFAULT_FEE || 3000; // Fee from config, fallback to 3000 mojos
+const DEFAULT_COIN_AMOUNT = APP_CONFIG.DEFAULT_COIN_AMOUNT || 300; // Coin amount for DataLayer operations from config
+const MIN_USABLE_COIN_SIZE = DEFAULT_COIN_AMOUNT + SPLIT_FEE; // A coin must cover both the operation amount and the fee to be usable
 
 // 6 hours in seconds
 const SIX_HOURS_IN_SECONDS = 6 * 60 * 60;
@@ -58,7 +61,7 @@ const formatMojos = (mojos, symbol) => {
 const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
   const startTime = Date.now();
 
-  logger.info(`[COIN_MANAGEMENT] Waiting for split transaction to confirm (expecting ${expectedNewCoins} new coins of ${COIN_SIZE}+ mojos)...`);
+  logger.info(`[COIN_MANAGEMENT] Waiting for split transaction to confirm (expecting ${expectedNewCoins} new coins of ${MIN_USABLE_COIN_SIZE}+ mojos)...`);
 
   while (Date.now() - startTime < SPLIT_CONFIRMATION_TIMEOUT_MS) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -74,7 +77,7 @@ const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
 
       const allCoins = coinsResult.coin_records || [];
       const unspentCoins = allCoins.filter((coin) => coin.spent_height === 0);
-      const usableCoins = unspentCoins.filter((coin) => coin.amount >= COIN_SIZE);
+      const usableCoins = unspentCoins.filter((coin) => coin.amount >= MIN_USABLE_COIN_SIZE);
 
       // Check if the original coin has been spent (no longer in unspent list)
       const originalCoinStillUnspent = unspentCoins.some((coin) => coin.id === originalCoinId);
@@ -104,7 +107,10 @@ const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
 
 /**
  * Check wallet coin count and split if necessary
- * Creates 12 coins of 10000 mojos each for DataLayer operations
+ * Creates up to 15 coins of 1000000 mojos each for DataLayer operations
+ * Uses DEFAULT_FEE from config for the split transaction fee
+ * A coin is considered "usable" if its amount >= DEFAULT_COIN_AMOUNT + DEFAULT_FEE (must cover both operation and fee)
+ * Will not split if resulting coins would be below MIN_COIN_SIZE (1000000 mojos)
  */
 const runCoinManagement = async () => {
   logger.info('[COIN_MANAGEMENT] Starting coin management check');
@@ -131,14 +137,14 @@ const runCoinManagement = async () => {
     // Filter to only unspent coins with sufficient size (spent_height === 0)
     const allCoins = coinsResult.coin_records || [];
     const unspentCoins = allCoins.filter((coin) => coin.spent_height === 0);
-    const usableCoins = unspentCoins.filter((coin) => coin.amount >= COIN_SIZE);
+    const usableCoins = unspentCoins.filter((coin) => coin.amount >= MIN_USABLE_COIN_SIZE);
     const coinCount = usableCoins.length;
 
     logger.info(`[COIN_MANAGEMENT] Current usable coin count: ${coinCount} (of ${unspentCoins.length} total unspent)`);
 
     // If we have enough usable coins, no action needed
     if (coinCount >= TARGET_COIN_COUNT) {
-      logger.info(`[COIN_MANAGEMENT] Wallet has ${coinCount} usable coins (${COIN_SIZE}+ mojos each), which meets the target of ${TARGET_COIN_COUNT}. No action needed.`);
+      logger.info(`[COIN_MANAGEMENT] Wallet has ${coinCount} usable coins (${MIN_USABLE_COIN_SIZE}+ mojos each), which meets the target of ${TARGET_COIN_COUNT}. No action needed.`);
       return;
     }
 
@@ -185,6 +191,16 @@ const runCoinManagement = async () => {
     const coinsNeeded = TARGET_COIN_COUNT - coinCount;
     const requiredAmount = (coinsNeeded * COIN_SIZE) + SPLIT_FEE;
 
+    // Check if resulting coins would be above the minimum acceptable size
+    // Coins must be larger than xch_spam_amount (default 1,000,000 mojos) to be usable
+    if (COIN_SIZE < MIN_COIN_SIZE) {
+      logger.error(
+        `[COIN_MANAGEMENT] COIN_SIZE (${COIN_SIZE} mojos) is below MIN_COIN_SIZE (${MIN_COIN_SIZE} mojos). ` +
+        `Coins must be larger than xch_spam_amount to be usable. Aborting split.`
+      );
+      return;
+    }
+
     // Check if we have enough mojos in the largest coin
     if (largestCoinAmount < requiredAmount) {
       const currencySymbol = await getCurrencySymbol();
@@ -195,6 +211,36 @@ const runCoinManagement = async () => {
           `[COIN_MANAGEMENT] WARNING: Largest coin (${formatMojos(largestCoinAmount, currencySymbol)}) is too small to split. ` +
           `Need at least ${formatMojos(COIN_SIZE + SPLIT_FEE, currencySymbol)} to create one ${COIN_SIZE} mojo coin.`
         );
+        return;
+      }
+
+      // Verify the remainder (change) coin won't be below MIN_COIN_SIZE
+      const totalSplitAmount = (maxPossibleCoins * COIN_SIZE) + SPLIT_FEE;
+      const remainderAmount = largestCoinAmount - totalSplitAmount;
+      if (remainderAmount > 0 && remainderAmount < MIN_COIN_SIZE) {
+        // Reduce coins by one so the remainder stays above MIN_COIN_SIZE
+        const adjustedCoins = maxPossibleCoins - 1;
+        if (adjustedCoins < 1) {
+          logger.warn(
+            `[COIN_MANAGEMENT] WARNING: Cannot split without creating a remainder coin below ${MIN_COIN_SIZE} mojos ` +
+            `(remainder would be ${remainderAmount} mojos). Aborting split.`
+          );
+          return;
+        }
+        logger.warn(
+          `[COIN_MANAGEMENT] Reducing split from ${maxPossibleCoins} to ${adjustedCoins} coins to avoid ` +
+          `creating a remainder below ${MIN_COIN_SIZE} mojos.`
+        );
+        const splitResult = await wallet.splitCoins(coinId, adjustedCoins, COIN_SIZE, SPLIT_FEE);
+        if (splitResult.success) {
+          logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. Waiting for ${adjustedCoins} new coins of ${COIN_SIZE} mojos to confirm...`);
+          const confirmed = await waitForSplitConfirmation(adjustedCoins, coinId);
+          if (!confirmed) {
+            logger.warn('[COIN_MANAGEMENT] Split transaction may still be pending. Coins will be available once confirmed.');
+          }
+        } else {
+          logger.error(`[COIN_MANAGEMENT] Failed to split coins: ${splitResult.error}`);
+        }
         return;
       }
 
@@ -219,15 +265,34 @@ const runCoinManagement = async () => {
       return;
     }
 
-    // We have enough - create the coins we need
-    logger.info(`[COIN_MANAGEMENT] Splitting coin ${coinId} into ${coinsNeeded} new coins of ${COIN_SIZE} mojos each (fee: ${SPLIT_FEE} mojos)`);
+    // We have enough - check that the remainder won't be below MIN_COIN_SIZE
+    const totalSplitAmount = (coinsNeeded * COIN_SIZE) + SPLIT_FEE;
+    const remainderAmount = largestCoinAmount - totalSplitAmount;
+    let actualCoinsToCreate = coinsNeeded;
 
-    const splitResult = await wallet.splitCoins(coinId, coinsNeeded, COIN_SIZE, SPLIT_FEE);
+    if (remainderAmount > 0 && remainderAmount < MIN_COIN_SIZE) {
+      // Reduce coins by one so the remainder stays above MIN_COIN_SIZE
+      actualCoinsToCreate = coinsNeeded - 1;
+      if (actualCoinsToCreate < 1) {
+        logger.warn(
+          `[COIN_MANAGEMENT] WARNING: Cannot split without creating a remainder coin below ${MIN_COIN_SIZE} mojos. Aborting split.`
+        );
+        return;
+      }
+      logger.warn(
+        `[COIN_MANAGEMENT] Reducing split from ${coinsNeeded} to ${actualCoinsToCreate} coins to avoid ` +
+        `creating a remainder below ${MIN_COIN_SIZE} mojos.`
+      );
+    }
+
+    logger.info(`[COIN_MANAGEMENT] Splitting coin ${coinId} into ${actualCoinsToCreate} new coins of ${COIN_SIZE} mojos each (fee: ${SPLIT_FEE} mojos)`);
+
+    const splitResult = await wallet.splitCoins(coinId, actualCoinsToCreate, COIN_SIZE, SPLIT_FEE);
 
     if (splitResult.success) {
-      logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. Waiting for ${coinsNeeded} new coins of ${COIN_SIZE} mojos to confirm...`);
+      logger.info(`[COIN_MANAGEMENT] Successfully initiated coin split. Waiting for ${actualCoinsToCreate} new coins of ${COIN_SIZE} mojos to confirm...`);
       // Wait for the split to confirm before returning
-      const confirmed = await waitForSplitConfirmation(coinsNeeded, coinId);
+      const confirmed = await waitForSplitConfirmation(actualCoinsToCreate, coinId);
       if (!confirmed) {
         logger.warn('[COIN_MANAGEMENT] Split transaction may still be pending. Coins will be available once confirmed.');
       }

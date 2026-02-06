@@ -1,4 +1,5 @@
 const Sequelize = require('sequelize');
+const { v4: uuidv4 } = require('uuid');
 
 module.exports = {
   cadTrustUnitLabelId: {
@@ -6,6 +7,7 @@ module.exports = {
     primaryKey: true,
     allowNull: false,
     field: 'cad_trust_unit_label_id',
+    defaultValue: () => uuidv4(),
   },
   cadTrustLabelId: {
     type: Sequelize.UUID,

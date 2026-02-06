@@ -5,7 +5,12 @@ import multer from 'multer';
 import * as OfferV2Controller from '../../../controllers/v2/offer-v2.controller.js';
 
 const OfferV2Router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+
+// Configure multer with file size limit for offer files (5MB)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for offer files
+});
 
 // Route ordering: More specific routes MUST come before less specific routes
 // This prevents Express from matching the wrong route

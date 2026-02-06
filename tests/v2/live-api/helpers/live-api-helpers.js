@@ -766,6 +766,36 @@ const isWalletSyncError = (response) => {
 };
 
 /**
+ * Check if response indicates server is in startup phase (coin management)
+ * @param {Object} response - HTTP response object
+ * @returns {boolean} - true if startup phase error detected
+ */
+const isStartupPhaseError = (response) => {
+  if (!response) return false;
+
+  const body = response.body || {};
+  const status = response.status || response.statusCode;
+
+  // 503 with startupPhase indicates coin management is in progress
+  return status === 503 && body.startupPhase === 'coin_management';
+};
+
+/**
+ * Check if response indicates a retryable transient error (wallet sync or startup phase)
+ * @param {Object} response - HTTP response object
+ * @returns {{retryable: boolean, reason: string}} - whether error is retryable and the reason
+ */
+const isRetryableError = (response) => {
+  if (isStartupPhaseError(response)) {
+    return { retryable: true, reason: 'Server still starting (coin management)' };
+  }
+  if (isWalletSyncError(response)) {
+    return { retryable: true, reason: 'Wallet syncing' };
+  }
+  return { retryable: false, reason: null };
+};
+
+/**
  * Create a retryable request wrapper that automatically retries on wallet sync errors
  * @param {Function} makeRequest - Function that creates the supertest request
  * @param {string} method - HTTP method name (POST, PUT, DELETE)
@@ -840,12 +870,13 @@ const createRetryableRequest = (makeRequest, method, path) => {
           try {
             const response = await pendingRequest;
 
-            // Check if response indicates wallet sync error
-            if (isWalletSyncError(response)) {
+            // Check if response indicates a retryable transient error
+            const { retryable, reason } = isRetryableError(response);
+            if (retryable) {
               const elapsed = Date.now() - startTime;
               if (elapsed < WALLET_SYNC_MAX_WAIT) {
                 const elapsedSec = Math.floor(elapsed / 1000);
-                console.log(`[${getTimestamp()}] ⏳ Wallet syncing detected, retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
+                console.log(`[${getTimestamp()}] ⏳ ${reason} detected, retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
                 await new Promise(resolve => setTimeout(resolve, WALLET_SYNC_RETRY_INTERVAL));
 
                 // Recreate and replay the request
@@ -855,7 +886,7 @@ const createRetryableRequest = (makeRequest, method, path) => {
                 }
                 continue;
               } else {
-                console.log(`[${getTimestamp()}] ❌ Wallet sync timeout after ${Math.floor(elapsed / 1000)}s`);
+                console.log(`[${getTimestamp()}] ❌ Retry timeout after ${Math.floor(elapsed / 1000)}s (last reason: ${reason})`);
               }
             }
 
@@ -865,11 +896,12 @@ const createRetryableRequest = (makeRequest, method, path) => {
             // The error object may have a .response property with the actual response
             const errorResponse = error.response || error;
 
-            if (isWalletSyncError(errorResponse)) {
+            const { retryable, reason } = isRetryableError(errorResponse);
+            if (retryable) {
               const elapsed = Date.now() - startTime;
               if (elapsed < WALLET_SYNC_MAX_WAIT) {
                 const elapsedSec = Math.floor(elapsed / 1000);
-                console.log(`[${getTimestamp()}] ⏳ Wallet syncing detected (error response), retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
+                console.log(`[${getTimestamp()}] ⏳ ${reason} detected (error response), retrying ${method} ${path} in 10 seconds... (${elapsedSec}s elapsed)`);
                 await new Promise(resolve => setTimeout(resolve, WALLET_SYNC_RETRY_INTERVAL));
 
                 // Recreate and replay the request
@@ -879,11 +911,11 @@ const createRetryableRequest = (makeRequest, method, path) => {
                 }
                 continue;
               } else {
-                console.log(`[${getTimestamp()}] ❌ Wallet sync timeout after ${Math.floor(elapsed / 1000)}s`);
+                console.log(`[${getTimestamp()}] ❌ Retry timeout after ${Math.floor(elapsed / 1000)}s (last reason: ${reason})`);
               }
             }
 
-            // Not a wallet sync error, re-throw
+            // Not a retryable error, re-throw
             throw error;
           }
         }
@@ -1007,7 +1039,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
         const statusResponse = await request.get('/v2/organizations/status');
         if (statusResponse.status === 200 && statusResponse.body) {
           const status = statusResponse.body;
-          
+
           // Check for FAILED state - fail fast
           if (status.state === 'FAILED') {
             console.log(`  [${elapsed}s] ❌ Organization creation FAILED!`);
@@ -1018,12 +1050,12 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
               `Error: ${status.error || 'Unknown error'}`
             );
           }
-          
+
           // Check if there's active creation
           if (status.inProgress || (status.state && status.state !== 'COMPLETE' && status.state !== 'FAILED')) {
             creationInProgress = true;
             noProgressCount = 0; // Reset counter - we have progress
-            
+
             // Track state changes to detect stuck creation
             const currentState = status.state;
             const storesInfo = status.stores ? JSON.stringify(
@@ -1032,7 +1064,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
               )
             ) : null;
             const stateKey = `${currentState}|${storesInfo}`;
-            
+
             if (stateKey !== lastState) {
               lastState = stateKey;
               lastStateChangeTime = Date.now();
@@ -1050,7 +1082,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
               }
             }
           }
-          
+
           // Only log if there's active creation or interesting state
           if (status.state || status.name || status.stores) {
             console.log(`  [${elapsed}s] Creation status: state=${status.state || 'unknown'}, name="${status.name || 'unnamed'}"`);
@@ -1154,7 +1186,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           } else if (sawPendingOrg && orgs.length === 0) {
             // We had a PENDING org but now it's gone with no replacement - creation failed
             console.log(`  [${elapsed}s] ❌ PENDING organization disappeared - creation failed!`);
-            
+
             // Try to get more details about what went wrong
             try {
               const statusResponse = await request.get('/v2/organizations/status');
@@ -1164,20 +1196,20 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
             } catch (e) {
               console.log(`  Could not get final status: ${e.message}`);
             }
-            
+
             throw new Error(
               `Organization creation failed. PENDING organization was cleaned up after ${elapsed}s. ` +
               `Check server logs for details about why creation failed.`
             );
           } else {
             console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
-            
+
             // Track no progress - if no PENDING org and no creation in progress for too long, fail fast
             if (!creationInProgress && orgs.length === 0) {
               noProgressCount++;
               if (noProgressCount >= noProgressThreshold) {
                 console.log(`  [${elapsed}s] ❌ No organization creation progress detected after ${noProgressCount * 10}s`);
-                
+
                 // Try to get status
                 try {
                   const statusResponse = await request.get('/v2/organizations/status');
@@ -1187,7 +1219,7 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
                 } catch (e) {
                   console.log(`  Could not get final status: ${e.message}`);
                 }
-                
+
                 throw new Error(
                   `Organization creation appears to have failed. No PENDING organization or creation progress detected after ${elapsed}s. ` +
                   `Check server logs for details about why creation failed.`
@@ -1291,7 +1323,7 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
         const statusResponse = await request.get('/v1/organizations/creation-status');
         if (statusResponse.status === 200 && statusResponse.body) {
           const status = statusResponse.body;
-          
+
           // Check for FAILED state - fail fast
           if (status.state === 'FAILED') {
             console.log(`  [${elapsed}s] ❌ Organization creation FAILED!`);
@@ -1302,12 +1334,12 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
               `Error: ${status.error || 'Unknown error'}`
             );
           }
-          
+
           // Check if there's active creation
           if (status.inProgress || (status.state && status.state !== 'COMPLETE' && status.state !== 'FAILED')) {
             creationInProgress = true;
             noProgressCount = 0; // Reset counter - we have progress
-            
+
             // Track state changes to detect stuck creation
             const currentState = status.state;
             const storesInfo = status.stores ? JSON.stringify(
@@ -1316,7 +1348,7 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
               )
             ) : null;
             const stateKey = `${currentState}|${storesInfo}`;
-            
+
             if (stateKey !== lastState) {
               lastState = stateKey;
               lastStateChangeTime = Date.now();
@@ -1334,7 +1366,7 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
               }
             }
           }
-          
+
           // Only log if there's active creation or interesting state
           if (status.state || status.name || status.stores) {
             console.log(`  [${elapsed}s] Creation status: state=${status.state || 'unknown'}, name="${status.name || 'unnamed'}"`);
@@ -1424,19 +1456,46 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
         if (org) {
           const orgUid = org.orgUid || org.org_uid;
           const isSynced = org.synced === true;
-          
-          if (isSynced && orgUid && orgUid !== 'PENDING') {
+          const orgHash = org.orgHash || org.org_hash;
+          const dataModelVersionStoreHash = org.dataModelVersionStoreHash || org.data_model_version_store_hash;
+
+          // Check if hashes are populated (not null and not all zeros)
+          // - orgHash being populated indicates the org store has data (name, icon, registryId, fileStoreId)
+          // - dataModelVersionStoreHash being populated indicates the v1 key was written to the singleton
+          const nullHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+          const hasValidOrgHash = orgHash && orgHash !== nullHash && orgHash !== '0';
+          const hasValidDataModelHash = dataModelVersionStoreHash && dataModelVersionStoreHash !== nullHash && dataModelVersionStoreHash !== '0';
+
+          // Organization is ready when:
+          // 1. synced is true
+          // 2. orgUid exists and is not PENDING
+          // 3. orgHash is populated (indicates org store data was written)
+          // 4. CRITICAL: dataModelVersionStoreHash is populated (indicates v1 key was written to singleton)
+          const isFullyReady = isSynced && orgUid && orgUid !== 'PENDING' && hasValidOrgHash && hasValidDataModelHash;
+
+          if (isFullyReady) {
             console.log(`✓ V1 Organization ready: ${orgUid}`);
             console.log(`  Name: ${org.name || org.orgName}`);
             console.log(`  isHome: ${org.isHome || org.is_home}`);
             console.log(`  synced: ${org.synced}`);
+            console.log(`  orgHash: ${orgHash}`);
+            console.log(`  dataModelVersionStoreHash: ${dataModelVersionStoreHash}`);
+            console.log(`  registryHash: ${org.registryHash || org.registry_hash}`);
             return {
               orgUid,
               organization: org,
             };
           } else if (orgUid && orgUid !== 'PENDING') {
-            // Org exists but not synced yet - keep waiting
-            console.log(`  [${elapsed}s] Organization found but not synced yet (uid=${orgUid.substring(0, 8)}..., synced=${org.synced})`);
+            // Org exists but not fully ready yet - keep waiting
+            if (!hasValidOrgHash) {
+              console.log(`  [${elapsed}s] Organization found but org store data not yet written (orgHash=${orgHash || 'null'})`);
+            } else if (!hasValidDataModelHash) {
+              console.log(`  [${elapsed}s] Organization found but singleton data not yet written (dataModelVersionStoreHash=${dataModelVersionStoreHash || 'null'})`);
+            } else if (!isSynced) {
+              console.log(`  [${elapsed}s] Organization found but not synced yet (uid=${orgUid.substring(0, 8)}..., synced=${org.synced})`);
+            } else {
+              console.log(`  [${elapsed}s] Organization found but not ready yet (uid=${orgUid}, synced=${isSynced}, hasOrgHash=${hasValidOrgHash}, hasDataModelHash=${hasValidDataModelHash})`);
+            }
           } else {
             console.log(`  [${elapsed}s] Organization found but not ready yet (uid=${orgUid})`);
           }
@@ -1451,7 +1510,7 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
           } else if (sawPendingOrg && orgs.length === 0) {
             // We had a PENDING org but now it's gone with no replacement - creation failed
             console.log(`  [${elapsed}s] ❌ PENDING organization disappeared - creation failed!`);
-            
+
             // Try to get more details about what went wrong
             try {
               const statusResponse = await request.get('/v1/organizations/creation-status');
@@ -1461,20 +1520,20 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
             } catch (e) {
               console.log(`  Could not get final status: ${e.message}`);
             }
-            
+
             throw new Error(
               `Organization creation failed. PENDING organization was cleaned up after ${elapsed}s. ` +
               `Check server logs for details about why creation failed.`
             );
           } else {
             console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
-            
+
             // Track no progress - if no PENDING org and no creation in progress for too long, fail fast
             if (!creationInProgress && orgs.length === 0) {
               noProgressCount++;
               if (noProgressCount >= noProgressThreshold) {
                 console.log(`  [${elapsed}s] ❌ No organization creation progress detected after ${noProgressCount * 10}s`);
-                
+
                 // Try to get status
                 try {
                   const statusResponse = await request.get('/v1/organizations/creation-status');
@@ -1484,7 +1543,7 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
                 } catch (e) {
                   console.log(`  Could not get final status: ${e.message}`);
                 }
-                
+
                 throw new Error(
                   `Organization creation appears to have failed. No PENDING organization or creation progress detected after ${elapsed}s. ` +
                   `Check server logs for details about why creation failed.`

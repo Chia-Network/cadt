@@ -78,7 +78,7 @@ export default {
         allowNull: true,
       },
       aef_t3_actions_quantity_t_co2: {
-        type: Sequelize.DECIMAL,
+        type: Sequelize.DECIMAL(20, 6),
         allowNull: false,
         comment: 'inferred'
       },

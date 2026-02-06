@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { AefT2AuthorizationsV2, AefT2AuthorizationsV2Mirror, AefT1SubmissionV2, UnitV2, ProjectV2, AefT5AuthorizedEntitiesV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { AefT2AuthorizationsV2, AefT1SubmissionV2, UnitV2, ProjectV2, AefT5AuthorizedEntitiesV2, IssuanceV2, VerificationV2, ProgramV2, MethodologyV2, ProjectMethodologyV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -170,7 +170,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         cadTrustAefT5AuthorizedEntitiesId: testAefT5AuthorizedEntitiesId,
       };
 
-      const aefT2Authorizations = await AefT2AuthorizationsV2Mirror.create(aefT2AuthorizationsData);
+      const aefT2Authorizations = await AefT2AuthorizationsV2.create(aefT2AuthorizationsData);
 
       expect(aefT2Authorizations).to.exist;
       expect(aefT2Authorizations.cadTrustAefT2AuthorizationsId).to.exist;
@@ -209,7 +209,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         aefT2AuthorizationsAuthorizedPartyId: 'TEST-PARTY-002',
       };
 
-      const createdAefT2Authorizations = await AefT2AuthorizationsV2Mirror.create(aefT2AuthorizationsData);
+      const createdAefT2Authorizations = await AefT2AuthorizationsV2.create(aefT2AuthorizationsData);
       const foundAefT2Authorizations = await AefT2AuthorizationsV2.findByPk(createdAefT2Authorizations.cadTrustAefT2AuthorizationsId);
 
       expect(foundAefT2Authorizations).to.exist;
@@ -246,7 +246,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         aefT2AuthorizationsAuthorizedPartyId: 'TEST-PARTY-003',
       };
 
-      const createdAefT2Authorizations = await AefT2AuthorizationsV2Mirror.create(aefT2AuthorizationsData);
+      const createdAefT2Authorizations = await AefT2AuthorizationsV2.create(aefT2AuthorizationsData);
 
       const updateData = {
         aefT2AuthorizationsId: 'TEST-AUTH-003',
@@ -270,7 +270,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
 
       await createdAefT2Authorizations.update(updateData);
 
-      const updatedAefT2Authorizations = await AefT2AuthorizationsV2Mirror.findByPk(createdAefT2Authorizations.cadTrustAefT2AuthorizationsId);
+      const updatedAefT2Authorizations = await AefT2AuthorizationsV2.findByPk(createdAefT2Authorizations.cadTrustAefT2AuthorizationsId);
 
       expect(updatedAefT2Authorizations.aefT2AuthorizationsVersion).to.equal('2.0');
       expect(updatedAefT2Authorizations.aefT2AuthorizationsQuantity).to.equal(2000.0);
@@ -295,11 +295,11 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         aefT2AuthorizationsAuthorizedPartyId: 'TEST-PARTY-004',
       };
 
-      const createdAefT2Authorizations = await AefT2AuthorizationsV2Mirror.create(aefT2AuthorizationsData);
+      const createdAefT2Authorizations = await AefT2AuthorizationsV2.create(aefT2AuthorizationsData);
 
       await createdAefT2Authorizations.destroy();
 
-      const deletedAefT2Authorizations = await AefT2AuthorizationsV2Mirror.findByPk(createdAefT2Authorizations.cadTrustAefT2AuthorizationsId);
+      const deletedAefT2Authorizations = await AefT2AuthorizationsV2.findByPk(createdAefT2Authorizations.cadTrustAefT2AuthorizationsId);
       expect(deletedAefT2Authorizations).to.be.null;
     });
   });
@@ -307,7 +307,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
   describe('AEF-T2-Authorizations Validation Tests', function () {
     it('should reject AEF-T2-Authorizations with missing required fields', async function () {
       try {
-        await AefT2AuthorizationsV2Mirror.create({
+        await AefT2AuthorizationsV2.create({
           // Missing required fields
           aefT2AuthorizationsId: 'TEST-AUTH',
         });
@@ -320,7 +320,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
 
     it('should reject AEF-T2-Authorizations with invalid date format', async function () {
       try {
-        await AefT2AuthorizationsV2Mirror.create({
+        await AefT2AuthorizationsV2.create({
           aefT2AuthorizationsId: 'TEST-AUTH-005',
           aefT2AuthorizationsDate: 'invalid-date',
           aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-005',
@@ -361,7 +361,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         cadTrustAefT5AuthorizedEntitiesId: null,
       };
 
-      const aefT2Authorizations = await AefT2AuthorizationsV2Mirror.create(aefT2AuthorizationsData);
+      const aefT2Authorizations = await AefT2AuthorizationsV2.create(aefT2AuthorizationsData);
 
       expect(aefT2Authorizations).to.exist;
       expect(aefT2Authorizations.aefT2AuthorizationsId).to.equal('TEST-AUTH-006');
@@ -395,7 +395,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
       const nonExistentAefT1SubmissionId = uuidv4();
 
       try {
-        await AefT2AuthorizationsV2Mirror.create({
+        await AefT2AuthorizationsV2.create({
           aefT2AuthorizationsId: 'TEST-AUTH-007',
           aefT2AuthorizationsDate: '2024-08-01',
           aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-007',
@@ -414,7 +414,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
       const nonExistentUnitId = uuidv4();
 
       try {
-        await AefT2AuthorizationsV2Mirror.create({
+        await AefT2AuthorizationsV2.create({
           aefT2AuthorizationsId: 'TEST-AUTH-008',
           aefT2AuthorizationsDate: '2024-09-01',
           aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-008',
@@ -433,7 +433,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
       const nonExistentProjectId = uuidv4();
 
       try {
-        await AefT2AuthorizationsV2Mirror.create({
+        await AefT2AuthorizationsV2.create({
           aefT2AuthorizationsId: 'TEST-AUTH-009',
           aefT2AuthorizationsDate: '2024-10-01',
           aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-009',
@@ -452,7 +452,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
       const nonExistentAefT5AuthorizedEntitiesId = uuidv4();
 
       try {
-        await AefT2AuthorizationsV2Mirror.create({
+        await AefT2AuthorizationsV2.create({
           aefT2AuthorizationsId: 'TEST-AUTH-010',
           aefT2AuthorizationsDate: '2024-11-01',
           aefT2AuthorizationsCooperativeApproachId: 'TEST-CA-010',
@@ -479,7 +479,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         cadTrustAefT5AuthorizedEntitiesId: testAefT5AuthorizedEntitiesId,
       };
 
-      const aefT2Authorizations = await AefT2AuthorizationsV2Mirror.create(aefT2AuthorizationsData);
+      const aefT2Authorizations = await AefT2AuthorizationsV2.create(aefT2AuthorizationsData);
 
       expect(aefT2Authorizations).to.exist;
       expect(aefT2Authorizations.cadTrustAefT1SubmissionId).to.equal(testAefT1SubmissionId);
@@ -502,7 +502,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         cadTrustAefT5AuthorizedEntitiesId: testAefT5AuthorizedEntitiesId,
       };
 
-      const createdAefT2Authorizations = await AefT2AuthorizationsV2Mirror.create(aefT2AuthorizationsData);
+      const createdAefT2Authorizations = await AefT2AuthorizationsV2.create(aefT2AuthorizationsData);
 
       const aefT2AuthorizationsWithAssociations = await AefT2AuthorizationsV2.findByPk(createdAefT2Authorizations.cadTrustAefT2AuthorizationsId, {
         include: [
@@ -561,7 +561,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
           aefT2AuthorizationsAuthorizedPartyId: `TEST-PARTY-${dateString.replace(/-/g, '')}`,
         };
 
-        const aefT2Authorizations = await AefT2AuthorizationsV2Mirror.create(aefT2AuthorizationsData);
+        const aefT2Authorizations = await AefT2AuthorizationsV2.create(aefT2AuthorizationsData);
         expect(aefT2Authorizations.aefT2AuthorizationsDate).to.equal(dateString);
       }
     });
@@ -578,7 +578,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
         aefT2AuthorizationsAdditionalInformation: longText,
       };
 
-      const aefT2Authorizations = await AefT2AuthorizationsV2Mirror.create(aefT2AuthorizationsData);
+      const aefT2Authorizations = await AefT2AuthorizationsV2.create(aefT2AuthorizationsData);
 
       expect(aefT2Authorizations.aefT2AuthorizationsAuthorizationDocumentation).to.equal(longText);
       expect(aefT2Authorizations.aefT2AuthorizationsFirstTransferDefinitionOimp).to.equal(longText);
@@ -606,7 +606,7 @@ describe('AEF-T2-Authorizations V2 Integration Tests', function () {
           aefT2AuthorizationsPurposesForAuthorization: purposes[i],
         };
 
-        const aefT2Authorizations = await AefT2AuthorizationsV2Mirror.create(aefT2AuthorizationsData);
+        const aefT2Authorizations = await AefT2AuthorizationsV2.create(aefT2AuthorizationsData);
         expect(aefT2Authorizations.aefT2AuthorizationsMetric).to.equal(metrics[i]);
         expect(aefT2Authorizations.aefT2AuthorizationsSector).to.equal(sectors[i]);
         expect(aefT2Authorizations.aefT2AuthorizationsActivityType).to.equal(types[i]);

@@ -13,6 +13,9 @@ import { waitForV2DataLayerSync } from '../utils/v2-test-helpers.js';
 const { USE_SIMULATOR } = getConfig().APP;
 const TEST_WAIT_TIME = USE_SIMULATOR ? 5000 : datalayer.POLLING_INTERVAL * 10;
 
+// Valid orgHash for tests - controller checks that orgHash is populated and not null/zero
+const TEST_ORG_HASH = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+
 // Helper to get store data - uses simulator in simulator mode
 const getStoreDataForTest = async (storeId) => {
   if (USE_SIMULATOR) {
@@ -332,6 +335,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with v1 key
@@ -471,6 +475,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: 'test-registry',
         dataModelVersionStoreId: 'test-singleton',
         fileStoreId: 'test-filestore',
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with both v1 and v2 keys (simulating completed upgrade)
@@ -527,6 +532,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with ONLY v1 key (simulating partial upgrade failure)
@@ -669,6 +675,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with v1 key
@@ -741,6 +748,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with v1 key
@@ -794,6 +802,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with v1 key
@@ -863,6 +872,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with BOTH v1 and v2 keys (simulating previous upgrade)
@@ -901,182 +911,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
     }).timeout(TEST_WAIT_TIME * 15);
   });
 
-  describe('Phase 16.8: OrganizationsV2 Model - Read Operations', function () {
-    let testOrgUid;
-
-    beforeEach(async function () {
-      // Create a test V2 organization for testing read operations
-      const orgName = 'Test Org for Read Operations';
-      const orgIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
-      testOrgUid = await OrganizationsV2.createHomeOrganization(orgName, orgIcon, 'v2');
-      await waitForOrgCreation();
-    });
-
-    describe('getHomeOrg', function () {
-      it('should return home organization with address when includeAddress is true', async function () {
-        const homeOrg = await OrganizationsV2.getHomeOrg(true);
-
-        expect(homeOrg).to.exist;
-        expect(homeOrg.org_uid).to.equal(testOrgUid);
-        // SQLite stores booleans as integers (0/1), so check for truthy value
-        expect(homeOrg.is_home).to.be.ok;
-        expect(homeOrg.name).to.equal('Test Org for Read Operations');
-        expect(homeOrg.xchAddress).to.exist;
-        expect(homeOrg.fileStoreSubscribed).to.exist;
-      });
-
-      it('should return home organization without address when includeAddress is false', async function () {
-        const homeOrg = await OrganizationsV2.getHomeOrg(false);
-
-        expect(homeOrg).to.exist;
-        expect(homeOrg.org_uid).to.equal(testOrgUid);
-        // SQLite stores booleans as integers (0/1), so check for truthy value
-        expect(homeOrg.is_home).to.be.ok;
-        expect(homeOrg.name).to.equal('Test Org for Read Operations');
-        expect(homeOrg.xchAddress).to.be.undefined;
-        expect(homeOrg.synced).to.exist; // Should check sync status
-      });
-
-      it('should return null when no home organization exists', async function () {
-        // Delete the home org
-        await OrganizationsV2.destroy({ where: { is_home: true } });
-
-        const homeOrg = await OrganizationsV2.getHomeOrg();
-        expect(homeOrg).to.be.null;
-      });
-
-      it('should parse and merge metadata JSON if exists', async function () {
-        // Update org with metadata
-        const metadata = { key1: 'value1', key2: 'value2' };
-        await OrganizationsV2.update(
-          { metadata: JSON.stringify(metadata) },
-          { where: { org_uid: testOrgUid } }
-        );
-
-        const homeOrg = await OrganizationsV2.getHomeOrg(false);
-
-        expect(homeOrg).to.exist;
-        expect(homeOrg.key1).to.equal('value1');
-        expect(homeOrg.key2).to.equal('value2');
-        expect(homeOrg.metadata).to.be.undefined; // Should be deleted after parsing
-      });
-
-      it('should handle invalid metadata JSON gracefully', async function () {
-        // Update org with invalid JSON metadata
-        await OrganizationsV2.update(
-          { metadata: 'invalid json' },
-          { where: { org_uid: testOrgUid } }
-        );
-
-        const homeOrg = await OrganizationsV2.getHomeOrg(false);
-
-        expect(homeOrg).to.exist;
-        expect(homeOrg.org_uid).to.equal(testOrgUid);
-        // Should not throw error, just log warning
-      });
-
-      it('should check sync status based on pending commits when includeAddress is false', async function () {
-        // Import StagingV2 to create test pending commits
-        const { StagingV2 } = await import('../../../src/models/v2/index.js');
-        const { v4: uuidv4 } = await import('uuid');
-
-        // Create a committed staging record (pending commit)
-        await StagingV2.create({
-          uuid: uuidv4(),
-          table: 'program',
-          action: 'INSERT',
-          data: JSON.stringify([{ test: 'data' }]),
-          committed: true,
-        });
-
-        const homeOrg = await OrganizationsV2.getHomeOrg(false);
-
-        expect(homeOrg).to.exist;
-        expect(homeOrg.synced).to.be.false; // Should be false because pending commits exist
-
-        // Clean up
-        await StagingV2.destroy({ where: {} });
-      });
-    });
-
-    describe('getOrgsMap', function () {
-      it('should return map of all organizations', async function () {
-        // Create additional non-home organization
-        const org2 = await OrganizationsV2.create({
-          org_uid: 'test-org-2',
-          name: 'Test Org 2',
-          icon: 'icon2',
-          is_home: false,
-          subscribed: false,
-          synced: false,
-        });
-
-        const orgsMap = await OrganizationsV2.getOrgsMap();
-
-        expect(orgsMap).to.be.an('object');
-        expect(Object.keys(orgsMap).length).to.equal(2);
-        expect(orgsMap[testOrgUid]).to.exist;
-        // SQLite stores booleans as integers (0/1), so check for truthy value
-        expect(orgsMap[testOrgUid].is_home).to.be.ok;
-        expect(orgsMap['test-org-2']).to.exist;
-        // SQLite stores booleans as integers (0/1), so check for falsy value
-        expect(orgsMap['test-org-2'].is_home).to.not.be.ok;
-      });
-
-      it('should include XCH address and balance for home org', async function () {
-        const orgsMap = await OrganizationsV2.getOrgsMap();
-
-        expect(orgsMap[testOrgUid]).to.exist;
-        expect(orgsMap[testOrgUid].xchAddress).to.exist;
-        expect(orgsMap[testOrgUid].balance).to.exist;
-      });
-
-      it('should check sync status for home org based on pending commits', async function () {
-        // Import StagingV2 to create test pending commits
-        const { StagingV2 } = await import('../../../src/models/v2/index.js');
-        const { v4: uuidv4 } = await import('uuid');
-
-        // Create a committed staging record (pending commit)
-        await StagingV2.create({
-          uuid: uuidv4(),
-          table: 'program',
-          action: 'INSERT',
-          data: JSON.stringify([{ test: 'data' }]),
-          committed: true,
-        });
-
-        const orgsMap = await OrganizationsV2.getOrgsMap();
-
-        expect(orgsMap[testOrgUid]).to.exist;
-        expect(orgsMap[testOrgUid].synced).to.be.false; // Should be false because pending commits exist
-
-        // Clean up
-        await StagingV2.destroy({ where: {} });
-      });
-
-      it('should return empty map when no organizations exist', async function () {
-        // Delete all organizations
-        await OrganizationsV2.destroy({ where: {} });
-
-        const orgsMap = await OrganizationsV2.getOrgsMap();
-
-        expect(orgsMap).to.be.an('object');
-        expect(Object.keys(orgsMap).length).to.equal(0);
-      });
-
-      it('should use snake_case field names', async function () {
-        const orgsMap = await OrganizationsV2.getOrgsMap();
-
-        expect(orgsMap[testOrgUid]).to.exist;
-        expect(orgsMap[testOrgUid].org_uid).to.exist;
-        expect(orgsMap[testOrgUid].is_home).to.exist;
-        expect(orgsMap[testOrgUid].file_store_subscribed).to.exist;
-        expect(orgsMap[testOrgUid].registry_id).to.exist;
-        expect(orgsMap[testOrgUid].data_model_version_store_id).to.exist;
-      });
-    });
-  });
+  // Phase 16.8 (Model Read Operations) tests removed - covered by Controller tests below
 
   describe('Phase 16.9: OrganizationsV2 Controller - Read Endpoints', function () {
     let testOrgUid;
@@ -1168,41 +1003,56 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       });
 
       it('should return ready: false when pending commits exist', async function () {
-        // Import StagingV2 to create test pending commits
+        // Import StagingV2 and TaskManager to manage background tasks
         const { StagingV2 } = await import('../../../src/models/v2/index.js');
         const { v4: uuidv4 } = await import('uuid');
+        const TaskManager = (await import('../../../src/tasks/index.js')).default;
 
-        // Clean up any existing records first to ensure clean state
-        await StagingV2.destroy({ where: {} });
+        // Stop background tasks to prevent race condition where truncateStagingV2
+        // deletes committed records before we can test them
+        TaskManager.stopAll();
 
-        // Create a committed staging record (pending commit)
-        const testUuid = uuidv4();
-        await StagingV2.create({
-          uuid: testUuid,
-          table: 'program',
-          action: 'INSERT',
-          data: JSON.stringify([{ test: 'data' }]),
-          committed: true,
-        });
+        try {
+          // Clean up any existing records first to ensure clean state
+          await StagingV2.destroy({ where: {} });
 
-        // Verify the record was created with correct committed status
-        const createdRecord = await StagingV2.findOne({ where: { uuid: testUuid } });
-        expect(createdRecord).to.exist;
-        expect(createdRecord.committed).to.be.true;
+          // Create a committed staging record (pending commit)
+          // Note: "committed: true" means committed to datalayer but awaiting cleanup
+          // The status endpoint counts these as pending_commits
+          const testUuid = uuidv4();
+          await StagingV2.create({
+            uuid: testUuid,
+            table: 'program',
+            action: 'INSERT',
+            data: JSON.stringify([{ test: 'data' }]),
+            committed: true,
+          });
 
-        // Count committed records directly to verify
-        const committedCount = await StagingV2.count({ where: { committed: true } });
-        expect(committedCount).to.be.greaterThan(0);
+          // Verify the record was created with correct committed status
+          const createdRecord = await StagingV2.findOne({ where: { uuid: testUuid } });
+          expect(createdRecord).to.exist;
+          expect(createdRecord.committed).to.be.true;
 
-        const response = await supertest(app)
-          .get('/v2/organizations/status')
-          .expect(200);
+          // Count committed records directly to verify
+          const committedCount = await StagingV2.count({ where: { committed: true } });
+          expect(committedCount).to.be.greaterThan(0);
 
-        expect(response.body.ready).to.be.false;
-        expect(response.body.status.pending_commits).to.be.greaterThan(0);
+          const response = await supertest(app)
+            .get('/v2/organizations/status')
+            .expect(200);
 
-        // Clean up
-        await StagingV2.destroy({ where: {} });
+          expect(response.body.ready).to.be.false;
+          expect(response.body.status.pending_commits).to.be.greaterThan(0);
+
+          // Clean up
+          await StagingV2.destroy({ where: {} });
+        } finally {
+          // Restart background tasks
+          const { getConfig, getConfigV2 } = await import('../../../src/utils/config-loader.js');
+          const configV1 = getConfig();
+          const configV2 = getConfigV2();
+          TaskManager.start(configV1?.ENABLE !== false, configV2?.ENABLE !== false);
+        }
       });
 
       it('should return error when no home organization exists', async function () {
@@ -1230,207 +1080,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
     });
   });
 
-  describe('Phase 16.10: OrganizationsV2 Model - Edit and Metadata Operations', function () {
-    let testOrgUid;
-
-    beforeEach(async function () {
-      // Create a test V2 organization for testing edit and metadata operations
-      const orgName = 'Test Org for Edit Operations';
-      const orgIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
-      testOrgUid = await OrganizationsV2.createHomeOrganization(orgName, orgIcon, 'v2');
-      await waitForOrgCreation();
-    });
-
-    describe('editOrgMeta', function () {
-      it('should update organization name in datalayer and database', async function () {
-        const newName = 'Updated Org Name';
-
-        await OrganizationsV2.editOrgMeta({ name: newName });
-
-        // Verify database was updated
-        const updatedOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        expect(updatedOrg.name).to.equal(newName);
-        // Icon should remain unchanged
-        expect(updatedOrg.icon).to.exist;
-      });
-
-      it('should update organization icon in datalayer and database', async function () {
-        const newIcon = 'data:image/png;base64,updatedIconData==';
-
-        await OrganizationsV2.editOrgMeta({ icon: newIcon });
-
-        // Verify database was updated
-        const updatedOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        expect(updatedOrg.icon).to.equal(newIcon);
-        // Name should remain unchanged
-        expect(updatedOrg.name).to.equal('Test Org for Edit Operations');
-      });
-
-      it('should update both name and icon when both provided', async function () {
-        const newName = 'Updated Name and Icon';
-        const newIcon = 'data:image/png;base64,newIconData==';
-
-        await OrganizationsV2.editOrgMeta({ name: newName, icon: newIcon });
-
-        // Verify database was updated
-        const updatedOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        expect(updatedOrg.name).to.equal(newName);
-        expect(updatedOrg.icon).to.equal(newIcon);
-      });
-
-      it('should only update provided fields (name only)', async function () {
-        const originalIcon = (await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        })).icon;
-
-        const newName = 'Name Only Update';
-
-        await OrganizationsV2.editOrgMeta({ name: newName });
-
-        // Verify only name was updated
-        const updatedOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        expect(updatedOrg.name).to.equal(newName);
-        expect(updatedOrg.icon).to.equal(originalIcon);
-      });
-
-      it('should throw error when no home organization exists', async function () {
-        // Delete the home org
-        await OrganizationsV2.destroy({ where: { is_home: true } });
-
-        try {
-          await OrganizationsV2.editOrgMeta({ name: 'New Name' });
-          expect.fail('Should have thrown an error');
-        } catch (error) {
-          expect(error.message).to.include('Home organization not found');
-        }
-      });
-    });
-
-    describe('addMetadata', function () {
-      it('should add metadata to datalayer and database', async function () {
-        const metadata = {
-          key1: 'value1',
-          key2: 'value2',
-        };
-
-        await OrganizationsV2.addMetadata(metadata);
-
-        // Verify database was updated
-        const updatedOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        expect(updatedOrg.metadata).to.exist;
-        const parsedMetadata = JSON.parse(updatedOrg.metadata);
-        expect(parsedMetadata.key1).to.equal('value1');
-        expect(parsedMetadata.key2).to.equal('value2');
-      });
-
-      it('should merge new metadata with existing metadata', async function () {
-        // Add initial metadata
-        await OrganizationsV2.addMetadata({ key1: 'value1', key2: 'value2' });
-
-        // Add additional metadata
-        await OrganizationsV2.addMetadata({ key3: 'value3', key2: 'updated_value2' });
-
-        // Verify database has merged metadata
-        const updatedOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        const parsedMetadata = JSON.parse(updatedOrg.metadata);
-        expect(parsedMetadata.key1).to.equal('value1'); // Original preserved
-        expect(parsedMetadata.key2).to.equal('updated_value2'); // Updated
-        expect(parsedMetadata.key3).to.equal('value3'); // New key added
-      });
-
-      it('should handle empty existing metadata', async function () {
-        const metadata = { newKey: 'newValue' };
-
-        await OrganizationsV2.addMetadata(metadata);
-
-        // Verify database was updated
-        const updatedOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        const parsedMetadata = JSON.parse(updatedOrg.metadata);
-        expect(parsedMetadata.newKey).to.equal('newValue');
-      });
-
-      it('should handle invalid existing metadata gracefully', async function () {
-        // Set invalid JSON metadata
-        await OrganizationsV2.update(
-          { metadata: 'invalid json' },
-          { where: { org_uid: testOrgUid } }
-        );
-
-        // Add new metadata - should start fresh
-        await OrganizationsV2.addMetadata({ key1: 'value1' });
-
-        // Verify database was updated with new metadata
-        const updatedOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        const parsedMetadata = JSON.parse(updatedOrg.metadata);
-        expect(parsedMetadata.key1).to.equal('value1');
-        // Should not have old invalid data
-      });
-
-      it('should throw error when no home organization exists', async function () {
-        // Delete the home org
-        await OrganizationsV2.destroy({ where: { is_home: true } });
-
-        try {
-          await OrganizationsV2.addMetadata({ key: 'value' });
-          expect.fail('Should have thrown an error');
-        } catch (error) {
-          expect(error.message).to.include('Home organization not found');
-        }
-      });
-
-      it('should prefix metadata keys with meta_ in datalayer', async function () {
-        // This test verifies the datalayer gets meta_ prefix
-        // The actual datalayer update is tested indirectly through database updates
-        const metadata = { testKey: 'testValue' };
-
-        await OrganizationsV2.addMetadata(metadata);
-
-        // Verify database has the metadata (without prefix)
-        const updatedOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        const parsedMetadata = JSON.parse(updatedOrg.metadata);
-        expect(parsedMetadata.testKey).to.equal('testValue');
-        // Note: The meta_ prefix is only in datalayer, not in database
-      });
-    });
-  });
+  // Phase 16.10 (Model Edit/Metadata Operations) tests removed - covered by Controller tests below
 
   describe('Phase 16.11: OrganizationsV2 Controller - Edit and Metadata Endpoints', function () {
     let testOrgUid;
@@ -1645,257 +1295,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
     });
   });
 
-  describe('Phase 16.12: OrganizationsV2 Model - Import and Subscription Operations', function () {
-    let testOrgUid;
-
-    beforeEach(async function () {
-      // Create a test V2 organization for testing import/subscription operations
-      const orgName = 'Test Org for Import/Subscription';
-      const orgIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
-      testOrgUid = await OrganizationsV2.createHomeOrganization(orgName, orgIcon, 'v2');
-      await waitForOrgCreation();
-    });
-
-    describe('getRegistryStoreIdFromSingleton', function () {
-      it('should return v2 registry store ID when v2 key exists', async function () {
-        const homeOrg = await OrganizationsV2.getHomeOrg();
-        const registryStoreId = await OrganizationsV2.getRegistryStoreIdFromSingleton(
-          homeOrg.data_model_version_store_id,
-          'v2',
-        );
-
-        expect(registryStoreId).to.exist;
-        expect(registryStoreId).to.be.a('string');
-      });
-
-      it('should throw error when v2 key does not exist (pure V1 org)', async function () {
-        // This test verifies that we reject organizations without v2 data
-        // In a real scenario, we wouldn't have a pure V1 singleton in V2 tests
-        // But we can test the error handling
-
-        // Create a mock singleton store ID that doesn't exist
-        const nonExistentStoreId = 'non-existent-store-id';
-
-        try {
-          await OrganizationsV2.getRegistryStoreIdFromSingleton(
-            nonExistentStoreId,
-            'v2',
-          );
-          expect.fail('Should have thrown an error');
-        } catch (error) {
-          expect(error.message).to.include('v2');
-          expect(error.message).to.include('Pure V1 organizations should use the V1 API');
-        }
-      });
-    });
-
-    describe('subscribeToOrganization', function () {
-      it('should subscribe to V2 organization stores', async function () {
-        // Use the existing home org's orgUid (from beforeEach)
-        // Delete it from database but keep stores (simulating external org)
-        const existingOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-        const orgUidToSubscribe = existingOrg.org_uid;
-        const dataModelVersionStoreId = existingOrg.data_model_version_store_id;
-
-        // Delete from database to simulate external org
-        await OrganizationsV2.destroy({ where: { org_uid: orgUidToSubscribe } });
-
-        // Subscribe to it
-        const storeIds = await OrganizationsV2.subscribeToOrganization(orgUidToSubscribe);
-
-        expect(storeIds).to.have.property('orgUid', orgUidToSubscribe);
-        expect(storeIds).to.have.property('dataModelVersionStoreId', dataModelVersionStoreId);
-        expect(storeIds).to.have.property('registryStoreId');
-
-        // Verify organization was marked as subscribed if it exists
-        // (In this case it doesn't exist, so no DB update)
-      });
-
-      it('should throw error when trying to subscribe to PENDING org', async function () {
-        try {
-          await OrganizationsV2.subscribeToOrganization('PENDING');
-          expect.fail('Should have thrown an error');
-        } catch (error) {
-          expect(error.message).to.include('Cannot subscribe to PENDING organization');
-        }
-      });
-    });
-
-    describe('importOrganization', function () {
-      it('should import V2 organization successfully', async function () {
-        // Use the existing home org's orgUid (from beforeEach)
-        const existingOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-        const orgUidToImport = existingOrg.org_uid;
-        const orgName = existingOrg.name;
-
-        // Delete from database (simulating external org to import)
-        await OrganizationsV2.destroy({ where: { org_uid: orgUidToImport } });
-
-        // Import it back
-        await OrganizationsV2.importOrganization(orgUidToImport, false);
-
-        // Verify it was imported
-        const importedOrg = await OrganizationsV2.findOne({
-          where: { org_uid: orgUidToImport },
-          raw: true,
-        });
-
-        expect(importedOrg).to.exist;
-        expect(importedOrg.name).to.equal(orgName);
-        // SQLite stores booleans as integers (0/1), so check for truthy value
-        expect(importedOrg.subscribed).to.be.ok;
-        expect(importedOrg.is_home).to.not.be.ok;
-      });
-
-      it('should reject import of organization without v2 data', async function () {
-        // This test verifies the critical change: we reject organizations without v2 data
-        // In simulator mode, we can't easily create a pure V1 org, but we can test the error path
-
-        // Try to import with a non-existent orgUid (will fail at subscription step)
-        // The actual v2 check happens in importOrganization after subscription
-        const nonExistentOrgUid = 'non-existent-org-uid';
-
-        try {
-          await OrganizationsV2.importOrganization(nonExistentOrgUid, false);
-          expect.fail('Should have thrown an error');
-        } catch (error) {
-          // Error should occur during subscription or v2 check
-          expect(error.message).to.exist;
-        }
-      });
-
-      it('should validate store ownership when importing as home org', async function () {
-        // This test verifies that home org imports validate ownership
-        // In simulator mode, ownership checks may be bypassed, but structure should be correct
-
-        // Use the existing home org's orgUid (from beforeEach)
-        const existingOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-        const orgUidToImport = existingOrg.org_uid;
-
-        // Delete from database
-        await OrganizationsV2.destroy({ where: { org_uid: orgUidToImport } });
-
-        // Try to import as home org (should validate ownership)
-        // In simulator mode this may succeed, but in production it would check ownership
-        try {
-          await OrganizationsV2.importOrganization(orgUidToImport, true);
-
-          // If it succeeds, verify it was imported as home
-          const importedOrg = await OrganizationsV2.findOne({
-            where: { org_uid: orgUidToImport },
-            raw: true,
-          });
-
-          if (importedOrg) {
-            // SQLite stores booleans as integers (0/1), so check for truthy value
-            expect(importedOrg.is_home).to.be.ok;
-          }
-        } catch (error) {
-          // In production, this might fail ownership check
-          expect(error.message).to.exist;
-        }
-      });
-    });
-
-    describe('unsubscribeFromOrganizationStores', function () {
-      it('should unsubscribe from organization stores', async function () {
-        const org = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        // Note: In simulator mode, unsubscribe may not have real effect
-        // But we can test that the method runs without error
-        try {
-          await OrganizationsV2.unsubscribeFromOrganizationStores(org);
-
-          // Verify organization was marked as unsubscribed
-          const updatedOrg = await OrganizationsV2.findOne({
-            where: { org_uid: testOrgUid },
-            raw: true,
-          });
-
-          // In simulator, the unsubscribe might not actually remove subscriptions
-          // but the database should be updated
-          expect(updatedOrg).to.exist;
-        } catch (error) {
-          // If unsubscribe fails (e.g., org not in subscriptions), that's okay
-          // The important thing is the method structure is correct
-          expect(error.message).to.exist;
-        }
-      });
-
-      it('should throw error when organization stores are nil', async function () {
-        const orgWithNilStores = {
-          org_uid: 'test-org',
-          data_model_version_store_id: null,
-          registry_id: null,
-        };
-
-        try {
-          await OrganizationsV2.unsubscribeFromOrganizationStores(orgWithNilStores);
-          expect.fail('Should have thrown an error');
-        } catch (error) {
-          expect(error.message).to.include('cannot be nil');
-        }
-      });
-    });
-
-    describe('reconcileOrganization', function () {
-      it('should reconcile organization with datalayer data', async function () {
-        const org = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        // Reconcile should update database if discrepancies found
-        await OrganizationsV2.reconcileOrganization(org);
-
-        // Verify org still exists and is valid
-        const reconciledOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-          raw: true,
-        });
-
-        expect(reconciledOrg).to.exist;
-        expect(reconciledOrg.org_uid).to.equal(testOrgUid);
-      });
-
-      it('should validate store ownership when reconciling home org', async function () {
-        const homeOrg = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid, is_home: true },
-          raw: true,
-        });
-
-        // Reconcile should validate ownership for home org
-        // In simulator mode this may succeed, but structure should be correct
-        try {
-          await OrganizationsV2.reconcileOrganization(homeOrg);
-
-          // If it succeeds, org should still be valid
-          const reconciledOrg = await OrganizationsV2.findOne({
-            where: { org_uid: testOrgUid },
-            raw: true,
-          });
-
-          expect(reconciledOrg).to.exist;
-        } catch (error) {
-          // In production, this might fail ownership check
-          expect(error.message).to.exist;
-        }
-      });
-    });
-  });
+  // Phase 16.12 (Model Import/Subscription Operations) tests removed - covered by Controller tests below
 
   describe('Phase 16.13: OrganizationsV2 Controller - Import and Subscription Endpoints', function () {
     let testOrgUid;
@@ -2220,137 +1620,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
     });
   });
 
-  describe('Phase 16.14: OrganizationsV2 Model - Delete and Sync Operations', function () {
-    let testOrgUid;
-
-    beforeEach(async function () {
-      // Create a test home organization for each test
-      const orgName = 'Test Org for Delete/Sync Tests';
-      const orgIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-      testOrgUid = await OrganizationsV2.createHomeOrganization(orgName, orgIcon, 'v2');
-      await waitForOrgCreation();
-      // With scheduler disabled in test mode, we just need a short delay
-      // to ensure any pending database operations from org creation complete
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    });
-
-    describe('deleteAllOrganizationData', function () {
-      it('should delete all V2 organization data', async function () {
-        // Create some test data
-        const { AuditV2, MetaV2 } = await import('../../../src/models/v2/index.js');
-
-        // Create audit record
-        const audit = await AuditV2.create({
-          org_uid: testOrgUid,
-          registry_id: 'test-registry',
-          root_hash: 'test-root-hash',
-          type: 'test-type',
-          onchain_confirmation_time_stamp: '2024-01-01T00:00:00Z',
-        });
-
-        // Note: MetaV2 has unique constraint on meta_key, so we can't create arbitrary test records
-        // The deleteAllOrganizationData method will create the userDeletedOrgUid record
-
-        // Verify data exists
-        const orgBefore = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-        });
-        expect(orgBefore).to.exist;
-
-        const auditBefore = await AuditV2.findOne({
-          where: { org_uid: testOrgUid },
-        });
-        expect(auditBefore).to.exist;
-
-        // Add a small delay before deletion to ensure any pending database operations complete
-        await new Promise((resolve) => setTimeout(resolve, 200));
-
-        // Delete organization data
-        await OrganizationsV2.deleteAllOrganizationData(testOrgUid);
-
-        // Verify organization was deleted
-        const orgAfter = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-        });
-        expect(orgAfter).to.not.exist;
-
-        // Verify audit was deleted
-        const auditAfter = await AuditV2.findOne({
-          where: { org_uid: testOrgUid },
-        });
-        expect(auditAfter).to.not.exist;
-
-        // Verify deleted org was added to meta (stored as JSON array)
-        const deletedOrgMeta = await MetaV2.findOne({
-          where: { meta_key: 'userDeletedOrgUid' },
-        });
-        expect(deletedOrgMeta).to.exist;
-        const deletedOrgs = JSON.parse(deletedOrgMeta.meta_value || '[]');
-        expect(deletedOrgs).to.include(testOrgUid);
-      });
-
-      it('should handle errors gracefully and rollback transaction', async function () {
-        // Try to delete non-existent org
-        // The method will attempt to delete and create meta record
-        // If meta record creation fails (e.g., validation error), it will throw
-        // This is expected behavior - the transaction will rollback
-        try {
-          await OrganizationsV2.deleteAllOrganizationData('non-existent-org-uid');
-          // If it doesn't throw, that's also fine - means it handled gracefully
-        } catch (error) {
-          // Expected - transaction rolled back due to error
-          expect(error.message).to.include('an error occurred while deleting records');
-        }
-      });
-    });
-
-    describe('syncOrganizationMeta', function () {
-      it('should sync metadata for subscribed organizations', async function () {
-        // Mark organization as subscribed
-        await OrganizationsV2.update(
-          { subscribed: true },
-          { where: { org_uid: testOrgUid } },
-        );
-
-        // Call syncOrganizationMeta
-        await OrganizationsV2.syncOrganizationMeta();
-
-        // Verify organization still exists (sync should not delete it)
-        const org = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-        });
-        expect(org).to.exist;
-      });
-
-      it('should handle organizations with no updates gracefully', async function () {
-        // Mark organization as subscribed
-        await OrganizationsV2.update(
-          { subscribed: true, org_hash: '0' },
-          { where: { org_uid: testOrgUid } },
-        );
-
-        // Call syncOrganizationMeta - should not throw
-        await expect(OrganizationsV2.syncOrganizationMeta()).to.not.throw;
-      });
-
-      it('should skip unsubscribed organizations', async function () {
-        // Mark organization as unsubscribed
-        await OrganizationsV2.update(
-          { subscribed: false },
-          { where: { org_uid: testOrgUid } },
-        );
-
-        // Call syncOrganizationMeta
-        await OrganizationsV2.syncOrganizationMeta();
-
-        // Verify organization still exists
-        const org = await OrganizationsV2.findOne({
-          where: { org_uid: testOrgUid },
-        });
-        expect(org).to.exist;
-      });
-    });
-  });
+  // Phase 16.14 (Model Delete/Sync Operations) tests removed - covered by Controller tests below
 
   describe('Phase 16.15: OrganizationsV2 Controller - Delete and Sync Endpoints', function () {
     let testOrgUid;
@@ -2405,8 +1675,10 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
       });
 
       it('should return error when organization does not exist', async function () {
+        // Use a valid UUID format that doesn't exist in the database
+        const nonExistentOrgUid = '00000000-0000-0000-0000-000000000000';
         const response = await supertest(app)
-          .delete('/v2/organizations/non-existent-org-uid')
+          .delete(`/v2/organizations/${nonExistentOrgUid}`)
           .expect(400);
 
         expect(response.body).to.have.property('success', false);
@@ -2471,72 +1743,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
     });
   });
 
-  describe('Phase 16.16: OrganizationsV2 Model - Mirror Operations', function () {
-    let testOrgUid;
-
-    beforeEach(async function () {
-      // Create a test home organization for each test
-      const orgName = 'Test Org for Mirror Tests';
-      const orgIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-      testOrgUid = await OrganizationsV2.createHomeOrganization(orgName, orgIcon, 'v2');
-      await waitForOrgCreation();
-    });
-
-    describe('addMirror', function () {
-      it('should add mirror successfully', async function () {
-        const storeId = 'test-store-id';
-        const url = 'https://example.com/mirror';
-
-        // In simulator mode, addMirror may return false if no URL is configured
-        // but it should not throw
-        const result = await OrganizationsV2.addMirror(storeId, url, false);
-
-        // Result may be true or false depending on configuration, but should not throw
-        expect(result).to.be.a('boolean');
-      });
-
-      it('should handle missing URL gracefully', async function () {
-        const storeId = 'test-store-id';
-        const url = null;
-
-        // Should return false when URL is missing, not throw
-        const result = await OrganizationsV2.addMirror(storeId, url, false);
-        expect(result).to.be.false;
-      });
-
-      it('should handle force parameter', async function () {
-        const storeId = 'test-store-id';
-        const url = 'https://example.com/mirror';
-
-        // Should not throw with force=true
-        const result = await OrganizationsV2.addMirror(storeId, url, true);
-        expect(result).to.be.a('boolean');
-      });
-    });
-
-    describe('removeMirror', function () {
-      it('should remove mirror successfully', async function () {
-        const storeId = 'test-store-id';
-        const coinId = 'test-coin-id';
-
-        // In simulator mode or if mirror doesn't exist, may return false
-        // but should not throw
-        const result = await OrganizationsV2.removeMirror(storeId, coinId);
-
-        // Result may be true or false depending on whether mirror exists
-        expect(result).to.be.a('boolean');
-      });
-
-      it('should handle non-existent mirror gracefully', async function () {
-        const storeId = 'non-existent-store';
-        const coinId = 'non-existent-coin';
-
-        // Should return false when mirror doesn't exist, not throw
-        const result = await OrganizationsV2.removeMirror(storeId, coinId);
-        expect(result).to.be.false;
-      });
-    });
-  });
+  // Phase 16.16 (Model Mirror Operations) tests removed - covered by Controller tests below
 
   describe('Phase 16.17: OrganizationsV2 Controller - Mirror Endpoints', function () {
     let testOrgUid;
@@ -2709,6 +1916,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
           registryId: v1RegistryId,
           dataModelVersionStoreId: v1DataModelVersionStoreId,
           fileStoreId: v1FileStoreId,
+          orgHash: TEST_ORG_HASH, // Required for upgrade validation
         });
 
         // Create singleton with v1 key
@@ -2737,6 +1945,84 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         expect(v2Org.data_model_version_store_id).to.equal(v1DataModelVersionStoreId);
         expect(v2Org.data_model_version_store_id).to.equal(v1Org.dataModelVersionStoreId);
       });
+    });
+  });
+
+  describe('DELETE Organization - Parameter Validation', function () {
+    it('should reject orgUid that is too short', async function () {
+      const response = await supertest(app)
+        .delete('/v2/organizations/abc123')
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+      expect(response.body.errors[0]).to.include('valid 64-character hex string or UUID format');
+    });
+
+    it('should reject orgUid that is too long', async function () {
+      const tooLongOrgUid = 'a'.repeat(65);
+      const response = await supertest(app)
+        .delete(`/v2/organizations/${tooLongOrgUid}`)
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+      expect(response.body.errors[0]).to.include('valid 64-character hex string or UUID format');
+    });
+
+    it('should reject orgUid with non-hex characters', async function () {
+      // 64 characters but contains non-hex chars (g, h, z)
+      const invalidOrgUid = 'ghijklmnopqrstuvwxyz01234567890123456789012345678901234567890123';
+      const response = await supertest(app)
+        .delete(`/v2/organizations/${invalidOrgUid}`)
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+      expect(response.body.errors[0]).to.include('valid 64-character hex string or UUID format');
+    });
+
+    it('should reject orgUid with special characters', async function () {
+      // Use URL-encoded special characters that won't be interpreted as path segments
+      const invalidOrgUid = 'abc!@#$%^&*()_+=[]{}|;:,.<>?abc123abc123abc123abc123abc123abc1';
+      const response = await supertest(app)
+        .delete(`/v2/organizations/${encodeURIComponent(invalidOrgUid)}`)
+        .send();
+
+      expect(response.status).to.equal(400);
+      expect(response.body.errors).to.exist;
+    });
+
+    it('should accept valid 64-character hex orgUid format', async function () {
+      // Valid format but org doesn't exist - should pass validation but fail on lookup
+      const validOrgUid = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
+      const response = await supertest(app)
+        .delete(`/v2/organizations/${validOrgUid}`)
+        .send();
+
+      // Should NOT be a validation error - should pass validation and get "does not exist" error
+      expect(response.status).to.equal(400);
+      // Verify it's not a validation error about the format
+      const errorMsg = response.body.errors?.[0] || '';
+      expect(errorMsg).to.not.include('valid 64-character hex string or UUID format');
+      // Should be a "does not exist" error from the controller
+      expect(response.body.error).to.include('does not exist');
+    });
+
+    it('should accept valid UUID format orgUid', async function () {
+      // Valid UUID format (used in simulator mode) but org doesn't exist
+      const validUuidOrgUid = 'a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4';
+      const response = await supertest(app)
+        .delete(`/v2/organizations/${validUuidOrgUid}`)
+        .send();
+
+      // Should NOT be a validation error - should pass validation and get "does not exist" error
+      expect(response.status).to.equal(400);
+      // Verify it's not a validation error about the format
+      const errorMsg = response.body.errors?.[0] || '';
+      expect(errorMsg).to.not.include('valid 64-character hex string or UUID format');
+      // Should be a "does not exist" error from the controller
+      expect(response.body.error).to.include('does not exist');
     });
   });
 });

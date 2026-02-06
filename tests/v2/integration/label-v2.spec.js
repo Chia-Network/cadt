@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { LabelV2, LabelV2Mirror, StagingV2, OrganizationsV2 } from '../../../src/models/v2/index.js';
+import { LabelV2, StagingV2, OrganizationsV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
 
@@ -30,7 +30,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelDate: '2024-07-15',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
 
       expect(label).to.exist;
       expect(label.cadTrustLabelId).to.exist;
@@ -50,7 +50,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelDate: '2024-08-01',
       };
 
-      const createdLabel = await LabelV2Mirror.create(labelData);
+      const createdLabel = await LabelV2.create(labelData);
       const foundLabel = await LabelV2.findByPk(createdLabel.cadTrustLabelId);
 
       expect(foundLabel).to.exist;
@@ -84,7 +84,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelDate: '2024-09-01',
       };
 
-      const createdLabel = await LabelV2Mirror.create(labelData);
+      const createdLabel = await LabelV2.create(labelData);
 
       const updateData = {
         labelName: 'Updated Label Name',
@@ -95,7 +95,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
 
       await createdLabel.update(updateData);
 
-      const updatedLabel = await LabelV2Mirror.findByPk(createdLabel.cadTrustLabelId);
+      const updatedLabel = await LabelV2.findByPk(createdLabel.cadTrustLabelId);
 
       expect(updatedLabel.labelName).to.equal('Updated Label Name');
       expect(updatedLabel.labelType).to.equal('Article 6 - Authorisation');
@@ -111,12 +111,12 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelDate: '2024-11-01',
       };
 
-      const createdLabel = await LabelV2Mirror.create(labelData);
+      const createdLabel = await LabelV2.create(labelData);
       const labelId = createdLabel.cadTrustLabelId;
 
       await createdLabel.destroy();
 
-      const deletedLabel = await LabelV2Mirror.findByPk(labelId);
+      const deletedLabel = await LabelV2.findByPk(labelId);
       expect(deletedLabel).to.be.null;
     });
   });
@@ -124,7 +124,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
   describe('Label Validation Tests', function () {
     it('should reject label with missing required fields', async function () {
       try {
-        await LabelV2Mirror.create({
+        await LabelV2.create({
           // Missing labelName
           labelType: 'Certification',
         });
@@ -137,7 +137,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
 
     it('should reject label with invalid label type', async function () {
       try {
-        await LabelV2Mirror.create({
+        await LabelV2.create({
           labelName: 'Test Label',
           labelType: 'INVALID_TYPE',
         });
@@ -151,7 +151,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
 
     it('should reject label with invalid link format', async function () {
       try {
-        await LabelV2Mirror.create({
+        await LabelV2.create({
           labelName: 'Test Label',
           labelType: 'Certification',
           labelLink: 'not-a-valid-url',
@@ -166,7 +166,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
 
     it('should reject label with invalid date format', async function () {
       try {
-        await LabelV2Mirror.create({
+        await LabelV2.create({
           labelName: 'Test Label',
           labelType: 'Certification',
           labelDate: 'invalid-date',
@@ -187,7 +187,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelDate: null,
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
 
       expect(label).to.exist;
       expect(label.labelName).to.equal('Test Label Minimal');
@@ -204,7 +204,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Certification',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
       expect(label.labelType).to.equal('Certification');
     });
 
@@ -214,7 +214,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Article 6 - Endorsement',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
       expect(label.labelType).to.equal('Article 6 - Endorsement');
     });
 
@@ -224,7 +224,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Article 6 - Letter of Qualification',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
       expect(label.labelType).to.equal('Article 6 - Letter of Qualification');
     });
 
@@ -234,7 +234,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Article 6 - Authorisation',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
       expect(label.labelType).to.equal('Article 6 - Authorisation');
     });
 
@@ -244,7 +244,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Article 6 - Letter of Approvals',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
       expect(label.labelType).to.equal('Article 6 - Letter of Approvals');
     });
   });
@@ -256,7 +256,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Certification',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
 
       expect(label.cadTrustLabelId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
       expect(label.cadTrustLabelId).to.have.length(36);
@@ -270,7 +270,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Article 6 - Endorsement',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
 
       expect(label.cadTrustLabelId).to.equal(explicitUuid);
     });
@@ -284,7 +284,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Certification',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
 
       expect(label.labelName).to.equal(longName);
       expect(label.labelName).to.have.length(255);
@@ -297,7 +297,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelLink: 'https://www.example.com/path?query=value#fragment',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
 
       expect(label.labelLink).to.equal('https://www.example.com/path?query=value#fragment');
     });
@@ -309,7 +309,7 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelDate: '2024-12-31',
       };
 
-      const label = await LabelV2Mirror.create(labelData);
+      const label = await LabelV2.create(labelData);
 
       expect(label.labelDate).to.equal('2024-12-31');
     });
@@ -325,8 +325,8 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Article 6 - Endorsement',
       };
 
-      const label1 = await LabelV2Mirror.create(labelData1);
-      const label2 = await LabelV2Mirror.create(labelData2);
+      const label1 = await LabelV2.create(labelData1);
+      const label2 = await LabelV2.create(labelData2);
 
       expect(label1.labelName).to.equal(label2.labelName);
       expect(label1.labelType).to.not.equal(label2.labelType);
@@ -344,8 +344,8 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Certification',
       };
 
-      const label1 = await LabelV2Mirror.create(labelData1);
-      const label2 = await LabelV2Mirror.create(labelData2);
+      const label1 = await LabelV2.create(labelData1);
+      const label2 = await LabelV2.create(labelData2);
 
       expect(label1.labelType).to.equal(label2.labelType);
       expect(label1.labelName).to.not.equal(label2.labelName);
@@ -363,8 +363,8 @@ describe('Label V2 Endpoint Integration Tests', function () {
         labelType: 'Article 6 - Letter of Approvals',
       };
 
-      const label1 = await LabelV2Mirror.create(labelData1);
-      const label2 = await LabelV2Mirror.create(labelData2);
+      const label1 = await LabelV2.create(labelData1);
+      const label2 = await LabelV2.create(labelData2);
 
       expect(label1.labelName).to.equal(label2.labelName);
       expect(label1.labelType).to.equal(label2.labelType);

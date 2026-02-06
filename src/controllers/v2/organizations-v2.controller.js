@@ -34,24 +34,23 @@ import { assertWalletIsSynced } from '../../utils/data-assertions.js';
 import { sequelizeV2 } from '../../database/v2/index.js';
 import { loggerV2 } from '../../config/logger.js';
 import datalayer from '../../datalayer';
+import { getStoreData as getRawStoreData } from '../../datalayer/persistance.js';
 import * as simulator from '../../datalayer/simulator.js';
 import { decodeHex, decodeDataLayerResponse } from '../../utils/datalayer-utils.js';
 import { getConfig } from '../../utils/config-loader.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
 
-// Helper to get store data - uses simulator in simulator mode, otherwise wraps callback-based version
+// Helper to get store data - returns raw format with keys_values for both modes
+// Uses simulator in simulator mode, otherwise uses persistance.getStoreData directly
+// (syncService.getStoreData decodes data before callback, but we need raw hex format)
 const getStoreDataPromise = async (storeId) => {
   if (USE_SIMULATOR) {
     return await simulator.getStoreData(storeId);
   } else {
-    return new Promise((resolve, reject) => {
-      datalayer.getStoreData(
-        storeId,
-        (data) => resolve(data),
-        (error) => reject(new Error(error)),
-      );
-    });
+    // Use raw persistance.getStoreData to get hex-encoded keys_values
+    // (syncService.getStoreData decodes before callback, which breaks our checks)
+    return await getRawStoreData(storeId);
   }
 };
 
@@ -232,6 +231,75 @@ export const upgrade = async (req, res) => {
       });
     }
 
+    // CRITICAL: Verify V1 org is fully populated before attempting upgrade
+    // Check required store IDs exist
+    if (!v1Org.dataModelVersionStoreId) {
+      return res.status(400).json({
+        message:
+          'V1 organization is missing dataModelVersionStoreId. Organization creation may still be in progress.',
+        success: false,
+      });
+    }
+
+    // Check that orgHash is populated (indicates org store data was written)
+    const nullHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    if (!v1Org.orgHash || v1Org.orgHash === nullHash || v1Org.orgHash === '0') {
+      return res.status(400).json({
+        message:
+          'V1 organization orgHash is not populated. Organization creation has not completed writing data to the org store. Please wait for V1 organization creation to complete.',
+        success: false,
+      });
+    }
+
+    // Check that the singleton store has data (v1 key)
+    // This is the critical check - the v1 key must exist before we can upgrade
+    try {
+      const singletonData = await getStoreDataPromise(v1Org.dataModelVersionStoreId);
+
+      if (!singletonData || singletonData instanceof Error) {
+        loggerV2.debug(`[v2]: Cannot read singleton data from ${v1Org.dataModelVersionStoreId}`);
+        return res.status(400).json({
+          message:
+            'Cannot read V1 singleton data. V1 organization may still be creating or blockchain data is not yet available. Please wait and try again.',
+          success: false,
+        });
+      }
+
+      if (!singletonData.keys_values || singletonData.keys_values.length === 0) {
+        loggerV2.debug(`[v2]: Singleton store ${v1Org.dataModelVersionStoreId} is empty`);
+        return res.status(400).json({
+          message:
+            'V1 singleton store is empty. V1 organization creation has not completed writing data to the blockchain. Please wait for V1 organization creation to complete before upgrading.',
+          success: false,
+        });
+      }
+
+      // Check if singleton has v1 key
+      const decodedData = decodeDataLayerResponse(singletonData);
+      const singletonMap = decodedData.reduce((obj, current) => {
+        obj[current.key] = current.value;
+        return obj;
+      }, {});
+
+      if (!singletonMap.v1) {
+        loggerV2.debug(`[v2]: Singleton store ${v1Org.dataModelVersionStoreId} missing v1 key`);
+        return res.status(400).json({
+          message:
+            'V1 singleton store does not contain v1 key. V1 organization creation has not completed. Please wait for V1 organization creation to fully complete before upgrading.',
+          success: false,
+        });
+      }
+
+      loggerV2.info(`[v2]: V1 singleton validated - v1 key exists with registry ${singletonMap.v1}`);
+    } catch (error) {
+      loggerV2.error(`[v2]: Error validating V1 singleton: ${error.message}`);
+      return res.status(400).json({
+        message:
+          `Cannot validate V1 organization singleton store: ${error.message}. Please ensure V1 organization creation is complete before upgrading.`,
+        success: false,
+      });
+    }
+
     // Check if V2 org already exists and upgrade is complete
     const existingV2Org = await OrganizationsV2.findOne({
       where: { is_home: true },
@@ -350,12 +418,12 @@ export const homeOrgSyncStatus = async (req, res) => {
 
     if (!USE_SIMULATOR) {
       walletSynced = await datalayer.walletIsSynced();
-      
+
       // Get sync status - may fail or return undefined if store isn't synced yet
       try {
         const syncResult = await datalayer.getDataLayerStoreSyncStatus(homeOrg.org_uid);
         const syncStatus = syncResult?.sync_status;
-        
+
         if (syncStatus && syncStatus.target_root_hash !== undefined) {
           homeOrgProfileSynced =
             syncStatus.target_root_hash === homeOrg.org_hash?.split('0x')?.[1];

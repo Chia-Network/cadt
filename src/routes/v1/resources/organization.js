@@ -14,11 +14,16 @@ import {
   removeMirrorSchema,
   addMirrorSchema,
   getMetaDataSchema,
+  deleteOrganizationSchema,
 } from '../../../validations';
 
 const validator = joiExpress.createValidator({ passError: true });
 const OrganizationRouter = express.Router();
-const upload = multer();
+
+// Configure multer with file size limit for icon uploads (2MB)
+const upload = multer({
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit for organization icons
+});
 
 OrganizationRouter.get('/', (req, res) => {
   return OrganizationController.findAll(req, res);
@@ -36,9 +41,13 @@ OrganizationRouter.post('/sync', (req, res) => {
   return OrganizationController.sync(req, res);
 });
 
-OrganizationRouter.delete('/:orgUid', (req, res) => {
-  return OrganizationController.deleteOrganization(req, res);
-});
+OrganizationRouter.delete(
+  '/:orgUid',
+  validator.params(deleteOrganizationSchema),
+  (req, res) => {
+    return OrganizationController.deleteOrganization(req, res);
+  },
+);
 
 OrganizationRouter.post(
   '/',

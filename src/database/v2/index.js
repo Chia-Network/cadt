@@ -3,7 +3,7 @@ import os from 'os';
 import config from '../../config/config.js';
 import { loggerV2 } from '../../config/logger.js';
 import mysql from 'mysql2/promise';
-import { getConfig } from '../../utils/config-loader';
+import { getConfigV2 } from '../../utils/config-loader';
 
 import { migrations } from './migrations';
 import { seeders } from './seeders';
@@ -33,24 +33,27 @@ if (nodeEnv === 'test') {
 
 export const sequelizeV2 = new Sequelize(config[dbConfigKey]);
 
-const mirrorConfig =
-  (process.env.NODE_ENV || 'local') === 'local' ? 'v2Mirror' : 'v2MirrorTest';
+// Determine if MySQL mirror is configured by checking the actual config values
+// This allows MySQL mirror to work in any environment (local, test, production)
+const v2MirrorConfig = getConfigV2();
+const mysqlMirrorConfigured =
+  v2MirrorConfig?.MIRROR_DB?.DB_HOST &&
+  v2MirrorConfig?.MIRROR_DB?.DB_HOST !== '' &&
+  v2MirrorConfig?.MIRROR_DB?.DB_NAME &&
+  v2MirrorConfig?.MIRROR_DB?.DB_USERNAME &&
+  v2MirrorConfig?.MIRROR_DB?.DB_PASSWORD;
+
+// Use MySQL config (v2Mirror) if configured, otherwise fall back to SQLite test config
+const mirrorConfig = mysqlMirrorConfigured ? 'v2Mirror' : 'v2MirrorTest';
+
+loggerV2.info(`[v2]: Mirror DB config selected: ${mirrorConfig} (MySQL configured: ${!!mysqlMirrorConfigured})`);
 
 export const sequelizeV2Mirror = new Sequelize(config[mirrorConfig]);
 
 export const mirrorDBEnabledV2 = () => {
-  const CONFIG = getConfig();
-  if (
-    mirrorConfig === 'v2Mirror' &&
-    (!CONFIG?.MIRROR_DB?.DB_HOST ||
-      !CONFIG?.MIRROR_DB?.DB_NAME ||
-      !CONFIG?.MIRROR_DB?.DB_USERNAME ||
-      !CONFIG?.MIRROR_DB?.DB_PASSWORD)
-  ) {
-    return false;
-  }
-
-  return true;
+  // Mirror DB is only enabled if MySQL is actually configured
+  // In test mode without MySQL, mirror operations should be no-ops
+  return mysqlMirrorConfigured;
 };
 
 export const safeMirrorDbHandlerV2 = (callback) => {
@@ -222,29 +225,41 @@ export const prepareV2Db = async () => {
   // Start the preparation and store the promise
   prepareV2DbPromise = (async () => {
     loggerV2.info('[v2]: prepareV2Db() starting...');
-    const mirrorConfig =
-      (process.env.NODE_ENV || 'local') === 'local' ? 'v2Mirror' : 'v2MirrorTest';
 
-    if (
-      mirrorConfig == 'v2Mirror' &&
-      getConfig().MIRROR_DB.DB_HOST &&
-      getConfig().MIRROR_DB.DB_HOST !== ''
-    ) {
-      const connection = await mysql.createConnection({
-        host: getConfig().MIRROR_DB.DB_HOST,
-      port: 3306,
-      user: getConfig().MIRROR_DB.DB_USERNAME,
-      password: getConfig().MIRROR_DB.DB_PASSWORD,
-    });
+    // Check if MySQL mirror is configured
+    const mirrorDbConfig = getConfigV2()?.MIRROR_DB;
+    const isMysqlMirrorConfigured =
+      mirrorDbConfig?.DB_HOST &&
+      mirrorDbConfig?.DB_HOST !== '' &&
+      mirrorDbConfig?.DB_NAME &&
+      mirrorDbConfig?.DB_USERNAME &&
+      mirrorDbConfig?.DB_PASSWORD;
 
-    await connection.query(
-      `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}_v2\`;`,
-    );
+    if (isMysqlMirrorConfigured) {
+      loggerV2.info('[v2]: MySQL mirror database configured, creating database and running migrations...');
+      try {
+        const connection = await mysql.createConnection({
+          host: mirrorDbConfig.DB_HOST,
+          port: 3306,
+          user: mirrorDbConfig.DB_USERNAME,
+          password: mirrorDbConfig.DB_PASSWORD,
+        });
 
-      // Use the exported sequelizeV2Mirror instance instead of creating a new one
-      await checkForV2Migrations(sequelizeV2Mirror);
-    } else if (mirrorConfig == 'v2MirrorTest') {
-      await checkForV2Migrations(sequelizeV2Mirror);
+        const dbName = `${mirrorDbConfig.DB_NAME}_v2`;
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
+        loggerV2.info(`[v2]: MySQL mirror database '${dbName}' created/verified`);
+        await connection.end();
+
+        // Run migrations on the MySQL mirror database
+        await checkForV2Migrations(sequelizeV2Mirror);
+        loggerV2.info('[v2]: MySQL mirror database migrations completed');
+      } catch (error) {
+        loggerV2.error('[v2]: Error setting up MySQL mirror database:', error.message);
+        // Don't throw - allow main database to continue
+      }
+    } else {
+      // No MySQL mirror configured - mirror operations will be no-ops
+      loggerV2.info('[v2]: No MySQL mirror configured, mirror operations disabled');
     }
 
     loggerV2.info('[v2]: About to run main database migrations (sequelizeV2)...');

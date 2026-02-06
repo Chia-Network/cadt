@@ -25,11 +25,11 @@ export default {
         allowNull: true,
         comment: 'picklist from country'
       },
-      aef_t5_authorized_entities_Id: {
-        type: Sequelize.STRING,
+      aef_t5_authorized_entities_id: {
+        type: Sequelize.STRING(255),
         allowNull: false,
       },
-      aef_t5_authorized_entities_cooperative_approach_Id: {
+      aef_t5_authorized_entities_cooperative_approach_id: {
         type: Sequelize.STRING,
         allowNull: false,
       },

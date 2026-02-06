@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StakeholderProjectV2, StakeholderProjectV2Mirror, StakeholderV2, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { StakeholderProjectV2, StakeholderV2, ProjectV2, ProgramV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg, getV2HomeOrgId } from '../utils/v2-test-helpers.js';
 
@@ -67,7 +67,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const stakeholderProject = await StakeholderProjectV2Mirror.create(stakeholderProjectData);
+      const stakeholderProject = await StakeholderProjectV2.create(stakeholderProjectData);
 
       expect(stakeholderProject).to.exist;
       expect(stakeholderProject.cadTrustStakeholderProjectId).to.exist;
@@ -91,7 +91,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdStakeholderProject = await StakeholderProjectV2Mirror.create(stakeholderProjectData);
+      const createdStakeholderProject = await StakeholderProjectV2.create(stakeholderProjectData);
       const foundStakeholderProject = await StakeholderProjectV2.findByPk(createdStakeholderProject.cadTrustStakeholderProjectId);
 
       expect(foundStakeholderProject).to.exist;
@@ -130,7 +130,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdStakeholderProject = await StakeholderProjectV2Mirror.create(stakeholderProjectData);
+      const createdStakeholderProject = await StakeholderProjectV2.create(stakeholderProjectData);
 
       // Create another stakeholder for the update
       const anotherStakeholder = await StakeholderV2.create({
@@ -147,7 +147,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
 
       await createdStakeholderProject.update(updateData);
 
-      const updatedStakeholderProject = await StakeholderProjectV2Mirror.findByPk(createdStakeholderProject.cadTrustStakeholderProjectId);
+      const updatedStakeholderProject = await StakeholderProjectV2.findByPk(createdStakeholderProject.cadTrustStakeholderProjectId);
 
       expect(updatedStakeholderProject.cadTrustStakeholderId).to.equal(anotherStakeholder.cadTrustStakeholderId);
       expect(updatedStakeholderProject.cadTrustProjectId).to.equal(testProjectId);
@@ -167,12 +167,12 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdStakeholderProject = await StakeholderProjectV2Mirror.create(stakeholderProjectData);
+      const createdStakeholderProject = await StakeholderProjectV2.create(stakeholderProjectData);
       const stakeholderProjectId = createdStakeholderProject.cadTrustStakeholderProjectId;
 
       await createdStakeholderProject.destroy();
 
-      const deletedStakeholderProject = await StakeholderProjectV2Mirror.findByPk(stakeholderProjectId);
+      const deletedStakeholderProject = await StakeholderProjectV2.findByPk(stakeholderProjectId);
       expect(deletedStakeholderProject).to.be.null;
     });
   });
@@ -180,7 +180,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
   describe('Stakeholder-Projects Validation Tests', function () {
     it('should reject stakeholder-project with missing required fields', async function () {
       try {
-        await StakeholderProjectV2Mirror.create({
+        await StakeholderProjectV2.create({
           // Missing cadTrustStakeholderId, cadTrustProjectId
         });
         expect.fail('Should have thrown validation error');
@@ -192,7 +192,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
 
     it('should reject stakeholder-project with invalid stakeholder ID', async function () {
       try {
-        await StakeholderProjectV2Mirror.create({
+        await StakeholderProjectV2.create({
           cadTrustStakeholderId: 'invalid-uuid',
           cadTrustProjectId: testProjectId,
         });
@@ -206,7 +206,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
 
     it('should reject stakeholder-project with invalid project ID', async function () {
       try {
-        await StakeholderProjectV2Mirror.create({
+        await StakeholderProjectV2.create({
           cadTrustStakeholderId: testStakeholderId,
           cadTrustProjectId: 'invalid-uuid',
         });
@@ -224,7 +224,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
       const nonExistentStakeholderId = uuidv4();
 
       try {
-        await StakeholderProjectV2Mirror.create({
+        await StakeholderProjectV2.create({
           cadTrustStakeholderId: nonExistentStakeholderId,
           cadTrustProjectId: testProjectId,
         });
@@ -240,7 +240,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
       const nonExistentProjectId = uuidv4();
 
       try {
-        await StakeholderProjectV2Mirror.create({
+        await StakeholderProjectV2.create({
           cadTrustStakeholderId: testStakeholderId,
           cadTrustProjectId: nonExistentProjectId,
         });
@@ -266,7 +266,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const stakeholderProject = await StakeholderProjectV2Mirror.create(stakeholderProjectData);
+      const stakeholderProject = await StakeholderProjectV2.create(stakeholderProjectData);
 
       expect(stakeholderProject).to.exist;
       expect(stakeholderProject.cadTrustStakeholderId).to.equal(newStakeholder.cadTrustStakeholderId);
@@ -289,7 +289,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const createdStakeholderProject = await StakeholderProjectV2Mirror.create(stakeholderProjectData);
+      const createdStakeholderProject = await StakeholderProjectV2.create(stakeholderProjectData);
 
       const stakeholderProjectWithAssociations = await StakeholderProjectV2.findByPk(createdStakeholderProject.cadTrustStakeholderProjectId, {
         include: [
@@ -332,11 +332,11 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
       };
 
       // Create first relationship
-      await StakeholderProjectV2Mirror.create(stakeholderProjectData);
+      await StakeholderProjectV2.create(stakeholderProjectData);
 
       // Try to create duplicate relationship
       try {
-        await StakeholderProjectV2Mirror.create(stakeholderProjectData);
+        await StakeholderProjectV2.create(stakeholderProjectData);
         expect.fail('Should have thrown unique constraint error');
       } catch (error) {
         expect(error.name).to.equal('SequelizeUniqueConstraintError');
@@ -376,8 +376,8 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         cadTrustProjectId: anotherProject.cadTrustProjectId,
       };
 
-      const stakeholderProject1 = await StakeholderProjectV2Mirror.create(stakeholderProjectData1);
-      const stakeholderProject2 = await StakeholderProjectV2Mirror.create(stakeholderProjectData2);
+      const stakeholderProject1 = await StakeholderProjectV2.create(stakeholderProjectData1);
+      const stakeholderProject2 = await StakeholderProjectV2.create(stakeholderProjectData2);
 
       expect(stakeholderProject1.cadTrustStakeholderId).to.equal(stakeholderProject2.cadTrustStakeholderId);
       expect(stakeholderProject1.cadTrustProjectId).to.not.equal(stakeholderProject2.cadTrustProjectId);
@@ -409,8 +409,8 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const stakeholderProject1 = await StakeholderProjectV2Mirror.create(stakeholderProjectData1);
-      const stakeholderProject2 = await StakeholderProjectV2Mirror.create(stakeholderProjectData2);
+      const stakeholderProject1 = await StakeholderProjectV2.create(stakeholderProjectData1);
+      const stakeholderProject2 = await StakeholderProjectV2.create(stakeholderProjectData2);
 
       expect(stakeholderProject1.cadTrustStakeholderId).to.not.equal(stakeholderProject2.cadTrustStakeholderId);
       expect(stakeholderProject1.cadTrustProjectId).to.equal(stakeholderProject2.cadTrustProjectId);
@@ -432,7 +432,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const stakeholderProject = await StakeholderProjectV2Mirror.create(stakeholderProjectData);
+      const stakeholderProject = await StakeholderProjectV2.create(stakeholderProjectData);
 
       expect(stakeholderProject.cadTrustStakeholderProjectId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
       expect(stakeholderProject.cadTrustStakeholderProjectId).to.have.length(36);
@@ -454,7 +454,7 @@ describe('Stakeholder-Projects V2 Join Table Integration Tests', function () {
         cadTrustProjectId: testProjectId,
       };
 
-      const stakeholderProject = await StakeholderProjectV2Mirror.create(stakeholderProjectData);
+      const stakeholderProject = await StakeholderProjectV2.create(stakeholderProjectData);
 
       expect(stakeholderProject.cadTrustStakeholderProjectId).to.equal(explicitUuid);
     });

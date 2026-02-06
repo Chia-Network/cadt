@@ -25,10 +25,10 @@ export default {
         allowNull: false,
         comment: 'Foreign key to verification table'
       },
-      cad_trust_methodology_id: {
-        type: Sequelize.STRING,
+      cad_trust_project_methodology_id: {
+        type: Sequelize.STRING(36),
         allowNull: false,
-        comment: 'references methodology UUID'
+        comment: 'Foreign key to project_methodology table'
       },
       cad_trust_location_id: {
         type: Sequelize.STRING(36),
@@ -51,7 +51,7 @@ export default {
     await queryInterface.addIndex('issuance', ['issuance_id']);
     await queryInterface.addIndex('issuance', ['issuance_date']);
     await queryInterface.addIndex('issuance', ['cad_trust_verification_id']);
-    await queryInterface.addIndex('issuance', ['cad_trust_methodology_id']);
+    await queryInterface.addIndex('issuance', ['cad_trust_project_methodology_id']);
     await queryInterface.addIndex('issuance', ['cad_trust_location_id']);
   },
 

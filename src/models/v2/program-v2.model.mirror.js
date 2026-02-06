@@ -1,89 +1,67 @@
 'use strict';
 
 import { Sequelize, Model } from 'sequelize';
-import { sequelizeV2 } from '../../database/v2/index.js';
+import { sequelizeV2Mirror, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
 
-class ProgramV2Mirror extends Model {
-  static async create(values, options) {
-    const result = await super.create(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return result;
-  }
+class ProgramV2Mirror extends Model {}
 
-  static async bulkCreate(values, options) {
-    const result = await super.bulkCreate(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return result;
-  }
-
-  static async update(values, options) {
-    const result = await super.update(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return result;
-  }
-
-  static async upsert(values, options) {
-    const result = await super.upsert(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return result;
-  }
-
-  static async destroy(options) {
-    const result = await super.destroy(options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    return result;
-  }
-
-  static associate(models) {
-    // Mirror associations if needed
-  }
-}
-
-ProgramV2Mirror.init(
-  {
-    cadTrustProgramId: {
-      type: Sequelize.UUID,
-      primaryKey: true,
-      allowNull: false,
-      unique: true,
-      field: 'cad_trust_program_id',
-      defaultValue: Sequelize.UUIDV4,
+safeMirrorDbHandlerV2(() => {
+  ProgramV2Mirror.init(
+    {
+      cadTrustProgramId: {
+        type: Sequelize.UUID,
+        primaryKey: true,
+        allowNull: false,
+        unique: true,
+        field: 'cad_trust_program_id',
+        defaultValue: Sequelize.UUIDV4,
+      },
+      programName: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        field: 'program_name',
+      },
+      programRegistry: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        field: 'program_registry',
+      },
+      programRegistryActivityId: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        field: 'program_registry_activity_id',
+      },
+      programRegistryProgramId: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        field: 'program_registry_program_id',
+      },
+      programDescription: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        field: 'program_description',
+      },
     },
-    programName: {
-      type: Sequelize.STRING,
-      allowNull: false,
-      field: 'program_name',
-    },
-    programRegistry: {
-      type: Sequelize.STRING,
-      allowNull: false,
-      field: 'program_registry',
-    },
-    programRegistryActivityId: {
-      type: Sequelize.STRING,
-      allowNull: false,
-      field: 'program_registry_activity_id',
-    },
-    programRegistryProgramId: {
-      type: Sequelize.STRING,
-      allowNull: true,
-      field: 'program_registry_program_id',
-    },
-    programDescription: {
-      type: Sequelize.TEXT,
-      allowNull: true,
-      field: 'program_description',
-    },
-  },
-  {
-    sequelize: sequelizeV2,
-    modelName: 'ProgramV2Mirror',
-    tableName: 'program_mirror',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
-    underscored: true,
-  }
-);
+    {
+      sequelize: sequelizeV2Mirror,
+      modelName: 'ProgramV2Mirror',
+      tableName: 'program',
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
+      timezone: '+00:00',
+      define: {
+        charset: 'utf8mb4',
+        collate: 'utf8mb4_general_ci',
+      },
+      dialectOptions: {
+        charset: 'utf8mb4',
+        dateStrings: true,
+        typeCast: true,
+      },
+    }
+  );
+});
 
 export { ProgramV2Mirror };

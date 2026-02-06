@@ -1,0 +1,82 @@
+---
+description: Commit message conventions following Conventional Commits standard
+alwaysApply: true
+---
+
+# Commit Message Format
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) with commitlint enforcement.
+
+## Format
+
+```
+type(SCOPE): subject
+
+[optional body]
+
+[optional footer]
+```
+
+## Rules
+
+### Type (required)
+Must be one of:
+- `feat` - new feature
+- `fix` - bug fix
+- `docs` - documentation only changes
+- `style` - code formatting only (not CSS)
+- `refactor` - code changes that don't add features or fix bugs
+- `perf` - performance improvements
+- `test` - adding or modifying tests
+- `build` - changes to build system or dependencies
+- `ci` - changes to CI configuration files and scripts
+- `chore` - changes that don't modify src or test files (e.g., version bump)
+- `revert` - reverting a previous commit
+
+### Scope (optional)
+- If provided, must be in UPPER-CASE
+- Example: `fix(API): correct validation error`
+- Example: `feat(V2): add new endpoint`
+
+### Subject (required)
+- Use present-imperative tense ("add feature" not "added feature")
+- Do not capitalize the first letter
+- No period at the end
+- Keep under 72 characters
+
+### Body (optional)
+- Separate from subject with a blank line
+- Explain the "why" not the "what"
+- Wrap at 72 characters
+
+### Footer (optional)
+- Reference issues: `Fixes #123` or `Closes #456`
+- Breaking changes: `BREAKING CHANGE: description`
+
+## Examples
+
+Simple fix:
+```
+fix: correct MySQL mirror numeric comparison for DECIMAL fields
+```
+
+With scope:
+```
+feat(V2): add batch commit verification for live API tests
+```
+
+With body:
+```
+fix: handle DECIMAL precision in MySQL mirror verification
+
+MySQL returns DECIMAL fields with full precision (e.g., 1000.000000)
+while expected values may have fewer decimal places. Add numeric
+comparison to compare values as numbers when both are valid numbers.
+```
+
+With breaking change:
+```
+feat(API): change response format for pagination
+
+BREAKING CHANGE: pagination response now uses 'items' instead of 'data'
+```

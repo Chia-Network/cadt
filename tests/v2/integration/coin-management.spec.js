@@ -7,7 +7,9 @@ import wallet from '../../../src/datalayer/wallet.js';
  * Coin Management Task Tests
  *
  * Tests for coin-management background task that ensures the wallet
- * has at least 12 coins of 10000 mojos each for optimal CADT operation.
+ * has at least 15 coins for optimal CADT operation.
+ * A coin is "usable" if its amount >= DEFAULT_COIN_AMOUNT + DEFAULT_FEE (must cover both operation and fee).
+ * Coins must also exceed xch_spam_amount (default 1000000 mojos).
  */
 describe('Coin Management Task Tests', function () {
   this.timeout(30000);
@@ -82,60 +84,65 @@ describe('Coin Management Task Tests', function () {
     });
 
     it('should return success for splitCoins in simulator mode', async function () {
-      const result = await wallet.splitCoins('0xmockcoinid', 5, 10000, 3000);
+      const result = await wallet.splitCoins('0xmockcoinid', 5, 100000000, 3000);
       expect(result).to.have.property('success', true);
     });
   });
 
   describe('Coin Count Logic', function () {
     it('should identify when coin count is below target', function () {
-      const TARGET_COIN_COUNT = 12;
+      const TARGET_COIN_COUNT = 15;
       const currentCoinCount = 5;
       expect(currentCoinCount < TARGET_COIN_COUNT).to.be.true;
     });
 
     it('should identify when coin count meets target', function () {
-      const TARGET_COIN_COUNT = 12;
-      const currentCoinCount = 12;
+      const TARGET_COIN_COUNT = 15;
+      const currentCoinCount = 15;
       expect(currentCoinCount >= TARGET_COIN_COUNT).to.be.true;
     });
 
     it('should identify when coin count exceeds target', function () {
-      const TARGET_COIN_COUNT = 12;
-      const currentCoinCount = 15;
+      const TARGET_COIN_COUNT = 15;
+      const currentCoinCount = 20;
       expect(currentCoinCount >= TARGET_COIN_COUNT).to.be.true;
     });
   });
 
   describe('Coin Splitting Calculations', function () {
-    // New hardcoded constants (match coin-management.js)
-    const COIN_SIZE = 10000;    // Size of each coin in mojos
-    const SPLIT_FEE = 3000;     // Fee for the split transaction
-    const TARGET_COIN_COUNT = 12; // Number of coins to maintain
+    // Constants matching coin-management.js
+    const COIN_SIZE = 1000000;         // Size of each coin in mojos (0.000001 XCH - matches xch_spam_amount)
+    const MIN_COIN_SIZE = 1000000;     // Minimum acceptable coin size (xch_spam_amount)
+    const SPLIT_FEE = 3000;            // Default fee (from config)
+    const TARGET_COIN_COUNT = 15;      // Number of coins to maintain
 
     it('should calculate correct coin size', function () {
-      expect(COIN_SIZE).to.equal(10000);
+      expect(COIN_SIZE).to.equal(1000000);
+    });
+
+    it('should ensure COIN_SIZE meets MIN_COIN_SIZE', function () {
+      expect(COIN_SIZE).to.be.greaterThanOrEqual(MIN_COIN_SIZE);
     });
 
     it('should calculate max possible coins correctly', function () {
-      const largestCoinAmount = 100000; // 100,000 mojos
+      const largestCoinAmount = 5000000; // 5,000,000 mojos
       const maxPossibleCoins = Math.floor((largestCoinAmount - SPLIT_FEE) / COIN_SIZE);
-      // (100000 - 3000) / 10000 = 9.7 = 9
-      expect(maxPossibleCoins).to.equal(9);
+      // (5000000 - 3000) / 1000000 = 4.997 = 4
+      expect(maxPossibleCoins).to.equal(4);
     });
 
     it('should determine coins to create based on need and availability', function () {
       const currentCoinCount = 3;
-      const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 9
+      const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 12
       const maxPossibleCoins = 15;
 
       const coinsToCreate = Math.min(coinsNeeded, maxPossibleCoins);
-      expect(coinsToCreate).to.equal(9);
+      expect(coinsToCreate).to.equal(12);
     });
 
     it('should limit coins to max possible when balance is low', function () {
       const currentCoinCount = 3;
-      const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 9
+      const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 12
       const maxPossibleCoins = 2; // Low balance scenario
 
       const coinsToCreate = Math.min(coinsNeeded, maxPossibleCoins);
@@ -145,16 +152,50 @@ describe('Coin Management Task Tests', function () {
     it('should handle case where coin is too small to split', function () {
       const largestCoinAmount = 3000; // Exactly the fee amount
       const maxPossibleCoins = Math.floor((largestCoinAmount - SPLIT_FEE) / COIN_SIZE);
-      // (3000 - 3000) / 10000 = 0
+      // (3000 - 3000) / 1000000 = 0
       expect(maxPossibleCoins).to.equal(0);
     });
 
     it('should calculate required amount for coins needed', function () {
       const currentCoinCount = 1;
-      const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 11
+      const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 14
       const requiredAmount = (coinsNeeded * COIN_SIZE) + SPLIT_FEE;
-      // (11 * 10000) + 3000 = 113000
-      expect(requiredAmount).to.equal(113000);
+      // (14 * 1000000) + 3000 = 14003000
+      expect(requiredAmount).to.equal(14003000);
+    });
+
+    it('should detect when remainder would be below MIN_COIN_SIZE', function () {
+      // Scenario: coin of 2500000 mojos, splitting into 2 coins of 1000000 each + 3000 fee
+      const largestCoinAmount = 2500000;
+      const coinsToCreate = 2;
+      const totalSplitAmount = (coinsToCreate * COIN_SIZE) + SPLIT_FEE;
+      const remainderAmount = largestCoinAmount - totalSplitAmount;
+      // 2500000 - (2000000 + 3000) = 497000
+      expect(remainderAmount).to.equal(497000);
+      expect(remainderAmount).to.be.lessThan(MIN_COIN_SIZE);
+    });
+
+    it('should allow split when remainder is zero', function () {
+      // Exact amount: 2 coins + fee, no remainder
+      const largestCoinAmount = (2 * COIN_SIZE) + SPLIT_FEE; // 2003000
+      const coinsToCreate = 2;
+      const totalSplitAmount = (coinsToCreate * COIN_SIZE) + SPLIT_FEE;
+      const remainderAmount = largestCoinAmount - totalSplitAmount;
+      expect(remainderAmount).to.equal(0);
+      // Zero remainder is fine (no dust coin created)
+      const shouldReduceCoins = remainderAmount > 0 && remainderAmount < MIN_COIN_SIZE;
+      expect(shouldReduceCoins).to.be.false;
+    });
+
+    it('should allow split when remainder exceeds MIN_COIN_SIZE', function () {
+      // Large coin with plenty of remainder
+      const largestCoinAmount = 500000000; // 0.5 XCH
+      const coinsToCreate = 3;
+      const totalSplitAmount = (coinsToCreate * COIN_SIZE) + SPLIT_FEE;
+      const remainderAmount = largestCoinAmount - totalSplitAmount;
+      // 500000000 - (3000000 + 3000) = 496997000
+      expect(remainderAmount).to.equal(496997000);
+      expect(remainderAmount).to.be.greaterThan(MIN_COIN_SIZE);
     });
   });
 
@@ -179,10 +220,10 @@ describe('Coin Management Task Tests', function () {
       expect(xch).to.equal(1);
     });
 
-    it('should format small amounts correctly', function () {
-      const mojos = 10000; // COIN_SIZE
+    it('should format COIN_SIZE amount correctly', function () {
+      const mojos = 1000000; // COIN_SIZE (0.000001 XCH)
       const xch = mojos / 1000000000000;
-      expect(xch).to.equal(0.00000001);
+      expect(xch).to.equal(0.000001);
     });
   });
 
@@ -219,37 +260,40 @@ describe('Coin Management Task Tests', function () {
 
   describe('Remaining Transactions Calculation', function () {
     it('should calculate remaining transactions correctly', function () {
-      const COIN_SIZE = 10000;
-      const currentBalance = 100000;
+      const COIN_SIZE = 1000000;
+      const currentBalance = 1000000000; // 1 billion mojos (1 XCH)
 
       const remainingTransactions = Math.floor(currentBalance / COIN_SIZE);
-      // 100000 / 10000 = 10
-      expect(remainingTransactions).to.equal(10);
+      // 1000000000 / 1000000 = 1000
+      expect(remainingTransactions).to.equal(1000);
     });
   });
 
   describe('Usable Coin Filtering', function () {
-    const COIN_SIZE = 10000;
+    const DEFAULT_COIN_AMOUNT = 300;    // DEFAULT_COIN_AMOUNT from config
+    const DEFAULT_FEE = 3000;           // DEFAULT_FEE from config
+    const MIN_USABLE_COIN_SIZE = DEFAULT_COIN_AMOUNT + DEFAULT_FEE; // 3300
 
-    it('should filter coins by minimum size', function () {
+    it('should filter coins by minimum usable size (DEFAULT_COIN_AMOUNT + DEFAULT_FEE)', function () {
       const allUnspentCoins = [
-        { id: '0x1', amount: 5000, spent_height: 0 },   // Too small
-        { id: '0x2', amount: 10000, spent_height: 0 },  // Exactly COIN_SIZE
-        { id: '0x3', amount: 15000, spent_height: 0 },  // Above COIN_SIZE
-        { id: '0x4', amount: 9999, spent_height: 0 },   // Just below
+        { id: '0x1', amount: 1000, spent_height: 0 },    // Too small
+        { id: '0x2', amount: 3300, spent_height: 0 },    // Exactly MIN_USABLE_COIN_SIZE
+        { id: '0x3', amount: 100000000, spent_height: 0 },  // Well above threshold
+        { id: '0x4', amount: 3299, spent_height: 0 },    // Just below MIN_USABLE_COIN_SIZE
+        { id: '0x5', amount: 5000, spent_height: 0 },    // Above threshold
       ];
 
-      const usableCoins = allUnspentCoins.filter((coin) => coin.amount >= COIN_SIZE);
-      expect(usableCoins).to.have.length(2);
-      expect(usableCoins.map((c) => c.id)).to.deep.equal(['0x2', '0x3']);
+      const usableCoins = allUnspentCoins.filter((coin) => coin.amount >= MIN_USABLE_COIN_SIZE);
+      expect(usableCoins).to.have.length(3);
+      expect(usableCoins.map((c) => c.id)).to.deep.equal(['0x2', '0x3', '0x5']);
     });
 
     it('should identify original coin after split by ID', function () {
       const originalCoinId = '0xoriginal123';
       const unspentCoins = [
-        { id: '0xnewcoin1', amount: 10000, spent_height: 0 },
-        { id: '0xnewcoin2', amount: 10000, spent_height: 0 },
-        { id: '0xchangecoin', amount: 1000000, spent_height: 0 },
+        { id: '0xnewcoin1', amount: 100000000, spent_height: 0 },
+        { id: '0xnewcoin2', amount: 100000000, spent_height: 0 },
+        { id: '0xchangecoin', amount: 1000000000, spent_height: 0 },
       ];
 
       const originalCoinStillUnspent = unspentCoins.some((coin) => coin.id === originalCoinId);
