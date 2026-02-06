@@ -111,23 +111,23 @@ describe('Coin Management Task Tests', function () {
 
   describe('Coin Splitting Calculations', function () {
     // Constants matching coin-management.js
-    const COIN_SIZE = 100000000;       // Size of each coin in mojos (0.0001 XCH)
+    const COIN_SIZE = 1000000;         // Size of each coin in mojos (0.000001 XCH - matches xch_spam_amount)
     const MIN_COIN_SIZE = 1000000;     // Minimum acceptable coin size (xch_spam_amount)
     const SPLIT_FEE = 3000;            // Default fee (from config)
     const TARGET_COIN_COUNT = 15;      // Number of coins to maintain
 
     it('should calculate correct coin size', function () {
-      expect(COIN_SIZE).to.equal(100000000);
+      expect(COIN_SIZE).to.equal(1000000);
     });
 
-    it('should ensure COIN_SIZE exceeds MIN_COIN_SIZE', function () {
-      expect(COIN_SIZE).to.be.greaterThan(MIN_COIN_SIZE);
+    it('should ensure COIN_SIZE meets MIN_COIN_SIZE', function () {
+      expect(COIN_SIZE).to.be.greaterThanOrEqual(MIN_COIN_SIZE);
     });
 
     it('should calculate max possible coins correctly', function () {
-      const largestCoinAmount = 500000000; // 500,000,000 mojos
+      const largestCoinAmount = 5000000; // 5,000,000 mojos
       const maxPossibleCoins = Math.floor((largestCoinAmount - SPLIT_FEE) / COIN_SIZE);
-      // (500000000 - 3000) / 100000000 = 4.99997 = 4
+      // (5000000 - 3000) / 1000000 = 4.997 = 4
       expect(maxPossibleCoins).to.equal(4);
     });
 
@@ -152,7 +152,7 @@ describe('Coin Management Task Tests', function () {
     it('should handle case where coin is too small to split', function () {
       const largestCoinAmount = 3000; // Exactly the fee amount
       const maxPossibleCoins = Math.floor((largestCoinAmount - SPLIT_FEE) / COIN_SIZE);
-      // (3000 - 3000) / 100000000 = 0
+      // (3000 - 3000) / 1000000 = 0
       expect(maxPossibleCoins).to.equal(0);
     });
 
@@ -160,24 +160,24 @@ describe('Coin Management Task Tests', function () {
       const currentCoinCount = 1;
       const coinsNeeded = TARGET_COIN_COUNT - currentCoinCount; // 14
       const requiredAmount = (coinsNeeded * COIN_SIZE) + SPLIT_FEE;
-      // (14 * 100000000) + 3000 = 1400003000
-      expect(requiredAmount).to.equal(1400003000);
+      // (14 * 1000000) + 3000 = 14003000
+      expect(requiredAmount).to.equal(14003000);
     });
 
     it('should detect when remainder would be below MIN_COIN_SIZE', function () {
-      // Scenario: coin of 200500000 mojos, splitting into 2 coins of 100000000 each + 3000 fee
-      const largestCoinAmount = 200500000;
+      // Scenario: coin of 2500000 mojos, splitting into 2 coins of 1000000 each + 3000 fee
+      const largestCoinAmount = 2500000;
       const coinsToCreate = 2;
       const totalSplitAmount = (coinsToCreate * COIN_SIZE) + SPLIT_FEE;
       const remainderAmount = largestCoinAmount - totalSplitAmount;
-      // 200500000 - (200000000 + 3000) = 497000
+      // 2500000 - (2000000 + 3000) = 497000
       expect(remainderAmount).to.equal(497000);
       expect(remainderAmount).to.be.lessThan(MIN_COIN_SIZE);
     });
 
     it('should allow split when remainder is zero', function () {
       // Exact amount: 2 coins + fee, no remainder
-      const largestCoinAmount = (2 * COIN_SIZE) + SPLIT_FEE; // 200003000
+      const largestCoinAmount = (2 * COIN_SIZE) + SPLIT_FEE; // 2003000
       const coinsToCreate = 2;
       const totalSplitAmount = (coinsToCreate * COIN_SIZE) + SPLIT_FEE;
       const remainderAmount = largestCoinAmount - totalSplitAmount;
@@ -193,8 +193,8 @@ describe('Coin Management Task Tests', function () {
       const coinsToCreate = 3;
       const totalSplitAmount = (coinsToCreate * COIN_SIZE) + SPLIT_FEE;
       const remainderAmount = largestCoinAmount - totalSplitAmount;
-      // 500000000 - (300000000 + 3000) = 199997000
-      expect(remainderAmount).to.equal(199997000);
+      // 500000000 - (3000000 + 3000) = 496997000
+      expect(remainderAmount).to.equal(496997000);
       expect(remainderAmount).to.be.greaterThan(MIN_COIN_SIZE);
     });
   });
@@ -221,9 +221,9 @@ describe('Coin Management Task Tests', function () {
     });
 
     it('should format COIN_SIZE amount correctly', function () {
-      const mojos = 100000000; // COIN_SIZE (0.0001 XCH)
+      const mojos = 1000000; // COIN_SIZE (0.000001 XCH)
       const xch = mojos / 1000000000000;
-      expect(xch).to.equal(0.0001);
+      expect(xch).to.equal(0.000001);
     });
   });
 
@@ -260,12 +260,12 @@ describe('Coin Management Task Tests', function () {
 
   describe('Remaining Transactions Calculation', function () {
     it('should calculate remaining transactions correctly', function () {
-      const COIN_SIZE = 100000000;
+      const COIN_SIZE = 1000000;
       const currentBalance = 1000000000; // 1 billion mojos (1 XCH)
 
       const remainingTransactions = Math.floor(currentBalance / COIN_SIZE);
-      // 1000000000 / 100000000 = 10
-      expect(remainingTransactions).to.equal(10);
+      // 1000000000 / 1000000 = 1000
+      expect(remainingTransactions).to.equal(1000);
     });
   });
 

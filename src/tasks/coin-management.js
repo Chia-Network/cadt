@@ -12,7 +12,7 @@ const APP_CONFIG = CONFIG.APP;
 
 // Coin management constants
 const TARGET_COIN_COUNT = 15;      // Number of coins to maintain
-const COIN_SIZE = 100000000;       // Size of each coin in mojos (0.0001 XCH - must exceed xch_spam_amount)
+const COIN_SIZE = 1000000;         // Size of each coin in mojos (0.000001 XCH - matches xch_spam_amount)
 const MIN_COIN_SIZE = 1000000;     // Minimum acceptable coin size in mojos (matches default xch_spam_amount)
 const SPLIT_FEE = APP_CONFIG.DEFAULT_FEE || 3000; // Fee from config, fallback to 3000 mojos
 const DEFAULT_COIN_AMOUNT = APP_CONFIG.DEFAULT_COIN_AMOUNT || 300; // Coin amount for DataLayer operations from config
@@ -107,7 +107,7 @@ const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
 
 /**
  * Check wallet coin count and split if necessary
- * Creates up to 15 coins of 100000000 mojos each for DataLayer operations
+ * Creates up to 15 coins of 1000000 mojos each for DataLayer operations
  * Uses DEFAULT_FEE from config for the split transaction fee
  * A coin is considered "usable" if its amount >= DEFAULT_COIN_AMOUNT + DEFAULT_FEE (must cover both operation and fee)
  * Will not split if resulting coins would be below MIN_COIN_SIZE (1000000 mojos)
