@@ -308,13 +308,14 @@ class ProjectV2 extends Model {
     const projectData = project.toJSON();
 
     // Create staging record with is_transfer flag
-    await StagingV2.upsert({
+    await StagingV2.create({
       uuid: projectId,
       action: 'UPDATE',
       table: 'project',
       data: JSON.stringify([projectData]),
-      is_transfer: true,
       committed: true, // Transfer records are marked as committed immediately
+      failed_commit: false,
+      is_transfer: true,
     });
 
     loggerV2.info(`[v2]: Project ${projectId} staged for transfer`);
@@ -893,7 +894,7 @@ class ProjectV2 extends Model {
       if (project[key] !== undefined && project[key] !== null) {
         if (typeof project[key] === 'string') {
           const trimmedValue = project[key].trim();
-          
+
           // Try to parse as JSON array first
           if (trimmedValue.startsWith('[')) {
             try {
@@ -906,7 +907,7 @@ class ProjectV2 extends Model {
               // Not valid JSON, continue to other parsing methods
             }
           }
-          
+
           // Check for pipe-separated values (e.g., "Solar|Wind")
           if (trimmedValue.includes('|')) {
             project[key] = trimmedValue.split('|').map(v => v.trim()).filter(v => v);

@@ -53,3 +53,4 @@ alwaysApply: true
 # Git
 - User will push to git, cursor and AI should not write to git
 - use the gh tool to get logs from github actions
+
