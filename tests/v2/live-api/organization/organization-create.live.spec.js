@@ -39,6 +39,9 @@ describe('V2 Organization Creation Tests', function () {
         icon: 'https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg',
       };
 
+      // Track org creation timing
+      const orgCreateStartTime = Date.now();
+
       // Create V2 organization
       // Retry on transient wallet sync issues
       const maxRetries = 10;
@@ -125,6 +128,17 @@ describe('V2 Organization Creation Tests', function () {
       if (!datalayerValidation.valid) {
         console.error('Datalayer validation errors:', datalayerValidation.errors);
       }
+
+      // Org creation timing report
+      const orgCreateElapsedMs = Date.now() - orgCreateStartTime;
+      const orgCreateMinutes = Math.floor(orgCreateElapsedMs / 60000);
+      const orgCreateSeconds = ((orgCreateElapsedMs % 60000) / 1000).toFixed(1);
+      console.log(`\n╔══════════════════════════════════════════════════════════╗`);
+      console.log(`║  V2 ORGANIZATION CREATION TIMING REPORT                  ║`);
+      console.log(`╠══════════════════════════════════════════════════════════╣`);
+      console.log(`║  Org UID:  ${v2OrgUid}`);
+      console.log(`║  Duration: ${orgCreateMinutes}m ${orgCreateSeconds}s (${orgCreateElapsedMs}ms)`);
+      console.log(`╚══════════════════════════════════════════════════════════╝`);
 
       console.log(`✓ V2 Organization created with all hashes populated: ${v2OrgUid}`);
     });
