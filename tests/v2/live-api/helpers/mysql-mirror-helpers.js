@@ -343,6 +343,17 @@ export const verifyMirrorRecord = async (type, id, expectedData = null) => {
       }
     }
 
+    // Handle numeric comparisons (MySQL returns DECIMAL with full precision)
+    // e.g., expected '1000' vs actual '1000.000000'
+    const expectedNum = parseFloat(expectedValue);
+    const actualNum = parseFloat(actualValue);
+    if (!isNaN(expectedNum) && !isNaN(actualNum)) {
+      // Compare numerically - both values are valid numbers
+      if (expectedNum === actualNum) {
+        continue;
+      }
+    }
+
     // String comparison
     if (String(actualValue) !== String(expectedValue)) {
       result.dataMatches = false;
