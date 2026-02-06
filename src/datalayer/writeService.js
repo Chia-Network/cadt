@@ -111,13 +111,17 @@ const upsertDataLayer = async (storeId, data) => {
   await pushChangesWhenStoreIsAvailable(storeId, finalChangeList);
 };
 
+/**
+ * Schedule a retry after 30s (fire-and-forget). Does not block the caller.
+ * Caller should throw so we don't mark "data written" until the push actually succeeds.
+ */
 const retryPushToStore = (
   storeId,
   changeList,
   failedCallback,
   retryAttempts,
 ) => {
-  logger.info(`Retrying pushing to store ${storeId}: ${retryAttempts}`);
+  logger.info(`Retrying pushing to store ${storeId} in 30s (attempt ${retryAttempts + 1})`);
   if (retryAttempts >= 60) {
     logger.info(
       'Could not push changelist to datalayer after retrying 60 times',
@@ -126,13 +130,15 @@ const retryPushToStore = (
     return;
   }
 
-  setTimeout(async () => {
-    await pushChangesWhenStoreIsAvailable(
+  setTimeout(() => {
+    pushChangesWhenStoreIsAvailable(
       storeId,
       changeList,
       failedCallback,
       retryAttempts + 1,
-    );
+    ).catch((error) => {
+      logger.error(`Retry push to store ${storeId} failed: ${error.message}`);
+    });
   }, 30000);
 };
 
@@ -160,18 +166,38 @@ export const pushChangesWhenStoreIsAvailable = async (
 
       if (!success) {
         logger.error(
-          `RPC failed when pushing to store ${storeId}, attempting retry.`,
+          `RPC failed when pushing to store ${storeId}, scheduling retry in 30s.`,
         );
-        retryPushToStore(storeId, changeList, failedCallback, retryAttempts);
+        retryPushToStore(
+          storeId,
+          changeList,
+          failedCallback,
+          retryAttempts,
+        );
+        throw new Error(
+          `Push to store ${storeId} failed (spendable/blockchain). Retry scheduled in 30s.`,
+        );
       }
     } else {
-      retryPushToStore(storeId, changeList, failedCallback, retryAttempts);
+      retryPushToStore(
+        storeId,
+        changeList,
+        failedCallback,
+        retryAttempts,
+      );
+      throw new Error(
+        `Store ${storeId} not ready for push (unconfirmed tx or root). Retry scheduled in 30s.`,
+      );
     }
   }
 };
 
 const pushDataLayerChangeList = (storeId, changeList, failedCallback) => {
-  pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback);
+  pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback).catch((error) => {
+    // Fire-and-forget callers don't await this, so catch here to avoid unhandled rejections.
+    // The retry is already scheduled inside pushChangesWhenStoreIsAvailable.
+    logger.debug(`pushDataLayerChangeList: push to ${storeId} deferred to retry: ${error.message}`);
+  });
 };
 
 const dataLayerAvailable = async () => {

@@ -11,7 +11,7 @@ const CONFIG = getConfig();
 const APP_CONFIG = CONFIG.APP;
 
 // Coin management constants
-const TARGET_COIN_COUNT = 12;      // Number of coins to maintain
+const TARGET_COIN_COUNT = 15;      // Number of coins to maintain
 const COIN_SIZE = 10000;           // Size of each coin in mojos (enough for DataLayer operations)
 const SPLIT_FEE = 3000;            // Fee for the split transaction
 
@@ -104,7 +104,7 @@ const waitForSplitConfirmation = async (expectedNewCoins, originalCoinId) => {
 
 /**
  * Check wallet coin count and split if necessary
- * Creates 12 coins of 10000 mojos each for DataLayer operations
+ * Creates 15 coins of 10000 mojos each for DataLayer operations
  */
 const runCoinManagement = async () => {
   logger.info('[COIN_MANAGEMENT] Starting coin management check');

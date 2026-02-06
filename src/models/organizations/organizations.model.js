@@ -15,14 +15,16 @@ import ModelTypes from './organizations.modeltypes.cjs';
 import { assertStoreIsOwned } from '../../utils/data-assertions';
 import {
   getRoot,
+  getLocalRoot,
   getSubscriptions,
   getDataLayerStoreSyncStatus,
+  pushChangeListToDataLayer,
 } from '../../datalayer/persistance.js';
 import {
   addOrDeleteOrganizationRecordMutex,
   processingSyncRegistriesTransactionMutex,
 } from '../../utils/model-utils';
-import { isDlStoreSynced } from '../../utils/datalayer-utils';
+import { isDlStoreSynced, encodeHex } from '../../utils/datalayer-utils';
 import {
   ORG_CREATION_STATES,
   STORE_TYPES,
@@ -309,8 +311,25 @@ class Organization extends Model {
         }
 
         try {
-          const { confirmed, hash } = await getRoot(dataModelVersionStoreId);
-          if (confirmed && hash) {
+          const nullHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+          let hash = null;
+          const rootResult = await getRoot(dataModelVersionStoreId);
+          const { confirmed, hash: rootHash } = rootResult;
+          // Chia get_root returns 0x00... for subscribed stores (invalid) or empty tree.
+          // Fall back to get_local_root when get_root returns null hash (works for subscribed stores).
+          if (confirmed && rootHash && rootHash !== nullHash && rootHash !== '0') {
+            hash = rootHash;
+          } else if (rootHash === nullHash || rootHash === '0' || !rootHash) {
+            const localResult = await getLocalRoot(dataModelVersionStoreId);
+            const localHash = localResult?.hash;
+            if (localHash && localHash !== nullHash && localHash !== '0') {
+              hash = localHash;
+              logState(state, `Data model version store hash from get_local_root: ${hash}`);
+            } else {
+              logState(state, 'Data model version store root is empty/invalid (0x00...); not persisting hash', 'warn');
+            }
+          }
+          if (hash) {
             dataModelVersionStoreHash = hash;
             logState(state, `Data model version store hash: ${hash}`);
           }
@@ -539,7 +558,17 @@ class Organization extends Model {
   }
 
   /**
-   * Push data to stores in parallel
+   * Push data to stores sequentially with a short delay between each.
+   *
+   * Calls pushChangeListToDataLayer directly, bypassing the hasUnconfirmedTransactions
+   * gate in pushChangesWhenStoreIsAvailable. With coin splitting we maintain multiple
+   * coins specifically so concurrent/back-to-back transactions work; the unconfirmed-tx
+   * check is a legacy guard from single-coin days and would force a 30s retry delay
+   * on the second push. We already know stores are confirmed from the previous step.
+   *
+   * Pushes are staggered by 2s so two batch_update RPCs don't hit the wallet at the
+   * exact same instant (avoids a coin-selection race in the Chia wallet).
+   *
    * @param {Object} state - Current state
    * @returns {Promise<Object>} Updated state
    * @private
@@ -552,69 +581,96 @@ class Organization extends Model {
       return state;
     }
 
-    logState(state, `Pushing data to ${storesNeedingData.length} stores in parallel`);
+    logState(state, `Pushing data to ${storesNeedingData.length} stores`);
 
     const orgUidStoreId = state.stores[STORE_TYPES.ORG_UID].id;
     const dataModelVersionStoreId = state.stores[STORE_TYPES.DATA_MODEL_VERSION].id;
     const registryStoreId = state.stores[STORE_TYPES.REGISTRY].id;
     const fileStoreId = state.stores[STORE_TYPES.FILE_STORE].id;
 
-    const pushPromises = [];
+    // Build the list of pushes to make (storeType, storeId, changelist)
+    const pushes = [];
 
-    // Push data to org store if needed
     if (storesNeedingData.includes(STORE_TYPES.ORG_UID)) {
-      pushPromises.push(
-        (async () => {
-          try {
-            logState(state, `Pushing data to orgUid store ${orgUidStoreId}`);
-            await datalayer.syncDataLayer(
-              orgUidStoreId,
-              {
-                registryId: dataModelVersionStoreId, // registryId is the key named here, but this is the DATA MODEL VERSION store id
-                fileStoreId,
-                name: state.name,
-                icon: state.icon,
-              },
-              () => {}, // No revert needed - we have state tracking now
-            );
-            return { storeType: STORE_TYPES.ORG_UID, success: true };
-          } catch (error) {
-            return { storeType: STORE_TYPES.ORG_UID, success: false, error: error.message };
-          }
-        })(),
-      );
+      const orgData = {
+        registryId: dataModelVersionStoreId, // registryId key maps to the DATA MODEL VERSION store id
+        fileStoreId,
+        name: state.name,
+        icon: state.icon,
+      };
+      pushes.push({
+        storeType: STORE_TYPES.ORG_UID,
+        storeId: orgUidStoreId,
+        changeList: Object.keys(orgData).map((key) => ({
+          action: 'insert',
+          key: encodeHex(key),
+          value: encodeHex(orgData[key]),
+        })),
+      });
     }
 
-    // Push data to dataModelVersion store if needed
     if (storesNeedingData.includes(STORE_TYPES.DATA_MODEL_VERSION)) {
-      pushPromises.push(
-        (async () => {
-          try {
-            logState(state, `Pushing data to dataModelVersion store ${dataModelVersionStoreId}`);
-            await datalayer.syncDataLayer(
-              dataModelVersionStoreId,
-              {
-                [state.dataVersion]: registryStoreId,
-              },
-              () => {},
-            );
-            return { storeType: STORE_TYPES.DATA_MODEL_VERSION, success: true };
-          } catch (error) {
-            return { storeType: STORE_TYPES.DATA_MODEL_VERSION, success: false, error: error.message };
-          }
-        })(),
-      );
+      const dmvData = { [state.dataVersion]: registryStoreId };
+      pushes.push({
+        storeType: STORE_TYPES.DATA_MODEL_VERSION,
+        storeId: dataModelVersionStoreId,
+        changeList: Object.keys(dmvData).map((key) => ({
+          action: 'insert',
+          key: encodeHex(key),
+          value: encodeHex(dmvData[key]),
+        })),
+      });
     }
 
-    const results = await Promise.all(pushPromises);
+    const results = [];
 
-    // Update state with data written status
-    for (const result of results) {
-      if (result.success) {
-        state = markStoreDataWritten(state, result.storeType);
+    for (let i = 0; i < pushes.length; i++) {
+      const { storeType, storeId, changeList } = pushes[i];
+
+      // 2s delay between pushes so RPCs don't hit the wallet at the exact same instant
+      if (i > 0 && !USE_SIMULATOR) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+
+      try {
+        logState(state, `Pushing data to ${storeType} store ${storeId}`);
+
+        let success;
+        if (USE_SIMULATOR) {
+          // Simulator has no wallet/datalayer RPC — use the simulator's in-memory store
+          const { pushChangeListToDataLayer: simPush } = await import('../../datalayer/simulator.js');
+          await simPush(storeId, changeList);
+          success = true;
+        } else {
+          // Call persistance directly, skipping the legacy hasUnconfirmedTransactions gate.
+          // With coin splitting we have multiple coins so back-to-back txs are fine.
+          success = await pushChangeListToDataLayer(storeId, changeList, { skipTransactionWait: true });
+        }
+
+        if (success) {
+          results.push({ storeType, success: true });
+          state = markStoreDataWritten(state, storeType);
+          await saveCreationState(state, Meta);
+        } else {
+          // Push was accepted by the function but returned false (RPC-level failure).
+          // Schedule a background retry and report failure for this store.
+          logState(state, `Push to ${storeType} store ${storeId} failed, background retry scheduled`, 'error');
+          datalayer.pushDataLayerChangeList(storeId, changeList, () => {
+            logState(state, `Background retry for ${storeType} store ${storeId} gave up`, 'error');
+          });
+          results.push({ storeType, success: false, error: 'batch_update RPC failed' });
+        }
+      } catch (error) {
+        logState(state, `Push to ${storeType} store ${storeId} threw: ${error.message}`, 'error');
+        if (!USE_SIMULATOR) {
+          // Schedule a background retry via the normal path (which includes the unconfirmed-tx gate)
+          datalayer.pushDataLayerChangeList(storeId, changeList, () => {
+            logState(state, `Background retry for ${storeType} store ${storeId} gave up`, 'error');
+          });
+        }
+        results.push({ storeType, success: false, error: error.message });
       }
     }
-    await saveCreationState(state, Meta);
 
     // Check for failures
     const failed = results.filter((r) => !r.success);
@@ -757,16 +813,26 @@ class Organization extends Model {
     );
 
     if (isDlStoreSynced(dataModelVersionStoreSyncStatus?.sync_status)) {
-      const { confirmed, hash } = await getRoot(
-        datalayerDataModelVersionStoreId,
-      );
-      if (confirmed && hash !== organization.dataModelVersionStoreHash) {
+      const nullHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+      let hash = null;
+      const rootResult = await getRoot(datalayerDataModelVersionStoreId);
+      const { confirmed, hash: rootHash } = rootResult;
+      if (confirmed && rootHash && rootHash !== nullHash && rootHash !== '0') {
+        hash = rootHash;
+      } else if (rootHash === nullHash || rootHash === '0' || !rootHash) {
+        const localResult = await getLocalRoot(datalayerDataModelVersionStoreId);
+        const localHash = localResult?.hash;
+        if (localHash && localHash !== nullHash && localHash !== '0') {
+          hash = localHash;
+        }
+      }
+      if (hash && hash !== organization.dataModelVersionStoreHash) {
         logger.info(
-          `data model version store ${datalayerDataModelVersionStoreId} root hash needs to be updated ${hash} ` +
+          `data model version store ${datalayerDataModelVersionStoreId} root hash needs to be updated ` +
             `from ${organization.dataModelVersionStoreHash} to ${hash}`,
         );
         updatedOrganizationData.dataModelVersionStoreHash = hash;
-      } else if (!confirmed) {
+      } else if (!confirmed && !hash) {
         logger.warn(
           `data model version store ${datalayerDataModelVersionStoreId} has not been confirmed yet. cannot validate or update hash.`,
         );
