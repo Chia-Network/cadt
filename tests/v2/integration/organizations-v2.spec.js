@@ -13,6 +13,9 @@ import { waitForV2DataLayerSync } from '../utils/v2-test-helpers.js';
 const { USE_SIMULATOR } = getConfig().APP;
 const TEST_WAIT_TIME = USE_SIMULATOR ? 5000 : datalayer.POLLING_INTERVAL * 10;
 
+// Valid orgHash for tests - controller checks that orgHash is populated and not null/zero
+const TEST_ORG_HASH = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+
 // Helper to get store data - uses simulator in simulator mode
 const getStoreDataForTest = async (storeId) => {
   if (USE_SIMULATOR) {
@@ -332,6 +335,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with v1 key
@@ -471,6 +475,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: 'test-registry',
         dataModelVersionStoreId: 'test-singleton',
         fileStoreId: 'test-filestore',
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with both v1 and v2 keys (simulating completed upgrade)
@@ -527,6 +532,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with ONLY v1 key (simulating partial upgrade failure)
@@ -669,6 +675,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with v1 key
@@ -741,6 +748,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with v1 key
@@ -794,6 +802,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with v1 key
@@ -863,6 +872,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
         registryId: v1RegistryId,
         dataModelVersionStoreId: v1DataModelVersionStoreId,
         fileStoreId: v1FileStoreId,
+        orgHash: TEST_ORG_HASH, // Required for upgrade validation
       });
 
       // Create singleton with BOTH v1 and v2 keys (simulating previous upgrade)
@@ -1906,6 +1916,7 @@ describe('Phase 16.7: V2 Organization Management Integration Tests', function ()
           registryId: v1RegistryId,
           dataModelVersionStoreId: v1DataModelVersionStoreId,
           fileStoreId: v1FileStoreId,
+          orgHash: TEST_ORG_HASH, // Required for upgrade validation
         });
 
         // Create singleton with v1 key

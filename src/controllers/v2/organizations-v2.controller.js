@@ -34,24 +34,23 @@ import { assertWalletIsSynced } from '../../utils/data-assertions.js';
 import { sequelizeV2 } from '../../database/v2/index.js';
 import { loggerV2 } from '../../config/logger.js';
 import datalayer from '../../datalayer';
+import { getStoreData as getRawStoreData } from '../../datalayer/persistance.js';
 import * as simulator from '../../datalayer/simulator.js';
 import { decodeHex, decodeDataLayerResponse } from '../../utils/datalayer-utils.js';
 import { getConfig } from '../../utils/config-loader.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
 
-// Helper to get store data - uses simulator in simulator mode, otherwise wraps callback-based version
+// Helper to get store data - returns raw format with keys_values for both modes
+// Uses simulator in simulator mode, otherwise uses persistance.getStoreData directly
+// (syncService.getStoreData decodes data before callback, but we need raw hex format)
 const getStoreDataPromise = async (storeId) => {
   if (USE_SIMULATOR) {
     return await simulator.getStoreData(storeId);
   } else {
-    return new Promise((resolve, reject) => {
-      datalayer.getStoreData(
-        storeId,
-        (data) => resolve(data),
-        (error) => reject(new Error(error)),
-      );
-    });
+    // Use raw persistance.getStoreData to get hex-encoded keys_values
+    // (syncService.getStoreData decodes before callback, which breaks our checks)
+    return await getRawStoreData(storeId);
   }
 };
 
