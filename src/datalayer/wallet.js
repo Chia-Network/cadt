@@ -437,7 +437,7 @@ const splitCoins = async (targetCoinId, numberOfCoins, amountPerCoin, fee = 0) =
  */
 const waitForSpendableCoins = async (
   requiredCoins = 4,
-  minMojosPerCoin = 10000,
+  minMojosPerCoin = 100000000,
   maxWaitMs = 300000,
   pollIntervalMs = 10000,
 ) => {

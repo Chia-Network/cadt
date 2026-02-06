@@ -222,9 +222,9 @@ class OrganizationsV2 extends Model {
       }
 
       // Wait for sufficient spendable coins before starting store creation
-      // We need 4 SEPARATE coins (one per parallel store creation), each with at least 10000 mojos
-      // This matches COIN_SIZE in coin-management.js (10000 mojos per coin)
-      const coinCheck = await wallet.waitForSpendableCoins(4, 10000, 300000, 10000);
+      // We need 4 SEPARATE coins (one per parallel store creation), each with at least 100000000 mojos
+      // This matches COIN_SIZE in coin-management.js (100000000 mojos per coin)
+      const coinCheck = await wallet.waitForSpendableCoins(4, 100000000, 300000, 10000);
       if (!coinCheck.success) {
         throw new Error(
           `Cannot create organization: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
@@ -270,9 +270,9 @@ class OrganizationsV2 extends Model {
     }
 
     // Wait for sufficient spendable coins before resuming store creation
-    // We need 4 SEPARATE coins (one per parallel store creation), each with at least 10000 mojos
-    // This matches COIN_SIZE in coin-management.js (10000 mojos per coin)
-    const coinCheck = await wallet.waitForSpendableCoins(4, 10000, 300000, 10000);
+    // We need 4 SEPARATE coins (one per parallel store creation), each with at least 100000000 mojos
+    // This matches COIN_SIZE in coin-management.js (100000000 mojos per coin)
+    const coinCheck = await wallet.waitForSpendableCoins(4, 100000000, 300000, 10000);
     if (!coinCheck.success) {
       throw new Error(
         `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
