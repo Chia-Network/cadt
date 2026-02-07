@@ -7,10 +7,7 @@ import {
   setV2OrgUid,
   clearOrganizationState,
 } from '../helpers/organization-state.js';
-import {
-  validateOrganizationStores,
-  validateOrganizationMirrors,
-} from '../helpers/datalayer-test-helpers.js';
+import { validateOrganizationStores } from '../helpers/datalayer-test-helpers.js';
 
 /**
  * V2 Organization Creation Test
@@ -132,14 +129,8 @@ describe('V2 Organization Creation Tests', function () {
         console.error('Datalayer validation errors:', datalayerValidation.errors);
       }
 
-      // Validate mirrors are correctly set up for all stores
-      const mirrorValidation = await validateOrganizationMirrors(result.organization, true);
-      if (!mirrorValidation.details?.skipped) {
-        expect(mirrorValidation.valid).to.be.true;
-        if (!mirrorValidation.valid) {
-          console.error('Mirror validation errors:', mirrorValidation.errors);
-        }
-      }
+      // Mirror validation runs at the end of the live API test run (after all data tests)
+      // to allow extra time for mirror creation/retries.
 
       // Org creation timing report
       const orgCreateElapsedMs = Date.now() - orgCreateStartTime;

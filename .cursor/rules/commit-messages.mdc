@@ -3,6 +3,8 @@ description: Commit message conventions following Conventional Commits standard
 alwaysApply: true
 ---
 
+At the end of every prompt that results in version controlled files being changed, include an example git command at the end of the work that has the `git add` command and the commit command for the user to copy and paste.  For example `git add . && git commit -m "fix(V2): improve organization sync testing by including sync testing in CI`.
+
 # Commit Message Format
 
 This project uses [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) with commitlint enforcement.

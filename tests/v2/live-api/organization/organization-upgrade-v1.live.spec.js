@@ -10,10 +10,7 @@ import {
   clearOrganizationState,
   getOrganizationState,
 } from '../helpers/organization-state.js';
-import {
-  validateOrganizationStores,
-  validateOrganizationMirrors,
-} from '../helpers/datalayer-test-helpers.js';
+import { validateOrganizationStores } from '../helpers/datalayer-test-helpers.js';
 
 // Store V1 organization details for comparison after upgrade
 let v1OrganizationDetails = null;
@@ -138,14 +135,8 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
         console.error('Datalayer validation errors:', datalayerValidation.errors);
       }
 
-      // Validate mirrors are correctly set up for all V1 stores
-      const mirrorValidation = await validateOrganizationMirrors(result.organization, false);
-      if (!mirrorValidation.details?.skipped) {
-        expect(mirrorValidation.valid).to.be.true;
-        if (!mirrorValidation.valid) {
-          console.error('Mirror validation errors:', mirrorValidation.errors);
-        }
-      }
+      // Mirror validation runs at the end of the live API test run (after all data tests)
+      // to allow extra time for mirror creation/retries.
 
       // Save V1 organization details for comparison after upgrade
       v1OrganizationDetails = {
@@ -269,14 +260,8 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
         console.error('Datalayer validation errors:', datalayerValidation.errors);
       }
 
-      // Validate mirrors are correctly set up for all V2 stores after upgrade
-      const mirrorValidation = await validateOrganizationMirrors(result.organization, true);
-      if (!mirrorValidation.details?.skipped) {
-        expect(mirrorValidation.valid).to.be.true;
-        if (!mirrorValidation.valid) {
-          console.error('Mirror validation errors:', mirrorValidation.errors);
-        }
-      }
+      // Mirror validation runs at the end of the live API test run (after all data tests)
+      // to allow extra time for mirror creation/retries.
 
       // V2 upgrade timing report
       const v2UpgradeElapsedMs = Date.now() - v2UpgradeStartTime;

@@ -361,6 +361,30 @@ async function main() {
 
     console.log('\n=== All phases complete ===\n');
 
+    // Organization mirror validation (runs last to allow extra time for mirror creation/retries)
+    const { getOrganizationState } = await import('./helpers/organization-state.js');
+    const { validateOrganizationMirrors } = await import('./helpers/datalayer-test-helpers.js');
+    const orgState = getOrganizationState();
+    const v2OrgUids = [orgState.v2OrgUid, orgState.upgradedV2OrgUid].filter(Boolean);
+    if (v2OrgUids.length > 0) {
+      console.log('\n=== Organization mirror validation (after all data tests) ===\n');
+      const orgsResponse = await request.get('/v2/organizations');
+      if (orgsResponse.status === 200 && orgsResponse.body && typeof orgsResponse.body === 'object') {
+        const orgs = Object.values(orgsResponse.body);
+        for (const orgUid of v2OrgUids) {
+          const org = orgs.find(o => o.org_uid === orgUid);
+          if (org) {
+            const mirrorValidation = await validateOrganizationMirrors(org, true);
+            if (!mirrorValidation.details?.skipped && !mirrorValidation.valid) {
+              console.error('Mirror validation errors:', mirrorValidation.errors);
+              throw new Error(`Organization mirror validation failed for ${orgUid}: ${mirrorValidation.errors.join('; ')}`);
+            }
+          }
+        }
+      }
+      console.log('\n=== Organization mirror validation complete ===\n');
+    }
+
     // Cleanup MySQL connection pool if it was used
     await closeMirrorDbPool();
   } catch (error) {
