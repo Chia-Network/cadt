@@ -1,6 +1,6 @@
 FROM mikefarah/yq:4 AS yq
 
-FROM node:20.18-latest
+FROM node:20.20
 
 # Copy yq from the yq image
 COPY --from=yq /usr/bin/yq /usr/local/bin/yq
