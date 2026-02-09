@@ -10,7 +10,7 @@ export const ProjectV2Types = {
   projectSector: 'STRING',
   projectType: 'TEXT', // JSON array of strings
   projectSubtype: 'STRING',
-  projectStatus: 'TEXT', // JSON array of strings
+  projectStatus: 'STRING',
   projectStatusDate: 'DATEONLY',
   projectUnitMetric: 'STRING',
   cadTrustReferenceProjectId: 'STRING',

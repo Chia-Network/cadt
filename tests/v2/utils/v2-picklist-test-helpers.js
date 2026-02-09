@@ -81,7 +81,7 @@ export const generateTestData = {
     projectDescription: 'Test project description',
     projectSector: [getRandomPicklistValue('projectSector')],
     projectType: [getRandomPicklistValue('projectType')],
-    projectStatus: [getRandomPicklistValue('projectStatus')],
+    projectStatus: getRandomPicklistValue('projectStatus'),
     projectUnitMetric: getRandomPicklistValue('projectUnitMetric'),
   }),
 

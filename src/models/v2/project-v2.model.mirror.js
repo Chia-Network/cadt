@@ -67,7 +67,7 @@ safeMirrorDbHandlerV2(() => {
         field: 'project_subtype',
       },
       projectStatus: {
-        type: Sequelize.TEXT,
+        type: Sequelize.STRING,
         allowNull: true,
         field: 'project_status',
       },
