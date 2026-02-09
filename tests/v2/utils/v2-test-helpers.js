@@ -174,15 +174,15 @@ export const verifyTestDatabaseConfiguration = async () => {
     const { sequelize } = await import('../../../src/database/index.js');
     const v1Storage = sequelize.options.storage;
     if (v1Storage) {
-      // Check that it's a test database
-      if (!v1Storage.includes('test.sqlite3') && !v1Storage.includes('testMirror.sqlite3')) {
-        const errorMsg = `SAFETY CHECK FAILED: V1 database storage path '${v1Storage}' does not appear to be a test database. Expected path to include 'test.sqlite3'. This prevents accidental production database access.`;
+      // Check that it's a test database under tests/test-dbs/
+      if (!v1Storage.includes('tests/test-dbs/') || !v1Storage.includes('.sqlite3')) {
+        const errorMsg = `SAFETY CHECK FAILED: V1 database storage path '${v1Storage}' does not appear to be a test database. Expected path under tests/test-dbs/. This prevents accidental production database access.`;
         console.error(errorMsg);
         throw new Error(errorMsg);
       }
       // Check that it's not in home directory
       if (v1Storage.includes('~') || v1Storage.includes('/.chia/') || v1Storage.includes(os.homedir())) {
-        const errorMsg = `SAFETY CHECK FAILED: V1 database storage path '${v1Storage}' appears to be in home directory. Test databases must be in project root (relative paths like './test.sqlite3'). This prevents accidental production database access.`;
+        const errorMsg = `SAFETY CHECK FAILED: V1 database storage path '${v1Storage}' appears to be in home directory. Test databases must be under tests/test-dbs/. This prevents accidental production database access.`;
         console.error(errorMsg);
         throw new Error(errorMsg);
       }
@@ -199,13 +199,13 @@ export const verifyTestDatabaseConfiguration = async () => {
   // Verify V2 database configuration
   const { sequelizeV2 } = await import('../../../src/database/v2/index.js');
   const v2Storage = sequelizeV2.options.storage;
-  if (!v2Storage || (!v2Storage.includes('test-v2.sqlite3') && !v2Storage.includes('testMirror-v2.sqlite3'))) {
-    const errorMsg = `SAFETY CHECK FAILED: V2 database storage path '${v2Storage}' does not appear to be a test database. Expected path to include 'test-v2.sqlite3'. This prevents accidental production database access.`;
+  if (!v2Storage || !v2Storage.includes('tests/test-dbs/') || !v2Storage.includes('.sqlite3')) {
+    const errorMsg = `SAFETY CHECK FAILED: V2 database storage path '${v2Storage}' does not appear to be a test database. Expected path under tests/test-dbs/. This prevents accidental production database access.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
   }
   if (v2Storage.includes('~') || v2Storage.includes('/.chia/') || v2Storage.includes(os.homedir())) {
-    const errorMsg = `SAFETY CHECK FAILED: V2 database storage path '${v2Storage}' appears to be in home directory. Test databases must be in project root (relative paths like './test-v2.sqlite3'). This prevents accidental production database access.`;
+    const errorMsg = `SAFETY CHECK FAILED: V2 database storage path '${v2Storage}' appears to be in home directory. Test databases must be under tests/test-dbs/. This prevents accidental production database access.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
   }

@@ -7,6 +7,13 @@ const chiaRoot = getChiaRoot();
 const persistanceFolder = `${chiaRoot}/cadt/v1`;
 const v2PersistanceFolder = `${chiaRoot}/cadt/v2`;
 
+// Test database configuration
+// TEST_RUN_ID is set by tests/run-tests.sh to enable parallel test execution.
+// Each test run gets its own timestamped database files under tests/test-dbs/.
+// Falls back to Date.now() if not set (e.g., running mocha directly).
+const testRunId = process.env.TEST_RUN_ID || Date.now().toString();
+const testDbDir = './tests/test-dbs';
+
 const localQueryLogger = (query) => {
   const queryString = query.split(/:\s(.+)/)[1];
   const queryHash = createHash('md5').update(queryString).digest('hex');
@@ -39,12 +46,12 @@ export default {
   },
   test: {
     dialect: 'sqlite',
-    storage: './test.sqlite3',
+    storage: `${testDbDir}/test-${testRunId}.sqlite3`,
     logging: false,
   },
   mirrorTest: {
     dialect: 'sqlite',
-    storage: './testMirror.sqlite3',
+    storage: `${testDbDir}/testMirror-${testRunId}.sqlite3`,
     logging: false,
   },
   mirror: {
@@ -71,7 +78,7 @@ export default {
   },
   v2Test: {
     dialect: 'sqlite',
-    storage: './test-v2.sqlite3',
+    storage: `${testDbDir}/test-v2-${testRunId}.sqlite3`,
     logging: false,
     dialectOptions: {
       busyTimeout: 30000, // 30 seconds - allows SQLite to wait for locks instead of immediately failing
@@ -79,7 +86,7 @@ export default {
   },
   v2MirrorTest: {
     dialect: 'sqlite',
-    storage: './testMirror-v2.sqlite3',
+    storage: `${testDbDir}/testMirror-v2-${testRunId}.sqlite3`,
     logging: false,
   },
   v2Mirror: {

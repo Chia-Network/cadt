@@ -249,7 +249,7 @@ describe('V2 Infrastructure - Smoke Test', function () {
 
       // Verify V2 database configuration
       expect(sequelizeV2.options.dialect).to.equal('sqlite');
-      // In test mode, database path may be different (e.g., './test-v2.sqlite3')
+      // In test mode, database is under tests/test-dbs/ with a timestamped filename
       // Just verify it's a SQLite database
       expect(sequelizeV2.options.storage).to.be.a('string');
       expect(sequelizeV2.options.storage).to.match(/\.sqlite3?$/);

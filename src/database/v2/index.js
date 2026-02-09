@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Sequelize, QueryTypes } from 'sequelize';
 import os from 'os';
 import config from '../../config/config.js';
@@ -23,11 +25,16 @@ if (nodeEnv === 'test') {
     console.error(errorMsg);
     throw new Error(errorMsg);
   }
-  // Additional check: test database should be in project root (relative path), not in home directory
+  // Additional check: test database should be under tests/test-dbs/, not in home directory
   if (testConfig.storage.includes('~') || testConfig.storage.includes(os.homedir())) {
-    const errorMsg = `SAFETY CHECK FAILED: V2 test database path appears to be in home directory: ${testConfig.storage}. Test databases must be in project root (relative paths like './test-v2.sqlite3').`;
+    const errorMsg = `SAFETY CHECK FAILED: V2 test database path appears to be in home directory: ${testConfig.storage}. Test databases must be under tests/test-dbs/.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
+  }
+  // Ensure test database directory exists
+  const dbDir = path.dirname(testConfig.storage);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
   }
 }
 
