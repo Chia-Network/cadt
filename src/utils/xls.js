@@ -32,6 +32,17 @@ export const sendXls = (name, bytes, response) => {
   );
   response.set('Content-Type', 'text/plain');
 
+  readStream.on('error', (error) => {
+    logger.error('Stream error while sending XLS file:', error);
+    if (!response.headersSent) {
+      response.status(500).json({ error: 'Failed to send file' });
+    }
+  });
+
+  response.on('error', (error) => {
+    logger.error('Response stream error while sending XLS file:', error);
+  });
+
   readStream.pipe(response);
 };
 

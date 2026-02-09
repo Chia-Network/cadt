@@ -14,7 +14,7 @@ import {
   assertDataLayerAvailable,
   assertWalletIsAvailable,
 } from './utils/data-assertions';
-import packageJson from '../package.json' assert { type: 'json' };
+import packageJson from '../package.json' with { type: 'json' };
 import datalayer from './datalayer';
 import { Organization } from './models';
 import { OrganizationsV2 } from './models/v2/index.js';

@@ -6,7 +6,7 @@
   "bin": "build/server.js",
   "type": "module",
   "engines": {
-    "node": ">=20.20"
+    "node": ">=24"
   },
   "scripts": {
     "start": "npx cross-env NODE_ENV=local node --import=extensionless/register --no-warnings ./src/server.js",
@@ -35,11 +35,11 @@
     "build": "babel src --keep-file-extension --out-dir build --copy-files && cp package.json ./build && node change-build-package-type-commonjs.cjs",
     "build-migrations": "babel migrations --keep-file-extension --out-dir dist/migrations --copy-files",
     "prepare-binary": "rm -rf dist && mkdir dist",
-    "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-win-x64 --out-path dist",
-    "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-macos-x64 --out-path dist",
-    "create-mac-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-macos-arm64 --out-path dist",
-    "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-linux-x64 --out-path dist",
-    "create-linux-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node20-linux-arm64 --out-path dist"
+    "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-win-x64 --out-path dist",
+    "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-macos-x64 --out-path dist",
+    "create-mac-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-macos-arm64 --out-path dist",
+    "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-linux-x64 --out-path dist",
+    "create-linux-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-linux-arm64 --out-path dist"
   },
   "pkg": {
     "scripts": "build/package.json"

@@ -16,7 +16,7 @@ jobs:
     name: v1 integration tests
     runs-on: ubuntu-latest
     container:
-      image: node:20.20
+      image: node:24
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -55,7 +55,7 @@ jobs:
     name: v2 integration tests
     runs-on: ubuntu-latest
     container:
-      image: node:20.20
+      image: node:24
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -94,7 +94,7 @@ jobs:
     name: v2 live api tests
     runs-on: ubuntu-latest
     container:
-      image: node:20.20
+      image: node:24
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -534,7 +534,7 @@ jobs:
     name: v1 live api tests
     runs-on: ubuntu-latest
     container:
-      image: node:20.20
+      image: node:24
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -825,7 +825,7 @@ jobs:
     name: v1 to v2 upgrade test
     runs-on: ubuntu-latest
     container:
-      image: node:20.20
+      image: node:24
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
