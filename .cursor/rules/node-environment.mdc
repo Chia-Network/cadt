@@ -1,0 +1,6 @@
+---
+description: Node.js version is managed via fnm and .nvmrc
+alwaysApply: true
+---
+
+This project uses `fnm` for Node.js version management. Run `fnm use` before any Node/npm commands. See the `fnm-node` skill for details.
