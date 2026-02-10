@@ -178,6 +178,7 @@ jobs:
           chia keys generate -l "functional_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -580,6 +581,7 @@ jobs:
           chia keys generate -l "functional_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -871,6 +873,7 @@ jobs:
           chia keys generate -l "functional_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false
           chia configure -log-level INFO
 
       - name: Configure CADT
