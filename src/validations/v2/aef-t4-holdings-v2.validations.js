@@ -1,8 +1,5 @@
 import Joi from 'joi';
-import { getPicklistValuesV2 } from '../../utils/v2-data-loaders.js';
-
-const typePicklist = getPicklistValuesV2().type || [];
-const metricPicklist = getPicklistValuesV2().metric || [];
+import { pickListValidationV2 } from '../../utils/v2-validation-utils.js';
 
 export const aefT4HoldingsV2Schema = Joi.object({
   // Primary key - auto-generated, not allowed in requests
@@ -69,9 +66,9 @@ export const aefT4HoldingsV2Schema = Joi.object({
   }),
 
   // Optional fields
-  aefT4HoldingsMetric: Joi.string().valid(...metricPicklist).allow(null).optional().messages({
-    'any.only': `aefT4HoldingsMetric does not include a valid option. Valid options are: ${metricPicklist.join(', ')}`,
-  }),
+  aefT4HoldingsMetric: Joi.string()
+    .custom(pickListValidationV2('aefT2AuthorizationsMetric', 'aefT4HoldingsMetric'))
+    .allow(null).optional(),
 
   aefT4HoldingsGwpValue: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT4HoldingsGwpValue must not exceed 255 characters',
@@ -85,9 +82,9 @@ export const aefT4HoldingsV2Schema = Joi.object({
     'string.max': 'aefT4HoldingsQuantityNonGhg must not exceed 255 characters',
   }),
 
-  aefT4HoldingsMitigationType: Joi.string().valid(...typePicklist).allow(null).optional().messages({
-    'any.only': `aefT4HoldingsMitigationType does not include a valid option. Valid options are: ${typePicklist.join(', ')}`,
-  }),
+  aefT4HoldingsMitigationType: Joi.string()
+    .custom(pickListValidationV2('aefT3ActionsMitigationType', 'aefT4HoldingsMitigationType'))
+    .allow(null).optional(),
 
   // Foreign keys - optional
   cadTrustAefT1SubmissionId: Joi.string().uuid().allow(null).optional().messages({

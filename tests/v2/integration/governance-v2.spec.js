@@ -156,8 +156,8 @@ describe('V2 Governance Model Tests', function () {
           expect(pickListRecord.confirmed).to.be.true;
           // Should contain stub data (stringified JSON)
           const pickListData = JSON.parse(pickListRecord.meta_value);
-          expect(pickListData).to.have.property('registries');
-          expect(pickListData.registries).to.be.an('array');
+          expect(pickListData).to.have.property('projectSector');
+          expect(pickListData.projectSector).to.be.an('array');
         },
         { APP: { USE_SIMULATOR: true } },
       );
@@ -454,8 +454,8 @@ describe('V2 Governance Model Tests', function () {
               json: (data) => {
                 expect(data).to.be.an('object');
                 // Should have V2 stub picklist structure
-                expect(data).to.have.property('registries');
-                expect(data.registries).to.be.an('array');
+                expect(data).to.have.property('projectSector');
+                expect(data.projectSector).to.be.an('array');
               },
               status: () => res,
             };
@@ -603,8 +603,8 @@ describe('V2 Governance Model Tests', function () {
               .expect(200);
 
             expect(response.body).to.be.an('object');
-            expect(response.body).to.have.property('registries');
-            expect(response.body.registries).to.be.an('array');
+            expect(response.body).to.have.property('projectSector');
+            expect(response.body.projectSector).to.be.an('array');
           },
           { APP: { USE_SIMULATOR: true } },
         );

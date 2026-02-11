@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import superagent from 'superagent';
 import { GovernanceV2 } from '../models/v2/index.js';
-import PickListV2Real from '../models/governance/governance-v2-real-picklists.js';
+import PickListStub from '../models/governance/governance-v2.stub.js';
 import { getConfig } from '../utils/config-loader';
 import { loggerV2 } from '../config/logger.js';
 
@@ -12,7 +12,7 @@ export const getPicklistValuesV2 = () => downloadedPickListV2;
 
 export const pullPickListValuesV2 = async () => {
   if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
-    downloadedPickListV2 = PickListV2Real;
+    downloadedPickListV2 = PickListStub;
   } else {
     try {
       const governanceData = await GovernanceV2.findOne({
@@ -25,12 +25,12 @@ export const pullPickListValuesV2 = async () => {
       } else {
         // Fallback to hardcoded picklist if governance node doesn't provide one
         loggerV2.info('[v2]: Picklist not found in governance data, using hardcoded fallback picklist');
-        downloadedPickListV2 = PickListV2Real;
+        downloadedPickListV2 = PickListStub;
       }
     } catch (error) {
       // Fallback to hardcoded picklist on error (can't connect, parse error, etc.)
       loggerV2.warn(`[v2]: Error retrieving picklist from governance, using hardcoded fallback: ${error.message}`);
-      downloadedPickListV2 = PickListV2Real;
+      downloadedPickListV2 = PickListStub;
     }
   }
 

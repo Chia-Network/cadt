@@ -7,7 +7,6 @@ import { loggerV2 } from '../../config/logger.js';
 import { getConfig, getConfigV2 } from '../../utils/config-loader.js';
 import glossary from '../../models/governance/glossary.stub.js';
 import pickList from '../../models/governance/governance-v2.stub.js';
-import PickListV2Real from '../../models/governance/governance-v2-real-picklists.js';
 import {
   assertCanBeGovernanceBodyV2,
   assertIsActiveGovernanceBodyV2,
@@ -157,14 +156,14 @@ export const findPickList = async (req, res) => {
     if (!results || !results.meta_value) {
       // Fallback to hardcoded picklist if governance node doesn't provide one
       loggerV2.info('[v2]: Picklist not found in governance data, using hardcoded fallback picklist');
-      return res.json(PickListV2Real);
+      return res.json(pickList);
     }
 
     return res.json(JSON.parse(results.meta_value));
   } catch (error) {
     // Fallback to hardcoded picklist on error (can't connect, parse error, etc.)
     loggerV2.warn(`[v2]: Error retrieving picklist from governance, using hardcoded fallback: ${error.message}`);
-    return res.json(PickListV2Real);
+    return res.json(pickList);
   }
 };
 
