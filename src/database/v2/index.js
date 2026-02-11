@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Sequelize, QueryTypes } from 'sequelize';
 import os from 'os';
 import config from '../../config/config.js';
@@ -23,11 +25,16 @@ if (nodeEnv === 'test') {
     console.error(errorMsg);
     throw new Error(errorMsg);
   }
-  // Additional check: test database should be in project root (relative path), not in home directory
+  // Additional check: test database should be under tests/test-dbs/, not in home directory
   if (testConfig.storage.includes('~') || testConfig.storage.includes(os.homedir())) {
-    const errorMsg = `SAFETY CHECK FAILED: V2 test database path appears to be in home directory: ${testConfig.storage}. Test databases must be in project root (relative paths like './test-v2.sqlite3').`;
+    const errorMsg = `SAFETY CHECK FAILED: V2 test database path appears to be in home directory: ${testConfig.storage}. Test databases must be under tests/test-dbs/.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
+  }
+  // Ensure test database directory exists
+  const dbDir = path.dirname(testConfig.storage);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
   }
 }
 
@@ -188,6 +195,107 @@ export const checkForV2Migrations = async (db) => {
   }
 };
 
+/**
+ * Backfill MySQL mirror database from SQLite source data.
+ * Runs on every startup when mirror is configured. Uses bulkCreate with
+ * updateOnDuplicate for idempotent upsert behavior - rows that already exist
+ * in MySQL get updated, missing rows get inserted.
+ *
+ * Uses dynamic imports to avoid circular dependency (models import from this file).
+ */
+const BACKFILL_BATCH_SIZE = 1000;
+
+export const backfillMirrorV2 = async () => {
+  if (!mirrorDBEnabledV2()) {
+    return;
+  }
+
+  loggerV2.info('[v2]: Starting MySQL mirror backfill from SQLite...');
+
+  try {
+    // Dynamic import to avoid circular dependency
+    // (model files import sequelizeV2/safeMirrorDbHandlerV2 from this file)
+    const models = await import('../../models/v2/index.js');
+
+    // All 22 source/mirror pairs - covers every model that has a mirror
+    const mirrorPairs = [
+      { source: models.ProgramV2, mirror: models.ProgramV2Mirror, name: 'program' },
+      { source: models.MethodologyV2, mirror: models.MethodologyV2Mirror, name: 'methodology' },
+      { source: models.ProjectV2, mirror: models.ProjectV2Mirror, name: 'project' },
+      { source: models.ValidationV2, mirror: models.ValidationV2Mirror, name: 'validation' },
+      { source: models.VerificationV2, mirror: models.VerificationV2Mirror, name: 'verification' },
+      { source: models.IssuanceV2, mirror: models.IssuanceV2Mirror, name: 'issuance' },
+      { source: models.UnitV2, mirror: models.UnitV2Mirror, name: 'unit' },
+      { source: models.LocationV2, mirror: models.LocationV2Mirror, name: 'location' },
+      { source: models.EstimationV2, mirror: models.EstimationV2Mirror, name: 'estimation' },
+      { source: models.RatingV2, mirror: models.RatingV2Mirror, name: 'rating' },
+      { source: models.CoBenefitV2, mirror: models.CoBenefitV2Mirror, name: 'co_benefit' },
+      { source: models.ProjectMethodologyV2, mirror: models.ProjectMethodologyV2Mirror, name: 'project_methodology' },
+      { source: models.StakeholderV2, mirror: models.StakeholderV2Mirror, name: 'stakeholder' },
+      { source: models.StakeholderProjectV2, mirror: models.StakeholderProjectV2Mirror, name: 'stakeholder_projects' },
+      { source: models.LabelV2, mirror: models.LabelV2Mirror, name: 'label' },
+      { source: models.UnitLabelV2, mirror: models.UnitLabelV2Mirror, name: 'unit_label' },
+      { source: models.AefT1SubmissionV2, mirror: models.AefT1SubmissionV2Mirror, name: 'aef_t1_submission' },
+      { source: models.AefT5AuthorizedEntitiesV2, mirror: models.AefT5AuthorizedEntitiesV2Mirror, name: 'aef_t5_authorized_entities' },
+      { source: models.AefT2AuthorizationsV2, mirror: models.AefT2AuthorizationsV2Mirror, name: 'aef_t2_authorizations' },
+      { source: models.AefT3ActionsV2, mirror: models.AefT3ActionsV2Mirror, name: 'aef_t3_actions' },
+      { source: models.AefT4HoldingsV2, mirror: models.AefT4HoldingsV2Mirror, name: 'aef_t4_holdings' },
+      { source: models.AuditV2, mirror: models.AuditV2Mirror, name: 'audit' },
+    ];
+
+    let totalSynced = 0;
+
+    for (const { source, mirror, name } of mirrorPairs) {
+      try {
+        // Verify mirror model is initialized (init may not have completed if mirror was just configured)
+        if (!mirror.rawAttributes || Object.keys(mirror.rawAttributes).length === 0) {
+          loggerV2.warn(`[v2]: Mirror backfill: ${name} - mirror model not initialized, skipping`);
+          continue;
+        }
+
+        const count = await source.count();
+        if (count === 0) {
+          loggerV2.debug(`[v2]: Mirror backfill: ${name} - no records to sync`);
+          continue;
+        }
+
+        // Determine which fields to update on duplicate key conflict.
+        // Include all non-primary-key attributes so the mirror stays in sync
+        // with any changes that occurred in the source.
+        const updateFields = Object.keys(mirror.rawAttributes).filter(
+          (attr) => !mirror.primaryKeyAttributes.includes(attr),
+        );
+
+        let synced = 0;
+        for (let offset = 0; offset < count; offset += BACKFILL_BATCH_SIZE) {
+          const rows = await source.findAll({
+            raw: true,
+            offset,
+            limit: BACKFILL_BATCH_SIZE,
+          });
+
+          await mirror.bulkCreate(rows, {
+            updateOnDuplicate: updateFields,
+          });
+
+          synced += rows.length;
+        }
+
+        loggerV2.info(`[v2]: Mirror backfill: ${name} - synced ${synced} records`);
+        totalSynced += synced;
+      } catch (error) {
+        loggerV2.error(`[v2]: Mirror backfill error for ${name}: ${error.message}`);
+        // Continue with next table - don't let one failure stop the entire backfill
+      }
+    }
+
+    loggerV2.info(`[v2]: MySQL mirror backfill completed - ${totalSynced} total records synced`);
+  } catch (error) {
+    loggerV2.error('[v2]: MySQL mirror backfill failed:', error.message);
+    // Don't throw - allow main database to continue operating
+  }
+};
+
 // Mutex to prevent concurrent prepareV2Db calls
 let prepareV2DbPromise = null;
 let prepareV2DbCompleted = false;
@@ -265,6 +373,12 @@ export const prepareV2Db = async () => {
     loggerV2.info('[v2]: About to run main database migrations (sequelizeV2)...');
     await checkForV2Migrations(sequelizeV2);
     loggerV2.info('[v2]: Main database migrations completed');
+
+    // Backfill mirror database from SQLite source data (idempotent upsert).
+    // Runs after both mirror and main migrations are complete so all tables exist.
+    if (isMysqlMirrorConfigured) {
+      await backfillMirrorV2();
+    }
 
     prepareV2DbCompleted = true;
     loggerV2.info('[v2]: prepareV2Db() completed successfully');

@@ -122,7 +122,8 @@ export const create = async (req, res) => {
     const cadTrustProjectId = uuidv4();
 
     // Convert camelCase API fields to snake_case DB fields for staging
-    // Note: projectType and projectStatus are arrays - serialize to JSON for storage
+    // Note: projectType is an array - serialize to JSON for storage
+    // projectStatus is a single string value
     const dbRecord = {
       cad_trust_project_id: cadTrustProjectId,
       org_uid: homeOrg.org_uid, // Automatically set from home organization
@@ -135,7 +136,7 @@ export const create = async (req, res) => {
       project_sector: newRecord.projectSector,
       project_type: newRecord.projectType ? JSON.stringify(newRecord.projectType) : null,
       project_subtype: newRecord.projectSubtype,
-      project_status: newRecord.projectStatus ? JSON.stringify(newRecord.projectStatus) : null,
+      project_status: newRecord.projectStatus || null,
       project_status_date: newRecord.projectStatusDate,
       project_unit_metric: newRecord.projectUnitMetric,
       cad_trust_reference_project_id: newRecord.cadTrustReferenceProjectId,
@@ -751,8 +752,8 @@ export const update = async (req, res) => {
     // projectType is an array - serialize to JSON for storage
     if (updateData.projectType !== undefined) dbUpdateData.project_type = updateData.projectType ? JSON.stringify(updateData.projectType) : null;
     if (updateData.projectSubtype !== undefined) dbUpdateData.project_subtype = updateData.projectSubtype;
-    // projectStatus is an array - serialize to JSON for storage
-    if (updateData.projectStatus !== undefined) dbUpdateData.project_status = updateData.projectStatus ? JSON.stringify(updateData.projectStatus) : null;
+    // projectStatus is a single string value
+    if (updateData.projectStatus !== undefined) dbUpdateData.project_status = updateData.projectStatus || null;
     if (updateData.projectStatusDate !== undefined) dbUpdateData.project_status_date = updateData.projectStatusDate;
     if (updateData.projectUnitMetric !== undefined) dbUpdateData.project_unit_metric = updateData.projectUnitMetric;
     if (updateData.cadTrustReferenceProjectId !== undefined) dbUpdateData.cad_trust_reference_project_id = updateData.cadTrustReferenceProjectId;

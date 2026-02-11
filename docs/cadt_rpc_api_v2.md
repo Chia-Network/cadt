@@ -2004,7 +2004,7 @@ Response
     {
       "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
       "projectName": "Stop Desertification",
-      "projectStatus": ["Registered"]
+      "projectStatus": "Registered"
     }
   ]
 }

@@ -2,6 +2,8 @@ import { expect } from 'chai';
 import {
   getLiveApiRequest,
   waitForV1OrganizationReady,
+  createOrganizationWithRetry,
+  logOrganizationCreationFailure,
 } from '../helpers/live-api-helpers.js';
 import {
   setV1OrgUid,
@@ -40,55 +42,15 @@ describe('V1 Organization Creation Tests', function () {
       // Track org creation timing
       const orgCreateStartTime = Date.now();
 
-      // Create V1 organization (uses /v1/organizations/create endpoint)
-      // Retry on transient wallet sync issues
-      const maxRetries = 10;
-      const retryDelayMs = 30000; // 30 seconds between retries
-      let createResponse;
-      let lastError;
-
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        createResponse = await request
-          .post('/v1/organizations/create')
-          .send(orgData);
-
-        // Check if it's a transient wallet sync error
-        const isWalletSyncError = createResponse.status === 400 &&
-          (createResponse.body?.error?.includes('wallet is syncing') ||
-           createResponse.body?.error?.includes('wallet is not available') ||
-           createResponse.body?.error?.includes('Wallet') ||
-           createResponse.body?.message === 'Chia Exception');
-
-        // Check if server is still in startup phase (coin management)
-        const isStartupPhaseError = createResponse.status === 503 &&
-          createResponse.body?.startupPhase === 'coin_management';
-
-        if (createResponse.status === 200) {
-          break; // Success!
-        } else if ((isWalletSyncError || isStartupPhaseError) && attempt < maxRetries) {
-          const reason = isStartupPhaseError ? 'Server still starting (coin management)' : 'Wallet not ready';
-          console.log(`[Attempt ${attempt}/${maxRetries}] ${reason}, retrying in ${retryDelayMs/1000}s...`);
-          console.log(`  Error: ${createResponse.body?.error || createResponse.body?.message}`);
-          lastError = createResponse.body?.error || createResponse.body?.message;
-          await new Promise(resolve => setTimeout(resolve, retryDelayMs));
-        } else {
-          // Non-retryable error or max retries reached
-          break;
-        }
-      }
+      // Create V1 organization with wallet-sync retry (up to 20 minutes)
+      const { createResponse, lastError } = await createOrganizationWithRetry(
+        request,
+        '/v1/organizations/create',
+        orgData,
+      );
 
       if (createResponse.status !== 200) {
-        console.error(`POST /v1/organizations/create failed with status ${createResponse.status}:`);
-        console.error(`Response body:`, JSON.stringify(createResponse.body, null, 2));
-        if (createResponse.body?.error) {
-          console.error(`Error message: ${createResponse.body.error}`);
-        }
-        if (createResponse.body?.message) {
-          console.error(`Message: ${createResponse.body.message}`);
-        }
-        if (lastError) {
-          console.error(`Last retry error: ${lastError}`);
-        }
+        logOrganizationCreationFailure('/v1/organizations/create', createResponse, lastError);
       }
 
       expect(createResponse.status).to.equal(200);
@@ -125,6 +87,9 @@ describe('V1 Organization Creation Tests', function () {
       if (!datalayerValidation.valid) {
         console.error('Datalayer validation errors:', datalayerValidation.errors);
       }
+
+      // Mirror validation runs at the end of the live API test run (after all data tests)
+      // to allow extra time for mirror creation/retries.
 
       // Org creation timing report
       const orgCreateElapsedMs = Date.now() - orgCreateStartTime;

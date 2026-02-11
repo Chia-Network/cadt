@@ -1,6 +1,7 @@
 /**
  * Datalayer RPC helpers for live API tests
- * Allows tests to validate that stores exist and contain expected data
+ * Allows tests to validate that stores exist and contain expected data,
+ * and that mirrors are correctly configured for organization stores.
  */
 import fs from 'fs';
 import path from 'path';
@@ -368,6 +369,146 @@ export const validateOrganizationStores = async (org, isV2 = true) => {
     console.log(`  ✓ All datalayer store validations passed`);
   } else {
     console.log(`  ✗ Datalayer store validation failed with ${errors.length} error(s)`);
+    errors.forEach(err => console.log(`    - ${err}`));
+  }
+
+  return { valid, errors, details };
+};
+
+/**
+ * Get mirrors for a store via datalayer RPC
+ * @param {string} storeId - The store ID
+ * @returns {Promise<Array<{coin_id: string, launcher_id: string, amount: number, urls: string[], ours: boolean}>>}
+ */
+export const getStoreMirrors = async (storeId) => {
+  const url = `${getDatalayerUrl()}/get_mirrors`;
+  const { cert, key, timeout } = getBaseOptions();
+
+  const response = await superagent
+    .post(url)
+    .key(key)
+    .cert(cert)
+    .timeout(timeout)
+    .send({ id: storeId });
+
+  if (!response.body.success) {
+    throw new Error(`Failed to get mirrors for store ${storeId}: ${response.body.error}`);
+  }
+
+  return response.body.mirrors || [];
+};
+
+/**
+ * Validate that an organization's stores have correct mirrors set up.
+ * For each store, verifies that:
+ *   - There is exactly 1 mirror owned by us (ours === true)
+ *   - That mirror's URL matches the configured DATALAYER_FILE_SERVER_URL
+ *
+ * If DATALAYER_FILE_SERVER_URL is not configured, validation is skipped with a warning.
+ *
+ * @param {Object} org - Organization object with store IDs
+ * @param {boolean} isV2 - Whether this is a V2 org (affects field names)
+ * @returns {Promise<{valid: boolean, errors: string[], details: Object}>}
+ */
+export const validateOrganizationMirrors = async (org, isV2 = true) => {
+  const errors = [];
+  const details = {};
+
+  // Get expected mirror URL from config
+  const { config } = getLiveApiConfig();
+  const expectedMirrorUrl = config?.APP?.DATALAYER_FILE_SERVER_URL;
+
+  if (!expectedMirrorUrl) {
+    console.log('\n⚠️  DATALAYER_FILE_SERVER_URL is not configured - skipping mirror validation');
+    return {
+      valid: true,
+      errors: [],
+      details: { skipped: true, reason: 'DATALAYER_FILE_SERVER_URL not configured' },
+    };
+  }
+
+  console.log(`\nValidating mirrors for organization stores:`);
+  console.log(`  Expected mirror URL: ${expectedMirrorUrl}`);
+
+  // Get store IDs based on version
+  const orgUid = isV2 ? org.org_uid : org.orgUid;
+  const registryId = isV2 ? org.registry_id : org.registryId;
+  const dataModelVersionStoreId = isV2
+    ? org.data_model_version_store_id
+    : org.dataModelVersionStoreId;
+  const fileStoreId = isV2 ? org.file_store_subscribed : org.fileStoreId;
+
+  // Define stores to check - these are the stores that should have mirrors
+  const storesToCheck = [
+    { name: 'org_uid', id: orgUid },
+    { name: 'registry', id: registryId },
+    { name: 'data_model_version', id: dataModelVersionStoreId },
+    { name: 'file_store', id: fileStoreId },
+  ];
+
+  for (const store of storesToCheck) {
+    if (!store.id) {
+      errors.push(`${store.name} store ID is not set`);
+      continue;
+    }
+
+    console.log(`\n  Checking mirrors for ${store.name} store (${store.id}):`);
+
+    try {
+      const mirrors = await getStoreMirrors(store.id);
+      details[store.name] = { storeId: store.id, allMirrors: mirrors };
+
+      // Filter for mirrors that belong to us
+      const ourMirrors = mirrors.filter(m => m.ours === true);
+      details[store.name].ourMirrors = ourMirrors;
+
+      console.log(`    Total mirrors: ${mirrors.length}`);
+      console.log(`    Our mirrors: ${ourMirrors.length}`);
+
+      if (ourMirrors.length === 0) {
+        errors.push(`${store.name} store (${store.id}): no mirrors owned by us`);
+        continue;
+      }
+
+      if (ourMirrors.length > 1) {
+        errors.push(
+          `${store.name} store (${store.id}): expected exactly 1 mirror owned by us, ` +
+          `found ${ourMirrors.length}. Mirror URLs: ${ourMirrors.map(m => m.urls.join(', ')).join(' | ')}`,
+        );
+        continue;
+      }
+
+      // Exactly 1 mirror owned by us - verify URL
+      const ourMirror = ourMirrors[0];
+      const hasExpectedUrl = ourMirror.urls.includes(expectedMirrorUrl);
+
+      if (!hasExpectedUrl) {
+        errors.push(
+          `${store.name} store (${store.id}): mirror URL mismatch. ` +
+          `Expected URL "${expectedMirrorUrl}" in mirror urls, got: [${ourMirror.urls.join(', ')}]`,
+        );
+      } else {
+        console.log(`    ✓ Exactly 1 mirror owned by us with correct URL: ${expectedMirrorUrl}`);
+      }
+
+      // Also verify launcher_id matches store ID (strip 0x prefix for comparison)
+      const launcherId = ourMirror.launcher_id?.replace('0x', '');
+      if (launcherId !== store.id) {
+        errors.push(
+          `${store.name} store (${store.id}): launcher_id mismatch. ` +
+          `Expected ${store.id}, got ${ourMirror.launcher_id}`,
+        );
+      }
+    } catch (error) {
+      errors.push(`${store.name} store (${store.id}): failed to get mirrors: ${error.message}`);
+    }
+  }
+
+  const valid = errors.length === 0;
+  if (valid) {
+    console.log(`\n  ✓ All mirror validations passed`);
+  } else {
+    console.log(`\n  ✗ Mirror validation failed with ${errors.length} error(s)`);
     errors.forEach(err => console.log(`    - ${err}`));
   }
 

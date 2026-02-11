@@ -68,7 +68,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectSector: ['Agriculture'],
         projectType: ['Landfill gas'],
         projectSubtype: 'Test Subtype',
-        projectStatus: ['Listed'],
+        projectStatus: 'Listed',
         projectStatusDate: '2024-01-01',
         projectUnitMetric: 'tCO2e',
         cadTrustReferenceProjectId: 'REF-001',
@@ -307,7 +307,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-STATUS',
         projectId: 'INVALID-STATUS-001',
         projectName: 'Invalid Status Project',
-        projectStatus: ['InvalidStatus'],
+        projectStatus: 'InvalidStatus',
       };
 
       const response = await supertest(app)
@@ -324,7 +324,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'VALID-STATUS',
         projectId: 'VALID-STATUS-001',
         projectName: 'Valid Status Project',
-        projectStatus: ['Listed'],
+        projectStatus: 'Listed',
       };
 
       const response = await supertest(app)
@@ -594,7 +594,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectSector: ['Energy industries (renewable-/ non renewable sources)'],
         projectType: ['Wind'],
         projectSubtype: 'Updated Subtype',
-        projectStatus: ['Registered'],
+        projectStatus: 'Registered',
         projectStatusDate: '2024-02-01',
         projectUnitMetric: 'gCO2eq/kWh',
         cadTrustReferenceProjectId: 'UPDATED-REF-001',
@@ -1076,8 +1076,7 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
 
         expect(response.body.data).to.be.an('array');
         response.body.data.forEach(project => {
-          // projectStatus is stored as JSON array, getter returns array
-          expect(project.projectStatus).to.deep.equal(['Listed']);
+          expect(project.projectStatus).to.equal('Listed');
         });
       });
 
@@ -1089,10 +1088,8 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
 
         expect(response.body.data).to.be.an('array');
         response.body.data.forEach(project => {
-          // projectStatus is stored as JSON array, check if any element is in allowed values
           const allowedStatuses = ['Listed', 'Registered'];
-          const hasValidStatus = project.projectStatus.some(status => allowedStatuses.includes(status));
-          expect(hasValidStatus).to.be.true;
+          expect(allowedStatuses).to.include(project.projectStatus);
         });
       });
 
@@ -1280,9 +1277,8 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
 
         expect(response.body.data).to.be.an('array');
         // Filter should work correctly with anchored regex
-        // projectStatus is stored as JSON array, getter returns array
         response.body.data.forEach(project => {
-          expect(project.projectStatus).to.deep.equal(['Listed']);
+          expect(project.projectStatus).to.equal('Listed');
         });
       });
 

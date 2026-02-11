@@ -1,8 +1,10 @@
 'use strict';
 
 /**
- * Migration to change project_type and project_status columns from STRING to TEXT
+ * Migration to change project_type column from STRING to TEXT
  * to support storing JSON arrays.
+ * 
+ * Note: project_status remains STRING - it is a single picklist value, not an array.
  * 
  * For existing data: single string values are preserved and will be wrapped in arrays
  * when read by the model getter. No data transformation is needed during migration
@@ -16,20 +18,9 @@ export default {
       allowNull: true,
     });
 
-    // Change project_status from STRING to TEXT
-    await queryInterface.changeColumn('project', 'project_status', {
-      type: Sequelize.TEXT,
-      allowNull: true,
-    });
-
     // Also update the mirror table if it exists
     try {
       await queryInterface.changeColumn('project_mirror', 'project_type', {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      });
-
-      await queryInterface.changeColumn('project_mirror', 'project_status', {
         type: Sequelize.TEXT,
         allowNull: true,
       });
@@ -46,20 +37,9 @@ export default {
       allowNull: true,
     });
 
-    // Revert project_status back to STRING
-    await queryInterface.changeColumn('project', 'project_status', {
-      type: Sequelize.STRING,
-      allowNull: true,
-    });
-
     // Also revert the mirror table if it exists
     try {
       await queryInterface.changeColumn('project_mirror', 'project_type', {
-        type: Sequelize.STRING,
-        allowNull: true,
-      });
-
-      await queryInterface.changeColumn('project_mirror', 'project_status', {
         type: Sequelize.STRING,
         allowNull: true,
       });

@@ -3,7 +3,7 @@ import DailyRotateFile from 'winston-daily-rotate-file';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import packageJson from '../../package.json' assert { type: 'json' };
+import packageJson from '../../package.json' with { type: 'json' };
 import { getConfig } from '../utils/config-loader.js';
 
 const { format, transports, createLogger } = winston;

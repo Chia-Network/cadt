@@ -16,7 +16,7 @@ jobs:
     name: v1 integration tests
     runs-on: ubuntu-latest
     container:
-      image: node:20.16
+      image: node:24
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -55,7 +55,7 @@ jobs:
     name: v2 integration tests
     runs-on: ubuntu-latest
     container:
-      image: node:20.16
+      image: node:24
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -94,7 +94,7 @@ jobs:
     name: v2 live api tests
     runs-on: ubuntu-latest
     container:
-      image: node:20.16
+      image: node:24
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -178,6 +178,7 @@ jobs:
           chia keys generate -l "functional_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -534,7 +535,7 @@ jobs:
     name: v1 live api tests
     runs-on: ubuntu-latest
     container:
-      image: node:20.16
+      image: node:24
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -580,6 +581,7 @@ jobs:
           chia keys generate -l "functional_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -825,7 +827,7 @@ jobs:
     name: v1 to v2 upgrade test
     runs-on: ubuntu-latest
     container:
-      image: node:20.16
+      image: node:24
 
     steps:
       - uses: Chia-Network/actions/clean-workspace@main
@@ -871,6 +873,7 @@ jobs:
           chia keys generate -l "functional_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false
           chia configure -log-level INFO
 
       - name: Configure CADT

@@ -779,6 +779,22 @@ const pushChangeListToDataLayer = async (storeId, changelist, { skipTransactionW
         return true;
       }
 
+      // Handle "Latest root is already confirmed" error - this means the store's
+      // current root is already confirmed on-chain and the changelist would not
+      // produce a new publishable root. This typically happens after a restart
+      // where changes were pushed successfully but CADT didn't record the success.
+      // Treat as success since the desired state is already achieved.
+      if (
+        data.error &&
+        data.error.includes('Latest root is already confirmed')
+      ) {
+        logger.info(
+          `Latest root is already confirmed for storeId: ${storeId}. ` +
+            `This indicates the data has already been pushed and confirmed on-chain. Treating as success.`,
+        );
+        return true;
+      }
+
       // Handle "unknown key" errors - this is an ERROR, not acceptable
       // All data in CADT must come from datalayer, so DELETE operations should always find the keys
       // If keys are not found, it indicates a key format mismatch that needs to be fixed

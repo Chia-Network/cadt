@@ -398,7 +398,7 @@ class ProjectV2 extends Model {
 
                 const exists = Boolean(existingRecord);
 
-                // Handle array fields (projectType, projectStatus) and child records
+                // Handle array fields (projectType, projectSector) and child records
                 ProjectV2.updateProjectPropertiesV2(row);
 
                 // Handle child records
@@ -883,12 +883,13 @@ class ProjectV2 extends Model {
   static updateProjectPropertiesV2(project) {
     if (typeof project !== 'object') return;
 
-    // Handle array fields (projectType, projectSector, projectStatus)
+    // Handle array fields (projectType, projectSector)
     // These can come from CSV as:
     // 1. Single value: "Solar" → ["Solar"]
     // 2. JSON array string: '["Solar","Wind"]' → ["Solar", "Wind"]
     // 3. Pipe-separated: "Solar|Wind" → ["Solar", "Wind"]
-    const arrayFields = ['projectType', 'projectSector', 'projectStatus'];
+    // Note: projectStatus is a single string value, not an array
+    const arrayFields = ['projectType', 'projectSector'];
 
     arrayFields.forEach((key) => {
       if (project[key] !== undefined && project[key] !== null) {
@@ -1086,47 +1087,9 @@ ProjectV2.init(
       field: 'project_subtype',
     },
     projectStatus: {
-      type: Sequelize.TEXT,
+      type: Sequelize.STRING,
       allowNull: true,
       field: 'project_status',
-      // Stored as JSON string in DB, returned as array to API
-      get() {
-        const rawValue = this.getDataValue('projectStatus');
-        if (!rawValue) return null;
-        try {
-          return JSON.parse(rawValue);
-        } catch {
-          // If it's not valid JSON, return as single-item array for backwards compatibility
-          return [rawValue];
-        }
-      },
-      set(value) {
-        if (value === null || value === undefined) {
-          this.setDataValue('projectStatus', null);
-        } else if (Array.isArray(value)) {
-          this.setDataValue('projectStatus', JSON.stringify(value));
-        } else if (typeof value === 'string') {
-          // Check if the string is already a valid JSON array
-          const trimmedValue = value.trim();
-          if (trimmedValue.startsWith('[')) {
-            try {
-              const parsed = JSON.parse(trimmedValue);
-              if (Array.isArray(parsed)) {
-                // It's already a valid JSON array string, store as-is
-                this.setDataValue('projectStatus', trimmedValue);
-                return;
-              }
-            } catch {
-              // Not valid JSON, fall through to wrap in array
-            }
-          }
-          // Plain string - wrap it in an array
-          this.setDataValue('projectStatus', JSON.stringify([value]));
-        } else {
-          // For any other type, wrap in array
-          this.setDataValue('projectStatus', JSON.stringify([value]));
-        }
-      },
     },
     projectStatusDate: {
       type: Sequelize.DATEONLY,

@@ -312,6 +312,90 @@ const buildServerDiagnostics = (v2Response, v1Response, rootResponse, lastError,
 };
 
 /**
+ * Create an organization with wallet-sync retry logic.
+ * Uses time-based retry (default 20 minutes) instead of count-based retry.
+ * Handles transient wallet sync errors and startup phase (coin management) errors.
+ *
+ * @param {Object} request - supertest request instance (wrapped with logging/retry)
+ * @param {string} endpoint - API endpoint to POST to (e.g. '/v1/organizations/create' or '/v2/organizations')
+ * @param {Object} orgData - Organization data to send
+ * @param {number} maxWaitMinutes - Maximum time to retry in minutes (default: 20)
+ * @returns {Promise<{createResponse: Object, lastError: string|null, attempt: number}>}
+ */
+export const createOrganizationWithRetry = async (request, endpoint, orgData, maxWaitMinutes = 20) => {
+  const maxWaitMs = maxWaitMinutes * 60 * 1000;
+  const retryDelayMs = 30000; // 30 seconds between retries
+  const startTime = Date.now();
+  let createResponse;
+  let lastError = null;
+  let attempt = 0;
+
+  while (true) {
+    attempt++;
+    createResponse = await request
+      .post(endpoint)
+      .send(orgData);
+
+    // Check if it's a transient wallet sync error
+    const isWalletError = createResponse.status === 400 &&
+      (createResponse.body?.error?.includes('wallet is syncing') ||
+       createResponse.body?.error?.includes('wallet is not available') ||
+       createResponse.body?.error?.includes('Wallet') ||
+       createResponse.body?.message === 'Chia Exception');
+
+    // Check if server is still in startup phase (coin management)
+    const isStartupError = createResponse.status === 503 &&
+      createResponse.body?.startupPhase === 'coin_management';
+
+    if (createResponse.status === 200) {
+      break; // Success!
+    }
+
+    const elapsed = Date.now() - startTime;
+
+    if ((isWalletError || isStartupError) && elapsed < maxWaitMs) {
+      const reason = isStartupError ? 'Server still starting (coin management)' : 'Wallet not ready';
+      const elapsedMin = Math.floor(elapsed / 60000);
+      const elapsedSec = Math.floor((elapsed % 60000) / 1000);
+      const remainingMin = Math.ceil((maxWaitMs - elapsed) / 60000);
+      console.log(`[Attempt ${attempt}] ${reason}, retrying in ${retryDelayMs / 1000}s... (${elapsedMin}m ${elapsedSec}s elapsed, ~${remainingMin}m remaining)`);
+      console.log(`  Error: ${createResponse.body?.error || createResponse.body?.message}`);
+      lastError = createResponse.body?.error || createResponse.body?.message;
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+    } else {
+      // Non-retryable error or max wait time reached
+      if (elapsed >= maxWaitMs) {
+        console.log(`[Attempt ${attempt}] Max wait time of ${maxWaitMinutes} minutes reached`);
+        lastError = createResponse.body?.error || createResponse.body?.message;
+      }
+      break;
+    }
+  }
+
+  return { createResponse, lastError, attempt };
+};
+
+/**
+ * Log detailed error information when organization creation fails
+ * @param {string} endpoint - The endpoint that was called
+ * @param {Object} createResponse - The HTTP response
+ * @param {string|null} lastError - Last retry error message
+ */
+export const logOrganizationCreationFailure = (endpoint, createResponse, lastError) => {
+  console.error(`POST ${endpoint} failed with status ${createResponse.status}:`);
+  console.error(`Response body:`, JSON.stringify(createResponse.body, null, 2));
+  if (createResponse.body?.error) {
+    console.error(`Error message: ${createResponse.body.error}`);
+  }
+  if (createResponse.body?.message) {
+    console.error(`Message: ${createResponse.body.message}`);
+  }
+  if (lastError) {
+    console.error(`Last retry error: ${lastError}`);
+  }
+};
+
+/**
  * Get home organization ID (assumes it exists)
  * Response format is an object keyed by org_uid, not an array
  */
@@ -761,7 +845,8 @@ const isWalletSyncError = (response) => {
     message.includes('wallet is syncing') ||
     message.includes('wallet syncing') ||
     message.includes('wait for it to sync') ||
-    message.includes('wallet not synced')
+    message.includes('wallet not synced') ||
+    message.includes('wallet is not available')
   );
 };
 

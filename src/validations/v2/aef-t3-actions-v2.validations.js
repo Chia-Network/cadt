@@ -1,8 +1,5 @@
 import Joi from 'joi';
-import { getPicklistValuesV2 } from '../../utils/v2-data-loaders.js';
-
-const typePicklist = getPicklistValuesV2().type || [];
-const metricPicklist = getPicklistValuesV2().metric || [];
+import { pickListValidationV2 } from '../../utils/v2-validation-utils.js';
 
 export const aefT3ActionsV2Schema = Joi.object({
   // Primary key - auto-generated, not allowed in requests
@@ -84,17 +81,17 @@ export const aefT3ActionsV2Schema = Joi.object({
   }),
 
   // Optional fields
-  aefT3ActionsType: Joi.string().valid(...typePicklist).allow(null).optional().messages({
-    'any.only': `aefT3ActionsType does not include a valid option. Valid options are: ${typePicklist.join(', ')}`,
-  }),
+  aefT3ActionsType: Joi.string()
+    .custom(pickListValidationV2('aefT3ActionsType'))
+    .allow(null).optional(),
 
   aefT3ActionsSubtype: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsSubtype must not exceed 255 characters',
   }),
 
-  aefT3ActionsMetric: Joi.string().valid(...metricPicklist).allow(null).optional().messages({
-    'any.only': `aefT3ActionsMetric does not include a valid option. Valid options are: ${metricPicklist.join(', ')}`,
-  }),
+  aefT3ActionsMetric: Joi.string()
+    .custom(pickListValidationV2('aefT2AuthorizationsMetric', 'aefT3ActionsMetric'))
+    .allow(null).optional(),
 
   aefT3ActionsGwpValue: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsGwpValue must not exceed 255 characters',
@@ -108,9 +105,9 @@ export const aefT3ActionsV2Schema = Joi.object({
     'string.max': 'aefT3ActionsQuantityNonGhg must not exceed 255 characters',
   }),
 
-  aefT3ActionsMitigationType: Joi.string().valid(...typePicklist).allow(null).optional().messages({
-    'any.only': `aefT3ActionsMitigationType does not include a valid option. Valid options are: ${typePicklist.join(', ')}`,
-  }),
+  aefT3ActionsMitigationType: Joi.string()
+    .custom(pickListValidationV2('aefT3ActionsMitigationType'))
+    .allow(null).optional(),
 
   aefT3ActionsPurposeOfUseOimp: Joi.string().max(255).allow(null).optional().messages({
     'string.max': 'aefT3ActionsPurposeOfUseOimp must not exceed 255 characters',
