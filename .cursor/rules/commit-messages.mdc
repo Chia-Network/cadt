@@ -1,9 +1,7 @@
 ---
-description: Commit message conventions following Conventional Commits standard
+description: 
 alwaysApply: true
 ---
-
-At the end of every prompt that results in version controlled files being changed, include an example git command at the end of the work that has the `git add` command and the commit command for the user to copy and paste.  For example `git add <filenames> && git commit -m "description of code changes following generally accepted best practices and any commit message conventions of the project`.
 
 # Commit Message Format
 
