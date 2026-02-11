@@ -1115,13 +1115,13 @@ export const generateAefT3Actions = (cadTrustAefT2AuthorizationsId = null, cadTr
     aefT3ActionsTransferringPartyId: `TEST-TRANSFER-${uniqueId}`,
     aefT3ActionsAcquiringPartyId: `TEST-ACQUIRE-${uniqueId}`,
     // Optional fields
-    aefT3ActionsType: 'Energy efficiency',
+    aefT3ActionsType: 'Transfer',
     aefT3ActionsSubtype: 'Test subtype',
-    aefT3ActionsMetric: 'tCO2e',
+    aefT3ActionsMetric: 'GHC',
     aefT3ActionsGwpValue: '1.0',
     aefT3ActionsApplicableNonGhgMetric: 'Test metric',
     aefT3ActionsQuantityNonGhg: '100',
-    aefT3ActionsMitigationType: 'Energy efficiency',
+    aefT3ActionsMitigationType: 'Emission reductions',
     aefT3ActionsPurposeOfUseOimp: 'Test purpose',
     aefT3ActionsUsingParticipatingPartyId: `TEST-USE-PARTY-${uniqueId}`,
     aefT3ActionsUsingAuthorizedEntityId: `TEST-USE-ENTITY-${uniqueId}`,
@@ -1172,13 +1172,13 @@ export const generateAefT3ActionsMaximal = (cadTrustAefT2AuthorizationsId = null
     aefT3ActionsTransferringPartyId: getLongString(255),
     aefT3ActionsAcquiringPartyId: getLongString(255),
     // Optional fields
-    aefT3ActionsType: 'Energy efficiency',
+    aefT3ActionsType: 'Acquisition',
     aefT3ActionsSubtype: getLongString(255),
-    aefT3ActionsMetric: 'tCO2e',
+    aefT3ActionsMetric: 'Non-GHG',
     aefT3ActionsGwpValue: getLongString(255),
     aefT3ActionsApplicableNonGhgMetric: getLongString(255),
     aefT3ActionsQuantityNonGhg: getLongString(255),
-    aefT3ActionsMitigationType: 'Energy efficiency',
+    aefT3ActionsMitigationType: 'Removals',
     aefT3ActionsPurposeOfUseOimp: getLongString(255),
     aefT3ActionsUsingParticipatingPartyId: getLongString(255),
     aefT3ActionsUsingAuthorizedEntityId: getLongString(255),
@@ -1225,11 +1225,11 @@ export const generateAefT4Holdings = (cadTrustAefT2AuthorizationsId = null, cadT
     aefT4HoldingsQuantityTCo2: 750.5,
     aefT4HoldingsVintageYear: 2022,
     // Optional fields
-    aefT4HoldingsMetric: 'tCO2e',
+    aefT4HoldingsMetric: 'GHC',
     aefT4HoldingsGwpValue: '1.0',
     aefT4HoldingsApplicableNonGhgMetric: 'Test metric',
     aefT4HoldingsQuantityNonGhg: '100',
-    aefT4HoldingsMitigationType: 'Energy efficiency',
+    aefT4HoldingsMitigationType: 'Emission reductions',
   };
   if (cadTrustAefT2AuthorizationsId) data.cadTrustAefT2AuthorizationsId = cadTrustAefT2AuthorizationsId;
   if (cadTrustUnitId) data.cadTrustUnitId = cadTrustUnitId;
@@ -1268,11 +1268,11 @@ export const generateAefT4HoldingsMaximal = (cadTrustAefT2AuthorizationsId = nul
     aefT4HoldingsQuantityTCo2: 999999.99,
     aefT4HoldingsVintageYear: 2099,
     // Optional fields
-    aefT4HoldingsMetric: 'tCO2e',
+    aefT4HoldingsMetric: 'Non-GHG',
     aefT4HoldingsGwpValue: getLongString(255),
     aefT4HoldingsApplicableNonGhgMetric: getLongString(255),
     aefT4HoldingsQuantityNonGhg: getLongString(255),
-    aefT4HoldingsMitigationType: 'Energy efficiency',
+    aefT4HoldingsMitigationType: 'Removals',
   };
   if (cadTrustAefT2AuthorizationsId) data.cadTrustAefT2AuthorizationsId = cadTrustAefT2AuthorizationsId;
   if (cadTrustUnitId) data.cadTrustUnitId = cadTrustUnitId;
