@@ -1,5 +1,5 @@
 ---
-description: Node.js version is managed via fnm and .nvmrc
+description: Node.js version management via fnm. Apply when running Node.js, npm, or npx commands.
 alwaysApply: true
 ---
 

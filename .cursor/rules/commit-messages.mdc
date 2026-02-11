@@ -1,71 +1,41 @@
 ---
-description: 
+description: Conventional Commits format with commitlint. Apply when writing commit messages.
 alwaysApply: true
 ---
 
 # Commit Message Format
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) with commitlint enforcement.
+Commitlint enforced. Format: `type(SCOPE): subject`
 
-## Format
+## Type (required)
 
-```
-type(SCOPE): subject
+`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 
-[optional body]
+## Scope (optional)
 
-[optional footer]
-```
+UPPER-CASE only. Example: `fix(API):`, `feat(V2):`
 
-## Rules
+## Subject (required)
 
-### Type (required)
-Must be one of:
-- `feat` - new feature
-- `fix` - bug fix
-- `docs` - documentation only changes
-- `style` - code formatting only (not CSS)
-- `refactor` - code changes that don't add features or fix bugs
-- `perf` - performance improvements
-- `test` - adding or modifying tests
-- `build` - changes to build system or dependencies
-- `ci` - changes to CI configuration files and scripts
-- `chore` - changes that don't modify src or test files (e.g., version bump)
-- `revert` - reverting a previous commit
+- Present-imperative tense ("add feature" not "added feature")
+- No capitalized first letter, no trailing period
+- Under 72 characters
 
-### Scope (optional)
-- If provided, must be in UPPER-CASE
-- Example: `fix(API): correct validation error`
-- Example: `feat(V2): add new endpoint`
+## Body/Footer (optional)
 
-### Subject (required)
-- Use present-imperative tense ("add feature" not "added feature")
-- Do not capitalize the first letter
-- No period at the end
-- Keep under 72 characters
-
-### Body (optional)
-- Separate from subject with a blank line
-- Explain the "why" not the "what"
-- Wrap at 72 characters
-
-### Footer (optional)
-- Reference issues: `Fixes #123` or `Closes #456`
-- Breaking changes: `BREAKING CHANGE: description`
+- Body: blank line after subject, explain "why" not "what", wrap at 72 chars
+- Footer: `Fixes #123`, `Closes #456`, or `BREAKING CHANGE: description`
 
 ## Examples
 
-Simple fix:
 ```
 fix: correct MySQL mirror numeric comparison for DECIMAL fields
 ```
 
-With scope:
 ```
 feat(V2): add batch commit verification for live API tests
 ```
 
-With body:
 ```
 fix: handle DECIMAL precision in MySQL mirror verification
 
@@ -74,7 +44,6 @@ while expected values may have fewer decimal places. Add numeric
 comparison to compare values as numbers when both are valid numbers.
 ```
 
-With breaking change:
 ```
 feat(API): change response format for pagination
 
