@@ -128,14 +128,27 @@ export default {
     });
 
     // Add indexes for better performance
-    await queryInterface.addIndex('aef_t2_authorizations', ['aef_t2_authorizations_date']);
-    await queryInterface.addIndex('aef_t2_authorizations', ['aef_t2_authorizations_cooperative_approach_id']);
-    await queryInterface.addIndex('aef_t2_authorizations', ['aef_t2_authorizations_sector']);
-    await queryInterface.addIndex('aef_t2_authorizations', ['aef_t2_authorizations_activity_type']);
-    await queryInterface.addIndex('aef_t2_authorizations', ['cad_trust_aef_t1_submission_id']);
-    await queryInterface.addIndex('aef_t2_authorizations', ['cad_trust_unit_id']);
-    await queryInterface.addIndex('aef_t2_authorizations', ['cad_trust_project_id']);
-    await queryInterface.addIndex('aef_t2_authorizations', ['cad_trust_aef_t5_authorized_entities_id']);
+    // Explicit short name used for cooperative_approach_id where Sequelize's
+    // auto-generated name would exceed MySQL's 64-character identifier limit.
+    // Each addIndex is individually wrapped in try/catch so that partial re-runs
+    // (e.g. after a crash) can complete the remaining indexes.
+    const indexes = [
+      { cols: ['aef_t2_authorizations_date'] },
+      { cols: ['aef_t2_authorizations_cooperative_approach_id'], opts: { name: 'aef_t2_auth_coop_approach_id' } },
+      { cols: ['aef_t2_authorizations_sector'] },
+      { cols: ['aef_t2_authorizations_activity_type'] },
+      { cols: ['cad_trust_aef_t1_submission_id'] },
+      { cols: ['cad_trust_unit_id'] },
+      { cols: ['cad_trust_project_id'] },
+      { cols: ['cad_trust_aef_t5_authorized_entities_id'] },
+    ];
+    for (const { cols, opts } of indexes) {
+      try {
+        await queryInterface.addIndex('aef_t2_authorizations', cols, opts);
+      } catch {
+        // Index may already exist from a partial previous run
+      }
+    }
   },
 
   async down(queryInterface, Sequelize) {

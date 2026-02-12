@@ -73,12 +73,25 @@ export default {
     });
 
     // Add indexes for better performance
-    await queryInterface.addIndex('aef_t5_authorized_entities', ['aef_t5_authorized_entities_authorization_date']);
-    await queryInterface.addIndex('aef_t5_authorized_entities', ['aef_t5_authorized_entities_name']);
-    await queryInterface.addIndex('aef_t5_authorized_entities', ['aef_t5_authorized_entities_incorporation_country']);
-    await queryInterface.addIndex('aef_t5_authorized_entities', ['cad_trust_aef_t1_submission_id']);
-    await queryInterface.addIndex('aef_t5_authorized_entities', ['cad_trust_unit_id']);
-    await queryInterface.addIndex('aef_t5_authorized_entities', ['cad_trust_project_id']);
+    // Explicit short names used for columns where Sequelize's auto-generated
+    // name ({table}_{column}) would exceed MySQL's 64-character identifier limit.
+    // Each addIndex is individually wrapped in try/catch so that partial re-runs
+    // (e.g. after a crash) can complete the remaining indexes.
+    const indexes = [
+      { cols: ['aef_t5_authorized_entities_authorization_date'], opts: { name: 'aef_t5_auth_entities_auth_date' } },
+      { cols: ['aef_t5_authorized_entities_name'] },
+      { cols: ['aef_t5_authorized_entities_incorporation_country'], opts: { name: 'aef_t5_auth_entities_incorp_country' } },
+      { cols: ['cad_trust_aef_t1_submission_id'] },
+      { cols: ['cad_trust_unit_id'] },
+      { cols: ['cad_trust_project_id'] },
+    ];
+    for (const { cols, opts } of indexes) {
+      try {
+        await queryInterface.addIndex('aef_t5_authorized_entities', cols, opts);
+      } catch {
+        // Index may already exist from a partial previous run
+      }
+    }
   },
 
   async down(queryInterface, Sequelize) {
