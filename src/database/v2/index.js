@@ -63,6 +63,27 @@ export const mirrorDBEnabledV2 = () => {
   return mysqlMirrorConfigured;
 };
 
+/**
+ * Validate that V1 and V2 mirror database names are different when both are configured.
+ * Throws an error if both V1 and V2 MIRROR_DB.DB_NAME are set to the same non-empty value.
+ *
+ * @param {object} v1Config - The V1 config object (from getConfig())
+ * @param {object} v2Config - The V2 config object (from getConfigV2())
+ * @throws {Error} if V1 and V2 mirror DB names are the same
+ */
+export const validateMirrorDbNames = (v1Config, v2Config) => {
+  const v1DbName = v1Config?.MIRROR_DB?.DB_NAME;
+  const v2DbName = v2Config?.MIRROR_DB?.DB_NAME;
+
+  if (v1DbName && v2DbName && v1DbName === v2DbName) {
+    throw new Error(
+      `V1 and V2 mirror databases must use different database names, ` +
+      `but both are set to '${v1DbName}'. ` +
+      `Update MIRROR_DB.DB_NAME in your config.yaml so V1 and V2 have distinct values.`,
+    );
+  }
+};
+
 export const safeMirrorDbHandlerV2 = (callback) => {
   if (!mirrorDBEnabledV2()) {
     return Promise.resolve();
@@ -345,16 +366,7 @@ export const prepareV2Db = async () => {
 
     if (isMysqlMirrorConfigured) {
       // Validate that V1 and V2 mirror database names are different
-      const v1MirrorDbName = getConfig()?.MIRROR_DB?.DB_NAME;
-      const v2MirrorDbName = mirrorDbConfig.DB_NAME;
-      if (v1MirrorDbName && v2MirrorDbName && v1MirrorDbName === v2MirrorDbName) {
-        const errorMsg =
-          `V1 and V2 mirror databases must use different database names, ` +
-          `but both are set to '${v1MirrorDbName}'. ` +
-          `Update MIRROR_DB.DB_NAME in your config.yaml so V1 and V2 have distinct values.`;
-        loggerV2.error(`[v2]: ${errorMsg}`);
-        throw new Error(errorMsg);
-      }
+      validateMirrorDbNames(getConfig(), getConfigV2());
 
       loggerV2.info('[v2]: MySQL mirror database configured, creating database and running migrations...');
       try {
