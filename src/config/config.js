@@ -92,7 +92,7 @@ export default {
   v2Mirror: {
     username: getConfigV2().MIRROR_DB?.DB_USERNAME || '',
     password: getConfigV2().MIRROR_DB?.DB_PASSWORD || '',
-    database: getConfigV2().MIRROR_DB?.DB_NAME ? `${getConfigV2().MIRROR_DB.DB_NAME}_v2` : '',
+    database: getConfigV2().MIRROR_DB?.DB_NAME || '',
     host: getConfigV2().MIRROR_DB?.DB_HOST || '',
     dialect: 'mysql',
     logging: mirrorLogging,

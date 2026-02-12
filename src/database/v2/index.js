@@ -5,7 +5,7 @@ import os from 'os';
 import config from '../../config/config.js';
 import { loggerV2 } from '../../config/logger.js';
 import mysql from 'mysql2/promise';
-import { getConfigV2 } from '../../utils/config-loader';
+import { getConfig, getConfigV2 } from '../../utils/config-loader';
 
 import { migrations } from './migrations';
 import { seeders } from './seeders';
@@ -344,6 +344,18 @@ export const prepareV2Db = async () => {
       mirrorDbConfig?.DB_PASSWORD;
 
     if (isMysqlMirrorConfigured) {
+      // Validate that V1 and V2 mirror database names are different
+      const v1MirrorDbName = getConfig()?.MIRROR_DB?.DB_NAME;
+      const v2MirrorDbName = mirrorDbConfig.DB_NAME;
+      if (v1MirrorDbName && v2MirrorDbName && v1MirrorDbName === v2MirrorDbName) {
+        const errorMsg =
+          `V1 and V2 mirror databases must use different database names, ` +
+          `but both are set to '${v1MirrorDbName}'. ` +
+          `Update MIRROR_DB.DB_NAME in your config.yaml so V1 and V2 have distinct values.`;
+        loggerV2.error(`[v2]: ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
+
       loggerV2.info('[v2]: MySQL mirror database configured, creating database and running migrations...');
       try {
         const connection = await mysql.createConnection({
@@ -353,7 +365,7 @@ export const prepareV2Db = async () => {
           password: mirrorDbConfig.DB_PASSWORD,
         });
 
-        const dbName = `${mirrorDbConfig.DB_NAME}_v2`;
+        const dbName = mirrorDbConfig.DB_NAME;
         await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
         loggerV2.info(`[v2]: MySQL mirror database '${dbName}' created/verified`);
         await connection.end();
