@@ -116,6 +116,11 @@
       "tag": true
     }
   },
+  "overrides": {
+    "diff": "8.0.3",
+    "esbuild": "0.25.12",
+    "tar": "7.5.7"
+  },
   "contributors": [
     "Michael Taylor <5665004+MichaelTaylor3D@users.noreply.github.com>",
     "Mike Keen <mwk@mikekeen.com>",
