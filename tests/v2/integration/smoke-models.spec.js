@@ -101,6 +101,7 @@ describe('V2 Infrastructure - Isolated Smoke Test', function () {
       expect(V2Models.GovernanceV2).to.exist;
       expect(V2Models.SimulatorV2).to.exist;
       expect(V2Models.AuditV2).to.exist;
+      expect(V2Models.OrganizationsV2Mirror).to.exist;
     });
 
     it('should load V2 methodology, program, project, validation, verification, issuance, unit, location, estimation, rating, co-benefit, project-methodology, stakeholder, stakeholder-projects, label, unit-label, aef-t1-submission, aef-t5-authorized-entities, aef-t2-authorizations, aef-t3-actions, and aef-t4-holdings models', async function () {
