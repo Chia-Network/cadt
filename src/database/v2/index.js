@@ -238,8 +238,9 @@ export const backfillMirrorV2 = async () => {
     // (model files import sequelizeV2/safeMirrorDbHandlerV2 from this file)
     const models = await import('../../models/v2/index.js');
 
-    // All 22 source/mirror pairs - covers every model that has a mirror
+    // All 23 source/mirror pairs - covers every model that has a mirror
     const mirrorPairs = [
+      { source: models.OrganizationsV2, mirror: models.OrganizationsV2Mirror, name: 'organizations' },
       { source: models.ProgramV2, mirror: models.ProgramV2Mirror, name: 'program' },
       { source: models.MethodologyV2, mirror: models.MethodologyV2Mirror, name: 'methodology' },
       { source: models.ProjectV2, mirror: models.ProjectV2Mirror, name: 'project' },

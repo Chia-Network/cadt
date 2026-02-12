@@ -1,6 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 data.sqlite3
 tests/test-dbs/
+tests/test-locks/
 *.sql
 *.sql.gz
 

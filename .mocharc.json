@@ -1,4 +1,7 @@
 {
+    "require": [
+        "tests/helpers/test-lock-hooks.js"
+    ],
     "node-option": [
         "experimental-specifier-resolution=node"
     ]

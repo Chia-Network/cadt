@@ -1,6 +1,7 @@
 // V2 System Table Models
 import StagingV2 from './staging-v2.model.js';
 import OrganizationsV2 from './organizations-v2.model.js';
+import OrganizationsV2Mirror from './organizations-v2.model.mirror.js';
 import MetaV2 from './meta-v2.model.js';
 import GovernanceV2 from './governance-v2.model.js';
 import AuditV2 from './audit-v2.model.js';
@@ -79,6 +80,7 @@ AefT4HoldingsV2.associate({ AefT1SubmissionV2, UnitV2, ProjectV2, AefT2Authoriza
 export {
   StagingV2,
   OrganizationsV2,
+  OrganizationsV2Mirror,
   MetaV2,
   GovernanceV2,
   AuditV2,
@@ -134,6 +136,7 @@ export {
 export default {
   StagingV2,
   OrganizationsV2,
+  OrganizationsV2Mirror,
   MetaV2,
   GovernanceV2,
   AuditV2,
