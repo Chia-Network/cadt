@@ -64,7 +64,7 @@ export const getMirrorDbConfig = () => {
       host: mirrorDb.DB_HOST,
       user: mirrorDb.DB_USERNAME,
       password: mirrorDb.DB_PASSWORD,
-      database: `${mirrorDb.DB_NAME}_v2`, // V2 uses {DB_NAME}_v2
+      database: mirrorDb.DB_NAME,
     };
 
     console.log(`[${getTimestamp()}] MySQL Mirror: Found config - host=${cachedConfig.host}, database=${cachedConfig.database}`);
@@ -140,6 +140,7 @@ export const closeMirrorDbPool = async () => {
  * table names as the main DB but in a separate database (cadt_mirror_test_v2)
  */
 const TYPE_TO_TABLE = {
+  organizations: 'organizations',
   methodology: 'methodology',
   program: 'program',
   project: 'project',
@@ -176,6 +177,7 @@ const TYPE_TO_TABLE = {
  * Map of API endpoint types to primary key column names
  */
 const TYPE_TO_PRIMARY_KEY = {
+  organizations: 'org_uid',
   methodology: 'cad_trust_methodology_id',
   program: 'cad_trust_program_id',
   project: 'cad_trust_project_id',

@@ -13,6 +13,7 @@ describe('V2 System Models - Import Test', function () {
       expect(V2Models.GovernanceV2).to.exist;
       expect(V2Models.AuditV2).to.exist;
       expect(V2Models.AuditV2Mirror).to.exist;
+      expect(V2Models.OrganizationsV2Mirror).to.exist;
       expect(V2Models.SimulatorV2).to.exist;
     });
 

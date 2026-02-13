@@ -5,7 +5,7 @@ import os from 'os';
 import config from '../../config/config.js';
 import { loggerV2 } from '../../config/logger.js';
 import mysql from 'mysql2/promise';
-import { getConfigV2 } from '../../utils/config-loader';
+import { getConfig, getConfigV2 } from '../../utils/config-loader';
 
 import { migrations } from './migrations';
 import { seeders } from './seeders';
@@ -61,6 +61,27 @@ export const mirrorDBEnabledV2 = () => {
   // Mirror DB is only enabled if MySQL is actually configured
   // In test mode without MySQL, mirror operations should be no-ops
   return mysqlMirrorConfigured;
+};
+
+/**
+ * Validate that V1 and V2 mirror database names are different when both are configured.
+ * Throws an error if both V1 and V2 MIRROR_DB.DB_NAME are set to the same non-empty value.
+ *
+ * @param {object} v1Config - The V1 config object (from getConfig())
+ * @param {object} v2Config - The V2 config object (from getConfigV2())
+ * @throws {Error} if V1 and V2 mirror DB names are the same
+ */
+export const validateMirrorDbNames = (v1Config, v2Config) => {
+  const v1DbName = v1Config?.MIRROR_DB?.DB_NAME;
+  const v2DbName = v2Config?.MIRROR_DB?.DB_NAME;
+
+  if (v1DbName && v2DbName && v1DbName === v2DbName) {
+    throw new Error(
+      `V1 and V2 mirror databases must use different database names, ` +
+      `but both are set to '${v1DbName}'. ` +
+      `Update MIRROR_DB.DB_NAME in your config.yaml so V1 and V2 have distinct values.`,
+    );
+  }
 };
 
 export const safeMirrorDbHandlerV2 = (callback) => {
@@ -217,8 +238,9 @@ export const backfillMirrorV2 = async () => {
     // (model files import sequelizeV2/safeMirrorDbHandlerV2 from this file)
     const models = await import('../../models/v2/index.js');
 
-    // All 22 source/mirror pairs - covers every model that has a mirror
+    // All 23 source/mirror pairs - covers every model that has a mirror
     const mirrorPairs = [
+      { source: models.OrganizationsV2, mirror: models.OrganizationsV2Mirror, name: 'organizations' },
       { source: models.ProgramV2, mirror: models.ProgramV2Mirror, name: 'program' },
       { source: models.MethodologyV2, mirror: models.MethodologyV2Mirror, name: 'methodology' },
       { source: models.ProjectV2, mirror: models.ProjectV2Mirror, name: 'project' },
@@ -344,6 +366,9 @@ export const prepareV2Db = async () => {
       mirrorDbConfig?.DB_PASSWORD;
 
     if (isMysqlMirrorConfigured) {
+      // Validate that V1 and V2 mirror database names are different
+      validateMirrorDbNames(getConfig(), getConfigV2());
+
       loggerV2.info('[v2]: MySQL mirror database configured, creating database and running migrations...');
       try {
         const connection = await mysql.createConnection({
@@ -353,7 +378,7 @@ export const prepareV2Db = async () => {
           password: mirrorDbConfig.DB_PASSWORD,
         });
 
-        const dbName = `${mirrorDbConfig.DB_NAME}_v2`;
+        const dbName = mirrorDbConfig.DB_NAME;
         await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
         loggerV2.info(`[v2]: MySQL mirror database '${dbName}' created/verified`);
         await connection.end();

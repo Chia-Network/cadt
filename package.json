@@ -23,6 +23,7 @@
     "test:v2:live:data:extended": "node --import=extensionless/register tests/v2/live-api/data-extended.js",
     "test:v2:live:data:short": "node --import=extensionless/register tests/v2/live-api/data-short.js",
     "test:v2:live:organization:delete": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/organization/organization-delete.live.spec.js' --reporter spec --exit --timeout 600000",
+    "test:locks": "node --import=extensionless/register tests/helpers/show-test-locks.js",
     "test:v1:live:data:short": "node --import=extensionless/register tests/v1/live-api/data-short.js",
     "test:v1:delete-test-data": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v1/live-api/utilities/delete-all-data.live.spec.js' --reporter spec --exit --timeout 600000",
     "test:v2:delete-test-data": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/utilities/delete-all-data.live.spec.js' --reporter spec --exit --timeout 600000",
@@ -115,6 +116,11 @@
       "commit": true,
       "tag": true
     }
+  },
+  "overrides": {
+    "diff": "8.0.3",
+    "esbuild": "0.25.12",
+    "tar": "7.5.7"
   },
   "contributors": [
     "Michael Taylor <5665004+MichaelTaylor3D@users.noreply.github.com>",

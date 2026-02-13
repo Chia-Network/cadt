@@ -80,6 +80,7 @@ describe('Mirror Backfill V2 Tests', function () {
       const tableNames = tables.map((t) => t.name);
 
       // Spot-check critical tables that the backfill would read from
+      expect(tableNames).to.include('organizations');
       expect(tableNames).to.include('project');
       expect(tableNames).to.include('unit');
       expect(tableNames).to.include('program');
