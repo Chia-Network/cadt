@@ -136,6 +136,7 @@ const runMirrorCheck = async () => {
         orgUid: orgData.orgUid,
         dataModelVersionStoreId: orgData.dataModelVersionStoreId,
         registryId: orgData.registryId,
+        fileStoreId: orgData.fileStoreId,
       })}`,
     );
 
@@ -189,6 +190,23 @@ const runMirrorCheck = async () => {
       } else {
         logger.debug(
           `[MIRROR_DEBUG] Skipping registryId mirror - value is null/undefined`,
+        );
+      }
+
+      if (orgData.fileStoreId) {
+        try {
+          await Organization.addMirror(orgData.fileStoreId, mirrorUrl, true);
+          logger.debug(
+            `[MIRROR_DEBUG] Mirror ensured for fileStoreId: ${orgData.fileStoreId}`,
+          );
+        } catch (error) {
+          logger.error(
+            `[MIRROR_DEBUG] Failed to ensure mirror for fileStoreId ${orgData.fileStoreId}: ${error.message}`,
+          );
+        }
+      } else {
+        logger.debug(
+          `[MIRROR_DEBUG] Skipping fileStoreId mirror - value is null/undefined`,
         );
       }
     } else {
