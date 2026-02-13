@@ -509,12 +509,50 @@ jobs:
         if: always()
         shell: bash
         run: |
+          echo "Waiting for wallet to be synced before deleting mirrors..."
+          MAX_SYNC_ATTEMPTS=30  # 30 * 10s = 5 minutes max wait for sync
+          for i in $(seq 1 $MAX_SYNC_ATTEMPTS); do
+            WALLET_SYNCED=$(chia rpc wallet get_sync_status 2>/dev/null | jq -r '.synced // false')
+            if [ "$WALLET_SYNCED" = "true" ]; then
+              echo "Wallet is synced!"
+              break
+            fi
+            echo "Wallet not synced yet (attempt $i/$MAX_SYNC_ATTEMPTS), waiting 10 seconds..."
+            sleep 10
+          done
+
           echo "Deleting all mirrors..."
-          chia-tools data delete-mirrors --all
-          sleep 120 # wait 2 minutes for mirrors to be deleted
+          MAX_DELETE_ATTEMPTS=3
+          for attempt in $(seq 1 $MAX_DELETE_ATTEMPTS); do
+            echo "Delete attempt $attempt/$MAX_DELETE_ATTEMPTS..."
+            if chia-tools data delete-mirrors --all 2>&1; then
+              echo "Mirror deletion command succeeded!"
+              break
+            else
+              echo "Mirror deletion failed on attempt $attempt"
+              if [ "$attempt" -lt "$MAX_DELETE_ATTEMPTS" ]; then
+                echo "Waiting 60 seconds for wallet to re-sync before retry..."
+                sleep 60
+                # Re-check wallet sync
+                for i in $(seq 1 12); do
+                  WALLET_SYNCED=$(chia rpc wallet get_sync_status 2>/dev/null | jq -r '.synced // false')
+                  if [ "$WALLET_SYNCED" = "true" ]; then
+                    echo "Wallet re-synced!"
+                    break
+                  fi
+                  echo "Waiting for wallet sync... ($i/12)"
+                  sleep 10
+                done
+              else
+                echo "WARNING: All delete attempts failed, continuing anyway..."
+              fi
+            fi
+          done
+
+          sleep 120 # wait 2 minutes for mirrors to be deleted on-chain
 
           echo "Confirming mirrors are deleted..."
-          chia-tools data show-my-mirrors
+          chia-tools data show-my-mirrors || true
 
       - name: Show wallet balance (v2)
         if: always()
