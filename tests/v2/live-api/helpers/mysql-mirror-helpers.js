@@ -64,7 +64,7 @@ export const getMirrorDbConfig = () => {
       host: mirrorDb.DB_HOST,
       user: mirrorDb.DB_USERNAME,
       password: mirrorDb.DB_PASSWORD,
-      database: `${mirrorDb.DB_NAME}_v2`, // V2 uses {DB_NAME}_v2
+      database: mirrorDb.DB_NAME,
     };
 
     console.log(`[${getTimestamp()}] MySQL Mirror: Found config - host=${cachedConfig.host}, database=${cachedConfig.database}`);
