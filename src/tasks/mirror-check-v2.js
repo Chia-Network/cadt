@@ -136,6 +136,7 @@ const runMirrorCheckV2 = async () => {
         org_uid: orgData.org_uid,
         data_model_version_store_id: orgData.data_model_version_store_id,
         registry_id: orgData.registry_id,
+        file_store_subscribed: orgData.file_store_subscribed,
       })}`,
     );
 
@@ -189,6 +190,27 @@ const runMirrorCheckV2 = async () => {
       } else {
         loggerV2.debug(
           `[v2]: [MIRROR_DEBUG] Skipping registry_id mirror - value is null/undefined`,
+        );
+      }
+
+      if (orgData.file_store_subscribed) {
+        try {
+          await OrganizationsV2.addMirror(
+            orgData.file_store_subscribed,
+            mirrorUrl,
+            true,
+          );
+          loggerV2.debug(
+            `[v2]: [MIRROR_DEBUG] Mirror ensured for file_store: ${orgData.file_store_subscribed}`,
+          );
+        } catch (error) {
+          loggerV2.error(
+            `[v2]: [MIRROR_DEBUG] Failed to ensure mirror for file_store ${orgData.file_store_subscribed}: ${error.message}`,
+          );
+        }
+      } else {
+        loggerV2.debug(
+          `[v2]: [MIRROR_DEBUG] Skipping file_store mirror - value is null/undefined`,
         );
       }
     } else {
