@@ -1520,7 +1520,7 @@ jobs:
           }
 
           echo "--- Project V2-GTD001 (Japanese Coastal Blue Carbon) ---"
-          P1=$(echo "$PROJECTS" | jq '[.data[] // .[] | select(.projectId == "V2-GTD001")] | .[0]')
+          P1=$(echo "$PROJECTS" | jq '[(if type == "object" then .data else . end)[] | select(.projectId == "V2-GTD001")] | .[0]')
           verify_field "$P1" '.projectName' 'V2 Generic Testing Data - Japanese Coastal Blue Carbon' 'projectName'
           verify_field "$P1" '.projectRegistryName' 'Gold Standard' 'projectRegistryName'
           verify_field "$P1" '.projectDescription' 'V2 Generic Testing Data - Coastal blue carbon sequestration through seagrass meadow restoration in Japanese waters' 'projectDescription'
@@ -1532,7 +1532,7 @@ jobs:
           echo ""
 
           echo "--- Project V2-GTD002 (Moroccan Geothermal - EDITED) ---"
-          P2=$(echo "$PROJECTS" | jq '[.data[] // .[] | select(.projectId == "V2-GTD002")] | .[0]')
+          P2=$(echo "$PROJECTS" | jq '[(if type == "object" then .data else . end)[] | select(.projectId == "V2-GTD002")] | .[0]')
           verify_field "$P2" '.projectName' 'V2 Generic Testing Data - Moroccan Geothermal Energy' 'projectName'
           verify_field "$P2" '.projectRegistryName' 'VCS' 'projectRegistryName'
           verify_field "$P2" '.projectDescription' 'V2 Generic Testing Data - UPDATED - Expanded geothermal energy generation and district heating in the Atlas Mountains region of Morocco' 'projectDescription (EDITED)'
@@ -1541,7 +1541,7 @@ jobs:
           echo ""
 
           echo "--- Project V2-GTD003 (Brazilian Agroforestry) ---"
-          P3=$(echo "$PROJECTS" | jq '[.data[] // .[] | select(.projectId == "V2-GTD003")] | .[0]')
+          P3=$(echo "$PROJECTS" | jq '[(if type == "object" then .data else . end)[] | select(.projectId == "V2-GTD003")] | .[0]')
           verify_field "$P3" '.projectName' 'V2 Generic Testing Data - Brazilian Agroforestry Initiative' 'projectName'
           verify_field "$P3" '.projectRegistryName' 'CAR' 'projectRegistryName'
           verify_field "$P3" '.projectDescription' 'V2 Generic Testing Data - Agroforestry systems combining shade-grown coffee with native tree species in the Brazilian Atlantic Forest' 'projectDescription'
@@ -1581,7 +1581,7 @@ jobs:
           }
 
           echo "--- Unit V2-GTD001-UNIT-001 (Blue Carbon, Held) ---"
-          U1=$(echo "$UNITS" | jq '[.data[] // .[] | select(.unitSerialId == "V2-GTD001-UNIT-001")] | .[0]')
+          U1=$(echo "$UNITS" | jq '[(if type == "object" then .data else . end)[] | select(.unitSerialId == "V2-GTD001-UNIT-001")] | .[0]')
           verify_field "$U1" '.unitStartBlock' 'V2-GTD001-001' 'unitStartBlock'
           verify_field "$U1" '.unitEndBlock' 'V2-GTD001-500' 'unitEndBlock'
           verify_field "$U1" '.unitCount' '500' 'unitCount'
@@ -1593,7 +1593,7 @@ jobs:
           echo ""
 
           echo "--- Unit V2-GTD002-UNIT-001 (Geothermal, RETIRED - EDITED) ---"
-          U2=$(echo "$UNITS" | jq '[.data[] // .[] | select(.unitSerialId == "V2-GTD002-UNIT-001")] | .[0]')
+          U2=$(echo "$UNITS" | jq '[(if type == "object" then .data else . end)[] | select(.unitSerialId == "V2-GTD002-UNIT-001")] | .[0]')
           verify_field "$U2" '.unitStartBlock' 'V2-GTD002-001' 'unitStartBlock'
           verify_field "$U2" '.unitEndBlock' 'V2-GTD002-2000' 'unitEndBlock'
           verify_field "$U2" '.unitCount' '2000' 'unitCount'
@@ -1606,7 +1606,7 @@ jobs:
           echo ""
 
           echo "--- Unit V2-GTD003-UNIT-001 (Agroforestry, Held) ---"
-          U3=$(echo "$UNITS" | jq '[.data[] // .[] | select(.unitSerialId == "V2-GTD003-UNIT-001")] | .[0]')
+          U3=$(echo "$UNITS" | jq '[(if type == "object" then .data else . end)[] | select(.unitSerialId == "V2-GTD003-UNIT-001")] | .[0]')
           verify_field "$U3" '.unitStartBlock' 'V2-GTD003-001' 'unitStartBlock'
           verify_field "$U3" '.unitEndBlock' 'V2-GTD003-300' 'unitEndBlock'
           verify_field "$U3" '.unitCount' '300' 'unitCount'
@@ -1646,7 +1646,7 @@ jobs:
           }
 
           echo "--- Methodology ---"
-          METH=$(curl -s "$BASE/methodology" | jq '[.data[] // .[]] | .[0]')
+          METH=$(curl -s "$BASE/methodology" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
           verify_field "$METH" '.methodologyCode' 'V2-GTD-METH-001' 'methodologyCode'
           verify_field "$METH" '.methodologyName' 'V2 Generic Testing Data - Sustainable Land Management Methodology' 'methodologyName'
           verify_field "$METH" '.methodologyVersion' '3.2' 'methodologyVersion'
@@ -1654,7 +1654,7 @@ jobs:
           echo ""
 
           echo "--- Program ---"
-          PROG=$(curl -s "$BASE/program" | jq '[.data[] // .[]] | .[0]')
+          PROG=$(curl -s "$BASE/program" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
           verify_field "$PROG" '.programName' 'V2 Generic Testing Data Carbon Credits Program' 'programName'
           verify_field "$PROG" '.programRegistry' 'Gold Standard' 'programRegistry'
           verify_field "$PROG" '.programRegistryActivityId' 'V2-GTD-ACT-001' 'programRegistryActivityId'
@@ -1663,17 +1663,17 @@ jobs:
 
           echo "--- Stakeholders ---"
           STAKEHOLDERS=$(curl -s "$BASE/stakeholder")
-          SH1=$(echo "$STAKEHOLDERS" | jq '[.data[] // .[] | select(.stakeholderName == "V2 Generic Testing Data - Green Horizons Foundation")] | .[0]')
+          SH1=$(echo "$STAKEHOLDERS" | jq '[(if type == "object" then .data else . end)[] | select(.stakeholderName == "V2 Generic Testing Data - Green Horizons Foundation")] | .[0]')
           verify_field "$SH1" '.stakeholderType' 'Owner' 'stakeholder1 type'
-          SH2=$(echo "$STAKEHOLDERS" | jq '[.data[] // .[] | select(.stakeholderName == "V2 Generic Testing Data - EcoMetrics Consulting")] | .[0]')
+          SH2=$(echo "$STAKEHOLDERS" | jq '[(if type == "object" then .data else . end)[] | select(.stakeholderName == "V2 Generic Testing Data - EcoMetrics Consulting")] | .[0]')
           verify_field "$SH2" '.stakeholderType' 'Consultant' 'stakeholder2 type'
           echo ""
 
           echo "--- Labels ---"
           LABELS=$(curl -s "$BASE/label")
-          L1=$(echo "$LABELS" | jq '[.data[] // .[] | select(.labelName == "V2 Generic Testing Data - Marine Carbon Standard")] | .[0]')
+          L1=$(echo "$LABELS" | jq '[(if type == "object" then .data else . end)[] | select(.labelName == "V2 Generic Testing Data - Marine Carbon Standard")] | .[0]')
           verify_field "$L1" '.labelType' 'Certification' 'label1 type'
-          L2=$(echo "$LABELS" | jq '[.data[] // .[] | select(.labelName == "V2 Generic Testing Data - Renewable Energy Certificate")] | .[0]')
+          L2=$(echo "$LABELS" | jq '[(if type == "object" then .data else . end)[] | select(.labelName == "V2 Generic Testing Data - Renewable Energy Certificate")] | .[0]')
           verify_field "$L2" '.labelType' 'Article 6 - Authorisation' 'label2 type'
           echo ""
 
@@ -1709,42 +1709,42 @@ jobs:
 
           echo "--- Locations ---"
           LOCATIONS=$(curl -s "$BASE/location")
-          LOC_JP=$(echo "$LOCATIONS" | jq '[.data[] // .[] | select(.locationCountry == "Japan")] | .[0]')
+          LOC_JP=$(echo "$LOCATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.locationCountry == "Japan")] | .[0]')
           verify_field "$LOC_JP" '.locationRegion' 'Okinawa' 'Japan locationRegion'
-          LOC_MA=$(echo "$LOCATIONS" | jq '[.data[] // .[] | select(.locationCountry == "Morocco")] | .[0]')
+          LOC_MA=$(echo "$LOCATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.locationCountry == "Morocco")] | .[0]')
           verify_field "$LOC_MA" '.locationRegion' 'Atlas Mountains' 'Morocco locationRegion'
-          LOC_BR=$(echo "$LOCATIONS" | jq '[.data[] // .[] | select(.locationCountry == "Brazil")] | .[0]')
+          LOC_BR=$(echo "$LOCATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.locationCountry == "Brazil")] | .[0]')
           verify_field "$LOC_BR" '.locationRegion' 'Minas Gerais' 'Brazil locationRegion'
           echo ""
 
           echo "--- Validations ---"
           VALIDATIONS=$(curl -s "$BASE/validation")
-          VAL1=$(echo "$VALIDATIONS" | jq '[.data[] // .[] | select(.validationId == "V2-GTD-VAL-001")] | .[0]')
+          VAL1=$(echo "$VALIDATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.validationId == "V2-GTD-VAL-001")] | .[0]')
           verify_field "$VAL1" '.validationBody' 'SCS Global Services' 'val1 body'
           verify_field "$VAL1" '.validationCreditPeriodEndDate' '2035-12-31' 'val1 creditPeriodEnd'
-          VAL2=$(echo "$VALIDATIONS" | jq '[.data[] // .[] | select(.validationId == "V2-GTD-VAL-002")] | .[0]')
+          VAL2=$(echo "$VALIDATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.validationId == "V2-GTD-VAL-002")] | .[0]')
           verify_field "$VAL2" '.validationBody' 'AENOR International S.A.U.' 'val2 body'
-          VAL3=$(echo "$VALIDATIONS" | jq '[.data[] // .[] | select(.validationId == "V2-GTD-VAL-003")] | .[0]')
+          VAL3=$(echo "$VALIDATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.validationId == "V2-GTD-VAL-003")] | .[0]')
           verify_field "$VAL3" '.validationBody' 'Ruby Canyon Environmental Inc' 'val3 body'
           echo ""
 
           echo "--- Verifications ---"
           VERIFICATIONS=$(curl -s "$BASE/verification")
-          VER1=$(echo "$VERIFICATIONS" | jq '[.data[] // .[] | select(.verificationId == "V2-GTD-VER-001")] | .[0]')
+          VER1=$(echo "$VERIFICATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.verificationId == "V2-GTD-VER-001")] | .[0]')
           verify_field "$VER1" '.verificationBody' 'SCS Global Services' 'ver1 body'
-          VER2=$(echo "$VERIFICATIONS" | jq '[.data[] // .[] | select(.verificationId == "V2-GTD-VER-002")] | .[0]')
+          VER2=$(echo "$VERIFICATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.verificationId == "V2-GTD-VER-002")] | .[0]')
           verify_field "$VER2" '.verificationBody' 'AENOR International S.A.U.' 'ver2 body'
-          VER3=$(echo "$VERIFICATIONS" | jq '[.data[] // .[] | select(.verificationId == "V2-GTD-VER-003")] | .[0]')
+          VER3=$(echo "$VERIFICATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.verificationId == "V2-GTD-VER-003")] | .[0]')
           verify_field "$VER3" '.verificationBody' 'Ruby Canyon Environmental Inc' 'ver3 body'
           echo ""
 
           echo "--- Issuances ---"
           ISSUANCES=$(curl -s "$BASE/issuance")
-          ISS1=$(echo "$ISSUANCES" | jq '[.data[] // .[] | select(.issuanceId == "V2-GTD-ISS-001")] | .[0]')
+          ISS1=$(echo "$ISSUANCES" | jq '[(if type == "object" then .data else . end)[] | select(.issuanceId == "V2-GTD-ISS-001")] | .[0]')
           verify_field "$ISS1" '.issuanceDate' '2025-06-15' 'iss1 date'
-          ISS2=$(echo "$ISSUANCES" | jq '[.data[] // .[] | select(.issuanceId == "V2-GTD-ISS-002")] | .[0]')
+          ISS2=$(echo "$ISSUANCES" | jq '[(if type == "object" then .data else . end)[] | select(.issuanceId == "V2-GTD-ISS-002")] | .[0]')
           verify_field "$ISS2" '.issuanceDate' '2025-07-20' 'iss2 date'
-          ISS3=$(echo "$ISSUANCES" | jq '[.data[] // .[] | select(.issuanceId == "V2-GTD-ISS-003")] | .[0]')
+          ISS3=$(echo "$ISSUANCES" | jq '[(if type == "object" then .data else . end)[] | select(.issuanceId == "V2-GTD-ISS-003")] | .[0]')
           verify_field "$ISS3" '.issuanceDate' '2025-08-10' 'iss3 date'
           echo ""
 
@@ -1780,14 +1780,14 @@ jobs:
 
           echo "--- Estimations (3 expected, deleted V2-GTD-EST-004-DELETE should be gone) ---"
           ESTIMATIONS=$(curl -s "$BASE/estimation")
-          EST1=$(echo "$ESTIMATIONS" | jq '[.data[] // .[] | select(.estimationReferenceNo == "V2-GTD-EST-001")] | .[0]')
+          EST1=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-001")] | .[0]')
           verify_field "$EST1" '.estimationUnitCount' '15000' 'est1 unitCount'
-          EST2=$(echo "$ESTIMATIONS" | jq '[.data[] // .[] | select(.estimationReferenceNo == "V2-GTD-EST-002")] | .[0]')
+          EST2=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-002")] | .[0]')
           verify_field "$EST2" '.estimationUnitCount' '45000' 'est2 unitCount'
-          EST3=$(echo "$ESTIMATIONS" | jq '[.data[] // .[] | select(.estimationReferenceNo == "V2-GTD-EST-003")] | .[0]')
+          EST3=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-003")] | .[0]')
           verify_field "$EST3" '.estimationUnitCount' '8000' 'est3 unitCount'
 
-          DELETED_EST=$(echo "$ESTIMATIONS" | jq '[.data[] // .[] | select(.estimationReferenceNo == "V2-GTD-EST-004-DELETE")] | length')
+          DELETED_EST=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-004-DELETE")] | length')
           if [ "$DELETED_EST" -eq 0 ]; then
             echo "  PASS: deleted estimation V2-GTD-EST-004-DELETE not found (expected)"
           else
@@ -1798,13 +1798,13 @@ jobs:
 
           echo "--- Ratings ---"
           RATINGS=$(curl -s "$BASE/rating")
-          R1=$(echo "$RATINGS" | jq '[.data[] // .[] | select(.ratingName == "V2 Generic Testing Data - Blue Carbon CDP Rating")] | .[0]')
+          R1=$(echo "$RATINGS" | jq '[(if type == "object" then .data else . end)[] | select(.ratingName == "V2 Generic Testing Data - Blue Carbon CDP Rating")] | .[0]')
           verify_field "$R1" '.ratingType' 'CDP' 'rating1 type'
           verify_field "$R1" '.ratingValue' 'A-' 'rating1 value'
-          R2=$(echo "$RATINGS" | jq '[.data[] // .[] | select(.ratingName == "V2 Generic Testing Data - Geothermal CCQI Rating")] | .[0]')
+          R2=$(echo "$RATINGS" | jq '[(if type == "object" then .data else . end)[] | select(.ratingName == "V2 Generic Testing Data - Geothermal CCQI Rating")] | .[0]')
           verify_field "$R2" '.ratingType' 'CCQI' 'rating2 type'
           verify_field "$R2" '.ratingValue' '87' 'rating2 value'
-          R3=$(echo "$RATINGS" | jq '[.data[] // .[] | select(.ratingName == "V2 Generic Testing Data - Agroforestry CDP Rating")] | .[0]')
+          R3=$(echo "$RATINGS" | jq '[(if type == "object" then .data else . end)[] | select(.ratingName == "V2 Generic Testing Data - Agroforestry CDP Rating")] | .[0]')
           verify_field "$R3" '.ratingValue' 'B+' 'rating3 value'
           echo ""
 
@@ -1824,7 +1824,7 @@ jobs:
           ERRORS=0
           COBENEFITS=$(curl -s "$BASE/co-benefit")
 
-          CB_14=$(echo "$COBENEFITS" | jq '[.data[] // .[] | select(.coBenefitId == "SDG 14 - Life below water")] | length')
+          CB_14=$(echo "$COBENEFITS" | jq '[(if type == "object" then .data else . end)[] | select(.coBenefitId == "SDG 14 - Life below water")] | length')
           if [ "$CB_14" -eq 1 ]; then
             echo "  PASS: SDG 14 - Life below water exists"
           else
@@ -1832,7 +1832,7 @@ jobs:
             ERRORS=$((ERRORS + 1))
           fi
 
-          CB_7=$(echo "$COBENEFITS" | jq '[.data[] // .[] | select(.coBenefitId == "SDG 7 - Affordable and clean energy")] | length')
+          CB_7=$(echo "$COBENEFITS" | jq '[(if type == "object" then .data else . end)[] | select(.coBenefitId == "SDG 7 - Affordable and clean energy")] | length')
           if [ "$CB_7" -eq 1 ]; then
             echo "  PASS: SDG 7 - Affordable and clean energy exists"
           else
@@ -1840,7 +1840,7 @@ jobs:
             ERRORS=$((ERRORS + 1))
           fi
 
-          CB_15=$(echo "$COBENEFITS" | jq '[.data[] // .[] | select(.coBenefitId == "SDG 15 - Life on land")] | length')
+          CB_15=$(echo "$COBENEFITS" | jq '[(if type == "object" then .data else . end)[] | select(.coBenefitId == "SDG 15 - Life on land")] | length')
           if [ "$CB_15" -eq 1 ]; then
             echo "  PASS: SDG 15 - Life on land exists"
           else
@@ -1848,7 +1848,7 @@ jobs:
             ERRORS=$((ERRORS + 1))
           fi
 
-          CB_13=$(echo "$COBENEFITS" | jq '[.data[] // .[] | select(.coBenefitId == "SDG 13 - Climate action")] | length')
+          CB_13=$(echo "$COBENEFITS" | jq '[(if type == "object" then .data else . end)[] | select(.coBenefitId == "SDG 13 - Climate action")] | length')
           if [ "$CB_13" -eq 0 ]; then
             echo "  PASS: deleted SDG 13 - Climate action not found (expected)"
           else
@@ -1887,35 +1887,35 @@ jobs:
           }
 
           echo "--- AEF T5 (Authorized Entities) ---"
-          T5=$(curl -s "$BASE/aef-t5-authorized-entities" | jq '[.data[] // .[]] | .[0]')
+          T5=$(curl -s "$BASE/aef-t5-authorized-entities" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
           verify_field "$T5" '.aefT5AuthorizedEntitiesId' 'V2-GTD-T5-001' 'T5 id'
           verify_field "$T5" '.aefT5AuthorizedEntitiesName' 'V2 Generic Testing Data - Carbon Markets Authority' 'T5 name'
           verify_field "$T5" '.aefT5AuthorizedEntitiesIncorporationCountry' 'Japan' 'T5 country'
           echo ""
 
           echo "--- AEF T1 (Submission) ---"
-          T1=$(curl -s "$BASE/aef-t1-submission" | jq '[.data[] // .[]] | .[0]')
+          T1=$(curl -s "$BASE/aef-t1-submission" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
           verify_field "$T1" '.aefT1SubmissionParty' 'V2 Generic Testing Data - Japan' 'T1 party'
           verify_field "$T1" '.aefT1SubmissionReportYear' '2025' 'T1 reportYear'
           verify_field "$T1" '.aefT1SubmissionResultCheck' 'Passed' 'T1 resultCheck'
           echo ""
 
           echo "--- AEF T2 (Authorizations) ---"
-          T2=$(curl -s "$BASE/aef-t2-authorizations" | jq '[.data[] // .[]] | .[0]')
+          T2=$(curl -s "$BASE/aef-t2-authorizations" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
           verify_field "$T2" '.aefT2AuthorizationsId' 'V2-GTD-T2-001' 'T2 id'
           verify_field "$T2" '.aefT2AuthorizationsQuantity' '500' 'T2 quantity'
           verify_field "$T2" '.aefT2AuthorizationsMetric' 'GHC' 'T2 metric'
           echo ""
 
           echo "--- AEF T3 (Actions) ---"
-          T3=$(curl -s "$BASE/aef-t3-actions" | jq '[.data[] // .[]] | .[0]')
+          T3=$(curl -s "$BASE/aef-t3-actions" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
           verify_field "$T3" '.aefT3ActionsQuantityTCo2' '250' 'T3 quantity'
           verify_field "$T3" '.aefT3ActionsType' 'Transfer' 'T3 type'
           verify_field "$T3" '.aefT3ActionsMitigationType' 'Emission reductions' 'T3 mitigationType'
           echo ""
 
           echo "--- AEF T4 (Holdings) ---"
-          T4=$(curl -s "$BASE/aef-t4-holdings" | jq '[.data[] // .[]] | .[0]')
+          T4=$(curl -s "$BASE/aef-t4-holdings" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
           verify_field "$T4" '.aefT4HoldingsQuantityTCo2' '500' 'T4 quantity'
           verify_field "$T4" '.aefT4HoldingsMetric' 'GHC' 'T4 metric'
           verify_field "$T4" '.aefT4HoldingsMitigationType' 'Emission reductions' 'T4 mitigationType'
