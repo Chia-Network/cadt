@@ -1241,6 +1241,51 @@ jobs:
           pm2 start npm --no-autorestart --name "cadt" -- start
           sleep 30
 
+      - name: Wait for wallet sync and datalayer readiness
+        shell: bash
+        run: |
+          echo "Waiting for wallet to finish syncing..."
+          MAX_WAIT_MINUTES=20
+          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            REMAINING=$((WAIT_SECONDS - ELAPSED))
+
+            if [ "$REMAINING" -le 0 ]; then
+              echo "Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
+              break
+            fi
+
+            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
+            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
+            WALLET_SYNCING=$(echo "$WALLET_STATUS" | jq -r '.syncing // true')
+
+            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s, remaining: ${REMAINING}s)"
+
+            if [ "$WALLET_SYNCED" = "true" ]; then
+              echo "Wallet is synced!"
+              echo "Waiting additional 30 seconds for datalayer to catch up..."
+              sleep 30
+              break
+            fi
+
+            echo "Wallet still syncing, waiting 30 seconds..."
+            sleep 30
+          done
+
+          echo ""
+          echo "=========================================="
+          echo "Final Status Check"
+          echo "=========================================="
+          echo "Wallet sync status:"
+          chia rpc wallet get_sync_status || echo "Failed to get wallet sync status"
+          echo ""
+          echo "Datalayer subscriptions:"
+          chia rpc data_layer subscriptions || echo "Failed to get datalayer subscriptions"
+
       - name: Wait for CADT API readiness
         shell: bash
         run: |
