@@ -1217,7 +1217,7 @@ jobs:
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = null' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
@@ -1235,16 +1235,10 @@ jobs:
           sleep 10
           tail ~/.chia/mainnet/log/debug.log
 
-      - name: Start CADT
+      - name: Wait for wallet sync
         shell: bash
         run: |
-          pm2 start npm --no-autorestart --name "cadt" -- start
-          sleep 30
-
-      - name: Wait for wallet sync and datalayer readiness
-        shell: bash
-        run: |
-          echo "Waiting for wallet to finish syncing..."
+          echo "Waiting for wallet to finish syncing before starting CADT..."
           MAX_WAIT_MINUTES=20
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
@@ -1255,7 +1249,8 @@ jobs:
             REMAINING=$((WAIT_SECONDS - ELAPSED))
 
             if [ "$REMAINING" -le 0 ]; then
-              echo "Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
+              echo "WARNING: Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
+              echo "Proceeding anyway - wallet may still be syncing"
               break
             fi
 
@@ -1267,24 +1262,21 @@ jobs:
 
             if [ "$WALLET_SYNCED" = "true" ]; then
               echo "Wallet is synced!"
-              echo "Waiting additional 30 seconds for datalayer to catch up..."
-              sleep 30
               break
             fi
 
-            echo "Wallet still syncing, waiting 30 seconds..."
             sleep 30
           done
 
           echo ""
-          echo "=========================================="
-          echo "Final Status Check"
-          echo "=========================================="
           echo "Wallet sync status:"
           chia rpc wallet get_sync_status || echo "Failed to get wallet sync status"
-          echo ""
-          echo "Datalayer subscriptions:"
-          chia rpc data_layer subscriptions || echo "Failed to get datalayer subscriptions"
+
+      - name: Start CADT
+        shell: bash
+        run: |
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 15
 
       - name: Wait for CADT API readiness
         shell: bash
@@ -1301,6 +1293,70 @@ jobs:
             sleep 10
           done
 
+      - name: Wait for org store sync in datalayer
+        shell: bash
+        run: |
+          PARTICIPANT_V2_ORG_UID="3b5608bf3456586dfe6e2353785b93d863db578b2d961bc2e1d142196924c91a"
+          echo "Subscribing to org store and waiting for datalayer sync..."
+
+          chia rpc data_layer subscribe '{"id": "'$PARTICIPANT_V2_ORG_UID'"}' || true
+
+          MAX_WAIT_MINUTES=15
+          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            REMAINING=$((WAIT_SECONDS - ELAPSED))
+
+            if [ "$REMAINING" -le 0 ]; then
+              echo "WARNING: Reached maximum wait time of $MAX_WAIT_MINUTES minutes for org store sync"
+              break
+            fi
+
+            SYNC_STATUS=$(chia rpc data_layer get_sync_status '{"id": "'$PARTICIPANT_V2_ORG_UID'"}' 2>/dev/null || echo '{}')
+            GENERATION=$(echo "$SYNC_STATUS" | jq -r '.sync_status.generation // "null"')
+            TARGET=$(echo "$SYNC_STATUS" | jq -r '.sync_status.target_generation // "null"')
+
+            echo "Org store sync: generation=$GENERATION, target=$TARGET (elapsed: ${ELAPSED}s)"
+
+            if [ "$GENERATION" != "null" ] && [ "$TARGET" != "null" ] && [ "$GENERATION" = "$TARGET" ] && [ "$GENERATION" != "0" ]; then
+              echo "Org store is synced in datalayer!"
+              break
+            fi
+
+            sleep 15
+          done
+
+      - name: Wait for wallet re-sync after subscriptions
+        shell: bash
+        run: |
+          echo "Waiting for wallet to re-sync after datalayer subscriptions..."
+          MAX_WAIT=300
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+
+            if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
+              echo "Wallet re-sync wait complete (max time reached)"
+              break
+            fi
+
+            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
+            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
+
+            if [ "$WALLET_SYNCED" = "true" ]; then
+              echo "Wallet is synced!"
+              break
+            fi
+
+            echo "Wallet syncing... (elapsed: ${ELAPSED}s)"
+            sleep 10
+          done
+
       - name: Import remote V2 organization
         shell: bash
         run: |
@@ -1309,18 +1365,37 @@ jobs:
           echo "########################################################"
           PARTICIPANT_V2_ORG_UID="3b5608bf3456586dfe6e2353785b93d863db578b2d961bc2e1d142196924c91a"
 
-          RESULT=$(curl -s -X PUT -H "Content-Type: application/json" \
-            -d "{\"orgUid\": \"${PARTICIPANT_V2_ORG_UID}\"}" \
-            http://127.0.0.1:31310/v2/organizations)
-          echo "Import result: $RESULT"
+          MAX_IMPORT_ATTEMPTS=10
+          for attempt in $(seq 1 $MAX_IMPORT_ATTEMPTS); do
+            echo ""
+            echo "Import attempt $attempt/$MAX_IMPORT_ATTEMPTS..."
 
-          SUCCESS=$(echo "$RESULT" | jq -r '.success')
-          if [ "$SUCCESS" != "true" ]; then
-            echo "ERROR: Failed to import organization"
-            echo "$RESULT" | jq .
-            exit 1
-          fi
-          echo "Organization import initiated successfully"
+            RESULT=$(curl -s -X PUT -H "Content-Type: application/json" \
+              -d "{\"orgUid\": \"${PARTICIPANT_V2_ORG_UID}\"}" \
+              http://127.0.0.1:31310/v2/organizations)
+            echo "Import result: $RESULT"
+
+            sleep 10
+
+            ORG_DATA=$(curl -s http://127.0.0.1:31310/v2/organizations 2>/dev/null || echo "{}")
+            ORG_EXISTS=$(echo "$ORG_DATA" | jq -r "has(\"${PARTICIPANT_V2_ORG_UID}\")")
+
+            if [ "$ORG_EXISTS" = "true" ]; then
+              echo "Organization successfully created in CADT database!"
+              break
+            fi
+
+            echo "Organization not yet in database (import may have been deferred due to store sync)"
+
+            if [ "$attempt" -eq "$MAX_IMPORT_ATTEMPTS" ]; then
+              echo "ERROR: Organization was never created after $MAX_IMPORT_ATTEMPTS attempts"
+              echo "CADT logs:"
+              pm2 logs cadt --lines 100 --nostream
+              exit 1
+            fi
+
+            sleep 20
+          done
 
       - name: Wait for V2 organization sync
         shell: bash
