@@ -126,8 +126,9 @@ describe('V1 then V2 Governance Body Creation Tests', function () {
       expect(response.status).to.equal(200);
       expect(response.body.success).to.be.true;
 
-      // V2 governance should reuse the same main governance body
-      const v2MainId = await waitForGovernanceCreated(request, 'v2');
+      // V2 governance should reuse the same main governance body.
+      // Use 60-min timeout because V1 phase already consumed wallet/datalayer resources.
+      const v2MainId = await waitForGovernanceCreated(request, 'v2', 3600000);
       expect(v2MainId).to.be.a('string').with.lengthOf(64);
 
       // The main governance body ID should be the same since V2 was added to V1
