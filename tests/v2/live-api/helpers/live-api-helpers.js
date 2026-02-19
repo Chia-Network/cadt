@@ -1323,8 +1323,9 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
             creationInProgress = true;
             noProgressCount = 0; // Reset counter
             console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
-          } else if (sawPendingOrg && orgs.length === 0) {
-            // We had a PENDING org but now it's gone with no replacement - creation failed
+          } else if (sawPendingOrg) {
+            // We had a PENDING org but now it's gone with no home org replacement - creation failed
+            // (Remote/non-home orgs may still exist, but that doesn't mean creation succeeded)
             console.log(`  [${elapsed}s] ❌ PENDING organization disappeared - creation failed!`);
 
             // Try to get more details about what went wrong
@@ -1344,8 +1345,9 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           } else {
             console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
 
-            // Track no progress - if no PENDING org and no creation in progress for too long, fail fast
-            if (!creationInProgress && orgs.length === 0) {
+            // Track no progress - no home org, no PENDING org, and no creation in progress
+            // Note: non-home remote orgs may exist but don't count as progress
+            if (!creationInProgress) {
               noProgressCount++;
               if (noProgressCount >= noProgressThreshold) {
                 console.log(`  [${elapsed}s] ❌ No organization creation progress detected after ${noProgressCount * 10}s`);
@@ -1647,8 +1649,9 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
             creationInProgress = true;
             noProgressCount = 0; // Reset counter
             console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
-          } else if (sawPendingOrg && orgs.length === 0) {
-            // We had a PENDING org but now it's gone with no replacement - creation failed
+          } else if (sawPendingOrg) {
+            // We had a PENDING org but now it's gone with no home org replacement - creation failed
+            // (Remote/non-home orgs may still exist, but that doesn't mean creation succeeded)
             console.log(`  [${elapsed}s] ❌ PENDING organization disappeared - creation failed!`);
 
             // Try to get more details about what went wrong
@@ -1668,8 +1671,9 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
           } else {
             console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
 
-            // Track no progress - if no PENDING org and no creation in progress for too long, fail fast
-            if (!creationInProgress && orgs.length === 0) {
+            // Track no progress - no home org, no PENDING org, and no creation in progress
+            // Note: non-home remote orgs may exist but don't count as progress
+            if (!creationInProgress) {
               noProgressCount++;
               if (noProgressCount >= noProgressThreshold) {
                 console.log(`  [${elapsed}s] ❌ No organization creation progress detected after ${noProgressCount * 10}s`);
