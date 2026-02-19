@@ -1,7 +1,12 @@
 'use strict';
 
+// Governance is a system table used only by the main SQLite database.
+// It must not be created in the MySQL mirror.
 export default {
   async up(queryInterface, Sequelize) {
+    if (queryInterface.sequelize.getDialect() !== 'sqlite') {
+      return;
+    }
     await queryInterface.createTable('governance', {
       id: {
         type: Sequelize.INTEGER,
@@ -30,6 +35,9 @@ export default {
   },
 
   async down(queryInterface) {
+    if (queryInterface.sequelize.getDialect() !== 'sqlite') {
+      return;
+    }
     await queryInterface.dropTable('governance');
   },
 };
