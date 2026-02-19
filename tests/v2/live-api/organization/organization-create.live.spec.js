@@ -22,7 +22,7 @@ import { validateOrganizationStores } from '../helpers/datalayer-test-helpers.js
  * should be run in a separate CI job with a fresh database.
  */
 describe('V2 Organization Creation Tests', function () {
-  this.timeout(3600000); // 60 minute timeout for org creation
+  this.timeout(1800000); // 30 minute timeout for org creation
 
   let request;
 

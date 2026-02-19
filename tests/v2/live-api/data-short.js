@@ -68,7 +68,7 @@ async function runMochaTests(grepPattern, phaseName, filesToRun = null) {
       ...testPaths,
       '--grep', grepPattern,
       '--reporter', 'spec',
-      '--timeout', '3600000',
+      '--timeout', '1800000',
       '--exit',
     ];
 

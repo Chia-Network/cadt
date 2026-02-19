@@ -319,10 +319,10 @@ const buildServerDiagnostics = (v2Response, v1Response, rootResponse, lastError,
  * @param {Object} request - supertest request instance (wrapped with logging/retry)
  * @param {string} endpoint - API endpoint to POST to (e.g. '/v1/organizations/create' or '/v2/organizations')
  * @param {Object} orgData - Organization data to send
- * @param {number} maxWaitMinutes - Maximum time to retry in minutes (default: 20)
+ * @param {number} maxWaitMinutes - Maximum time to retry in minutes (default: 10)
  * @returns {Promise<{createResponse: Object, lastError: string|null, attempt: number}>}
  */
-export const createOrganizationWithRetry = async (request, endpoint, orgData, maxWaitMinutes = 20) => {
+export const createOrganizationWithRetry = async (request, endpoint, orgData, maxWaitMinutes = 10) => {
   const maxWaitMs = maxWaitMinutes * 60 * 1000;
   const retryDelayMs = 30000; // 30 seconds between retries
   const startTime = Date.now();
@@ -1137,12 +1137,12 @@ export const getLiveApiRequest = async (options = {}) => {
  * Also checks /v2/organizations/status for creation progress details
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
- * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
+ * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 900000 = 15 minutes)
  * @param {Object} options - Additional options
  * @param {boolean} options.isUpgrade - If true, skip fast-fail checks (upgrade is fully async with no status)
  * @returns {Promise<{orgUid: string, organization: object}>} Organization UID and data
  */
-export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000, options = {}) => {
+export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 900000, options = {}) => {
   const { isUpgrade = false } = options;
   const startTime = Date.now();
   const interval = 10000; // Check every 10 seconds
@@ -1428,10 +1428,10 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
  * Also checks /v1/organizations/creation-status for creation progress details
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
- * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
+ * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 900000 = 15 minutes)
  * @returns {Promise<{orgUid: string, organization: object}>} Organization UID and data
  */
-export const waitForV1OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000) => {
+export const waitForV1OrganizationReady = async (request, orgName = null, maxWaitTime = 900000) => {
   const startTime = Date.now();
   const interval = 10000; // Check every 10 seconds
   const timestamp = getTimestamp();

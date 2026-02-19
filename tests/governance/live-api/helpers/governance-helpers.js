@@ -38,7 +38,7 @@ export const getGovernanceApiRequest = async (options = {}) => {
  * @param {number} maxWaitMinutes - max time to retry on wallet errors
  * @returns {Promise<{response: Object, lastError: string|null}>}
  */
-export const createGovernanceBodyWithRetry = async (request, apiVersion, maxWaitMinutes = 20) => {
+export const createGovernanceBodyWithRetry = async (request, apiVersion, maxWaitMinutes = 10) => {
   const maxWaitMs = maxWaitMinutes * 60 * 1000;
   const retryDelayMs = 30000;
   const startTime = Date.now();
@@ -95,7 +95,7 @@ export const createGovernanceBodyWithRetry = async (request, apiVersion, maxWait
  * @param {number} maxWaitMs - timeout (default 30 minutes)
  * @returns {Promise<string>} main governance body store ID
  */
-export const waitForGovernanceCreated = async (request, apiVersion, maxWaitMs = 1800000) => {
+export const waitForGovernanceCreated = async (request, apiVersion, maxWaitMs = 900000) => {
   const startTime = Date.now();
   const interval = 10000;
   const endpoint = `/${apiVersion}/governance/exists`;

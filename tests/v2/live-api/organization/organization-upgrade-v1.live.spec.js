@@ -29,7 +29,7 @@ let v1OrganizationDetails = null;
  * Run this with a fresh database (no existing home org).
  */
 describe('V1 to V2 Organization Upgrade Tests', function () {
-  this.timeout(7200000); // 120 minute timeout (V1 creation + upgrade)
+  this.timeout(3600000); // 60 minute timeout (V1 creation + upgrade)
 
   let request;
   let v1OrgName;
@@ -249,7 +249,7 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
 
       // Wait for upgraded organization to be ready
       // Use isUpgrade: true to skip fast-fail checks - upgrade is fully async with no status endpoint
-      const result = await waitForV2OrganizationReady(request, null, 1800000, { isUpgrade: true });
+      const result = await waitForV2OrganizationReady(request, null, 900000, { isUpgrade: true });
       const upgradedV2OrgUid = result.orgUid;
 
       // Save to shared state

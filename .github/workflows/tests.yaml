@@ -244,7 +244,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60  # 60 attempts * 10 seconds = 10 minutes
+          MAX_ATTEMPTS=30  # 30 attempts * 10 seconds = 5 minutes
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -256,7 +256,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -278,7 +278,7 @@ jobs:
         shell: bash
         run: |
           echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
+          MAX_WAIT_MINUTES=10
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
 
@@ -676,7 +676,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=30
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -688,7 +688,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -710,7 +710,7 @@ jobs:
         shell: bash
         run: |
           echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
+          MAX_WAIT_MINUTES=10
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
 
@@ -968,7 +968,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=30
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -980,7 +980,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -1002,7 +1002,7 @@ jobs:
         shell: bash
         run: |
           echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
+          MAX_WAIT_MINUTES=10
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
           CADT_PORT=31310
@@ -1270,7 +1270,7 @@ jobs:
         shell: bash
         run: |
           echo "Waiting for wallet to finish syncing before starting CADT..."
-          MAX_WAIT_MINUTES=20
+          MAX_WAIT_MINUTES=10
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
 
@@ -1433,7 +1433,7 @@ jobs:
         run: |
           echo "Waiting for remote V2 organization to sync..."
           PARTICIPANT_V2_ORG_UID="3b5608bf3456586dfe6e2353785b93d863db578b2d961bc2e1d142196924c91a"
-          MAX_WAIT_MINUTES=30
+          MAX_WAIT_MINUTES=20
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
 
@@ -2130,7 +2130,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=30
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -2142,7 +2142,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -2164,7 +2164,7 @@ jobs:
         shell: bash
         run: |
           echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
+          MAX_WAIT_MINUTES=10
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
 
@@ -2408,7 +2408,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=30
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -2420,7 +2420,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -2442,7 +2442,7 @@ jobs:
         shell: bash
         run: |
           echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
+          MAX_WAIT_MINUTES=10
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
 
@@ -2687,7 +2687,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=30
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -2699,7 +2699,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -2721,7 +2721,7 @@ jobs:
         shell: bash
         run: |
           echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
+          MAX_WAIT_MINUTES=10
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
 

@@ -33,7 +33,7 @@ const TEST_ORG_LIST = [
  *   - Wallet funded with txch
  */
 describe('V1 Governance Body Creation Tests', function () {
-  this.timeout(3600000); // 60 minute timeout
+  this.timeout(1800000); // 30 minute timeout
 
   let request;
   let mainGovernanceBodyId;
