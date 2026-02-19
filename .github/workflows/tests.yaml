@@ -208,7 +208,7 @@ jobs:
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "4212425c8e053ad58279f1d1a498afec4a1e6b00da356a49ac72780fe13e98e8"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
           # Enable V2 for V2 live API tests
           yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
@@ -648,7 +648,7 @@ jobs:
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "4212425c8e053ad58279f1d1a498afec4a1e6b00da356a49ac72780fe13e98e8"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
           # Enable V1 only for V1 live API tests
           yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
