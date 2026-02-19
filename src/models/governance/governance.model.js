@@ -25,10 +25,10 @@ class Governance extends Model {
 
     const dataModelVersion = 'v1';
     await datalayer.waitForSpendableCoins(2);
-    const [governanceBodyId, governanceVersionId] = await Promise.all([
-      datalayer.createDataLayerStore(),
-      datalayer.createDataLayerStore(),
-    ]);
+    // Create stores sequentially to avoid "DataLayer Wallet already exists"
+    // race condition when both calls try to initialize the wallet in parallel
+    const governanceBodyId = await datalayer.createDataLayerStore();
+    const governanceVersionId = await datalayer.createDataLayerStore();
 
     const revertOrganizationIfFailed = async () => {
       logger.warn('Reverting Failed Governance Body Creation');
