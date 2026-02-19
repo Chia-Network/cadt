@@ -164,6 +164,7 @@ class GovernanceV2 extends Model {
     }
 
     // Create new V2-specific governance store
+    await datalayer.waitForSpendableCoins(1);
     const governanceVersionId = await datalayer.createDataLayerStore();
     loggerV2.info(`[v2]: Created new V2 governance store: ${governanceVersionId}`);
 
