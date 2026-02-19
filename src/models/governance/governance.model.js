@@ -24,8 +24,11 @@ class Governance extends Model {
     }
 
     const dataModelVersion = 'v1';
-    const governanceBodyId = await datalayer.createDataLayerStore();
-    const governanceVersionId = await datalayer.createDataLayerStore();
+    await datalayer.waitForSpendableCoins(2);
+    const [governanceBodyId, governanceVersionId] = await Promise.all([
+      datalayer.createDataLayerStore(),
+      datalayer.createDataLayerStore(),
+    ]);
 
     const revertOrganizationIfFailed = async () => {
       logger.warn('Reverting Failed Governance Body Creation');
