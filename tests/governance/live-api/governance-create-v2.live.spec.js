@@ -10,6 +10,7 @@ import {
 import {
   validateGovernanceMainStore,
   validateGovernanceVersionStore,
+  waitForGovernanceKeyOnChain,
 } from './helpers/governance-datalayer-helpers.js';
 
 import v2PickList from '../../../src/models/governance/governance-v2.stub.js';
@@ -71,16 +72,19 @@ describe('V2 Governance Body Creation Tests', function () {
     it('should set picklist and wait for confirmation', async function () {
       await setGovernanceData(request, 'v2', 'pickList', v2PickList);
       await waitForGovernanceDataConfirmed(request, 'v2', ['pickList']);
+      await waitForGovernanceKeyOnChain(mainGovernanceBodyId, 'v2', 'pickList');
     });
 
     it('should set glossary and wait for confirmation', async function () {
       await setGovernanceData(request, 'v2', 'glossary', glossary);
       await waitForGovernanceDataConfirmed(request, 'v2', ['pickList', 'glossary']);
+      await waitForGovernanceKeyOnChain(mainGovernanceBodyId, 'v2', 'glossary');
     });
 
     it('should set orgList and wait for confirmation', async function () {
       await setGovernanceData(request, 'v2', 'orgList', TEST_ORG_LIST);
       await waitForGovernanceDataConfirmed(request, 'v2', ['pickList', 'glossary', 'orgList']);
+      await waitForGovernanceKeyOnChain(mainGovernanceBodyId, 'v2', 'orgList');
     });
   });
 

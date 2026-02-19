@@ -10,6 +10,11 @@ import {
   hexToString,
 } from '../../../v2/live-api/helpers/datalayer-test-helpers.js';
 
+const getTimestamp = () => {
+  const now = new Date();
+  return now.toISOString().replace('T', ' ').substring(0, 19);
+};
+
 /**
  * Validate the main governance body store contains the expected version mapping.
  *
@@ -150,4 +155,59 @@ export const validateGovernanceVersionStore = async (versionStoreId, versionLabe
   }
 
   return { valid, errors, foundKeys };
+};
+
+/**
+ * Poll the datalayer version store until a specific key appears on-chain.
+ * Use after waitForGovernanceDataConfirmed to avoid a race condition where the
+ * CADT DB marks data as confirmed before the datalayer changelist is committed.
+ *
+ * @param {string} mainStoreId - the main governance body store ID
+ * @param {string} version - 'v1' or 'v2'
+ * @param {string} key - the meta key to wait for (e.g. 'pickList')
+ * @param {number} maxWaitMs - timeout (default 10 minutes)
+ * @returns {Promise<void>}
+ */
+export const waitForGovernanceKeyOnChain = async (mainStoreId, version, key, maxWaitMs = 600000) => {
+  const interval = 15000;
+  const startTime = Date.now();
+
+  const mainKeysValues = await getStoreKeysValues(mainStoreId);
+  let versionStoreId = null;
+  for (const kv of mainKeysValues) {
+    if (hexToString(kv.key) === version) {
+      versionStoreId = hexToString(kv.value);
+      break;
+    }
+  }
+
+  if (!versionStoreId) {
+    throw new Error(`Version '${version}' not found in main store ${mainStoreId}`);
+  }
+
+  console.log(`[${getTimestamp()}] Waiting for '${key}' to appear on-chain in ${version} store ${versionStoreId}...`);
+
+  while (Date.now() - startTime < maxWaitMs) {
+    try {
+      const storeKeysValues = await getStoreKeysValues(versionStoreId);
+      const foundKeys = storeKeysValues.map(kv => hexToString(kv.key));
+
+      if (foundKeys.includes(key)) {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        console.log(`  '${key}' confirmed on-chain after ${elapsed}s`);
+        return;
+      }
+
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      console.log(`  [${elapsed}s] '${key}' not yet on-chain (found: [${foundKeys.join(', ')}])`);
+    } catch (error) {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      console.log(`  [${elapsed}s] Error checking datalayer store: ${error.message}`);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  throw new Error(`Timeout waiting for '${key}' in ${version} datalayer store after ${elapsed}s`);
 };

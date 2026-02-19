@@ -10,6 +10,7 @@ import {
 import {
   validateGovernanceMainStore,
   validateGovernanceVersionStore,
+  waitForGovernanceKeyOnChain,
 } from './helpers/governance-datalayer-helpers.js';
 
 import v1PickList from '../../../src/models/governance/governance.stub.js';
@@ -75,16 +76,19 @@ describe('V1 then V2 Governance Body Creation Tests', function () {
     it('should set V1 picklist and wait for confirmation', async function () {
       await setGovernanceData(request, 'v1', 'pickList', v1PickList);
       await waitForGovernanceDataConfirmed(request, 'v1', ['pickList']);
+      await waitForGovernanceKeyOnChain(mainGovernanceBodyId, 'v1', 'pickList');
     });
 
     it('should set V1 glossary and wait for confirmation', async function () {
       await setGovernanceData(request, 'v1', 'glossary', glossary);
       await waitForGovernanceDataConfirmed(request, 'v1', ['pickList', 'glossary']);
+      await waitForGovernanceKeyOnChain(mainGovernanceBodyId, 'v1', 'glossary');
     });
 
     it('should set V1 orgList and wait for confirmation', async function () {
       await setGovernanceData(request, 'v1', 'orgList', TEST_ORG_LIST);
       await waitForGovernanceDataConfirmed(request, 'v1', ['pickList', 'glossary', 'orgList']);
+      await waitForGovernanceKeyOnChain(mainGovernanceBodyId, 'v1', 'orgList');
     });
   });
 
@@ -140,16 +144,19 @@ describe('V1 then V2 Governance Body Creation Tests', function () {
     it('should set V2 picklist and wait for confirmation', async function () {
       await setGovernanceData(request, 'v2', 'pickList', v2PickList);
       await waitForGovernanceDataConfirmed(request, 'v2', ['pickList']);
+      await waitForGovernanceKeyOnChain(mainGovernanceBodyId, 'v2', 'pickList');
     });
 
     it('should set V2 glossary and wait for confirmation', async function () {
       await setGovernanceData(request, 'v2', 'glossary', glossary);
       await waitForGovernanceDataConfirmed(request, 'v2', ['pickList', 'glossary']);
+      await waitForGovernanceKeyOnChain(mainGovernanceBodyId, 'v2', 'glossary');
     });
 
     it('should set V2 orgList and wait for confirmation', async function () {
       await setGovernanceData(request, 'v2', 'orgList', TEST_ORG_LIST);
       await waitForGovernanceDataConfirmed(request, 'v2', ['pickList', 'glossary', 'orgList']);
+      await waitForGovernanceKeyOnChain(mainGovernanceBodyId, 'v2', 'orgList');
     });
   });
 
