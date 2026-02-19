@@ -1027,6 +1027,61 @@ const createRetryableRequest = (makeRequest, method, path) => {
 };
 
 /**
+ * Wait for the wallet to be available and stable before attempting blockchain operations.
+ *
+ * Polls CADT's /v1/health endpoint until it returns consecutive successes,
+ * indicating the wallet is available (not just that Chia reports synced=true).
+ *
+ * Note: this confirms wallet *availability* at the CADT layer. It cannot guarantee
+ * the wallet is ready for datalayer store *transactions* (a stricter Chia-internal
+ * check). The outer retry loop in tests handles that residual race condition.
+ *
+ * @param {Object} request - supertest request instance
+ * @param {number} maxWaitMs - Maximum wait time in ms (default: 10 minutes)
+ * @returns {Promise<void>} - Resolves when wallet is confirmed available, or after timeout
+ */
+export const waitForWalletReadyForTransactions = async (request, maxWaitMs = 600000) => {
+  const startTime = Date.now();
+  const pollIntervalMs = 15000;
+  const consecutiveSuccessRequired = 3;
+  let consecutiveSuccess = 0;
+  let attempt = 0;
+
+  console.log(`[${getTimestamp()}] Waiting for wallet to be available for transactions (up to ${maxWaitMs / 60000}m)...`);
+
+  while (Date.now() - startTime < maxWaitMs) {
+    attempt++;
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
+    try {
+      const response = await request.get('/v1/health');
+
+      if (response.status === 200) {
+        consecutiveSuccess++;
+        console.log(`[${getTimestamp()}] ✓ Wallet available (${consecutiveSuccess}/${consecutiveSuccessRequired} consecutive, ${elapsed}s elapsed)`);
+        if (consecutiveSuccess >= consecutiveSuccessRequired) {
+          console.log(`[${getTimestamp()}] ✓ Wallet confirmed stable and available for transactions`);
+          return;
+        }
+      } else {
+        consecutiveSuccess = 0;
+        const body = response.body || {};
+        const msg = body.error || body.message || `HTTP ${response.status}`;
+        console.log(`[${getTimestamp()}] [Attempt ${attempt}] Wallet not ready: ${msg} (${elapsed}s elapsed)`);
+      }
+    } catch (error) {
+      consecutiveSuccess = 0;
+      console.log(`[${getTimestamp()}] [Attempt ${attempt}] Health check error: ${error.message} (${elapsed}s elapsed)`);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+  }
+
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  console.log(`[${getTimestamp()}] ⚠️  Wallet readiness check timed out after ${elapsed}s — proceeding with retry-based resilience`);
+};
+
+/**
  * Convenience function to get live API request instance
  * Also checks server health
  *

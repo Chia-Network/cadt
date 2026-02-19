@@ -3,6 +3,7 @@ import {
   getLiveApiRequest,
   waitForV2OrganizationReady,
   waitForV1OrganizationReady,
+  waitForWalletReadyForTransactions,
   createOrganizationWithRetry,
   logOrganizationCreationFailure,
 } from '../helpers/live-api-helpers.js';
@@ -38,37 +39,93 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
     clearOrganizationState();
 
     request = await getLiveApiRequest();
+
+    // Wait for wallet to be stable before attempting org creation.
+    // Governance store sync (triggered by a real GOVERNANCE_LOOKUP_ID) can cause
+    // the wallet to become temporarily unavailable after the Chia-level sync check passes.
+    await waitForWalletReadyForTransactions(request, 600000);
   });
 
   describe('V1 Organization Creation (for upgrade)', function () {
     it('should create a new V1 organization and wait for completion', async function () {
-      const orgData = {
-        name: `Test V1 Upgrade Org ${Date.now()}`,
-        icon: 'https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg',
-      };
-      v1OrgName = orgData.name;
-
       // Track V1 org creation timing
       const v1OrgCreateStartTime = Date.now();
 
-      // Create V1 organization with wallet-sync retry (up to 20 minutes)
-      const { createResponse, lastError } = await createOrganizationWithRetry(
-        request,
-        '/v1/organizations/create',
-        orgData,
-      );
+      // Retry the entire create + wait cycle to handle a wallet sync race condition:
+      // The POST to create an org may return 200 (wallet passes the "available" check),
+      // but the internal datalayer store creation can still fail with
+      // "Wallet needs to be fully synced before making transactions." This causes
+      // the PENDING org to be cleaned up before completion. Retrying after a settle
+      // delay allows the wallet to reach full transaction readiness.
+      const MAX_ORG_CREATE_ATTEMPTS = 3;
+      const WALLET_SETTLE_DELAY_MS = 90000; // 90s between outer retry attempts
 
-      if (createResponse.status !== 200) {
-        logOrganizationCreationFailure('/v1/organizations/create', createResponse, lastError);
+      let result = null;
+      let v1OrgUid = null;
+      let lastCreateResponse = null;
+      let lastCreateError = null;
+      let orgData = null;
+
+      for (let attempt = 1; attempt <= MAX_ORG_CREATE_ATTEMPTS; attempt++) {
+        if (attempt > 1) {
+          console.log(`\n[Org create attempt ${attempt}/${MAX_ORG_CREATE_ATTEMPTS}] Waiting ${WALLET_SETTLE_DELAY_MS / 1000}s for wallet to fully settle before retry...`);
+          await new Promise(resolve => setTimeout(resolve, WALLET_SETTLE_DELAY_MS));
+        }
+
+        orgData = {
+          name: `Test V1 Upgrade Org ${Date.now()}`,
+          icon: 'https://www.chia.net/wp-content/uploads/2023/01/chia-logo-dark.svg',
+        };
+        v1OrgName = orgData.name;
+
+        const { createResponse, lastError: err } = await createOrganizationWithRetry(
+          request,
+          '/v1/organizations/create',
+          orgData,
+        );
+        lastCreateResponse = createResponse;
+        lastCreateError = err;
+
+        if (createResponse.status !== 200) {
+          if (attempt < MAX_ORG_CREATE_ATTEMPTS) {
+            logOrganizationCreationFailure('/v1/organizations/create', createResponse, err);
+            console.log(`[Org create attempt ${attempt}] POST failed, will retry outer loop...`);
+            continue;
+          }
+          break; // Exhausted retries — assertions below will handle the failure
+        }
+
+        // POST succeeded — now wait for the org to be fully created on-chain
+        try {
+          result = await waitForV1OrganizationReady(request, orgData.name);
+          v1OrgUid = result.orgUid;
+          break; // Full success
+        } catch (error) {
+          // PENDING org disappeared = wallet wasn't ready for datalayer transactions.
+          // Retry the whole cycle after a settle delay.
+          const isPendingDisappeared =
+            error.message.includes('PENDING organization was cleaned up') ||
+            error.message.includes('Organization creation failed');
+          if (isPendingDisappeared && attempt < MAX_ORG_CREATE_ATTEMPTS) {
+            console.log(`[Org create attempt ${attempt}] ${error.message}`);
+            console.log(`  → Wallet was not yet fully synced for datalayer store transactions. Will retry after settling.`);
+            continue;
+          }
+          throw error; // Re-throw non-retryable errors or failure on final attempt
+        }
       }
 
-      expect(createResponse.status).to.equal(200);
-      expect(createResponse.body.success).to.be.true;
-      expect(createResponse.body.message).to.include('currently being created');
+      if (lastCreateResponse.status !== 200) {
+        logOrganizationCreationFailure('/v1/organizations/create', lastCreateResponse, lastCreateError);
+      }
 
-      // Wait for organization to be ready
-      const result = await waitForV1OrganizationReady(request, orgData.name);
-      const v1OrgUid = result.orgUid;
+      expect(lastCreateResponse.status).to.equal(200);
+      expect(lastCreateResponse.body.success).to.be.true;
+      expect(lastCreateResponse.body.message).to.include('currently being created');
+
+      if (!result) {
+        throw new Error('Organization creation failed after all retry attempts — check server logs for wallet sync issues');
+      }
 
       // Save to shared state
       setV1OrgUid(v1OrgUid);

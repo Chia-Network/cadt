@@ -1005,6 +1005,7 @@ jobs:
           MAX_WAIT_MINUTES=20
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
+          CADT_PORT=31310
 
           while true; do
             CURRENT_TIME=$(date +%s)
@@ -1026,6 +1027,36 @@ jobs:
               echo "Wallet is synced!"
               echo "Waiting additional 60 seconds for datalayer to sync..."
               sleep 60
+
+              # After Chia reports synced, also confirm CADT considers the wallet
+              # available. A real GOVERNANCE_LOOKUP_ID causes CADT to subscribe to
+              # a governance store immediately after startup; this additional datalayer
+              # activity can make the wallet temporarily unavailable at the CADT layer
+              # even after chia rpc reports synced=true.
+              echo "Polling CADT to confirm wallet availability (3 consecutive successes required)..."
+              CADT_CONSECUTIVE=0
+              CADT_REQUIRED=3
+              while [ "$CADT_CONSECUTIVE" -lt "$CADT_REQUIRED" ]; do
+                CURRENT_TIME=$(date +%s)
+                ELAPSED=$((CURRENT_TIME - START_TIME))
+                if [ "$ELAPSED" -ge "$WAIT_SECONDS" ]; then
+                  echo "Warning: Max wait time reached during CADT wallet availability polling — proceeding anyway"
+                  break
+                fi
+                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${CADT_PORT}/v1/health" 2>/dev/null || echo "000")
+                if [ "$HTTP_CODE" = "200" ]; then
+                  CADT_CONSECUTIVE=$((CADT_CONSECUTIVE + 1))
+                  echo "  CADT wallet available ($CADT_CONSECUTIVE/$CADT_REQUIRED consecutive, ${ELAPSED}s elapsed)"
+                  if [ "$CADT_CONSECUTIVE" -lt "$CADT_REQUIRED" ]; then
+                    sleep 10
+                  fi
+                else
+                  CADT_CONSECUTIVE=0
+                  echo "  CADT wallet not ready yet (HTTP $HTTP_CODE), waiting 15s... (${ELAPSED}s elapsed)"
+                  sleep 15
+                fi
+              done
+              echo "CADT wallet availability confirmed — ready for tests"
               break
             fi
 
