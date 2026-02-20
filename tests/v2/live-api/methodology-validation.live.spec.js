@@ -247,6 +247,19 @@ describe('Methodology Live API Validation Tests', function () {
         .expect(200);
 
       expect(response.body.cadTrustMethodologyId).to.equal(id);
+      expect(response.body).to.have.property('orgUid');
+    });
+
+    it('should filter methodologies by orgUid=me', async function () {
+      const response = await request
+        .get('/v2/methodology?orgUid=me&page=1&limit=10')
+        .expect(200);
+
+      const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+      for (const m of data) {
+        expect(m).to.have.property('orgUid');
+        expect(m.orgUid).to.equal(homeOrgId);
+      }
     });
 
     it('should support search functionality', async function () {

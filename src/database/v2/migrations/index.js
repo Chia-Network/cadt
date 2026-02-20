@@ -43,6 +43,9 @@ import RenameIssuanceMethodologyToProjectMethodologyV2 from './20250110120034-re
 import FixLongAefIndexNamesV2 from './20250212120000-fix-long-aef-index-names-v2.js';
 import DropGovernanceFromMirrorV2 from './20250219120000-drop-governance-from-mirror-v2.js';
 
+// V2 Owner Field Migration
+import AddOrgUidToStandaloneTablesV2 from './20260220120000-add-org-uid-to-standalone-tables-v2.js';
+
 export const migrations = [
   {
     migration: CreateStagingV2,
@@ -175,5 +178,9 @@ export const migrations = [
   {
     migration: DropGovernanceFromMirrorV2,
     name: '20250219120000-drop-governance-from-mirror-v2',
+  },
+  {
+    migration: AddOrgUidToStandaloneTablesV2,
+    name: '20260220120000-add-org-uid-to-standalone-tables-v2',
   },
 ];

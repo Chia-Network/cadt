@@ -12,6 +12,7 @@ import {
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 import { convertToSnakeCase } from '../../utils/v2-camel-to-snake.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { loggerV2 } from '../../config/logger.js';
 
 export const createAefT5AuthorizedEntitiesV2 = async (req, res) => {
@@ -154,9 +155,23 @@ export const getAefT5AuthorizedEntitiesV2 = async (req, res) => {
 
 export const getAllAefT5AuthorizedEntitiesV2 = async (req, res) => {
   try {
-    const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.findAll({
+    const { orgUid } = req.query;
+    const resolvedOrgUid = await resolveOrgUid(orgUid);
+
+    const queryOptions = {
       order: [['aefT5AuthorizedEntitiesAuthorizationDate', 'DESC']],
-    });
+    };
+    if (resolvedOrgUid) {
+      queryOptions.include = [{
+        model: ProjectV2,
+        as: 'project',
+        attributes: [],
+        where: { orgUid: resolvedOrgUid },
+        required: true,
+      }];
+    }
+
+    const aefT5AuthorizedEntities = await AefT5AuthorizedEntitiesV2.findAll(queryOptions);
 
     res.status(200).json({
       success: true,

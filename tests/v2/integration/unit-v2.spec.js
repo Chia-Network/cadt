@@ -1235,6 +1235,37 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
         });
       });
 
+      it('should filter units by orgUid=me', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'ME-UNIT-001',
+          unitStartBlock: '1000',
+          unitEndBlock: '2000',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: 'test-home-org-v2',
+        }));
+        await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'OTHER-UNIT-001',
+          unitStartBlock: '2000',
+          unitEndBlock: '3000',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: 'other-org',
+        }));
+
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ orgUid: 'me', page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body).to.have.property('data');
+        expect(response.body.data).to.be.an('array');
+        response.body.data.forEach(unit => {
+          expect(unit.orgUid).to.equal('test-home-org-v2');
+        });
+      });
+
       it('should filter by single field using generic filter', async function () {
         const response = await supertest(app)
           .get('/v2/unit')

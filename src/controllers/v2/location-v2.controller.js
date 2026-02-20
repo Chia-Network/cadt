@@ -9,6 +9,7 @@ import {
   assertV2HomeOrgExists,
   assertNoPendingCommitsExcludingTransfers,
 } from '../../utils/v2-data-assertions.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { loggerV2 } from '../../config/logger.js';
 
 // Generic CRUD controller factory for LocationV2
@@ -104,7 +105,21 @@ const createLocationController = (Model, ModelMirror, schema) => {
     // Get all locations
     async findAll(req, res) {
       try {
-        const locations = await Model.findAll();
+        const { orgUid } = req.query;
+        const resolvedOrgUid = await resolveOrgUid(orgUid);
+
+        const queryOptions = {};
+        if (resolvedOrgUid) {
+          queryOptions.include = [{
+            model: ProjectV2,
+            as: 'project',
+            attributes: [],
+            where: { orgUid: resolvedOrgUid },
+            required: true,
+          }];
+        }
+
+        const locations = await Model.findAll(queryOptions);
 
         res.json({
           message: 'Locations retrieved successfully',

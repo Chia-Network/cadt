@@ -1049,6 +1049,42 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
         });
       });
 
+      it('should filter projects by orgUid=me', async function () {
+        await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Test Registry',
+          projectId: 'ME-PROJ-001',
+          projectName: 'My Project',
+          projectSector: ['Agriculture'],
+          projectType: ['Landfill gas'],
+          projectStatus: 'Listed',
+          projectUnitMetric: 'tCO2e',
+          cadTrustProgramId: testProgram.cadTrustProgramId,
+          orgUid: 'test-home-org-v2',
+        }));
+        await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Test Registry',
+          projectId: 'OTHER-PROJ-001',
+          projectName: 'Other Project',
+          projectSector: ['Agriculture'],
+          projectType: ['Landfill gas'],
+          projectStatus: 'Listed',
+          projectUnitMetric: 'tCO2e',
+          cadTrustProgramId: testProgram.cadTrustProgramId,
+          orgUid: 'other-org',
+        }));
+
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ orgUid: 'me', page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body).to.have.property('data');
+        expect(response.body.data).to.be.an('array');
+        response.body.data.forEach(project => {
+          expect(project.orgUid).to.equal('test-home-org-v2');
+        });
+      });
+
       it('should filter by projectIds', async function () {
         const homeOrgId = await getV2HomeOrgId();
         const projects = await ProjectV2.findAll({

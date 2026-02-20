@@ -3,13 +3,14 @@
 import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 
-import { StagingV2, AefT1SubmissionV2 } from '../../models/v2/index.js';
+import { StagingV2, AefT1SubmissionV2, OrganizationsV2 } from '../../models/v2/index.js';
 import { aefT1SubmissionV2Schema } from '../../validations/v2/aef-t1-submission-v2.validations.js';
 import {
   assertV2IfReadOnlyMode,
   assertV2HomeOrgExists,
   assertNoPendingCommitsExcludingTransfers,
 } from '../../utils/v2-data-assertions.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { convertToSnakeCase } from '../../utils/v2-camel-to-snake.js';
 import { loggerV2 } from '../../config/logger.js';
 
@@ -63,9 +64,19 @@ export const createAefT1SubmissionV2 = async (req, res) => {
     // Generate UUID for primary key
     const cadTrustAefT1SubmissionId = uuidv4();
 
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      return res.status(400).json({
+        message: 'Error creating new AEF-T1-Submission',
+        error: 'Home organization not found',
+        success: false,
+      });
+    }
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
       cad_trust_aef_t1_submission_id: cadTrustAefT1SubmissionId,
+      org_uid: homeOrg.org_uid,
       ...convertToSnakeCase(_.omit(newRecord, ['cadTrustAefT1SubmissionId', 'createdAt', 'updatedAt'])),
     };
 
@@ -122,9 +133,15 @@ export const getAefT1SubmissionV2 = async (req, res) => {
 
 export const getAllAefT1SubmissionsV2 = async (req, res) => {
   try {
-    const aefT1Submissions = await AefT1SubmissionV2.findAll({
-      order: [['aefT1SubmissionSubmissionDate', 'DESC']],
-    });
+    const { orgUid } = req.query;
+    const resolvedOrgUid = await resolveOrgUid(orgUid);
+
+    const queryOptions = { order: [['aefT1SubmissionSubmissionDate', 'DESC']] };
+    if (resolvedOrgUid) {
+      queryOptions.where = { orgUid: resolvedOrgUid };
+    }
+
+    const aefT1Submissions = await AefT1SubmissionV2.findAll(queryOptions);
 
     res.status(200).json({
       success: true,
@@ -186,9 +203,19 @@ export const updateAefT1SubmissionV2 = async (req, res) => {
       });
     }
 
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      return res.status(400).json({
+        message: 'Error updating AEF-T1-Submission',
+        error: 'Home organization not found',
+        success: false,
+      });
+    }
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
       cad_trust_aef_t1_submission_id: cadTrustAefT1SubmissionId,
+      org_uid: homeOrg.org_uid,
       ...convertToSnakeCase(_.omit(updateData, ['cadTrustAefT1SubmissionId', 'createdAt', 'updatedAt'])),
     };
 

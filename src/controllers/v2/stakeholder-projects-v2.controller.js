@@ -11,6 +11,7 @@ import {
   assertNoPendingCommitsExcludingTransfers,
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { loggerV2 } from '../../config/logger.js';
 
 export const createStakeholderProjectV2 = async (req, res) => {
@@ -189,9 +190,21 @@ export const getStakeholderProjectV2 = async (req, res) => {
 
 export const getAllStakeholderProjectsV2 = async (req, res) => {
   try {
-    const stakeholderProjects = await StakeholderProjectV2.findAll({
-      order: [['createdAt', 'DESC']],
-    });
+    const { orgUid } = req.query;
+    const resolvedOrgUid = await resolveOrgUid(orgUid);
+
+    const queryOptions = { order: [['createdAt', 'DESC']] };
+    if (resolvedOrgUid) {
+      queryOptions.include = [{
+        model: ProjectV2,
+        as: 'project',
+        attributes: [],
+        where: { orgUid: resolvedOrgUid },
+        required: true,
+      }];
+    }
+
+    const stakeholderProjects = await StakeholderProjectV2.findAll(queryOptions);
 
     res.status(200).json({
       success: true,

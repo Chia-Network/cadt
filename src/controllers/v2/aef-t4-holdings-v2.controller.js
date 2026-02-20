@@ -12,6 +12,7 @@ import {
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 import { convertToSnakeCase } from '../../utils/v2-camel-to-snake.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { loggerV2 } from '../../config/logger.js';
 
 export const createAefT4HoldingsV2 = async (req, res) => {
@@ -161,9 +162,23 @@ export const getAefT4HoldingsV2 = async (req, res) => {
 
 export const getAllAefT4HoldingsV2 = async (req, res) => {
   try {
-    const aefT4Holdings = await AefT4HoldingsV2.findAll({
+    const { orgUid } = req.query;
+    const resolvedOrgUid = await resolveOrgUid(orgUid);
+
+    const queryOptions = {
       order: [['aefT4HoldingsVintageYear', 'DESC']],
-    });
+    };
+    if (resolvedOrgUid) {
+      queryOptions.include = [{
+        model: ProjectV2,
+        as: 'project',
+        attributes: [],
+        where: { orgUid: resolvedOrgUid },
+        required: true,
+      }];
+    }
+
+    const aefT4Holdings = await AefT4HoldingsV2.findAll(queryOptions);
 
     res.status(200).json({
       success: true,

@@ -17,6 +17,7 @@ import {
   assertNoPendingCommitsExcludingTransfers,
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 
 import { loggerV2 } from '../../config/logger.js';
 import { verificationV2Schema } from '../../validations/v2/verification-v2.validations.js';
@@ -142,27 +143,32 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit, columns } = req.query;
+    const { page, limit, columns, orgUid } = req.query;
     const pagination = paginationParams(page, limit);
+    const resolvedOrgUid = await resolveOrgUid(orgUid);
 
     // Handle association includes
     let queryIncludes = [];
-    if (columns) {
-      const columnsArray = Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim());
-      if (columnsArray.includes('project') || columnsArray.includes('ProjectV2')) {
-        queryIncludes.push({
-          model: ProjectV2,
-          as: 'project',
-          required: false,
-        });
-      }
-      if (columnsArray.includes('validation') || columnsArray.includes('ValidationV2')) {
-        queryIncludes.push({
-          model: ValidationV2,
-          as: 'validation',
-          required: false,
-        });
-      }
+    const columnsArray = columns
+      ? (Array.isArray(columns) ? columns : columns.split(',').map(c => c.trim()))
+      : [];
+    const includeProject = columnsArray.includes('project') || columnsArray.includes('ProjectV2');
+
+    if (resolvedOrgUid || includeProject) {
+      queryIncludes.push({
+        model: ProjectV2,
+        as: 'project',
+        attributes: includeProject ? undefined : [],
+        where: resolvedOrgUid ? { orgUid: resolvedOrgUid } : undefined,
+        required: !!resolvedOrgUid,
+      });
+    }
+    if (columnsArray.includes('validation') || columnsArray.includes('ValidationV2')) {
+      queryIncludes.push({
+        model: ValidationV2,
+        as: 'validation',
+        required: false,
+      });
     }
 
     const records = await VerificationV2.findAndCountAll({

@@ -17,6 +17,7 @@ import {
   assertNoPendingCommitsExcludingTransfers,
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 
 import { loggerV2 } from '../../config/logger.js';
 import { issuanceV2Schema } from '../../validations/v2/issuance-v2.validations.js';
@@ -144,12 +145,30 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit } = req.query;
+    const { page, limit, orgUid } = req.query;
     const pagination = paginationParams(page, limit);
+    const resolvedOrgUid = await resolveOrgUid(orgUid);
 
-    const records = await IssuanceV2.findAndCountAll({
+    const queryOptions = {
       ...pagination,
-    });
+    };
+    if (resolvedOrgUid) {
+      queryOptions.include = [{
+        model: VerificationV2,
+        as: 'verification',
+        attributes: [],
+        include: [{
+          model: ProjectV2,
+          as: 'project',
+          attributes: [],
+          where: { orgUid: resolvedOrgUid },
+          required: true,
+        }],
+        required: true,
+      }];
+    }
+
+    const records = await IssuanceV2.findAndCountAll(queryOptions);
 
     res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {

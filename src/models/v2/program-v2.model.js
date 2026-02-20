@@ -223,6 +223,11 @@ ProgramV2.init(
       allowNull: true,
       field: 'program_description',
     },
+    orgUid: {
+      type: Sequelize.STRING(64),
+      allowNull: true,
+      field: 'org_uid',
+    },
   },
   {
     sequelize: sequelizeV2,

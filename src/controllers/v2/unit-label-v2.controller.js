@@ -11,6 +11,7 @@ import {
   assertNoPendingCommitsExcludingTransfers,
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { loggerV2 } from '../../config/logger.js';
 
 export const createUnitLabelV2 = async (req, res) => {
@@ -204,9 +205,23 @@ export const getUnitLabelV2 = async (req, res) => {
 
 export const getAllUnitLabelsV2 = async (req, res) => {
   try {
-    const unitLabels = await UnitLabelV2.findAll({
+    const { orgUid } = req.query;
+    const resolvedOrgUid = await resolveOrgUid(orgUid);
+
+    const queryOptions = {
       order: [['createdAt', 'DESC']],
-    });
+    };
+    if (resolvedOrgUid) {
+      queryOptions.include = [{
+        model: UnitV2,
+        as: 'unit',
+        attributes: [],
+        where: { orgUid: resolvedOrgUid },
+        required: true,
+      }];
+    }
+
+    const unitLabels = await UnitLabelV2.findAll(queryOptions);
 
     res.status(200).json({
       success: true,

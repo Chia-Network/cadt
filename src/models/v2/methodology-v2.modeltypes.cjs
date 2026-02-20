@@ -31,6 +31,10 @@ module.exports = {
     type: Sequelize.STRING,
     allowNull: true,
   },
+  orgUid: {
+    type: Sequelize.STRING(64),
+    allowNull: true,
+  },
   createdAt: {
     type: Sequelize.DATE,
     allowNull: false,

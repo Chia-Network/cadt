@@ -129,8 +129,8 @@ describe('Program Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'program', minId);
       } else {
         trackBatchVerification('POST', 'program', minId, {
-          programCode: minimalData.programCode,
           programName: minimalData.programName,
+          programRegistry: minimalData.programRegistry,
         });
       }
 
@@ -148,8 +148,8 @@ describe('Program Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'program', maxId);
       } else {
         trackBatchVerification('POST', 'program', maxId, {
-          programCode: maximalData.programCode,
           programName: maximalData.programName,
+          programRegistry: maximalData.programRegistry,
         });
       }
     });
@@ -208,8 +208,8 @@ describe('Program Live API Validation Tests', function () {
         await waitForStagingEmpty(request);
         await waitForDataToAppear(request, 'program', id);
         await validateDataInDatabase(request, 'program', id, {
-          programCode: updateData.programCode,
           programName: updateData.programName,
+          programRegistry: updateData.programRegistry,
         });
       } else {
         trackBatchVerification('PUT', 'program', id, updateData);
@@ -235,6 +235,19 @@ describe('Program Live API Validation Tests', function () {
         .expect(200);
 
       expect(response.body.cadTrustProgramId).to.equal(id);
+      expect(response.body).to.have.property('orgUid');
+    });
+
+    it('should filter programs by orgUid=me', async function () {
+      const response = await request
+        .get('/v2/program?orgUid=me&page=1&limit=10')
+        .expect(200);
+
+      const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+      for (const p of data) {
+        expect(p).to.have.property('orgUid');
+        expect(p.orgUid).to.equal(homeOrgId);
+      }
     });
 
     it('should support search functionality', async function () {

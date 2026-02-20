@@ -417,6 +417,8 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
       expect(stagedData[0].aef_t1_submission_version).to.equal('1.0');
       expect(stagedData[0].aef_t1_submission_report_year).to.equal(2024);
       expect(stagedData[0].cad_trust_aef_t1_submission_id).to.equal(response.body.cadTrustAefT1SubmissionId);
+      expect(stagedData[0]).to.have.property('org_uid');
+      expect(stagedData[0].org_uid).to.equal('test-home-org-v2');
     });
 
     it('should reject AEF-T1-Submission with missing required fields', async function () {
@@ -449,6 +451,62 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
 
       expect(response.body.success).to.be.false;
       expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('GET /v2/aef-t1-submission (List)', function () {
+    it('should filter AEF-T1-Submissions by orgUid', async function () {
+      await AefT1SubmissionV2.create({
+        aefT1SubmissionParty: 'Org A Party',
+        aefT1SubmissionVersion: '1.0',
+        aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-15',
+        orgUid: 'org-a',
+      });
+      await AefT1SubmissionV2.create({
+        aefT1SubmissionParty: 'Org B Party',
+        aefT1SubmissionVersion: '1.0',
+        aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-15',
+        orgUid: 'org-b',
+      });
+
+      const response = await supertest(app)
+        .get('/v2/aef-t1-submission?orgUid=org-a')
+        .expect(200);
+
+      expect(response.body).to.have.property('data');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].aefT1SubmissionParty).to.equal('Org A Party');
+    });
+
+    it('should filter AEF-T1-Submissions by orgUid=me', async function () {
+      await AefT1SubmissionV2.create({
+        aefT1SubmissionParty: 'My Party',
+        aefT1SubmissionVersion: '1.0',
+        aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-15',
+        orgUid: 'test-home-org-v2',
+      });
+      await AefT1SubmissionV2.create({
+        aefT1SubmissionParty: 'Other Party',
+        aefT1SubmissionVersion: '1.0',
+        aefT1SubmissionReportYear: 2024,
+        aefT1SubmissionSubmissionDate: '2024-01-15',
+        orgUid: 'other-org',
+      });
+
+      const response = await supertest(app)
+        .get('/v2/aef-t1-submission?orgUid=me')
+        .expect(200);
+
+      expect(response.body).to.have.property('data');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      response.body.data.forEach(s => {
+        expect(s.orgUid).to.equal('test-home-org-v2');
+      });
     });
   });
 
