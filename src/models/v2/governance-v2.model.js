@@ -191,10 +191,13 @@ class GovernanceV2 extends Model {
     );
 
     const onConfirm = async () => {
-      // Store V2 governanceBodyId in MetaV2
       await MetaV2.upsert({
         meta_key: 'governanceBodyId',
         meta_value: governanceVersionId,
+      });
+      await MetaV2.upsert({
+        meta_key: 'mainGoveranceBodyId',
+        meta_value: mainGovernanceBodyId,
       });
       loggerV2.info(
         '[v2]: V2 governance support added to existing V1 governance body. You are ready to go',
