@@ -375,12 +375,17 @@ class GovernanceV2 extends Model {
       );
     };
 
+    const { USE_SIMULATOR } = getConfig().APP;
+
+    if (!USE_SIMULATOR) {
+      await datalayer.waitForAllTransactionsToConfirm();
+    }
+
     await datalayer.pushDataLayerChangeList(
       governanceBodyId.meta_value,
       changeList,
     );
 
-    const { USE_SIMULATOR } = getConfig().APP;
     if (!USE_SIMULATOR) {
       datalayer.getStoreData(
         governanceBodyId.meta_value,
