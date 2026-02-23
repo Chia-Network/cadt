@@ -217,6 +217,18 @@ describe('AefT3Actions Live API Validation Tests', function () {
       expect(response.body.cadTrustAefT3ActionsId).to.equal(id);
     });
 
+    it('should filter aef-t3-actions by orgUid=me', async function () {
+      const response = await request
+        .get('/v2/aef-t3-actions?orgUid=me&page=1&limit=10')
+        .expect(200);
+
+      const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+      expect(data.length).to.be.greaterThan(0);
+      for (const record of data) {
+        expect(record).to.have.property('cadTrustProjectId');
+      }
+    });
+
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
