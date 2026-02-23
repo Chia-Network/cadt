@@ -980,6 +980,9 @@ class OrganizationsV2 extends Model {
         // CRITICAL: Add v2 key to existing singleton (preserve v1 key)
         // Only insert the new v2 key - don't re-insert existing keys (v1 already exists)
         // syncDataLayer always uses 'insert' action, so re-inserting v1 would cause KeyAlreadyPresentError
+        if (!USE_SIMULATOR) {
+          await datalayer.waitForAllTransactionsToConfirm();
+        }
         await datalayer.syncDataLayer(
           sharedDataModelVersionStoreId,
           { v2: newV2RegistryStoreId }, // Only insert the new v2 key
