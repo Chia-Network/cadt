@@ -384,7 +384,8 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/stakeholder?orgUid=org-a')
+        .get('/v2/stakeholder')
+        .query({ page: 1, limit: 10, orgUid: 'org-a' })
         .expect(200);
 
       expect(response.body).to.have.property('data');
@@ -406,7 +407,8 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/stakeholder?orgUid=me')
+        .get('/v2/stakeholder')
+        .query({ page: 1, limit: 10, orgUid: 'me' })
         .expect(200);
 
       expect(response.body).to.have.property('data');

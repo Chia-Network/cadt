@@ -472,7 +472,8 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/aef-t1-submission?orgUid=org-a')
+        .get('/v2/aef-t1-submission')
+        .query({ page: 1, limit: 10, orgUid: 'org-a' })
         .expect(200);
 
       expect(response.body).to.have.property('data');
@@ -498,7 +499,8 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/aef-t1-submission?orgUid=me')
+        .get('/v2/aef-t1-submission')
+        .query({ page: 1, limit: 10, orgUid: 'me' })
         .expect(200);
 
       expect(response.body).to.have.property('data');

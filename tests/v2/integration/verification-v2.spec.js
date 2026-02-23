@@ -341,10 +341,11 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should return empty array when no verifications exist', async function () {
       const response = await supertest(app)
         .get('/v2/verification')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(0);
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(0);
     });
 
     it('should return verifications from database with project and validation associations', async function () {
@@ -357,17 +358,18 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       }));
 
       const response = await supertest(app)
-        .get('/v2/verification?columns=project&columns=validation')
+        .get('/v2/verification')
+        .query({ page: 1, limit: 10, columns: 'project,validation' })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(1);
-      expect(response.body[0].verificationId).to.equal('Database Verification');
-      expect(response.body[0].verificationBody).to.equal('AENOR International S.A.U.');
-      expect(response.body[0].project).to.exist;
-      expect(response.body[0].project.projectName).to.equal('Test Project for Verification');
-      expect(response.body[0].validation).to.exist;
-      expect(response.body[0].validation.validationId).to.equal('TEST-VALIDATION-001');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].verificationId).to.equal('Database Verification');
+      expect(response.body.data[0].verificationBody).to.equal('AENOR International S.A.U.');
+      expect(response.body.data[0].project).to.exist;
+      expect(response.body.data[0].project.projectName).to.equal('Test Project for Verification');
+      expect(response.body.data[0].validation).to.exist;
+      expect(response.body.data[0].validation.validationId).to.equal('TEST-VALIDATION-001');
     });
   });
 

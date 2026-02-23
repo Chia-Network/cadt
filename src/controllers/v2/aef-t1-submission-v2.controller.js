@@ -12,6 +12,7 @@ import {
 } from '../../utils/v2-data-assertions.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
 import { convertToSnakeCase } from '../../utils/v2-camel-to-snake.js';
+import { paginationParams, optionallyPaginatedResponse } from '../../utils/helpers.js';
 import { loggerV2 } from '../../config/logger.js';
 
 export const createAefT1SubmissionV2 = async (req, res) => {
@@ -133,21 +134,18 @@ export const getAefT1SubmissionV2 = async (req, res) => {
 
 export const getAllAefT1SubmissionsV2 = async (req, res) => {
   try {
-    const { orgUid } = req.query;
+    const { page, limit, orgUid } = req.query;
+    const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
 
-    const queryOptions = { order: [['aefT1SubmissionSubmissionDate', 'DESC']] };
+    const queryOptions = { distinct: true, order: [['aefT1SubmissionSubmissionDate', 'DESC']], ...pagination };
     if (resolvedOrgUid) {
       queryOptions.where = { orgUid: resolvedOrgUid };
     }
 
-    const aefT1Submissions = await AefT1SubmissionV2.findAll(queryOptions);
+    const records = await AefT1SubmissionV2.findAndCountAll(queryOptions);
 
-    res.status(200).json({
-      success: true,
-      data: aefT1Submissions,
-      count: aefT1Submissions.length,
-    });
+    res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
     loggerV2.error('[v2]: Error fetching AEF-T1-Submissions:', err);
     res.status(400).json({

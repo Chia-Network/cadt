@@ -46,6 +46,29 @@ For tables with a direct `orgUid` column (project, unit, methodology, program, s
 
 For child tables (location, estimation, rating, co_benefit, validation, verification, project_methodology, stakeholder_projects, unit_label, issuance, aef_t2-t5), this filters by the parent project's or unit's `orgUid` through an automatic JOIN.
 
+### Pagination
+
+All GET list endpoints require `page` and `limit` query parameters to prevent unbounded response sizes.
+
+| Parameter | Type | Required | Min | Max | Description |
+|-----------|------|----------|-----|-----|-------------|
+| page | Number | Yes | 1 | — | 1-based page number |
+| limit | Number | Yes | 1 | 1000 | Maximum number of records per page |
+
+When `page` and `limit` are provided, the response format is:
+
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [...]
+}
+```
+
+Where `pageCount` is the total number of pages based on the total record count and the requested `limit`.
+
+**Exceptions**: The `xls=true` parameter on project and unit endpoints bypasses pagination to export all data.
+
 ## Commands
 
 - [`organizations`](#organizations)
@@ -835,8 +858,8 @@ Query string options:
 |   None (default)   |   N/A   | Display all staged records                                                                                                 |
 |       type         | String  | Filter by type: `staged` (uncommitted), `pending` (committed but not confirmed), or `failed` (failed commits)                                                               |
 |       table        | String  | Filter by table name (e.g., `project`, `unit`, `methodology`)                                                                           |
-|       limit        | Number  | (Conditionally Required) Limit the number of records to be displayed (must be used with page, eg `?page=5&limit=2`) |
-|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+|       limit        | Number  | **Required**. Limit the number of records to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | **Required**. Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
 
 POST body options (for commit):
 
@@ -1490,8 +1513,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="methodology-get-examples"></a>
 ### GET Examples
@@ -1664,8 +1687,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="program-get-examples"></a>
 ### GET Examples
@@ -1836,8 +1859,8 @@ Query string options:
 |       orgUid       | String  | Filter by organization UID. Use `me` for home org records                                                                           |
 |       search       | String  | Display all projects that contain the specified query (case insensitive)                                             |
 |      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns. Can also include associated models (e.g., `columns=issuance` to include issuance data in unit responses)                                   |
-|       limit        | Number  | (Conditionally Required) Limit the number of projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
-|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+|       limit        | Number  | **Required** (optional when xls=true). Limit the number of projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | **Required** (optional when xls=true). Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
 |        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |
 |   projectIds       | String  | Filter by comma-separated list of project IDs                                                                   |
 |       filter       | String  | Generic filter (e.g., `filter=field:value:eq`)                                                                   |
@@ -2278,8 +2301,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="validation-get-examples"></a>
 ### GET Examples
@@ -2456,8 +2479,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="verification-get-examples"></a>
 ### GET Examples
@@ -2629,8 +2652,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="location-get-examples"></a>
 ### GET Examples
@@ -2802,8 +2825,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="issuance-get-examples"></a>
 ### GET Examples
@@ -2972,8 +2995,8 @@ Query string options:
 |       orgUid       | String  | Filter by organization UID. Use `me` for home org records                                                                           |
 |       search       | String  | Display all units that contain the specified query (case insensitive)                                             |
 |      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns. Can also include associated models (e.g., `columns=issuance` to include issuance data in unit responses)                                   |
-|       limit        | Number  | (Conditionally Required) Limit the number of units to be displayed (must be used with page, eg `?page=5&limit=2`) |
-|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+|       limit        | Number  | **Required** (optional when xls=true). Limit the number of units to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | **Required** (optional when xls=true). Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
 |        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |
 |       filter       | String  | Generic filter (e.g., `filter=field:value:eq`)                                                                   |
 |       order        | String  | Sort order (e.g., `order=field:DESC`)                                                                   |
@@ -3476,8 +3499,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="estimation-get-examples"></a>
 ### GET Examples
@@ -3640,8 +3663,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="rating-get-examples"></a>
 ### GET Examples
@@ -3804,8 +3827,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="co-benefit-get-examples"></a>
 ### GET Examples
@@ -3954,8 +3977,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="project-methodology-get-examples"></a>
 ### GET Examples
@@ -4111,8 +4134,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="stakeholder-get-examples"></a>
 ### GET Examples
@@ -4267,6 +4290,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="stakeholder-projects-get-examples"></a>
 ### GET Examples
@@ -4275,7 +4300,7 @@ Query string options:
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v2/stakeholder-projects' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v2/stakeholder-projects?page=1&limit=10' --header 'Content-Type: application/json'
 ```
 
 Response
@@ -4414,8 +4439,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="label-get-examples"></a>
 ### GET Examples
@@ -4583,7 +4608,7 @@ Query string options:
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v2/unit-label' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v2/unit-label?page=1&limit=10' --header 'Content-Type: application/json'
 ```
 
 Response
@@ -4732,8 +4757,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="aef-t1-submission-get-examples"></a>
 ### GET Examples
@@ -4903,8 +4928,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="aef-t2-authorizations-get-examples"></a>
 ### GET Examples
@@ -5114,8 +5139,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="aef-t5-authorized-entities-get-examples"></a>
 ### GET Examples
@@ -5293,8 +5318,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="aef-t3-actions-get-examples"></a>
 ### GET Examples
@@ -5529,8 +5554,8 @@ Query string options:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | orgUid | string | Filter by organization UID. Use `me` for home org records |
-| page | Number | Page number for pagination (use with limit) |
-| limit | Number | Limit number of results (use with page) |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="aef-t4-holdings-get-examples"></a>
 ### GET Examples

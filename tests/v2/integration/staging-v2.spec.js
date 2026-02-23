@@ -136,10 +136,11 @@ describe('V2 Staging Integration Tests', function () {
 
       const response = await supertest(app)
         .get('/v2/staging')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body.length).to.be.greaterThan(0);
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.length).to.be.greaterThan(0);
     });
 
     it('should check for pending commits', async function () {
@@ -182,11 +183,12 @@ describe('V2 Staging Integration Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/staging?table=program')
+        .get('/v2/staging')
+        .query({ page: 1, limit: 10, table: 'program' })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body.every(r => r.table === 'program')).to.be.true;
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.every(r => r.table === 'program')).to.be.true;
     });
 
     it('should support pagination', async function () {
@@ -228,7 +230,7 @@ describe('V2 Staging Integration Tests', function () {
       expect(response1.body).to.have.property('data');
       expect(response1.body.data).to.be.an('array');
       expect(response1.body.data.length).to.equal(2);
-      expect(response1.body.page).to.equal('1');
+      expect(response1.body.page).to.equal(1);
 
       // Test page 2, limit 2
       const response2 = await supertest(app)
@@ -239,7 +241,7 @@ describe('V2 Staging Integration Tests', function () {
       expect(response2.body).to.have.property('data');
       expect(response2.body.data).to.be.an('array');
       expect(response2.body.data.length).to.be.greaterThan(0);
-      expect(response2.body.page).to.equal('2');
+      expect(response2.body.page).to.equal(2);
     });
 
     it('should filter by type=staged', async function () {
@@ -264,11 +266,12 @@ describe('V2 Staging Integration Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/staging?type=staged')
+        .get('/v2/staging')
+        .query({ page: 1, limit: 10, type: 'staged' })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body.every(r => r.committed === false && r.failed_commit === false)).to.be.true;
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.every(r => r.committed === false && r.failed_commit === false)).to.be.true;
     });
 
     it('should filter by type=pending', async function () {
@@ -294,11 +297,12 @@ describe('V2 Staging Integration Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/staging?type=pending')
+        .get('/v2/staging')
+        .query({ page: 1, limit: 10, type: 'pending' })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body.every(r => r.committed === true && r.failed_commit === false)).to.be.true;
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.every(r => r.committed === true && r.failed_commit === false)).to.be.true;
     });
 
     it('should filter by type=failed', async function () {
@@ -315,11 +319,12 @@ describe('V2 Staging Integration Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/staging?type=failed')
+        .get('/v2/staging')
+        .query({ page: 1, limit: 10, type: 'failed' })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body.every(r => r.failed_commit === true)).to.be.true;
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.every(r => r.failed_commit === true)).to.be.true;
     });
   });
 
@@ -1365,10 +1370,11 @@ describe('V2 Staging Integration Tests', function () {
     it('should handle empty staging table', async function () {
       const response = await supertest(app)
         .get('/v2/staging')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body.length).to.equal(0);
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.length).to.equal(0);
     });
 
     it('should handle staging records with invalid JSON data', async function () {

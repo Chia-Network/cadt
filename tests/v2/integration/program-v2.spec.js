@@ -209,10 +209,11 @@ describe('V2 Program API - Basic CRUD Tests', function () {
     it('should return empty array when no programs exist', async function () {
       const response = await supertest(app)
         .get('/v2/program')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(0);
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(0);
     });
 
     it('should return programs from database', async function () {
@@ -228,12 +229,13 @@ describe('V2 Program API - Basic CRUD Tests', function () {
 
       const response = await supertest(app)
         .get('/v2/program')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(1);
-      expect(response.body[0].programName).to.equal('Database Program');
-      expect(response.body[0].programRegistry).to.equal('DB Registry');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].programName).to.equal('Database Program');
+      expect(response.body.data[0].programRegistry).to.equal('DB Registry');
     });
 
     it('should filter programs by orgUid', async function () {
@@ -253,12 +255,13 @@ describe('V2 Program API - Basic CRUD Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/program?orgUid=org-a')
+        .get('/v2/program')
+        .query({ page: 1, limit: 10, orgUid: 'org-a' })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(1);
-      expect(response.body[0].programName).to.equal('Org A Program');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].programName).to.equal('Org A Program');
     });
 
     it('should filter programs by orgUid=me', async function () {
@@ -278,12 +281,13 @@ describe('V2 Program API - Basic CRUD Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/program?orgUid=me')
+        .get('/v2/program')
+        .query({ page: 1, limit: 10, orgUid: 'me' })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body.length).to.be.greaterThan(0);
-      response.body.forEach(p => {
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      response.body.data.forEach(p => {
         expect(p.orgUid).to.equal('test-home-org-v2');
       });
     });

@@ -13,6 +13,7 @@ import {
 } from '../../utils/v2-data-assertions.js';
 import { convertToSnakeCase } from '../../utils/v2-camel-to-snake.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
+import { paginationParams, optionallyPaginatedResponse } from '../../utils/helpers.js';
 import { loggerV2 } from '../../config/logger.js';
 
 export const createAefT2AuthorizationsV2 = async (req, res) => {
@@ -162,12 +163,11 @@ export const getAefT2AuthorizationsV2 = async (req, res) => {
 
 export const getAllAefT2AuthorizationsV2 = async (req, res) => {
   try {
-    const { orgUid } = req.query;
+    const { page, limit, orgUid } = req.query;
+    const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
 
-    const queryOptions = {
-      order: [['aefT2AuthorizationsDate', 'DESC']],
-    };
+    const queryOptions = { distinct: true, order: [['aefT2AuthorizationsDate', 'DESC']], ...pagination };
     if (resolvedOrgUid) {
       queryOptions.include = [{
         model: ProjectV2,
@@ -178,13 +178,9 @@ export const getAllAefT2AuthorizationsV2 = async (req, res) => {
       }];
     }
 
-    const aefT2Authorizations = await AefT2AuthorizationsV2.findAll(queryOptions);
+    const records = await AefT2AuthorizationsV2.findAndCountAll(queryOptions);
 
-    res.status(200).json({
-      success: true,
-      data: aefT2Authorizations,
-      count: aefT2Authorizations.length,
-    });
+    res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
     loggerV2.error('[v2]: Error fetching AEF-T2-Authorizations:', err);
     res.status(400).json({

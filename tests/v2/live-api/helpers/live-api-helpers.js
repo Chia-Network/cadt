@@ -463,11 +463,8 @@ export const checkDatabaseEmpty = async (request) => {
 
   for (const table of dataTables) {
     try {
-      const response = await request.get(`/v2/${table}`);
-      // Response might be array or object with data property
-      const data = Array.isArray(response.body)
-        ? response.body
-        : (response.body?.data || []);
+      const response = await request.get(`/v2/${table}`).query({ page: 1, limit: 1000 });
+      const data = response.body?.data || [];
 
       if (response.status === 200 && Array.isArray(data) && data.length > 0) {
         nonEmptyTables.push({ table, count: data.length });
@@ -605,10 +602,8 @@ export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
 
   while (Date.now() - startTime < maxWaitTime) {
     try {
-      const response = await request.get('/v2/staging');
-      const records = Array.isArray(response.body)
-        ? response.body
-        : (response.body?.data || []);
+      const response = await request.get('/v2/staging').query({ page: 1, limit: 1000 });
+      const records = response.body?.data || [];
 
       if (records.length === 0) {
         console.log('✓ Staging table is empty');

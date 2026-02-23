@@ -343,6 +343,7 @@ describe('Unit Live API Validation Tests', function () {
       // Test search if supported by endpoint
       const response = await request
         .get('/v2/unit')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
       expect(response.body).to.exist;

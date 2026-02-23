@@ -10,6 +10,7 @@ import {
   assertNoPendingCommitsExcludingTransfers,
 } from '../../utils/v2-data-assertions.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
+import { paginationParams, optionallyPaginatedResponse } from '../../utils/helpers.js';
 import { loggerV2 } from '../../config/logger.js';
 
 // Generic CRUD controller factory for LocationV2
@@ -105,10 +106,11 @@ const createLocationController = (Model, ModelMirror, schema) => {
     // Get all locations
     async findAll(req, res) {
       try {
-        const { orgUid } = req.query;
+        const { page, limit, orgUid } = req.query;
+        const pagination = paginationParams(page, limit);
         const resolvedOrgUid = await resolveOrgUid(orgUid);
 
-        const queryOptions = {};
+        const queryOptions = { distinct: true, ...pagination };
         if (resolvedOrgUid) {
           queryOptions.include = [{
             model: ProjectV2,
@@ -119,13 +121,9 @@ const createLocationController = (Model, ModelMirror, schema) => {
           }];
         }
 
-        const locations = await Model.findAll(queryOptions);
+        const records = await Model.findAndCountAll(queryOptions);
 
-        res.json({
-          message: 'Locations retrieved successfully',
-          data: locations,
-          success: true,
-        });
+        res.json(optionallyPaginatedResponse(records, page, limit));
       } catch (err) {
         loggerV2.error('[v2]: Error retrieving locations:', err);
         res.status(500).json({

@@ -12,6 +12,7 @@ import {
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
+import { paginationParams, optionallyPaginatedResponse } from '../../utils/helpers.js';
 import { loggerV2 } from '../../config/logger.js';
 
 export const createUnitLabelV2 = async (req, res) => {
@@ -205,12 +206,11 @@ export const getUnitLabelV2 = async (req, res) => {
 
 export const getAllUnitLabelsV2 = async (req, res) => {
   try {
-    const { orgUid } = req.query;
+    const { page, limit, orgUid } = req.query;
+    const pagination = paginationParams(page, limit);
     const resolvedOrgUid = await resolveOrgUid(orgUid);
 
-    const queryOptions = {
-      order: [['createdAt', 'DESC']],
-    };
+    const queryOptions = { distinct: true, order: [['createdAt', 'DESC']], ...pagination };
     if (resolvedOrgUid) {
       queryOptions.include = [{
         model: UnitV2,
@@ -221,13 +221,9 @@ export const getAllUnitLabelsV2 = async (req, res) => {
       }];
     }
 
-    const unitLabels = await UnitLabelV2.findAll(queryOptions);
+    const records = await UnitLabelV2.findAndCountAll(queryOptions);
 
-    res.status(200).json({
-      success: true,
-      data: unitLabels,
-      count: unitLabels.length,
-    });
+    res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
     loggerV2.error('[v2]: Error fetching unit-label relationships:', err);
     res.status(400).json({

@@ -193,10 +193,11 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
     it('should return empty array when no methodologies exist', async function () {
       const response = await supertest(app)
         .get('/v2/methodology')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(0);
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(0);
     });
 
     it('should return methodologies from database', async function () {
@@ -210,12 +211,13 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
 
       const response = await supertest(app)
         .get('/v2/methodology')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(1);
-      expect(response.body[0].methodologyCode).to.equal('DB-METHOD-001');
-      expect(response.body[0].methodologyName).to.equal('Database Methodology');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].methodologyCode).to.equal('DB-METHOD-001');
+      expect(response.body.data[0].methodologyName).to.equal('Database Methodology');
     });
 
     it('should filter methodologies by orgUid', async function () {
@@ -233,12 +235,13 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/methodology?orgUid=org-a')
+        .get('/v2/methodology')
+        .query({ page: 1, limit: 10, orgUid: 'org-a' })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(1);
-      expect(response.body[0].methodologyCode).to.equal('ORG-METHOD-001');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].methodologyCode).to.equal('ORG-METHOD-001');
     });
 
     it('should filter methodologies by orgUid=me', async function () {
@@ -256,12 +259,13 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
       });
 
       const response = await supertest(app)
-        .get('/v2/methodology?orgUid=me')
+        .get('/v2/methodology')
+        .query({ page: 1, limit: 10, orgUid: 'me' })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body.length).to.be.greaterThan(0);
-      response.body.forEach(m => {
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      response.body.data.forEach(m => {
         expect(m.orgUid).to.equal('test-home-org-v2');
       });
     });

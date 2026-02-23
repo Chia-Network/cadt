@@ -254,6 +254,7 @@ describe('AefT2Authorizations Live API Validation Tests', function () {
       // Test search if supported by endpoint
       const response = await request
         .get('/v2/aef-t2-authorizations')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
       expect(response.body).to.exist;
@@ -293,7 +294,7 @@ describe('AefT2Authorizations Live API Validation Tests', function () {
 
   describe('Step 10: Final Validation', function () {
     it('should verify all aef-t2-authorizations are deleted', async function () {
-      const response = await request.get('/v2/aef-t2-authorizations').expect(200);
+      const response = await request.get('/v2/aef-t2-authorizations').query({ page: 1, limit: 10 }).expect(200);
       const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
       // Should only have aef-t2-authorizations that existed before tests
       expect(data.length).to.equal(0);
