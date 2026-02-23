@@ -4306,7 +4306,8 @@ curl --location --request GET 'localhost:31310/v2/stakeholder-projects?page=1&li
 Response
 ```json
 {
-  "success": true,
+  "page": 1,
+  "pageCount": 3,
   "data": [
     {
       "cadTrustStakeholderProjectId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
@@ -4315,8 +4316,7 @@ Response
       "createdAt": "2022-03-11T05:17:55.426Z",
       "updatedAt": "2022-03-11T05:17:55.426Z"
     }
-  ],
-  "count": 1
+  ]
 }
 ```
 
@@ -4614,7 +4614,8 @@ curl --location --request GET 'localhost:31310/v2/unit-label?page=1&limit=10' --
 Response
 ```json
 {
-  "success": true,
+  "page": 1,
+  "pageCount": 3,
   "data": [
     {
       "cadTrustUnitLabelId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -4625,8 +4626,7 @@ Response
       "createdAt": "2022-03-11T05:17:55.426Z",
       "updatedAt": "2022-03-11T05:17:55.426Z"
     }
-  ],
-  "count": 1
+  ]
 }
 ```
 
