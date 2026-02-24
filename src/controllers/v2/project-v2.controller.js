@@ -34,6 +34,7 @@ import {
 import { loggerV2 } from '../../config/logger.js';
 import { projectV2Schema } from '../../validations/v2/project-v2.validations.js';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 
 export const create = async (req, res) => {
   try {
@@ -184,6 +185,8 @@ export const findAll = async (req, res) => {
       search,
       onlyMarketplaceProjects,
     } = req.query;
+
+    orgUid = await resolveOrgUid(orgUid);
 
     let where = {};
 

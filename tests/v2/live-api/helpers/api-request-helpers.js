@@ -349,10 +349,8 @@ const camelToSnake = (str) => {
  */
 export const checkRecordInStaging = async (request, endpoint, id, expectedData) => {
   try {
-    const response = await request.get('/v2/staging');
-    const records = Array.isArray(response.body)
-      ? response.body
-      : (response.body?.data || []);
+    const response = await request.get('/v2/staging').query({ page: 1, limit: 1000 });
+    const records = response.body?.data || [];
 
     // Convert endpoint to table name
     const tableName = endpointToTableName(endpoint);

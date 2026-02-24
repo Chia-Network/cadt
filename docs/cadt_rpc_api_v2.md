@@ -35,6 +35,40 @@ The CADT RPC API V2 is exposed by default on port 31310. This document will give
 
 If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to your `curl` request.
 
+### Organization Filtering
+
+All GET list endpoints support the `?orgUid=` query parameter to filter records by organization:
+
+- `?orgUid=<org_uid>` — Filter records owned by or associated with a specific organization
+- `?orgUid=me` — Filter records owned by the home (local) organization
+
+For tables with a direct `orgUid` column (project, unit, methodology, program, stakeholder, label, aef_t1_submission), this filters by the record's own `orgUid` field.
+
+For child tables (location, estimation, rating, co_benefit, validation, verification, project_methodology, stakeholder_projects, unit_label, issuance, aef_t2-t5), this filters by the parent project's or unit's `orgUid` through an automatic JOIN.
+
+### Pagination
+
+All GET list endpoints require `page` and `limit` query parameters to prevent unbounded response sizes.
+
+| Parameter | Type | Required | Min | Max | Description |
+|-----------|------|----------|-----|-----|-------------|
+| page | Number | Yes | 1 | — | 1-based page number |
+| limit | Number | Yes | 1 | 1000 | Maximum number of records per page |
+
+When `page` and `limit` are provided, the response format is:
+
+```json
+{
+  "page": 1,
+  "pageCount": 5,
+  "data": [...]
+}
+```
+
+Where `pageCount` is the total number of pages based on the total record count and the requested `limit`.
+
+**Exceptions**: The `xls=true` parameter on project and unit endpoints bypasses pagination to export all data.
+
 ## Commands
 
 - [`organizations`](#organizations)
@@ -824,8 +858,8 @@ Query string options:
 |   None (default)   |   N/A   | Display all staged records                                                                                                 |
 |       type         | String  | Filter by type: `staged` (uncommitted), `pending` (committed but not confirmed), or `failed` (failed commits)                                                               |
 |       table        | String  | Filter by table name (e.g., `project`, `unit`, `methodology`)                                                                           |
-|       limit        | Number  | (Conditionally Required) Limit the number of records to be displayed (must be used with page, eg `?page=5&limit=2`) |
-|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+|       limit        | Number  | **Required**. Limit the number of records to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | **Required**. Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
 
 POST body options (for commit):
 
@@ -1474,6 +1508,14 @@ Response
 
 Functionality: Create, read, update, and delete methodology records
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="methodology-get-examples"></a>
 ### GET Examples
 
@@ -1546,8 +1588,11 @@ Fields:
 | methodologyDate | Date | | | Date of the methodology (ISO 8601 format) |
 | methodologyLink | String | | | URL link to the methodology. Must be a valid URI |
 | methodologyType | String | | x | Type of methodology |
+| orgUid | String | | | Organization UID - auto-populated from home org on create, identifies record owner |
 
 **Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be set via the API.
 
 Request
 ```shell
@@ -1637,6 +1682,14 @@ Response
 
 Functionality: Create, read, update, and delete program records
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="program-get-examples"></a>
 ### GET Examples
 
@@ -1708,6 +1761,9 @@ Fields:
 | programRegistryActivityId | String | x | | Registry activity identifier |
 | programRegistryProgramId | String | | | Registry program identifier |
 | programDescription | String | | | Description of the program |
+| orgUid | String | | | Organization UID - auto-populated from home org on create, identifies record owner |
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be set via the API.
 
 Request
 ```shell
@@ -1800,11 +1856,11 @@ Query string options:
 |:------------------:|:-------:|:--------------------------------------------------------------------------------------------------------------------------------|
 |   None (default)   |   N/A   | Display all projects                                                                                                 |
 | cadTrustProjectId | String  | Only display projects matching this cadTrustProjectId                                                               |
-|       orgUid       | String  | Only display projects matching this orgUid                                                                           |
+|       orgUid       | String  | Filter by organization UID. Use `me` for home org records                                                                           |
 |       search       | String  | Display all projects that contain the specified query (case insensitive)                                             |
 |      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns. Can also include associated models (e.g., `columns=issuance` to include issuance data in unit responses)                                   |
-|       limit        | Number  | (Conditionally Required) Limit the number of projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
-|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+|       limit        | Number  | **Required** (optional when xls=true). Limit the number of projects to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | **Required** (optional when xls=true). Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
 |        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |
 |   projectIds       | String  | Filter by comma-separated list of project IDs                                                                   |
 |       filter       | String  | Generic filter (e.g., `filter=field:value:eq`)                                                                   |
@@ -2240,6 +2296,14 @@ Functionality: Create, read, update, and delete validation records
 
 **Note**: By default, GET requests return only validation data. Associated models (project) are not included unless explicitly requested via query parameters.
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="validation-get-examples"></a>
 ### GET Examples
 
@@ -2410,6 +2474,14 @@ Functionality: Create, read, update, and delete verification records
 
 **Note**: By default, GET requests return only verification data. Associated models (project, validation) are not included unless explicitly requested via query parameters.
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="verification-get-examples"></a>
 ### GET Examples
 
@@ -2574,6 +2646,14 @@ Response
 Functionality: Create, read, update, and delete location records
 
 **Note**: By default, GET requests return only location data. Associated models (project) are not included unless explicitly requested via query parameters.
+
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="location-get-examples"></a>
 ### GET Examples
@@ -2740,6 +2820,14 @@ Functionality: Create, read, update, and delete issuance records
 
 **Note**: By default, GET requests return only issuance data. Associated models (verification, projectMethodology, location) are not included unless explicitly requested via query parameters.
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="issuance-get-examples"></a>
 ### GET Examples
 
@@ -2904,11 +2992,11 @@ Query string options:
 |:------------------:|:-------:|:--------------------------------------------------------------------------------------------------------------------------------|
 |   None (default)   |   N/A   | Display all units                                                                                                 |
 | cadTrustUnitId | String  | Only display units matching this cadTrustUnitId                                                               |
-|       orgUid       | String  | Only display units matching this orgUid                                                                           |
+|       orgUid       | String  | Filter by organization UID. Use `me` for home org records                                                                           |
 |       search       | String  | Display all units that contain the specified query (case insensitive)                                             |
 |      columns       | String  | Limit the result to the specified column. Can be used multiple times to show multiple columns. Can also include associated models (e.g., `columns=issuance` to include issuance data in unit responses)                                   |
-|       limit        | Number  | (Conditionally Required) Limit the number of units to be displayed (must be used with page, eg `?page=5&limit=2`) |
-|        page        | Number  | (Conditionally Required) Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
+|       limit        | Number  | **Required** (optional when xls=true). Limit the number of units to be displayed (must be used with page, eg `?page=5&limit=2`) |
+|        page        | Number  | **Required** (optional when xls=true). Only display results from this page number (must be used with limit, eg `?page=5&limit=2`)             |
 |        xls         | Boolean | If `true`, save the results to xls (Excel spreadsheet) format                                                                   |
 |       filter       | String  | Generic filter (e.g., `filter=field:value:eq`)                                                                   |
 |       order        | String  | Sort order (e.g., `order=field:DESC`)                                                                   |
@@ -3406,6 +3494,14 @@ Response
 
 Functionality: Create, read, update, and delete estimation records
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="estimation-get-examples"></a>
 ### GET Examples
 
@@ -3561,6 +3657,14 @@ Response
 ## `rating`
 
 Functionality: Create, read, update, and delete rating records
+
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="rating-get-examples"></a>
 ### GET Examples
@@ -3718,6 +3822,14 @@ Response
 
 Functionality: Create, read, update, and delete co-benefit records
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="co-benefit-get-examples"></a>
 ### GET Examples
 
@@ -3859,6 +3971,14 @@ Response
 ## `project-methodology`
 
 Functionality: Create, read, update, and delete project-methodology relationships
+
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="project-methodology-get-examples"></a>
 ### GET Examples
@@ -4009,6 +4129,14 @@ Response
 
 Functionality: Create, read, update, and delete stakeholder records
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="stakeholder-get-examples"></a>
 ### GET Examples
 
@@ -4071,6 +4199,9 @@ Fields:
 | stakeholderName | String | x | | Stakeholder name (max 255 characters) |
 | stakeholderType | String | | x | Stakeholder type. Must be one of: Owner, Developer, Consultant |
 | stakeholderLink | String | | | URL link to the stakeholder. Must be a valid URI |
+| orgUid | String | | | Organization UID - auto-populated from home org on create, identifies record owner |
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be set via the API.
 
 Request
 ```shell
@@ -4154,6 +4285,14 @@ Response
 
 Functionality: Create, read, update, and delete stakeholder-project relationships
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="stakeholder-projects-get-examples"></a>
 ### GET Examples
 
@@ -4161,13 +4300,14 @@ Functionality: Create, read, update, and delete stakeholder-project relationship
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v2/stakeholder-projects' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v2/stakeholder-projects?page=1&limit=10' --header 'Content-Type: application/json'
 ```
 
 Response
 ```json
 {
-  "success": true,
+  "page": 1,
+  "pageCount": 3,
   "data": [
     {
       "cadTrustStakeholderProjectId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
@@ -4176,8 +4316,7 @@ Response
       "createdAt": "2022-03-11T05:17:55.426Z",
       "updatedAt": "2022-03-11T05:17:55.426Z"
     }
-  ],
-  "count": 1
+  ]
 }
 ```
 
@@ -4295,6 +4434,14 @@ Response
 
 Functionality: Create, read, update, and delete label records
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="label-get-examples"></a>
 ### GET Examples
 
@@ -4361,6 +4508,9 @@ Fields:
 | labelType | String | | | Type of label. Must be one of: Certification, Article 6 - Endorsement, Article 6 - Letter of Qualification, Article 6 - Authorisation, Article 6 - Letter of Approvals |
 | labelLink | String | | | URL link to the label. Must be a valid URI |
 | labelDate | Date | | | Date of the label (ISO 8601 format) |
+| orgUid | String | | | Organization UID - auto-populated from home org on create, identifies record owner |
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be set via the API.
 
 Request
 ```shell
@@ -4445,6 +4595,12 @@ Response
 
 Functionality: Create, read, update, and delete unit-label relationships
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+
 <a id="unit-label-get-examples"></a>
 ### GET Examples
 
@@ -4452,13 +4608,14 @@ Functionality: Create, read, update, and delete unit-label relationships
 
 Request
 ```shell
-curl --location --request GET 'localhost:31310/v2/unit-label' --header 'Content-Type: application/json'
+curl --location --request GET 'localhost:31310/v2/unit-label?page=1&limit=10' --header 'Content-Type: application/json'
 ```
 
 Response
 ```json
 {
-  "success": true,
+  "page": 1,
+  "pageCount": 3,
   "data": [
     {
       "cadTrustUnitLabelId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -4469,8 +4626,7 @@ Response
       "createdAt": "2022-03-11T05:17:55.426Z",
       "updatedAt": "2022-03-11T05:17:55.426Z"
     }
-  ],
-  "count": 1
+  ]
 }
 ```
 
@@ -4596,6 +4752,14 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T1-Submission records
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="aef-t1-submission-get-examples"></a>
 ### GET Examples
 
@@ -4661,6 +4825,9 @@ Fields:
 | aefT1SubmissionNdcFirstYear | Number | | | NDC first year (must be between 1900 and 2100, can be null) |
 | aefT1SubmissionNdcLastYear | Number | | | NDC last year (must be between 1900 and 2100, can be null) |
 | aefT1SubmissionReferenceReviewReport | String | | | Reference review report URL. Must be a valid URI (can be null) |
+| orgUid | String | | | Organization UID - auto-populated from home org on create, identifies record owner |
+
+**Note**: The `orgUid` field is automatically set from the home organization and cannot be set via the API.
 
 Request
 ```shell
@@ -4755,6 +4922,14 @@ Response
 ## `aef-t2-authorizations`
 
 Functionality: Create, read, update, and delete AEF-T2-Authorizations records
+
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="aef-t2-authorizations-get-examples"></a>
 ### GET Examples
@@ -4959,6 +5134,14 @@ Response
 
 Functionality: Create, read, update, and delete AEF-T5-Authorized-Entities records
 
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
+
 <a id="aef-t5-authorized-entities-get-examples"></a>
 ### GET Examples
 
@@ -5129,6 +5312,14 @@ Response
 ## `aef-t3-actions`
 
 Functionality: Create, read, update, and delete AEF-T3-Actions records
+
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="aef-t3-actions-get-examples"></a>
 ### GET Examples
@@ -5357,6 +5548,14 @@ Response
 ## `aef-t4-holdings`
 
 Functionality: Create, read, update, and delete AEF-T4-Holdings records
+
+Query string options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| orgUid | string | Filter by organization UID. Use `me` for home org records |
+| page | Number | **Required**. Page number for pagination (min: 1) |
+| limit | Number | **Required**. Number of records per page (min: 1, max: 1000) |
 
 <a id="aef-t4-holdings-get-examples"></a>
 ### GET Examples

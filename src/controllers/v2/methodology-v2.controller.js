@@ -16,6 +16,7 @@ import {
   assertV2HomeOrgExists,
   assertNoPendingCommitsExcludingTransfers,
 } from '../../utils/v2-data-assertions.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 
 import { loggerV2 } from '../../config/logger.js';
 import { methodologyV2Schema } from '../../validations/v2/methodology-v2.validations.js';
@@ -71,9 +72,19 @@ export const create = async (req, res) => {
     // Generate UUID for primary key
     const cadTrustMethodologyId = uuidv4();
 
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      return res.status(400).json({
+        message: 'Error creating new methodology',
+        error: 'Home organization not found',
+        success: false,
+      });
+    }
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
       cad_trust_methodology_id: cadTrustMethodologyId,
+      org_uid: homeOrg.org_uid,
       methodology_code: newRecord.methodologyCode,
       methodology_name: newRecord.methodologyName,
       methodology_version: newRecord.methodologyVersion,
@@ -111,12 +122,16 @@ export const create = async (req, res) => {
 
 export const findAll = async (req, res) => {
   try {
-    const { page, limit } = req.query;
+    const { page, limit, orgUid } = req.query;
     const pagination = paginationParams(page, limit);
+    const resolvedOrgUid = await resolveOrgUid(orgUid);
 
-    const records = await MethodologyV2.findAndCountAll({
-      ...pagination,
-    });
+    const queryOptions = { ...pagination };
+    if (resolvedOrgUid) {
+      queryOptions.where = { orgUid: resolvedOrgUid };
+    }
+
+    const records = await MethodologyV2.findAndCountAll(queryOptions);
 
     res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
@@ -197,9 +212,19 @@ export const update = async (req, res) => {
       });
     }
 
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      return res.status(400).json({
+        message: 'Error updating methodology',
+        error: 'Home organization not found',
+        success: false,
+      });
+    }
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
       cad_trust_methodology_id: id,
+      org_uid: homeOrg.org_uid,
     };
 
     if (updateData.methodologyCode !== undefined) dbUpdateData.methodology_code = updateData.methodologyCode;

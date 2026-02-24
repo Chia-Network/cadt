@@ -1,15 +1,23 @@
 'use strict';
 
 import express from 'express';
+import Joi from 'joi';
 import joiExpress from 'express-joi-validation';
 import * as StagingV2Controller from '../../../controllers/v2/staging-v2.controller.js';
 import { stagingRetryV2Schema } from '../../../validations/v2/staging-v2.validations.js';
+import { paginationSchema } from '../../../validations/v2/pagination-v2.validations.js';
 
 const validator = joiExpress.createValidator({ passError: true });
 const StagingV2Router = express.Router();
 
+const stagingGetSchema = Joi.object({
+  ...paginationSchema,
+  type: Joi.string().optional(),
+  table: Joi.string().optional(),
+});
+
 // GET /v2/staging - findAll (with query params: page, limit, type, table)
-StagingV2Router.get('/', (req, res) => {
+StagingV2Router.get('/', validator.query(stagingGetSchema), (req, res) => {
   return StagingV2Controller.findAll(req, res);
 });
 

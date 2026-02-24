@@ -8,8 +8,9 @@ import { formatModelAssociationName } from './model-utils.js';
 import { getConfig } from './config-loader';
 import { getOwnedStores } from '../datalayer/persistance.js';
 
-const { IS_GOVERNANCE_BODY, READ_ONLY, USE_SIMULATOR, CHIA_NETWORK } =
-  getConfig().APP;
+const config = getConfig();
+const { USE_SIMULATOR, CHIA_NETWORK } = config.APP;
+const { IS_GOVERNANCE_BODY, READ_ONLY } = config;
 
 export const assertChiaNetworkMatchInConfiguration = async () => {
   if (!USE_SIMULATOR) {

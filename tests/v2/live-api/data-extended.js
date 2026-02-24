@@ -57,7 +57,7 @@ async function main() {
       '--require', join(__dirname, 'helpers/mocha-setup.js'),
       ...testPaths,
       '--reporter', 'spec',
-      '--timeout', '3600000',
+      '--timeout', '1800000',
       '--exit',
     ];
 

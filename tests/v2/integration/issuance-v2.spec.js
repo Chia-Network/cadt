@@ -354,10 +354,11 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
     it('should return empty array when no issuances exist', async function () {
       const response = await supertest(app)
         .get('/v2/issuance')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(0);
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(0);
     });
   });
 

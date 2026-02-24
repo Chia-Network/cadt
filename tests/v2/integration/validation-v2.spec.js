@@ -309,10 +309,11 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should return empty array when no validations exist', async function () {
       const response = await supertest(app)
         .get('/v2/validation')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(0);
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(0);
     });
 
     it('should return validations from database with project association', async function () {
@@ -325,15 +326,16 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       }));
 
       const response = await supertest(app)
-        .get('/v2/validation?columns=project')
+        .get('/v2/validation')
+        .query({ page: 1, limit: 10, columns: 'project' })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(1);
-      expect(response.body[0].validationId).to.equal('Database Validation');
-      expect(response.body[0].validationType).to.equal('Validation of Project Design Document');
-      expect(response.body[0].project).to.exist;
-      expect(response.body[0].project.projectName).to.equal('Test Project for Validation');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].validationId).to.equal('Database Validation');
+      expect(response.body.data[0].validationType).to.equal('Validation of Project Design Document');
+      expect(response.body.data[0].project).to.exist;
+      expect(response.body.data[0].project.projectName).to.equal('Test Project for Validation');
     });
   });
 

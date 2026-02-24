@@ -60,7 +60,7 @@ async function runPostTests() {
       ...testPaths,
       '--grep', 'Step 4: POST Request Tests',
       '--reporter', 'spec',
-      '--timeout', '3600000',
+      '--timeout', '1800000',
       '--exit',
     ];
 

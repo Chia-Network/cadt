@@ -77,6 +77,8 @@ describe('V2 Program API - Basic CRUD Tests', function () {
       expect(stagedData[0].program_name).to.equal('Test Program');
       expect(stagedData[0].program_registry).to.equal('Test Registry');
       expect(stagedData[0].program_registry_activity_id).to.equal('ACT-001');
+      expect(stagedData[0]).to.have.property('org_uid');
+      expect(stagedData[0].org_uid).to.equal('test-home-org-v2');
     });
 
     it('should create program with minimal required data', async function () {
@@ -207,10 +209,11 @@ describe('V2 Program API - Basic CRUD Tests', function () {
     it('should return empty array when no programs exist', async function () {
       const response = await supertest(app)
         .get('/v2/program')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(0);
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(0);
     });
 
     it('should return programs from database', async function () {
@@ -226,12 +229,67 @@ describe('V2 Program API - Basic CRUD Tests', function () {
 
       const response = await supertest(app)
         .get('/v2/program')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(1);
-      expect(response.body[0].programName).to.equal('Database Program');
-      expect(response.body[0].programRegistry).to.equal('DB Registry');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].programName).to.equal('Database Program');
+      expect(response.body.data[0].programRegistry).to.equal('DB Registry');
+    });
+
+    it('should filter programs by orgUid', async function () {
+      await ProgramV2.create({
+        cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440010',
+        programName: 'Org A Program',
+        programRegistry: 'Org A Registry',
+        programRegistryActivityId: 'ORG-A-ACT-001',
+        orgUid: 'org-a',
+      });
+      await ProgramV2.create({
+        cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440011',
+        programName: 'Org B Program',
+        programRegistry: 'Org B Registry',
+        programRegistryActivityId: 'ORG-B-ACT-001',
+        orgUid: 'org-b',
+      });
+
+      const response = await supertest(app)
+        .get('/v2/program')
+        .query({ page: 1, limit: 10, orgUid: 'org-a' })
+        .expect(200);
+
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].programName).to.equal('Org A Program');
+    });
+
+    it('should filter programs by orgUid=me', async function () {
+      await ProgramV2.create({
+        cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440020',
+        programName: 'My Program',
+        programRegistry: 'My Registry',
+        programRegistryActivityId: 'ME-ACT-001',
+        orgUid: 'test-home-org-v2',
+      });
+      await ProgramV2.create({
+        cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440021',
+        programName: 'Other Program',
+        programRegistry: 'Other Registry',
+        programRegistryActivityId: 'OTHER-ACT-001',
+        orgUid: 'other-org',
+      });
+
+      const response = await supertest(app)
+        .get('/v2/program')
+        .query({ page: 1, limit: 10, orgUid: 'me' })
+        .expect(200);
+
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      response.body.data.forEach(p => {
+        expect(p.orgUid).to.equal('test-home-org-v2');
+      });
     });
   });
 

@@ -29,6 +29,7 @@ import {
 import { loggerV2 } from '../../config/logger.js';
 import { unitV2Schema } from '../../validations/v2/unit-v2.validations.js';
 import { genericSortColumnRegex } from '../../utils/string-utils.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
 
 // Regex patterns for query parsing
 const genericFilterRegex = /^(\w+):(.+):(\w+)$/;
@@ -189,6 +190,8 @@ export const findAll = async (req, res) => {
       hasMarketplaceIdentifier,
       onlyTokenizedUnits,
     } = req.query;
+
+    orgUid = await resolveOrgUid(orgUid);
 
     let where = {};
 

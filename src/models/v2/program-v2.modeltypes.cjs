@@ -6,6 +6,7 @@ export const ProgramV2Types = {
   programRegistryActivityId: 'STRING',
   programRegistryProgramId: 'STRING',
   programDescription: 'TEXT',
+  orgUid: 'STRING',
   createdAt: 'DATE',
   updatedAt: 'DATE',
 };

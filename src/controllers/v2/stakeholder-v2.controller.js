@@ -3,13 +3,15 @@
 import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 
-import { StagingV2, StakeholderV2 } from '../../models/v2/index.js';
+import { StagingV2, StakeholderV2, OrganizationsV2 } from '../../models/v2/index.js';
 import { stakeholderV2Schema } from '../../validations/v2/stakeholder-v2.validations.js';
 import {
   assertV2IfReadOnlyMode,
   assertV2HomeOrgExists,
   assertNoPendingCommitsExcludingTransfers,
 } from '../../utils/v2-data-assertions.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
+import { paginationParams, optionallyPaginatedResponse } from '../../utils/helpers.js';
 import { loggerV2 } from '../../config/logger.js';
 
 export const createStakeholderV2 = async (req, res) => {
@@ -62,9 +64,19 @@ export const createStakeholderV2 = async (req, res) => {
     // Generate UUID for primary key
     const cadTrustStakeholderId = uuidv4();
 
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      return res.status(400).json({
+        message: 'Error creating new stakeholder',
+        error: 'Home organization not found',
+        success: false,
+      });
+    }
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbRecord = {
       cad_trust_stakeholder_id: cadTrustStakeholderId,
+      org_uid: homeOrg.org_uid,
       stakeholder_name: newRecord.stakeholderName,
       stakeholder_type: newRecord.stakeholderType,
       stakeholder_link: newRecord.stakeholderLink,
@@ -123,15 +135,18 @@ export const getStakeholderV2 = async (req, res) => {
 
 export const getAllStakeholdersV2 = async (req, res) => {
   try {
-    const stakeholders = await StakeholderV2.findAll({
-      order: [['createdAt', 'DESC']],
-    });
+    const { page, limit, orgUid } = req.query;
+    const pagination = paginationParams(page, limit);
+    const resolvedOrgUid = await resolveOrgUid(orgUid);
 
-    res.status(200).json({
-      success: true,
-      data: stakeholders,
-      count: stakeholders.length,
-    });
+    const queryOptions = { distinct: true, order: [['createdAt', 'DESC']], ...pagination };
+    if (resolvedOrgUid) {
+      queryOptions.where = { orgUid: resolvedOrgUid };
+    }
+
+    const records = await StakeholderV2.findAndCountAll(queryOptions);
+
+    res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
     loggerV2.error('[v2]: Error fetching stakeholders:', err);
     res.status(400).json({
@@ -187,9 +202,19 @@ export const updateStakeholderV2 = async (req, res) => {
       });
     }
 
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      return res.status(400).json({
+        message: 'Error updating stakeholder',
+        error: 'Home organization not found',
+        success: false,
+      });
+    }
+
     // Convert camelCase API fields to snake_case DB fields for staging
     const dbUpdateData = {
       cad_trust_stakeholder_id: id, // Use UUID string directly
+      org_uid: homeOrg.org_uid,
     };
 
     if (updateData.stakeholderName !== undefined) dbUpdateData.stakeholder_name = updateData.stakeholderName;

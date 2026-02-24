@@ -217,10 +217,23 @@ describe('AefT4Holdings Live API Validation Tests', function () {
       expect(response.body.cadTrustAefT4HoldingsId).to.equal(id);
     });
 
+    it('should filter aef-t4-holdings by orgUid=me', async function () {
+      const response = await request
+        .get('/v2/aef-t4-holdings?orgUid=me&page=1&limit=10')
+        .expect(200);
+
+      const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+      expect(data.length).to.be.greaterThan(0);
+      for (const record of data) {
+        expect(record).to.have.property('cadTrustProjectId');
+      }
+    });
+
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
         .get('/v2/aef-t4-holdings')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
       expect(response.body).to.exist;
@@ -260,7 +273,7 @@ describe('AefT4Holdings Live API Validation Tests', function () {
 
   describe('Step 10: Final Validation', function () {
     it('should verify all aef-t4-holdings are deleted', async function () {
-      const response = await request.get('/v2/aef-t4-holdings').expect(200);
+      const response = await request.get('/v2/aef-t4-holdings').query({ page: 1, limit: 10 }).expect(200);
       const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
       // Should only have aef-t4-holdings that existed before tests
       expect(data.length).to.equal(0);

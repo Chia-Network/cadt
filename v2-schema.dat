@@ -183,6 +183,7 @@ methodology_version varchar
 methodology_date date [note: 'methodology in force date']
 methodology_link text
 methodology_type varchar [note: 'optional, picklist from type']
+org_uid varchar [note: 'Organization UID - identifies which organization owns this record']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 }
@@ -214,6 +215,7 @@ cad_trust_stakeholder_id varchar [primary key, unique, note: 'generated UUID']
 stakeholder_name varchar [not null]
 stakeholder_type picklist [note: 'picklist from type']
 stakeholder_link html
+org_uid varchar [note: 'Organization UID - identifies which organization owns this record']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 }
@@ -232,6 +234,7 @@ label_name varchar [not null]
 label_type picklist [note: 'picklist from type']
 label_link html
 label_date date
+org_uid varchar [note: 'Organization UID - identifies which organization owns this record']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 }
@@ -283,6 +286,7 @@ program_registry varchar [not null]
 program_registry_activity_id varchar [not null]
 program_registry_program_id varchar
 program_description text
+org_uid varchar [note: 'Organization UID - identifies which organization owns this record']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 }
@@ -298,6 +302,7 @@ aef_t1_submission_result_check text
 aef_t1_submission_ndc_first_year year
 aef_t1_submission_ndc_last_year year
 aef_t1_submission_reference_review_report URL
+org_uid varchar [note: 'Organization UID - identifies which organization owns this record']
 created_at timestamp [note: 'generated']
 updated_at timestamp [note: 'generated']
 }

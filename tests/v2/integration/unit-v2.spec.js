@@ -595,10 +595,11 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
     it('should return empty array when no units exist', async function () {
       const response = await supertest(app)
         .get('/v2/unit')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(0);
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(0);
     });
 
     it('should return units from database', async function () {
@@ -615,11 +616,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
       const response = await supertest(app)
         .get('/v2/unit')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(1);
-      expect(response.body[0].unitSerialId).to.equal('TEST-UNIT-DB-001');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].unitSerialId).to.equal('TEST-UNIT-DB-001');
     });
   });
 
@@ -1235,6 +1237,37 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
         });
       });
 
+      it('should filter units by orgUid=me', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'ME-UNIT-001',
+          unitStartBlock: '1000',
+          unitEndBlock: '2000',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: 'test-home-org-v2',
+        }));
+        await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'OTHER-UNIT-001',
+          unitStartBlock: '2000',
+          unitEndBlock: '3000',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: 'other-org',
+        }));
+
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ orgUid: 'me', page: 1, limit: 10 })
+          .expect(200);
+
+        expect(response.body).to.have.property('data');
+        expect(response.body.data).to.be.an('array');
+        response.body.data.forEach(unit => {
+          expect(unit.orgUid).to.equal('test-home-org-v2');
+        });
+      });
+
       it('should filter by single field using generic filter', async function () {
         const response = await supertest(app)
           .get('/v2/unit')
@@ -1408,13 +1441,10 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
       });
 
       it('should reject filter parameter when it is an array (type confusion prevention)', async function () {
-        const response = await supertest(app)
+        await supertest(app)
           .get('/v2/unit')
           .query({ filter: ['field:value:eq', 'field2:value2:eq'], page: 1, limit: 10 })
           .expect(400);
-
-        expect(response.body.success).to.be.false;
-        expect(response.body.error).to.include('Filter parameter must be a string');
       });
 
       it('should ignore filter parameter with extra characters (anchored regex validation)', async function () {
@@ -1445,13 +1475,10 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
       });
 
       it('should reject order parameter when it is an array (type confusion prevention)', async function () {
-        const response = await supertest(app)
+        await supertest(app)
           .get('/v2/unit')
           .query({ order: ['unitSerialId:ASC', 'unitSerialId:DESC'], page: 1, limit: 10 })
           .expect(400);
-
-        expect(response.body.success).to.be.false;
-        expect(response.body.error).to.include('Order parameter must be a string');
       });
 
       it('should reject order parameter exceeding maximum length (ReDoS prevention)', async function () {

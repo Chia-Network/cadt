@@ -20,7 +20,7 @@ import { validateOrganizationStores } from '../helpers/datalayer-test-helpers.js
  * Note: This is separate from V2 tests because you can only have one home organization.
  */
 describe('V1 Organization Creation Tests', function () {
-  this.timeout(3600000); // 60 minute timeout for org creation
+  this.timeout(1800000); // 30 minute timeout for org creation
 
   let request;
 

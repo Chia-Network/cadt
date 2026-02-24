@@ -29,7 +29,7 @@ let v1OrganizationDetails = null;
  * Run this with a fresh database (no existing home org).
  */
 describe('V1 to V2 Organization Upgrade Tests', function () {
-  this.timeout(7200000); // 120 minute timeout (V1 creation + upgrade)
+  this.timeout(3600000); // 60 minute timeout (V1 creation + upgrade)
 
   let request;
   let v1OrgName;
@@ -200,56 +200,100 @@ describe('V1 to V2 Organization Upgrade Tests', function () {
 
       console.log(`Upgrading V1 organization ${state.v1OrgUid} to V2...`);
 
-      // Upgrade V1 to V2
-      // Retry on transient errors (e.g., singleton not yet fully written to blockchain)
-      const maxUpgradeRetries = 6;
-      const upgradeRetryDelayMs = 30000; // 30 seconds between retries
-      let upgradeResponse;
-      let lastUpgradeError;
+      // Retry the entire upgrade cycle (POST + wait) to handle cases where the
+      // CADT background upgrade process fails due to transient wallet sync issues.
+      // The server-side upgradeFromV1 runs async (fire-and-forget) so the POST
+      // returns 200 even if the background process later fails. If we detect failure
+      // via waitForV2OrganizationReady fast-fail, we settle and retry the upgrade.
+      const MAX_UPGRADE_CYCLE_ATTEMPTS = 3;
+      const UPGRADE_SETTLE_DELAY_MS = 90000; // 90s between outer retry attempts
 
-      for (let attempt = 1; attempt <= maxUpgradeRetries; attempt++) {
-        upgradeResponse = await request.post('/v2/organizations/upgrade');
+      let result = null;
 
-        // Check if it's a transient singleton validation error (V1 org not fully ready)
-        const isSingletonNotReady = upgradeResponse.status === 400 &&
-          (upgradeResponse.body?.message?.includes('singleton') ||
-           upgradeResponse.body?.message?.includes('not completed') ||
-           upgradeResponse.body?.message?.includes('still be creating'));
+      for (let cycleAttempt = 1; cycleAttempt <= MAX_UPGRADE_CYCLE_ATTEMPTS; cycleAttempt++) {
+        if (cycleAttempt > 1) {
+          console.log(`\n[Upgrade cycle attempt ${cycleAttempt}/${MAX_UPGRADE_CYCLE_ATTEMPTS}] Waiting ${UPGRADE_SETTLE_DELAY_MS / 1000}s for wallet to settle before retry...`);
+          await new Promise(resolve => setTimeout(resolve, UPGRADE_SETTLE_DELAY_MS));
+        }
 
-        if (upgradeResponse.status === 200) {
-          break; // Success!
-        } else if (isSingletonNotReady && attempt < maxUpgradeRetries) {
-          console.log(`[Upgrade Attempt ${attempt}/${maxUpgradeRetries}] V1 singleton not ready, retrying in ${upgradeRetryDelayMs/1000}s...`);
-          console.log(`  Message: ${upgradeResponse.body?.message}`);
-          lastUpgradeError = upgradeResponse.body?.message;
-          await new Promise(resolve => setTimeout(resolve, upgradeRetryDelayMs));
-        } else {
-          // Non-retryable error or max retries reached
-          break;
+        // POST the upgrade request, retrying on transient 400 errors
+        const maxUpgradeRetries = 6;
+        const upgradeRetryDelayMs = 30000;
+        let upgradeResponse;
+        let lastUpgradeError;
+
+        for (let attempt = 1; attempt <= maxUpgradeRetries; attempt++) {
+          upgradeResponse = await request.post('/v2/organizations/upgrade');
+
+          const isSingletonNotReady = upgradeResponse.status === 400 &&
+            (upgradeResponse.body?.message?.includes('singleton') ||
+             upgradeResponse.body?.message?.includes('not completed') ||
+             upgradeResponse.body?.message?.includes('still be creating'));
+
+          // If upgrade is already complete (re-POST after partial success), treat as success
+          const isAlreadyComplete = upgradeResponse.status === 400 &&
+            upgradeResponse.body?.message?.includes('already complete');
+
+          if (upgradeResponse.status === 200 || isAlreadyComplete) {
+            break;
+          } else if (isSingletonNotReady && attempt < maxUpgradeRetries) {
+            console.log(`[Upgrade Attempt ${attempt}/${maxUpgradeRetries}] V1 singleton not ready, retrying in ${upgradeRetryDelayMs/1000}s...`);
+            console.log(`  Message: ${upgradeResponse.body?.message}`);
+            lastUpgradeError = upgradeResponse.body?.message;
+            await new Promise(resolve => setTimeout(resolve, upgradeRetryDelayMs));
+          } else {
+            break;
+          }
+        }
+
+        if (upgradeResponse.status !== 200) {
+          // Check if upgrade is already complete from a previous cycle
+          const isAlreadyComplete = upgradeResponse.status === 400 &&
+            upgradeResponse.body?.message?.includes('already complete');
+
+          if (!isAlreadyComplete) {
+            console.error(`POST /v2/organizations/upgrade failed with status ${upgradeResponse.status}:`);
+            console.error(`Response body:`, JSON.stringify(upgradeResponse.body, null, 2));
+            if (lastUpgradeError) {
+              console.error(`Last retry error: ${lastUpgradeError}`);
+            }
+
+            if (cycleAttempt < MAX_UPGRADE_CYCLE_ATTEMPTS) {
+              console.log(`[Upgrade cycle attempt ${cycleAttempt}] POST failed, will retry outer loop...`);
+              continue;
+            }
+          }
+        }
+
+        expect(
+          upgradeResponse.status === 200 ||
+          (upgradeResponse.status === 400 && upgradeResponse.body?.message?.includes('already complete')),
+        ).to.be.true;
+
+        // Wait for upgraded organization to be ready
+        // isUpgrade: true uses a longer no-progress threshold since upgrade has no status endpoint
+        try {
+          result = await waitForV2OrganizationReady(request, null, 900000, { isUpgrade: true });
+          break; // Full success
+        } catch (error) {
+          const isBackgroundFailure =
+            error.message.includes('appears to have failed') ||
+            error.message.includes('No PENDING organization') ||
+            error.message.includes('Timeout waiting');
+
+          if (isBackgroundFailure && cycleAttempt < MAX_UPGRADE_CYCLE_ATTEMPTS) {
+            console.log(`[Upgrade cycle attempt ${cycleAttempt}] ${error.message}`);
+            console.log(`  → CADT background upgrade process may have failed. Will retry after settling.`);
+            continue;
+          }
+          throw error;
         }
       }
 
-      if (upgradeResponse.status !== 200) {
-        console.error(`POST /v2/organizations/upgrade failed with status ${upgradeResponse.status}:`);
-        console.error(`Response body:`, JSON.stringify(upgradeResponse.body, null, 2));
-        if (upgradeResponse.body?.error) {
-          console.error(`Error message: ${upgradeResponse.body.error}`);
-        }
-        if (upgradeResponse.body?.message) {
-          console.error(`Message: ${upgradeResponse.body.message}`);
-        }
-        if (lastUpgradeError) {
-          console.error(`Last retry error: ${lastUpgradeError}`);
-        }
+      if (!result) {
+        throw new Error('V2 upgrade failed after all retry attempts — check server logs for wallet sync issues');
       }
 
-      expect(upgradeResponse.status).to.equal(200);
-      expect(upgradeResponse.body.success).to.be.true;
-      expect(upgradeResponse.body.message).to.include('currently being processed');
-
-      // Wait for upgraded organization to be ready
-      // Use isUpgrade: true to skip fast-fail checks - upgrade is fully async with no status endpoint
-      const result = await waitForV2OrganizationReady(request, null, 1800000, { isUpgrade: true });
       const upgradedV2OrgUid = result.orgUid;
 
       // Save to shared state

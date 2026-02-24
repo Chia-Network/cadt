@@ -1,6 +1,0 @@
----
-description: Node.js version management via fnm. Apply when running Node.js, npm, or npx commands.
-alwaysApply: true
----
-
-This project uses `fnm` for Node.js version management. Run `fnm use` before any Node/npm commands. See the `fnm-node` skill for details.
