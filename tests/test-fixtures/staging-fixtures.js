@@ -5,6 +5,9 @@ import supertest from 'supertest';
 
 import app from '../../src/server';
 import { Staging } from '../../src/models';
+import { getConfig } from '../../src/utils/config-loader';
+
+const { USE_SIMULATOR } = getConfig().APP;
 
 export const resetStagingTable = async () => {
   await supertest(app).delete(`/v1/staging/clean`);
@@ -40,8 +43,9 @@ export const commitStagingRecords = async () => {
  * @returns {Promise<Object>} The commit response
  */
 export const commitStagingRecordsAndWaitForCondition = async (checkFn, options = {}) => {
-  const interval = options.interval || 5000; // 5 seconds between checks
-  const maxAttempts = options.maxAttempts || 10; // 10 attempts = 50 seconds
+  const defaultInterval = USE_SIMULATOR ? 500 : 5000;
+  const interval = options.interval || defaultInterval;
+  const maxAttempts = options.maxAttempts || 10;
   const description = options.description || 'Sync operation';
 
   const preCommitCount = await Staging.count({ where: { commited: false } });

@@ -133,9 +133,10 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       expect(stagedData[0].cad_trust_validation_id).to.equal(testValidation.cadTrustValidationId);
     });
 
-    it('should create verification with minimal required data', async function () {
+    it('should create verification with all required data', async function () {
       const minimalData = {
         verificationId: 'MIN-VERIFICATION-001',
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
 
@@ -148,9 +149,25 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       expect(response.body.uuid).to.exist;
     });
 
+    it('should reject verification without required verificationBody', async function () {
+      const invalidData = {
+        verificationId: 'MISSING-BODY-001',
+        cadTrustProjectId: testProject.cadTrustProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/verification')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('verificationBody');
+    });
+
     // Validation tests
     it('should reject verification without required verificationId', async function () {
       const invalidData = {
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
 
@@ -166,6 +183,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should reject verification without required cadTrustProjectId', async function () {
       const invalidData = {
         verificationId: 'MISSING-FK',
+        verificationBody: 'AENOR International S.A.U.',
       };
 
       const response = await supertest(app)
@@ -180,6 +198,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should reject verification with invalid verificationStartDate format', async function () {
       const invalidData = {
         verificationId: 'INVALID-DATE',
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         verificationStartDate: 'not-a-date',
       };
@@ -196,6 +215,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should reject verification with invalid verificationEndDate format', async function () {
       const invalidData = {
         verificationId: 'INVALID-DATE',
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         verificationEndDate: 'not-a-date',
       };
@@ -245,6 +265,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should reject verification with invalid cadTrustProjectId', async function () {
       const invalidData = {
         verificationId: 'INVALID-PROJECT-FK',
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent
       };
 
@@ -261,6 +282,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should accept verification with valid cadTrustProjectId', async function () {
       const validData = {
         verificationId: 'VALID-PROJECT-FK',
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
 
@@ -275,6 +297,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should reject verification with invalid cadTrustValidationId', async function () {
       const invalidData = {
         verificationId: 'INVALID-VALIDATION-FK',
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         cadTrustValidationId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent
       };
@@ -292,6 +315,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should accept verification with valid cadTrustValidationId', async function () {
       const validData = {
         verificationId: 'VALID-VALIDATION-FK',
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         cadTrustValidationId: testValidation.cadTrustValidationId,
       };
@@ -307,6 +331,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should reject verification with forbidden createdAt field', async function () {
       const invalidData = {
         verificationId: 'FORBIDDEN-FIELD',
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         createdAt: '2024-01-01T00:00:00Z',
       };
@@ -323,6 +348,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should reject verification with forbidden updatedAt field', async function () {
       const invalidData = {
         verificationId: 'FORBIDDEN-FIELD',
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -407,6 +433,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
     it('should return 404 for non-existent verification', async function () {
       const updateData = {
         verificationId: 'Updated ID',
+        verificationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
 

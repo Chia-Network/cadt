@@ -13,8 +13,9 @@ export const stakeholderV2Schema = Joi.object({
   }),
 
   // Optional fields with validation
-  stakeholderType: Joi.string().valid('Owner', 'Developer', 'Consultant').allow(null).optional().messages({
+  stakeholderType: Joi.string().valid('Owner', 'Developer', 'Consultant').required().messages({
     'any.only': 'stakeholderType must be one of: Owner, Developer, Consultant',
+    'any.required': 'stakeholderType is required',
   }),
 
   stakeholderLink: Joi.alternatives().try(Joi.string().uri().max(500), Joi.allow(null, '')).optional().messages({

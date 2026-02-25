@@ -58,8 +58,9 @@ describe('V2 Location API - Basic CRUD Tests', function () {
       expect(response.body).to.have.property('uuid');
     });
 
-    it('should create location with minimal required data', async function () {
+    it('should create location with all required data', async function () {
       const locationData = {
+        locationCountry: 'Canada',
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
 
@@ -70,6 +71,21 @@ describe('V2 Location API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body).to.have.property('uuid');
+    });
+
+    it('should reject location without required locationCountry', async function () {
+      const locationData = {
+        locationRegion: 'British Columbia',
+        cadTrustProjectId: testProject.cadTrustProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/location')
+        .send(locationData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('locationCountry');
     });
 
     it('should reject location without required cadTrustProjectId', async function () {
@@ -88,6 +104,7 @@ describe('V2 Location API - Basic CRUD Tests', function () {
 
     it('should reject location with invalid locationMapFileLink format', async function () {
       const locationData = {
+        locationCountry: 'Canada',
         locationMapFileLink: 'not-a-valid-url',
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
@@ -103,6 +120,7 @@ describe('V2 Location API - Basic CRUD Tests', function () {
 
     it('should accept location with valid locationMapFileLink format', async function () {
       const locationData = {
+        locationCountry: 'Canada',
         locationMapFileLink: 'https://example.com/map.geojson',
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
@@ -200,6 +218,7 @@ describe('V2 Location API - Basic CRUD Tests', function () {
     it('should reject location with locationRegion exceeding max length', async function () {
       // Test length validation on locationRegion (no picklist validation)
       const locationData = {
+        locationCountry: 'Canada',
         locationRegion: 'A'.repeat(256), // Exceeds 255 character limit
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
@@ -216,6 +235,7 @@ describe('V2 Location API - Basic CRUD Tests', function () {
 
     it('should reject location with locationGis exceeding max length', async function () {
       const locationData = {
+        locationCountry: 'Canada',
         locationGis: 'A'.repeat(10001), // Exceeds 10000 character limit
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
@@ -231,6 +251,7 @@ describe('V2 Location API - Basic CRUD Tests', function () {
 
     it('should reject location with locationMapType exceeding max length', async function () {
       const locationData = {
+        locationCountry: 'Canada',
         locationMapType: 'A'.repeat(101), // Exceeds 100 character limit
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
@@ -246,6 +267,7 @@ describe('V2 Location API - Basic CRUD Tests', function () {
 
     it('should reject location with locationMapFileLink exceeding max length', async function () {
       const locationData = {
+        locationCountry: 'Canada',
         locationMapFileLink: 'https://example.com/' + 'A'.repeat(500), // Exceeds 500 character limit
         cadTrustProjectId: testProject.cadTrustProjectId,
       };

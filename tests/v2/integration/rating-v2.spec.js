@@ -471,6 +471,23 @@ describe('Rating V2 Endpoint Integration Tests', function () {
       expect(response.body.error).to.include('ratingName');
     });
 
+    it('should reject rating without required ratingType', async function () {
+      const invalidData = {
+        ratingName: 'Test Rating',
+        ratingValue: 'A+',
+        cadTrustProjectId: testProjectId,
+        // Missing ratingType
+      };
+
+      const response = await supertest(app)
+        .post('/v2/rating')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('ratingType');
+    });
+
     it('should reject rating with forbidden fields (createdAt, updatedAt, cadTrustRatingId)', async function () {
       const ratingData = {
         ratingType: 'CDP',
@@ -527,8 +544,6 @@ describe('Rating V2 Endpoint Integration Tests', function () {
           ratingValue: 'B+',
           cadTrustProjectId: testProjectId,
         });
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         // Clean up committed staging record to avoid pending commits errors
         await stagingRecord.destroy();
       }

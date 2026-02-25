@@ -191,12 +191,17 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       expect(stagingRecord.action).to.equal('INSERT');
     });
 
-    it('should create unit with minimal data', async function () {
+    it('should create unit with all required data', async function () {
       const unitData = {
         unitSerialId: 'TEST-UNIT-MINIMAL',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
 
@@ -207,6 +212,116 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body.message).to.equal('Unit staged successfully');
+    });
+
+    it('should reject unit without required unitCount', async function () {
+      const unitData = {
+        unitSerialId: 'TEST-UNIT-NOCOUNT',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit')
+        .send(unitData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('unitCount');
+    });
+
+    it('should reject unit without required unitType', async function () {
+      const unitData = {
+        unitSerialId: 'TEST-UNIT-NOTYPE',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitCount: 100,
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit')
+        .send(unitData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('unitType');
+    });
+
+    it('should reject unit without required unitStatus', async function () {
+      const unitData = {
+        unitSerialId: 'TEST-UNIT-NOSTATUS',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit')
+        .send(unitData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('unitStatus');
+    });
+
+    it('should reject unit without required unitStatusReason', async function () {
+      const unitData = {
+        unitSerialId: 'TEST-UNIT-NOREASON',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit')
+        .send(unitData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('unitStatusReason');
+    });
+
+    it('should reject unit without required unitMetric', async function () {
+      const unitData = {
+        unitSerialId: 'TEST-UNIT-NOMETRIC',
+        unitStartBlock: '1000',
+        unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit')
+        .send(unitData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('unitMetric');
     });
 
     it('should reject unit without required unitSerialId', async function () {
@@ -265,6 +380,8 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
 
@@ -282,7 +399,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
       };
 
       const response = await supertest(app)
@@ -299,7 +421,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent issuance
       };
 
@@ -319,6 +446,8 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 'invalid-year',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
@@ -337,7 +466,11 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
         unitStatusDate: 'invalid-date',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
@@ -356,8 +489,9 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
-        unitVintageYear: 2024,
+        unitCount: 100,
         unitType: 'Invalid Unit Type',
+        unitVintageYear: 2024,
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
 
@@ -375,8 +509,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-VALID-TYPE',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
-        unitVintageYear: 2024,
+        unitCount: 100,
         unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
 
@@ -394,6 +532,8 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
         unitStatus: 'Invalid Status',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
@@ -413,8 +553,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-VALID-STATUS',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
         unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
 
@@ -432,7 +576,11 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
         unitMetric: 'Invalid Metric',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
@@ -451,7 +599,11 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-VALID-METRIC',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
         unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
@@ -470,7 +622,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
         createdAt: '2024-01-01T00:00:00Z',
       };
@@ -489,7 +646,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -508,7 +670,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-ORGUID',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
         orgUid: 'some-org-uid',
       };
@@ -528,7 +695,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'AUTO-ORGUID-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
 
@@ -557,7 +729,11 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
         unitLink: 'invalid-url',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
@@ -576,8 +752,13 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'TEST-UNIT-VALID-LINK',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
         unitLink: 'https://example.com/unit',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
 
@@ -689,7 +870,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'UPDATED-UNIT-001',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
 
@@ -733,7 +919,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'UPDATED-UNIT-002',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
         orgUid: 'some-other-org-uid',
       };
@@ -763,7 +954,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         unitSerialId: 'UPDATED-UNIT-003',
         unitStartBlock: '1000',
         unitEndBlock: '2000',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
         unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Test reason',
+        unitMetric: 'tCO2e',
         cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
       };
 

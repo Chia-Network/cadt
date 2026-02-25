@@ -2041,14 +2041,14 @@ Fields:
 | projectId | String | x | | Unique identifier for the project |
 | projectName | String | x | | Name of the project |
 | projectCreditingProgram | String | | | Name of the crediting program |
-| projectLink | String | | | URL link to the project. Must be a valid URI |
+| projectLink | String | x | | URL link to the project. Must be a valid URI |
 | projectDescription | String | | | Description of the project |
-| projectSector | Array[String] | | x | Array of project sectors. Each value must be from the projectSector picklist |
-| projectType | Array[String] | | x | Array of project types. Each value must be from the projectType picklist |
+| projectSector | Array[String] | x | x | Array of project sectors. Each value must be from the projectSector picklist |
+| projectType | Array[String] | x | x | Array of project types. Each value must be from the projectType picklist |
 | projectSubtype | String | | | Subtype of the project |
-| projectStatus | String | | x | Project status. Must be from the projectStatus picklist |
-| projectStatusDate | Date | | | Date when the project status was set (ISO 8601 format) |
-| projectUnitMetric | String | | x | Unit metric for the project |
+| projectStatus | String | x | x | Project status. Must be from the projectStatus picklist |
+| projectStatusDate | Date | x | | Date when the project status was set (ISO 8601 format) |
+| projectUnitMetric | String | x | x | Unit metric for the project |
 | cadTrustReferenceProjectId | String | | | CAD Trust reference project identifier |
 | cadTrustProgramId | String | | | CAD Trust program identifier. Must be a valid UUID |
 
@@ -2310,8 +2310,8 @@ Fields:
 |:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
 | validationId | String | x | | Unique identifier for the validation |
 | cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
-| validationType | String | | x | Type of validation |
-| validationBody | String | | x | Validation body |
+| validationType | String | x | x | Type of validation |
+| validationBody | String | x | x | Validation body |
 | validationDate | Date | | | Date of the validation (ISO 8601 format) |
 | validationCreditPeriodStartDate | Date | | | Start date of the credit period (ISO 8601 format) |
 | validationCreditPeriodEndDate | Date | | | End date of the credit period (ISO 8601 format) |
@@ -2480,7 +2480,7 @@ Fields:
 | cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
 | verificationStartDate | Date | | | Start date of the verification (ISO 8601 format) |
 | verificationEndDate | Date | | | End date of the verification (ISO 8601 format) |
-| verificationBody | String | | x | Verification body |
+| verificationBody | String | x | x | Verification body |
 | cadTrustValidationId | String | | | CAD Trust validation identifier. Must be a valid UUID |
 
 **Note**: Valid picklist values can be retrieved using `GET /v2/governance/meta/pickList`.
@@ -2642,7 +2642,7 @@ Fields:
 | Field | Type | Required | [Picklist](#get-picklist-data) | Description |
 |:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
 | cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
-| locationCountry | String | | x | Country of the location |
+| locationCountry | String | x | x | Country of the location |
 | locationRegion | String | | | Region of the location (max 255 characters) |
 | locationGis | String | | | GIS data for the location (max 10000 characters) |
 | locationMapType | String | | | Type of map (max 100 characters) |
@@ -3167,16 +3167,16 @@ Fields:
 | unitEndBlock | String | x | | End block identifier |
 | unitVintageYear | Number | x | | Vintage year (must be between 1900 and 2100) |
 | cadTrustIssuanceId | String | x | | CAD Trust issuance identifier. Must be a valid UUID |
-| unitCount | Number | | | Count of units (must be >= 0) |
-| unitType | String | | x | Type of unit |
-| unitStatus | String | | x | Status of the unit |
-| unitStatusReason | String | | | Reason for the unit status |
+| unitCount | Number | x | | Count of units (must be >= 0) |
+| unitType | String | x | x | Type of unit |
+| unitStatus | String | x | x | Status of the unit |
+| unitStatusReason | String | x | | Reason for the unit status |
 | unitStatusDate | Date | | | Date when the unit status was set (ISO 8601 format) |
 | unitRetirementDetail | String | | | Details about unit retirement |
 | unitRetirementBeneficiary | String | | | Beneficiary of unit retirement |
 | unitRetirementBeneficiaryId | String | | | Beneficiary identifier for unit retirement |
 | unitLink | String | | | URL link to the unit. Must be a valid URI |
-| unitMetric | String | | x | Unit metric |
+| unitMetric | String | x | x | Unit metric |
 | unitCurrentOwner | String | | | Current owner of the unit |
 | unitItmosReferenceId | String | | | ITMOS reference identifier |
 | marketplace | String | | | Marketplace name (can be null) |
@@ -3473,7 +3473,7 @@ Fields:
 | cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
 | estimationStartDate | Date | x | | Start date of the estimation period (ISO 8601 format: YYYY-MM-DD) |
 | estimationEndDate | Date | x | | End date of the estimation period (ISO 8601 format: YYYY-MM-DD). Must be after estimationStartDate |
-| estimationUnitCount | Number | | | Estimated unit count (max 6 decimal places) |
+| estimationUnitCount | Number | x | | Estimated unit count (max 6 decimal places) |
 | estimationReferenceNo | String | | | Reference number for the estimation (max 255 characters) |
 
 Request
@@ -3629,7 +3629,7 @@ Fields:
 | cadTrustProjectId | String | x | | CAD Trust project identifier. Must be a valid UUID |
 | ratingName | String | x | | Name of the rating (max 255 characters) |
 | ratingValue | String | x | | Value of the rating (max 255 characters) |
-| ratingType | String | | | Type of rating. Must be one of: CDP, CCQI |
+| ratingType | String | x | | Type of rating. Must be one of: CDP, CCQI |
 | ratingLink | String | | | URL link to the rating. Must be a valid URI |
 
 Request
@@ -4069,7 +4069,7 @@ Fields:
 | Field | Type | Required | [Picklist](#get-picklist-data) | Description |
 |:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
 | stakeholderName | String | x | | Stakeholder name (max 255 characters) |
-| stakeholderType | String | | x | Stakeholder type. Must be one of: Owner, Developer, Consultant |
+| stakeholderType | String | x | x | Stakeholder type. Must be one of: Owner, Developer, Consultant |
 | stakeholderLink | String | | | URL link to the stakeholder. Must be a valid URI |
 
 Request
@@ -4358,7 +4358,7 @@ Fields:
 | Field | Type | Required | [Picklist](#get-picklist-data) | Description |
 |:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
 | labelName | String | x | | Name of the label (max 255 characters) |
-| labelType | String | | | Type of label. Must be one of: Certification, Article 6 - Endorsement, Article 6 - Letter of Qualification, Article 6 - Authorisation, Article 6 - Letter of Approvals |
+| labelType | String | x | | Type of label. Must be one of: Certification, Article 6 - Endorsement, Article 6 - Letter of Qualification, Article 6 - Authorisation, Article 6 - Letter of Approvals |
 | labelLink | String | | | URL link to the label. Must be a valid URI |
 | labelDate | Date | | | Date of the label (ISO 8601 format) |
 
@@ -4509,7 +4509,7 @@ Fields:
 |:------:|:--------:|:--------:|:--------:|:------------------------------------------------------------|
 | cadTrustLabelId | String | x | | CAD Trust label identifier. Must be a valid UUID |
 | cadTrustUnitId | String | x | | CAD Trust unit identifier. Must be a valid UUID |
-| labelUnitDate | Date | | | Date of the unit-label relationship (ISO 8601 format, can be null) |
+| labelUnitDate | Date | x | | Date of the unit-label relationship (ISO 8601 format) |
 | labelUnitDescription | String | | | Description of the relationship (can be null) |
 
 Request
