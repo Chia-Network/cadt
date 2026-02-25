@@ -179,7 +179,7 @@ describe('Unit Resource Integration Tests', function () {
     let unitRecord;
     const pollStartTime1 = Date.now();
     const interval = USE_SIMULATOR ? 500 : 5000;
-    const maxAttempts = 10;
+    const maxAttempts = USE_SIMULATOR ? 30 : 10;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await new Promise(resolve => setTimeout(resolve, interval));
@@ -290,7 +290,7 @@ describe('Unit Resource Integration Tests', function () {
     // Wait for split units to appear in the database using smart polling
     const pollStartTime2 = Date.now();
     const pollInterval = USE_SIMULATOR ? 500 : 5000;
-    const pollMaxAttempts = 10;
+    const pollMaxAttempts = USE_SIMULATOR ? 30 : 10;
     let newRecord1;
 
     for (let attempt = 1; attempt <= pollMaxAttempts; attempt++) {

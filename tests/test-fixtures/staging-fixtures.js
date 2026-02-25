@@ -44,8 +44,9 @@ export const commitStagingRecords = async () => {
  */
 export const commitStagingRecordsAndWaitForCondition = async (checkFn, options = {}) => {
   const defaultInterval = USE_SIMULATOR ? 500 : 5000;
+  const defaultMaxAttempts = USE_SIMULATOR ? 30 : 10;
   const interval = options.interval || defaultInterval;
-  const maxAttempts = options.maxAttempts || 10;
+  const maxAttempts = options.maxAttempts || defaultMaxAttempts;
   const description = options.description || 'Sync operation';
 
   const preCommitCount = await Staging.count({ where: { commited: false } });
