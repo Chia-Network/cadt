@@ -299,10 +299,12 @@ describe('Unit Resource Integration Tests', function () {
         .get(`/v1/units`)
         .query({ warehouseUnitId: splitRecord1.warehouseUnitId });
 
-      if (warehouseRes.body && warehouseRes.body.warehouseUnitId === splitRecord1.warehouseUnitId) {
+      if (warehouseRes.body &&
+          warehouseRes.body.warehouseUnitId === splitRecord1.warehouseUnitId &&
+          warehouseRes.body.unitCount === splitRecord1.unitCount) {
         newRecord1 = warehouseRes.body;
         const elapsedTime = Date.now() - pollStartTime2;
-        console.log(`[TEST] Split unit appeared after ${elapsedTime}ms (${(elapsedTime/1000).toFixed(1)}s, ${attempt} attempts)`);
+        console.log(`[TEST] Split unit synced after ${elapsedTime}ms (${(elapsedTime/1000).toFixed(1)}s, ${attempt} attempts)`);
         break;
       }
 

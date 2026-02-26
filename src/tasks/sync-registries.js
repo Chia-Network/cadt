@@ -74,7 +74,7 @@ const task = new Task('sync-registries', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: CONFIG.USE_SIMULATOR ? 1 : 5,
+    seconds: CONFIG.USE_SIMULATOR ? 2 : 5,
     runImmediately: true,
   },
   task,
@@ -202,27 +202,31 @@ const tryParseJSON = (jsonString, defaultValue) => {
 };
 
 const truncateStaging = async () => {
-  logger.info(`[v1]: ATTEMPTING TO TRUNCATE STAGING TABLE`);
+  logger.info(`[v1]: ATTEMPTING TO CLEAN UP STAGING TABLE`);
 
   let success = false;
   let attempts = 0;
-  const maxAttempts = 5; // Set a maximum number of attempts to avoid infinite loops
+  const maxAttempts = 5;
 
   while (!success && attempts < maxAttempts) {
     try {
-      await Staging.truncate();
-      success = true; // If truncate succeeds, set success to true to exit the loop
-      logger.info('[v1]: STAGING TABLE TRUNCATED SUCCESSFULLY');
+      if (CONFIG.USE_SIMULATOR) {
+        await Staging.destroy({ where: { commited: true } });
+      } else {
+        await Staging.truncate();
+      }
+      success = true;
+      logger.info('[v1]: STAGING TABLE CLEANED UP SUCCESSFULLY');
     } catch (error) {
       attempts++;
       logger.error(
-        `TRUNCATION FAILED ON ATTEMPT ${attempts}: ${error.message}`,
+        `STAGING CLEANUP FAILED ON ATTEMPT ${attempts}: ${error.message}`,
       );
       if (attempts < maxAttempts) {
         logger.info('[v1]: WAITING 1 SECOND BEFORE RETRYING...');
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
-        logger.error('[v1]: MAXIMUM TRUNCATION ATTEMPTS REACHED, GIVING UP');
+        logger.error('[v1]: MAXIMUM STAGING CLEANUP ATTEMPTS REACHED, GIVING UP');
       }
     }
   }

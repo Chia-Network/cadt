@@ -226,8 +226,9 @@ describe('Project Resource Integration Tests', function () {
     // Now push the staging table live and wait for update to sync using smart polling
     await testFixtures.commitStagingRecordsAndWaitForCondition(
       async () => {
-        const updatedProject = await testFixtures.getProject(warehouseProjectId);
-        return updatedProject !== null;
+        const { Project } = await import('../../src/models/index.js');
+        const project = await Project.findOne({ where: { warehouseProjectId } });
+        return project !== null && project.program === updateProjectPayload.program;
       },
       { description: 'Project update sync to main table' }
     );

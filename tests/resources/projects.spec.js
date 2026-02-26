@@ -25,7 +25,7 @@ describe('Project Resource CRUD', function () {
   });
 
   beforeEach(async function () {
-    await supertest(app).get(`/v1/staging/clean`);
+    await supertest(app).delete(`/v1/staging/clean`);
   });
 
   describe('GET projects', function () {

@@ -9,6 +9,7 @@ import * as testFixtures from '../test-fixtures';
 import datalayer from '../../src/datalayer';
 import { prepareDb } from '../../src/database';
 import newUnit from '../test-data/new-unit.js';
+import { Staging } from '../../src/models';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
@@ -16,6 +17,10 @@ describe('Units Resource CRUD', function () {
   before(async function () {
     await pullPickListValues();
     await prepareDb();
+  });
+
+  beforeEach(async function () {
+    await Staging.destroy({ truncate: true });
   });
 
   describe('GET Units', function () {
@@ -68,7 +73,7 @@ describe('Units Resource CRUD', function () {
           .get('/v1/units')
           .query({ orgUid: response.orgUid, page: 1, limit: 100 });
 
-        expect(result.body.data.length).to.not.equal(1);
+        expect(result.body.data.length).to.equal(1);
         // ?orgUid=XXXX
       }).timeout(TEST_WAIT_TIME * 10);
 
