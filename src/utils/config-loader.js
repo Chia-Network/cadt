@@ -126,6 +126,11 @@ const loadConfigForVersion = (dataModelVersion) => {
     };
   }
 
+  // Handle CW_PORT environment variable override
+  if (process.env.CW_PORT) {
+    mergedConfig.APP.CW_PORT = parseInt(process.env.CW_PORT, 10);
+  }
+
   // Handle USE_SIMULATOR environment variable override
   if (typeof process.env.USE_SIMULATOR === 'string') {
     mergedConfig.APP.USE_SIMULATOR = true;

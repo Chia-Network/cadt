@@ -11,24 +11,28 @@ Prefix all commands with `fnm use &&` per the `node-environment` rule.
 
 In-memory SQLite with simulator. No CADT server, Chia, or datalayer required.
 
-### "Run the integration tests" = run both v1 and v2
+### "Run the integration tests" = run both v1 and v2 in parallel
 
 ```bash
-npm run test:v1
-npm run test:v2
+npm run test:v1 &
+npm run test:v2 &
+wait
 ```
 
-Run them **separately** (not `npm test`) to avoid v1/v2 interference.
+V1 and V2 use different ports (31310 and 31311 via `CW_PORT` env var) and isolated
+databases (via `TEST_RUN_ID`), so they run safely in parallel. Do **not** use the
+combined `npm test` script — it runs all specs in one process, causing v1/v2 interference.
 
-| Command | Test files |
-|---------|-----------|
-| `npm run test:v1` | `tests/integration/**/*.spec.js`, `tests/resources/**/*.spec.js` |
-| `npm run test:v2` | `tests/v2/integration/**/*.spec.js` |
+| Command | Port | Test files |
+|---------|------|-----------|
+| `npm run test:v1` | 31310 | `tests/integration/**/*.spec.js`, `tests/resources/**/*.spec.js` |
+| `npm run test:v2` | 31311 | `tests/v2/integration/**/*.spec.js` |
 
 ### How they work
 
 - `run-tests.sh` generates a unique `TEST_RUN_ID`, creates isolated SQLite DBs in `tests/test-dbs/`, cleans up on exit
-- Environment: `NODE_ENV=test`, `USE_SIMULATOR=true`
+- Environment: `NODE_ENV=test`, `USE_SIMULATOR=true`, `CW_PORT=<port>`
+- Port isolation: `CW_PORT` env var overrides `APP.CW_PORT` in config-loader.js
 - Timeout: 300s per test
 
 ## Live API Tests

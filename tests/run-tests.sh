@@ -18,8 +18,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TEST_DB_DIR="$REPO_ROOT/tests/test-dbs"
 
-# Generate unique run ID (epoch seconds)
-export TEST_RUN_ID=$(date +%s)
+# Generate unique run ID (epoch nanoseconds for parallel-safe isolation)
+export TEST_RUN_ID=$(date +%s%N)
 echo "[test-runner] TEST_RUN_ID=$TEST_RUN_ID"
 echo "[test-runner] Database directory: $TEST_DB_DIR"
 
@@ -40,7 +40,13 @@ for f in "$TEST_DB_DIR"/*.sqlite3*; do
     FILE_TS=${STRIPPED##*-}
     # Only process if it looks like a valid epoch timestamp (10+ digits)
     if [[ "$FILE_TS" =~ ^[0-9]{10,}$ ]]; then
-        AGE=$((NOW - FILE_TS))
+        # Normalize to epoch seconds (nanosecond IDs are 19 digits)
+        if [ ${#FILE_TS} -gt 10 ]; then
+            FILE_TS_SEC=${FILE_TS:0:10}
+        else
+            FILE_TS_SEC=$FILE_TS
+        fi
+        AGE=$((NOW - FILE_TS_SEC))
         if [ "$AGE" -gt "$STALE_THRESHOLD" ]; then
             rm -f "$f"
             STALE_COUNT=$((STALE_COUNT + 1))
