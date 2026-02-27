@@ -11,16 +11,17 @@ import {
 } from '../../src/models';
 
 import datalayer from '../../src/datalayer';
+import { getConfig } from '../../src/utils/config-loader';
+
+const { USE_SIMULATOR } = getConfig().APP;
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 2;
 
-// The node simulator runs on an async process, we are importing
-// the WAIT_TIME constant from the simulator, padding it and waiting for the
-// appropriate amount of time for the simulator to finish its operations
 export const waitForDataLayerSync = () => {
   return new Promise((resolve) => {
+    const waitTime = USE_SIMULATOR ? 500 : TEST_WAIT_TIME * 5;
     setTimeout(() => {
       resolve();
-    }, TEST_WAIT_TIME * 5);
+    }, waitTime);
   });
 };
 

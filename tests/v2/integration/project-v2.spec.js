@@ -103,15 +103,21 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].project_name).to.equal('Test Project');
       expect(stagedData[0].project_registry_name).to.equal('Test Registry');
-      expect(stagedData[0].project_sector).to.deep.equal(['Agriculture']);
+      expect(JSON.parse(stagedData[0].project_sector)).to.deep.equal(['Agriculture']);
       expect(stagedData[0].cad_trust_program_id).to.equal(testProgram.cadTrustProgramId);
     });
 
-    it('should create project with minimal required data', async function () {
+    it('should create project with all required data', async function () {
       const minimalData = {
         projectRegistryName: 'Minimal Registry',
         projectId: 'MIN-PROJECT-001',
         projectName: 'Minimal Project',
+        projectLink: 'https://example.com/minimal',
+        projectSector: ['Agriculture'],
+        projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
       };
 
       const response = await supertest(app)
@@ -121,6 +127,132 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body.uuid).to.exist;
+    });
+
+    it('should reject project without required projectLink', async function () {
+      const invalidData = {
+        projectRegistryName: 'MISSING-LINK',
+        projectId: 'MISSING-LINK-001',
+        projectName: 'Missing Link Project',
+        projectSector: ['Agriculture'],
+        projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('projectLink');
+    });
+
+    it('should reject project without required projectSector', async function () {
+      const invalidData = {
+        projectRegistryName: 'MISSING-SECTOR',
+        projectId: 'MISSING-SECTOR-001',
+        projectName: 'Missing Sector Project',
+        projectLink: 'https://example.com/project',
+        projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('projectSector');
+    });
+
+    it('should reject project without required projectType', async function () {
+      const invalidData = {
+        projectRegistryName: 'MISSING-TYPE',
+        projectId: 'MISSING-TYPE-001',
+        projectName: 'Missing Type Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('projectType');
+    });
+
+    it('should reject project without required projectStatus', async function () {
+      const invalidData = {
+        projectRegistryName: 'MISSING-STATUS',
+        projectId: 'MISSING-STATUS-001',
+        projectName: 'Missing Status Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Landfill gas'],
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('projectStatus');
+    });
+
+    it('should reject project without required projectStatusDate', async function () {
+      const invalidData = {
+        projectRegistryName: 'MISSING-STATUSDATE',
+        projectId: 'MISSING-STATUSDATE-001',
+        projectName: 'Missing StatusDate Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectUnitMetric: 'tCO2e',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('projectStatusDate');
+    });
+
+    it('should reject project without required projectUnitMetric', async function () {
+      const invalidData = {
+        projectRegistryName: 'MISSING-UNITMETRIC',
+        projectId: 'MISSING-UNITMETRIC-001',
+        projectName: 'Missing UnitMetric Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+      };
+
+      const response = await supertest(app)
+        .post('/v2/project')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('projectUnitMetric');
     });
 
     // Validation tests
@@ -191,6 +323,10 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-DATE',
         projectId: 'INVALID-DATE-001',
         projectName: 'Invalid Date Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
+        projectStatus: 'Listed',
         projectStatusDate: 'not-a-date',
       };
 
@@ -209,6 +345,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-SECTOR',
         projectId: 'INVALID-SECTOR-001',
         projectName: 'Invalid Sector Project',
+        projectLink: 'https://example.com/project',
         projectSector: ['InvalidSector'],
       };
 
@@ -226,7 +363,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'VALID-SECTOR',
         projectId: 'VALID-SECTOR-001',
         projectName: 'Valid Sector Project',
+        projectLink: 'https://example.com/project',
         projectSector: ['Agriculture'],
+        projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
       };
 
       const response = await supertest(app)
@@ -242,7 +384,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'VALID-MULTI-SECTOR',
         projectId: 'VALID-MULTI-SECTOR-001',
         projectName: 'Valid Multi-Sector Project',
+        projectLink: 'https://example.com/project',
         projectSector: ['Agriculture', 'Energy demand'],
+        projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
       };
 
       const response = await supertest(app)
@@ -258,6 +405,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-TYPE',
         projectId: 'INVALID-TYPE-001',
         projectName: 'Invalid Type Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
         projectType: ['InvalidType'],
       };
 
@@ -275,7 +424,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'VALID-TYPE',
         projectId: 'VALID-TYPE-001',
         projectName: 'Valid Type Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
         projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
       };
 
       const response = await supertest(app)
@@ -291,7 +445,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'VALID-MULTI-TYPE',
         projectId: 'VALID-MULTI-TYPE-001',
         projectName: 'Valid Multi-Type Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
         projectType: ['Landfill gas', 'Solar', 'Wind'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
       };
 
       const response = await supertest(app)
@@ -307,6 +466,9 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-STATUS',
         projectId: 'INVALID-STATUS-001',
         projectName: 'Invalid Status Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
         projectStatus: 'InvalidStatus',
       };
 
@@ -324,7 +486,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'VALID-STATUS',
         projectId: 'VALID-STATUS-001',
         projectName: 'Valid Status Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Landfill gas'],
         projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
       };
 
       const response = await supertest(app)
@@ -340,6 +507,11 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-METRIC',
         projectId: 'INVALID-METRIC-001',
         projectName: 'Invalid Metric Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
         projectUnitMetric: 'InvalidMetric',
       };
 
@@ -357,6 +529,11 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'VALID-METRIC',
         projectId: 'VALID-METRIC-001',
         projectName: 'Valid Metric Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
         projectUnitMetric: 'tCO2e',
       };
 
@@ -374,6 +551,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'INVALID-FK',
         projectId: 'INVALID-FK-001',
         projectName: 'Invalid FK Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
         cadTrustProgramId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent
       };
 
@@ -392,6 +575,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'VALID-FK',
         projectId: 'VALID-FK-001',
         projectName: 'Valid FK Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
         cadTrustProgramId: testProgram.cadTrustProgramId,
       };
 
@@ -408,6 +597,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'FORBIDDEN-FIELD',
         projectId: 'FORBIDDEN-FIELD-001',
         projectName: 'Forbidden Field Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
         createdAt: '2024-01-01T00:00:00Z',
       };
 
@@ -425,6 +620,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'FORBIDDEN-FIELD',
         projectId: 'FORBIDDEN-FIELD-002',
         projectName: 'Forbidden Field Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
         updatedAt: '2024-01-01T00:00:00Z',
       };
 
@@ -442,6 +643,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'FORBIDDEN-ORGUID',
         projectId: 'FORBIDDEN-ORGUID-001',
         projectName: 'Forbidden orgUid Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
         orgUid: 'some-org-uid',
       };
 
@@ -460,6 +667,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'Auto OrgUid Registry',
         projectId: 'AUTO-ORGUID-001',
         projectName: 'Auto OrgUid Project',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Landfill gas'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
       };
 
       const response = await supertest(app)
@@ -628,7 +841,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(stagedData[0].cad_trust_project_id).to.equal(project.cadTrustProjectId);
       expect(stagedData[0].project_name).to.equal('Updated Name');
       expect(stagedData[0].project_registry_name).to.equal('Updated Registry');
-      expect(stagedData[0].project_sector).to.deep.equal(['Energy industries (renewable-/ non renewable sources)']);
+      expect(JSON.parse(stagedData[0].project_sector)).to.deep.equal(['Energy industries (renewable-/ non renewable sources)']);
       expect(stagedData[0].cad_trust_program_id).to.equal(testProgram.cadTrustProgramId);
       // Verify org_uid is automatically set in update
       expect(stagedData[0]).to.have.property('org_uid');
@@ -650,6 +863,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'Updated Registry',
         projectId: 'UPDATED-002',
         projectName: 'Updated Name',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
         orgUid: 'some-other-org-uid',
       };
 
@@ -677,6 +896,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         projectRegistryName: 'Updated Registry',
         projectId: 'UPDATED-003',
         projectName: 'Updated Name',
+        projectLink: 'https://example.com/project',
+        projectSector: ['Agriculture'],
+        projectType: ['Solar'],
+        projectStatus: 'Listed',
+        projectStatusDate: '2024-01-01',
+        projectUnitMetric: 'tCO2e',
       };
 
       const response = await supertest(app)

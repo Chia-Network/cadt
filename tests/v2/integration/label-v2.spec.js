@@ -431,6 +431,21 @@ describe('Label V2 Endpoint Integration Tests', function () {
       expect(response.body.error).to.include('labelName');
     });
 
+    it('should reject label without required labelType', async function () {
+      const invalidData = {
+        labelName: 'Test Label',
+        // Missing labelType
+      };
+
+      const response = await supertest(app)
+        .post('/v2/label')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('labelType');
+    });
+
     it('should reject label with forbidden fields (createdAt, updatedAt, cadTrustLabelId)', async function () {
       const labelData = {
         labelName: 'Test Label',
@@ -484,8 +499,6 @@ describe('Label V2 Endpoint Integration Tests', function () {
           labelType: 'Certification',
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });
@@ -538,8 +551,6 @@ describe('Label V2 Endpoint Integration Tests', function () {
           labelType: 'Certification',
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });

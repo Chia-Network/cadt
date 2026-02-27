@@ -123,6 +123,28 @@ export const getMirrorUrl = async () => {
 };
 
 /**
+ * Detects if an owned DataLayer store has lost its local data while on-chain
+ * state persists. This happens when the DataLayer database is deleted or reset.
+ *
+ * Only meaningful for stores owned by this wallet. For subscribed remote stores,
+ * generation=0 with target_generation>0 is the normal "still downloading" state.
+ *
+ * @param {object} syncStatus - The sync_status object from DataLayer's get_sync_status RPC
+ * @returns {boolean} true if the store's local data is missing but on-chain data exists
+ */
+export const isOwnedStoreLocalDataMissing = (syncStatus) => {
+  if (!syncStatus) return false;
+  const emptyRootHash =
+    '0x0000000000000000000000000000000000000000000000000000000000000000';
+  return (
+    syncStatus.generation === 0 &&
+    (syncStatus.root_hash === emptyRootHash ||
+      syncStatus.root_hash === emptyRootHash.slice(2)) &&
+    syncStatus.target_generation > 0
+  );
+};
+
+/**
  * @param syncStatus {SyncStatus}
  * @returns {boolean}
  */

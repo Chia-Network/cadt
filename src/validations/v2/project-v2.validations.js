@@ -11,34 +11,29 @@ export const projectV2Schema = Joi.object({
   projectLink: Joi.string()
     .uri()
     .max(500)
-    .allow(null, '')
-    .optional(),
+    .required(),
   projectDescription: Joi.string().max(2000).allow(null).optional(),
   // projectSector is an array of strings, each validated against the projectSector picklist
   projectSector: Joi.array()
     .items(Joi.string().max(255))
-    .allow(null)
     .custom(pickListArrayValidationV2('projectSector'))
-    .optional(),
+    .required(),
   // projectType is an array of strings, each validated against the projectType picklist
   projectType: Joi.array()
     .items(Joi.string().max(255))
-    .allow(null)
     .custom(pickListArrayValidationV2('projectType'))
-    .optional(),
+    .required(),
   projectSubtype: Joi.string().max(255).allow(null).optional(),
   // projectStatus is a single string validated against the projectStatus picklist
   projectStatus: Joi.string()
     .max(255)
-    .allow(null)
     .custom(pickListValidationV2('projectStatus'))
-    .optional(),
-  projectStatusDate: Joi.date().allow(null).optional(),
+    .required(),
+  projectStatusDate: Joi.date().required(),
   projectUnitMetric: Joi.string()
     .max(255)
-    .allow(null)
     .custom(pickListValidationV2('projectUnitMetric'))
-    .optional(),
+    .required(),
   cadTrustReferenceProjectId: Joi.string().max(255).allow(null).optional(),
   cadTrustProgramId: Joi.string().uuid().allow(null).optional(),
   // Note: createdAt and updatedAt are automatically managed by Sequelize

@@ -8,9 +8,8 @@ export const verificationV2Schema = Joi.object({
   verificationStartDate: Joi.date().allow(null).optional(),
   verificationEndDate: Joi.date().allow(null).optional(),
   verificationBody: Joi.string()
-    .allow(null)
     .custom(pickListValidationV2('verificationBody'))
-    .optional(),
+    .required(),
   cadTrustProjectId: Joi.string().uuid().required(),
   cadTrustValidationId: Joi.string().uuid().allow(null).optional(),
   // Note: createdAt and updatedAt are automatically managed by Sequelize

@@ -630,8 +630,6 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
           cadTrustProjectId: testProjectId,
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
        }
     });    it('should update an AEF-T5-Authorized-Entities via API', async function () {
@@ -695,8 +693,6 @@ describe('AEF-T5-Authorized-Entities V2 Integration Tests', function () {
           cadTrustProjectId: testProjectId,
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
        }
     });it('should delete an AEF-T5-Authorized-Entities via API', async function () {

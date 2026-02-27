@@ -17,9 +17,10 @@ export const estimationV2Schema = Joi.object({
     'date.format': 'estimationEndDate must be a valid ISO date (YYYY-MM-DD)',
   }),
 
-  // Optional fields
-  estimationUnitCount: Joi.number().precision(6).allow(null).optional().messages({
+  // Required fields
+  estimationUnitCount: Joi.number().precision(6).required().messages({
     'number.precision': 'estimationUnitCount must have at most 6 decimal places',
+    'any.required': 'estimationUnitCount is required',
   }),
 
   estimationReferenceNo: Joi.string().max(255).allow(null).optional().messages({

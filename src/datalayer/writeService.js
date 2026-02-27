@@ -3,7 +3,11 @@ import _ from 'lodash';
 import * as dataLayer from './persistance';
 import wallet from './wallet';
 import * as simulator from './simulator';
-import { encodeHex, getMirrorUrl } from '../utils/datalayer-utils';
+import {
+  encodeHex,
+  getMirrorUrl,
+  isOwnedStoreLocalDataMissing,
+} from '../utils/datalayer-utils';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.js';
 import { Organization } from '../models';
@@ -151,6 +155,18 @@ export const pushChangesWhenStoreIsAvailable = async (
   if (USE_SIMULATOR) {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
   } else {
+    const syncResult =
+      await dataLayer.getDataLayerStoreSyncStatus(storeId);
+    const syncStatus = syncResult?.sync_status;
+    if (syncStatus && isOwnedStoreLocalDataMissing(syncStatus)) {
+      throw new Error(
+        `DataLayer store ${storeId} has lost its local data. ` +
+          `Local generation is 0 (empty) but the blockchain shows target generation ${syncStatus.target_generation}. ` +
+          `This typically happens when the DataLayer database is deleted or reset while the wallet retains the on-chain state. ` +
+          `Writing new data to this store will fail silently because DataLayer will discard it.`,
+      );
+    }
+
     const hasUnconfirmedTransactions =
       await wallet.hasUnconfirmedTransactions();
 

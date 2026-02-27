@@ -496,8 +496,6 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
           aefT1SubmissionSubmissionDate: '2024-01-15',
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
 
@@ -572,8 +570,6 @@ describe('AEF-T1-Submission V2 Integration Tests', function () {
           aefT1SubmissionSubmissionDate: '2024-01-15',
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
 

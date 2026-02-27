@@ -23,7 +23,7 @@ class EstimationV2 extends Model {
       await EstimationV2Mirror.create(values, mirrorOptions);
     });
     const result = await super.create(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
@@ -36,7 +36,7 @@ class EstimationV2 extends Model {
       await EstimationV2Mirror.bulkCreate(values, mirrorOptions);
     });
     const result = await super.bulkCreate(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
@@ -49,7 +49,7 @@ class EstimationV2 extends Model {
       await EstimationV2Mirror.update(values, mirrorOptions);
     });
     const result = await super.update(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
@@ -62,7 +62,7 @@ class EstimationV2 extends Model {
       await EstimationV2Mirror.upsert(values, mirrorOptions);
     });
     const result = await super.upsert(values, options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
@@ -75,7 +75,7 @@ class EstimationV2 extends Model {
       await EstimationV2Mirror.destroy(mirrorOptions);
     });
     const result = await super.destroy(options);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
     return result;
   }
 
