@@ -103,7 +103,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].project_name).to.equal('Test Project');
       expect(stagedData[0].project_registry_name).to.equal('Test Registry');
-      expect(stagedData[0].project_sector).to.deep.equal(['Agriculture']);
+      expect(JSON.parse(stagedData[0].project_sector)).to.deep.equal(['Agriculture']);
       expect(stagedData[0].cad_trust_program_id).to.equal(testProgram.cadTrustProgramId);
     });
 
@@ -841,7 +841,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(stagedData[0].cad_trust_project_id).to.equal(project.cadTrustProjectId);
       expect(stagedData[0].project_name).to.equal('Updated Name');
       expect(stagedData[0].project_registry_name).to.equal('Updated Registry');
-      expect(stagedData[0].project_sector).to.deep.equal(['Energy industries (renewable-/ non renewable sources)']);
+      expect(JSON.parse(stagedData[0].project_sector)).to.deep.equal(['Energy industries (renewable-/ non renewable sources)']);
       expect(stagedData[0].cad_trust_program_id).to.equal(testProgram.cadTrustProgramId);
       // Verify org_uid is automatically set in update
       expect(stagedData[0]).to.have.property('org_uid');

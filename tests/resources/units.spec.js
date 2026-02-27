@@ -46,6 +46,10 @@ describe('Units Resource CRUD', function () {
           { description: 'Unit creation sync for GET units tests' }
         );
 
+        // Clean up committed staging records so assertNoPendingCommits
+        // doesn't block subsequent unit creations within the test body
+        await Staging.destroy({ where: { commited: true } });
+
         const result = await supertest(app)
           .get('/v1/units')
           .query({ page: 1, limit: 100 });

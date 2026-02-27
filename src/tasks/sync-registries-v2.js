@@ -8,6 +8,7 @@ import {
   decodeHex,
   encodeHex,
   optimizeAndSortKvDiff,
+  isOwnedStoreLocalDataMissing,
 } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 import { loggerV2 } from '../config/logger.js';
@@ -184,9 +185,18 @@ const syncOrganizationAuditV2 = async (organization) => {
     
     // For home org, log if there's a mismatch but proceed anyway
     if (isHomeOrg && rootHistory.length - 1 !== sync_status?.generation) {
-      loggerV2.debug(
-        `[v2]: Home org sync_status lag (rootHistory.length-1=${rootHistory.length - 1} vs generation=${sync_status?.generation}), proceeding anyway as data is local`,
-      );
+      if (isOwnedStoreLocalDataMissing(sync_status)) {
+        loggerV2.error(
+          `[v2]: CRITICAL: DataLayer store for ${organization.name} (${organization.registry_id}) has lost its local data. ` +
+            `sync_status.generation=0 with empty root hash, but blockchain shows target_generation=${sync_status.target_generation}. ` +
+            `The DataLayer database was likely deleted or reset. ` +
+            `DO NOT commit new data until this is resolved -- DataLayer will silently discard it.`,
+        );
+      } else {
+        loggerV2.debug(
+          `[v2]: Home org sync_status lag (rootHistory.length-1=${rootHistory.length - 1} vs generation=${sync_status?.generation}), proceeding anyway as data is local`,
+        );
+      }
     }
 
     /**
