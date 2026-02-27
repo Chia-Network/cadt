@@ -30,7 +30,7 @@ import {
 } from '../../models/v2/index.js';
 import { Organization } from '../../models/organizations/organizations.model.js';
 import { assertV2IfReadOnlyMode, assertV2HomeOrgExists, assertV2OrgDoesNotExist } from '../../utils/v2-data-assertions.js';
-import { assertWalletIsSynced } from '../../utils/data-assertions.js';
+import { assertWalletIsSynced, assertStoreIsOwned } from '../../utils/data-assertions.js';
 import { sequelizeV2 } from '../../database/v2/index.js';
 import { loggerV2 } from '../../config/logger.js';
 import datalayer from '../../datalayer';
@@ -1027,6 +1027,135 @@ export const removeMirror = async (req, res) => {
     loggerV2.error(`[v2]: Error removing mirror: ${error.message}`);
     res.status(400).json({
       message: 'Error removing mirror',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
+/**
+ * Reclaim an existing V2 organization as the home organization.
+ * Verifies store ownership and singleton integrity before promoting.
+ * @param {Object} req - Express request object with { orgUid } in body
+ * @param {Object} res - Express response object
+ */
+export const reclaimHome = async (req, res) => {
+  try {
+    await assertV2IfReadOnlyMode();
+    await assertWalletIsSynced();
+
+    const { orgUid } = req.body;
+
+    const org = await OrganizationsV2.findOne({
+      where: { org_uid: orgUid },
+      raw: true,
+    });
+
+    if (!org) {
+      return res.status(404).json({
+        message: `V2 organization ${orgUid} not found.`,
+        success: false,
+      });
+    }
+
+    if (org.is_home) {
+      return res.json({
+        message: `V2 organization ${orgUid} is already the home organization.`,
+        success: true,
+      });
+    }
+
+    const existingHome = await OrganizationsV2.findOne({
+      where: { is_home: true },
+      raw: true,
+    });
+
+    if (existingHome) {
+      return res.status(409).json({
+        message: `Another V2 organization (${existingHome.org_uid}) is already set as home. Remove or resolve it before reclaiming.`,
+        success: false,
+      });
+    }
+
+    const pendingOrg = await OrganizationsV2.findOne({
+      where: { org_uid: 'PENDING' },
+      raw: true,
+    });
+
+    if (pendingOrg) {
+      return res.status(409).json({
+        message: 'A V2 organization creation is currently in progress. Wait for it to complete before reclaiming.',
+        success: false,
+      });
+    }
+
+    await assertStoreIsOwned(orgUid);
+
+    if (!org.registry_id) {
+      return res.status(400).json({
+        message: 'V2 organization is missing registry_id. Organization data may be incomplete.',
+        success: false,
+      });
+    }
+    await assertStoreIsOwned(org.registry_id);
+
+    if (!org.data_model_version_store_id) {
+      return res.status(400).json({
+        message: 'V2 organization is missing data_model_version_store_id. Organization data may be incomplete.',
+        success: false,
+      });
+    }
+    await assertStoreIsOwned(org.data_model_version_store_id);
+
+    const nullHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    if (!org.org_hash || org.org_hash === '0' || org.org_hash === nullHash) {
+      return res.status(400).json({
+        message: 'V2 organization org_hash is not populated. Organization creation may not have completed.',
+        success: false,
+      });
+    }
+
+    const singletonData = await getStoreDataPromise(org.data_model_version_store_id);
+
+    if (!singletonData || singletonData instanceof Error || !singletonData.keys_values?.length) {
+      return res.status(400).json({
+        message: 'Cannot read singleton store data. Organization may be incomplete or blockchain data unavailable.',
+        success: false,
+      });
+    }
+
+    const decodedData = decodeDataLayerResponse(singletonData);
+    const singletonMap = decodedData.reduce((obj, current) => {
+      obj[current.key] = current.value;
+      return obj;
+    }, {});
+
+    if (!singletonMap.v2) {
+      return res.status(400).json({
+        message: 'Singleton store does not contain a v2 key. Not a valid V2 home organization.',
+        success: false,
+      });
+    }
+
+    if (singletonMap.v2 !== org.registry_id) {
+      return res.status(400).json({
+        message: `Singleton v2 registry (${singletonMap.v2}) does not match organization registry_id (${org.registry_id}). On-chain data is inconsistent with the database.`,
+        success: false,
+      });
+    }
+
+    await OrganizationsV2.update({ is_home: true }, { where: { org_uid: orgUid } });
+
+    loggerV2.info(`[v2]: Organization ${orgUid} reclaimed as home organization`);
+
+    return res.json({
+      message: `V2 organization ${orgUid} has been reclaimed as the home organization.`,
+      success: true,
+    });
+  } catch (error) {
+    loggerV2.error(`[v2]: Error reclaiming home organization: ${error.message}`);
+    res.status(400).json({
+      message: 'Error reclaiming home organization',
       error: error.message,
       success: false,
     });

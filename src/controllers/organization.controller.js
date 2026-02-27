@@ -7,12 +7,18 @@ import {
   assertIfReadOnlyMode,
   assertNoPendingCommits,
   assertOrgDoesNotExist,
+  assertStoreIsOwned,
 } from '../utils/data-assertions';
 
 
 import { ModelKeys, Audit, Organization, Staging } from '../models';
-import { getOwnedStores, getSubscriptions } from '../datalayer/persistance.js';
+import { getOwnedStores, getSubscriptions, getStoreData as getRawStoreData } from '../datalayer/persistance.js';
+import * as simulator from '../datalayer/simulator.js';
+import { decodeDataLayerResponse } from '../utils/datalayer-utils.js';
+import { getConfig } from '../utils/config-loader.js';
 import { logger } from '../config/logger';
+
+const { USE_SIMULATOR } = getConfig().APP;
 
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
@@ -526,6 +532,137 @@ export const removeMirror = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       message: 'Error removing mirror for organization',
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
+/**
+ * Reclaim an existing organization as the home organization.
+ * Verifies store ownership and singleton integrity before promoting.
+ * @param {Object} req - Express request object with { orgUid } in body
+ * @param {Object} res - Express response object
+ */
+export const reclaimHome = async (req, res) => {
+  try {
+    await assertIfReadOnlyMode();
+    await assertWalletIsSynced();
+
+    const { orgUid } = req.body;
+
+    const org = await Organization.findOne({
+      where: { orgUid },
+      raw: true,
+    });
+
+    if (!org) {
+      return res.status(404).json({
+        message: `Organization ${orgUid} not found.`,
+        success: false,
+      });
+    }
+
+    if (org.isHome) {
+      return res.json({
+        message: `Organization ${orgUid} is already the home organization.`,
+        success: true,
+      });
+    }
+
+    const existingHome = await Organization.findOne({
+      where: { isHome: true },
+      raw: true,
+    });
+
+    if (existingHome) {
+      return res.status(409).json({
+        message: `Another organization (${existingHome.orgUid}) is already set as home. Remove or resolve it before reclaiming.`,
+        success: false,
+      });
+    }
+
+    const pendingOrg = await Organization.findOne({
+      where: { orgUid: 'PENDING' },
+      raw: true,
+    });
+
+    if (pendingOrg) {
+      return res.status(409).json({
+        message: 'An organization creation is currently in progress. Wait for it to complete before reclaiming.',
+        success: false,
+      });
+    }
+
+    await assertStoreIsOwned(orgUid);
+
+    if (!org.registryId) {
+      return res.status(400).json({
+        message: 'Organization is missing registryId. Organization data may be incomplete.',
+        success: false,
+      });
+    }
+    await assertStoreIsOwned(org.registryId);
+
+    if (!org.dataModelVersionStoreId) {
+      return res.status(400).json({
+        message: 'Organization is missing dataModelVersionStoreId. Organization data may be incomplete.',
+        success: false,
+      });
+    }
+    await assertStoreIsOwned(org.dataModelVersionStoreId);
+
+    const nullHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    if (!org.orgHash || org.orgHash === '0' || org.orgHash === nullHash) {
+      return res.status(400).json({
+        message: 'Organization orgHash is not populated. Organization creation may not have completed.',
+        success: false,
+      });
+    }
+
+    const singletonData = USE_SIMULATOR
+      ? await simulator.getStoreData(org.dataModelVersionStoreId)
+      : await getRawStoreData(org.dataModelVersionStoreId);
+
+    if (!singletonData || singletonData instanceof Error || !singletonData.keys_values?.length) {
+      return res.status(400).json({
+        message: 'Cannot read singleton store data. Organization may be incomplete or blockchain data unavailable.',
+        success: false,
+      });
+    }
+
+    const decodedData = decodeDataLayerResponse(singletonData);
+    const singletonMap = decodedData.reduce((obj, current) => {
+      obj[current.key] = current.value;
+      return obj;
+    }, {});
+
+    if (!singletonMap.v1) {
+      return res.status(400).json({
+        message: 'Singleton store does not contain a v1 key. Not a valid V1 home organization.',
+        success: false,
+      });
+    }
+
+    if (singletonMap.v1 !== org.registryId) {
+      return res.status(400).json({
+        message: `Singleton v1 registry (${singletonMap.v1}) does not match organization registryId (${org.registryId}). On-chain data is inconsistent with the database.`,
+        success: false,
+      });
+    }
+
+    await Organization.update({ isHome: true }, { where: { orgUid } });
+
+    logger.info(`[v1]: Organization ${orgUid} reclaimed as home organization`);
+
+    return res.json({
+      message: `Organization ${orgUid} has been reclaimed as the home organization.`,
+      success: true,
+    });
+  } catch (error) {
+    logger.error(`[v1]: Error reclaiming home organization: ${error.message}`);
+    res.status(400).json({
+      message: 'Error reclaiming home organization',
       error: error.message,
       success: false,
     });

@@ -41,6 +41,10 @@ export const getMetaDataSchema = Joi.object({
 // - UUID v4 format with hyphens (simulator mode)
 const orgUidPattern = /^([a-fA-F0-9]{64}|[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})$/;
 
+export const reclaimHomeSchema = Joi.object({
+  orgUid: Joi.string().required(),
+});
+
 export const deleteOrganizationSchema = Joi.object({
   orgUid: Joi.string()
     .required()

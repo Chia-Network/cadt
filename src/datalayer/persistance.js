@@ -960,7 +960,8 @@ const getSubscriptions = async () => {
 const getOwnedStores = async () => {
   try {
     if (CONFIG.USE_SIMULATOR) {
-      return { success: true, storeIds: [] };
+      const simulator = await import('./simulator.js');
+      return simulator.getOwnedStores();
     }
 
     const url = `${CONFIG.DATALAYER_URL}/get_owned_stores`;

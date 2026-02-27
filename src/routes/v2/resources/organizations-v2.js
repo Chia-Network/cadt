@@ -4,7 +4,7 @@ import express from 'express';
 import multer from 'multer';
 import joiExpress from 'express-joi-validation';
 import * as OrganizationsV2Controller from '../../../controllers/v2/organizations-v2.controller.js';
-import { deleteOrganizationSchema } from '../../../validations/organizations.validations.js';
+import { deleteOrganizationSchema, reclaimHomeSchema } from '../../../validations/organizations.validations.js';
 
 const validator = joiExpress.createValidator({ passError: true });
 const OrganizationsV2Router = express.Router();
@@ -78,7 +78,16 @@ OrganizationsV2Router.get('/creation-status', (req, res) => {
   return OrganizationsV2Controller.getCreationStatus(req, res);
 });
 
-// 13. DELETE /v2/organizations/:orgUid - Delete organization (MUST be before /)
+// 13. POST /v2/organizations/reclaim-home - Reclaim an org as home (MUST be before /)
+OrganizationsV2Router.post(
+  '/reclaim-home',
+  validator.body(reclaimHomeSchema),
+  (req, res) => {
+    return OrganizationsV2Controller.reclaimHome(req, res);
+  },
+);
+
+// 14. DELETE /v2/organizations/:orgUid - Delete organization (MUST be before /)
 OrganizationsV2Router.delete(
   '/:orgUid',
   validator.params(deleteOrganizationSchema),
@@ -87,7 +96,7 @@ OrganizationsV2Router.delete(
   },
 );
 
-// 14. Catch-all routes (MUST be last)
+// 15. Catch-all routes (MUST be last)
 // GET /v2/organizations - Get all organizations
 OrganizationsV2Router.get('/', (req, res) => {
   return OrganizationsV2Controller.findAll(req, res);
@@ -104,4 +113,3 @@ OrganizationsV2Router.put('/', (req, res) => {
 });
 
 export { OrganizationsV2Router };
-
