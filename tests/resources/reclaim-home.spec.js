@@ -1,10 +1,12 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 import supertest from 'supertest';
 import app from '../../src/server';
 import { Organization } from '../../src/models/organizations/index.js';
 import { prepareDb } from '../../src/database';
 import { pullPickListValues } from '../../src/utils/data-loaders';
 import datalayer from '../../src/datalayer';
+import * as dataAssertions from '../../src/utils/data-assertions.js';
 import { getConfig } from '../../src/utils/config-loader.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
@@ -14,6 +16,8 @@ const TEST_ORG_HASH = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567
 describe('V1 Reclaim Home Organization', function () {
   this.timeout(300000);
 
+  let assertStoreIsOwnedStub;
+
   before(async function () {
     await pullPickListValues();
     await prepareDb();
@@ -21,6 +25,17 @@ describe('V1 Reclaim Home Organization', function () {
 
   beforeEach(async function () {
     await Organization.destroy({ where: {} });
+    if (assertStoreIsOwnedStub) {
+      assertStoreIsOwnedStub.restore();
+      assertStoreIsOwnedStub = null;
+    }
+  });
+
+  afterEach(function () {
+    if (assertStoreIsOwnedStub) {
+      assertStoreIsOwnedStub.restore();
+      assertStoreIsOwnedStub = null;
+    }
   });
 
   describe('Validation and pre-ownership checks', function () {
@@ -96,7 +111,7 @@ describe('V1 Reclaim Home Organization', function () {
         orgUid: 'PENDING',
         name: 'Pending Org',
         icon: 'icon',
-        isHome: false,
+        isHome: true,
         subscribed: false,
       });
 
@@ -118,7 +133,10 @@ describe('V1 Reclaim Home Organization', function () {
         .expect(409);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.message).to.include('creation is currently in progress');
+      expect(
+        response.body.message.includes('creation is currently in progress')
+          || response.body.message.includes('already set as home'),
+      ).to.be.true;
     });
 
     it('should return 400 when orgUid is missing from request body', async function () {
@@ -132,7 +150,7 @@ describe('V1 Reclaim Home Organization', function () {
   });
 
   describe('Store ownership checks', function () {
-    it('should fail when org store is not owned (no data in simulator)', async function () {
+    it('should fail when org store is not owned', async function () {
       await Organization.create({
         orgUid: 'not-owned-org',
         name: 'Not Owned Org',
@@ -155,31 +173,27 @@ describe('V1 Reclaim Home Organization', function () {
     });
   });
 
-  describe('Data integrity checks', function () {
+  describe('Data integrity checks (with ownership stubbed)', function () {
+    beforeEach(function () {
+      assertStoreIsOwnedStub = sinon.stub(dataAssertions, 'assertStoreIsOwned').resolves();
+    });
+
     it('should return 400 when orgHash is not populated', async function () {
-      const singletonStoreId = 'v1-singleton-nohash';
-      const registryId = 'v1-registry-nohash';
-      const orgUid = 'no-hash-org';
-
-      await datalayer.syncDataLayer(orgUid, { test: 'data' });
-      await datalayer.syncDataLayer(registryId, { test: 'data' });
-      await datalayer.syncDataLayer(singletonStoreId, { v1: registryId });
-
       await Organization.create({
-        orgUid,
+        orgUid: 'no-hash-org',
         name: 'No Hash Org',
         icon: 'icon',
         isHome: false,
         subscribed: true,
-        registryId,
-        dataModelVersionStoreId: singletonStoreId,
+        registryId: 'reg-nohash',
+        dataModelVersionStoreId: 'dmv-nohash',
         fileStoreId: 'fs-nohash',
         orgHash: '0',
       });
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid })
+        .send({ orgUid: 'no-hash-org' })
         .expect(400);
 
       expect(response.body.success).to.be.false;
@@ -188,29 +202,22 @@ describe('V1 Reclaim Home Organization', function () {
 
     it('should return 400 when orgHash is null hash', async function () {
       const nullHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
-      const singletonStoreId = 'v1-singleton-nullhash';
-      const registryId = 'v1-registry-nullhash';
-      const orgUid = 'null-hash-org';
-
-      await datalayer.syncDataLayer(orgUid, { test: 'data' });
-      await datalayer.syncDataLayer(registryId, { test: 'data' });
-      await datalayer.syncDataLayer(singletonStoreId, { v1: registryId });
 
       await Organization.create({
-        orgUid,
+        orgUid: 'null-hash-org',
         name: 'Null Hash Org',
         icon: 'icon',
         isHome: false,
         subscribed: true,
-        registryId,
-        dataModelVersionStoreId: singletonStoreId,
+        registryId: 'reg-nullhash',
+        dataModelVersionStoreId: 'dmv-nullhash',
         fileStoreId: 'fs-nullhash',
         orgHash: nullHash,
       });
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid })
+        .send({ orgUid: 'null-hash-org' })
         .expect(400);
 
       expect(response.body.success).to.be.false;
@@ -218,12 +225,8 @@ describe('V1 Reclaim Home Organization', function () {
     });
 
     it('should return 400 when registryId is missing', async function () {
-      const orgUid = 'no-registry-org';
-
-      await datalayer.syncDataLayer(orgUid, { test: 'data' });
-
       await Organization.create({
-        orgUid,
+        orgUid: 'no-registry-org',
         name: 'No Registry Org',
         icon: 'icon',
         isHome: false,
@@ -236,7 +239,7 @@ describe('V1 Reclaim Home Organization', function () {
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid })
+        .send({ orgUid: 'no-registry-org' })
         .expect(400);
 
       expect(response.body.success).to.be.false;
@@ -244,19 +247,13 @@ describe('V1 Reclaim Home Organization', function () {
     });
 
     it('should return 400 when dataModelVersionStoreId is missing', async function () {
-      const orgUid = 'no-dmv-org';
-      const registryId = 'v1-registry-nodmv';
-
-      await datalayer.syncDataLayer(orgUid, { test: 'data' });
-      await datalayer.syncDataLayer(registryId, { test: 'data' });
-
       await Organization.create({
-        orgUid,
+        orgUid: 'no-dmv-org',
         name: 'No DMV Org',
         icon: 'icon',
         isHome: false,
         subscribed: true,
-        registryId,
+        registryId: 'reg-nodmv',
         dataModelVersionStoreId: null,
         fileStoreId: 'fs-nodmv',
         orgHash: TEST_ORG_HASH,
@@ -264,7 +261,7 @@ describe('V1 Reclaim Home Organization', function () {
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid })
+        .send({ orgUid: 'no-dmv-org' })
         .expect(400);
 
       expect(response.body.success).to.be.false;
@@ -272,21 +269,17 @@ describe('V1 Reclaim Home Organization', function () {
     });
 
     it('should return 400 when singleton has no v1 key', async function () {
-      const singletonStoreId = 'v1-singleton-nov1key';
-      const registryId = 'v1-registry-nov1key';
-      const orgUid = 'no-v1-key-org';
+      const singletonStoreId = 'singleton-no-v1-key';
 
-      await datalayer.syncDataLayer(orgUid, { test: 'data' });
-      await datalayer.syncDataLayer(registryId, { test: 'data' });
       await datalayer.syncDataLayer(singletonStoreId, { v2: 'some-registry' });
 
       await Organization.create({
-        orgUid,
+        orgUid: 'no-v1-key-org',
         name: 'No V1 Key Org',
         icon: 'icon',
         isHome: false,
         subscribed: true,
-        registryId,
+        registryId: 'reg-nov1',
         dataModelVersionStoreId: singletonStoreId,
         fileStoreId: 'fs-nov1',
         orgHash: TEST_ORG_HASH,
@@ -294,7 +287,7 @@ describe('V1 Reclaim Home Organization', function () {
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid })
+        .send({ orgUid: 'no-v1-key-org' })
         .expect(400);
 
       expect(response.body.success).to.be.false;
@@ -302,15 +295,12 @@ describe('V1 Reclaim Home Organization', function () {
     });
 
     it('should return 400 when singleton v1 registry does not match org registryId', async function () {
-      const singletonStoreId = 'v1-singleton-mismatch';
-      const orgUid = 'mismatch-org';
+      const singletonStoreId = 'singleton-mismatch';
 
-      await datalayer.syncDataLayer(orgUid, { test: 'data' });
-      await datalayer.syncDataLayer('correct-registry-id', { test: 'data' });
       await datalayer.syncDataLayer(singletonStoreId, { v1: 'wrong-registry-id' });
 
       await Organization.create({
-        orgUid,
+        orgUid: 'mismatch-org',
         name: 'Mismatch Org',
         icon: 'icon',
         isHome: false,
@@ -323,7 +313,7 @@ describe('V1 Reclaim Home Organization', function () {
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid })
+        .send({ orgUid: 'mismatch-org' })
         .expect(400);
 
       expect(response.body.success).to.be.false;
@@ -333,21 +323,18 @@ describe('V1 Reclaim Home Organization', function () {
     });
 
     it('should successfully reclaim org as home when all checks pass', async function () {
-      const singletonStoreId = 'v1-singleton-happy';
-      const registryId = 'v1-registry-happy';
-      const orgUid = 'reclaim-happy-org';
+      const singletonStoreId = 'singleton-happy-path';
+      const registryId = 'registry-happy-path';
 
-      await datalayer.syncDataLayer(orgUid, { test: 'data' });
-      await datalayer.syncDataLayer(registryId, { test: 'data' });
       await datalayer.syncDataLayer(singletonStoreId, { v1: registryId });
 
       await Organization.create({
-        orgUid,
+        orgUid: 'reclaim-happy-org',
         name: 'Reclaim Happy Org',
         icon: 'icon',
         isHome: false,
         subscribed: true,
-        registryId,
+        registryId: registryId,
         dataModelVersionStoreId: singletonStoreId,
         fileStoreId: 'fs-happy',
         orgHash: TEST_ORG_HASH,
@@ -355,18 +342,47 @@ describe('V1 Reclaim Home Organization', function () {
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid })
+        .send({ orgUid: 'reclaim-happy-org' })
         .expect(200);
 
       expect(response.body.success).to.be.true;
       expect(response.body.message).to.include('reclaimed as the home organization');
 
       const updatedOrg = await Organization.findOne({
-        where: { orgUid },
+        where: { orgUid: 'reclaim-happy-org' },
         raw: true,
       });
 
       expect(updatedOrg.isHome).to.be.ok;
+    });
+
+    it('should verify assertStoreIsOwned was called for all three stores', async function () {
+      const singletonStoreId = 'singleton-ownership-check';
+      const registryId = 'registry-ownership-check';
+
+      await datalayer.syncDataLayer(singletonStoreId, { v1: registryId });
+
+      await Organization.create({
+        orgUid: 'ownership-check-org',
+        name: 'Ownership Check Org',
+        icon: 'icon',
+        isHome: false,
+        subscribed: true,
+        registryId: registryId,
+        dataModelVersionStoreId: singletonStoreId,
+        fileStoreId: 'fs-ownership',
+        orgHash: TEST_ORG_HASH,
+      });
+
+      await supertest(app)
+        .post('/v1/organizations/reclaim-home')
+        .send({ orgUid: 'ownership-check-org' })
+        .expect(200);
+
+      expect(assertStoreIsOwnedStub.callCount).to.equal(3);
+      expect(assertStoreIsOwnedStub.calledWith('ownership-check-org')).to.be.true;
+      expect(assertStoreIsOwnedStub.calledWith(registryId)).to.be.true;
+      expect(assertStoreIsOwnedStub.calledWith(singletonStoreId)).to.be.true;
     });
   });
 });

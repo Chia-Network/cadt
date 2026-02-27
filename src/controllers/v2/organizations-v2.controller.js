@@ -1144,7 +1144,52 @@ export const reclaimHome = async (req, res) => {
       });
     }
 
-    await OrganizationsV2.update({ is_home: true }, { where: { org_uid: orgUid } });
+    const transaction = await sequelizeV2.transaction();
+    try {
+      const lockOptions = sequelizeV2.getDialect() === 'sqlite'
+        ? {}
+        : { lock: transaction.LOCK.UPDATE };
+
+      const existingHomeTx = await OrganizationsV2.findOne({
+        where: { is_home: true },
+        raw: true,
+        transaction,
+        ...lockOptions,
+      });
+
+      if (existingHomeTx) {
+        await transaction.rollback();
+        if (existingHomeTx.org_uid === orgUid) {
+          return res.json({
+            message: `V2 organization ${orgUid} is already the home organization.`,
+            success: true,
+          });
+        }
+
+        return res.status(409).json({
+          message: `Another V2 organization (${existingHomeTx.org_uid}) is already set as home. Remove or resolve it before reclaiming.`,
+          success: false,
+        });
+      }
+
+      const [updatedCount] = await OrganizationsV2.update(
+        { is_home: true },
+        { where: { org_uid: orgUid, is_home: false }, transaction },
+      );
+
+      if (updatedCount === 0) {
+        await transaction.rollback();
+        return res.status(409).json({
+          message: 'V2 organization could not be reclaimed because home state changed during request processing. Retry the request.',
+          success: false,
+        });
+      }
+
+      await transaction.commit();
+    } catch (txError) {
+      await transaction.rollback();
+      throw txError;
+    }
 
     loggerV2.info(`[v2]: Organization ${orgUid} reclaimed as home organization`);
 

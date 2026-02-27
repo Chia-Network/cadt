@@ -651,7 +651,52 @@ export const reclaimHome = async (req, res) => {
       });
     }
 
-    await Organization.update({ isHome: true }, { where: { orgUid } });
+    const transaction = await sequelize.transaction();
+    try {
+      const lockOptions = sequelize.getDialect() === 'sqlite'
+        ? {}
+        : { lock: transaction.LOCK.UPDATE };
+
+      const existingHomeTx = await Organization.findOne({
+        where: { isHome: true },
+        raw: true,
+        transaction,
+        ...lockOptions,
+      });
+
+      if (existingHomeTx) {
+        await transaction.rollback();
+        if (existingHomeTx.orgUid === orgUid) {
+          return res.json({
+            message: `Organization ${orgUid} is already the home organization.`,
+            success: true,
+          });
+        }
+
+        return res.status(409).json({
+          message: `Another organization (${existingHomeTx.orgUid}) is already set as home. Remove or resolve it before reclaiming.`,
+          success: false,
+        });
+      }
+
+      const [updatedCount] = await Organization.update(
+        { isHome: true },
+        { where: { orgUid, isHome: false }, transaction },
+      );
+
+      if (updatedCount === 0) {
+        await transaction.rollback();
+        return res.status(409).json({
+          message: 'Organization could not be reclaimed because home state changed during request processing. Retry the request.',
+          success: false,
+        });
+      }
+
+      await transaction.commit();
+    } catch (txError) {
+      await transaction.rollback();
+      throw txError;
+    }
 
     logger.info(`[v1]: Organization ${orgUid} reclaimed as home organization`);
 
