@@ -20,6 +20,23 @@ import { logger } from '../config/logger';
 
 const { USE_SIMULATOR } = getConfig().APP;
 
+const isReclaimConflictError = (error) => {
+  const message = `${error?.message || ''}`.toLowerCase();
+  const code = error?.parent?.code || error?.original?.code || error?.code;
+
+  return (
+    code === '40001'
+    || code === '40P01'
+    || code === '1213'
+    || code === 'ER_LOCK_DEADLOCK'
+    || code === 'SQLITE_BUSY'
+    || message.includes('could not serialize access')
+    || message.includes('serialization failure')
+    || message.includes('deadlock')
+    || message.includes('database is locked')
+  );
+};
+
 export const findAll = async (req, res) => {
   return res.json(await Organization.getOrgsMap());
 };
@@ -651,7 +668,9 @@ export const reclaimHome = async (req, res) => {
       });
     }
 
-    const transaction = await sequelize.transaction();
+    const transaction = await sequelize.transaction({
+      isolationLevel: 'SERIALIZABLE',
+    });
     try {
       const lockOptions = sequelize.getDialect() === 'sqlite'
         ? {}
@@ -695,6 +714,12 @@ export const reclaimHome = async (req, res) => {
       await transaction.commit();
     } catch (txError) {
       await transaction.rollback();
+      if (isReclaimConflictError(txError)) {
+        return res.status(409).json({
+          message: 'Organization could not be reclaimed because a concurrent request updated home state. Retry the request.',
+          success: false,
+        });
+      }
       throw txError;
     }
 

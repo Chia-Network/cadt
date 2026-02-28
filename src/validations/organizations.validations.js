@@ -42,7 +42,13 @@ export const getMetaDataSchema = Joi.object({
 const orgUidPattern = /^([a-fA-F0-9]{64}|[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})$/;
 
 export const reclaimHomeSchema = Joi.object({
-  orgUid: Joi.string().required(),
+  orgUid: Joi.string()
+    .required()
+    .pattern(orgUidPattern)
+    .messages({
+      'string.pattern.base': 'orgUid must be a valid 64-character hex string or UUID format',
+      'any.required': 'orgUid is required',
+    }),
 });
 
 export const deleteOrganizationSchema = Joi.object({

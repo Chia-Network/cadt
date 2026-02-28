@@ -27,7 +27,7 @@ describe('V1 Reclaim Home Organization', function () {
     it('should return 404 when orgUid does not exist', async function () {
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid: 'non-existent-org-uid' })
+        .send({ orgUid: '11111111-1111-4111-8111-111111111111' })
         .expect(404);
 
       expect(response.body.success).to.be.false;
@@ -36,7 +36,7 @@ describe('V1 Reclaim Home Organization', function () {
 
     it('should return 200 idempotently when org is already home', async function () {
       await Organization.create({
-        orgUid: 'test-already-home',
+        orgUid: '22222222-2222-4222-8222-222222222222',
         name: 'Already Home Org',
         icon: 'icon',
         isHome: true,
@@ -49,7 +49,7 @@ describe('V1 Reclaim Home Organization', function () {
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid: 'test-already-home' })
+        .send({ orgUid: '22222222-2222-4222-8222-222222222222' })
         .expect(200);
 
       expect(response.body.success).to.be.true;
@@ -58,7 +58,7 @@ describe('V1 Reclaim Home Organization', function () {
 
     it('should return 409 when another org is already home', async function () {
       await Organization.create({
-        orgUid: 'existing-home-org',
+        orgUid: '33333333-3333-4333-8333-333333333333',
         name: 'Existing Home',
         icon: 'icon',
         isHome: true,
@@ -70,7 +70,7 @@ describe('V1 Reclaim Home Organization', function () {
       });
 
       await Organization.create({
-        orgUid: 'orphan-non-home',
+        orgUid: '44444444-4444-4444-8444-444444444444',
         name: 'Orphan Non-Home',
         icon: 'icon',
         isHome: false,
@@ -83,11 +83,11 @@ describe('V1 Reclaim Home Organization', function () {
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid: 'orphan-non-home' })
+        .send({ orgUid: '44444444-4444-4444-8444-444444444444' })
         .expect(409);
 
       expect(response.body.success).to.be.false;
-      expect(response.body.message).to.include('existing-home-org');
+      expect(response.body.message).to.include('33333333-3333-4333-8333-333333333333');
       expect(response.body.message).to.include('already set as home');
     });
 
@@ -101,7 +101,7 @@ describe('V1 Reclaim Home Organization', function () {
       });
 
       await Organization.create({
-        orgUid: 'orphan-pending-test',
+        orgUid: '55555555-5555-4555-8555-555555555555',
         name: 'Orphan Org',
         icon: 'icon',
         isHome: false,
@@ -114,7 +114,7 @@ describe('V1 Reclaim Home Organization', function () {
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid: 'orphan-pending-test' })
+        .send({ orgUid: '55555555-5555-4555-8555-555555555555' })
         .expect(409);
 
       expect(response.body.success).to.be.false;
@@ -134,7 +134,7 @@ describe('V1 Reclaim Home Organization', function () {
   describe('Store ownership checks', function () {
     it('should fail when org store is not owned', async function () {
       await Organization.create({
-        orgUid: 'not-owned-org',
+        orgUid: '66666666-6666-4666-8666-666666666666',
         name: 'Not Owned Org',
         icon: 'icon',
         isHome: false,
@@ -147,7 +147,7 @@ describe('V1 Reclaim Home Organization', function () {
 
       const response = await supertest(app)
         .post('/v1/organizations/reclaim-home')
-        .send({ orgUid: 'not-owned-org' })
+        .send({ orgUid: '66666666-6666-4666-8666-666666666666' })
         .expect(400);
 
       expect(response.body.success).to.be.false;
@@ -157,7 +157,7 @@ describe('V1 Reclaim Home Organization', function () {
 
   describe('Data integrity checks', function () {
     it('should return 400 when orgHash is not populated', async function () {
-      const orgUid = 'no-hash-org';
+      const orgUid = '77777777-7777-4777-8777-777777777777';
       const registryId = 'reg-nohash';
       const singletonStoreId = 'dmv-nohash';
 
@@ -188,7 +188,7 @@ describe('V1 Reclaim Home Organization', function () {
 
     it('should return 400 when orgHash is null hash', async function () {
       const nullHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
-      const orgUid = 'null-hash-org';
+      const orgUid = '88888888-8888-4888-8888-888888888888';
       const registryId = 'reg-nullhash';
       const singletonStoreId = 'dmv-nullhash';
 
@@ -218,7 +218,7 @@ describe('V1 Reclaim Home Organization', function () {
     });
 
     it('should return 400 when registryId is missing', async function () {
-      const orgUid = 'no-registry-org';
+      const orgUid = '99999999-9999-4999-8999-999999999999';
 
       await datalayer.syncDataLayer(orgUid, { test: 'data' });
 
@@ -244,7 +244,7 @@ describe('V1 Reclaim Home Organization', function () {
     });
 
     it('should return 400 when dataModelVersionStoreId is missing', async function () {
-      const orgUid = 'no-dmv-org';
+      const orgUid = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
       const registryId = 'reg-nodmv';
 
       await datalayer.syncDataLayer(orgUid, { test: 'data' });
@@ -274,7 +274,7 @@ describe('V1 Reclaim Home Organization', function () {
     it('should return 400 when singleton has no v1 key', async function () {
       const singletonStoreId = 'singleton-no-v1-key';
       const registryId = 'reg-nov1';
-      const orgUid = 'no-v1-key-org';
+      const orgUid = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
       await datalayer.syncDataLayer(orgUid, { test: 'data' });
       await datalayer.syncDataLayer(registryId, { test: 'data' });
@@ -303,7 +303,7 @@ describe('V1 Reclaim Home Organization', function () {
 
     it('should return 400 when singleton v1 registry does not match org registryId', async function () {
       const singletonStoreId = 'singleton-mismatch';
-      const orgUid = 'mismatch-org';
+      const orgUid = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
       await datalayer.syncDataLayer(orgUid, { test: 'data' });
       await datalayer.syncDataLayer('correct-registry-id', { test: 'data' });
@@ -335,7 +335,7 @@ describe('V1 Reclaim Home Organization', function () {
     it('should successfully reclaim org as home when all checks pass', async function () {
       const singletonStoreId = 'singleton-happy-path';
       const registryId = 'registry-happy-path';
-      const orgUid = 'reclaim-happy-org';
+      const orgUid = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 
       await datalayer.syncDataLayer(orgUid, { test: 'data' });
       await datalayer.syncDataLayer(registryId, { test: 'data' });
@@ -370,8 +370,8 @@ describe('V1 Reclaim Home Organization', function () {
     });
 
     it('should allow only one home org under concurrent reclaim requests', async function () {
-      const orgOneUid = 'concurrent-org-one';
-      const orgTwoUid = 'concurrent-org-two';
+      const orgOneUid = 'f1111111-1111-4111-8111-111111111111';
+      const orgTwoUid = 'f2222222-2222-4222-8222-222222222222';
       const orgOneRegistry = 'concurrent-registry-one';
       const orgTwoRegistry = 'concurrent-registry-two';
       const orgOneSingleton = 'concurrent-singleton-one';
