@@ -43,7 +43,7 @@ describe('Methodology Live API Validation Tests', function () {
       const response = await request
         .post('/v2/methodology')
         .send(forbiddenData);
-      
+
       expect(response.status).to.equal(400);
       expect(response.body.success).to.be.false;
     });

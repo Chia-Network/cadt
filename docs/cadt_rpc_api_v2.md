@@ -805,6 +805,59 @@ Response
 }
 ```
 
+#### Reclaim Home Organization
+
+Promotes an existing non-home V2 organization to home status. This is a repair operation for cases where a user's organization exists in the database with `is_home: false` but the user owns the underlying datalayer stores (e.g., after importing without the `isHome` flag, or due to interrupted creation).
+
+The endpoint performs exhaustive safety checks before promoting:
+- Verifies no other V2 home organization exists
+- Verifies no PENDING V2 organization creation is in progress
+- Verifies the org store, registry store, and data model version store are all owned by this wallet
+- Verifies org_hash is populated (org creation completed)
+- Verifies the singleton store contains a `v2` key matching the org's registry_id
+
+Request
+```sh
+curl --location --request POST 'localhost:31310/v2/organizations/reclaim-home' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "orgUid": "b3d4e71d806e86ff1f8712b6854d65e2c178e873ee22b2f7d0da937dacbaa985"
+}'
+```
+
+Response (success)
+```json
+{
+    "message": "V2 organization b3d4e71d806e86ff1f8712b6854d65e2c178e873ee22b2f7d0da937dacbaa985 has been reclaimed as the home organization.",
+    "success": true
+}
+```
+
+Response (already home - idempotent)
+```json
+{
+    "message": "V2 organization b3d4e71d806e86ff1f8712b6854d65e2c178e873ee22b2f7d0da937dacbaa985 is already the home organization.",
+    "success": true
+}
+```
+
+Response (another org is home)
+```json
+{
+    "message": "Another V2 organization (abc123...) is already set as home. Remove or resolve it before reclaiming.",
+    "success": false
+}
+```
+
+Response (store not owned)
+```json
+{
+    "message": "Error reclaiming home organization",
+    "error": "store id b3d4e71d... is not owned by this chia wallet",
+    "success": false
+}
+```
+
 ### Additional Organizations Resources
 
 - All organization endpoints support V2-specific operations
