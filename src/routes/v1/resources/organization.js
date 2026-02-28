@@ -8,6 +8,7 @@ import { OrganizationController } from '../../../controllers';
 import {
   importOrganizationSchema,
   newOrganizationWithIconSchema,
+  reclaimHomeSchema,
   resyncOrganizationSchema,
   subscribeOrganizationSchema,
   unsubscribeOrganizationSchema,
@@ -46,6 +47,14 @@ OrganizationRouter.delete(
   validator.params(deleteOrganizationSchema),
   (req, res) => {
     return OrganizationController.deleteOrganization(req, res);
+  },
+);
+
+OrganizationRouter.post(
+  '/reclaim-home',
+  validator.body(reclaimHomeSchema),
+  (req, res) => {
+    return OrganizationController.reclaimHome(req, res);
   },
 );
 

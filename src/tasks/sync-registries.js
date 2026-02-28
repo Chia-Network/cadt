@@ -7,6 +7,7 @@ import {
   decodeHex,
   encodeHex,
   optimizeAndSortKvDiff,
+  isOwnedStoreLocalDataMissing,
 } from '../utils/datalayer-utils';
 import dotenv from 'dotenv';
 import { logger } from '../config/logger.js';
@@ -74,7 +75,7 @@ const task = new Task('sync-registries', async () => {
 
 const job = new SimpleIntervalJob(
   {
-    seconds: 5,
+    seconds: CONFIG.USE_SIMULATOR ? 2 : 5,
     runImmediately: true,
   },
   task,
@@ -202,27 +203,31 @@ const tryParseJSON = (jsonString, defaultValue) => {
 };
 
 const truncateStaging = async () => {
-  logger.info(`[v1]: ATTEMPTING TO TRUNCATE STAGING TABLE`);
+  logger.info(`[v1]: ATTEMPTING TO CLEAN UP STAGING TABLE`);
 
   let success = false;
   let attempts = 0;
-  const maxAttempts = 5; // Set a maximum number of attempts to avoid infinite loops
+  const maxAttempts = 5;
 
   while (!success && attempts < maxAttempts) {
     try {
-      await Staging.truncate();
-      success = true; // If truncate succeeds, set success to true to exit the loop
-      logger.info('[v1]: STAGING TABLE TRUNCATED SUCCESSFULLY');
+      if (CONFIG.USE_SIMULATOR) {
+        await Staging.destroy({ where: { commited: true } });
+      } else {
+        await Staging.truncate();
+      }
+      success = true;
+      logger.info('[v1]: STAGING TABLE CLEANED UP SUCCESSFULLY');
     } catch (error) {
       attempts++;
       logger.error(
-        `TRUNCATION FAILED ON ATTEMPT ${attempts}: ${error.message}`,
+        `STAGING CLEANUP FAILED ON ATTEMPT ${attempts}: ${error.message}`,
       );
       if (attempts < maxAttempts) {
         logger.info('[v1]: WAITING 1 SECOND BEFORE RETRYING...');
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
-        logger.error('[v1]: MAXIMUM TRUNCATION ATTEMPTS REACHED, GIVING UP');
+        logger.error('[v1]: MAXIMUM STAGING CLEANUP ATTEMPTS REACHED, GIVING UP');
       }
     }
   }
@@ -275,9 +280,18 @@ const syncOrganizationAudit = async (organization) => {
 
     // For home org, log if there's a mismatch but proceed anyway
     if (isHomeOrg && rootHistory.length - 1 !== sync_status?.generation) {
-      logger.debug(
-        `[v1]: Home org sync_status lag (rootHistory.length-1=${rootHistory.length - 1} vs generation=${sync_status?.generation}), proceeding anyway as data is local`,
-      );
+      if (isOwnedStoreLocalDataMissing(sync_status)) {
+        logger.error(
+          `[v1]: CRITICAL: DataLayer store for ${organization.name} (${organization.registryId}) has lost its local data. ` +
+            `sync_status.generation=0 with empty root hash, but blockchain shows target_generation=${sync_status.target_generation}. ` +
+            `The DataLayer database was likely deleted or reset. ` +
+            `DO NOT commit new data until this is resolved -- DataLayer will silently discard it.`,
+        );
+      } else {
+        logger.debug(
+          `[v1]: Home org sync_status lag (rootHistory.length-1=${rootHistory.length - 1} vs generation=${sync_status?.generation}), proceeding anyway as data is local`,
+        );
+      }
     }
 
     /**

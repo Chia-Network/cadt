@@ -363,6 +363,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
       const estimationData = {
         estimationStartDate: '2024-01-01',
         estimationEndDate: '2024-12-31',
+        estimationUnitCount: 1000,
         cadTrustProjectId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent project
       };
 
@@ -391,10 +392,28 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
       expect(response.body.error).to.include('estimationStartDate');
     });
 
+    it('should reject estimation without required estimationUnitCount', async function () {
+      const invalidData = {
+        estimationStartDate: '2024-01-01',
+        estimationEndDate: '2024-12-31',
+        cadTrustProjectId: testProjectId,
+        // Missing estimationUnitCount
+      };
+
+      const response = await supertest(app)
+        .post('/v2/estimation')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('estimationUnitCount');
+    });
+
     it('should reject estimation with end date before start date', async function () {
       const estimationData = {
         estimationStartDate: '2024-12-31',
         estimationEndDate: '2024-01-01', // End date before start date
+        estimationUnitCount: 1000,
         cadTrustProjectId: testProjectId,
       };
 
@@ -524,8 +543,6 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
           cadTrustProjectId: testProjectId,
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });
@@ -580,6 +597,7 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
       const estimationData = {
         estimationStartDate: '2024-01-01',
         estimationEndDate: '2024-12-31',
+        estimationUnitCount: 1000,
         cadTrustProjectId: testProjectId,
       };
 
@@ -605,8 +623,6 @@ describe('Estimation V2 Endpoint Integration Tests', function () {
           cadTrustProjectId: testProjectId,
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });

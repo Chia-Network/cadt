@@ -7,6 +7,7 @@ import datalayer from '../datalayer';
 import { formatModelAssociationName } from './model-utils.js';
 import { getConfig } from './config-loader';
 import { getOwnedStores } from '../datalayer/persistance.js';
+import { isOwnedStoreLocalDataMissing } from './datalayer-utils.js';
 
 const config = getConfig();
 const { USE_SIMULATOR, CHIA_NETWORK } = config.APP;
@@ -269,6 +270,19 @@ export const assertStoreIsOwned = async (storeId) => {
 
   if (!storeIds.includes(storeId)) {
     throw new Error(`store id ${storeId} is not owned by this chia wallet`);
+  }
+};
+
+export const assertOwnedStoreLocalDataIntact = async (storeId) => {
+  const syncResult = await datalayer.getDataLayerStoreSyncStatus(storeId);
+  const syncStatus = syncResult?.sync_status;
+  if (syncStatus && isOwnedStoreLocalDataMissing(syncStatus)) {
+    throw new Error(
+      `DataLayer store ${storeId} has lost its local data. ` +
+        `Local generation is 0 (empty) but the blockchain shows target generation ${syncStatus.target_generation}. ` +
+        `This typically happens when the DataLayer database is deleted or reset while the wallet retains the on-chain state. ` +
+        `Writing new data to this store will fail silently because DataLayer will discard it.`,
+    );
   }
 };
 

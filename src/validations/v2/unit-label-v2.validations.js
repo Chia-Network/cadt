@@ -12,9 +12,10 @@ export const unitLabelV2Schema = Joi.object({
     'string.guid': 'cadTrustUnitId must be a valid UUID',
   }),
 
-  // Optional fields
-  labelUnitDate: Joi.date().iso().allow(null).messages({
+  // Required fields
+  labelUnitDate: Joi.date().iso().required().messages({
     'date.iso': 'labelUnitDate must be a valid ISO 8601 date',
+    'any.required': 'labelUnitDate is required',
   }),
 
   labelUnitDescription: Joi.string().allow(null).messages({

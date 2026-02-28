@@ -212,9 +212,6 @@ describe('V2 FTS5 Integration Tests', function () {
       cadTrustIssuanceId: testIssuance2.cadTrustIssuanceId,
     });
 
-    // Wait a bit for FTS triggers to process
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
     // Manually rebuild FTS tables to ensure they're populated
     // (Triggers should handle this, but rebuilding ensures consistency)
     await ProjectV2.rebuildFtsTable();
@@ -771,9 +768,6 @@ describe('V2 FTS5 Integration Tests', function () {
         cadTrustProgramId: testProgram.cadTrustProgramId,
       });
 
-      // Wait for trigger to process
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
       // Search for the new project
       const results = await ProjectV2.findAllSqliteFts(
         'Trigger Test',
@@ -793,9 +787,6 @@ describe('V2 FTS5 Integration Tests', function () {
       // Update project
       await testProject1.update({ projectName: newName });
 
-      // Wait for trigger to process
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
       // Search for updated name
       const results = await ProjectV2.findAllSqliteFts(
         'Updated Project Name',
@@ -809,7 +800,6 @@ describe('V2 FTS5 Integration Tests', function () {
 
       // Restore original name
       await testProject1.update({ projectName: originalName });
-      await new Promise((resolve) => setTimeout(resolve, 200));
     });
 
     it('should automatically update FTS table when unit is created', async function () {
@@ -825,9 +815,6 @@ describe('V2 FTS5 Integration Tests', function () {
         unitStatus: 'Held',
         cadTrustIssuanceId: testIssuance1.cadTrustIssuanceId,
       });
-
-      // Wait for trigger to process
-      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Search for the new unit
       const results = await UnitV2.findAllSqliteFts(
@@ -856,9 +843,6 @@ describe('V2 FTS5 Integration Tests', function () {
         cadTrustProgramId: testProgram.cadTrustProgramId,
       });
 
-      // Wait for trigger to process
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
       // Verify it's in FTS
       let results = await ProjectV2.findAllSqliteFts(
         'Project To Be Deleted',
@@ -871,9 +855,6 @@ describe('V2 FTS5 Integration Tests', function () {
 
       // Delete project
       await projectToDelete.destroy();
-
-      // Wait for trigger to process
-      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Verify it's removed from FTS
       results = await ProjectV2.findAllSqliteFts(

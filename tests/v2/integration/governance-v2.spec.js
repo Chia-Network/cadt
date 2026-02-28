@@ -664,7 +664,7 @@ describe('V2 Governance Model Tests', function () {
             if (governanceBodyId) {
               break;
             }
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 100));
           }
           expect(governanceBodyId).to.exist;
         },
@@ -743,7 +743,7 @@ describe('V2 Governance Model Tests', function () {
             if (v2GovernanceBodyId) {
               break;
             }
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 100));
           }
           expect(v2GovernanceBodyId).to.exist;
 
@@ -993,7 +993,7 @@ describe('V2 Governance Model Tests', function () {
             if (record) {
               break;
             }
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 100));
           }
           expect(record).to.exist;
           expect(record.confirmed).to.equal(true);
@@ -1148,7 +1148,7 @@ describe('V2 Governance Model Tests', function () {
             if (governanceBodyId) {
               break;
             }
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 100));
           }
           expect(governanceBodyId).to.exist;
 

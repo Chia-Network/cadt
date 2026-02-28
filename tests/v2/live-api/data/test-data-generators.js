@@ -199,6 +199,7 @@ export const generateLocation = (cadTrustProjectId) => ({
 });
 
 export const generateLocationMinimal = (cadTrustProjectId) => ({
+  locationCountry: 'United States of America',
   cadTrustProjectId,
 });
 
@@ -262,6 +263,12 @@ export const generateProjectMinimal = () => {
     projectRegistryName: 'CAR',
     projectId: `TEST-MIN-PROJ-${uniqueId}`,
     projectName: `Min Project ${uniqueId}`,
+    projectLink: 'https://example.com/project',
+    projectSector: ['Energy demand'],
+    projectType: ['Solar'],
+    projectStatus: 'Registered',
+    projectStatusDate: '2024-01-15',
+    projectUnitMetric: 'tCO2e',
   };
 };
 
@@ -297,6 +304,12 @@ export const generateProjectInvalidForeignKey = () => ({
   projectRegistryName: 'VCS',
   projectId: `TEST-PROJ-${getUniqueId()}`,
   projectName: 'Invalid FK Project',
+  projectLink: 'https://example.com/project',
+  projectSector: ['Energy demand'],
+  projectType: ['Solar'],
+  projectStatus: 'Registered',
+  projectStatusDate: '2024-01-15',
+  projectUnitMetric: 'tCO2e',
   cadTrustProgramId: getNonExistentId(),
 });
 
@@ -304,9 +317,13 @@ export const generateProjectForbiddenFields = () => ({
   projectRegistryName: 'VCS',
   projectId: `FORBIDDEN-${getUniqueId()}`,
   projectName: 'Forbidden Fields Project',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-  cadTrustProjectId: uuidv4(),
+  projectLink: 'https://example.com/project',
+  projectSector: ['Energy demand'],
+  projectType: ['Solar'],
+  projectStatus: 'Registered',
+  projectStatusDate: '2024-01-15',
+  projectUnitMetric: 'tCO2e',
+  orgUid: 'forbidden-org-uid',
 });
 
 // ============================================================================
@@ -324,6 +341,7 @@ export const generateEstimation = (cadTrustProjectId) => ({
 export const generateEstimationMinimal = (cadTrustProjectId) => ({
   estimationStartDate: '2024-01-01',
   estimationEndDate: '2024-12-31',
+  estimationUnitCount: 1000,
   cadTrustProjectId,
 });
 
@@ -338,6 +356,7 @@ export const generateEstimationMaximal = (cadTrustProjectId) => ({
 export const generateEstimationLongStrings = (cadTrustProjectId) => ({
   estimationStartDate: '2024-01-01',
   estimationEndDate: '2024-12-31',
+  estimationUnitCount: 1000,
   estimationReferenceNo: getLongString(300), // Exceeds max of 255
   cadTrustProjectId,
 });
@@ -345,18 +364,21 @@ export const generateEstimationLongStrings = (cadTrustProjectId) => ({
 export const generateEstimationInvalidForeignKey = () => ({
   estimationStartDate: '2024-01-01',
   estimationEndDate: '2024-12-31',
+  estimationUnitCount: 1000,
   cadTrustProjectId: getNonExistentId(),
 });
 
 export const generateEstimationInvalidDateRange = (cadTrustProjectId) => ({
   estimationStartDate: '2024-12-31',
   estimationEndDate: '2024-01-01', // End before start
+  estimationUnitCount: 1000,
   cadTrustProjectId,
 });
 
 export const generateEstimationForbiddenFields = (cadTrustProjectId) => ({
   estimationStartDate: '2024-01-01',
   estimationEndDate: '2024-12-31',
+  estimationUnitCount: 1000,
   cadTrustProjectId,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
@@ -376,6 +398,7 @@ export const generateRating = (cadTrustProjectId) => ({
 });
 
 export const generateRatingMinimal = (cadTrustProjectId) => ({
+  ratingType: 'CDP',
   ratingName: `Min Rating ${getUniqueId()}`,
   ratingValue: 'B',
   cadTrustProjectId,
@@ -390,6 +413,7 @@ export const generateRatingMaximal = (cadTrustProjectId) => ({
 });
 
 export const generateRatingLongStrings = (cadTrustProjectId) => ({
+  ratingType: 'CDP',
   ratingName: getLongString(300), // Exceeds max of 255
   ratingValue: getLongString(300), // Exceeds max of 255
   ratingLink: `https://example.com/${getLongString(600)}`, // Exceeds max of 500
@@ -404,12 +428,14 @@ export const generateRatingInvalidPicklist = (cadTrustProjectId) => ({
 });
 
 export const generateRatingInvalidForeignKey = () => ({
+  ratingType: 'CDP',
   ratingName: 'Invalid FK Rating',
   ratingValue: 'A',
   cadTrustProjectId: getNonExistentId(),
 });
 
 export const generateRatingForbiddenFields = (cadTrustProjectId) => ({
+  ratingType: 'CDP',
   ratingName: 'Forbidden Rating',
   ratingValue: 'A',
   cadTrustProjectId,
@@ -467,6 +493,7 @@ export const generateStakeholder = () => ({
 
 export const generateStakeholderMinimal = () => ({
   stakeholderName: `Min Stakeholder ${getUniqueId()}`,
+  stakeholderType: 'Owner',
 });
 
 export const generateStakeholderMaximal = () => ({
@@ -477,6 +504,7 @@ export const generateStakeholderMaximal = () => ({
 
 export const generateStakeholderLongStrings = () => ({
   stakeholderName: getLongString(500), // Exceeds max of 255
+  stakeholderType: 'Owner',
   stakeholderLink: `https://example.com/${getLongString(600)}`, // Exceeds max of 500
 });
 
@@ -487,6 +515,7 @@ export const generateStakeholderInvalidPicklist = () => ({
 
 export const generateStakeholderForbiddenFields = () => ({
   stakeholderName: 'Forbidden Stakeholder',
+  stakeholderType: 'Owner',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
   cadTrustStakeholderId: uuidv4(),
@@ -505,6 +534,7 @@ export const generateLabel = () => ({
 
 export const generateLabelMinimal = () => ({
   labelName: `Min Label ${getUniqueId()}`,
+  labelType: 'Certification',
 });
 
 export const generateLabelMaximal = () => ({
@@ -516,6 +546,7 @@ export const generateLabelMaximal = () => ({
 
 export const generateLabelLongStrings = () => ({
   labelName: getLongString(500), // Exceeds max of 255
+  labelType: 'Certification',
   labelLink: `https://example.com/${getLongString(600)}`, // Exceeds max of 500
 });
 
@@ -526,6 +557,7 @@ export const generateLabelInvalidPicklist = () => ({
 
 export const generateLabelForbiddenFields = () => ({
   labelName: 'Forbidden Label',
+  labelType: 'Certification',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
   cadTrustLabelId: uuidv4(),
@@ -614,6 +646,7 @@ export const generateUnitLabel = (cadTrustLabelId, cadTrustUnitId) => ({
 export const generateUnitLabelMinimal = (cadTrustLabelId, cadTrustUnitId) => ({
   cadTrustLabelId,
   cadTrustUnitId,
+  labelUnitDate: '2024-01-15',
 });
 
 export const generateUnitLabelMaximal = (cadTrustLabelId, cadTrustUnitId) => ({
@@ -626,11 +659,13 @@ export const generateUnitLabelMaximal = (cadTrustLabelId, cadTrustUnitId) => ({
 export const generateUnitLabelInvalidForeignKey = () => ({
   cadTrustLabelId: getNonExistentId(),
   cadTrustUnitId: getNonExistentId(),
+  labelUnitDate: '2024-01-15',
 });
 
 export const generateUnitLabelForbiddenFields = (cadTrustLabelId, cadTrustUnitId) => ({
   cadTrustLabelId,
   cadTrustUnitId,
+  labelUnitDate: '2024-01-15',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
 });
@@ -697,6 +732,7 @@ export const generateVerification = (cadTrustProjectId, cadTrustValidationId = n
 
 export const generateVerificationMinimal = (cadTrustProjectId) => ({
   verificationId: `MIN-VER-${getUniqueId()}`,
+  verificationBody: 'AENOR International S.A.U.',
   cadTrustProjectId,
 });
 
@@ -711,11 +747,13 @@ export const generateVerificationMaximal = (cadTrustProjectId, cadTrustValidatio
 
 export const generateVerificationInvalidForeignKey = () => ({
   verificationId: 'INVALID-VER',
+  verificationBody: 'AENOR International S.A.U.',
   cadTrustProjectId: getNonExistentId(),
 });
 
 export const generateVerificationForbiddenFields = (cadTrustProjectId) => ({
   verificationId: 'FORBIDDEN-VER',
+  verificationBody: 'AENOR International S.A.U.',
   cadTrustProjectId,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
@@ -738,6 +776,8 @@ export const generateValidation = (cadTrustProjectId) => ({
 
 export const generateValidationMinimal = (cadTrustProjectId) => ({
   validationId: `MIN-VAL-${getUniqueId()}`,
+  validationType: 'Validation of Project Design Document',
+  validationBody: 'SCS Global Services',
   cadTrustProjectId,
 });
 
@@ -753,11 +793,15 @@ export const generateValidationMaximal = (cadTrustProjectId) => ({
 
 export const generateValidationInvalidForeignKey = () => ({
   validationId: 'INVALID-VAL',
+  validationType: 'Validation of Project Design Document',
+  validationBody: 'SCS Global Services',
   cadTrustProjectId: getNonExistentId(),
 });
 
 export const generateValidationForbiddenFields = (cadTrustProjectId) => ({
   validationId: 'FORBIDDEN-VAL',
+  validationType: 'Validation of Project Design Document',
+  validationBody: 'SCS Global Services',
   cadTrustProjectId,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
@@ -795,7 +839,12 @@ export const generateUnitMinimal = (cadTrustIssuanceId) => ({
   unitSerialId: `TEST-MIN-UNIT-${getUniqueId()}`,
   unitStartBlock: '1000',
   unitEndBlock: '2000',
+  unitCount: 1000,
+  unitType: 'Removal - technical',
   unitVintageYear: 2024,
+  unitStatus: 'Issued',
+  unitStatusReason: 'Test reason',
+  unitMetric: 'tCO2e',
   cadTrustIssuanceId,
 });
 
@@ -826,7 +875,12 @@ export const generateUnitInvalidForeignKey = () => ({
   unitSerialId: 'INVALID-UNIT',
   unitStartBlock: '1000',
   unitEndBlock: '2000',
+  unitCount: 1000,
+  unitType: 'Removal - technical',
   unitVintageYear: 2024,
+  unitStatus: 'Issued',
+  unitStatusReason: 'Test reason',
+  unitMetric: 'tCO2e',
   cadTrustIssuanceId: getNonExistentId(),
 });
 
@@ -834,7 +888,12 @@ export const generateUnitForbiddenFields = (cadTrustIssuanceId) => ({
   unitSerialId: 'FORBIDDEN-UNIT',
   unitStartBlock: '1000',
   unitEndBlock: '2000',
+  unitCount: 1000,
+  unitType: 'Removal - technical',
   unitVintageYear: 2024,
+  unitStatus: 'Issued',
+  unitStatusReason: 'Test reason',
+  unitMetric: 'tCO2e',
   cadTrustIssuanceId,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
