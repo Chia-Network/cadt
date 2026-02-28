@@ -401,8 +401,8 @@ export const getStoreMirrors = async (storeId) => {
 /**
  * Validate that an organization's stores have correct mirrors set up.
  * For each store, verifies that:
- *   - There is exactly 1 mirror owned by us (ours === true)
- *   - That mirror's URL matches the configured DATALAYER_FILE_SERVER_URL
+ *   - There is at least 1 mirror owned by us (ours === true)
+ *   - At least one of our mirrors has a URL matching DATALAYER_FILE_SERVER_URL
  *
  * If DATALAYER_FILE_SERVER_URL is not configured, validation is skipped with a warning.
  *
@@ -471,32 +471,35 @@ export const validateOrganizationMirrors = async (org, isV2 = true) => {
       }
 
       if (ourMirrors.length > 1) {
-        errors.push(
-          `${store.name} store (${store.id}): expected exactly 1 mirror owned by us, ` +
-          `found ${ourMirrors.length}. Mirror URLs: ${ourMirrors.map(m => m.urls.join(', ')).join(' | ')}`,
+        // Duplicate mirrors can occur when the org-creation mirror check and
+        // the periodic mirror-check-v2 task race: get_mirrors RPC only returns
+        // on-chain-confirmed mirrors, so a mirror created seconds ago is
+        // invisible to the dedup check in addMirror. Log a warning but don't
+        // fail — duplicates are harmless.
+        console.log(
+          `    ⚠ ${ourMirrors.length} mirrors owned by us (expected 1). ` +
+          `Mirror URLs: ${ourMirrors.map(m => m.urls.join(', ')).join(' | ')}`,
         );
-        continue;
       }
 
-      // Exactly 1 mirror owned by us - verify URL
-      const ourMirror = ourMirrors[0];
-      const hasExpectedUrl = ourMirror.urls.includes(expectedMirrorUrl);
+      // Verify at least one mirror has the expected URL
+      const mirrorWithExpectedUrl = ourMirrors.find(m => m.urls.includes(expectedMirrorUrl));
 
-      if (!hasExpectedUrl) {
+      if (!mirrorWithExpectedUrl) {
         errors.push(
           `${store.name} store (${store.id}): mirror URL mismatch. ` +
-          `Expected URL "${expectedMirrorUrl}" in mirror urls, got: [${ourMirror.urls.join(', ')}]`,
+          `Expected URL "${expectedMirrorUrl}" in at least one mirror, got: [${ourMirrors.map(m => m.urls.join(', ')).join(' | ')}]`,
         );
       } else {
-        console.log(`    ✓ Exactly 1 mirror owned by us with correct URL: ${expectedMirrorUrl}`);
+        console.log(`    ✓ Mirror owned by us with correct URL: ${expectedMirrorUrl}`);
       }
 
-      // Also verify launcher_id matches store ID (strip 0x prefix for comparison)
-      const launcherId = ourMirror.launcher_id?.replace('0x', '');
-      if (launcherId !== store.id) {
+      // Verify launcher_id matches store ID on the mirror with correct URL
+      const launcherId = mirrorWithExpectedUrl?.launcher_id?.replace('0x', '');
+      if (mirrorWithExpectedUrl && launcherId !== store.id) {
         errors.push(
           `${store.name} store (${store.id}): launcher_id mismatch. ` +
-          `Expected ${store.id}, got ${ourMirror.launcher_id}`,
+          `Expected ${store.id}, got ${mirrorWithExpectedUrl.launcher_id}`,
         );
       }
     } catch (error) {

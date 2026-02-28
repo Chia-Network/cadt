@@ -42,7 +42,7 @@ describe('Stakeholder Live API Validation Tests', function () {
       const response = await request
         .post('/v2/stakeholder')
         .send(forbiddenData);
-      
+
       expect(response.status).to.equal(400);
       expect(response.body.success).to.be.false;
     });
