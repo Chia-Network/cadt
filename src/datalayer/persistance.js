@@ -218,6 +218,12 @@ const checkWalletBalanceForMirror = async (coinAmount, fee) => {
   }
 };
 
+// Tracks stores with in-flight mirror creation to prevent duplicates from
+// concurrent callers. The mirrorCheckInProgress lock in mirror-check-v2.js
+// can be defeated by module dual-instantiation under the extensionless loader,
+// so this per-store guard at the persistance layer is the authoritative lock.
+const pendingMirrorCreations = new Set();
+
 const addMirror = async (storeId, url, forceAddMirror = false) => {
   logger.silly(
     `[MIRROR_DEBUG] Starting addMirror for storeId: ${storeId}, url: ${url}, force: ${forceAddMirror}`,
@@ -230,6 +236,23 @@ const addMirror = async (storeId, url, forceAddMirror = false) => {
     return false;
   }
 
+  const lockKey = `${storeId}:${url}`;
+  if (pendingMirrorCreations.has(lockKey)) {
+    logger.info(
+      `[MIRROR_DEBUG] Mirror creation already in-flight for ${storeId} at ${url}, skipping duplicate`,
+    );
+    return true;
+  }
+
+  pendingMirrorCreations.add(lockKey);
+  try {
+    return await addMirrorInner(storeId, url, forceAddMirror);
+  } finally {
+    pendingMirrorCreations.delete(lockKey);
+  }
+};
+
+const addMirrorInner = async (storeId, url, forceAddMirror) => {
   await wallet.waitForAllTransactionsToConfirm();
   logger.silly('[MIRROR_DEBUG] Wallet transactions confirmed');
 
