@@ -244,10 +244,8 @@ export const getFirstRecordIdFromDatabase = async (request, type) => {
  */
 export const getAllRecordIdsFromDatabase = async (request, type) => {
   try {
-    const response = await request.get(`/v2/${type}`);
-    const data = Array.isArray(response.body)
-      ? response.body
-      : (response.body?.data || []);
+    const response = await request.get(`/v2/${type}`).query({ page: 1, limit: 1000 });
+    const data = response.body?.data || [];
 
     if (response.status === 200 && Array.isArray(data) && data.length > 0) {
       const idField = PRIMARY_KEY_FIELDS[type];

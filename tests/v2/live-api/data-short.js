@@ -68,7 +68,7 @@ async function runMochaTests(grepPattern, phaseName, filesToRun = null) {
       ...testPaths,
       '--grep', grepPattern,
       '--reporter', 'spec',
-      '--timeout', '3600000',
+      '--timeout', '1800000',
       '--exit',
     ];
 
@@ -140,8 +140,8 @@ async function commitAndWait(phase) {
   const request = await getLiveApiRequest({ apiVersion: 'v2' });
 
   // Check if staging table has records before committing
-  const stagingResponse = await request.get('/v2/staging');
-  const records = Array.isArray(stagingResponse.body) ? stagingResponse.body : (stagingResponse.body?.data || []);
+  const stagingResponse = await request.get('/v2/staging').query({ page: 1, limit: 1000 });
+  const records = stagingResponse.body?.data || [];
 
   if (records.length === 0) {
     console.log(`\n=== No staged records to commit for ${phase} phase ===`);

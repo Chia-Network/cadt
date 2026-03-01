@@ -208,7 +208,7 @@ jobs:
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
           # Enable V2 for V2 live API tests
           yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
@@ -244,7 +244,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60  # 60 attempts * 10 seconds = 10 minutes
+          MAX_ATTEMPTS=30  # 30 attempts * 10 seconds = 5 minutes
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -256,7 +256,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -278,7 +278,7 @@ jobs:
         shell: bash
         run: |
           echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
+          MAX_WAIT_MINUTES=10
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
 
@@ -648,7 +648,7 @@ jobs:
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
           # Enable V1 only for V1 live API tests
           yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
@@ -676,7 +676,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=30
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -688,7 +688,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -710,7 +710,7 @@ jobs:
         shell: bash
         run: |
           echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
+          MAX_WAIT_MINUTES=10
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
 
@@ -940,7 +940,7 @@ jobs:
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "4212425c8e053ad58279f1d1a498afec4a1e6b00da356a49ac72780fe13e98e8"' ~/.chia/mainnet/cadt/config.yaml
           # Enable both V1 and V2 for upgrade tests (need V1 to create, V2 for upgrade)
           yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
@@ -968,7 +968,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=60
+          MAX_ATTEMPTS=30
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -980,7 +980,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -1002,9 +1002,10 @@ jobs:
         shell: bash
         run: |
           echo "Waiting for wallet to finish syncing..."
-          MAX_WAIT_MINUTES=20
+          MAX_WAIT_MINUTES=10
           WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
           START_TIME=$(date +%s)
+          CADT_PORT=31310
 
           while true; do
             CURRENT_TIME=$(date +%s)
@@ -1026,6 +1027,36 @@ jobs:
               echo "Wallet is synced!"
               echo "Waiting additional 60 seconds for datalayer to sync..."
               sleep 60
+
+              # After Chia reports synced, also confirm CADT considers the wallet
+              # available. A real GOVERNANCE_LOOKUP_ID causes CADT to subscribe to
+              # a governance store immediately after startup; this additional datalayer
+              # activity can make the wallet temporarily unavailable at the CADT layer
+              # even after chia rpc reports synced=true.
+              echo "Polling CADT to confirm wallet availability (3 consecutive successes required)..."
+              CADT_CONSECUTIVE=0
+              CADT_REQUIRED=3
+              while [ "$CADT_CONSECUTIVE" -lt "$CADT_REQUIRED" ]; do
+                CURRENT_TIME=$(date +%s)
+                ELAPSED=$((CURRENT_TIME - START_TIME))
+                if [ "$ELAPSED" -ge "$WAIT_SECONDS" ]; then
+                  echo "Warning: Max wait time reached during CADT wallet availability polling — proceeding anyway"
+                  break
+                fi
+                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${CADT_PORT}/v1/health" 2>/dev/null || echo "000")
+                if [ "$HTTP_CODE" = "200" ]; then
+                  CADT_CONSECUTIVE=$((CADT_CONSECUTIVE + 1))
+                  echo "  CADT wallet available ($CADT_CONSECUTIVE/$CADT_REQUIRED consecutive, ${ELAPSED}s elapsed)"
+                  if [ "$CADT_CONSECUTIVE" -lt "$CADT_REQUIRED" ]; then
+                    sleep 10
+                  fi
+                else
+                  CADT_CONSECUTIVE=0
+                  echo "  CADT wallet not ready yet (HTTP $HTTP_CODE), waiting 15s... (${ELAPSED}s elapsed)"
+                  sleep 15
+                fi
+              done
+              echo "CADT wallet availability confirmed — ready for tests"
               break
             fi
 
@@ -1142,6 +1173,1692 @@ jobs:
           chia wallet show || echo "Failed to show wallet"
 
       - name: Stop Chia services (upgrade)
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping all Chia services..."
+          chia stop all -d || true
+          echo "Chia services stopped"
+
+  test-v2-remote-sync:
+    name: v2 remote sync tests
+    runs-on: ubuntu-latest
+    container:
+      image: node:24
+
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Ignore Husky
+        run: npm pkg delete scripts.prepare
+
+      - name: Install Mocha
+        run: npm install --save-dev mocha
+
+      - name: npm install
+        run: npm install
+
+      - name: install global packages
+        run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
+
+      - name: Install yq and jq
+        run: |
+          apt-get update
+          apt-get install -y yq jq bc iproute2
+
+      - name: Install Chia and chia-tools
+        shell: bash
+        run: |
+          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+          apt-get update
+
+          apt-get install -y chia-blockchain-cli chia-tools
+
+      - name: Configure Chia
+        shell: bash
+        run: |
+          chia init
+          chia keys generate -l "sync_tests"
+          chia-tools network switch testneta
+          chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia configure -log-level INFO
+
+      - name: Configure CADT
+        shell: bash
+        run: |
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 10
+          pm2 logs cadt --nostream
+          pm2 stop cadt
+
+          echo "Removing cadt databases to reset system..."
+          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
+          rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
+
+          echo "Configuring CADT config.yaml for sync-only testing..."
+          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = null' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "4212425c8e053ad58279f1d1a498afec4a1e6b00da356a49ac72780fe13e98e8"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+
+          echo "Showing the config file after configuration..."
+          cat ~/.chia/mainnet/cadt/config.yaml
+
+          pm2 delete cadt 2>/dev/null || true
+
+      - name: Start Chia
+        shell: bash
+        run: |
+          chia start wallet data data_layer_http
+          sleep 10
+          tail ~/.chia/mainnet/log/debug.log
+
+      - name: Wait for wallet sync
+        shell: bash
+        run: |
+          echo "Waiting for wallet to finish syncing before starting CADT..."
+          MAX_WAIT_MINUTES=10
+          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            REMAINING=$((WAIT_SECONDS - ELAPSED))
+
+            if [ "$REMAINING" -le 0 ]; then
+              echo "WARNING: Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
+              echo "Proceeding anyway - wallet may still be syncing"
+              break
+            fi
+
+            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
+            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
+            WALLET_SYNCING=$(echo "$WALLET_STATUS" | jq -r '.syncing // true')
+
+            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s, remaining: ${REMAINING}s)"
+
+            if [ "$WALLET_SYNCED" = "true" ]; then
+              echo "Wallet is synced!"
+              break
+            fi
+
+            sleep 30
+          done
+
+          echo ""
+          echo "Wallet sync status:"
+          chia rpc wallet get_sync_status || echo "Failed to get wallet sync status"
+
+      - name: Start CADT
+        shell: bash
+        run: |
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 15
+
+      - name: Wait for CADT API readiness
+        shell: bash
+        run: |
+          echo "Waiting for CADT V2 API to be ready..."
+          MAX_ATTEMPTS=30
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            HEALTH=$(curl -s --max-time 5 http://127.0.0.1:31310/v2/health 2>/dev/null || echo "")
+            if echo "$HEALTH" | jq -e '.message' >/dev/null 2>&1; then
+              echo "CADT V2 API is ready!"
+              break
+            fi
+            echo "Waiting for CADT API... ($i/$MAX_ATTEMPTS)"
+            sleep 10
+          done
+
+      - name: Wait for org store sync in datalayer
+        shell: bash
+        run: |
+          PARTICIPANT_V2_ORG_UID="3b5608bf3456586dfe6e2353785b93d863db578b2d961bc2e1d142196924c91a"
+          echo "Subscribing to org store and waiting for datalayer sync..."
+
+          chia rpc data_layer subscribe '{"id": "'$PARTICIPANT_V2_ORG_UID'"}' || true
+
+          MAX_WAIT_MINUTES=15
+          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            REMAINING=$((WAIT_SECONDS - ELAPSED))
+
+            if [ "$REMAINING" -le 0 ]; then
+              echo "WARNING: Reached maximum wait time of $MAX_WAIT_MINUTES minutes for org store sync"
+              break
+            fi
+
+            SYNC_STATUS=$(chia rpc data_layer get_sync_status '{"id": "'$PARTICIPANT_V2_ORG_UID'"}' 2>/dev/null || echo '{}')
+            GENERATION=$(echo "$SYNC_STATUS" | jq -r '.sync_status.generation // "null"')
+            TARGET=$(echo "$SYNC_STATUS" | jq -r '.sync_status.target_generation // "null"')
+
+            echo "Org store sync: generation=$GENERATION, target=$TARGET (elapsed: ${ELAPSED}s)"
+
+            if [ "$GENERATION" != "null" ] && [ "$TARGET" != "null" ] && [ "$GENERATION" = "$TARGET" ] && [ "$GENERATION" != "0" ]; then
+              echo "Org store is synced in datalayer!"
+              break
+            fi
+
+            sleep 15
+          done
+
+      - name: Wait for wallet re-sync after subscriptions
+        shell: bash
+        run: |
+          echo "Waiting for wallet to re-sync after datalayer subscriptions..."
+          MAX_WAIT=300
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+
+            if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
+              echo "Wallet re-sync wait complete (max time reached)"
+              break
+            fi
+
+            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
+            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
+
+            if [ "$WALLET_SYNCED" = "true" ]; then
+              echo "Wallet is synced!"
+              break
+            fi
+
+            echo "Wallet syncing... (elapsed: ${ELAPSED}s)"
+            sleep 10
+          done
+
+      - name: Import remote V2 organization
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Importing remote V2 participant organization"
+          echo "########################################################"
+          PARTICIPANT_V2_ORG_UID="3b5608bf3456586dfe6e2353785b93d863db578b2d961bc2e1d142196924c91a"
+
+          MAX_IMPORT_ATTEMPTS=10
+          for attempt in $(seq 1 $MAX_IMPORT_ATTEMPTS); do
+            echo ""
+            echo "Import attempt $attempt/$MAX_IMPORT_ATTEMPTS..."
+
+            RESULT=$(curl -s -X PUT -H "Content-Type: application/json" \
+              -d "{\"orgUid\": \"${PARTICIPANT_V2_ORG_UID}\"}" \
+              http://127.0.0.1:31310/v2/organizations)
+            echo "Import result: $RESULT"
+
+            sleep 10
+
+            ORG_DATA=$(curl -s http://127.0.0.1:31310/v2/organizations 2>/dev/null || echo "{}")
+            ORG_EXISTS=$(echo "$ORG_DATA" | jq -r "has(\"${PARTICIPANT_V2_ORG_UID}\")")
+
+            if [ "$ORG_EXISTS" = "true" ]; then
+              echo "Organization successfully created in CADT database!"
+              break
+            fi
+
+            echo "Organization not yet in database (import may have been deferred due to store sync)"
+
+            if [ "$attempt" -eq "$MAX_IMPORT_ATTEMPTS" ]; then
+              echo "ERROR: Organization was never created after $MAX_IMPORT_ATTEMPTS attempts"
+              echo "CADT logs:"
+              pm2 logs cadt --lines 100 --nostream
+              exit 1
+            fi
+
+            sleep 20
+          done
+
+      - name: Wait for V2 organization sync
+        shell: bash
+        run: |
+          echo "Waiting for remote V2 organization to sync..."
+          PARTICIPANT_V2_ORG_UID="3b5608bf3456586dfe6e2353785b93d863db578b2d961bc2e1d142196924c91a"
+          MAX_WAIT_MINUTES=20
+          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            REMAINING=$((WAIT_SECONDS - ELAPSED))
+
+            if [ "$REMAINING" -le 0 ]; then
+              echo "ERROR: Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
+              echo "Organization did not finish syncing"
+              exit 1
+            fi
+
+            ORG_DATA=$(curl -s http://127.0.0.1:31310/v2/organizations 2>/dev/null || echo "{}")
+            SYNCED=$(echo "$ORG_DATA" | jq -r ".\"${PARTICIPANT_V2_ORG_UID}\".synced // false")
+            SYNC_REMAINING=$(echo "$ORG_DATA" | jq -r ".\"${PARTICIPANT_V2_ORG_UID}\".sync_remaining // -1")
+
+            echo "Sync status: synced=$SYNCED, sync_remaining=$SYNC_REMAINING (elapsed: ${ELAPSED}s, remaining: ${REMAINING}s)"
+
+            if [ "$SYNCED" = "true" ] && [ "$SYNC_REMAINING" = "0" ]; then
+              echo "Organization is fully synced!"
+              echo "Waiting additional 30 seconds for data to settle..."
+              sleep 30
+              break
+            fi
+
+            sleep 30
+          done
+
+      - name: Show CADT logs before verification
+        shell: bash
+        run: |
+          echo "Last 50 lines of CADT logs:"
+          pm2 logs cadt --lines 50 --nostream
+
+      - name: Verify synced record counts
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Verifying synced record counts"
+          echo "########################################################"
+          BASE="http://127.0.0.1:31310/v2"
+          ERRORS=0
+
+          verify_count() {
+            local endpoint="$1"
+            local expected="$2"
+            local label="$3"
+            local response
+            response=$(curl -s "$BASE/$endpoint?page=1&limit=1000")
+            local count
+            count=$(echo "$response" | jq 'if type == "array" then length elif .data then (.data | length) else 0 end')
+            if [ "$count" -eq "$expected" ]; then
+              echo "PASS: $label count = $count (expected $expected)"
+            else
+              echo "FAIL: $label count = $count (expected $expected)"
+              echo "  Response: $(echo "$response" | jq -c '.' 2>/dev/null || echo "$response" | head -200)"
+              ERRORS=$((ERRORS + 1))
+            fi
+          }
+
+          verify_count "project" 3 "project"
+          verify_count "unit" 3 "unit"
+          verify_count "methodology" 1 "methodology"
+          verify_count "program" 1 "program"
+          verify_count "location" 3 "location"
+          verify_count "validation" 3 "validation"
+          verify_count "verification" 3 "verification"
+          verify_count "issuance" 3 "issuance"
+          verify_count "estimation" 3 "estimation"
+          verify_count "rating" 3 "rating"
+          verify_count "co-benefit" 3 "co-benefit"
+          verify_count "stakeholder" 2 "stakeholder"
+          verify_count "label" 2 "label"
+          verify_count "project-methodology" 3 "project-methodology"
+          verify_count "stakeholder-projects" 3 "stakeholder-projects"
+          verify_count "unit-label" 3 "unit-label"
+          verify_count "aef-t1-submission" 1 "aef-t1-submission"
+          verify_count "aef-t2-authorizations" 1 "aef-t2-authorizations"
+          verify_count "aef-t3-actions" 1 "aef-t3-actions"
+          verify_count "aef-t4-holdings" 1 "aef-t4-holdings"
+          verify_count "aef-t5-authorized-entities" 1 "aef-t5-authorized-entities"
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo ""
+            echo "FAILED: $ERRORS record count mismatches"
+            exit 1
+          fi
+          echo ""
+          echo "All record counts match expected values"
+
+      - name: Verify synced project data
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Verifying synced project data"
+          echo "########################################################"
+          BASE="http://127.0.0.1:31310/v2"
+          PROJECTS=$(curl -s "$BASE/project?page=1&limit=1000")
+          ERRORS=0
+
+          verify_field() {
+            local data="$1"
+            local selector="$2"
+            local expected="$3"
+            local label="$4"
+            local actual
+            actual=$(echo "$data" | jq -r "$selector")
+            if [ "$actual" = "$expected" ]; then
+              echo "  PASS: $label = '$actual'"
+            else
+              echo "  FAIL: $label = '$actual' (expected '$expected')"
+              ERRORS=$((ERRORS + 1))
+            fi
+          }
+
+          echo "--- Project V2-GTD001 (Japanese Coastal Blue Carbon) ---"
+          P1=$(echo "$PROJECTS" | jq '[(if type == "object" then .data else . end)[] | select(.projectId == "V2-GTD001")] | .[0]')
+          verify_field "$P1" '.projectName' 'V2 Generic Testing Data - Japanese Coastal Blue Carbon' 'projectName'
+          verify_field "$P1" '.projectRegistryName' 'Gold Standard' 'projectRegistryName'
+          verify_field "$P1" '.projectDescription' 'V2 Generic Testing Data - Coastal blue carbon sequestration through seagrass meadow restoration in Japanese waters' 'projectDescription'
+          verify_field "$P1" '.projectStatus' 'Registered' 'projectStatus'
+          verify_field "$P1" '.projectStatusDate' '2025-01-15' 'projectStatusDate'
+          verify_field "$P1" '.projectSubtype' 'Marine Ecosystem' 'projectSubtype'
+          verify_field "$P1" '.projectUnitMetric' 'tCO2e' 'projectUnitMetric'
+          verify_field "$P1" '.projectCreditingProgram' 'V2 Generic Testing Data Carbon Credits Program' 'projectCreditingProgram'
+          echo ""
+
+          echo "--- Project V2-GTD002 (Moroccan Geothermal - EDITED) ---"
+          P2=$(echo "$PROJECTS" | jq '[(if type == "object" then .data else . end)[] | select(.projectId == "V2-GTD002")] | .[0]')
+          verify_field "$P2" '.projectName' 'V2 Generic Testing Data - Moroccan Geothermal Energy' 'projectName'
+          verify_field "$P2" '.projectRegistryName' 'VCS' 'projectRegistryName'
+          verify_field "$P2" '.projectDescription' 'V2 Generic Testing Data - UPDATED - Expanded geothermal energy generation and district heating in the Atlas Mountains region of Morocco' 'projectDescription (EDITED)'
+          verify_field "$P2" '.projectStatus' 'Validated' 'projectStatus'
+          verify_field "$P2" '.projectSubtype' 'Geothermal' 'projectSubtype'
+          echo ""
+
+          echo "--- Project V2-GTD003 (Brazilian Agroforestry) ---"
+          P3=$(echo "$PROJECTS" | jq '[(if type == "object" then .data else . end)[] | select(.projectId == "V2-GTD003")] | .[0]')
+          verify_field "$P3" '.projectName' 'V2 Generic Testing Data - Brazilian Agroforestry Initiative' 'projectName'
+          verify_field "$P3" '.projectRegistryName' 'CAR' 'projectRegistryName'
+          verify_field "$P3" '.projectDescription' 'V2 Generic Testing Data - Agroforestry systems combining shade-grown coffee with native tree species in the Brazilian Atlantic Forest' 'projectDescription'
+          verify_field "$P3" '.projectStatus' 'Registered' 'projectStatus'
+          verify_field "$P3" '.projectSubtype' 'Agroforestry' 'projectSubtype'
+          echo ""
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "FAILED: $ERRORS project field mismatches"
+            exit 1
+          fi
+          echo "All project fields match expected values"
+
+      - name: Verify synced unit data
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Verifying synced unit data"
+          echo "########################################################"
+          BASE="http://127.0.0.1:31310/v2"
+          UNITS=$(curl -s "$BASE/unit?page=1&limit=1000")
+          ERRORS=0
+
+          verify_field() {
+            local data="$1"
+            local selector="$2"
+            local expected="$3"
+            local label="$4"
+            local actual
+            actual=$(echo "$data" | jq -r "$selector")
+            if [ "$actual" = "$expected" ]; then
+              echo "  PASS: $label = '$actual'"
+            else
+              echo "  FAIL: $label = '$actual' (expected '$expected')"
+              ERRORS=$((ERRORS + 1))
+            fi
+          }
+
+          echo "--- Unit V2-GTD001-UNIT-001 (Blue Carbon, Held) ---"
+          U1=$(echo "$UNITS" | jq '[(if type == "object" then .data else . end)[] | select(.unitSerialId == "V2-GTD001-UNIT-001")] | .[0]')
+          verify_field "$U1" '.unitStartBlock' 'V2-GTD001-001' 'unitStartBlock'
+          verify_field "$U1" '.unitEndBlock' 'V2-GTD001-500' 'unitEndBlock'
+          verify_field "$U1" '.unitCount' '500' 'unitCount'
+          verify_field "$U1" '.unitType' 'Removal - nature' 'unitType'
+          verify_field "$U1" '.unitVintageYear' '2025' 'unitVintageYear'
+          verify_field "$U1" '.unitStatus' 'Held' 'unitStatus'
+          verify_field "$U1" '.unitMetric' 'tCO2e' 'unitMetric'
+          verify_field "$U1" '.unitCurrentOwner' 'V2 Generic Testing Data Owner - Blue Carbon Trust' 'unitCurrentOwner'
+          echo ""
+
+          echo "--- Unit V2-GTD002-UNIT-001 (Geothermal, RETIRED - EDITED) ---"
+          U2=$(echo "$UNITS" | jq '[(if type == "object" then .data else . end)[] | select(.unitSerialId == "V2-GTD002-UNIT-001")] | .[0]')
+          verify_field "$U2" '.unitStartBlock' 'V2-GTD002-001' 'unitStartBlock'
+          verify_field "$U2" '.unitEndBlock' 'V2-GTD002-2000' 'unitEndBlock'
+          verify_field "$U2" '.unitCount' '2000' 'unitCount'
+          verify_field "$U2" '.unitType' 'Reduction - technical' 'unitType'
+          verify_field "$U2" '.unitStatus' 'Retired' 'unitStatus (EDITED)'
+          verify_field "$U2" '.unitRetirementDetail' 'V2 Generic Testing Data - Retired for carbon offset compliance' 'unitRetirementDetail (EDITED)'
+          verify_field "$U2" '.unitRetirementBeneficiary' 'V2 Generic Testing Data - Morocco Climate Fund' 'unitRetirementBeneficiary (EDITED)'
+          verify_field "$U2" '.marketplace' 'V2 Generic Testing Data Marketplace' 'marketplace'
+          verify_field "$U2" '.marketplaceIdentifier' 'V2-GTD-MKT-002' 'marketplaceIdentifier'
+          echo ""
+
+          echo "--- Unit V2-GTD003-UNIT-001 (Agroforestry, Held) ---"
+          U3=$(echo "$UNITS" | jq '[(if type == "object" then .data else . end)[] | select(.unitSerialId == "V2-GTD003-UNIT-001")] | .[0]')
+          verify_field "$U3" '.unitStartBlock' 'V2-GTD003-001' 'unitStartBlock'
+          verify_field "$U3" '.unitEndBlock' 'V2-GTD003-300' 'unitEndBlock'
+          verify_field "$U3" '.unitCount' '300' 'unitCount'
+          verify_field "$U3" '.unitType' 'Removal - nature' 'unitType'
+          verify_field "$U3" '.unitStatus' 'Held' 'unitStatus'
+          verify_field "$U3" '.unitCurrentOwner' 'V2 Generic Testing Data Owner - Atlantic Forest Cooperative' 'unitCurrentOwner'
+          echo ""
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "FAILED: $ERRORS unit field mismatches"
+            exit 1
+          fi
+          echo "All unit fields match expected values"
+
+      - name: Verify synced methodology, program, stakeholder, and label data
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Verifying synced base entity data"
+          echo "########################################################"
+          BASE="http://127.0.0.1:31310/v2"
+          ERRORS=0
+
+          verify_field() {
+            local data="$1"
+            local selector="$2"
+            local expected="$3"
+            local label="$4"
+            local actual
+            actual=$(echo "$data" | jq -r "$selector")
+            if [ "$actual" = "$expected" ]; then
+              echo "  PASS: $label = '$actual'"
+            else
+              echo "  FAIL: $label = '$actual' (expected '$expected')"
+              ERRORS=$((ERRORS + 1))
+            fi
+          }
+
+          echo "--- Methodology ---"
+          METH=$(curl -s "$BASE/methodology?page=1&limit=1000" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
+          verify_field "$METH" '.methodologyCode' 'V2-GTD-METH-001' 'methodologyCode'
+          verify_field "$METH" '.methodologyName' 'V2 Generic Testing Data - Sustainable Land Management Methodology' 'methodologyName'
+          verify_field "$METH" '.methodologyVersion' '3.2' 'methodologyVersion'
+          verify_field "$METH" '.methodologyType' 'Removal - nature' 'methodologyType'
+          echo ""
+
+          echo "--- Program ---"
+          PROG=$(curl -s "$BASE/program?page=1&limit=1000" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
+          verify_field "$PROG" '.programName' 'V2 Generic Testing Data Carbon Credits Program' 'programName'
+          verify_field "$PROG" '.programRegistry' 'Gold Standard' 'programRegistry'
+          verify_field "$PROG" '.programRegistryActivityId' 'V2-GTD-ACT-001' 'programRegistryActivityId'
+          verify_field "$PROG" '.programRegistryProgramId' 'V2-GTD-PROG-001' 'programRegistryProgramId'
+          echo ""
+
+          echo "--- Stakeholders ---"
+          STAKEHOLDERS=$(curl -s "$BASE/stakeholder?page=1&limit=1000")
+          SH1=$(echo "$STAKEHOLDERS" | jq '[(if type == "object" then .data else . end)[] | select(.stakeholderName == "V2 Generic Testing Data - Green Horizons Foundation")] | .[0]')
+          verify_field "$SH1" '.stakeholderType' 'Owner' 'stakeholder1 type'
+          SH2=$(echo "$STAKEHOLDERS" | jq '[(if type == "object" then .data else . end)[] | select(.stakeholderName == "V2 Generic Testing Data - EcoMetrics Consulting")] | .[0]')
+          verify_field "$SH2" '.stakeholderType' 'Consultant' 'stakeholder2 type'
+          echo ""
+
+          echo "--- Labels ---"
+          LABELS=$(curl -s "$BASE/label?page=1&limit=1000")
+          L1=$(echo "$LABELS" | jq '[(if type == "object" then .data else . end)[] | select(.labelName == "V2 Generic Testing Data - Marine Carbon Standard")] | .[0]')
+          verify_field "$L1" '.labelType' 'Certification' 'label1 type'
+          L2=$(echo "$LABELS" | jq '[(if type == "object" then .data else . end)[] | select(.labelName == "V2 Generic Testing Data - Renewable Energy Certificate")] | .[0]')
+          verify_field "$L2" '.labelType' 'Article 6 - Authorisation' 'label2 type'
+          echo ""
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "FAILED: $ERRORS base entity field mismatches"
+            exit 1
+          fi
+          echo "All base entity fields match expected values"
+
+      - name: Verify synced location, validation, verification, and issuance data
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Verifying synced chain entity data"
+          echo "########################################################"
+          BASE="http://127.0.0.1:31310/v2"
+          ERRORS=0
+
+          verify_field() {
+            local data="$1"
+            local selector="$2"
+            local expected="$3"
+            local label="$4"
+            local actual
+            actual=$(echo "$data" | jq -r "$selector")
+            if [ "$actual" = "$expected" ]; then
+              echo "  PASS: $label = '$actual'"
+            else
+              echo "  FAIL: $label = '$actual' (expected '$expected')"
+              ERRORS=$((ERRORS + 1))
+            fi
+          }
+
+          echo "--- Locations ---"
+          LOCATIONS=$(curl -s "$BASE/location?page=1&limit=1000")
+          LOC_JP=$(echo "$LOCATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.locationCountry == "Japan")] | .[0]')
+          verify_field "$LOC_JP" '.locationRegion' 'Okinawa' 'Japan locationRegion'
+          LOC_MA=$(echo "$LOCATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.locationCountry == "Morocco")] | .[0]')
+          verify_field "$LOC_MA" '.locationRegion' 'Atlas Mountains' 'Morocco locationRegion'
+          LOC_BR=$(echo "$LOCATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.locationCountry == "Brazil")] | .[0]')
+          verify_field "$LOC_BR" '.locationRegion' 'Minas Gerais' 'Brazil locationRegion'
+          echo ""
+
+          echo "--- Validations ---"
+          VALIDATIONS=$(curl -s "$BASE/validation?page=1&limit=1000")
+          VAL1=$(echo "$VALIDATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.validationId == "V2-GTD-VAL-001")] | .[0]')
+          verify_field "$VAL1" '.validationBody' 'SCS Global Services' 'val1 body'
+          verify_field "$VAL1" '.validationCreditPeriodEndDate' '2035-12-31' 'val1 creditPeriodEnd'
+          VAL2=$(echo "$VALIDATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.validationId == "V2-GTD-VAL-002")] | .[0]')
+          verify_field "$VAL2" '.validationBody' 'AENOR International S.A.U.' 'val2 body'
+          VAL3=$(echo "$VALIDATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.validationId == "V2-GTD-VAL-003")] | .[0]')
+          verify_field "$VAL3" '.validationBody' 'Ruby Canyon Environmental Inc' 'val3 body'
+          echo ""
+
+          echo "--- Verifications ---"
+          VERIFICATIONS=$(curl -s "$BASE/verification?page=1&limit=1000")
+          VER1=$(echo "$VERIFICATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.verificationId == "V2-GTD-VER-001")] | .[0]')
+          verify_field "$VER1" '.verificationBody' 'SCS Global Services' 'ver1 body'
+          VER2=$(echo "$VERIFICATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.verificationId == "V2-GTD-VER-002")] | .[0]')
+          verify_field "$VER2" '.verificationBody' 'AENOR International S.A.U.' 'ver2 body'
+          VER3=$(echo "$VERIFICATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.verificationId == "V2-GTD-VER-003")] | .[0]')
+          verify_field "$VER3" '.verificationBody' 'Ruby Canyon Environmental Inc' 'ver3 body'
+          echo ""
+
+          echo "--- Issuances ---"
+          ISSUANCES=$(curl -s "$BASE/issuance?page=1&limit=1000")
+          ISS1=$(echo "$ISSUANCES" | jq '[(if type == "object" then .data else . end)[] | select(.issuanceId == "V2-GTD-ISS-001")] | .[0]')
+          verify_field "$ISS1" '.issuanceDate' '2025-06-15' 'iss1 date'
+          ISS2=$(echo "$ISSUANCES" | jq '[(if type == "object" then .data else . end)[] | select(.issuanceId == "V2-GTD-ISS-002")] | .[0]')
+          verify_field "$ISS2" '.issuanceDate' '2025-07-20' 'iss2 date'
+          ISS3=$(echo "$ISSUANCES" | jq '[(if type == "object" then .data else . end)[] | select(.issuanceId == "V2-GTD-ISS-003")] | .[0]')
+          verify_field "$ISS3" '.issuanceDate' '2025-08-10' 'iss3 date'
+          echo ""
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "FAILED: $ERRORS chain entity field mismatches"
+            exit 1
+          fi
+          echo "All chain entity fields match expected values"
+
+      - name: Verify synced estimation and rating data
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Verifying synced estimation and rating data"
+          echo "########################################################"
+          BASE="http://127.0.0.1:31310/v2"
+          ERRORS=0
+
+          verify_field() {
+            local data="$1"
+            local selector="$2"
+            local expected="$3"
+            local label="$4"
+            local actual
+            actual=$(echo "$data" | jq -r "$selector")
+            if [ "$actual" = "$expected" ]; then
+              echo "  PASS: $label = '$actual'"
+            else
+              echo "  FAIL: $label = '$actual' (expected '$expected')"
+              ERRORS=$((ERRORS + 1))
+            fi
+          }
+
+          echo "--- Estimations (3 expected, deleted V2-GTD-EST-004-DELETE should be gone) ---"
+          ESTIMATIONS=$(curl -s "$BASE/estimation?page=1&limit=1000")
+          EST1=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-001")] | .[0]')
+          verify_field "$EST1" '.estimationUnitCount' '15000' 'est1 unitCount'
+          EST2=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-002")] | .[0]')
+          verify_field "$EST2" '.estimationUnitCount' '45000' 'est2 unitCount'
+          EST3=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-003")] | .[0]')
+          verify_field "$EST3" '.estimationUnitCount' '8000' 'est3 unitCount'
+
+          DELETED_EST=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-004-DELETE")] | length')
+          if [ "$DELETED_EST" -eq 0 ]; then
+            echo "  PASS: deleted estimation V2-GTD-EST-004-DELETE not found (expected)"
+          else
+            echo "  FAIL: deleted estimation V2-GTD-EST-004-DELETE still exists"
+            ERRORS=$((ERRORS + 1))
+          fi
+          echo ""
+
+          echo "--- Ratings ---"
+          RATINGS=$(curl -s "$BASE/rating?page=1&limit=1000")
+          R1=$(echo "$RATINGS" | jq '[(if type == "object" then .data else . end)[] | select(.ratingName == "V2 Generic Testing Data - Blue Carbon CDP Rating")] | .[0]')
+          verify_field "$R1" '.ratingType' 'CDP' 'rating1 type'
+          verify_field "$R1" '.ratingValue' 'A-' 'rating1 value'
+          R2=$(echo "$RATINGS" | jq '[(if type == "object" then .data else . end)[] | select(.ratingName == "V2 Generic Testing Data - Geothermal CCQI Rating")] | .[0]')
+          verify_field "$R2" '.ratingType' 'CCQI' 'rating2 type'
+          verify_field "$R2" '.ratingValue' '87' 'rating2 value'
+          R3=$(echo "$RATINGS" | jq '[(if type == "object" then .data else . end)[] | select(.ratingName == "V2 Generic Testing Data - Agroforestry CDP Rating")] | .[0]')
+          verify_field "$R3" '.ratingValue' 'B+' 'rating3 value'
+          echo ""
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "FAILED: $ERRORS estimation/rating field mismatches"
+            exit 1
+          fi
+          echo "All estimation and rating fields match expected values"
+
+      - name: Verify synced co-benefit data (including deletion)
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Verifying synced co-benefit data"
+          echo "########################################################"
+          BASE="http://127.0.0.1:31310/v2"
+          ERRORS=0
+          COBENEFITS=$(curl -s "$BASE/co-benefit?page=1&limit=1000")
+
+          CB_14=$(echo "$COBENEFITS" | jq '[(if type == "object" then .data else . end)[] | select(.coBenefitId == "SDG 14 - Life below water")] | length')
+          if [ "$CB_14" -eq 1 ]; then
+            echo "  PASS: SDG 14 - Life below water exists"
+          else
+            echo "  FAIL: SDG 14 - Life below water count=$CB_14 (expected 1)"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          CB_7=$(echo "$COBENEFITS" | jq '[(if type == "object" then .data else . end)[] | select(.coBenefitId == "SDG 7 - Affordable and clean energy")] | length')
+          if [ "$CB_7" -eq 1 ]; then
+            echo "  PASS: SDG 7 - Affordable and clean energy exists"
+          else
+            echo "  FAIL: SDG 7 - Affordable and clean energy count=$CB_7 (expected 1)"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          CB_15=$(echo "$COBENEFITS" | jq '[(if type == "object" then .data else . end)[] | select(.coBenefitId == "SDG 15 - Life on land")] | length')
+          if [ "$CB_15" -eq 1 ]; then
+            echo "  PASS: SDG 15 - Life on land exists"
+          else
+            echo "  FAIL: SDG 15 - Life on land count=$CB_15 (expected 1)"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          CB_13=$(echo "$COBENEFITS" | jq '[(if type == "object" then .data else . end)[] | select(.coBenefitId == "SDG 13 - Climate action")] | length')
+          if [ "$CB_13" -eq 0 ]; then
+            echo "  PASS: deleted SDG 13 - Climate action not found (expected)"
+          else
+            echo "  FAIL: deleted SDG 13 - Climate action still exists (count=$CB_13)"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "FAILED: $ERRORS co-benefit mismatches"
+            exit 1
+          fi
+          echo "All co-benefit data matches expected values"
+
+      - name: Verify synced AEF data
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Verifying synced AEF T1-T5 data"
+          echo "########################################################"
+          BASE="http://127.0.0.1:31310/v2"
+          ERRORS=0
+
+          verify_field() {
+            local data="$1"
+            local selector="$2"
+            local expected="$3"
+            local label="$4"
+            local actual
+            actual=$(echo "$data" | jq -r "$selector")
+            if [ "$actual" = "$expected" ]; then
+              echo "  PASS: $label = '$actual'"
+            else
+              echo "  FAIL: $label = '$actual' (expected '$expected')"
+              ERRORS=$((ERRORS + 1))
+            fi
+          }
+
+          echo "--- AEF T5 (Authorized Entities) ---"
+          T5=$(curl -s "$BASE/aef-t5-authorized-entities?page=1&limit=1000" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
+          verify_field "$T5" '.aefT5AuthorizedEntitiesId' 'V2-GTD-T5-001' 'T5 id'
+          verify_field "$T5" '.aefT5AuthorizedEntitiesName' 'V2 Generic Testing Data - Carbon Markets Authority' 'T5 name'
+          verify_field "$T5" '.aefT5AuthorizedEntitiesIncorporationCountry' 'Japan' 'T5 country'
+          echo ""
+
+          echo "--- AEF T1 (Submission) ---"
+          T1=$(curl -s "$BASE/aef-t1-submission?page=1&limit=1000" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
+          verify_field "$T1" '.aefT1SubmissionParty' 'V2 Generic Testing Data - Japan' 'T1 party'
+          verify_field "$T1" '.aefT1SubmissionReportYear' '2025' 'T1 reportYear'
+          verify_field "$T1" '.aefT1SubmissionResultCheck' 'Passed' 'T1 resultCheck'
+          echo ""
+
+          echo "--- AEF T2 (Authorizations) ---"
+          T2=$(curl -s "$BASE/aef-t2-authorizations?page=1&limit=1000" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
+          verify_field "$T2" '.aefT2AuthorizationsId' 'V2-GTD-T2-001' 'T2 id'
+          verify_field "$T2" '.aefT2AuthorizationsQuantity' '500' 'T2 quantity'
+          verify_field "$T2" '.aefT2AuthorizationsMetric' 'GHC' 'T2 metric'
+          echo ""
+
+          echo "--- AEF T3 (Actions) ---"
+          T3=$(curl -s "$BASE/aef-t3-actions?page=1&limit=1000" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
+          verify_field "$T3" '.aefT3ActionsQuantityTCo2' '250' 'T3 quantity'
+          verify_field "$T3" '.aefT3ActionsType' 'Transfer' 'T3 type'
+          verify_field "$T3" '.aefT3ActionsMitigationType' 'Emission reductions' 'T3 mitigationType'
+          echo ""
+
+          echo "--- AEF T4 (Holdings) ---"
+          T4=$(curl -s "$BASE/aef-t4-holdings?page=1&limit=1000" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
+          verify_field "$T4" '.aefT4HoldingsQuantityTCo2' '500' 'T4 quantity'
+          verify_field "$T4" '.aefT4HoldingsMetric' 'GHC' 'T4 metric'
+          verify_field "$T4" '.aefT4HoldingsMitigationType' 'Emission reductions' 'T4 mitigationType'
+          echo ""
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "FAILED: $ERRORS AEF field mismatches"
+            exit 1
+          fi
+          echo "All AEF data matches expected values"
+
+      - name: Show CADT logs after tests
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "CADT stdout logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
+          echo ""
+          echo "=========================================="
+          echo "CADT stderr logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+
+      - name: Show Chia debug log after tests (filtered)
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "Chia debug log (filtered, last 5000 lines):"
+          echo "=========================================="
+          echo "Filtering out noisy messages..."
+          echo ""
+          tail -n 5000 ~/.chia/mainnet/log/debug.log 2>/dev/null | grep -v \
+            -e "Connecting: wss://127.0.0.1" \
+            -e "respond_block_headers from" \
+            -e "Time for request request_block_headers" \
+            -e "get_timestamp_for_height_from_peer add to cache" \
+            -e "request_puzzle_solution to peer" \
+            -e "acquired on.*keyring.yaml.lock" \
+            -e "released on.*keyring.yaml.lock" \
+            -e "request_header_blocks" \
+            -e "coin_state_update" \
+            -e "new_signage_point_or_end_of_sub_slot" \
+            -e "request_removal_proof" \
+            -e "RespondToCoinUpdates" \
+            -e "register_interest_in_coin" \
+            -e "request_children to peer" \
+            -e "respond_to_coin_update" \
+            -e "_coin_subscriptions" \
+            -e "Getting generator for" \
+            -e "SubscriptionConfig" \
+            -e "sub epoch.*start weight is" \
+            -e "Puzzle at index" \
+            -e "Attempting to acquire lock" \
+            -e "watchdog.observers.inotify_buffer" \
+            -e "filelock" \
+            -e "Adding derivation record" \
+            -e "Received message: WSMessage" \
+            -e "DataLayer subscription update pool" \
+            -e "register_service" \
+            -e "Cannot connect to host 127.0.0.1" \
+            -e "Failed to connect to PeerInfo" \
+            || echo "No Chia debug log found or all lines filtered"
+
+      - name: Stop CADT
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping CADT pm2 process..."
+          pm2 stop cadt || true
+          pm2 delete cadt || true
+          echo "CADT stopped"
+
+      - name: Stop Chia services (sync)
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping all Chia services..."
+          chia stop all -d || true
+          echo "Chia services stopped"
+
+  test-v1-governance:
+    name: v1 governance body tests
+    runs-on: ubuntu-latest
+    container:
+      image: node:24
+
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Ignore Husky
+        run: npm pkg delete scripts.prepare
+
+      - name: Install Mocha
+        run: npm install --save-dev mocha
+
+      - name: npm install
+        run: npm install
+
+      - name: install global packages
+        run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
+
+      - name: Show home directory
+        run: ls -lah ~
+
+      - name: Install yq and jq
+        run: |
+          apt-get update
+          apt-get install -y yq jq bc iproute2
+
+      - name: Install Chia and chia-tools
+        shell: bash
+        run: |
+          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+          apt-get update
+
+          apt-get install -y chia-blockchain-cli chia-tools
+
+      - name: Configure Chia
+        shell: bash
+        run: |
+          chia init
+          chia keys generate -l "governance_tests"
+          chia-tools network switch testneta
+          chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia configure -log-level INFO
+
+      - name: Configure CADT
+        shell: bash
+        run: |
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 10
+          pm2 logs cadt --nostream
+          pm2 stop cadt
+
+          echo "Removing cadt databases to reset system..."
+          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
+          rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
+
+          echo "Configuring CADT config.yaml for V1 governance body..."
+          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = null' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.IS_GOVERNANCE_BODY = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
+
+          echo "Showing the config file after configuration..."
+          cat ~/.chia/mainnet/cadt/config.yaml
+
+          pm2 delete cadt 2>/dev/null || true
+
+      - name: Start Chia
+        shell: bash
+        run: |
+          chia start wallet data data_layer_http
+          sleep 10
+          tail ~/.chia/mainnet/log/debug.log
+          chia wallet show
+
+      - name: Faucet
+        shell: bash
+        run: |
+          CHIA_WALLET_ADDRESS=$(chia wallet get_address)
+          echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
+          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+
+          echo "Waiting for wallet to receive funds..."
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+          while true; do
+            BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
+            echo "Current balance: $BALANCE (attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS)"
+            if [ "$BALANCE" != "0" ] && [ "$BALANCE" != "null" ] && [ -n "$BALANCE" ]; then
+              XCH_BALANCE=$(echo "scale=12; $BALANCE / 1000000000000" | bc)
+              echo "Wallet funded! Balance: $BALANCE mojos ($XCH_BALANCE XCH)"
+              break
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              exit 1
+            fi
+            echo "Balance still zero, waiting 10 seconds..."
+            sleep 10
+          done
+
+      - name: Show wallet balance after funding
+        shell: bash
+        run: |
+          chia wallet show
+
+      - name: Start CADT
+        shell: bash
+        run: |
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 30
+
+      - name: Wait for wallet sync and datalayer readiness
+        shell: bash
+        run: |
+          echo "Waiting for wallet to finish syncing..."
+          MAX_WAIT_MINUTES=10
+          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            REMAINING=$((WAIT_SECONDS - ELAPSED))
+
+            if [ "$REMAINING" -le 0 ]; then
+              echo "Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
+              break
+            fi
+
+            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
+            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
+            WALLET_SYNCING=$(echo "$WALLET_STATUS" | jq -r '.syncing // true')
+
+            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s)"
+
+            if [ "$WALLET_SYNCED" = "true" ]; then
+              echo "Wallet is synced!"
+              echo "Waiting additional 60 seconds for datalayer to sync..."
+              sleep 60
+              break
+            fi
+
+            echo "Wallet still syncing, waiting 30 seconds..."
+            sleep 30
+          done
+
+          echo "Final status check..."
+          chia rpc wallet get_sync_status || echo "Failed to get wallet sync status"
+          chia wallet show || echo "Failed to show wallet"
+
+      - name: Show CADT logs before tests
+        shell: bash
+        run: |
+          echo "Last 100 lines of CADT logs:"
+          pm2 logs cadt --lines 100 --nostream
+
+      - name: Pre-flight check
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Running pre-flight checks before V1 governance tests"
+          echo "########################################################"
+          npm run preflight-check:v1 || {
+            echo ""
+            echo "########################################################"
+            echo "PRE-FLIGHT CHECK FAILED - Showing additional debug info:"
+            echo "########################################################"
+            pm2 list || true
+            pm2 logs cadt --lines 100 --nostream || true
+            cat ~/.chia/mainnet/cadt/config.yaml || true
+            exit 1
+          }
+
+      - name: V1 governance tests
+        env:
+          TEST_API_HOST: 127.0.0.1
+        run: |
+          echo "########################################################"
+          echo "Running V1 governance body creation tests"
+          echo "########################################################"
+          npm run test:v1:live:governance:create
+
+      - name: Show CADT logs after tests
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "CADT stdout logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
+          echo ""
+          echo "=========================================="
+          echo "CADT stderr logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+
+      - name: Show Chia debug log after tests (filtered)
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "Chia debug log (filtered, last 5000 lines):"
+          echo "=========================================="
+          tail -n 5000 ~/.chia/mainnet/log/debug.log 2>/dev/null | grep -v \
+            -e "Connecting: wss://127.0.0.1" \
+            -e "respond_block_headers from" \
+            -e "Time for request request_block_headers" \
+            -e "get_timestamp_for_height_from_peer add to cache" \
+            -e "request_puzzle_solution to peer" \
+            -e "acquired on.*keyring.yaml.lock" \
+            -e "released on.*keyring.yaml.lock" \
+            -e "request_header_blocks" \
+            -e "coin_state_update" \
+            -e "new_signage_point_or_end_of_sub_slot" \
+            -e "request_removal_proof" \
+            -e "RespondToCoinUpdates" \
+            -e "register_interest_in_coin" \
+            -e "request_children to peer" \
+            -e "respond_to_coin_update" \
+            -e "_coin_subscriptions" \
+            -e "Getting generator for" \
+            -e "SubscriptionConfig" \
+            -e "sub epoch.*start weight is" \
+            -e "Puzzle at index" \
+            -e "Attempting to acquire lock" \
+            -e "watchdog.observers.inotify_buffer" \
+            -e "filelock" \
+            -e "Adding derivation record" \
+            -e "Received message: WSMessage" \
+            -e "DataLayer subscription update pool" \
+            -e "register_service" \
+            -e "Cannot connect to host 127.0.0.1" \
+            -e "Failed to connect to PeerInfo" \
+            || echo "No Chia debug log found or all lines filtered"
+
+      - name: Stop CADT (v1-governance)
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping CADT pm2 process..."
+          pm2 stop cadt || true
+          pm2 delete cadt || true
+          echo "CADT stopped"
+
+      - name: Show wallet balance (v1-governance)
+        if: always()
+        shell: bash
+        run: |
+          echo "Wallet balance at end of job:"
+          chia wallet show || echo "Failed to show wallet"
+
+      - name: Stop Chia services (v1-governance)
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping all Chia services..."
+          chia stop all -d || true
+          echo "Chia services stopped"
+
+  test-v2-governance:
+    name: v2 governance body tests
+    runs-on: ubuntu-latest
+    container:
+      image: node:24
+
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Ignore Husky
+        run: npm pkg delete scripts.prepare
+
+      - name: Install Mocha
+        run: npm install --save-dev mocha
+
+      - name: npm install
+        run: npm install
+
+      - name: install global packages
+        run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
+
+      - name: Show home directory
+        run: ls -lah ~
+
+      - name: Install yq and jq
+        run: |
+          apt-get update
+          apt-get install -y yq jq bc iproute2
+
+      - name: Install Chia and chia-tools
+        shell: bash
+        run: |
+          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+          apt-get update
+
+          apt-get install -y chia-blockchain-cli chia-tools
+
+      - name: Configure Chia
+        shell: bash
+        run: |
+          chia init
+          chia keys generate -l "governance_tests"
+          chia-tools network switch testneta
+          chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia configure -log-level INFO
+
+      - name: Configure CADT
+        shell: bash
+        run: |
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 10
+          pm2 logs cadt --nostream
+          pm2 stop cadt
+
+          echo "Removing cadt databases to reset system..."
+          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
+          rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
+
+          echo "Configuring CADT config.yaml for V2 governance body..."
+          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = null' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.IS_GOVERNANCE_BODY = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
+
+          echo "Showing the config file after configuration..."
+          cat ~/.chia/mainnet/cadt/config.yaml
+
+          pm2 delete cadt 2>/dev/null || true
+
+      - name: Start Chia
+        shell: bash
+        run: |
+          chia start wallet data data_layer_http
+          sleep 10
+          tail ~/.chia/mainnet/log/debug.log
+          chia wallet show
+
+      - name: Faucet
+        shell: bash
+        run: |
+          CHIA_WALLET_ADDRESS=$(chia wallet get_address)
+          echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
+          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+
+          echo "Waiting for wallet to receive funds..."
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+          while true; do
+            BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
+            echo "Current balance: $BALANCE (attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS)"
+            if [ "$BALANCE" != "0" ] && [ "$BALANCE" != "null" ] && [ -n "$BALANCE" ]; then
+              XCH_BALANCE=$(echo "scale=12; $BALANCE / 1000000000000" | bc)
+              echo "Wallet funded! Balance: $BALANCE mojos ($XCH_BALANCE XCH)"
+              break
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              exit 1
+            fi
+            echo "Balance still zero, waiting 10 seconds..."
+            sleep 10
+          done
+
+      - name: Show wallet balance after funding
+        shell: bash
+        run: |
+          chia wallet show
+
+      - name: Start CADT
+        shell: bash
+        run: |
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 30
+
+      - name: Wait for wallet sync and datalayer readiness
+        shell: bash
+        run: |
+          echo "Waiting for wallet to finish syncing..."
+          MAX_WAIT_MINUTES=10
+          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            REMAINING=$((WAIT_SECONDS - ELAPSED))
+
+            if [ "$REMAINING" -le 0 ]; then
+              echo "Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
+              break
+            fi
+
+            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
+            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
+            WALLET_SYNCING=$(echo "$WALLET_STATUS" | jq -r '.syncing // true')
+
+            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s)"
+
+            if [ "$WALLET_SYNCED" = "true" ]; then
+              echo "Wallet is synced!"
+              echo "Waiting additional 60 seconds for datalayer to sync..."
+              sleep 60
+              break
+            fi
+
+            echo "Wallet still syncing, waiting 30 seconds..."
+            sleep 30
+          done
+
+          echo "Final status check..."
+          chia rpc wallet get_sync_status || echo "Failed to get wallet sync status"
+          chia wallet show || echo "Failed to show wallet"
+
+      - name: Show CADT logs before tests
+        shell: bash
+        run: |
+          echo "Last 100 lines of CADT logs:"
+          pm2 logs cadt --lines 100 --nostream
+
+      - name: Pre-flight check
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Running pre-flight checks before V2 governance tests"
+          echo "########################################################"
+          npm run preflight-check:v2 || {
+            echo ""
+            echo "########################################################"
+            echo "PRE-FLIGHT CHECK FAILED - Showing additional debug info:"
+            echo "########################################################"
+            pm2 list || true
+            pm2 logs cadt --lines 100 --nostream || true
+            cat ~/.chia/mainnet/cadt/config.yaml || true
+            exit 1
+          }
+
+      - name: V2 governance tests
+        env:
+          TEST_API_HOST: 127.0.0.1
+        run: |
+          echo "########################################################"
+          echo "Running V2 governance body creation tests"
+          echo "########################################################"
+          npm run test:v2:live:governance:create
+
+      - name: Show CADT logs after tests
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "CADT stdout logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
+          echo ""
+          echo "=========================================="
+          echo "CADT stderr logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+
+      - name: Show Chia debug log after tests (filtered)
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "Chia debug log (filtered, last 5000 lines):"
+          echo "=========================================="
+          tail -n 5000 ~/.chia/mainnet/log/debug.log 2>/dev/null | grep -v \
+            -e "Connecting: wss://127.0.0.1" \
+            -e "respond_block_headers from" \
+            -e "Time for request request_block_headers" \
+            -e "get_timestamp_for_height_from_peer add to cache" \
+            -e "request_puzzle_solution to peer" \
+            -e "acquired on.*keyring.yaml.lock" \
+            -e "released on.*keyring.yaml.lock" \
+            -e "request_header_blocks" \
+            -e "coin_state_update" \
+            -e "new_signage_point_or_end_of_sub_slot" \
+            -e "request_removal_proof" \
+            -e "RespondToCoinUpdates" \
+            -e "register_interest_in_coin" \
+            -e "request_children to peer" \
+            -e "respond_to_coin_update" \
+            -e "_coin_subscriptions" \
+            -e "Getting generator for" \
+            -e "SubscriptionConfig" \
+            -e "sub epoch.*start weight is" \
+            -e "Puzzle at index" \
+            -e "Attempting to acquire lock" \
+            -e "watchdog.observers.inotify_buffer" \
+            -e "filelock" \
+            -e "Adding derivation record" \
+            -e "Received message: WSMessage" \
+            -e "DataLayer subscription update pool" \
+            -e "register_service" \
+            -e "Cannot connect to host 127.0.0.1" \
+            -e "Failed to connect to PeerInfo" \
+            || echo "No Chia debug log found or all lines filtered"
+
+      - name: Stop CADT (v2-governance)
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping CADT pm2 process..."
+          pm2 stop cadt || true
+          pm2 delete cadt || true
+          echo "CADT stopped"
+
+      - name: Show wallet balance (v2-governance)
+        if: always()
+        shell: bash
+        run: |
+          echo "Wallet balance at end of job:"
+          chia wallet show || echo "Failed to show wallet"
+
+      - name: Stop Chia services (v2-governance)
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping all Chia services..."
+          chia stop all -d || true
+          echo "Chia services stopped"
+
+  test-v1-v2-governance:
+    name: v1 then v2 governance body tests
+    runs-on: ubuntu-latest
+    container:
+      image: node:24
+
+    steps:
+      - uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Ignore Husky
+        run: npm pkg delete scripts.prepare
+
+      - name: Install Mocha
+        run: npm install --save-dev mocha
+
+      - name: npm install
+        run: npm install
+
+      - name: install global packages
+        run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
+
+      - name: Show home directory
+        run: ls -lah ~
+
+      - name: Install yq and jq
+        run: |
+          apt-get update
+          apt-get install -y yq jq bc iproute2
+
+      - name: Install Chia and chia-tools
+        shell: bash
+        run: |
+          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+          apt-get update
+
+          apt-get install -y chia-blockchain-cli chia-tools
+
+      - name: Configure Chia
+        shell: bash
+        run: |
+          chia init
+          chia keys generate -l "governance_tests"
+          chia-tools network switch testneta
+          chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia configure -log-level INFO
+
+      - name: Configure CADT
+        shell: bash
+        run: |
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 10
+          pm2 logs cadt --nostream
+          pm2 stop cadt
+
+          echo "Removing cadt databases to reset system..."
+          rm -f ~/.chia/mainnet/cadt/v1/data.sqlite3*
+          rm -f ~/.chia/mainnet/cadt/v2/data.sqlite3*
+
+          echo "Configuring CADT config.yaml for V1+V2 governance body..."
+          yq -yi '.APP.LOG_LEVEL = "debug"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = null' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.IS_GOVERNANCE_BODY = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.IS_GOVERNANCE_BODY = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
+
+          echo "Showing the config file after configuration..."
+          cat ~/.chia/mainnet/cadt/config.yaml
+
+          pm2 delete cadt 2>/dev/null || true
+
+      - name: Start Chia
+        shell: bash
+        run: |
+          chia start wallet data data_layer_http
+          sleep 10
+          tail ~/.chia/mainnet/log/debug.log
+          chia wallet show
+
+      - name: Faucet
+        shell: bash
+        run: |
+          CHIA_WALLET_ADDRESS=$(chia wallet get_address)
+          echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
+          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+
+          echo "Waiting for wallet to receive funds..."
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+          while true; do
+            BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
+            echo "Current balance: $BALANCE (attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS)"
+            if [ "$BALANCE" != "0" ] && [ "$BALANCE" != "null" ] && [ -n "$BALANCE" ]; then
+              XCH_BALANCE=$(echo "scale=12; $BALANCE / 1000000000000" | bc)
+              echo "Wallet funded! Balance: $BALANCE mojos ($XCH_BALANCE XCH)"
+              break
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              exit 1
+            fi
+            echo "Balance still zero, waiting 10 seconds..."
+            sleep 10
+          done
+
+      - name: Show wallet balance after funding
+        shell: bash
+        run: |
+          chia wallet show
+
+      - name: Start CADT
+        shell: bash
+        run: |
+          pm2 start npm --no-autorestart --name "cadt" -- start
+          sleep 30
+
+      - name: Wait for wallet sync and datalayer readiness
+        shell: bash
+        run: |
+          echo "Waiting for wallet to finish syncing..."
+          MAX_WAIT_MINUTES=10
+          WAIT_SECONDS=$((MAX_WAIT_MINUTES * 60))
+          START_TIME=$(date +%s)
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            REMAINING=$((WAIT_SECONDS - ELAPSED))
+
+            if [ "$REMAINING" -le 0 ]; then
+              echo "Reached maximum wait time of $MAX_WAIT_MINUTES minutes"
+              break
+            fi
+
+            WALLET_STATUS=$(chia rpc wallet get_sync_status 2>/dev/null || echo '{"synced": false}')
+            WALLET_SYNCED=$(echo "$WALLET_STATUS" | jq -r '.synced // false')
+            WALLET_SYNCING=$(echo "$WALLET_STATUS" | jq -r '.syncing // true')
+
+            echo "Wallet status: synced=$WALLET_SYNCED, syncing=$WALLET_SYNCING (elapsed: ${ELAPSED}s)"
+
+            if [ "$WALLET_SYNCED" = "true" ]; then
+              echo "Wallet is synced!"
+              echo "Waiting additional 60 seconds for datalayer to sync..."
+              sleep 60
+              break
+            fi
+
+            echo "Wallet still syncing, waiting 30 seconds..."
+            sleep 30
+          done
+
+          echo "Final status check..."
+          chia rpc wallet get_sync_status || echo "Failed to get wallet sync status"
+          chia wallet show || echo "Failed to show wallet"
+
+      - name: Show CADT logs before tests
+        shell: bash
+        run: |
+          echo "Last 100 lines of CADT logs:"
+          pm2 logs cadt --lines 100 --nostream
+
+      - name: Pre-flight check
+        shell: bash
+        run: |
+          echo "########################################################"
+          echo "Running pre-flight checks before V1+V2 governance tests"
+          echo "########################################################"
+          npm run preflight-check:v1v2 || {
+            echo ""
+            echo "########################################################"
+            echo "PRE-FLIGHT CHECK FAILED - Showing additional debug info:"
+            echo "########################################################"
+            pm2 list || true
+            pm2 logs cadt --lines 100 --nostream || true
+            cat ~/.chia/mainnet/cadt/config.yaml || true
+            exit 1
+          }
+
+      - name: V1 then V2 governance tests
+        env:
+          TEST_API_HOST: 127.0.0.1
+        run: |
+          echo "########################################################"
+          echo "Running V1 then V2 governance body creation tests"
+          echo "########################################################"
+          npm run test:v1v2:live:governance:create
+
+      - name: Show CADT logs after tests
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "CADT stdout logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
+          echo ""
+          echo "=========================================="
+          echo "CADT stderr logs (full):"
+          echo "=========================================="
+          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+
+      - name: Show Chia debug log after tests (filtered)
+        if: always()
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "Chia debug log (filtered, last 5000 lines):"
+          echo "=========================================="
+          tail -n 5000 ~/.chia/mainnet/log/debug.log 2>/dev/null | grep -v \
+            -e "Connecting: wss://127.0.0.1" \
+            -e "respond_block_headers from" \
+            -e "Time for request request_block_headers" \
+            -e "get_timestamp_for_height_from_peer add to cache" \
+            -e "request_puzzle_solution to peer" \
+            -e "acquired on.*keyring.yaml.lock" \
+            -e "released on.*keyring.yaml.lock" \
+            -e "request_header_blocks" \
+            -e "coin_state_update" \
+            -e "new_signage_point_or_end_of_sub_slot" \
+            -e "request_removal_proof" \
+            -e "RespondToCoinUpdates" \
+            -e "register_interest_in_coin" \
+            -e "request_children to peer" \
+            -e "respond_to_coin_update" \
+            -e "_coin_subscriptions" \
+            -e "Getting generator for" \
+            -e "SubscriptionConfig" \
+            -e "sub epoch.*start weight is" \
+            -e "Puzzle at index" \
+            -e "Attempting to acquire lock" \
+            -e "watchdog.observers.inotify_buffer" \
+            -e "filelock" \
+            -e "Adding derivation record" \
+            -e "Received message: WSMessage" \
+            -e "DataLayer subscription update pool" \
+            -e "register_service" \
+            -e "Cannot connect to host 127.0.0.1" \
+            -e "Failed to connect to PeerInfo" \
+            || echo "No Chia debug log found or all lines filtered"
+
+      - name: Stop CADT (v1-v2-governance)
+        if: always()
+        shell: bash
+        run: |
+          echo "Stopping CADT pm2 process..."
+          pm2 stop cadt || true
+          pm2 delete cadt || true
+          echo "CADT stopped"
+
+      - name: Show wallet balance (v1-v2-governance)
+        if: always()
+        shell: bash
+        run: |
+          echo "Wallet balance at end of job:"
+          chia wallet show || echo "Failed to show wallet"
+
+      - name: Stop Chia services (v1-v2-governance)
         if: always()
         shell: bash
         run: |

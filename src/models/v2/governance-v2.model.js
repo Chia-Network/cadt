@@ -164,37 +164,40 @@ class GovernanceV2 extends Model {
     }
 
     // Create new V2-specific governance store
+    await datalayer.waitForSpendableCoins(1);
     const governanceVersionId = await datalayer.createDataLayerStore();
     loggerV2.info(`[v2]: Created new V2 governance store: ${governanceVersionId}`);
 
-    // Merge V2 into existing mapping (preserve V1 and any other versions)
-    const updatedVersionMapping = {
-      ...currentVersionMapping,
+    // Only insert the new version key; existing keys (e.g. v1) are already in the store.
+    // syncDataLayer uses 'insert' which fails with KeyAlreadyPresentError for existing keys.
+    const newVersionEntry = {
       [dataModelVersion]: governanceVersionId,
     };
 
     loggerV2.info(
-      `[v2]: Updating governance store mapping: ${JSON.stringify(updatedVersionMapping)}`,
+      `[v2]: Adding version mapping to governance store: ${JSON.stringify(newVersionEntry)} (existing: ${JSON.stringify(currentVersionMapping)})`,
     );
 
-    // Update main governance body store's version mapping
+    // Update main governance body store with the new version key only
     const revertIfFailed = async () => {
       loggerV2.warn('[v2]: Reverting Failed V2 Governance Body Addition');
       await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
     };
 
-    // Use syncDataLayer to update the mapping (inserts are treated as upserts)
     await datalayer.syncDataLayer(
       mainGovernanceBodyId,
-      updatedVersionMapping,
+      newVersionEntry,
       revertIfFailed,
     );
 
     const onConfirm = async () => {
-      // Store V2 governanceBodyId in MetaV2
       await MetaV2.upsert({
         meta_key: 'governanceBodyId',
         meta_value: governanceVersionId,
+      });
+      await MetaV2.upsert({
+        meta_key: 'mainGoveranceBodyId',
+        meta_value: mainGovernanceBodyId,
       });
       loggerV2.info(
         '[v2]: V2 governance support added to existing V1 governance body. You are ready to go',
@@ -257,6 +260,9 @@ class GovernanceV2 extends Model {
 
     // Create new governance body from scratch
     const dataModelVersion = 'v2'; // CRITICAL: Hardcode 'v2', not getDataModelVersion()
+    await datalayer.waitForSpendableCoins(2);
+    // Create stores sequentially to avoid "DataLayer Wallet already exists"
+    // race condition when both calls try to initialize the wallet in parallel
     const governanceBodyId = await datalayer.createDataLayerStore();
     const governanceVersionId = await datalayer.createDataLayerStore();
 
@@ -369,12 +375,17 @@ class GovernanceV2 extends Model {
       );
     };
 
+    const { USE_SIMULATOR } = getConfig().APP;
+
+    if (!USE_SIMULATOR) {
+      await datalayer.waitForAllTransactionsToConfirm();
+    }
+
     await datalayer.pushDataLayerChangeList(
       governanceBodyId.meta_value,
       changeList,
     );
 
-    const { USE_SIMULATOR } = getConfig().APP;
     if (!USE_SIMULATOR) {
       datalayer.getStoreData(
         governanceBodyId.meta_value,

@@ -4,6 +4,7 @@ import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import { StakeholderV2, StagingV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
 
 describe('Stakeholder V2 Endpoint Integration Tests', function () {
   this.timeout(300000); // 5 minute timeout for comprehensive tests
@@ -11,6 +12,7 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
   before(async function () {
     console.log('Setting up Stakeholder V2 test environment...');
     await prepareV2Db();
+    await createV2TestHomeOrg();
   });
 
   after(async function () {
@@ -331,6 +333,8 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       expect(stagedData[0].stakeholder_type).to.equal('Owner');
       expect(stagedData[0].stakeholder_link).to.equal('https://example.com/api-stakeholder');
       expect(stagedData[0].cad_trust_stakeholder_id).to.equal(response.body.cadTrustStakeholderId);
+      expect(stagedData[0]).to.have.property('org_uid');
+      expect(stagedData[0].org_uid).to.equal('test-home-org-v2');
     });
 
     it('should reject stakeholder with missing required fields', async function () {
@@ -378,6 +382,56 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
 
       expect(response.body.success).to.be.false;
       expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('GET /v2/stakeholder (List)', function () {
+    it('should filter stakeholders by orgUid', async function () {
+      await StakeholderV2.create({
+        stakeholderName: 'Org A Stakeholder',
+        stakeholderType: 'Owner',
+        orgUid: 'org-a',
+      });
+      await StakeholderV2.create({
+        stakeholderName: 'Org B Stakeholder',
+        stakeholderType: 'Developer',
+        orgUid: 'org-b',
+      });
+
+      const response = await supertest(app)
+        .get('/v2/stakeholder')
+        .query({ page: 1, limit: 10, orgUid: 'org-a' })
+        .expect(200);
+
+      expect(response.body).to.have.property('data');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].stakeholderName).to.equal('Org A Stakeholder');
+    });
+
+    it('should filter stakeholders by orgUid=me', async function () {
+      await StakeholderV2.create({
+        stakeholderName: 'My Stakeholder',
+        stakeholderType: 'Owner',
+        orgUid: 'test-home-org-v2',
+      });
+      await StakeholderV2.create({
+        stakeholderName: 'Other Stakeholder',
+        stakeholderType: 'Developer',
+        orgUid: 'other-org',
+      });
+
+      const response = await supertest(app)
+        .get('/v2/stakeholder')
+        .query({ page: 1, limit: 10, orgUid: 'me' })
+        .expect(200);
+
+      expect(response.body).to.have.property('data');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      response.body.data.forEach(s => {
+        expect(s.orgUid).to.equal('test-home-org-v2');
+      });
     });
   });
 

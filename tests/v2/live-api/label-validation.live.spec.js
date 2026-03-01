@@ -95,7 +95,6 @@ describe('Label Live API Validation Tests', function () {
       // Check record is in staging table
       const inStaging = await checkRecordInStaging(request, '/v2/label', id, {
         labelName: data.labelName,
-        labelName: data.labelName,
       });
       expect(inStaging).to.be.true;
       // Commit if in extended mode
@@ -106,7 +105,6 @@ describe('Label Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'label', id);
       } else {
         trackBatchVerification('POST', 'label', id, {
-          labelName: data.labelName,
           labelName: data.labelName,
         });
       }
@@ -124,7 +122,6 @@ describe('Label Live API Validation Tests', function () {
         await waitForDataToAppear(request, 'label', minId);
       } else {
         trackBatchVerification('POST', 'label', minId, {
-          labelName: minimalData.labelName,
           labelName: minimalData.labelName,
         });
       }
@@ -225,12 +222,26 @@ describe('Label Live API Validation Tests', function () {
         .expect(200);
 
       expect(response.body.cadTrustLabelId).to.equal(id);
+      expect(response.body).to.have.property('orgUid');
+    });
+
+    it('should filter labels by orgUid=me', async function () {
+      const response = await request
+        .get('/v2/label?orgUid=me&page=1&limit=10')
+        .expect(200);
+
+      const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+      for (const l of data) {
+        expect(l).to.have.property('orgUid');
+        expect(l.orgUid).to.equal(homeOrgId);
+      }
     });
 
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
         .get('/v2/label')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
       expect(response.body).to.exist;
@@ -270,7 +281,7 @@ describe('Label Live API Validation Tests', function () {
 
   describe('Step 10: Final Validation', function () {
     it('should verify all labels are deleted', async function () {
-      const response = await request.get('/v2/label').expect(200);
+      const response = await request.get('/v2/label').query({ page: 1, limit: 10 }).expect(200);
       const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
       // Should only have labels that existed before tests
       expect(data.length).to.equal(0);

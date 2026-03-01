@@ -305,9 +305,9 @@ describe('V2 Location API - Basic CRUD Tests', function () {
     it('should return empty array when no locations exist', async function () {
       const response = await supertest(app)
         .get('/v2/location')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body.success).to.be.true;
       expect(response.body.data).to.be.an('array');
       expect(response.body.data).to.have.length(0);
     });
@@ -323,9 +323,9 @@ describe('V2 Location API - Basic CRUD Tests', function () {
 
       const response = await supertest(app)
         .get('/v2/location')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body.success).to.be.true;
       expect(response.body.data).to.be.an('array');
       expect(response.body.data).to.have.length(1);
       expect(response.body.data[0].locationCountry).to.equal('Canada');

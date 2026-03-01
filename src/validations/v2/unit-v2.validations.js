@@ -41,11 +41,19 @@ export const unitV2Schema = Joi.object({
 
 // Query parameter validation schema for unit findAll endpoint
 export const unitV2QuerySchema = Joi.object({
-  page: Joi.number().integer().min(1).optional(),
-  limit: Joi.number().integer().min(1).optional(),
+  page: Joi.number().integer().min(1).when('xls', {
+    is: Joi.exist(),
+    then: Joi.optional(),
+    otherwise: Joi.required(),
+  }),
+  limit: Joi.number().integer().min(1).max(1000).when('xls', {
+    is: Joi.exist(),
+    then: Joi.optional(),
+    otherwise: Joi.required(),
+  }),
   columns: Joi.alternatives().try(
     Joi.string(),
-    Joi.array().items(Joi.string())
+    Joi.array().items(Joi.string()),
   ).optional(),
   xls: Joi.boolean().optional(),
   orgUid: Joi.string().optional(),

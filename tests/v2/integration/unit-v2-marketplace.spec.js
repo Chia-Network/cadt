@@ -357,7 +357,8 @@ describe('V2 Unit API - Marketplace Features', function () {
 
     it('should filter units by multiple marketplace identifiers', async function () {
       const res = await supertest(app)
-        .get('/v2/unit?marketplaceIdentifiers=AKFEE3,XYZ123&page=1&limit=10')
+        .get('/v2/unit')
+        .query({ marketplaceIdentifiers: ['AKFEE3', 'XYZ123'], page: 1, limit: 10 })
         .expect(200);
 
       expect(res.body).to.have.property('data');

@@ -414,6 +414,8 @@ describe('Label V2 Endpoint Integration Tests', function () {
       expect(stagedData[0].label_link).to.equal('https://example.com/api-label');
       expect(stagedData[0].label_date).to.equal('2024-01-01');
       expect(stagedData[0].cad_trust_label_id).to.equal(response.body.cadTrustLabelId);
+      expect(stagedData[0]).to.have.property('org_uid');
+      expect(stagedData[0].org_uid).to.equal('test-home-org-v2');
     });
 
     it('should reject label with missing required fields', async function () {
@@ -461,6 +463,56 @@ describe('Label V2 Endpoint Integration Tests', function () {
 
       expect(response.body.success).to.be.false;
       expect(response.body.error).to.include('cannot be set via API');
+    });
+  });
+
+  describe('GET /v2/label (List)', function () {
+    it('should filter labels by orgUid', async function () {
+      await LabelV2.create({
+        labelName: 'Org A Label',
+        labelType: 'Certification',
+        orgUid: 'org-a',
+      });
+      await LabelV2.create({
+        labelName: 'Org B Label',
+        labelType: 'Article 6 - Endorsement',
+        orgUid: 'org-b',
+      });
+
+      const response = await supertest(app)
+        .get('/v2/label')
+        .query({ page: 1, limit: 10, orgUid: 'org-a' })
+        .expect(200);
+
+      expect(response.body).to.have.property('data');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].labelName).to.equal('Org A Label');
+    });
+
+    it('should filter labels by orgUid=me', async function () {
+      await LabelV2.create({
+        labelName: 'My Label',
+        labelType: 'Certification',
+        orgUid: 'test-home-org-v2',
+      });
+      await LabelV2.create({
+        labelName: 'Other Label',
+        labelType: 'Article 6 - Endorsement',
+        orgUid: 'other-org',
+      });
+
+      const response = await supertest(app)
+        .get('/v2/label')
+        .query({ page: 1, limit: 10, orgUid: 'me' })
+        .expect(200);
+
+      expect(response.body).to.have.property('data');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      response.body.data.forEach(l => {
+        expect(l.orgUid).to.equal('test-home-org-v2');
+      });
     });
   });
 

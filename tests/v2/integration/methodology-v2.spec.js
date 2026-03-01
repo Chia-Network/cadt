@@ -76,6 +76,8 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
           const stagedData = JSON.parse(stagingRecord.data);
           expect(stagedData[0].methodology_code).to.equal('TEST-METHOD-001');
           expect(stagedData[0].methodology_name).to.equal('Test Methodology');
+          expect(stagedData[0]).to.have.property('org_uid');
+          expect(stagedData[0].org_uid).to.equal('test-home-org-v2');
         });
 
         it('should create methodology with minimal data', async function () {
@@ -191,10 +193,11 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
     it('should return empty array when no methodologies exist', async function () {
       const response = await supertest(app)
         .get('/v2/methodology')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(0);
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(0);
     });
 
     it('should return methodologies from database', async function () {
@@ -208,12 +211,63 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
 
       const response = await supertest(app)
         .get('/v2/methodology')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
-      expect(response.body).to.be.an('array');
-      expect(response.body).to.have.length(1);
-      expect(response.body[0].methodologyCode).to.equal('DB-METHOD-001');
-      expect(response.body[0].methodologyName).to.equal('Database Methodology');
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].methodologyCode).to.equal('DB-METHOD-001');
+      expect(response.body.data[0].methodologyName).to.equal('Database Methodology');
+    });
+
+    it('should filter methodologies by orgUid', async function () {
+      await MethodologyV2.create({
+        cadTrustMethodologyId: 'org-filter-1',
+        methodologyCode: 'ORG-METHOD-001',
+        methodologyName: 'Org A Methodology',
+        orgUid: 'org-a',
+      });
+      await MethodologyV2.create({
+        cadTrustMethodologyId: 'org-filter-2',
+        methodologyCode: 'ORG-METHOD-002',
+        methodologyName: 'Org B Methodology',
+        orgUid: 'org-b',
+      });
+
+      const response = await supertest(app)
+        .get('/v2/methodology')
+        .query({ page: 1, limit: 10, orgUid: 'org-a' })
+        .expect(200);
+
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data).to.have.length(1);
+      expect(response.body.data[0].methodologyCode).to.equal('ORG-METHOD-001');
+    });
+
+    it('should filter methodologies by orgUid=me', async function () {
+      await MethodologyV2.create({
+        cadTrustMethodologyId: 'me-filter-1',
+        methodologyCode: 'ME-METHOD-001',
+        methodologyName: 'My Methodology',
+        orgUid: 'test-home-org-v2',
+      });
+      await MethodologyV2.create({
+        cadTrustMethodologyId: 'me-filter-2',
+        methodologyCode: 'ME-METHOD-002',
+        methodologyName: 'Other Methodology',
+        orgUid: 'other-org',
+      });
+
+      const response = await supertest(app)
+        .get('/v2/methodology')
+        .query({ page: 1, limit: 10, orgUid: 'me' })
+        .expect(200);
+
+      expect(response.body.data).to.be.an('array');
+      expect(response.body.data.length).to.be.greaterThan(0);
+      response.body.data.forEach(m => {
+        expect(m.orgUid).to.equal('test-home-org-v2');
+      });
     });
   });
 

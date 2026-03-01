@@ -24,6 +24,9 @@ class Governance extends Model {
     }
 
     const dataModelVersion = 'v1';
+    await datalayer.waitForSpendableCoins(2);
+    // Create stores sequentially to avoid "DataLayer Wallet already exists"
+    // race condition when both calls try to initialize the wallet in parallel
     const governanceBodyId = await datalayer.createDataLayerStore();
     const governanceVersionId = await datalayer.createDataLayerStore();
 

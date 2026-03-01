@@ -12,6 +12,8 @@ import {
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 import { convertToSnakeCase } from '../../utils/v2-camel-to-snake.js';
+import { resolveOrgUid } from '../../utils/owner-utils.js';
+import { paginationParams, optionallyPaginatedResponse } from '../../utils/helpers.js';
 import { loggerV2 } from '../../config/logger.js';
 
 export const createAefT4HoldingsV2 = async (req, res) => {
@@ -161,15 +163,24 @@ export const getAefT4HoldingsV2 = async (req, res) => {
 
 export const getAllAefT4HoldingsV2 = async (req, res) => {
   try {
-    const aefT4Holdings = await AefT4HoldingsV2.findAll({
-      order: [['aefT4HoldingsVintageYear', 'DESC']],
-    });
+    const { page, limit, orgUid } = req.query;
+    const pagination = paginationParams(page, limit);
+    const resolvedOrgUid = await resolveOrgUid(orgUid);
 
-    res.status(200).json({
-      success: true,
-      data: aefT4Holdings,
-      count: aefT4Holdings.length,
-    });
+    const queryOptions = { distinct: true, order: [['aefT4HoldingsVintageYear', 'DESC']], ...pagination };
+    if (resolvedOrgUid) {
+      queryOptions.include = [{
+        model: ProjectV2,
+        as: 'project',
+        attributes: [],
+        where: { orgUid: resolvedOrgUid },
+        required: true,
+      }];
+    }
+
+    const records = await AefT4HoldingsV2.findAndCountAll(queryOptions);
+
+    res.json(optionallyPaginatedResponse(records, page, limit));
   } catch (err) {
     loggerV2.error('[v2]: Error fetching AEF-T4-Holdings:', err);
     res.status(400).json({

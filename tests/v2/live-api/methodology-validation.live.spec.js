@@ -190,7 +190,7 @@ describe('Methodology Live API Validation Tests', function () {
       let id = createdIds[0];
       if (!id) {
         // Query database to get first existing record (for PUT tests running in separate process)
-        const listResponse = await request.get('/v2/methodology').expect(200);
+        const listResponse = await request.get('/v2/methodology').query({ page: 1, limit: 10 }).expect(200);
         const data = Array.isArray(listResponse.body)
           ? listResponse.body
           : (listResponse.body?.data || []);
@@ -247,12 +247,26 @@ describe('Methodology Live API Validation Tests', function () {
         .expect(200);
 
       expect(response.body.cadTrustMethodologyId).to.equal(id);
+      expect(response.body).to.have.property('orgUid');
+    });
+
+    it('should filter methodologies by orgUid=me', async function () {
+      const response = await request
+        .get('/v2/methodology?orgUid=me&page=1&limit=10')
+        .expect(200);
+
+      const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
+      for (const m of data) {
+        expect(m).to.have.property('orgUid');
+        expect(m.orgUid).to.equal(homeOrgId);
+      }
     });
 
     it('should support search functionality', async function () {
       // Test search if supported by endpoint
       const response = await request
         .get('/v2/methodology')
+        .query({ page: 1, limit: 10 })
         .expect(200);
 
       expect(response.body).to.exist;
@@ -290,7 +304,7 @@ describe('Methodology Live API Validation Tests', function () {
   });
   describe('Step 10: Final Validation', function () {
     it('should verify all methodologies are deleted', async function () {
-      const response = await request.get('/v2/methodology').expect(200);
+      const response = await request.get('/v2/methodology').query({ page: 1, limit: 10 }).expect(200);
       const data = Array.isArray(response.body) ? response.body : (response.body?.data || []);
       // Should only have methodologies that existed before tests
       expect(data.length).to.equal(0);

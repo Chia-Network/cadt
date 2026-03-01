@@ -319,10 +319,10 @@ const buildServerDiagnostics = (v2Response, v1Response, rootResponse, lastError,
  * @param {Object} request - supertest request instance (wrapped with logging/retry)
  * @param {string} endpoint - API endpoint to POST to (e.g. '/v1/organizations/create' or '/v2/organizations')
  * @param {Object} orgData - Organization data to send
- * @param {number} maxWaitMinutes - Maximum time to retry in minutes (default: 20)
+ * @param {number} maxWaitMinutes - Maximum time to retry in minutes (default: 10)
  * @returns {Promise<{createResponse: Object, lastError: string|null, attempt: number}>}
  */
-export const createOrganizationWithRetry = async (request, endpoint, orgData, maxWaitMinutes = 20) => {
+export const createOrganizationWithRetry = async (request, endpoint, orgData, maxWaitMinutes = 10) => {
   const maxWaitMs = maxWaitMinutes * 60 * 1000;
   const retryDelayMs = 30000; // 30 seconds between retries
   const startTime = Date.now();
@@ -463,11 +463,8 @@ export const checkDatabaseEmpty = async (request) => {
 
   for (const table of dataTables) {
     try {
-      const response = await request.get(`/v2/${table}`);
-      // Response might be array or object with data property
-      const data = Array.isArray(response.body)
-        ? response.body
-        : (response.body?.data || []);
+      const response = await request.get(`/v2/${table}`).query({ page: 1, limit: 1000 });
+      const data = response.body?.data || [];
 
       if (response.status === 200 && Array.isArray(data) && data.length > 0) {
         nonEmptyTables.push({ table, count: data.length });
@@ -605,10 +602,8 @@ export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
 
   while (Date.now() - startTime < maxWaitTime) {
     try {
-      const response = await request.get('/v2/staging');
-      const records = Array.isArray(response.body)
-        ? response.body
-        : (response.body?.data || []);
+      const response = await request.get('/v2/staging').query({ page: 1, limit: 1000 });
+      const records = response.body?.data || [];
 
       if (records.length === 0) {
         console.log('✓ Staging table is empty');
@@ -1027,6 +1022,61 @@ const createRetryableRequest = (makeRequest, method, path) => {
 };
 
 /**
+ * Wait for the wallet to be available and stable before attempting blockchain operations.
+ *
+ * Polls CADT's /v1/health endpoint until it returns consecutive successes,
+ * indicating the wallet is available (not just that Chia reports synced=true).
+ *
+ * Note: this confirms wallet *availability* at the CADT layer. It cannot guarantee
+ * the wallet is ready for datalayer store *transactions* (a stricter Chia-internal
+ * check). The outer retry loop in tests handles that residual race condition.
+ *
+ * @param {Object} request - supertest request instance
+ * @param {number} maxWaitMs - Maximum wait time in ms (default: 10 minutes)
+ * @returns {Promise<void>} - Resolves when wallet is confirmed available, or after timeout
+ */
+export const waitForWalletReadyForTransactions = async (request, maxWaitMs = 600000) => {
+  const startTime = Date.now();
+  const pollIntervalMs = 15000;
+  const consecutiveSuccessRequired = 3;
+  let consecutiveSuccess = 0;
+  let attempt = 0;
+
+  console.log(`[${getTimestamp()}] Waiting for wallet to be available for transactions (up to ${maxWaitMs / 60000}m)...`);
+
+  while (Date.now() - startTime < maxWaitMs) {
+    attempt++;
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
+    try {
+      const response = await request.get('/v1/health');
+
+      if (response.status === 200) {
+        consecutiveSuccess++;
+        console.log(`[${getTimestamp()}] ✓ Wallet available (${consecutiveSuccess}/${consecutiveSuccessRequired} consecutive, ${elapsed}s elapsed)`);
+        if (consecutiveSuccess >= consecutiveSuccessRequired) {
+          console.log(`[${getTimestamp()}] ✓ Wallet confirmed stable and available for transactions`);
+          return;
+        }
+      } else {
+        consecutiveSuccess = 0;
+        const body = response.body || {};
+        const msg = body.error || body.message || `HTTP ${response.status}`;
+        console.log(`[${getTimestamp()}] [Attempt ${attempt}] Wallet not ready: ${msg} (${elapsed}s elapsed)`);
+      }
+    } catch (error) {
+      consecutiveSuccess = 0;
+      console.log(`[${getTimestamp()}] [Attempt ${attempt}] Health check error: ${error.message} (${elapsed}s elapsed)`);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+  }
+
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  console.log(`[${getTimestamp()}] ⚠️  Wallet readiness check timed out after ${elapsed}s — proceeding with retry-based resilience`);
+};
+
+/**
  * Convenience function to get live API request instance
  * Also checks server health
  *
@@ -1082,12 +1132,12 @@ export const getLiveApiRequest = async (options = {}) => {
  * Also checks /v2/organizations/status for creation progress details
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
- * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
+ * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 900000 = 15 minutes)
  * @param {Object} options - Additional options
  * @param {boolean} options.isUpgrade - If true, skip fast-fail checks (upgrade is fully async with no status)
  * @returns {Promise<{orgUid: string, organization: object}>} Organization UID and data
  */
-export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000, options = {}) => {
+export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 900000, options = {}) => {
   const { isUpgrade = false } = options;
   const startTime = Date.now();
   const interval = 10000; // Check every 10 seconds
@@ -1268,8 +1318,9 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
             creationInProgress = true;
             noProgressCount = 0; // Reset counter
             console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
-          } else if (sawPendingOrg && orgs.length === 0) {
-            // We had a PENDING org but now it's gone with no replacement - creation failed
+          } else if (sawPendingOrg) {
+            // We had a PENDING org but now it's gone with no home org replacement - creation failed
+            // (Remote/non-home orgs may still exist, but that doesn't mean creation succeeded)
             console.log(`  [${elapsed}s] ❌ PENDING organization disappeared - creation failed!`);
 
             // Try to get more details about what went wrong
@@ -1289,8 +1340,9 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
           } else {
             console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
 
-            // Track no progress - if no PENDING org and no creation in progress for too long, fail fast
-            if (!creationInProgress && orgs.length === 0) {
+            // Track no progress - no home org, no PENDING org, and no creation in progress
+            // Note: non-home remote orgs may exist but don't count as progress
+            if (!creationInProgress) {
               noProgressCount++;
               if (noProgressCount >= noProgressThreshold) {
                 console.log(`  [${elapsed}s] ❌ No organization creation progress detected after ${noProgressCount * 10}s`);
@@ -1373,10 +1425,10 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
  * Also checks /v1/organizations/creation-status for creation progress details
  * @param {Object} request - supertest request instance
  * @param {string} [orgName] - Optional organization name to match (if not provided, finds home org)
- * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1800000 = 30 minutes)
+ * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 900000 = 15 minutes)
  * @returns {Promise<{orgUid: string, organization: object}>} Organization UID and data
  */
-export const waitForV1OrganizationReady = async (request, orgName = null, maxWaitTime = 1800000) => {
+export const waitForV1OrganizationReady = async (request, orgName = null, maxWaitTime = 900000) => {
   const startTime = Date.now();
   const interval = 10000; // Check every 10 seconds
   const timestamp = getTimestamp();
@@ -1592,8 +1644,9 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
             creationInProgress = true;
             noProgressCount = 0; // Reset counter
             console.log(`  [${elapsed}s] Organization creation in progress (PENDING record exists)`);
-          } else if (sawPendingOrg && orgs.length === 0) {
-            // We had a PENDING org but now it's gone with no replacement - creation failed
+          } else if (sawPendingOrg) {
+            // We had a PENDING org but now it's gone with no home org replacement - creation failed
+            // (Remote/non-home orgs may still exist, but that doesn't mean creation succeeded)
             console.log(`  [${elapsed}s] ❌ PENDING organization disappeared - creation failed!`);
 
             // Try to get more details about what went wrong
@@ -1613,8 +1666,9 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
           } else {
             console.log(`  [${elapsed}s] Organization "${orgName || 'home'}" not found yet`);
 
-            // Track no progress - if no PENDING org and no creation in progress for too long, fail fast
-            if (!creationInProgress && orgs.length === 0) {
+            // Track no progress - no home org, no PENDING org, and no creation in progress
+            // Note: non-home remote orgs may exist but don't count as progress
+            if (!creationInProgress) {
               noProgressCount++;
               if (noProgressCount >= noProgressThreshold) {
                 console.log(`  [${elapsed}s] ❌ No organization creation progress detected after ${noProgressCount * 10}s`);

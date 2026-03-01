@@ -14,6 +14,8 @@ dotenv.config({ quiet: true });
 
 // This task checks if there are any mirrors that have not been properly mirrored and then mirrors them if not
 
+let mirrorCheckInProgress = false;
+
 const task = new Task('mirror-check-v2', async () => {
   loggerV2.silly('[v2]: [MIRROR_DEBUG] Mirror-check V2 task started');
 
@@ -56,7 +58,7 @@ const job = new SimpleIntervalJob(
   { id: 'mirror-check-v2', preventOverrun: true },
 );
 
-const runMirrorCheckV2 = async () => {
+const runMirrorCheckV2Inner = async () => {
   loggerV2.silly('[v2]: [MIRROR_DEBUG] Starting runMirrorCheckV2 function');
 
   const mirrorUrl = await getMirrorUrl();
@@ -221,6 +223,19 @@ const runMirrorCheckV2 = async () => {
   }
 
   loggerV2.silly('[v2]: [MIRROR_DEBUG] Completed runMirrorCheckV2 function');
+};
+
+const runMirrorCheckV2 = async () => {
+  if (mirrorCheckInProgress) {
+    loggerV2.info('[v2]: Mirror check already in progress, skipping concurrent run');
+    return;
+  }
+  mirrorCheckInProgress = true;
+  try {
+    await runMirrorCheckV2Inner();
+  } finally {
+    mirrorCheckInProgress = false;
+  }
 };
 
 export default job;

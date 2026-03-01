@@ -884,9 +884,38 @@ class OrganizationsV2 extends Model {
       // Create new V2 registry store (v2 data store - different from V1)
       // CRITICAL: Reuse v1OrgUid and v1FileStoreId - do NOT create new stores for these
       loggerV2.verbose('[v2]: upgradeFromV1() is creating new V2 registryId store');
-      const newV2RegistryStoreId = USE_SIMULATOR
-        ? 'v2-registry-' + Date.now()
-        : await datalayer.createDataLayerStore();
+      let newV2RegistryStoreId;
+      if (USE_SIMULATOR) {
+        newV2RegistryStoreId = 'v2-registry-' + Date.now();
+      } else {
+        const maxStoreCreateRetries = 10;
+        const storeCreateRetryDelayMs = 30000;
+
+        for (let attempt = 1; attempt <= maxStoreCreateRetries; attempt++) {
+          try {
+            await wallet.waitForSpendableCoins(1);
+            newV2RegistryStoreId = await datalayer.createDataLayerStore();
+            break;
+          } catch (error) {
+            const isTransient =
+              error.message?.includes('Wallet needs to be fully synced') ||
+              error.message?.includes('DataLayerWallet not available') ||
+              error.message?.includes('wallet') ||
+              error.message?.includes('No spendable coins');
+
+            if (isTransient && attempt < maxStoreCreateRetries) {
+              loggerV2.warn(
+                `[v2]: Wallet not ready during V2 registry store creation ` +
+                `(attempt ${attempt}/${maxStoreCreateRetries}): ${error.message}. ` +
+                `Retrying in ${storeCreateRetryDelayMs / 1000}s...`,
+              );
+              await new Promise((resolve) => setTimeout(resolve, storeCreateRetryDelayMs));
+              continue;
+            }
+            throw error;
+          }
+        }
+      }
 
       // CRITICAL: Use existing dataModelVersionStoreId singleton (do NOT create new one)
       const sharedDataModelVersionStoreId = v1DataModelVersionStoreId;
@@ -951,6 +980,9 @@ class OrganizationsV2 extends Model {
         // CRITICAL: Add v2 key to existing singleton (preserve v1 key)
         // Only insert the new v2 key - don't re-insert existing keys (v1 already exists)
         // syncDataLayer always uses 'insert' action, so re-inserting v1 would cause KeyAlreadyPresentError
+        if (!USE_SIMULATOR) {
+          await datalayer.waitForAllTransactionsToConfirm();
+        }
         await datalayer.syncDataLayer(
           sharedDataModelVersionStoreId,
           { v2: newV2RegistryStoreId }, // Only insert the new v2 key
