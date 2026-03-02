@@ -38,6 +38,7 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Import a home organization](#import-a-home-organization-that-datalayer-is-subscribed-to)
   - [DELETE Examples](#delete-examples)
     - [Delete a home organization](#reset-home-organization)
+  - [Reclaim Home Organization](#reclaim-home-organization)
   - [Additional organizations resources](#additional-organizations-resources)
 - [`projects`](#projects)
   - [GET Examples](#get-examples-1)

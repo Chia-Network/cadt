@@ -92,6 +92,7 @@ Where `pageCount` is the total number of pages based on the total record count a
     - [Resync organization](#resync-organization)
   - [DELETE Examples](#organizations-delete-examples)
     - [Delete organization](#delete-organization)
+  - [Reclaim Home Organization](#reclaim-home-organization)
   - [Additional organizations resources](#additional-organizations-resources)
 - [`staging`](#staging)
   - [GET Examples](#staging-get-examples)
