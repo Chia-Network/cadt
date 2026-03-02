@@ -10,6 +10,9 @@ import * as testFixtures from '../test-fixtures';
 import { prepareDb } from '../../src/database';
 import datalayer from '../../src/datalayer';
 import { Staging } from '../../src/models';
+import { getConfig } from '../../src/utils/config-loader';
+
+const { USE_SIMULATOR } = getConfig().APP;
 const TEST_WAIT_TIME = datalayer.POLLING_INTERVAL * 5;
 
 describe('Unit Resource Integration Tests', function () {
@@ -175,8 +178,8 @@ describe('Unit Resource Integration Tests', function () {
     const { Unit } = await import('../../src/models/index.js');
     let unitRecord;
     const pollStartTime1 = Date.now();
-    const interval = 5000; // 5 seconds
-    const maxAttempts = 10; // 50 seconds total
+    const interval = USE_SIMULATOR ? 500 : 5000;
+    const maxAttempts = USE_SIMULATOR ? 30 : 10;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await new Promise(resolve => setTimeout(resolve, interval));
@@ -192,7 +195,7 @@ describe('Unit Resource Integration Tests', function () {
       }
 
       if (attempt === maxAttempts) {
-        throw new Error('Unit did not appear in database after 50 seconds');
+        throw new Error(`Unit did not appear in database after ${maxAttempts * interval / 1000} seconds`);
       }
     }
 
@@ -285,10 +288,9 @@ describe('Unit Resource Integration Tests', function () {
     expect(_.head(stagingRes2.body).commited).to.equal(true);
 
     // Wait for split units to appear in the database using smart polling
-    // (Note: We already committed above, so we just poll without committing again)
     const pollStartTime2 = Date.now();
-    const pollInterval = 5000;
-    const pollMaxAttempts = 10;
+    const pollInterval = USE_SIMULATOR ? 500 : 5000;
+    const pollMaxAttempts = USE_SIMULATOR ? 30 : 10;
     let newRecord1;
 
     for (let attempt = 1; attempt <= pollMaxAttempts; attempt++) {
@@ -297,15 +299,17 @@ describe('Unit Resource Integration Tests', function () {
         .get(`/v1/units`)
         .query({ warehouseUnitId: splitRecord1.warehouseUnitId });
 
-      if (warehouseRes.body && warehouseRes.body.warehouseUnitId === splitRecord1.warehouseUnitId) {
+      if (warehouseRes.body &&
+          warehouseRes.body.warehouseUnitId === splitRecord1.warehouseUnitId &&
+          warehouseRes.body.unitCount === splitRecord1.unitCount) {
         newRecord1 = warehouseRes.body;
         const elapsedTime = Date.now() - pollStartTime2;
-        console.log(`[TEST] Split unit appeared after ${elapsedTime}ms (${(elapsedTime/1000).toFixed(1)}s, ${attempt} attempts)`);
+        console.log(`[TEST] Split unit synced after ${elapsedTime}ms (${(elapsedTime/1000).toFixed(1)}s, ${attempt} attempts)`);
         break;
       }
 
       if (attempt === pollMaxAttempts) {
-        throw new Error('Split unit did not appear in database after 50 seconds');
+        throw new Error(`Split unit did not appear in database after ${pollMaxAttempts * pollInterval / 1000} seconds`);
       }
     }
 

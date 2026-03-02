@@ -123,8 +123,6 @@ export const create = async (req, res) => {
     const cadTrustProjectId = uuidv4();
 
     // Convert camelCase API fields to snake_case DB fields for staging
-    // Note: projectType is an array - serialize to JSON for storage
-    // projectStatus is a single string value
     const dbRecord = {
       cad_trust_project_id: cadTrustProjectId,
       org_uid: homeOrg.org_uid, // Automatically set from home organization
@@ -134,7 +132,7 @@ export const create = async (req, res) => {
       project_name: newRecord.projectName,
       project_link: newRecord.projectLink,
       project_description: newRecord.projectDescription,
-      project_sector: newRecord.projectSector,
+      project_sector: newRecord.projectSector ? JSON.stringify(newRecord.projectSector) : null,
       project_type: newRecord.projectType ? JSON.stringify(newRecord.projectType) : null,
       project_subtype: newRecord.projectSubtype,
       project_status: newRecord.projectStatus || null,
@@ -751,11 +749,9 @@ export const update = async (req, res) => {
     if (updateData.projectName !== undefined) dbUpdateData.project_name = updateData.projectName;
     if (updateData.projectLink !== undefined) dbUpdateData.project_link = updateData.projectLink;
     if (updateData.projectDescription !== undefined) dbUpdateData.project_description = updateData.projectDescription;
-    if (updateData.projectSector !== undefined) dbUpdateData.project_sector = updateData.projectSector;
-    // projectType is an array - serialize to JSON for storage
+    if (updateData.projectSector !== undefined) dbUpdateData.project_sector = updateData.projectSector ? JSON.stringify(updateData.projectSector) : null;
     if (updateData.projectType !== undefined) dbUpdateData.project_type = updateData.projectType ? JSON.stringify(updateData.projectType) : null;
     if (updateData.projectSubtype !== undefined) dbUpdateData.project_subtype = updateData.projectSubtype;
-    // projectStatus is a single string value
     if (updateData.projectStatus !== undefined) dbUpdateData.project_status = updateData.projectStatus || null;
     if (updateData.projectStatusDate !== undefined) dbUpdateData.project_status_date = updateData.projectStatusDate;
     if (updateData.projectUnitMetric !== undefined) dbUpdateData.project_unit_metric = updateData.projectUnitMetric;

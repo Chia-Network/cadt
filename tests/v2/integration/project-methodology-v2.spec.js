@@ -669,8 +669,6 @@ describe('Project-Methodology V2 Join Table Integration Tests', function () {
           projectMethodologyDate: '2024-01-01',
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });

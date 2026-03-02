@@ -6,9 +6,10 @@ export const ratingV2Schema = Joi.object({
     'any.unknown': 'cadTrustRatingId is auto-generated and cannot be set via API',
   }),
 
-  // Optional fields
-  ratingType: Joi.string().valid('CDP', 'CCQI').allow(null).optional().messages({
+  // Required fields
+  ratingType: Joi.string().valid('CDP', 'CCQI').required().messages({
     'any.only': 'ratingType must be one of: CDP, CCQI',
+    'any.required': 'ratingType is required',
   }),
 
   // Required fields

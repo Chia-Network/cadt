@@ -118,9 +118,11 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
       expect(stagedData[0].cad_trust_project_id).to.equal(testProject.cadTrustProjectId);
     });
 
-    it('should create validation with minimal required data', async function () {
+    it('should create validation with all required data', async function () {
       const minimalData = {
         validationId: 'MIN-VALIDATION-001',
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
 
@@ -131,6 +133,38 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body.uuid).to.exist;
+    });
+
+    it('should reject validation without required validationType', async function () {
+      const invalidData = {
+        validationId: 'MISSING-TYPE-001',
+        validationBody: 'AENOR International S.A.U.',
+        cadTrustProjectId: testProject.cadTrustProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/validation')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('validationType');
+    });
+
+    it('should reject validation without required validationBody', async function () {
+      const invalidData = {
+        validationId: 'MISSING-BODY-001',
+        validationType: 'Validation of Project Design Document',
+        cadTrustProjectId: testProject.cadTrustProjectId,
+      };
+
+      const response = await supertest(app)
+        .post('/v2/validation')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('validationBody');
     });
 
     // Validation tests
@@ -151,6 +185,8 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should reject validation without required cadTrustProjectId', async function () {
       const invalidData = {
         validationId: 'MISSING-FK',
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'AENOR International S.A.U.',
       };
 
       const response = await supertest(app)
@@ -165,6 +201,8 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should reject validation with invalid validationDate format', async function () {
       const invalidData = {
         validationId: 'INVALID-DATE',
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         validationDate: 'not-a-date',
       };
@@ -198,8 +236,9 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should accept validation with valid V2 validationType', async function () {
       const validData = {
         validationId: 'VALID-TYPE',
-        cadTrustProjectId: testProject.cadTrustProjectId,
         validationType: 'Validation of Project Design Document',
+        validationBody: 'AENOR International S.A.U.',
+        cadTrustProjectId: testProject.cadTrustProjectId,
       };
 
       const response = await supertest(app)
@@ -213,8 +252,9 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should reject validation with invalid validationBody (not in V2 picklist)', async function () {
       const invalidData = {
         validationId: 'INVALID-BODY',
-        cadTrustProjectId: testProject.cadTrustProjectId,
+        validationType: 'Validation of Project Design Document',
         validationBody: 'InvalidBody',
+        cadTrustProjectId: testProject.cadTrustProjectId,
       };
 
       const response = await supertest(app)
@@ -229,8 +269,9 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should accept validation with valid V2 validationBody', async function () {
       const validData = {
         validationId: 'VALID-BODY',
-        cadTrustProjectId: testProject.cadTrustProjectId,
+        validationType: 'Validation of Project Design Document',
         validationBody: 'AENOR International S.A.U.',
+        cadTrustProjectId: testProject.cadTrustProjectId,
       };
 
       const response = await supertest(app)
@@ -245,6 +286,8 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should reject validation with invalid cadTrustProjectId', async function () {
       const invalidData = {
         validationId: 'INVALID-FK',
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: '550e8400-e29b-41d4-a716-446655440999', // Valid UUID format but non-existent
       };
 
@@ -261,6 +304,8 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should accept validation with valid cadTrustProjectId', async function () {
       const validData = {
         validationId: 'VALID-FK',
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
 
@@ -275,6 +320,8 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should reject validation with forbidden createdAt field', async function () {
       const invalidData = {
         validationId: 'FORBIDDEN-FIELD',
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         createdAt: '2024-01-01T00:00:00Z',
       };
@@ -291,6 +338,8 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should reject validation with forbidden updatedAt field', async function () {
       const invalidData = {
         validationId: 'FORBIDDEN-FIELD',
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -374,6 +423,8 @@ describe('V2 Validation API - Basic CRUD Tests', function () {
     it('should return 404 for non-existent validation', async function () {
       const updateData = {
         validationId: 'Updated ID',
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'AENOR International S.A.U.',
         cadTrustProjectId: testProject.cadTrustProjectId,
       };
 

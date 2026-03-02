@@ -697,6 +697,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       const unitLabelData = {
         cadTrustLabelId: '550e8400-e29b-41d4-a716-446655440999',
         cadTrustUnitId: testUnitId,
+        labelUnitDate: '2024-01-01',
       };
 
       const response = await supertest(app)
@@ -722,6 +723,22 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
 
       expect(response.body.success).to.be.false;
       expect(response.body.error).to.include('cadTrustUnitId');
+    });
+
+    it('should reject unit-label without required labelUnitDate', async function () {
+      const invalidData = {
+        cadTrustLabelId: testLabelId,
+        cadTrustUnitId: testUnitId,
+        // Missing labelUnitDate
+      };
+
+      const response = await supertest(app)
+        .post('/v2/unit-label')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('labelUnitDate');
     });
   });
 
@@ -766,8 +783,6 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
           labelUnitDate: '2024-01-01',
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });
@@ -805,6 +820,7 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
       const unitLabelData = {
         cadTrustLabelId: testLabelId,
         cadTrustUnitId: testUnitId,
+        labelUnitDate: '2024-01-01',
       };
 
       const response = await supertest(app)
@@ -835,8 +851,6 @@ describe('Unit-Label V2 Join Table Integration Tests', function () {
           cadTrustUnitId: createdUnitId,
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
 

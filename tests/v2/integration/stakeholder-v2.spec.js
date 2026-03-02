@@ -352,6 +352,21 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       expect(response.body.error).to.include('stakeholderName');
     });
 
+    it('should reject stakeholder without required stakeholderType', async function () {
+      const invalidData = {
+        stakeholderName: 'Test Stakeholder',
+        // Missing stakeholderType
+      };
+
+      const response = await supertest(app)
+        .post('/v2/stakeholder')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.error).to.include('stakeholderType');
+    });
+
     it('should reject stakeholder with forbidden fields (createdAt, updatedAt, cadTrustStakeholderId)', async function () {
       const stakeholderData = {
         stakeholderName: 'Test Stakeholder',
@@ -449,8 +464,6 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
           stakeholderType: 'Owner',
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });
@@ -502,8 +515,6 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
           stakeholderType: 'Consultant',
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
       }
     });

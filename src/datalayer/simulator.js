@@ -7,8 +7,30 @@ const Op = Sequelize.Op;
 
 const frames = ['-', '\\', '|', '/'];
 
+const ownedStoreIds = new Set();
+
 export const createDataLayerStore = async () => {
-  return uuidv4();
+  const id = uuidv4();
+  ownedStoreIds.add(id);
+  return id;
+};
+
+export const getOwnedStores = async () => {
+  const results = await Simulator.findAll({
+    attributes: ['key'],
+    raw: true,
+  });
+
+  const storeIdsFromData = new Set();
+  results.forEach(({ key }) => {
+    const underscoreIdx = key.indexOf('_');
+    if (underscoreIdx > 0) {
+      storeIdsFromData.add(key.substring(0, underscoreIdx));
+    }
+  });
+
+  const allOwned = new Set([...ownedStoreIds, ...storeIdsFromData]);
+  return { success: true, storeIds: Array.from(allOwned) };
 };
 
 export const pushChangeListToDataLayer = async (storeId, changeList) => {

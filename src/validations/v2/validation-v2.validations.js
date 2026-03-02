@@ -6,13 +6,11 @@ import { pickListValidationV2 } from '../../utils/v2-validation-utils.js';
 export const validationV2Schema = Joi.object({
   validationId: Joi.string().required(),
   validationType: Joi.string()
-    .allow(null)
     .custom(pickListValidationV2('validationType'))
-    .optional(),
+    .required(),
   validationBody: Joi.string()
-    .allow(null)
     .custom(pickListValidationV2('validationBody'))
-    .optional(),
+    .required(),
   validationDate: Joi.date().allow(null).optional(),
   validationCreditPeriodStartDate: Joi.date().allow(null).optional(),
   validationCreditPeriodEndDate: Joi.date().allow(null).optional(),

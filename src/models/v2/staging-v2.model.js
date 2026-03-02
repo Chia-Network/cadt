@@ -78,7 +78,7 @@ class StagingV2 extends Model {
     const result = await super.destroy(values);
 
     // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
 
     return result;
   }
@@ -88,7 +88,7 @@ class StagingV2 extends Model {
     const result = await super.upsert(values, options);
 
     // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
 
     return result;
   }
@@ -97,7 +97,7 @@ class StagingV2 extends Model {
     const result = await super.update(values, options);
 
     // Small delay for WAL visibility
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (process.env.USE_SIMULATOR !== 'true') await new Promise((resolve) => setTimeout(resolve, 50));
 
     return result;
   }

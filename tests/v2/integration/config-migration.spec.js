@@ -16,6 +16,7 @@ describe('Config Migration', () => {
   let v1ConfigFile;
   let v2ConfigDir;
   let v2ConfigFile;
+  let savedCwPort;
 
   beforeEach(() => {
     // Create a temporary directory for testing
@@ -26,6 +27,10 @@ describe('Config Migration', () => {
     v2ConfigDir = path.join(testCadtDir, 'v2');
     v1ConfigFile = path.join(v1ConfigDir, 'config.yaml');
     v2ConfigFile = path.join(v2ConfigDir, 'config.yaml');
+
+    // Save and clear CW_PORT so env override doesn't interfere with migration assertions
+    savedCwPort = process.env.CW_PORT;
+    delete process.env.CW_PORT;
 
     // Set CHIA_ROOT environment variable for testing
     process.env.CHIA_ROOT = testChiaRoot;
@@ -49,6 +54,9 @@ describe('Config Migration', () => {
       fs.rmSync(testChiaRoot, { recursive: true, force: true });
     }
     delete process.env.CHIA_ROOT;
+    if (savedCwPort !== undefined) {
+      process.env.CW_PORT = savedCwPort;
+    }
   });
 
   describe('Migration from V1 config only', () => {

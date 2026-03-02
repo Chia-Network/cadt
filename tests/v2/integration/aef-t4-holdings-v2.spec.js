@@ -816,8 +816,6 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
           cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
        }
     });    it('should update an AEF-T4-Holdings via API', async function () {
@@ -905,8 +903,6 @@ describe('AEF-T4-Holdings V2 Integration Tests', function () {
           cadTrustAefT2AuthorizationsId: testAefT2AuthorizationsId,
         });
         // Clean up committed staging record to avoid pending commits errors
-        // Wait a moment to ensure record is persisted
-        await new Promise(resolve => setTimeout(resolve, 100));
         await stagingRecord.destroy();
        }
     });it('should delete an AEF-T4-Holdings via API', async function () {

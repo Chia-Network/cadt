@@ -20,22 +20,12 @@ describe('Project Resource CRUD', function () {
 
   before(async function () {
     await pullPickListValues();
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, 5000);
-    });
     await prepareDb();
     await seedDb(sequelize);
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, 5000);
-    });
   });
 
   beforeEach(async function () {
-    await supertest(app).get(`/v1/staging/clean`);
+    await supertest(app).delete(`/v1/staging/clean`);
   });
 
   describe('GET projects', function () {

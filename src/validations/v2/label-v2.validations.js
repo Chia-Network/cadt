@@ -19,8 +19,9 @@ export const labelV2Schema = Joi.object({
     'Article 6 - Letter of Qualification',
     'Article 6 - Authorisation',
     'Article 6 - Letter of Approvals'
-  ).allow(null).optional().messages({
+  ).required().messages({
     'any.only': 'labelType must be one of: Certification, Article 6 - Endorsement, Article 6 - Letter of Qualification, Article 6 - Authorisation, Article 6 - Letter of Approvals',
+    'any.required': 'labelType is required',
   }),
 
   labelLink: Joi.alternatives().try(Joi.string().uri().max(500), Joi.allow(null, '')).optional().messages({

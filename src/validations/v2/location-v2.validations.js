@@ -5,9 +5,8 @@ import { pickListValidationV2 } from '../../utils/v2-validation-utils.js';
 // V2 follows V1 pattern: update requests include ALL fields, not just changed ones
 export const locationV2Schema = Joi.object({
   locationCountry: Joi.string()
-    .allow(null)
     .custom(pickListValidationV2('locationCountry'))
-    .optional(), // No length limit - picklist validation controls valid values
+    .required(), // No length limit - picklist validation controls valid values
   locationRegion: Joi.string()
     .max(255)
     .allow(null)
