@@ -107,6 +107,7 @@ jobs:
           chmod +x dist/cadt
 
       - name: Verify sqlite3 native addon exists
+        shell: bash
         run: |
           if [ ! -f "${{ matrix.sqlite-path }}node_sqlite3.node" ]; then
             echo "::error::node_sqlite3.node not found at ${{ matrix.sqlite-path }}"
