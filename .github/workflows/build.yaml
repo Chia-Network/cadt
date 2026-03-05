@@ -106,6 +106,15 @@ jobs:
         run: |
           chmod +x dist/cadt
 
+      - name: Verify sqlite3 native addon exists
+        run: |
+          if [ ! -f "${{ matrix.sqlite-path }}node_sqlite3.node" ]; then
+            echo "::error::node_sqlite3.node not found at ${{ matrix.sqlite-path }}"
+            echo "Searching for node_sqlite3.node in node_modules/sqlite3/:"
+            find node_modules/sqlite3 -name "*.node" 2>/dev/null || true
+            exit 1
+          fi
+
       - name: Copy sqlite3
         run: cp ${{ matrix.sqlite-path }}node_sqlite3.node ./dist/
 

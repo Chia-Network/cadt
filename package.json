@@ -46,7 +46,10 @@
     "create-linux-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-linux-arm64 --out-path dist"
   },
   "pkg": {
-    "scripts": "build/package.json"
+    "scripts": "build/package.json",
+    "assets": [
+      "node_modules/sqlite3/build/Release/node_sqlite3.node"
+    ]
   },
   "extensionless": {
     "lookFor": [
@@ -95,7 +98,7 @@
     "@commitlint/config-conventional": "^20.4.1",
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
-    "@yao-pkg/pkg": "^6.12.0",
+    "@yao-pkg/pkg": "^6.14.1",
     "babel-plugin-module-resolver": "^5.0.2",
     "chai": "^6.2.0",
     "chai-http": "^5.1.2",
