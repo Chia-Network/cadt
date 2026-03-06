@@ -506,16 +506,39 @@ class OrganizationsV2 extends Model {
       return state;
     }
 
-    // Create all stores in parallel
+    const maxRetries = 10;
+    const retryDelayMs = 30000;
+
+    const isTransientError = (error) =>
+      error.message?.includes('Wallet needs to be fully synced') ||
+      error.message?.includes('DataLayerWallet not available') ||
+      error.message?.includes('DataLayer Wallet already exists') ||
+      error.message?.includes('wallet') ||
+      error.message?.includes('No spendable coins');
+
+    // Create all stores in parallel, each with independent retry logic
     const createPromises = storesToCreate.map(async (storeType) => {
-      try {
-        logState(state, `Creating ${storeType} store`);
-        const storeId = await datalayer.createDataLayerStore();
-        logState(state, `Created ${storeType} store: ${storeId}`);
-        return { storeType, storeId, success: true };
-      } catch (error) {
-        logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
-        return { storeType, storeId: null, success: false, error: error.message };
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
+          const storeId = await datalayer.createDataLayerStore();
+          logState(state, `Created ${storeType} store: ${storeId}`);
+          return { storeType, storeId, success: true };
+        } catch (error) {
+          if (isTransientError(error) && attempt < maxRetries) {
+            logState(
+              state,
+              `Transient error creating ${storeType} store ` +
+                `(attempt ${attempt}/${maxRetries}): ${error.message}. ` +
+                `Retrying in ${retryDelayMs / 1000}s...`,
+              'warn',
+            );
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+            continue;
+          }
+          logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
+          return { storeType, storeId: null, success: false, error: error.message };
+        }
       }
     });
 
