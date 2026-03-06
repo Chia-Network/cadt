@@ -120,6 +120,77 @@ jobs:
         shell: bash
         run: cp ${{ matrix.sqlite-path }}node_sqlite3.node ./dist/
 
+      - name: Smoke test binary
+        shell: bash
+        timeout-minutes: 3
+        run: |
+          BINARY="./dist/cadt"
+          if [[ "${{ matrix.runs-on }}" == "windows-latest" ]]; then
+            BINARY="./dist/cadt.exe"
+          fi
+
+          SMOKE_PORT=31999
+          SMOKE_LOG="$RUNNER_TEMP/cadt_smoke.log"
+
+          # Start binary on a dedicated port, capture output
+          CW_PORT=$SMOKE_PORT $BINARY > "$SMOKE_LOG" 2>&1 &
+          BINARY_PID=$!
+          echo "Started binary (PID: $BINARY_PID) on port $SMOKE_PORT"
+
+          # Poll /health until the server responds (max 60 seconds)
+          READY=false
+          for i in $(seq 1 60); do
+            if ! kill -0 $BINARY_PID 2>/dev/null; then
+              wait $BINARY_PID 2>/dev/null || true
+              EXIT_CODE=$?
+              echo ""
+              echo "========== SMOKE TEST FAILED =========="
+              echo "Reason: binary exited during startup"
+              echo "Exit code: $EXIT_CODE"
+              echo ""
+              echo "---------- Binary output ----------"
+              cat "$SMOKE_LOG"
+              echo "---------- End output ----------"
+              echo ""
+              echo "::error::Binary crashed during startup (exit code $EXIT_CODE). See output above for details."
+              exit 1
+            fi
+
+            if curl -sf http://localhost:$SMOKE_PORT/health > /dev/null 2>&1; then
+              READY=true
+              break
+            fi
+
+            echo "Waiting for server... ($i/60)"
+            sleep 1
+          done
+
+          if [ "$READY" = true ]; then
+            HEALTH_RESPONSE=$(curl -sf http://localhost:$SMOKE_PORT/health)
+            echo ""
+            echo "========== SMOKE TEST PASSED =========="
+            echo "Health response: $HEALTH_RESPONSE"
+            echo "Server started in ~${i} seconds"
+            echo "======================================="
+          else
+            echo ""
+            echo "========== SMOKE TEST FAILED =========="
+            echo "Reason: server did not respond within 60 seconds"
+            echo "The binary is running (PID $BINARY_PID) but /health never returned 200."
+            echo ""
+            echo "---------- Binary output ----------"
+            cat "$SMOKE_LOG"
+            echo "---------- End output ----------"
+            echo ""
+            echo "::error::Server did not respond on port $SMOKE_PORT within 60 seconds. See output above for details."
+            kill $BINARY_PID 2>/dev/null || true
+            exit 1
+          fi
+
+          # Clean up
+          kill $BINARY_PID 2>/dev/null || true
+          wait $BINARY_PID 2>/dev/null || true
+
       - name: Test for secrets access
         id: check_secrets
         shell: bash
