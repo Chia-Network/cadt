@@ -141,8 +141,8 @@ jobs:
           READY=false
           for i in $(seq 1 60); do
             if ! kill -0 $BINARY_PID 2>/dev/null; then
-              wait $BINARY_PID 2>/dev/null || true
-              EXIT_CODE=$?
+              EXIT_CODE=0
+              wait $BINARY_PID 2>/dev/null || EXIT_CODE=$?
               echo ""
               echo "========== SMOKE TEST FAILED =========="
               echo "Reason: binary exited during startup"
