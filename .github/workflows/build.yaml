@@ -42,7 +42,7 @@ jobs:
           - runs-on: windows-latest
             artifact-name: cadt-windows-x64
             build-command: npm run create-win-x64-dist
-            sqlite-path: .\node_modules\sqlite3\build\Release\
+            sqlite-path: ./node_modules/sqlite3/build/Release/
 
     steps:
       - name: Checkout Code
@@ -117,6 +117,7 @@ jobs:
           fi
 
       - name: Copy sqlite3
+        shell: bash
         run: cp ${{ matrix.sqlite-path }}node_sqlite3.node ./dist/
 
       - name: Test for secrets access
