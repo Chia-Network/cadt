@@ -39,16 +39,18 @@
     "build": "babel src --keep-file-extension --out-dir build --copy-files && cp package.json ./build && node change-build-package-type-commonjs.cjs",
     "build-migrations": "babel migrations --keep-file-extension --out-dir dist/migrations --copy-files",
     "prepare-binary": "rm -rf dist && mkdir dist",
-    "create-win-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-win-x64 --out-path dist",
-    "create-mac-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-macos-x64 --out-path dist",
-    "create-mac-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-macos-arm64 --out-path dist",
-    "create-linux-x64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-linux-x64 --out-path dist",
-    "create-linux-arm64-dist": "npm run build && npm run prepare-binary && pkg package.json -t node24-linux-arm64 --out-path dist"
+    "prepare-pkg-assets": "node -e \"require('fs').copyFileSync('node_modules/sqlite3/build/Release/node_sqlite3.node','node_modules/sqlite3/build/node_sqlite3.node')\"",
+    "create-win-x64-dist": "npm run build && npm run prepare-binary && npm run prepare-pkg-assets && pkg package.json -t node24-win-x64 --out-path dist",
+    "create-mac-x64-dist": "npm run build && npm run prepare-binary && npm run prepare-pkg-assets && pkg package.json -t node24-macos-x64 --out-path dist",
+    "create-mac-arm64-dist": "npm run build && npm run prepare-binary && npm run prepare-pkg-assets && pkg package.json -t node24-macos-arm64 --out-path dist",
+    "create-linux-x64-dist": "npm run build && npm run prepare-binary && npm run prepare-pkg-assets && pkg package.json -t node24-linux-x64 --out-path dist",
+    "create-linux-arm64-dist": "npm run build && npm run prepare-binary && npm run prepare-pkg-assets && pkg package.json -t node24-linux-arm64 --out-path dist"
   },
   "pkg": {
     "scripts": "build/package.json",
     "assets": [
-      "node_modules/sqlite3/build/Release/node_sqlite3.node"
+      "node_modules/sqlite3/build/Release/node_sqlite3.node",
+      "node_modules/sqlite3/build/node_sqlite3.node"
     ]
   },
   "extensionless": {

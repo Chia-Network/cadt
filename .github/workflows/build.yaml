@@ -97,7 +97,7 @@ jobs:
         run: npm cache verify
 
       - name: install global packages
-        run: npm i -g @babel/cli @babel/preset-env pkg
+        run: npm i -g @babel/cli @babel/preset-env
 
       - name: create distributions
         run: ${{ matrix.build-command }}
