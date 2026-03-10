@@ -276,13 +276,13 @@ jobs:
 
       - name: Upload Mac Installer
         if: startsWith(matrix.runs-on , 'macos')
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact-name }}-mac-installer
           path: ${{ github.workspace }}/build-scripts/macos/target/ready-to-upload
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ github.workspace }}/dist
@@ -323,7 +323,7 @@ jobs:
   #         sudo cp ./node_modules/sqlite3/build/Release/node_sqlite3.node ./dist/
 
   #     - name: Upload artifacts
-  #       uses: actions/upload-artifact@v6
+  #       uses: actions/upload-artifact@v7
   #       with:
   #         name: cadt-linux-arm64
   #         path: ${{ github.workspace }}/dist
@@ -375,7 +375,7 @@ jobs:
           dpkg-deb --build --root-owner-group "deb/$CLI_DEB_BASE"
 
       - name: Upload deb
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}-deb
           path: ${{ github.workspace }}/deb/*.deb
