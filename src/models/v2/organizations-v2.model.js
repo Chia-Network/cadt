@@ -513,7 +513,6 @@ class OrganizationsV2 extends Model {
       error.message?.includes('Wallet needs to be fully synced') ||
       error.message?.includes('DataLayerWallet not available') ||
       error.message?.includes('DataLayer Wallet already exists') ||
-      error.message?.includes('wallet') ||
       error.message?.includes('No spendable coins');
 
     // Create all stores in parallel, each with independent retry logic
@@ -923,7 +922,6 @@ class OrganizationsV2 extends Model {
             const isTransient =
               error.message?.includes('Wallet needs to be fully synced') ||
               error.message?.includes('DataLayerWallet not available') ||
-              error.message?.includes('wallet') ||
               error.message?.includes('No spendable coins');
 
             if (isTransient && attempt < maxStoreCreateRetries) {
