@@ -75,6 +75,16 @@ import {
 import ModelTypes from './organizations-v2.modeltypes.cjs';
 import { runMirrorCheckV2 } from '../../tasks/mirror-check-v2.js';
 
+const TRANSIENT_WALLET_ERRORS = [
+  'Wallet needs to be fully synced',
+  'DataLayerWallet not available',
+  'DataLayer Wallet already exists',
+  'No spendable coins',
+];
+
+const isTransientWalletError = (error) =>
+  TRANSIENT_WALLET_ERRORS.some((msg) => error.message?.includes(msg));
+
 class OrganizationsV2 extends Model {
   static async create(values, options) {
     safeMirrorDbHandlerV2(async () => {
@@ -509,12 +519,6 @@ class OrganizationsV2 extends Model {
     const maxRetries = 10;
     const retryDelayMs = 30000;
 
-    const isTransientError = (error) =>
-      error.message?.includes('Wallet needs to be fully synced') ||
-      error.message?.includes('DataLayerWallet not available') ||
-      error.message?.includes('DataLayer Wallet already exists') ||
-      error.message?.includes('No spendable coins');
-
     // Create all stores in parallel, each with independent retry logic
     const createPromises = storesToCreate.map(async (storeType) => {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -524,7 +528,7 @@ class OrganizationsV2 extends Model {
           logState(state, `Created ${storeType} store: ${storeId}`);
           return { storeType, storeId, success: true };
         } catch (error) {
-          if (isTransientError(error) && attempt < maxRetries) {
+          if (isTransientWalletError(error) && attempt < maxRetries) {
             logState(
               state,
               `Transient error creating ${storeType} store ` +
@@ -920,13 +924,7 @@ class OrganizationsV2 extends Model {
             newV2RegistryStoreId = await datalayer.createDataLayerStore();
             break;
           } catch (error) {
-            const isTransient =
-              error.message?.includes('Wallet needs to be fully synced') ||
-              error.message?.includes('DataLayerWallet not available') ||
-              error.message?.includes('DataLayer Wallet already exists') ||
-              error.message?.includes('No spendable coins');
-
-            if (isTransient && attempt < maxStoreCreateRetries) {
+            if (isTransientWalletError(error) && attempt < maxStoreCreateRetries) {
               loggerV2.warn(
                 `[v2]: Wallet not ready during V2 registry store creation ` +
                 `(attempt ${attempt}/${maxStoreCreateRetries}): ${error.message}. ` +
