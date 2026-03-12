@@ -539,6 +539,7 @@ class OrganizationsV2 extends Model {
           return { storeType, storeId: null, success: false, error: error.message };
         }
       }
+      return { storeType, storeId: null, success: false, error: 'Retry loop exhausted without result' };
     });
 
     const results = await Promise.all(createPromises);
