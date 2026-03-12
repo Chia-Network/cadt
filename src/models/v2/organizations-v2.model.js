@@ -922,6 +922,7 @@ class OrganizationsV2 extends Model {
             const isTransient =
               error.message?.includes('Wallet needs to be fully synced') ||
               error.message?.includes('DataLayerWallet not available') ||
+              error.message?.includes('DataLayer Wallet already exists') ||
               error.message?.includes('No spendable coins');
 
             if (isTransient && attempt < maxStoreCreateRetries) {
