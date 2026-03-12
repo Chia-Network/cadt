@@ -14,6 +14,8 @@ import * as simulator from './simulator';
 const { USE_SIMULATOR } = getConfig().APP;
 
 const POLLING_INTERVAL = 5000;
+const SYNC_TIMEOUT_MS = 600000; // 10 minutes
+const SYNC_POLL_INTERVAL_MS = 10000;
 
 const unsubscribeFromDataLayerStore = async (storeId) => {
   if (!USE_SIMULATOR) {
@@ -104,15 +106,25 @@ const getSubscribedStoreData = async (
     // In simulator mode, data is immediately available - skip sync wait
     if (!USE_SIMULATOR) {
       let synced = false;
+      const deadline = Date.now() + SYNC_TIMEOUT_MS;
+
       while (!synced) {
         const syncStatus = await dataLayer.getDataLayerStoreSyncStatus(storeId);
         synced = isDlStoreSynced(syncStatus?.sync_status);
 
         if (!synced) {
+          if (Date.now() > deadline) {
+            throw new Error(
+              `Timeout waiting for store ${storeId} to sync after ${SYNC_TIMEOUT_MS / 60000} minutes`,
+            );
+          }
+
           logger.warn(
             `datalayer has not fully synced subscribed store ${storeId}. waiting to return data until store is synced`,
           );
-          await new Promise((resolve) => setTimeout(() => resolve(), 10000));
+          await new Promise((resolve) =>
+            setTimeout(() => resolve(), SYNC_POLL_INTERVAL_MS),
+          );
         }
       }
     }
@@ -304,6 +316,7 @@ export default {
   getLocalStoreData,
   getStoreIfUpdated,
   POLLING_INTERVAL,
+  SYNC_TIMEOUT_MS,
   getCurrentStoreData,
   unsubscribeFromDataLayerStore,
   unsubscribeFromDataLayerStoreWithRetry,
