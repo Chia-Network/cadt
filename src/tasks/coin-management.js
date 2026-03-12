@@ -15,8 +15,12 @@ const TARGET_COIN_COUNT = 15;      // Number of coins to maintain
 const SPLIT_FEE = APP_CONFIG.DEFAULT_FEE || 3000; // Fee from config, fallback to 3000 mojos
 const DEFAULT_COIN_AMOUNT = APP_CONFIG.DEFAULT_COIN_AMOUNT || 300; // Coin amount for DataLayer operations from config
 const MIN_USABLE_COIN_SIZE = DEFAULT_COIN_AMOUNT + SPLIT_FEE; // A coin must cover both the operation amount and the fee to be usable
-const COIN_SIZE = MIN_USABLE_COIN_SIZE; // Each split coin must independently fund one full operation (amount + fee)
-const MIN_COIN_SIZE = MIN_USABLE_COIN_SIZE; // Minimum acceptable coin size must match operational requirement
+// Chia's default xch_spam_amount is 1,000,000 mojos. Coins below this threshold
+// may be filtered out by the wallet's spam filter once enough small UTXOs exist.
+// Not available via RPC, so we use a floor above the default to be safe.
+const DUST_FILTER_FLOOR = 1_000_000;
+const COIN_SIZE = Math.max(MIN_USABLE_COIN_SIZE, DUST_FILTER_FLOOR);
+const MIN_COIN_SIZE = COIN_SIZE;
 
 // Exported flag so other tasks (mirror check, etc.) can avoid operating
 // while a coin split has temporarily reduced the wallet's spendable balance.
