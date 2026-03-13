@@ -450,7 +450,7 @@ Response
 
 #### Get organization creation status
 
-Returns the status of any in-progress, completed, or failed organization creation process. This endpoint is useful for monitoring the progress of organization creation, which involves creating multiple blockchain stores.
+Returns the status of any in-progress, completed, or failed organization creation **or upgrade** process. This endpoint is useful for monitoring the progress of organization creation, which involves creating multiple blockchain stores.
 
 **Organization creation now uses parallel store creation, significantly reducing the time required compared to sequential creation.**
 
@@ -502,6 +502,33 @@ Response states:
 | COMPLETE | Organization creation finished successfully |
 | FAILED | Organization creation failed after max retries |
 
+Response when an upgrade is in progress (showing `liveStatus`):
+```json
+{
+    "inProgress": true,
+    "state": null,
+    "message": "No organization creation in progress",
+    "operation": "V1 to V2 upgrade",
+    "status": "Waiting for V2 registry store to confirm on blockchain",
+    "startedAt": "2026-01-26T12:00:00.000Z",
+    "elapsedSeconds": 195,
+    "liveStatus": {
+        "operation": "V1 to V2 upgrade",
+        "status": "Waiting for V2 registry store to confirm on blockchain",
+        "startedAt": "2026-01-26T12:00:00.000Z",
+        "elapsedSeconds": 195
+    },
+    "success": true
+}
+```
+
+> **Note:** This endpoint reports status from two sources:
+>
+> - **Meta table state** (detailed store-by-store progress for organization creation, with `state`, `stores`, and `progress` fields)
+> - **Live operation status** (in-memory status for any running operation including upgrades, in the `liveStatus` field)
+>
+> When both sources have data (e.g., during creation), both are included. When only an upgrade is running, the `liveStatus` field provides the status.
+
 **Crash Recovery:** If the server crashes or restarts during organization creation, it will automatically attempt to resume from where it left off. The server will retry up to 3 times before marking the creation as failed.
 
 ---
@@ -543,6 +570,7 @@ POST Options:
 - **Track the status of organization creation using the `/v2/organizations/creation-status` endpoint.**
 - If the server crashes or restarts during creation, it will automatically attempt to resume from where it left off (up to 3 retries).
 - V2 organizations can be created with either a JSON body or by uploading a file containing organization data.
+- **Only one organization operation (create, upgrade, or reclaim) can run at a time.** If another operation is already in progress, the endpoint returns `409 Conflict` with the current operation status.
 
 **Using JSON body:**
 
@@ -579,6 +607,20 @@ Response
 }
 ```
 
+Response (operation in progress - 409 Conflict)
+```json
+{
+    "message": "A home organization operation is already in progress: V2 organization creation. Please wait for it to complete.",
+    "operationStatus": {
+        "operation": "V2 organization creation",
+        "status": "Waiting for stores to confirm on blockchain (2/4 confirmed)",
+        "startedAt": "2026-01-26T12:00:00.000Z",
+        "elapsedSeconds": 195
+    },
+    "success": false
+}
+```
+
 ---
 
 #### Upgrade V1 organization to V2
@@ -586,6 +628,8 @@ Response
 - This endpoint allows existing V1 organizations to be upgraded to V2.
 - The upgrade process migrates V1 organization data to V2 format while maintaining V1/V2 isolation.
 - **Note**: The request body is optional. The endpoint automatically detects and uses the existing V1 home organization.
+- **Only one organization operation can run at a time.** If a creation, upgrade, or reclaim is already in progress, the endpoint returns `409 Conflict` with the current operation status.
+- **Track upgrade progress using the `/v2/organizations/creation-status` endpoint**, which now also reports upgrade status.
 
 Fields:
 
@@ -607,6 +651,20 @@ Response
 {
     "message": "Organization upgrade initiated successfully",
     "success": true
+}
+```
+
+Response (operation in progress - 409 Conflict)
+```json
+{
+    "message": "A home organization operation is already in progress: V2 organization creation. Please wait for it to complete.",
+    "operationStatus": {
+        "operation": "V2 organization creation",
+        "status": "Waiting for stores to confirm on blockchain (2/4 confirmed)",
+        "startedAt": "2026-01-26T12:00:00.000Z",
+        "elapsedSeconds": 195
+    },
+    "success": false
 }
 ```
 
@@ -897,6 +955,20 @@ Response (store not owned)
 {
     "message": "Error reclaiming home organization",
     "error": "store id b3d4e71d... is not owned by this chia wallet",
+    "success": false
+}
+```
+
+Response (operation in progress - 409 Conflict)
+```json
+{
+    "message": "A home organization operation is already in progress: V1 to V2 upgrade. Please wait for it to complete.",
+    "operationStatus": {
+        "operation": "V1 to V2 upgrade",
+        "status": "Waiting for data model version update to confirm on blockchain",
+        "startedAt": "2026-01-26T12:00:00.000Z",
+        "elapsedSeconds": 300
+    },
     "success": false
 }
 ```

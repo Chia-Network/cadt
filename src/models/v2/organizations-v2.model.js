@@ -74,6 +74,7 @@ import {
 
 import ModelTypes from './organizations-v2.modeltypes.cjs';
 import { runMirrorCheckV2 } from '../../tasks/mirror-check-v2.js';
+import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 
 const TRANSIENT_WALLET_ERRORS = [
   'Wallet needs to be fully synced',
@@ -340,6 +341,7 @@ class OrganizationsV2 extends Model {
       // PHASE 1: Create stores in parallel
       if (state.state === ORG_CREATION_STATES.INITIALIZING ||
           state.state === ORG_CREATION_STATES.STORES_CREATING) {
+        updateOrgLockStatus('Creating stores on blockchain');
         state = updateState(state, { state: ORG_CREATION_STATES.STORES_CREATING });
         await saveCreationState(state, MetaV2);
 
@@ -348,12 +350,14 @@ class OrganizationsV2 extends Model {
 
       // Wait for all stores to be confirmed
       if (state.state === ORG_CREATION_STATES.STORES_CREATING) {
+        updateOrgLockStatus('Waiting for stores to confirm on blockchain');
         state = await OrganizationsV2._waitForStoresConfirmation(state, MetaV2);
       }
 
       // PHASE 2: Push data to stores in parallel
       if (state.state === ORG_CREATION_STATES.STORES_CONFIRMED ||
           state.state === ORG_CREATION_STATES.DATA_PUSHING) {
+        updateOrgLockStatus('Writing data to stores');
         state = updateState(state, { state: ORG_CREATION_STATES.DATA_PUSHING });
         await saveCreationState(state, MetaV2);
 
@@ -369,6 +373,7 @@ class OrganizationsV2 extends Model {
       }
 
       // PHASE 3: Finalize
+      updateOrgLockStatus('Finalizing organization record');
       state = updateState(state, { state: ORG_CREATION_STATES.FINALIZING });
       await saveCreationState(state, MetaV2);
 
@@ -471,6 +476,7 @@ class OrganizationsV2 extends Model {
       }
 
       // Mark complete and clear state
+      updateOrgLockStatus('Organization creation complete');
       state = updateState(state, { state: ORG_CREATION_STATES.COMPLETE });
       await clearCreationState(MetaV2, 'v2');
 
@@ -749,6 +755,7 @@ class OrganizationsV2 extends Model {
   static async upgradeFromV1(name, icon) {
     try {
       loggerV2.info('[v2]: Upgrading from V1 to V2 Organization, This could take a while.');
+      updateOrgLockStatus('Validating V1 singleton');
 
       // CRITICAL: Check if V1 is enabled before accessing V1 tables
       const configV1 = getConfig();
@@ -911,6 +918,7 @@ class OrganizationsV2 extends Model {
       // Create new V2 registry store (v2 data store - different from V1)
       // CRITICAL: Reuse v1OrgUid and v1FileStoreId - do NOT create new stores for these
       loggerV2.verbose('[v2]: upgradeFromV1() is creating new V2 registryId store');
+      updateOrgLockStatus('Creating V2 registry store');
       let newV2RegistryStoreId;
       if (USE_SIMULATOR) {
         newV2RegistryStoreId = 'v2-registry-' + Date.now();
@@ -950,6 +958,7 @@ class OrganizationsV2 extends Model {
       };
 
       if (!USE_SIMULATOR) {
+        updateOrgLockStatus('Waiting for V2 registry store to confirm on blockchain');
         loggerV2.info(
           '[v2]: upgrade from V1 to V2 organization process is waiting for V2 registry store creation to confirm on the blockchain',
         );
@@ -978,6 +987,7 @@ class OrganizationsV2 extends Model {
           `[v2]: Singleton store ${sharedDataModelVersionStoreId} already has v2 key. Skipping singleton update.`,
         );
       } else {
+        updateOrgLockStatus('Updating singleton store with v2 key');
         loggerV2.info(
           `[v2]: updating shared data model version store ${sharedDataModelVersionStoreId} to add v2 key`,
         );
@@ -1012,6 +1022,7 @@ class OrganizationsV2 extends Model {
       }
 
       if (!USE_SIMULATOR) {
+        updateOrgLockStatus('Waiting for data model version update to confirm on blockchain');
         loggerV2.info(
           '[v2]: upgrade from V1 to V2 organization process is waiting for data model version update to confirm on the blockchain',
         );
@@ -1030,6 +1041,7 @@ class OrganizationsV2 extends Model {
         `[v2]: data model version store ${sharedDataModelVersionStoreId} hash after v2 key addition: ${dataModelVersionStoreHash}`,
       );
 
+      updateOrgLockStatus('Adding V2 home organization to database');
       loggerV2.info('[v2]: adding new V2 home organization to CADT database');
       // CRITICAL: Use v1OrgUid and v1FileStoreId - shared identity between v1 and v2
       // Note: data_model_version_store_hash uses the UPDATED hash (after v2 key addition), not V1 hash
@@ -1048,6 +1060,7 @@ class OrganizationsV2 extends Model {
       });
 
       const onConfirm = async () => {
+        updateOrgLockStatus('V2 Organization upgrade confirmed');
         loggerV2.info('[v2]: V2 Organization upgrade confirmed, you are ready to go');
         await OrganizationsV2.update(
           {

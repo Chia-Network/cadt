@@ -13,6 +13,7 @@ import {
   markAsFailed,
   getStatusSummary,
 } from '../utils/organization-creation-state.js';
+import { tryAcquireOrgLock, releaseOrgLock } from '../utils/org-operation-lock.js';
 
 const CONFIG = getConfig().APP;
 
@@ -87,6 +88,11 @@ const attemptRecovery = async () => {
     `[v2]: [Recovery] Attempting recovery (attempt ${state.retryCount}/${ORG_CREATION_CONFIG.MAX_RETRIES})`,
   );
 
+  if (!tryAcquireOrgLock('V2 organization recovery')) {
+    loggerV2.warn('[v2]: [Recovery] Cannot acquire lock - another operation is in progress');
+    return { success: false, message: 'Cannot acquire lock for recovery' };
+  }
+
   try {
     // Resume the creation - this will pick up from where it left off
     const orgUid = await OrganizationsV2.createHomeOrganization(
@@ -118,6 +124,8 @@ const attemptRecovery = async () => {
       success: false,
       message: `Recovery attempt ${state?.retryCount || 'unknown'}/${ORG_CREATION_CONFIG.MAX_RETRIES} failed: ${error.message}`,
     };
+  } finally {
+    releaseOrgLock();
   }
 };
 

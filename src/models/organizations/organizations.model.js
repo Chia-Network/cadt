@@ -52,6 +52,7 @@ import {
   hasInProgressCreation,
 } from '../../utils/organization-creation-state.js';
 import { runMirrorCheck } from '../../tasks/mirror-check.js';
+import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -258,6 +259,7 @@ class Organization extends Model {
       // PHASE 1: Create stores in parallel
       if (state.state === ORG_CREATION_STATES.INITIALIZING ||
           state.state === ORG_CREATION_STATES.STORES_CREATING) {
+        updateOrgLockStatus('Creating stores on blockchain');
         state = updateState(state, { state: ORG_CREATION_STATES.STORES_CREATING });
         await saveCreationState(state, Meta);
 
@@ -266,12 +268,14 @@ class Organization extends Model {
 
       // Wait for all stores to be confirmed
       if (state.state === ORG_CREATION_STATES.STORES_CREATING) {
+        updateOrgLockStatus('Waiting for stores to confirm on blockchain');
         state = await Organization._waitForStoresConfirmation(state);
       }
 
       // PHASE 2: Push data to stores in parallel
       if (state.state === ORG_CREATION_STATES.STORES_CONFIRMED ||
           state.state === ORG_CREATION_STATES.DATA_PUSHING) {
+        updateOrgLockStatus('Writing data to stores');
         state = updateState(state, { state: ORG_CREATION_STATES.DATA_PUSHING });
         await saveCreationState(state, Meta);
 
@@ -287,6 +291,7 @@ class Organization extends Model {
       }
 
       // PHASE 3: Finalize
+      updateOrgLockStatus('Finalizing organization record');
       state = updateState(state, { state: ORG_CREATION_STATES.FINALIZING });
       await saveCreationState(state, Meta);
 
@@ -406,6 +411,7 @@ class Organization extends Model {
       }
 
       // Mark complete and clear state
+      updateOrgLockStatus('Organization creation complete');
       state = updateState(state, { state: ORG_CREATION_STATES.COMPLETE });
       await clearCreationState(Meta, 'v1');
 
