@@ -84,6 +84,7 @@ const getStoreDataPromise = async (storeId) => {
  */
 export const create = async (req, res) => {
   let lockAcquired = false;
+  const releaseLock = () => { if (lockAcquired) { lockAcquired = false; releaseOrgLock(); } };
   try {
     await assertV2IfReadOnlyMode();
 
@@ -117,7 +118,7 @@ export const create = async (req, res) => {
       });
 
       if (v1Org) {
-        releaseOrgLock();
+        releaseLock();
         // V1 org exists - check for V1 singleton in datalayer
         if (v1Org.dataModelVersionStoreId) {
           try {
@@ -167,7 +168,7 @@ export const create = async (req, res) => {
     });
 
     if (existingV2Org) {
-      releaseOrgLock();
+      releaseLock();
       return res.status(400).json({
         message: 'V2 home organization already exists',
         success: false,
@@ -185,7 +186,7 @@ export const create = async (req, res) => {
     }
 
     if (!name) {
-      releaseOrgLock();
+      releaseLock();
       return res.status(400).json({
         message: 'Organization name is required',
         success: false,
@@ -214,7 +215,7 @@ export const create = async (req, res) => {
           success: false,
         });
       } finally {
-        releaseOrgLock();
+        releaseLock();
       }
     } else {
       // Call createHomeOrganization asynchronously (don't await)
@@ -228,6 +229,7 @@ export const create = async (req, res) => {
         .finally(() => {
           releaseOrgLock();
         });
+      lockAcquired = false; // ownership transferred to async .finally()
 
       return res.json({
         message:
@@ -236,7 +238,7 @@ export const create = async (req, res) => {
       });
     }
   } catch (error) {
-    if (lockAcquired) releaseOrgLock();
+    releaseLock();
     loggerV2.error(`[v2]: Error creating V2 home organization: ${error.message}`);
     res.status(400).json({
       message: 'Error creating V2 home organization',
@@ -253,6 +255,7 @@ export const create = async (req, res) => {
  */
 export const upgrade = async (req, res) => {
   let lockAcquired = false;
+  const releaseLock = () => { if (lockAcquired) { lockAcquired = false; releaseOrgLock(); } };
   try {
     await assertV2IfReadOnlyMode();
 
@@ -283,7 +286,7 @@ export const upgrade = async (req, res) => {
     const enableV1 = configV1?.ENABLE !== false;
 
     if (!enableV1) {
-      releaseOrgLock();
+      releaseLock();
       return res.status(400).json({
         message: 'V1 is disabled. Cannot upgrade from V1 when V1 is not enabled.',
         success: false,
@@ -297,7 +300,7 @@ export const upgrade = async (req, res) => {
     });
 
     if (!v1Org) {
-      releaseOrgLock();
+      releaseLock();
       return res.status(400).json({
         message:
           'V1 home organization not found. Cannot upgrade without existing V1 organization.',
@@ -308,7 +311,7 @@ export const upgrade = async (req, res) => {
     // CRITICAL: Verify V1 org is fully populated before attempting upgrade
     // Check required store IDs exist
     if (!v1Org.dataModelVersionStoreId) {
-      releaseOrgLock();
+      releaseLock();
       return res.status(400).json({
         message:
           'V1 organization is missing dataModelVersionStoreId. Organization creation may still be in progress.',
@@ -319,7 +322,7 @@ export const upgrade = async (req, res) => {
     // Check that orgHash is populated (indicates org store data was written)
     const nullHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
     if (!v1Org.orgHash || v1Org.orgHash === nullHash || v1Org.orgHash === '0') {
-      releaseOrgLock();
+      releaseLock();
       return res.status(400).json({
         message:
           'V1 organization orgHash is not populated. Organization creation has not completed writing data to the org store. Please wait for V1 organization creation to complete.',
@@ -334,7 +337,7 @@ export const upgrade = async (req, res) => {
 
       if (!singletonData || singletonData instanceof Error) {
         loggerV2.debug(`[v2]: Cannot read singleton data from ${v1Org.dataModelVersionStoreId}`);
-        releaseOrgLock();
+        releaseLock();
         return res.status(400).json({
           message:
             'Cannot read V1 singleton data. V1 organization may still be creating or blockchain data is not yet available. Please wait and try again.',
@@ -344,7 +347,7 @@ export const upgrade = async (req, res) => {
 
       if (!singletonData.keys_values || singletonData.keys_values.length === 0) {
         loggerV2.debug(`[v2]: Singleton store ${v1Org.dataModelVersionStoreId} is empty`);
-        releaseOrgLock();
+        releaseLock();
         return res.status(400).json({
           message:
             'V1 singleton store is empty. V1 organization creation has not completed writing data to the blockchain. Please wait for V1 organization creation to complete before upgrading.',
@@ -361,7 +364,7 @@ export const upgrade = async (req, res) => {
 
       if (!singletonMap.v1) {
         loggerV2.debug(`[v2]: Singleton store ${v1Org.dataModelVersionStoreId} missing v1 key`);
-        releaseOrgLock();
+        releaseLock();
         return res.status(400).json({
           message:
             'V1 singleton store does not contain v1 key. V1 organization creation has not completed. Please wait for V1 organization creation to fully complete before upgrading.',
@@ -372,7 +375,7 @@ export const upgrade = async (req, res) => {
       loggerV2.info(`[v2]: V1 singleton validated - v1 key exists with registry ${singletonMap.v1}`);
     } catch (error) {
       loggerV2.error(`[v2]: Error validating V1 singleton: ${error.message}`);
-      releaseOrgLock();
+      releaseLock();
       return res.status(400).json({
         message:
           `Cannot validate V1 organization singleton store: ${error.message}. Please ensure V1 organization creation is complete before upgrading.`,
@@ -398,7 +401,7 @@ export const upgrade = async (req, res) => {
           }, {});
 
           if (singletonMap.v2 !== undefined) {
-            releaseOrgLock();
+            releaseLock();
             return res.status(400).json({
               message: 'V2 home organization already exists and upgrade is already complete.',
               success: false,
@@ -431,7 +434,7 @@ export const upgrade = async (req, res) => {
           success: false,
         });
       } finally {
-        releaseOrgLock();
+        releaseLock();
       }
     } else {
       // Call upgradeFromV1 asynchronously (don't await) in production mode
@@ -446,6 +449,7 @@ export const upgrade = async (req, res) => {
         .finally(() => {
           releaseOrgLock();
         });
+      lockAcquired = false; // ownership transferred to async .finally()
 
       return res.json({
         message:
@@ -454,7 +458,7 @@ export const upgrade = async (req, res) => {
       });
     }
   } catch (error) {
-    if (lockAcquired) releaseOrgLock();
+    releaseLock();
     loggerV2.error(`[v2]: Error upgrading to V2 organization: ${error.message}`);
     res.status(400).json({
       message: 'Error upgrading to V2 organization',
@@ -1137,6 +1141,7 @@ export const removeMirror = async (req, res) => {
  */
 export const reclaimHome = async (req, res) => {
   let lockAcquired = false;
+  const releaseLock = () => { if (lockAcquired) { lockAcquired = false; releaseOrgLock(); } };
   try {
     await assertV2IfReadOnlyMode();
 
@@ -1314,10 +1319,10 @@ export const reclaimHome = async (req, res) => {
       success: true,
     });
     } finally {
-      releaseOrgLock();
+      releaseLock();
     }
   } catch (error) {
-    if (lockAcquired) releaseOrgLock();
+    releaseLock();
     loggerV2.error(`[v2]: Error reclaiming home organization: ${error.message}`);
     res.status(400).json({
       message: 'Error reclaiming home organization',

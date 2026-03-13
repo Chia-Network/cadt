@@ -135,6 +135,7 @@ export const editHomeOrg = async (req, res) => {
 
 export const createV2 = async (req, res) => {
   let lockAcquired = false;
+  const releaseLock = () => { if (lockAcquired) { lockAcquired = false; releaseOrgLock(); } };
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
@@ -187,6 +188,7 @@ export const createV2 = async (req, res) => {
         .finally(() => {
           releaseOrgLock();
         });
+      lockAcquired = false; // ownership transferred to async .finally()
 
       return res.json({
         message:
@@ -195,7 +197,7 @@ export const createV2 = async (req, res) => {
       });
     }
   } catch (error) {
-    if (lockAcquired) releaseOrgLock();
+    releaseLock();
     console.trace(error);
     res.status(400).json({
       message: 'Error initiating your organization',
@@ -207,6 +209,7 @@ export const createV2 = async (req, res) => {
 
 export const create = async (req, res) => {
   let lockAcquired = false;
+  const releaseLock = () => { if (lockAcquired) { lockAcquired = false; releaseOrgLock(); } };
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
@@ -264,6 +267,7 @@ export const create = async (req, res) => {
         .finally(() => {
           releaseOrgLock();
         });
+      lockAcquired = false; // ownership transferred to async .finally()
 
       return res.json({
         message:
@@ -272,7 +276,7 @@ export const create = async (req, res) => {
       });
     }
   } catch (error) {
-    if (lockAcquired) releaseOrgLock();
+    releaseLock();
     res.status(400).json({
       message: 'Error initiating your organization',
       error: error.message,
@@ -617,6 +621,7 @@ export const removeMirror = async (req, res) => {
  */
 export const reclaimHome = async (req, res) => {
   let lockAcquired = false;
+  const releaseLock = () => { if (lockAcquired) { lockAcquired = false; releaseOrgLock(); } };
   try {
     await assertIfReadOnlyMode();
 
@@ -796,10 +801,10 @@ export const reclaimHome = async (req, res) => {
       success: true,
     });
     } finally {
-      releaseOrgLock();
+      releaseLock();
     }
   } catch (error) {
-    if (lockAcquired) releaseOrgLock();
+    releaseLock();
     logger.error(`[v1]: Error reclaiming home organization: ${error.message}`);
     res.status(400).json({
       message: 'Error reclaiming home organization',
