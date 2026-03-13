@@ -22,15 +22,12 @@ import {
   processingSyncRegistriesTransactionMutexV2,
   syncRegistriesTaskMutexV2,
 } from '../utils/v2-model-utils.js';
+import { SyncMismatchBackoff } from '../utils/sync-mismatch-backoff.js';
 
 dotenv.config({ quiet: true });
 const CONFIG = getConfig().APP;
 
-const syncMismatchTrackerV2 = new Map();
-const MISMATCH_INITIAL_DELAY_MS = 30_000;
-const MISMATCH_MAX_DELAY_MS = 600_000; // 10 minutes
-const MISMATCH_BACKOFF_MULTIPLIER = 2;
-const MISMATCH_PERIODIC_LOG_INTERVAL_MS = 300_000; // 5 minutes
+const mismatchBackoff = new SyncMismatchBackoff(loggerV2, '[v2]');
 
 const task = new Task('sync-registries-v2', async () => {
   loggerV2.debug('[v2]: sync registries v2 task invoked');
@@ -169,77 +166,21 @@ const syncOrganizationAuditV2 = async (organization) => {
     // The sync_status might lag behind because datalayer is still processing our own updates
     const isHomeOrg = homeOrg && organization.org_uid === homeOrg.org_uid;
     
-    const hasSyncMismatch =
+    if (
       process.env.NODE_ENV !== 'test' &&
       !isHomeOrg &&
-      (rootHistory.length - 1 !== sync_status?.generation ||
-        rootHistory.length - 1 !== sync_status?.target_generation);
-
-    if (hasSyncMismatch) {
-      const orgId = organization.org_uid;
-      const now = Date.now();
-      const tracker = syncMismatchTrackerV2.get(orgId);
-      const isGenerationMismatch =
-        rootHistory.length - 1 !== sync_status?.generation;
-
-      if (tracker) {
-        if (now < tracker.skipUntil) {
-          if (now - tracker.lastLoggedAt >= MISMATCH_PERIODIC_LOG_INTERVAL_MS) {
-            const stuckFor = Math.round((now - tracker.firstSeen) / 1000);
-            loggerV2.info(
-              `[v2]: ${organization.name} still waiting for datalayer sync ` +
-                `(gen ${sync_status?.generation}/${rootHistory.length - 1}, ` +
-                `stuck for ${stuckFor}s, next retry in ${Math.round((tracker.skipUntil - now) / 1000)}s)`,
-            );
-            tracker.lastLoggedAt = now;
-          }
-          return;
-        }
-        tracker.delay = Math.min(
-          tracker.delay * MISMATCH_BACKOFF_MULTIPLIER,
-          MISMATCH_MAX_DELAY_MS,
-        );
-        tracker.skipUntil = now + tracker.delay;
-        tracker.lastLoggedAt = now;
-        loggerV2.debug(
-          `[v2]: Root history mismatch for ${organization.name} persists ` +
-            `(gen ${sync_status?.generation}/${rootHistory.length - 1}). ` +
-            `Next retry in ${tracker.delay / 1000}s.`,
-        );
-      } else {
-        if (isGenerationMismatch) {
-          loggerV2.warn(
-            `[v2]: Root history mismatch for ${organization.name}: ` +
-              `rootHistory.length-1=${rootHistory.length - 1} vs ` +
-              `sync_status.generation=${sync_status?.generation}. ` +
-              `Waiting for datalayer to sync. Will back off if this persists.`,
-          );
-        } else {
-          loggerV2.debug(
-            `[v2]: Target generation mismatch for ${organization.name}: ` +
-              `rootHistory.length-1=${rootHistory.length - 1} vs ` +
-              `target_generation=${sync_status?.target_generation}. ` +
-              `Waiting for datalayer to sync.`,
-          );
-        }
-        syncMismatchTrackerV2.set(orgId, {
-          firstSeen: now,
-          delay: MISMATCH_INITIAL_DELAY_MS,
-          skipUntil: now + MISMATCH_INITIAL_DELAY_MS,
-          lastLoggedAt: now,
-        });
-      }
+      mismatchBackoff.shouldSkip({
+        orgId: organization.org_uid,
+        orgName: organization.name,
+        rootHistoryLength: rootHistory.length,
+        generation: sync_status?.generation,
+        targetGeneration: sync_status?.target_generation,
+      })
+    ) {
       return;
     }
 
-    if (syncMismatchTrackerV2.has(organization.org_uid)) {
-      const tracker = syncMismatchTrackerV2.get(organization.org_uid);
-      const stuckFor = Math.round((Date.now() - tracker.firstSeen) / 1000);
-      loggerV2.info(
-        `[v2]: ${organization.name} datalayer sync caught up after ${stuckFor}s. Resuming normal sync.`,
-      );
-      syncMismatchTrackerV2.delete(organization.org_uid);
-    }
+    mismatchBackoff.clearIfResolved(organization.org_uid, organization.name);
 
     // For home org, log if there's a mismatch but proceed anyway
     if (isHomeOrg && rootHistory.length - 1 !== sync_status?.generation) {

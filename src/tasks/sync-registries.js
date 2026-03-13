@@ -26,15 +26,12 @@ import {
   processingSyncRegistriesTransactionMutex,
   syncRegistriesTaskMutex,
 } from '../utils/model-utils.js';
+import { SyncMismatchBackoff } from '../utils/sync-mismatch-backoff.js';
 
 dotenv.config({ quiet: true });
 const CONFIG = getConfig().APP;
 
-const syncMismatchTracker = new Map();
-const MISMATCH_INITIAL_DELAY_MS = 30_000;
-const MISMATCH_MAX_DELAY_MS = 600_000; // 10 minutes
-const MISMATCH_BACKOFF_MULTIPLIER = 2;
-const MISMATCH_PERIODIC_LOG_INTERVAL_MS = 300_000; // 5 minutes
+const mismatchBackoff = new SyncMismatchBackoff(logger, '[v1]');
 
 const task = new Task('sync-registries', async () => {
   logger.debug('[v1]: sync registries task invoked');
@@ -264,77 +261,21 @@ const syncOrganizationAudit = async (organization) => {
     // The sync_status might lag behind because datalayer is still processing our own updates
     const isHomeOrg = homeOrg && organization.orgUid === homeOrg.orgUid;
 
-    const hasSyncMismatch =
+    if (
       process.env.NODE_ENV !== 'test' &&
       !isHomeOrg &&
-      (rootHistory.length - 1 !== sync_status?.generation ||
-        rootHistory.length - 1 !== sync_status?.target_generation);
-
-    if (hasSyncMismatch) {
-      const orgId = organization.orgUid;
-      const now = Date.now();
-      const tracker = syncMismatchTracker.get(orgId);
-      const isGenerationMismatch =
-        rootHistory.length - 1 !== sync_status?.generation;
-
-      if (tracker) {
-        if (now < tracker.skipUntil) {
-          if (now - tracker.lastLoggedAt >= MISMATCH_PERIODIC_LOG_INTERVAL_MS) {
-            const stuckFor = Math.round((now - tracker.firstSeen) / 1000);
-            logger.info(
-              `[v1]: ${organization.name} still waiting for datalayer sync ` +
-                `(gen ${sync_status?.generation}/${rootHistory.length - 1}, ` +
-                `stuck for ${stuckFor}s, next retry in ${Math.round((tracker.skipUntil - now) / 1000)}s)`,
-            );
-            tracker.lastLoggedAt = now;
-          }
-          return;
-        }
-        tracker.delay = Math.min(
-          tracker.delay * MISMATCH_BACKOFF_MULTIPLIER,
-          MISMATCH_MAX_DELAY_MS,
-        );
-        tracker.skipUntil = now + tracker.delay;
-        tracker.lastLoggedAt = now;
-        logger.debug(
-          `[v1]: Root history mismatch for ${organization.name} persists ` +
-            `(gen ${sync_status?.generation}/${rootHistory.length - 1}). ` +
-            `Next retry in ${tracker.delay / 1000}s.`,
-        );
-      } else {
-        if (isGenerationMismatch) {
-          logger.warn(
-            `[v1]: Root history mismatch for ${organization.name}: ` +
-              `rootHistory.length-1=${rootHistory.length - 1} vs ` +
-              `sync_status.generation=${sync_status?.generation}. ` +
-              `Waiting for datalayer to sync. Will back off if this persists.`,
-          );
-        } else {
-          logger.debug(
-            `[v1]: Target generation mismatch for ${organization.name}: ` +
-              `rootHistory.length-1=${rootHistory.length - 1} vs ` +
-              `target_generation=${sync_status?.target_generation}. ` +
-              `Waiting for datalayer to sync.`,
-          );
-        }
-        syncMismatchTracker.set(orgId, {
-          firstSeen: now,
-          delay: MISMATCH_INITIAL_DELAY_MS,
-          skipUntil: now + MISMATCH_INITIAL_DELAY_MS,
-          lastLoggedAt: now,
-        });
-      }
+      mismatchBackoff.shouldSkip({
+        orgId: organization.orgUid,
+        orgName: organization.name,
+        rootHistoryLength: rootHistory.length,
+        generation: sync_status?.generation,
+        targetGeneration: sync_status?.target_generation,
+      })
+    ) {
       return;
     }
 
-    if (syncMismatchTracker.has(organization.orgUid)) {
-      const tracker = syncMismatchTracker.get(organization.orgUid);
-      const stuckFor = Math.round((Date.now() - tracker.firstSeen) / 1000);
-      logger.info(
-        `[v1]: ${organization.name} datalayer sync caught up after ${stuckFor}s. Resuming normal sync.`,
-      );
-      syncMismatchTracker.delete(organization.orgUid);
-    }
+    mismatchBackoff.clearIfResolved(organization.orgUid, organization.name);
 
     // For home org, log if there's a mismatch but proceed anyway
     if (isHomeOrg && rootHistory.length - 1 !== sync_status?.generation) {
