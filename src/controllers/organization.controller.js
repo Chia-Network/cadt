@@ -134,8 +134,8 @@ export const editHomeOrg = async (req, res) => {
 };
 
 export const createV2 = async (req, res) => {
-  let lockAcquired = false;
-  const releaseLock = () => { if (lockAcquired) { lockAcquired = false; releaseOrgLock(); } };
+  let lockToken = null;
+  const releaseLock = () => { if (lockToken) { const t = lockToken; lockToken = null; releaseOrgLock(t); } };
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
@@ -157,7 +157,8 @@ export const createV2 = async (req, res) => {
         });
       }
 
-      if (!tryAcquireOrgLock('V1 organization creation')) {
+      lockToken = tryAcquireOrgLock('V1 organization creation');
+      if (!lockToken) {
         const lockStatus = getOrgLockStatus();
         return res.status(409).json({
           message: `A home organization operation is already in progress: ${lockStatus.operation}. Please wait for it to complete.`,
@@ -165,7 +166,6 @@ export const createV2 = async (req, res) => {
           success: false,
         });
       }
-      lockAcquired = true;
 
       const { name } = req.body;
       let icon;
@@ -179,6 +179,8 @@ export const createV2 = async (req, res) => {
 
       const dataModelVersion = 'v1';
 
+      const bgToken = lockToken;
+      lockToken = null;
       Organization.createHomeOrganization(name, icon, dataModelVersion)
         .catch((error) => {
           logger.error(
@@ -186,9 +188,8 @@ export const createV2 = async (req, res) => {
           );
         })
         .finally(() => {
-          releaseOrgLock();
+          releaseOrgLock(bgToken);
         });
-      lockAcquired = false; // ownership transferred to async .finally()
 
       return res.json({
         message:
@@ -208,8 +209,8 @@ export const createV2 = async (req, res) => {
 };
 
 export const create = async (req, res) => {
-  let lockAcquired = false;
-  const releaseLock = () => { if (lockAcquired) { lockAcquired = false; releaseOrgLock(); } };
+  let lockToken = null;
+  const releaseLock = () => { if (lockToken) { const t = lockToken; lockToken = null; releaseOrgLock(t); } };
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
@@ -225,7 +226,6 @@ export const create = async (req, res) => {
     } else {
       const { name, icon } = req.body;
 
-      // Validate name is required
       if (!name) {
         return res.status(400).json({
           message: 'Organization name is required',
@@ -240,7 +240,8 @@ export const create = async (req, res) => {
         });
       }
 
-      if (!tryAcquireOrgLock('V1 organization creation')) {
+      lockToken = tryAcquireOrgLock('V1 organization creation');
+      if (!lockToken) {
         const lockStatus = getOrgLockStatus();
         return res.status(409).json({
           message: `A home organization operation is already in progress: ${lockStatus.operation}. Please wait for it to complete.`,
@@ -248,16 +249,12 @@ export const create = async (req, res) => {
           success: false,
         });
       }
-      lockAcquired = true;
 
-      // Icon is optional - use provided value or default to empty string
-      // Icon can be any string (URL, base64-encoded data, etc.) or empty
       const iconValue = icon !== undefined && icon !== null ? icon : '';
-
       const dataModelVersion = 'v1';
 
-      // Call createHomeOrganization asynchronously (don't await)
-      // This allows the HTTP request to return immediately while creation happens in background
+      const bgToken = lockToken;
+      lockToken = null;
       Organization.createHomeOrganization(name, iconValue, dataModelVersion)
         .catch((error) => {
           logger.error(
@@ -265,9 +262,8 @@ export const create = async (req, res) => {
           );
         })
         .finally(() => {
-          releaseOrgLock();
+          releaseOrgLock(bgToken);
         });
-      lockAcquired = false; // ownership transferred to async .finally()
 
       return res.json({
         message:
@@ -620,12 +616,13 @@ export const removeMirror = async (req, res) => {
  * @param {Object} res - Express response object
  */
 export const reclaimHome = async (req, res) => {
-  let lockAcquired = false;
-  const releaseLock = () => { if (lockAcquired) { lockAcquired = false; releaseOrgLock(); } };
+  let lockToken = null;
+  const releaseLock = () => { if (lockToken) { const t = lockToken; lockToken = null; releaseOrgLock(t); } };
   try {
     await assertIfReadOnlyMode();
 
-    if (!tryAcquireOrgLock('V1 home organization reclaim')) {
+    lockToken = tryAcquireOrgLock('V1 home organization reclaim');
+    if (!lockToken) {
       const lockStatus = getOrgLockStatus();
       return res.status(409).json({
         message: `A home organization operation is already in progress: ${lockStatus.operation}. Please wait for it to complete.`,
@@ -633,7 +630,6 @@ export const reclaimHome = async (req, res) => {
         success: false,
       });
     }
-    lockAcquired = true;
 
     try {
     await assertWalletIsSynced();

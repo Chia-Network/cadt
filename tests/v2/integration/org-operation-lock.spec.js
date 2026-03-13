@@ -16,15 +16,22 @@ describe('Organization Operation Lock', function () {
   });
 
   describe('tryAcquireOrgLock', function () {
-    it('should acquire lock when not held', function () {
-      const result = tryAcquireOrgLock('test operation');
-      expect(result).to.be.true;
+    it('should return a truthy token when lock is free', function () {
+      const token = tryAcquireOrgLock('test operation');
+      expect(token).to.be.a('string').that.is.not.empty;
     });
 
-    it('should return false when lock already held', function () {
+    it('should return null when lock already held', function () {
       tryAcquireOrgLock('first operation');
       const result = tryAcquireOrgLock('second operation');
-      expect(result).to.be.false;
+      expect(result).to.be.null;
+    });
+
+    it('should return unique tokens on successive acquisitions', function () {
+      const t1 = tryAcquireOrgLock('first');
+      releaseOrgLock(t1);
+      const t2 = tryAcquireOrgLock('second');
+      expect(t1).to.not.equal(t2);
     });
 
     it('should report correct operation name via getOrgLockOperation', function () {
@@ -53,15 +60,29 @@ describe('Organization Operation Lock', function () {
   });
 
   describe('releaseOrgLock', function () {
-    it('should release the lock so it can be re-acquired', function () {
-      tryAcquireOrgLock('first');
-      releaseOrgLock();
-      const result = tryAcquireOrgLock('second');
-      expect(result).to.be.true;
+    it('should release the lock when called with the correct token', function () {
+      const token = tryAcquireOrgLock('first');
+      const released = releaseOrgLock(token);
+      expect(released).to.be.true;
+      expect(isOrgLocked()).to.be.false;
+
+      const t2 = tryAcquireOrgLock('second');
+      expect(t2).to.be.a('string');
       expect(getOrgLockOperation()).to.equal('second');
     });
 
-    it('should clear operation name, status, and isOrgLocked after release', function () {
+    it('should NOT release lock when called with a stale token', function () {
+      const staleToken = tryAcquireOrgLock('first');
+      releaseOrgLock(staleToken);
+
+      tryAcquireOrgLock('second');
+      const released = releaseOrgLock(staleToken);
+      expect(released).to.be.false;
+      expect(isOrgLocked()).to.be.true;
+      expect(getOrgLockOperation()).to.equal('second');
+    });
+
+    it('should release unconditionally when called without a token (test cleanup)', function () {
       tryAcquireOrgLock('test');
       releaseOrgLock();
       expect(getOrgLockOperation()).to.be.null;
@@ -78,6 +99,38 @@ describe('Organization Operation Lock', function () {
       tryAcquireOrgLock('test');
       releaseOrgLock();
       expect(getOrgLockStatus()).to.be.null;
+    });
+  });
+
+  describe('ownership protection against TTL force-release', function () {
+    let clock;
+
+    afterEach(function () {
+      if (clock) {
+        clock.restore();
+        clock = null;
+      }
+    });
+
+    it('stale background .finally() should not release a new lock holder', function () {
+      clock = sinon.useFakeTimers({ now: Date.now(), shouldAdvanceTime: false });
+
+      const bgToken = tryAcquireOrgLock('slow background op');
+
+      // Simulate TTL expiry and new acquisition
+      clock.tick(60 * 60 * 1000 + 1);
+      const newToken = tryAcquireOrgLock('new operation');
+      expect(newToken).to.be.a('string');
+
+      // Stale background finally runs with old token
+      const released = releaseOrgLock(bgToken);
+      expect(released).to.be.false;
+      expect(isOrgLocked()).to.be.true;
+      expect(getOrgLockOperation()).to.equal('new operation');
+
+      // New holder can still release
+      expect(releaseOrgLock(newToken)).to.be.true;
+      expect(isOrgLocked()).to.be.false;
     });
   });
 
@@ -130,7 +183,7 @@ describe('Organization Operation Lock', function () {
     it('should block a different operation name when lock is held', function () {
       tryAcquireOrgLock('V1 creation');
       const result = tryAcquireOrgLock('V2 creation');
-      expect(result).to.be.false;
+      expect(result).to.be.null;
       expect(getOrgLockOperation()).to.equal('V1 creation');
     });
   });
@@ -148,7 +201,7 @@ describe('Organization Operation Lock', function () {
     it('should reject acquisition when lock is held and under 1 hour old', function () {
       tryAcquireOrgLock('first');
       const result = tryAcquireOrgLock('second');
-      expect(result).to.be.false;
+      expect(result).to.be.null;
       expect(getOrgLockOperation()).to.equal('first');
     });
 
@@ -157,7 +210,7 @@ describe('Organization Operation Lock', function () {
       tryAcquireOrgLock('stale operation');
       clock.tick(60 * 60 * 1000 + 1);
       const result = tryAcquireOrgLock('new operation');
-      expect(result).to.be.true;
+      expect(result).to.be.a('string');
       expect(getOrgLockOperation()).to.equal('new operation');
     });
 
@@ -166,7 +219,7 @@ describe('Organization Operation Lock', function () {
       tryAcquireOrgLock('threshold operation');
       clock.tick(60 * 60 * 1000 - 1);
       const result = tryAcquireOrgLock('new operation');
-      expect(result).to.be.false;
+      expect(result).to.be.null;
       expect(getOrgLockOperation()).to.equal('threshold operation');
     });
 
