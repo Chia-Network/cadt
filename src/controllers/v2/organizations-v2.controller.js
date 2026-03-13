@@ -83,6 +83,7 @@ const getStoreDataPromise = async (storeId) => {
  * @param {Object} res - Express response object
  */
 export const create = async (req, res) => {
+  let lockAcquired = false;
   try {
     await assertV2IfReadOnlyMode();
 
@@ -102,6 +103,7 @@ export const create = async (req, res) => {
         success: false,
       });
     }
+    lockAcquired = true;
 
     // Check if V1 home org exists in database (only if V1 is enabled)
     // When V1 is disabled, the V1 organizations table may not exist
@@ -234,7 +236,7 @@ export const create = async (req, res) => {
       });
     }
   } catch (error) {
-    releaseOrgLock();
+    if (lockAcquired) releaseOrgLock();
     loggerV2.error(`[v2]: Error creating V2 home organization: ${error.message}`);
     res.status(400).json({
       message: 'Error creating V2 home organization',
@@ -250,6 +252,7 @@ export const create = async (req, res) => {
  * @param {Object} res - Express response object
  */
 export const upgrade = async (req, res) => {
+  let lockAcquired = false;
   try {
     await assertV2IfReadOnlyMode();
 
@@ -269,6 +272,7 @@ export const upgrade = async (req, res) => {
         success: false,
       });
     }
+    lockAcquired = true;
 
     // Note: assertWalletIsSyncedV2 and assertNoPendingCommitsExcludingTransfers don't exist yet
     // await assertWalletIsSyncedV2();
@@ -450,7 +454,7 @@ export const upgrade = async (req, res) => {
       });
     }
   } catch (error) {
-    releaseOrgLock();
+    if (lockAcquired) releaseOrgLock();
     loggerV2.error(`[v2]: Error upgrading to V2 organization: ${error.message}`);
     res.status(400).json({
       message: 'Error upgrading to V2 organization',
@@ -1132,6 +1136,7 @@ export const removeMirror = async (req, res) => {
  * @param {Object} res - Express response object
  */
 export const reclaimHome = async (req, res) => {
+  let lockAcquired = false;
   try {
     await assertV2IfReadOnlyMode();
 
@@ -1143,6 +1148,7 @@ export const reclaimHome = async (req, res) => {
         success: false,
       });
     }
+    lockAcquired = true;
 
     try {
     await assertWalletIsSynced();
@@ -1311,7 +1317,7 @@ export const reclaimHome = async (req, res) => {
       releaseOrgLock();
     }
   } catch (error) {
-    releaseOrgLock();
+    if (lockAcquired) releaseOrgLock();
     loggerV2.error(`[v2]: Error reclaiming home organization: ${error.message}`);
     res.status(400).json({
       message: 'Error reclaiming home organization',
