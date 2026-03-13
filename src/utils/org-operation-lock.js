@@ -2,8 +2,19 @@ let currentOperation = null;
 let currentStatus = null;
 let startedAt = null;
 
+const MAX_LOCK_AGE_MS = 60 * 60 * 1000; // 1 hour
+
 export const tryAcquireOrgLock = (operationName) => {
-  if (currentOperation) return false;
+  if (currentOperation) {
+    const ageMs = Date.now() - new Date(startedAt).getTime();
+    if (ageMs < MAX_LOCK_AGE_MS) {
+      return false;
+    }
+    console.warn(
+      `[org-operation-lock] Lock held by "${currentOperation}" for ${Math.round(ageMs / 1000)}s ` +
+      `exceeded max age (${MAX_LOCK_AGE_MS / 1000}s). Force-releasing stale lock.`,
+    );
+  }
   currentOperation = operationName;
   currentStatus = 'Starting...';
   startedAt = new Date().toISOString();

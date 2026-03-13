@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 import {
   tryAcquireOrgLock,
   releaseOrgLock,
@@ -131,6 +132,54 @@ describe('Organization Operation Lock', function () {
       const result = tryAcquireOrgLock('V2 creation');
       expect(result).to.be.false;
       expect(getOrgLockOperation()).to.equal('V1 creation');
+    });
+  });
+
+  describe('staleness TTL', function () {
+    let clock;
+
+    afterEach(function () {
+      if (clock) {
+        clock.restore();
+        clock = null;
+      }
+    });
+
+    it('should reject acquisition when lock is held and under 1 hour old', function () {
+      tryAcquireOrgLock('first');
+      const result = tryAcquireOrgLock('second');
+      expect(result).to.be.false;
+      expect(getOrgLockOperation()).to.equal('first');
+    });
+
+    it('should force-release and re-acquire when lock exceeds 1 hour', function () {
+      clock = sinon.useFakeTimers({ now: Date.now(), shouldAdvanceTime: false });
+      tryAcquireOrgLock('stale operation');
+      clock.tick(60 * 60 * 1000 + 1);
+      const result = tryAcquireOrgLock('new operation');
+      expect(result).to.be.true;
+      expect(getOrgLockOperation()).to.equal('new operation');
+    });
+
+    it('should not force-release when lock is exactly at the threshold', function () {
+      clock = sinon.useFakeTimers({ now: Date.now(), shouldAdvanceTime: false });
+      tryAcquireOrgLock('threshold operation');
+      clock.tick(60 * 60 * 1000 - 1);
+      const result = tryAcquireOrgLock('new operation');
+      expect(result).to.be.false;
+      expect(getOrgLockOperation()).to.equal('threshold operation');
+    });
+
+    it('should reset status and startedAt after force-releasing stale lock', function () {
+      clock = sinon.useFakeTimers({ now: Date.now(), shouldAdvanceTime: false });
+      tryAcquireOrgLock('stale op');
+      updateOrgLockStatus('stuck somewhere');
+      clock.tick(60 * 60 * 1000 + 1);
+      tryAcquireOrgLock('fresh op');
+      const status = getOrgLockStatus();
+      expect(status.operation).to.equal('fresh op');
+      expect(status.status).to.equal('Starting...');
+      expect(status.elapsedSeconds).to.equal(0);
     });
   });
 });

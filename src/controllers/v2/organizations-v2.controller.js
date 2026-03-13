@@ -234,6 +234,7 @@ export const create = async (req, res) => {
       });
     }
   } catch (error) {
+    releaseOrgLock();
     loggerV2.error(`[v2]: Error creating V2 home organization: ${error.message}`);
     res.status(400).json({
       message: 'Error creating V2 home organization',
