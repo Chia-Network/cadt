@@ -507,7 +507,7 @@ Response when an upgrade is in progress (showing `liveStatus`):
 {
     "inProgress": true,
     "state": null,
-    "message": "No organization creation in progress",
+    "message": "V1 to V2 upgrade: Waiting for V2 registry store to confirm on blockchain",
     "operation": "V1 to V2 upgrade",
     "status": "Waiting for V2 registry store to confirm on blockchain",
     "startedAt": "2026-01-26T12:00:00.000Z",

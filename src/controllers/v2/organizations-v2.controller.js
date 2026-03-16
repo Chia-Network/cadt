@@ -531,6 +531,7 @@ export const getCreationStatus = async (req, res) => {
       ...metaStatus,
       ...(lockStatus && !metaStatus.inProgress ? {
         inProgress: true,
+        message: `${lockStatus.operation}: ${lockStatus.status}`,
         operation: lockStatus.operation,
         status: lockStatus.status,
         startedAt: lockStatus.startedAt,

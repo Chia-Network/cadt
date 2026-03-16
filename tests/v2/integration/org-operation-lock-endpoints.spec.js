@@ -272,6 +272,7 @@ describe('Organization Operation Lock - Endpoint Guards', function () {
 
       expect(res.status).to.equal(200);
       expect(res.body.inProgress).to.be.true;
+      expect(res.body.message).to.equal('V1 to V2 upgrade: Creating registry store');
       expect(res.body.operation).to.equal('V1 to V2 upgrade');
       expect(res.body.liveStatus).to.be.an('object');
       expect(res.body.liveStatus.operation).to.equal('V1 to V2 upgrade');
