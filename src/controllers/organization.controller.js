@@ -11,12 +11,18 @@ import {
 } from '../utils/data-assertions';
 
 
-import { ModelKeys, Audit, Organization, Staging } from '../models';
+import { ModelKeys, Audit, Organization, Staging, Meta } from '../models';
 import { getOwnedStores, getSubscriptions, getStoreData as getRawStoreData } from '../datalayer/persistance.js';
 import * as simulator from '../datalayer/simulator.js';
 import { decodeDataLayerResponse } from '../utils/datalayer-utils.js';
 import { getConfig } from '../utils/config-loader.js';
 import { logger } from '../config/logger';
+import {
+  tryAcquireOrgLock,
+  releaseOrgLock,
+  getOrgLockStatus,
+} from '../utils/org-operation-lock.js';
+import { hasInProgressCreation } from '../utils/organization-creation-state.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
 
@@ -128,6 +134,8 @@ export const editHomeOrg = async (req, res) => {
 };
 
 export const createV2 = async (req, res) => {
+  let lockToken = null;
+  const releaseLock = () => { if (lockToken) { const t = lockToken; lockToken = null; releaseOrgLock(t); } };
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
@@ -142,6 +150,23 @@ export const createV2 = async (req, res) => {
         success: false,
       });
     } else {
+      if (await hasInProgressCreation(Meta, 'v1')) {
+        return res.status(409).json({
+          message: 'A V1 organization creation is still in progress (from a previous session). Check status at GET /v1/organizations/creation-status.',
+          success: false,
+        });
+      }
+
+      lockToken = tryAcquireOrgLock('V1 organization creation');
+      if (!lockToken) {
+        const lockStatus = getOrgLockStatus();
+        return res.status(409).json({
+          message: `A home organization operation is already in progress: ${lockStatus.operation}. Please wait for it to complete.`,
+          operationStatus: lockStatus,
+          success: false,
+        });
+      }
+
       const { name } = req.body;
       let icon;
 
@@ -154,7 +179,17 @@ export const createV2 = async (req, res) => {
 
       const dataModelVersion = 'v1';
 
-      Organization.createHomeOrganization(name, icon, dataModelVersion);
+      const bgToken = lockToken;
+      lockToken = null;
+      Organization.createHomeOrganization(name, icon, dataModelVersion, bgToken)
+        .catch((error) => {
+          logger.error(
+            `[v1]: Error creating home organization in background: ${error.message}`,
+          );
+        })
+        .finally(() => {
+          releaseOrgLock(bgToken);
+        });
 
       return res.json({
         message:
@@ -163,6 +198,7 @@ export const createV2 = async (req, res) => {
       });
     }
   } catch (error) {
+    releaseLock();
     console.trace(error);
     res.status(400).json({
       message: 'Error initiating your organization',
@@ -173,6 +209,8 @@ export const createV2 = async (req, res) => {
 };
 
 export const create = async (req, res) => {
+  let lockToken = null;
+  const releaseLock = () => { if (lockToken) { const t = lockToken; lockToken = null; releaseOrgLock(t); } };
   try {
     await assertIfReadOnlyMode();
     await assertWalletIsSynced();
@@ -188,7 +226,6 @@ export const create = async (req, res) => {
     } else {
       const { name, icon } = req.body;
 
-      // Validate name is required
       if (!name) {
         return res.status(400).json({
           message: 'Organization name is required',
@@ -196,21 +233,37 @@ export const create = async (req, res) => {
         });
       }
 
-      // Icon is optional - use provided value or default to empty string
-      // Icon can be any string (URL, base64-encoded data, etc.) or empty
-      const iconValue = icon !== undefined && icon !== null ? icon : '';
+      if (await hasInProgressCreation(Meta, 'v1')) {
+        return res.status(409).json({
+          message: 'A V1 organization creation is still in progress (from a previous session). Check status at GET /v1/organizations/creation-status.',
+          success: false,
+        });
+      }
 
+      lockToken = tryAcquireOrgLock('V1 organization creation');
+      if (!lockToken) {
+        const lockStatus = getOrgLockStatus();
+        return res.status(409).json({
+          message: `A home organization operation is already in progress: ${lockStatus.operation}. Please wait for it to complete.`,
+          operationStatus: lockStatus,
+          success: false,
+        });
+      }
+
+      const iconValue = icon !== undefined && icon !== null ? icon : '';
       const dataModelVersion = 'v1';
 
-      // Call createHomeOrganization asynchronously (don't await)
-      // This allows the HTTP request to return immediately while creation happens in background
-      Organization.createHomeOrganization(name, iconValue, dataModelVersion).catch(
-        (error) => {
+      const bgToken = lockToken;
+      lockToken = null;
+      Organization.createHomeOrganization(name, iconValue, dataModelVersion, bgToken)
+        .catch((error) => {
           logger.error(
             `[v1]: Error creating home organization in background: ${error.message}`,
           );
-        },
-      );
+        })
+        .finally(() => {
+          releaseOrgLock(bgToken);
+        });
 
       return res.json({
         message:
@@ -219,6 +272,7 @@ export const create = async (req, res) => {
       });
     }
   } catch (error) {
+    releaseLock();
     res.status(400).json({
       message: 'Error initiating your organization',
       error: error.message,
@@ -562,10 +616,23 @@ export const removeMirror = async (req, res) => {
  * @param {Object} res - Express response object
  */
 export const reclaimHome = async (req, res) => {
+  let lockToken = null;
+  const releaseLock = () => { if (lockToken) { const t = lockToken; lockToken = null; releaseOrgLock(t); } };
   try {
     await assertIfReadOnlyMode();
-    await assertWalletIsSynced();
 
+    lockToken = tryAcquireOrgLock('V1 home organization reclaim');
+    if (!lockToken) {
+      const lockStatus = getOrgLockStatus();
+      return res.status(409).json({
+        message: `A home organization operation is already in progress: ${lockStatus.operation}. Please wait for it to complete.`,
+        operationStatus: lockStatus,
+        success: false,
+      });
+    }
+
+    try {
+    await assertWalletIsSynced();
     const { orgUid } = req.body;
 
     const org = await Organization.findOne({
@@ -729,7 +796,11 @@ export const reclaimHome = async (req, res) => {
       message: `Organization ${orgUid} has been reclaimed as the home organization.`,
       success: true,
     });
+    } finally {
+      releaseLock();
+    }
   } catch (error) {
+    releaseLock();
     logger.error(`[v1]: Error reclaiming home organization: ${error.message}`);
     res.status(400).json({
       message: 'Error reclaiming home organization',

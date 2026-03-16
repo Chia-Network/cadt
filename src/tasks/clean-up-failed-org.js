@@ -13,6 +13,7 @@ import {
   markAsFailed,
   getStatusSummary,
 } from '../utils/organization-creation-state.js';
+import { tryAcquireOrgLock, releaseOrgLock } from '../utils/org-operation-lock.js';
 
 const CONFIG = getConfig().APP;
 
@@ -87,12 +88,18 @@ const attemptRecovery = async () => {
     `[v1]: [Recovery] Attempting recovery (attempt ${state.retryCount}/${ORG_CREATION_CONFIG.MAX_RETRIES})`,
   );
 
+  const token = tryAcquireOrgLock('V1 organization recovery');
+  if (!token) {
+    logger.warn('[v1]: [Recovery] Cannot acquire lock - another operation is in progress');
+    return { success: false, message: 'Cannot acquire lock for recovery' };
+  }
+
   try {
-    // Resume the creation - this will pick up from where it left off
     const orgUid = await Organization.createHomeOrganization(
       state.name,
       state.icon,
       state.dataVersion,
+      token,
     );
 
     logger.info(`[v1]: [Recovery] Successfully recovered organization creation. orgUid: ${orgUid}`);
@@ -104,7 +111,6 @@ const attemptRecovery = async () => {
   } catch (error) {
     logger.error(`[v1]: [Recovery] Recovery attempt failed: ${error.message}`);
 
-    // Check if we should try again or give up
     state = await loadCreationState(Meta, 'v1');
     if (state && hasExceededMaxRetries(state)) {
       logger.error('[v1]: [Recovery] Max retries exceeded after failed attempt. Giving up.');
@@ -118,6 +124,8 @@ const attemptRecovery = async () => {
       success: false,
       message: `Recovery attempt ${state?.retryCount || 'unknown'}/${ORG_CREATION_CONFIG.MAX_RETRIES} failed: ${error.message}`,
     };
+  } finally {
+    releaseOrgLock(token);
   }
 };
 
