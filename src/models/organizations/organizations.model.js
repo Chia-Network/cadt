@@ -162,7 +162,7 @@ class Organization extends Model {
    * @param {string} dataVersion - Data version (defaults to 'v1')
    * @returns {Promise<string>} The new organization UID
    */
-  static async createHomeOrganization(name, icon, dataVersion = 'v1') {
+  static async createHomeOrganization(name, icon, dataVersion = 'v1', lockToken = null) {
     try {
       logger.info('[v1]: Creating New Organization using parallel store creation.');
 
@@ -185,7 +185,7 @@ class Organization extends Model {
       let state = await loadCreationState(Meta, 'v1');
       if (state && state.state !== ORG_CREATION_STATES.COMPLETE && state.state !== ORG_CREATION_STATES.FAILED) {
         logger.info('[v1]: Found in-progress organization creation, resuming...');
-        return await Organization._resumeOrganizationCreation(state);
+        return await Organization._resumeOrganizationCreation(state, lockToken);
       }
 
       // Initialize state for new creation
@@ -211,7 +211,7 @@ class Organization extends Model {
       }
 
       // Execute the creation process
-      return await Organization._executeOrganizationCreation(state);
+      return await Organization._executeOrganizationCreation(state, lockToken);
     } catch (error) {
       logger.error(
         `[v1]: create organization process failed. Error: ${error.message}`,
@@ -228,7 +228,7 @@ class Organization extends Model {
    * @returns {Promise<string>} The organization UID
    * @private
    */
-  static async _resumeOrganizationCreation(state) {
+  static async _resumeOrganizationCreation(state, lockToken = null) {
     logState(state, `Resuming from state: ${state.state}`);
 
     // Check for timeout
@@ -245,7 +245,7 @@ class Organization extends Model {
       await saveCreationState(state, Meta);
     }
 
-    return await Organization._executeOrganizationCreation(state);
+    return await Organization._executeOrganizationCreation(state, lockToken);
   }
 
   /**
@@ -254,12 +254,12 @@ class Organization extends Model {
    * @returns {Promise<string>} The organization UID
    * @private
    */
-  static async _executeOrganizationCreation(state) {
+  static async _executeOrganizationCreation(state, lockToken = null) {
     try {
       // PHASE 1: Create stores in parallel
       if (state.state === ORG_CREATION_STATES.INITIALIZING ||
           state.state === ORG_CREATION_STATES.STORES_CREATING) {
-        updateOrgLockStatus('Creating stores on blockchain');
+        updateOrgLockStatus(lockToken, 'Creating stores on blockchain');
         state = updateState(state, { state: ORG_CREATION_STATES.STORES_CREATING });
         await saveCreationState(state, Meta);
 
@@ -268,14 +268,14 @@ class Organization extends Model {
 
       // Wait for all stores to be confirmed
       if (state.state === ORG_CREATION_STATES.STORES_CREATING) {
-        updateOrgLockStatus('Waiting for stores to confirm on blockchain');
+        updateOrgLockStatus(lockToken, 'Waiting for stores to confirm on blockchain');
         state = await Organization._waitForStoresConfirmation(state);
       }
 
       // PHASE 2: Push data to stores in parallel
       if (state.state === ORG_CREATION_STATES.STORES_CONFIRMED ||
           state.state === ORG_CREATION_STATES.DATA_PUSHING) {
-        updateOrgLockStatus('Writing data to stores');
+        updateOrgLockStatus(lockToken, 'Writing data to stores');
         state = updateState(state, { state: ORG_CREATION_STATES.DATA_PUSHING });
         await saveCreationState(state, Meta);
 
@@ -291,7 +291,7 @@ class Organization extends Model {
       }
 
       // PHASE 3: Finalize
-      updateOrgLockStatus('Finalizing organization record');
+      updateOrgLockStatus(lockToken, 'Finalizing organization record');
       state = updateState(state, { state: ORG_CREATION_STATES.FINALIZING });
       await saveCreationState(state, Meta);
 
@@ -411,7 +411,7 @@ class Organization extends Model {
       }
 
       // Mark complete and clear state
-      updateOrgLockStatus('Organization creation complete');
+      updateOrgLockStatus(lockToken, 'Organization creation complete');
       state = updateState(state, { state: ORG_CREATION_STATES.COMPLETE });
       await clearCreationState(Meta, 'v1');
 

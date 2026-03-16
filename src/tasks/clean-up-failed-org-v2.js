@@ -99,6 +99,7 @@ const attemptRecovery = async () => {
       state.name,
       state.icon,
       state.dataVersion,
+      token,
     );
 
     loggerV2.info(`[v2]: [Recovery] Successfully recovered organization creation. orgUid: ${orgUid}`);

@@ -3,8 +3,6 @@ import sinon from 'sinon';
 import {
   tryAcquireOrgLock,
   releaseOrgLock,
-  getOrgLockOperation,
-  isOrgLocked,
   updateOrgLockStatus,
   getOrgLockStatus,
 } from '../../../src/utils/org-operation-lock.js';
@@ -34,14 +32,14 @@ describe('Organization Operation Lock', function () {
       expect(t1).to.not.equal(t2);
     });
 
-    it('should report correct operation name via getOrgLockOperation', function () {
+    it('should report correct operation name via getOrgLockStatus', function () {
       tryAcquireOrgLock('V2 organization creation');
-      expect(getOrgLockOperation()).to.equal('V2 organization creation');
+      expect(getOrgLockStatus().operation).to.equal('V2 organization creation');
     });
 
-    it('should report isOrgLocked() as true when held', function () {
+    it('should report lock as held via getOrgLockStatus when held', function () {
       tryAcquireOrgLock('test operation');
-      expect(isOrgLocked()).to.be.true;
+      expect(getOrgLockStatus()).to.not.be.null;
     });
 
     it('should set initial status to "Starting..."', function () {
@@ -64,11 +62,11 @@ describe('Organization Operation Lock', function () {
       const token = tryAcquireOrgLock('first');
       const released = releaseOrgLock(token);
       expect(released).to.be.true;
-      expect(isOrgLocked()).to.be.false;
+      expect(getOrgLockStatus()).to.be.null;
 
       const t2 = tryAcquireOrgLock('second');
       expect(t2).to.be.a('string');
-      expect(getOrgLockOperation()).to.equal('second');
+      expect(getOrgLockStatus().operation).to.equal('second');
     });
 
     it('should NOT release lock when called with a stale token', function () {
@@ -78,21 +76,20 @@ describe('Organization Operation Lock', function () {
       tryAcquireOrgLock('second');
       const released = releaseOrgLock(staleToken);
       expect(released).to.be.false;
-      expect(isOrgLocked()).to.be.true;
-      expect(getOrgLockOperation()).to.equal('second');
+      expect(getOrgLockStatus()).to.not.be.null;
+      expect(getOrgLockStatus().operation).to.equal('second');
     });
 
     it('should release unconditionally when called without a token (test cleanup)', function () {
       tryAcquireOrgLock('test');
       releaseOrgLock();
-      expect(getOrgLockOperation()).to.be.null;
-      expect(isOrgLocked()).to.be.false;
+      expect(getOrgLockStatus()).to.be.null;
     });
 
     it('should be safe to call when lock is not held (no-op)', function () {
       releaseOrgLock();
       releaseOrgLock();
-      expect(isOrgLocked()).to.be.false;
+      expect(getOrgLockStatus()).to.be.null;
     });
 
     it('should make getOrgLockStatus return null', function () {
@@ -125,28 +122,58 @@ describe('Organization Operation Lock', function () {
       // Stale background finally runs with old token
       const released = releaseOrgLock(bgToken);
       expect(released).to.be.false;
-      expect(isOrgLocked()).to.be.true;
-      expect(getOrgLockOperation()).to.equal('new operation');
+      expect(getOrgLockStatus()).to.not.be.null;
+      expect(getOrgLockStatus().operation).to.equal('new operation');
 
       // New holder can still release
       expect(releaseOrgLock(newToken)).to.be.true;
-      expect(isOrgLocked()).to.be.false;
+      expect(getOrgLockStatus()).to.be.null;
     });
   });
 
   describe('updateOrgLockStatus', function () {
-    it('should update the status message', function () {
-      tryAcquireOrgLock('test');
-      updateOrgLockStatus('Creating stores');
+    it('should update the status message when token matches', function () {
+      const token = tryAcquireOrgLock('test');
+      updateOrgLockStatus(token, 'Creating stores');
       const status = getOrgLockStatus();
       expect(status.status).to.equal('Creating stores');
     });
 
     it('should be reflected in getOrgLockStatus', function () {
-      tryAcquireOrgLock('test');
-      updateOrgLockStatus('Phase 1');
-      updateOrgLockStatus('Phase 2');
+      const token = tryAcquireOrgLock('test');
+      updateOrgLockStatus(token, 'Phase 1');
+      updateOrgLockStatus(token, 'Phase 2');
       expect(getOrgLockStatus().status).to.equal('Phase 2');
+    });
+
+    it('should reject updates from a stale token', function () {
+      const staleToken = tryAcquireOrgLock('old');
+      releaseOrgLock(staleToken);
+      const newToken = tryAcquireOrgLock('new');
+      updateOrgLockStatus(staleToken, 'stale update');
+      expect(getOrgLockStatus().status).to.equal('Starting...');
+      updateOrgLockStatus(newToken, 'valid update');
+      expect(getOrgLockStatus().status).to.equal('valid update');
+    });
+
+    it('should reject updates after TTL force-release', function () {
+      const clock = sinon.useFakeTimers({ now: Date.now(), shouldAdvanceTime: false });
+      const bgToken = tryAcquireOrgLock('slow op');
+      updateOrgLockStatus(bgToken, 'stuck');
+
+      clock.tick(60 * 60 * 1000 + 1);
+      const newToken = tryAcquireOrgLock('fresh op');
+      expect(newToken).to.be.a('string');
+
+      // Stale operation tries to update
+      updateOrgLockStatus(bgToken, 'should be ignored');
+      expect(getOrgLockStatus().status).to.equal('Starting...');
+
+      // New holder can update
+      updateOrgLockStatus(newToken, 'new status');
+      expect(getOrgLockStatus().status).to.equal('new status');
+
+      clock.restore();
     });
   });
 
@@ -172,8 +199,8 @@ describe('Organization Operation Lock', function () {
     });
 
     it('should reflect updated status message after updateOrgLockStatus', function () {
-      tryAcquireOrgLock('test');
-      updateOrgLockStatus('Waiting for blockchain');
+      const token = tryAcquireOrgLock('test');
+      updateOrgLockStatus(token, 'Waiting for blockchain');
       const status = getOrgLockStatus();
       expect(status.status).to.equal('Waiting for blockchain');
     });
@@ -184,7 +211,7 @@ describe('Organization Operation Lock', function () {
       tryAcquireOrgLock('V1 creation');
       const result = tryAcquireOrgLock('V2 creation');
       expect(result).to.be.null;
-      expect(getOrgLockOperation()).to.equal('V1 creation');
+      expect(getOrgLockStatus().operation).to.equal('V1 creation');
     });
   });
 
@@ -202,7 +229,7 @@ describe('Organization Operation Lock', function () {
       tryAcquireOrgLock('first');
       const result = tryAcquireOrgLock('second');
       expect(result).to.be.null;
-      expect(getOrgLockOperation()).to.equal('first');
+      expect(getOrgLockStatus().operation).to.equal('first');
     });
 
     it('should force-release and re-acquire when lock exceeds 1 hour', function () {
@@ -211,7 +238,7 @@ describe('Organization Operation Lock', function () {
       clock.tick(60 * 60 * 1000 + 1);
       const result = tryAcquireOrgLock('new operation');
       expect(result).to.be.a('string');
-      expect(getOrgLockOperation()).to.equal('new operation');
+      expect(getOrgLockStatus().operation).to.equal('new operation');
     });
 
     it('should not force-release when lock is exactly at the threshold', function () {
@@ -220,13 +247,13 @@ describe('Organization Operation Lock', function () {
       clock.tick(60 * 60 * 1000 - 1);
       const result = tryAcquireOrgLock('new operation');
       expect(result).to.be.null;
-      expect(getOrgLockOperation()).to.equal('threshold operation');
+      expect(getOrgLockStatus().operation).to.equal('threshold operation');
     });
 
     it('should reset status and startedAt after force-releasing stale lock', function () {
       clock = sinon.useFakeTimers({ now: Date.now(), shouldAdvanceTime: false });
-      tryAcquireOrgLock('stale op');
-      updateOrgLockStatus('stuck somewhere');
+      const token = tryAcquireOrgLock('stale op');
+      updateOrgLockStatus(token, 'stuck somewhere');
       clock.tick(60 * 60 * 1000 + 1);
       tryAcquireOrgLock('fresh op');
       const status = getOrgLockStatus();

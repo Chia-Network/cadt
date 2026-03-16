@@ -181,7 +181,7 @@ export const createV2 = async (req, res) => {
 
       const bgToken = lockToken;
       lockToken = null;
-      Organization.createHomeOrganization(name, icon, dataModelVersion)
+      Organization.createHomeOrganization(name, icon, dataModelVersion, bgToken)
         .catch((error) => {
           logger.error(
             `[v1]: Error creating home organization in background: ${error.message}`,
@@ -255,7 +255,7 @@ export const create = async (req, res) => {
 
       const bgToken = lockToken;
       lockToken = null;
-      Organization.createHomeOrganization(name, iconValue, dataModelVersion)
+      Organization.createHomeOrganization(name, iconValue, dataModelVersion, bgToken)
         .catch((error) => {
           logger.error(
             `[v1]: Error creating home organization in background: ${error.message}`,

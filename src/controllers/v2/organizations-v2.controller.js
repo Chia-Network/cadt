@@ -116,7 +116,6 @@ export const create = async (req, res) => {
       });
 
       if (v1Org) {
-        releaseLock();
         if (v1Org.dataModelVersionStoreId) {
           try {
             const singletonData = await getStoreDataPromise(
@@ -134,6 +133,7 @@ export const create = async (req, res) => {
               });
 
               if (hasV1Key) {
+                releaseLock();
                 return res.status(400).json({
                   message:
                     'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
@@ -146,6 +146,7 @@ export const create = async (req, res) => {
           }
         }
 
+        releaseLock();
         return res.status(400).json({
           message:
             'V1 organization detected. Please use /v2/organizations/upgrade endpoint',
@@ -186,7 +187,7 @@ export const create = async (req, res) => {
 
     if (USE_SIMULATOR) {
       try {
-        const orgUid = await OrganizationsV2.createHomeOrganization(name, icon, 'v2');
+        const orgUid = await OrganizationsV2.createHomeOrganization(name, icon, 'v2', lockToken);
         return res.json({
           message: 'V2 organization created successfully',
           orgUid,
@@ -207,7 +208,7 @@ export const create = async (req, res) => {
     } else {
       const bgToken = lockToken;
       lockToken = null;
-      OrganizationsV2.createHomeOrganization(name, icon, 'v2')
+      OrganizationsV2.createHomeOrganization(name, icon, 'v2', bgToken)
         .catch((error) => {
           loggerV2.error(
             `[v2]: Error creating V2 home organization in background: ${error.message}`,
@@ -390,7 +391,7 @@ export const upgrade = async (req, res) => {
 
     if (USE_SIMULATOR) {
       try {
-        await OrganizationsV2.upgradeFromV1(name, icon);
+        await OrganizationsV2.upgradeFromV1(name, icon, lockToken);
         return res.json({
           message: 'V2 organization upgrade completed successfully.',
           success: true,
@@ -408,7 +409,7 @@ export const upgrade = async (req, res) => {
     } else {
       const bgToken = lockToken;
       lockToken = null;
-      OrganizationsV2.upgradeFromV1(name, icon)
+      OrganizationsV2.upgradeFromV1(name, icon, bgToken)
         .catch((error) => {
           loggerV2.error(
             `[v2]: Error upgrading V2 organization in background: ${error.message}`,

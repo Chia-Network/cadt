@@ -49,9 +49,18 @@ export const releaseOrgLock = (token) => {
   return true;
 };
 
-export const updateOrgLockStatus = (status) => { currentStatus = status; };
-export const getOrgLockOperation = () => currentOperation;
-export const isOrgLocked = () => currentOperation !== null;
+/**
+ * Update the lock's progress status message.
+ * Only writes if the supplied token matches the current holder, preventing
+ * a stale background operation (whose lock was force-released via TTL)
+ * from overwriting the new holder's status.
+ * @param {string} token - the ownership token returned by tryAcquireOrgLock
+ * @param {string} status - the new status message
+ */
+export const updateOrgLockStatus = (token, status) => {
+  if (token !== currentToken) return;
+  currentStatus = status;
+};
 
 export const getOrgLockStatus = () => {
   if (!currentOperation) return null;

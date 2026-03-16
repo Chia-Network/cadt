@@ -8,7 +8,7 @@ import {
   tryAcquireOrgLock,
   releaseOrgLock,
   updateOrgLockStatus,
-  isOrgLocked,
+  getOrgLockStatus,
 } from '../../../src/utils/org-operation-lock.js';
 import {
   createInitialState,
@@ -200,7 +200,7 @@ describe('Organization Operation Lock - Endpoint Guards', function () {
 
       // In simulator mode, creation is awaited so lock should be released
       await new Promise(resolve => setImmediate(resolve));
-      expect(isOrgLocked()).to.be.false;
+      expect(getOrgLockStatus()).to.be.null;
     });
   });
 
@@ -209,8 +209,8 @@ describe('Organization Operation Lock - Endpoint Guards', function () {
   // ----------------------------------------------------------------
   describe('409 response body matches documented API contract', function () {
     it('409 includes all documented fields', async function () {
-      tryAcquireOrgLock('V2 organization creation');
-      updateOrgLockStatus('Waiting for store');
+      const token = tryAcquireOrgLock('V2 organization creation');
+      updateOrgLockStatus(token, 'Waiting for store');
 
       const res = await supertest(app)
         .post('/v2/organizations')
@@ -223,8 +223,8 @@ describe('Organization Operation Lock - Endpoint Guards', function () {
     });
 
     it('operationStatus has all documented fields', async function () {
-      tryAcquireOrgLock('V2 organization creation');
-      updateOrgLockStatus('Waiting for store');
+      const token = tryAcquireOrgLock('V2 organization creation');
+      updateOrgLockStatus(token, 'Waiting for store');
 
       const res = await supertest(app)
         .post('/v2/organizations')
@@ -264,8 +264,8 @@ describe('Organization Operation Lock - Endpoint Guards', function () {
   // ----------------------------------------------------------------
   describe('creation-status endpoint shows lock status', function () {
     it('returns lock status when upgrade in progress', async function () {
-      tryAcquireOrgLock('V1 to V2 upgrade');
-      updateOrgLockStatus('Creating registry store');
+      const token = tryAcquireOrgLock('V1 to V2 upgrade');
+      updateOrgLockStatus(token, 'Creating registry store');
 
       const res = await supertest(app)
         .get('/v2/organizations/creation-status');
@@ -296,8 +296,8 @@ describe('Organization Operation Lock - Endpoint Guards', function () {
       state.state = ORG_CREATION_STATES.STORES_CREATING;
       await saveCreationState(state, MetaV2);
 
-      tryAcquireOrgLock('V2 organization creation');
-      updateOrgLockStatus('Creating stores on blockchain');
+      const token = tryAcquireOrgLock('V2 organization creation');
+      updateOrgLockStatus(token, 'Creating stores on blockchain');
 
       const res = await supertest(app)
         .get('/v2/organizations/creation-status');
@@ -310,9 +310,9 @@ describe('Organization Operation Lock - Endpoint Guards', function () {
     });
 
     it('liveStatus reflects updated status', async function () {
-      tryAcquireOrgLock('test');
-      updateOrgLockStatus('A');
-      updateOrgLockStatus('B');
+      const token = tryAcquireOrgLock('test');
+      updateOrgLockStatus(token, 'A');
+      updateOrgLockStatus(token, 'B');
 
       const res = await supertest(app)
         .get('/v2/organizations/creation-status');
