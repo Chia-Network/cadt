@@ -207,7 +207,7 @@ jobs:
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
           # Enable V2 for V2 live API tests
           yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
@@ -505,55 +505,6 @@ jobs:
           pm2 delete cadt || true
           echo "CADT stopped"
 
-      - name: Delete all mirrors
-        if: always()
-        shell: bash
-        run: |
-          echo "Waiting for wallet to be synced before deleting mirrors..."
-          MAX_SYNC_ATTEMPTS=30  # 30 * 10s = 5 minutes max wait for sync
-          for i in $(seq 1 $MAX_SYNC_ATTEMPTS); do
-            WALLET_SYNCED=$(chia rpc wallet get_sync_status 2>/dev/null | jq -r '.synced // false')
-            if [ "$WALLET_SYNCED" = "true" ]; then
-              echo "Wallet is synced!"
-              break
-            fi
-            echo "Wallet not synced yet (attempt $i/$MAX_SYNC_ATTEMPTS), waiting 10 seconds..."
-            sleep 10
-          done
-
-          echo "Deleting all mirrors..."
-          MAX_DELETE_ATTEMPTS=3
-          for attempt in $(seq 1 $MAX_DELETE_ATTEMPTS); do
-            echo "Delete attempt $attempt/$MAX_DELETE_ATTEMPTS..."
-            if chia-tools data delete-mirrors --all 2>&1; then
-              echo "Mirror deletion command succeeded!"
-              break
-            else
-              echo "Mirror deletion failed on attempt $attempt"
-              if [ "$attempt" -lt "$MAX_DELETE_ATTEMPTS" ]; then
-                echo "Waiting 60 seconds for wallet to re-sync before retry..."
-                sleep 60
-                # Re-check wallet sync
-                for i in $(seq 1 12); do
-                  WALLET_SYNCED=$(chia rpc wallet get_sync_status 2>/dev/null | jq -r '.synced // false')
-                  if [ "$WALLET_SYNCED" = "true" ]; then
-                    echo "Wallet re-synced!"
-                    break
-                  fi
-                  echo "Waiting for wallet sync... ($i/12)"
-                  sleep 10
-                done
-              else
-                echo "WARNING: All delete attempts failed, continuing anyway..."
-              fi
-            fi
-          done
-
-          sleep 120 # wait 2 minutes for mirrors to be deleted on-chain
-
-          echo "Confirming mirrors are deleted..."
-          chia-tools data show-my-mirrors || true
-
       - name: Show wallet balance (v2)
         if: always()
         shell: bash
@@ -647,7 +598,7 @@ jobs:
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = ""' ~/.chia/mainnet/cadt/config.yaml
           # Enable V1 only for V1 live API tests
           yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
@@ -938,8 +889,8 @@ jobs:
           yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = null' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "4212425c8e053ad58279f1d1a498afec4a1e6b00da356a49ac72780fe13e98e8"' ~/.chia/mainnet/cadt/config.yaml
           # Enable both V1 and V2 for upgrade tests (need V1 to create, V2 for upgrade)
           yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
@@ -1248,11 +1199,10 @@ jobs:
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = null' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.TASKS.GOVERNANCE_SYNC_TASK_INTERVAL = 30' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.TASKS.ORGANIZATION_META_SYNC_TASK_INTERVAL = 30' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.TASKS.MIRROR_CHECK_TASK_INTERVAL = 30' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.GOVERNANCE.GOVERNANCE_BODY_ID = "4212425c8e053ad58279f1d1a498afec4a1e6b00da356a49ac72780fe13e98e8"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
@@ -1980,35 +1930,6 @@ jobs:
           fi
           echo "All AEF data matches expected values"
 
-      - name: Verify mirrors were created
-        shell: bash
-        run: |
-          echo "########################################################"
-          echo "Verifying mirrors were created for synced stores"
-          echo "########################################################"
-          MAX_WAIT=300
-          START_TIME=$(date +%s)
-
-          while true; do
-            CURRENT_TIME=$(date +%s)
-            ELAPSED=$((CURRENT_TIME - START_TIME))
-
-            if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
-              echo "ERROR: Timeout waiting for mirrors after 5 minutes"
-              exit 1
-            fi
-
-            MIRRORS=$(chia-tools data show-my-mirrors 2>/dev/null || echo "")
-            if [ -n "$MIRRORS" ] && echo "$MIRRORS" | grep -q "127.0.0.1:8575"; then
-              echo "PASS: Mirrors found with our URL"
-              echo "$MIRRORS"
-              break
-            fi
-
-            echo "Waiting for mirrors to be created... (elapsed: ${ELAPSED}s)"
-            sleep 30
-          done
-
       - name: Show CADT logs after tests
         if: always()
         shell: bash
@@ -2072,44 +1993,6 @@ jobs:
           pm2 stop cadt || true
           pm2 delete cadt || true
           echo "CADT stopped"
-
-      - name: Delete all mirrors
-        if: always()
-        shell: bash
-        run: |
-          echo "Waiting for wallet sync before deleting mirrors..."
-          MAX_WAIT=300
-          START_TIME=$(date +%s)
-          while true; do
-            CURRENT_TIME=$(date +%s)
-            ELAPSED=$((CURRENT_TIME - START_TIME))
-            if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
-              echo "Wallet sync wait timed out, proceeding with mirror deletion anyway"
-              break
-            fi
-            WALLET_SYNCED=$(chia rpc wallet get_sync_status 2>/dev/null | jq -r '.synced // false')
-            if [ "$WALLET_SYNCED" = "true" ]; then
-              echo "Wallet is synced"
-              break
-            fi
-            echo "Wallet syncing... (elapsed: ${ELAPSED}s)"
-            sleep 10
-          done
-
-          echo "Deleting all mirrors..."
-          MAX_RETRIES=3
-          for attempt in $(seq 1 $MAX_RETRIES); do
-            echo "Delete mirrors attempt $attempt/$MAX_RETRIES..."
-            chia-tools data delete-mirrors --all && break || true
-            echo "Retry in 30 seconds..."
-            sleep 30
-          done
-
-          echo "Waiting 120 seconds for mirror deletions to propagate..."
-          sleep 120
-
-          echo "Confirming mirrors are deleted..."
-          chia-tools data show-my-mirrors || echo "No mirrors found (expected)"
 
       - name: Show wallet balance
         if: always()
@@ -2194,11 +2077,10 @@ jobs:
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = true' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.DATALAYER_FILE_SERVER_URL = null' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.TASKS.GOVERNANCE_SYNC_TASK_INTERVAL = 30' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.TASKS.ORGANIZATION_META_SYNC_TASK_INTERVAL = 30' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.APP.TASKS.MIRROR_CHECK_TASK_INTERVAL = 30' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
@@ -2727,35 +2609,6 @@ jobs:
           fi
           echo "All V1 unit fields match expected values"
 
-      - name: Verify mirrors were created
-        shell: bash
-        run: |
-          echo "########################################################"
-          echo "Verifying mirrors were created for V1 synced stores"
-          echo "########################################################"
-          MAX_WAIT=300
-          START_TIME=$(date +%s)
-
-          while true; do
-            CURRENT_TIME=$(date +%s)
-            ELAPSED=$((CURRENT_TIME - START_TIME))
-
-            if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
-              echo "ERROR: Timeout waiting for mirrors after 5 minutes"
-              exit 1
-            fi
-
-            MIRRORS=$(chia-tools data show-my-mirrors 2>/dev/null || echo "")
-            if [ -n "$MIRRORS" ] && echo "$MIRRORS" | grep -q "127.0.0.1:8575"; then
-              echo "PASS: Mirrors found with our URL"
-              echo "$MIRRORS"
-              break
-            fi
-
-            echo "Waiting for mirrors to be created... (elapsed: ${ELAPSED}s)"
-            sleep 30
-          done
-
       - name: Show CADT logs after tests
         if: always()
         shell: bash
@@ -2819,44 +2672,6 @@ jobs:
           pm2 stop cadt || true
           pm2 delete cadt || true
           echo "CADT stopped"
-
-      - name: Delete all mirrors
-        if: always()
-        shell: bash
-        run: |
-          echo "Waiting for wallet sync before deleting mirrors..."
-          MAX_WAIT=300
-          START_TIME=$(date +%s)
-          while true; do
-            CURRENT_TIME=$(date +%s)
-            ELAPSED=$((CURRENT_TIME - START_TIME))
-            if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
-              echo "Wallet sync wait timed out, proceeding with mirror deletion anyway"
-              break
-            fi
-            WALLET_SYNCED=$(chia rpc wallet get_sync_status 2>/dev/null | jq -r '.synced // false')
-            if [ "$WALLET_SYNCED" = "true" ]; then
-              echo "Wallet is synced"
-              break
-            fi
-            echo "Wallet syncing... (elapsed: ${ELAPSED}s)"
-            sleep 10
-          done
-
-          echo "Deleting all mirrors..."
-          MAX_RETRIES=3
-          for attempt in $(seq 1 $MAX_RETRIES); do
-            echo "Delete mirrors attempt $attempt/$MAX_RETRIES..."
-            chia-tools data delete-mirrors --all && break || true
-            echo "Retry in 30 seconds..."
-            sleep 30
-          done
-
-          echo "Waiting 120 seconds for mirror deletions to propagate..."
-          sleep 120
-
-          echo "Confirming mirrors are deleted..."
-          chia-tools data show-my-mirrors || echo "No mirrors found (expected)"
 
       - name: Show wallet balance
         if: always()

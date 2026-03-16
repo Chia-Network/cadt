@@ -12,7 +12,7 @@ import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.js';
 import { Organization } from '../models';
 
-const { USE_SIMULATOR, AUTO_MIRROR_EXTERNAL_STORES } = getConfig().APP;
+const { USE_SIMULATOR } = getConfig().APP;
 
 const createDataLayerStore = async () => {
   await wallet.waitForAllTransactionsToConfirm();
@@ -29,12 +29,8 @@ const createDataLayerStore = async () => {
     await waitForNewStoreToBeConfirmed(storeId);
     await wallet.waitForAllTransactionsToConfirm();
 
-    // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
-    // This make sure this runs by default even if the config param is missing
-    const shouldMirror = AUTO_MIRROR_EXTERNAL_STORES ?? true;
-
-    if (shouldMirror) {
-      const mirrorUrl = await getMirrorUrl();
+    const mirrorUrl = await getMirrorUrl();
+    if (mirrorUrl) {
       await dataLayer.addMirror(storeId, mirrorUrl, true);
     }
   }
