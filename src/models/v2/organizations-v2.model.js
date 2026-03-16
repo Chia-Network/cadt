@@ -76,15 +76,7 @@ import ModelTypes from './organizations-v2.modeltypes.cjs';
 import { runMirrorCheckV2 } from '../../tasks/mirror-check-v2.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 
-const TRANSIENT_WALLET_ERRORS = [
-  'Wallet needs to be fully synced',
-  'DataLayerWallet not available',
-  'DataLayer Wallet already exists',
-  'No spendable coins',
-];
-
-const isTransientWalletError = (error) =>
-  TRANSIENT_WALLET_ERRORS.some((msg) => error.message?.includes(msg));
+const { isTransientWalletError } = wallet;
 
 class OrganizationsV2 extends Model {
   static async create(values, options) {
@@ -315,16 +307,17 @@ class OrganizationsV2 extends Model {
       await saveCreationState(state, MetaV2);
     }
 
-    // Wait for sufficient spendable coins before resuming store creation
-    // We need 4 SEPARATE coins (one per parallel store creation), each large enough to cover COIN_SIZE + fee
-    const coinCheck = await wallet.waitForSpendableCoins(4);
-    if (!coinCheck.success) {
-      throw new Error(
-        `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
-        'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
-      );
+    const neededCoins = getStoresToCreate(state).length;
+    if (neededCoins > 0) {
+      const coinCheck = await wallet.waitForSpendableCoins(neededCoins);
+      if (!coinCheck.success) {
+        throw new Error(
+          `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
+          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
+        );
+      }
+      loggerV2.info(`[v2]: Resuming org creation, ${coinCheck.coinCount} coins available (need ${neededCoins})`);
     }
-    loggerV2.info(`[v2]: Resuming org creation, ${coinCheck.coinCount} coins available`);
 
     return await OrganizationsV2._executeOrganizationCreation(state, MetaV2, lockToken);
   }
