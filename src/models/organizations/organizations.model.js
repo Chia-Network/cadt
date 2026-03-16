@@ -924,9 +924,21 @@ class Organization extends Model {
    * @returns {Promise<void>}
    */
   static async importOrganization(orgUid, isHome = false) {
-    // Check if store is synced BEFORE acquiring mutex to avoid blocking other operations
-    // If store is not synced, skip import - it will be retried on next task run
+    // Subscribe to the org store first, then check sync status.
+    // This ensures new org stores get subscribed on the first pass so they can
+    // begin syncing, and subsequent runs will find them synced and proceed.
     if (!USE_SIMULATOR) {
+      try {
+        await datalayer.subscribeToStoreOnDataLayer(orgUid);
+      } catch (error) {
+        logger.warn(
+          `[v1]: Could not subscribe to store for ${orgUid}, skipping import: ${error.message}`,
+        );
+        return;
+      }
+
+      // Check if store is synced BEFORE acquiring mutex to avoid blocking other operations
+      // If store is not synced, skip import - it will be retried on next task run
       try {
         const syncStatus = await datalayer.getDataLayerStoreSyncStatus(orgUid);
         if (!isDlStoreSynced(syncStatus?.sync_status)) {
