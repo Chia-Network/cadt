@@ -6,7 +6,8 @@ import {
 } from '../utils/data-assertions';
 import { logger } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader';
-import { getMirrorUrl } from '../utils/datalayer-utils';
+import { getMirrorUrl, encodeHex, decodeHex } from '../utils/datalayer-utils';
+import datalayer from '../datalayer';
 import dotenv from 'dotenv';
 
 const APP_CONFIG = getConfig().APP;
@@ -109,9 +110,55 @@ const runMirrorCheck = async () => {
     );
     logger.silly('[v1]: [MIRROR_DEBUG] Completed governance mirror additions');
   } else {
-    logger.debug(
-      '[MIRROR_DEBUG] Skipping governance mirrors - missing governance data',
-    );
+    // Mirror governance stores for subscriber nodes that have a configured
+    // GOVERNANCE_BODY_ID but are not governance body owners (no meta entries).
+    const configGovernanceBodyId =
+      getConfig().GOVERNANCE?.GOVERNANCE_BODY_ID;
+
+    if (configGovernanceBodyId) {
+      logger.debug(
+        `[MIRROR_DEBUG] Subscriber node with v1 GOVERNANCE_BODY_ID: ${configGovernanceBodyId}, mirroring governance stores`,
+      );
+
+      try {
+        await Organization.addMirror(configGovernanceBodyId, mirrorUrl, true);
+        logger.debug(
+          `[MIRROR_DEBUG] Mirror ensured for v1 governance body: ${configGovernanceBodyId}`,
+        );
+      } catch (error) {
+        logger.error(
+          `[MIRROR_DEBUG] Failed to mirror v1 governance body ${configGovernanceBodyId}: ${error.message}`,
+        );
+      }
+
+      try {
+        const versionStoreIdHex = await datalayer.getValue(
+          configGovernanceBodyId,
+          encodeHex('v1'),
+        );
+        if (versionStoreIdHex) {
+          const versionStoreId = decodeHex(versionStoreIdHex);
+          if (versionStoreId) {
+            await Organization.addMirror(versionStoreId, mirrorUrl, true);
+            logger.debug(
+              `[MIRROR_DEBUG] Mirror ensured for v1 governance version store: ${versionStoreId}`,
+            );
+          }
+        } else {
+          logger.debug(
+            `[MIRROR_DEBUG] Could not resolve v1 governance version store from ${configGovernanceBodyId}`,
+          );
+        }
+      } catch (error) {
+        logger.error(
+          `[MIRROR_DEBUG] Failed to resolve/mirror v1 governance version store: ${error.message}`,
+        );
+      }
+    } else {
+      logger.debug(
+        '[MIRROR_DEBUG] Skipping governance mirrors - no governance data and no GOVERNANCE_BODY_ID configured',
+      );
+    }
   }
 
   logger.silly('[v1]: [MIRROR_DEBUG] Retrieving organizations map');
