@@ -6,6 +6,7 @@ import _ from 'lodash';
 import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
+import wallet from '../../datalayer/wallet.js';
 import { logger } from '../../config/logger';
 import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
 import { getConfig } from '../../utils/config-loader';
@@ -53,6 +54,8 @@ import {
 } from '../../utils/organization-creation-state.js';
 import { runMirrorCheck } from '../../tasks/mirror-check.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
+
+const { isTransientWalletError } = wallet;
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -210,6 +213,17 @@ class Organization extends Model {
         });
       }
 
+      if (!USE_SIMULATOR) {
+        const coinCheck = await wallet.waitForSpendableCoins(4);
+        if (!coinCheck.success) {
+          throw new Error(
+            `Cannot create organization: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
+            'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
+          );
+        }
+        logger.info(`[v1]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
+      }
+
       // Execute the creation process
       return await Organization._executeOrganizationCreation(state, lockToken);
     } catch (error) {
@@ -243,6 +257,18 @@ class Organization extends Model {
       // Reset startedAt for new retry attempt
       state = updateState(state, { startedAt: new Date().toISOString() });
       await saveCreationState(state, Meta);
+    }
+
+    const neededCoins = getStoresToCreate(state).length;
+    if (!USE_SIMULATOR && neededCoins > 0) {
+      const coinCheck = await wallet.waitForSpendableCoins(neededCoins);
+      if (!coinCheck.success) {
+        throw new Error(
+          `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
+          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
+        );
+      }
+      logger.info(`[v1]: Resuming org creation, ${coinCheck.coinCount} coins available (need ${neededCoins})`);
     }
 
     return await Organization._executeOrganizationCreation(state, lockToken);
@@ -458,17 +484,34 @@ class Organization extends Model {
       return state;
     }
 
-    // Create all stores in parallel
+    const maxRetries = 10;
+    const retryDelayMs = 30000;
+
+    // Create all stores in parallel, each with independent retry logic
     const createPromises = storesToCreate.map(async (storeType) => {
-      try {
-        logState(state, `Creating ${storeType} store`);
-        const storeId = await datalayer.createDataLayerStore();
-        logState(state, `Created ${storeType} store: ${storeId}`);
-        return { storeType, storeId, success: true };
-      } catch (error) {
-        logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
-        return { storeType, storeId: null, success: false, error: error.message };
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
+          const storeId = await datalayer.createDataLayerStore();
+          logState(state, `Created ${storeType} store: ${storeId}`);
+          return { storeType, storeId, success: true };
+        } catch (error) {
+          if (isTransientWalletError(error) && attempt < maxRetries) {
+            logState(
+              state,
+              `Transient error creating ${storeType} store ` +
+                `(attempt ${attempt}/${maxRetries}): ${error.message}. ` +
+                `Retrying in ${retryDelayMs / 1000}s...`,
+              'warn',
+            );
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+            continue;
+          }
+          logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
+          return { storeType, storeId: null, success: false, error: error.message };
+        }
       }
+      return { storeType, storeId: null, success: false, error: 'Retry loop exhausted without result' };
     });
 
     const results = await Promise.all(createPromises);

@@ -453,7 +453,7 @@ const waitForSpendableCoins = async (
   let lastLogTime = 0;
 
   logger.info(
-    `[v2]: Waiting for ${requiredCoins} coins of at least ${minMojosPerCoin} mojos each (timeout: ${maxWaitMs / 1000}s)`,
+    `[wallet]: Waiting for ${requiredCoins} coins of at least ${minMojosPerCoin} mojos each (timeout: ${maxWaitMs / 1000}s)`,
   );
 
   while (Date.now() - startTime < maxWaitMs) {
@@ -468,7 +468,7 @@ const waitForSpendableCoins = async (
         if (Date.now() - lastLogTime > 30000) {
           lastLogTime = Date.now();
           logger.info(
-            `[v2]: Waiting for pending transactions to confirm before org creation (${elapsed}s elapsed)`,
+            `[wallet]: Waiting for pending transactions to confirm before org creation (${elapsed}s elapsed)`,
           );
         }
         await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
@@ -479,7 +479,7 @@ const waitForSpendableCoins = async (
       const coinResult = await getCoinRecords();
 
       if (!coinResult.success || !coinResult.coin_records) {
-        logger.warn('[v2]: Could not get coin records, retrying...');
+        logger.warn('[wallet]: Could not get coin records, retrying...');
         await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
         continue;
       }
@@ -498,19 +498,19 @@ const waitForSpendableCoins = async (
       if (Date.now() - lastLogTime > 30000) {
         lastLogTime = Date.now();
         logger.info(
-          `[v2]: Found ${usableCoins.length} usable coins (need ${requiredCoins}) with total ${totalBalance} mojos (${elapsed}s elapsed)`,
+          `[wallet]: Found ${usableCoins.length} usable coins (need ${requiredCoins}) with total ${totalBalance} mojos (${elapsed}s elapsed)`,
         );
         if (usableCoins.length > 0 && usableCoins.length < 10) {
           // Log individual coins for debugging
           usableCoins.forEach((coin, i) => {
-            logger.debug(`[v2]:   Coin ${i + 1}: ${coin.amount} mojos, id: ${coin.id?.substring(0, 16)}...`);
+            logger.debug(`[wallet]:   Coin ${i + 1}: ${coin.amount} mojos, id: ${coin.id?.substring(0, 16)}...`);
           });
         }
       }
 
       if (usableCoins.length >= requiredCoins) {
         logger.info(
-          `[v2]: Sufficient coins available: ${usableCoins.length} coins of ${minMojosPerCoin}+ mojos (need ${requiredCoins})`,
+          `[wallet]: Sufficient coins available: ${usableCoins.length} coins of ${minMojosPerCoin}+ mojos (need ${requiredCoins})`,
         );
         return { success: true, coinCount: usableCoins.length, balance: totalBalance };
       }
@@ -518,12 +518,12 @@ const waitForSpendableCoins = async (
       // Not enough coins yet - check if we should warn about coin management
       if (elapsed > 60 && usableCoins.length < requiredCoins) {
         logger.warn(
-          `[v2]: Only ${usableCoins.length}/${requiredCoins} usable coins available after ${elapsed}s. ` +
+          `[wallet]: Only ${usableCoins.length}/${requiredCoins} usable coins available after ${elapsed}s. ` +
           `Coin management may need to split coins first.`,
         );
       }
     } catch (error) {
-      logger.warn(`[v2]: Error checking coin availability: ${error.message}`);
+      logger.warn(`[wallet]: Error checking coin availability: ${error.message}`);
     }
 
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
@@ -531,13 +531,23 @@ const waitForSpendableCoins = async (
 
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
   logger.error(
-    `[v2]: Timeout waiting for spendable coins after ${elapsed}s`,
+    `[wallet]: Timeout waiting for spendable coins after ${elapsed}s`,
   );
   return {
     success: false,
     error: `Timeout waiting for ${requiredCoins} coins of ${minMojosPerCoin}+ mojos after ${elapsed}s`,
   };
 };
+
+const TRANSIENT_WALLET_ERRORS = [
+  'Wallet needs to be fully synced',
+  'DataLayerWallet not available',
+  'DataLayer Wallet already exists',
+  'No spendable coins',
+];
+
+const isTransientWalletError = (error) =>
+  TRANSIENT_WALLET_ERRORS.some((msg) => error.message?.includes(msg));
 
 export default {
   hasUnconfirmedTransactions,
@@ -553,4 +563,5 @@ export default {
   getWalletBlockchainSyncStatus,
   getCoinRecords,
   splitCoins,
+  isTransientWalletError,
 };
