@@ -943,9 +943,13 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
     if (Object.keys(data).includes('success') && data.success) {
       logger.info(`Successfully Subscribed: ${storeId}`);
 
-      const mirrorUrl = await getMirrorUrl();
-
-      await addMirror(storeId, mirrorUrl, true);
+      const shouldMirror = CONFIG.AUTO_MIRROR_EXTERNAL_STORES ?? true;
+      if (shouldMirror) {
+        const mirrorUrl = await getMirrorUrl();
+        if (mirrorUrl) {
+          await addMirror(storeId, mirrorUrl, true);
+        }
+      }
 
       return true;
     }
