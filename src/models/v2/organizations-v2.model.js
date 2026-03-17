@@ -74,6 +74,9 @@ import {
 
 import ModelTypes from './organizations-v2.modeltypes.cjs';
 import { runMirrorCheckV2 } from '../../tasks/mirror-check-v2.js';
+import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
+
+const { isTransientWalletError } = wallet;
 
 class OrganizationsV2 extends Model {
   static async create(values, options) {
@@ -151,7 +154,7 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<string>} The new organization UID
    * @throws {Error} If V1 org exists or V2 org already exists
    */
-  static async createHomeOrganization(name, icon, dataVersion = 'v2') {
+  static async createHomeOrganization(name, icon, dataVersion = 'v2', lockToken = null) {
     // Import MetaV2 for state persistence
     const { MetaV2 } = await import('./index.js');
 
@@ -182,7 +185,7 @@ class OrganizationsV2 extends Model {
       if (state && state.state !== ORG_CREATION_STATES.COMPLETE && state.state !== ORG_CREATION_STATES.FAILED) {
         loggerV2.info('[v2]: Found in-progress organization creation, resuming...');
         // Resume from where we left off
-        return await OrganizationsV2._resumeOrganizationCreation(state, MetaV2);
+        return await OrganizationsV2._resumeOrganizationCreation(state, MetaV2, lockToken);
       }
 
       // CRITICAL: Check for V1 home org in database (only if V1 is enabled)
@@ -269,7 +272,7 @@ class OrganizationsV2 extends Model {
       loggerV2.info(`[v2]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
 
       // Execute the creation process
-      return await OrganizationsV2._executeOrganizationCreation(state, MetaV2);
+      return await OrganizationsV2._executeOrganizationCreation(state, MetaV2, lockToken);
     } catch (error) {
       loggerV2.error(
         `[v2]: create V2 organization process failed. Error: ${error.message}`,
@@ -287,7 +290,7 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<string>} The organization UID
    * @private
    */
-  static async _resumeOrganizationCreation(state, MetaV2) {
+  static async _resumeOrganizationCreation(state, MetaV2, lockToken = null) {
     logState(state, `Resuming from state: ${state.state}`);
 
     // Check for timeout
@@ -304,18 +307,19 @@ class OrganizationsV2 extends Model {
       await saveCreationState(state, MetaV2);
     }
 
-    // Wait for sufficient spendable coins before resuming store creation
-    // We need 4 SEPARATE coins (one per parallel store creation), each large enough to cover COIN_SIZE + fee
-    const coinCheck = await wallet.waitForSpendableCoins(4);
-    if (!coinCheck.success) {
-      throw new Error(
-        `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
-        'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
-      );
+    const neededCoins = getStoresToCreate(state).length;
+    if (neededCoins > 0) {
+      const coinCheck = await wallet.waitForSpendableCoins(neededCoins);
+      if (!coinCheck.success) {
+        throw new Error(
+          `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
+          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
+        );
+      }
+      loggerV2.info(`[v2]: Resuming org creation, ${coinCheck.coinCount} coins available (need ${neededCoins})`);
     }
-    loggerV2.info(`[v2]: Resuming org creation, ${coinCheck.coinCount} coins available`);
 
-    return await OrganizationsV2._executeOrganizationCreation(state, MetaV2);
+    return await OrganizationsV2._executeOrganizationCreation(state, MetaV2, lockToken);
   }
 
   /**
@@ -325,11 +329,12 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<string>} The organization UID
    * @private
    */
-  static async _executeOrganizationCreation(state, MetaV2) {
+  static async _executeOrganizationCreation(state, MetaV2, lockToken = null) {
     try {
       // PHASE 1: Create stores in parallel
       if (state.state === ORG_CREATION_STATES.INITIALIZING ||
           state.state === ORG_CREATION_STATES.STORES_CREATING) {
+        updateOrgLockStatus(lockToken, 'Creating stores on blockchain');
         state = updateState(state, { state: ORG_CREATION_STATES.STORES_CREATING });
         await saveCreationState(state, MetaV2);
 
@@ -338,12 +343,14 @@ class OrganizationsV2 extends Model {
 
       // Wait for all stores to be confirmed
       if (state.state === ORG_CREATION_STATES.STORES_CREATING) {
+        updateOrgLockStatus(lockToken, 'Waiting for stores to confirm on blockchain');
         state = await OrganizationsV2._waitForStoresConfirmation(state, MetaV2);
       }
 
       // PHASE 2: Push data to stores in parallel
       if (state.state === ORG_CREATION_STATES.STORES_CONFIRMED ||
           state.state === ORG_CREATION_STATES.DATA_PUSHING) {
+        updateOrgLockStatus(lockToken, 'Writing data to stores');
         state = updateState(state, { state: ORG_CREATION_STATES.DATA_PUSHING });
         await saveCreationState(state, MetaV2);
 
@@ -359,6 +366,7 @@ class OrganizationsV2 extends Model {
       }
 
       // PHASE 3: Finalize
+      updateOrgLockStatus(lockToken, 'Finalizing organization record');
       state = updateState(state, { state: ORG_CREATION_STATES.FINALIZING });
       await saveCreationState(state, MetaV2);
 
@@ -461,6 +469,7 @@ class OrganizationsV2 extends Model {
       }
 
       // Mark complete and clear state
+      updateOrgLockStatus(lockToken, 'Organization creation complete');
       state = updateState(state, { state: ORG_CREATION_STATES.COMPLETE });
       await clearCreationState(MetaV2, 'v2');
 
@@ -506,17 +515,34 @@ class OrganizationsV2 extends Model {
       return state;
     }
 
-    // Create all stores in parallel
+    const maxRetries = 10;
+    const retryDelayMs = 30000;
+
+    // Create all stores in parallel, each with independent retry logic
     const createPromises = storesToCreate.map(async (storeType) => {
-      try {
-        logState(state, `Creating ${storeType} store`);
-        const storeId = await datalayer.createDataLayerStore();
-        logState(state, `Created ${storeType} store: ${storeId}`);
-        return { storeType, storeId, success: true };
-      } catch (error) {
-        logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
-        return { storeType, storeId: null, success: false, error: error.message };
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
+          const storeId = await datalayer.createDataLayerStore();
+          logState(state, `Created ${storeType} store: ${storeId}`);
+          return { storeType, storeId, success: true };
+        } catch (error) {
+          if (isTransientWalletError(error) && attempt < maxRetries) {
+            logState(
+              state,
+              `Transient error creating ${storeType} store ` +
+                `(attempt ${attempt}/${maxRetries}): ${error.message}. ` +
+                `Retrying in ${retryDelayMs / 1000}s...`,
+              'warn',
+            );
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+            continue;
+          }
+          logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
+          return { storeType, storeId: null, success: false, error: error.message };
+        }
       }
+      return { storeType, storeId: null, success: false, error: 'Retry loop exhausted without result' };
     });
 
     const results = await Promise.all(createPromises);
@@ -719,9 +745,10 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<string>} The new V2 organization UID
    * @throws {Error} If V1 org doesn't exist or V2 org already exists
    */
-  static async upgradeFromV1(name, icon) {
+  static async upgradeFromV1(name, icon, lockToken = null) {
     try {
       loggerV2.info('[v2]: Upgrading from V1 to V2 Organization, This could take a while.');
+      updateOrgLockStatus(lockToken, 'Validating V1 singleton');
 
       // CRITICAL: Check if V1 is enabled before accessing V1 tables
       const configV1 = getConfig();
@@ -884,6 +911,7 @@ class OrganizationsV2 extends Model {
       // Create new V2 registry store (v2 data store - different from V1)
       // CRITICAL: Reuse v1OrgUid and v1FileStoreId - do NOT create new stores for these
       loggerV2.verbose('[v2]: upgradeFromV1() is creating new V2 registryId store');
+      updateOrgLockStatus(lockToken, 'Creating V2 registry store');
       let newV2RegistryStoreId;
       if (USE_SIMULATOR) {
         newV2RegistryStoreId = 'v2-registry-' + Date.now();
@@ -897,13 +925,7 @@ class OrganizationsV2 extends Model {
             newV2RegistryStoreId = await datalayer.createDataLayerStore();
             break;
           } catch (error) {
-            const isTransient =
-              error.message?.includes('Wallet needs to be fully synced') ||
-              error.message?.includes('DataLayerWallet not available') ||
-              error.message?.includes('wallet') ||
-              error.message?.includes('No spendable coins');
-
-            if (isTransient && attempt < maxStoreCreateRetries) {
+            if (isTransientWalletError(error) && attempt < maxStoreCreateRetries) {
               loggerV2.warn(
                 `[v2]: Wallet not ready during V2 registry store creation ` +
                 `(attempt ${attempt}/${maxStoreCreateRetries}): ${error.message}. ` +
@@ -929,6 +951,7 @@ class OrganizationsV2 extends Model {
       };
 
       if (!USE_SIMULATOR) {
+        updateOrgLockStatus(lockToken, 'Waiting for V2 registry store to confirm on blockchain');
         loggerV2.info(
           '[v2]: upgrade from V1 to V2 organization process is waiting for V2 registry store creation to confirm on the blockchain',
         );
@@ -957,6 +980,7 @@ class OrganizationsV2 extends Model {
           `[v2]: Singleton store ${sharedDataModelVersionStoreId} already has v2 key. Skipping singleton update.`,
         );
       } else {
+        updateOrgLockStatus(lockToken, 'Updating singleton store with v2 key');
         loggerV2.info(
           `[v2]: updating shared data model version store ${sharedDataModelVersionStoreId} to add v2 key`,
         );
@@ -991,6 +1015,7 @@ class OrganizationsV2 extends Model {
       }
 
       if (!USE_SIMULATOR) {
+        updateOrgLockStatus(lockToken, 'Waiting for data model version update to confirm on blockchain');
         loggerV2.info(
           '[v2]: upgrade from V1 to V2 organization process is waiting for data model version update to confirm on the blockchain',
         );
@@ -1009,6 +1034,7 @@ class OrganizationsV2 extends Model {
         `[v2]: data model version store ${sharedDataModelVersionStoreId} hash after v2 key addition: ${dataModelVersionStoreHash}`,
       );
 
+      updateOrgLockStatus(lockToken, 'Adding V2 home organization to database');
       loggerV2.info('[v2]: adding new V2 home organization to CADT database');
       // CRITICAL: Use v1OrgUid and v1FileStoreId - shared identity between v1 and v2
       // Note: data_model_version_store_hash uses the UPDATED hash (after v2 key addition), not V1 hash
@@ -1027,6 +1053,7 @@ class OrganizationsV2 extends Model {
       });
 
       const onConfirm = async () => {
+        updateOrgLockStatus(lockToken, 'V2 Organization upgrade confirmed');
         loggerV2.info('[v2]: V2 Organization upgrade confirmed, you are ready to go');
         await OrganizationsV2.update(
           {

@@ -9,6 +9,7 @@ import { OrganizationsV2 } from '../models/v2/index.js';
 import { logger } from '../config/logger.js';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { getMirrorUrl, decodeHex } from '../utils/datalayer-utils';
+import { isSplitInProgress } from '../tasks/coin-management.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
@@ -206,9 +207,17 @@ const checkWalletBalanceForMirror = async (coinAmount, fee) => {
       );
       return { sufficient: true, fee: 0, balanceXCH: balanceXCH };
     } else {
-      logger.error(
-        `Insufficient funds: need ${coinAmount} mojos, have ${balanceMojos} mojos (balance: ${balanceXCH} XCH)`,
-      );
+      if (isSplitInProgress()) {
+        logger.warn(
+          `Wallet balance temporarily reduced by coin split in progress ` +
+          `(have ${balanceMojos} mojos, need ${coinAmount} mojos). ` +
+          `Skipping mirror creation - will retry after split confirms.`,
+        );
+      } else {
+        logger.error(
+          `Insufficient funds: need ${coinAmount} mojos, have ${balanceMojos} mojos (balance: ${balanceXCH} XCH)`,
+        );
+      }
       return { sufficient: false, fee: 0, balanceXCH: balanceXCH };
     }
   } catch (error) {
@@ -934,9 +943,13 @@ const subscribeToStoreOnDataLayer = async (storeId) => {
     if (Object.keys(data).includes('success') && data.success) {
       logger.info(`Successfully Subscribed: ${storeId}`);
 
-      const mirrorUrl = await getMirrorUrl();
-
-      await addMirror(storeId, mirrorUrl, true);
+      const shouldMirror = CONFIG.AUTO_MIRROR_EXTERNAL_STORES ?? true;
+      if (shouldMirror) {
+        const mirrorUrl = await getMirrorUrl();
+        if (mirrorUrl) {
+          await addMirror(storeId, mirrorUrl, true);
+        }
+      }
 
       return true;
     }

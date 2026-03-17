@@ -38,7 +38,9 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [Import a home organization](#import-a-home-organization-that-datalayer-is-subscribed-to)
   - [DELETE Examples](#delete-examples)
     - [Delete a home organization](#reset-home-organization)
+  - [Reclaim Home Organization](#reclaim-home-organization)
   - [Additional organizations resources](#additional-organizations-resources)
+    - [Get Organization Creation Status](#get-organization-creation-status)
 - [`projects`](#projects)
   - [GET Examples](#get-examples-1)
     - [Show all subscribed projects](#show-projects-currently-in-the-cadt-database)
@@ -83,6 +85,8 @@ If using a `CADT_API_KEY` append `--header 'x-api-key: <your-api-key-here>'` to 
     - [List all units in STAGING, with paging](#list-all-units-in-staging-with-paging)
   - [POST Examples](#post-examples-3)
     - [Commit all projects and units in STAGING](#commit-all-projects-and-units-in-staging)
+    - [Commit all projects in STAGING](#commit-all-projects-in-staging)
+    - [Commit specific STAGING records by UUID](#commit-specific-staging-records-from-either-the-units-or-projects-staging-table-by-uuid)
     - [Retry committing a single project, using its uuid](#retry-committing-a-single-project-using-its-uuid)
   - [DELETE Examples](#delete-examples-2)
     - [Delete all projects and units in STAGING](#delete-all-projects-and-units-in-staging)
@@ -2578,8 +2582,6 @@ Response
   "success": true
 }
 ```
-
-### POST Examples
 
 ### Additional Governance Resources
 

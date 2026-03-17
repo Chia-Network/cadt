@@ -22,9 +22,12 @@ import {
   processingSyncRegistriesTransactionMutexV2,
   syncRegistriesTaskMutexV2,
 } from '../utils/v2-model-utils.js';
+import { SyncMismatchBackoff } from '../utils/sync-mismatch-backoff.js';
 
 dotenv.config({ quiet: true });
 const CONFIG = getConfig().APP;
+
+const mismatchBackoff = new SyncMismatchBackoff(loggerV2, '[v2]');
 
 const task = new Task('sync-registries-v2', async () => {
   loggerV2.debug('[v2]: sync registries v2 task invoked');
@@ -166,23 +169,19 @@ const syncOrganizationAuditV2 = async (organization) => {
     if (
       process.env.NODE_ENV !== 'test' &&
       !isHomeOrg &&
-      rootHistory.length - 1 !== sync_status?.generation
+      mismatchBackoff.shouldSkip({
+        orgId: organization.org_uid,
+        orgName: organization.name,
+        rootHistoryLength: rootHistory.length,
+        generation: sync_status?.generation,
+        targetGeneration: sync_status?.target_generation,
+      })
     ) {
-      loggerV2.warn(
-        `[v2]: Root history mismatch for ${organization.name}: rootHistory.length-1=${rootHistory.length - 1} vs sync_status.generation=${sync_status?.generation}. Waiting for datalayer to sync.`,
-      );
-      return;
-    } else if (
-      process.env.NODE_ENV !== 'test' &&
-      !isHomeOrg &&
-      rootHistory.length - 1 !== sync_status?.target_generation
-    ) {
-      loggerV2.debug(
-        `[v2]: Target generation mismatch for ${organization.name}: rootHistory.length-1=${rootHistory.length - 1} vs target_generation=${sync_status?.target_generation}. Waiting for datalayer to sync.`,
-      );
       return;
     }
-    
+
+    mismatchBackoff.clearIfResolved(organization.org_uid, organization.name);
+
     // For home org, log if there's a mismatch but proceed anyway
     if (isHomeOrg && rootHistory.length - 1 !== sync_status?.generation) {
       if (isOwnedStoreLocalDataMissing(sync_status)) {

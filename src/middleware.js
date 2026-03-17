@@ -147,7 +147,9 @@ app.use(async function (req, res, next) {
   try {
     await assertChiaNetworkMatchInConfiguration();
     await assertDataLayerAvailable();
-    await assertWalletIsAvailable();
+    if (req.method !== 'GET') {
+      await assertWalletIsAvailable();
+    }
     next();
   } catch (err) {
     if (res.headersSent) {
