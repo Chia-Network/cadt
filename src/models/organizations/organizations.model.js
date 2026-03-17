@@ -6,6 +6,7 @@ import _ from 'lodash';
 import { sequelize } from '../../database';
 
 import datalayer from '../../datalayer';
+import wallet from '../../datalayer/wallet.js';
 import { logger } from '../../config/logger';
 import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
 import { getConfig } from '../../utils/config-loader';
@@ -52,6 +53,9 @@ import {
   hasInProgressCreation,
 } from '../../utils/organization-creation-state.js';
 import { runMirrorCheck } from '../../tasks/mirror-check.js';
+import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
+
+const { isTransientWalletError } = wallet;
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
@@ -161,7 +165,7 @@ class Organization extends Model {
    * @param {string} dataVersion - Data version (defaults to 'v1')
    * @returns {Promise<string>} The new organization UID
    */
-  static async createHomeOrganization(name, icon, dataVersion = 'v1') {
+  static async createHomeOrganization(name, icon, dataVersion = 'v1', lockToken = null) {
     try {
       logger.info('[v1]: Creating New Organization using parallel store creation.');
 
@@ -184,7 +188,7 @@ class Organization extends Model {
       let state = await loadCreationState(Meta, 'v1');
       if (state && state.state !== ORG_CREATION_STATES.COMPLETE && state.state !== ORG_CREATION_STATES.FAILED) {
         logger.info('[v1]: Found in-progress organization creation, resuming...');
-        return await Organization._resumeOrganizationCreation(state);
+        return await Organization._resumeOrganizationCreation(state, lockToken);
       }
 
       // Initialize state for new creation
@@ -209,8 +213,19 @@ class Organization extends Model {
         });
       }
 
+      if (!USE_SIMULATOR) {
+        const coinCheck = await wallet.waitForSpendableCoins(4);
+        if (!coinCheck.success) {
+          throw new Error(
+            `Cannot create organization: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
+            'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
+          );
+        }
+        logger.info(`[v1]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
+      }
+
       // Execute the creation process
-      return await Organization._executeOrganizationCreation(state);
+      return await Organization._executeOrganizationCreation(state, lockToken);
     } catch (error) {
       logger.error(
         `[v1]: create organization process failed. Error: ${error.message}`,
@@ -227,7 +242,7 @@ class Organization extends Model {
    * @returns {Promise<string>} The organization UID
    * @private
    */
-  static async _resumeOrganizationCreation(state) {
+  static async _resumeOrganizationCreation(state, lockToken = null) {
     logState(state, `Resuming from state: ${state.state}`);
 
     // Check for timeout
@@ -244,7 +259,19 @@ class Organization extends Model {
       await saveCreationState(state, Meta);
     }
 
-    return await Organization._executeOrganizationCreation(state);
+    const neededCoins = getStoresToCreate(state).length;
+    if (!USE_SIMULATOR && neededCoins > 0) {
+      const coinCheck = await wallet.waitForSpendableCoins(neededCoins);
+      if (!coinCheck.success) {
+        throw new Error(
+          `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
+          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
+        );
+      }
+      logger.info(`[v1]: Resuming org creation, ${coinCheck.coinCount} coins available (need ${neededCoins})`);
+    }
+
+    return await Organization._executeOrganizationCreation(state, lockToken);
   }
 
   /**
@@ -253,11 +280,12 @@ class Organization extends Model {
    * @returns {Promise<string>} The organization UID
    * @private
    */
-  static async _executeOrganizationCreation(state) {
+  static async _executeOrganizationCreation(state, lockToken = null) {
     try {
       // PHASE 1: Create stores in parallel
       if (state.state === ORG_CREATION_STATES.INITIALIZING ||
           state.state === ORG_CREATION_STATES.STORES_CREATING) {
+        updateOrgLockStatus(lockToken, 'Creating stores on blockchain');
         state = updateState(state, { state: ORG_CREATION_STATES.STORES_CREATING });
         await saveCreationState(state, Meta);
 
@@ -266,12 +294,14 @@ class Organization extends Model {
 
       // Wait for all stores to be confirmed
       if (state.state === ORG_CREATION_STATES.STORES_CREATING) {
+        updateOrgLockStatus(lockToken, 'Waiting for stores to confirm on blockchain');
         state = await Organization._waitForStoresConfirmation(state);
       }
 
       // PHASE 2: Push data to stores in parallel
       if (state.state === ORG_CREATION_STATES.STORES_CONFIRMED ||
           state.state === ORG_CREATION_STATES.DATA_PUSHING) {
+        updateOrgLockStatus(lockToken, 'Writing data to stores');
         state = updateState(state, { state: ORG_CREATION_STATES.DATA_PUSHING });
         await saveCreationState(state, Meta);
 
@@ -287,6 +317,7 @@ class Organization extends Model {
       }
 
       // PHASE 3: Finalize
+      updateOrgLockStatus(lockToken, 'Finalizing organization record');
       state = updateState(state, { state: ORG_CREATION_STATES.FINALIZING });
       await saveCreationState(state, Meta);
 
@@ -406,6 +437,7 @@ class Organization extends Model {
       }
 
       // Mark complete and clear state
+      updateOrgLockStatus(lockToken, 'Organization creation complete');
       state = updateState(state, { state: ORG_CREATION_STATES.COMPLETE });
       await clearCreationState(Meta, 'v1');
 
@@ -452,17 +484,34 @@ class Organization extends Model {
       return state;
     }
 
-    // Create all stores in parallel
+    const maxRetries = 10;
+    const retryDelayMs = 30000;
+
+    // Create all stores in parallel, each with independent retry logic
     const createPromises = storesToCreate.map(async (storeType) => {
-      try {
-        logState(state, `Creating ${storeType} store`);
-        const storeId = await datalayer.createDataLayerStore();
-        logState(state, `Created ${storeType} store: ${storeId}`);
-        return { storeType, storeId, success: true };
-      } catch (error) {
-        logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
-        return { storeType, storeId: null, success: false, error: error.message };
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
+          const storeId = await datalayer.createDataLayerStore();
+          logState(state, `Created ${storeType} store: ${storeId}`);
+          return { storeType, storeId, success: true };
+        } catch (error) {
+          if (isTransientWalletError(error) && attempt < maxRetries) {
+            logState(
+              state,
+              `Transient error creating ${storeType} store ` +
+                `(attempt ${attempt}/${maxRetries}): ${error.message}. ` +
+                `Retrying in ${retryDelayMs / 1000}s...`,
+              'warn',
+            );
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+            continue;
+          }
+          logState(state, `Failed to create ${storeType} store: ${error.message}`, 'error');
+          return { storeType, storeId: null, success: false, error: error.message };
+        }
       }
+      return { storeType, storeId: null, success: false, error: 'Retry loop exhausted without result' };
     });
 
     const results = await Promise.all(createPromises);
@@ -875,9 +924,21 @@ class Organization extends Model {
    * @returns {Promise<void>}
    */
   static async importOrganization(orgUid, isHome = false) {
-    // Check if store is synced BEFORE acquiring mutex to avoid blocking other operations
-    // If store is not synced, skip import - it will be retried on next task run
+    // Subscribe to the org store first, then check sync status.
+    // This ensures new org stores get subscribed on the first pass so they can
+    // begin syncing, and subsequent runs will find them synced and proceed.
     if (!USE_SIMULATOR) {
+      try {
+        await datalayer.subscribeToStoreOnDataLayer(orgUid);
+      } catch (error) {
+        logger.warn(
+          `[v1]: Could not subscribe to store for ${orgUid}, skipping import: ${error.message}`,
+        );
+        return;
+      }
+
+      // Check if store is synced BEFORE acquiring mutex to avoid blocking other operations
+      // If store is not synced, skip import - it will be retried on next task run
       try {
         const syncStatus = await datalayer.getDataLayerStoreSyncStatus(orgUid);
         if (!isDlStoreSynced(syncStatus?.sync_status)) {

@@ -26,9 +26,12 @@ import {
   processingSyncRegistriesTransactionMutex,
   syncRegistriesTaskMutex,
 } from '../utils/model-utils.js';
+import { SyncMismatchBackoff } from '../utils/sync-mismatch-backoff.js';
 
 dotenv.config({ quiet: true });
 const CONFIG = getConfig().APP;
+
+const mismatchBackoff = new SyncMismatchBackoff(logger, '[v1]');
 
 const task = new Task('sync-registries', async () => {
   logger.debug('[v1]: sync registries task invoked');
@@ -261,22 +264,18 @@ const syncOrganizationAudit = async (organization) => {
     if (
       process.env.NODE_ENV !== 'test' &&
       !isHomeOrg &&
-      rootHistory.length - 1 !== sync_status?.generation
+      mismatchBackoff.shouldSkip({
+        orgId: organization.orgUid,
+        orgName: organization.name,
+        rootHistoryLength: rootHistory.length,
+        generation: sync_status?.generation,
+        targetGeneration: sync_status?.target_generation,
+      })
     ) {
-      logger.warn(
-        `[v1]: Root history mismatch for ${organization.name}: rootHistory.length-1=${rootHistory.length - 1} vs sync_status.generation=${sync_status?.generation}. Waiting for datalayer to sync.`,
-      );
-      return;
-    } else if (
-      process.env.NODE_ENV !== 'test' &&
-      !isHomeOrg &&
-      rootHistory.length - 1 !== sync_status?.target_generation
-    ) {
-      logger.debug(
-        `[v1]: Target generation mismatch for ${organization.name}: rootHistory.length-1=${rootHistory.length - 1} vs target_generation=${sync_status?.target_generation}. Waiting for datalayer to sync.`,
-      );
       return;
     }
+
+    mismatchBackoff.clearIfResolved(organization.orgUid, organization.name);
 
     // For home org, log if there's a mismatch but proceed anyway
     if (isHomeOrg && rootHistory.length - 1 !== sync_status?.generation) {
