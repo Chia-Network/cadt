@@ -1605,11 +1605,10 @@ class OrganizationsV2 extends Model {
         }
       }
 
-      // Remove from deleted orgs list if present
+      // Remove from deleted orgs list if present so sync-default-organizations
+      // won't skip this org on future runs
       const { MetaV2 } = await import('./index.js');
-      await MetaV2.destroy({
-        where: { meta_key: 'userDeletedOrgUid', meta_value: orgUid },
-      });
+      await MetaV2.removeUserDeletedOrgUid(orgUid);
 
       loggerV2.info(`[v2]: Importing organization ${orgUid} ${isHome && 'as home'}`);
       loggerV2.debug(
@@ -1953,8 +1952,7 @@ class OrganizationsV2 extends Model {
 
     const transaction = await sequelizeV2.transaction();
     try {
-      // Import V2 models
-      const { MetaV2, AuditV2 } = await import('./index.js');
+      const { AuditV2 } = await import('./index.js');
 
       // Delete from organization table
       await OrganizationsV2.destroy({
@@ -1971,49 +1969,6 @@ class OrganizationsV2 extends Model {
         where: { org_uid: orgUid },
         transaction,
       });
-
-      // Delete from meta table (org-related metadata)
-      // Note: This delete might not match anything if the record doesn't exist
-      // We delete it here to clean up, but the main logic below handles create/update
-      await MetaV2.destroy({
-        where: { meta_key: 'userDeletedOrgUid', meta_value: orgUid },
-        transaction,
-      });
-
-      // Note: V2 data models (ProgramV2, ProjectV2, etc.) don't have org_uid fields
-      // They are associated with organizations through the registry, not directly.
-      // Data model records are shared across organizations that use the same registry.
-      // Therefore, we only delete from system tables (AuditV2, StagingV2, MetaV2) and the organization itself.
-
-      // Add to deleted orgs list (before commit so it's part of transaction)
-      // Use upsert instead of findOne + create/update to avoid unique constraint lock issues
-      // First, try to find existing record to get current value
-      const existingMeta = await MetaV2.findOne({
-        where: { meta_key: 'userDeletedOrgUid' },
-        transaction,
-      });
-
-      let deletedOrgs = [];
-      if (existingMeta) {
-        // Parse existing value and add orgUid if not already present
-        try {
-          deletedOrgs = JSON.parse(existingMeta.meta_value || '[]');
-        } catch {
-          deletedOrgs = [];
-        }
-      }
-
-      if (!deletedOrgs.includes(orgUid)) {
-        deletedOrgs.push(orgUid);
-        // Use upsert to handle both create and update cases atomically
-        // This avoids unique constraint lock issues
-        await MetaV2.upsert({
-          meta_key: 'userDeletedOrgUid',
-          meta_value: JSON.stringify(deletedOrgs),
-        }, {
-          transaction,
-        });
-      }
 
       await transaction.commit();
     } catch (error) {
@@ -2065,7 +2020,13 @@ class OrganizationsV2 extends Model {
         `an error occurred while deleting records corresponding to organization ${orgUid}. no changes have been made`,
       );
     }
-    // Success case - release mutexes
+    // Record the deletion in the meta table while still holding the mutexes so
+    // sync-default-organizations-v2 cannot slip in between the delete and the
+    // meta write and re-import the org.  addUserDeletedOrgUid does not acquire
+    // either mutex, so this cannot deadlock.
+    const { MetaV2: MetaV2Post } = await import('./index.js');
+    await MetaV2Post.addUserDeletedOrgUid(orgUid);
+
     releaseAddDeleteMutex();
     releaseAuditTransactionMutex();
   }
@@ -2117,6 +2078,7 @@ class OrganizationsV2 extends Model {
                 ..._.omit(updateData, [
                   'registry_id',
                   'data_model_version_store_id',
+                  'is_home',
                 ]),
                 metadata: metadataJson,
               },

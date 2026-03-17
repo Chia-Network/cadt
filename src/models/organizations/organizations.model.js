@@ -1350,6 +1350,7 @@ class Organization extends Model {
                 ..._.omit(updateData, [
                   'registryId',
                   'dataModelVersionStoreId',
+                  'isHome',
                 ]),
                 prefix: updateData.prefix || '0',
                 metadata: JSON.stringify(metadata),
