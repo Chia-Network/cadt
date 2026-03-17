@@ -631,7 +631,6 @@ export const reclaimHome = async (req, res) => {
       });
     }
 
-    try {
     await assertWalletIsSynced();
     const { orgUid } = req.body;
 
@@ -796,17 +795,15 @@ export const reclaimHome = async (req, res) => {
       message: `Organization ${orgUid} has been reclaimed as the home organization.`,
       success: true,
     });
-    } finally {
-      releaseLock();
-    }
   } catch (error) {
-    releaseLock();
     logger.error(`[v1]: Error reclaiming home organization: ${error.message}`);
     res.status(400).json({
       message: 'Error reclaiming home organization',
       error: error.message,
       success: false,
     });
+  } finally {
+    releaseLock();
   }
 };
 
