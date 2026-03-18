@@ -6,7 +6,6 @@ import * as rxjs from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 import { Readable } from 'stream';
 import csv from 'csvtojson';
-import xlsx from 'node-xlsx';
 import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
 import { UnitV2Mirror } from './unit-v2.model.mirror.js';
 import StagingV2 from './staging-v2.model.js';
@@ -14,10 +13,8 @@ import OrganizationsV2 from './organizations-v2.model.js';
 import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
-  transformMetaUid,
-  tableDataFromXlsx,
-  collapseTablesData,
 } from '../../utils/xls.js';
+import { parseV2Xlsx, stageV2XlsRecords } from '../../utils/v2-xls.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { UnitLabelV2 } from './unit-label-v2.model.js';
 import { loggerV2 } from '../../config/logger.js';
@@ -26,6 +23,17 @@ import { convertToCamelCase } from '../../utils/v2-camel-to-snake.js';
 
 class UnitV2 extends Model {
   static changes = new rxjs.Subject();
+  static xlsSheetName = 'units';
+
+  /**
+   * Derive unitSerialId from block range when not explicitly provided.
+   * Called by stageV2XlsRecords before staging each imported row.
+   */
+  static prepareXlsRow(row) {
+    if (!row.unitSerialId && row.unitStartBlock && row.unitEndBlock) {
+      row.unitSerialId = `${row.unitStartBlock}-${row.unitEndBlock}`;
+    }
+  }
 
   static associate(models) {
     // Unit belongs to Issuance
@@ -396,18 +404,8 @@ class UnitV2 extends Model {
    */
   static async updateFromXLS(fileBuffer) {
     try {
-      // Parse XLSX file
-      const xlsxParsed = transformMetaUid(xlsx.parse(fileBuffer));
-
-      // Extract table data from XLSX
-      const stagedDataItems = tableDataFromXlsx(xlsxParsed, UnitV2);
-
-      // Collapse table data
-      const collapsedData = collapseTablesData(stagedDataItems, UnitV2);
-
-      // Update table with data (creates staging records)
-      await UnitV2.updateTableWithDataV2(collapsedData);
-
+      const parsedData = parseV2Xlsx(fileBuffer, UnitV2);
+      await stageV2XlsRecords(parsedData, UnitV2);
       loggerV2.info('[v2]: Units updated from XLSX file');
     } catch (error) {
       loggerV2.error('[v2]: Error updating units from XLSX:', error);
@@ -498,88 +496,6 @@ class UnitV2 extends Model {
     });
   }
 
-  /**
-   * V2-compatible version of updateTableWithData
-   * Creates staging records for XLSX imports
-   * @param {Object} tableData - Collapsed table data from XLSX
-   * @returns {Promise<void>}
-   */
-  static async updateTableWithDataV2(tableData) {
-    const modelAssociations = UnitV2.getAssociatedModels();
-
-    const removeModelKeyInChildren = [
-      'unitLabels',
-    ];
-
-    // Use V2 transaction
-    await sequelizeV2.transaction(async () => {
-      const homeOrg = await OrganizationsV2.getHomeOrg();
-      if (!homeOrg) {
-        throw new Error('No home organization found');
-      }
-
-      await Promise.all(
-        Object.values(tableData).map(async (data) => {
-          // Skip if data structure is invalid
-          if (
-            !data ||
-            data.data == null ||
-            data.model == null ||
-            !Array.isArray(data.data)
-          ) {
-            return;
-          }
-
-          await Promise.all(
-            data.data
-              .filter((row) => !_.isEmpty(row))
-              .map(async (row) => {
-                // Convert camelCase to snake_case for V2 primary key
-                const primaryKeyField = 'cadTrustUnitId';
-                const existingRecord = await UnitV2.findByPk(
-                  row[primaryKeyField],
-                );
-
-                const exists = Boolean(existingRecord);
-
-                // Handle child records
-                await UnitV2.updateModelChildIdsV2(
-                  modelAssociations,
-                  row,
-                  removeModelKeyInChildren,
-                  UnitV2,
-                  false,
-                );
-
-                // Update unit properties (handle serial ID from blocks)
-                if (row.unitStartBlock && row.unitEndBlock) {
-                  row.unitSerialId = `${row.unitStartBlock}-${row.unitEndBlock}`;
-                }
-
-                // Merge with existing record if it exists
-                let stagedRecord = Array.isArray(row) ? row : [row];
-                stagedRecord = stagedRecord.map((record) => {
-                  return Object.keys(record).reduce((syncedRecord, key) => {
-                    syncedRecord[key] = record[key];
-                    return syncedRecord;
-                  }, existingRecord?.dataValues ?? {});
-                });
-
-                // Create staging record
-                const stagedData = {
-                  uuid: row[primaryKeyField],
-                  action: exists ? 'UPDATE' : 'INSERT',
-                  table: 'unit',
-                  data: JSON.stringify(stagedRecord),
-                };
-
-                await StagingV2.create(stagedData);
-              }),
-          );
-        }),
-      );
-    });
-  }
 
   /**
    * FTS search wrapper - detects dialect and calls appropriate method
@@ -956,52 +872,6 @@ class UnitV2 extends Model {
     }
   }
 
-  /**
-   * Helper to update child record IDs (V2 version)
-   * @private
-   */
-  static async updateModelChildIdsV2(
-    modelAssociations,
-    row,
-    removeModelKeyInChildren,
-    model,
-    setKey,
-  ) {
-    // Map model names to association keys (camelCase)
-    const modelToKeyMap = {
-      UnitLabelV2: 'unitLabels',
-    };
-
-    // Map model names to primary key fields
-    const modelToPrimaryKeyMap = {
-      UnitLabelV2: 'cadTrustUnitLabelId',
-    };
-
-    modelAssociations.forEach((association) => {
-      const modelName = association.model.name;
-      const childKey = modelToKeyMap[modelName];
-      const primaryKeyField = modelToPrimaryKeyMap[modelName];
-
-      if (childKey && row[childKey] && Array.isArray(row[childKey])) {
-        row[childKey].forEach((child) => {
-          if (setKey) {
-            // Set the unit ID on child records
-            if (!child.cadTrustUnitId && row.cadTrustUnitId) {
-              child.cadTrustUnitId = row.cadTrustUnitId;
-            }
-          } else {
-            // Remove or update child record IDs
-            if (removeModelKeyInChildren.includes(childKey)) {
-              // Generate ID if missing
-              if (!child[primaryKeyField]) {
-                child[primaryKeyField] = uuidv4();
-              }
-            }
-          }
-        });
-      }
-    });
-  }
 
   /**
    * Rebuild FTS5 table - useful for recovery from corruption or sync issues

@@ -56,7 +56,7 @@ import { AefT4HoldingsV2Mirror } from './aef-t4-holdings-v2.model.mirror.js';
 
 // Set up model associations
 ProgramV2.associate({ ProgramV2, ProjectV2 });
-ProjectV2.associate({ ProgramV2, ProjectV2, ValidationV2, LocationV2, EstimationV2, RatingV2, CoBenefitV2, ProjectMethodologyV2, StakeholderProjectV2 });
+ProjectV2.associate({ ProgramV2, ProjectV2, ValidationV2, VerificationV2, LocationV2, EstimationV2, RatingV2, CoBenefitV2, ProjectMethodologyV2, StakeholderProjectV2 });
 ValidationV2.associate({ ProjectV2, ValidationV2 });
 VerificationV2.associate({ ProjectV2, ValidationV2, VerificationV2 });
 IssuanceV2.associate({ VerificationV2, ProjectMethodologyV2, LocationV2, IssuanceV2, UnitV2 });

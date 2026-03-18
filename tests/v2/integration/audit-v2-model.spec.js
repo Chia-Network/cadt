@@ -43,97 +43,106 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
   });
 
   describe('findAll', function () {
-    it('should return empty result when no audit records exist', async function () {
+    it('should return result with expected shape', async function () {
       const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10, 1);
 
       expect(result).to.have.property('rows');
       expect(result).to.have.property('count');
-      expect(result.rows).to.be.an('array').that.is.empty;
-      expect(result.count).to.equal(0);
+      expect(result.rows).to.be.an('array');
+      expect(result.count).to.be.a('number');
     });
 
     it('should return audit records with pagination', async function () {
-      // Create test audit records
-      const now = Math.floor(Date.now() / 1000).toString();
+      // Snapshot baseline — background sync can insert audit records for testOrgUid
+      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
+      const baselineCount = baseline.count;
+
+      // Use timestamps far in the future so test records always sort last/first
+      const futureTs = '9999999991';
       await AuditV2.bulkCreate([
         {
           org_uid: testOrgUid,
           registry_id: 'test-registry-1',
-          root_hash: 'hash1',
+          root_hash: 'pagination-hash1',
           type: 'insert',
           change: '{"test": "data1"}',
           table: 'project',
-          onchain_confirmation_time_stamp: now,
-          generation: 1,
+          onchain_confirmation_time_stamp: futureTs,
+          generation: 9901,
         },
         {
           org_uid: testOrgUid,
           registry_id: 'test-registry-1',
-          root_hash: 'hash2',
+          root_hash: 'pagination-hash2',
           type: 'update',
           change: '{"test": "data2"}',
           table: 'project',
-          onchain_confirmation_time_stamp: (parseInt(now) + 1).toString(),
-          generation: 2,
+          onchain_confirmation_time_stamp: (parseInt(futureTs) + 1).toString(),
+          generation: 9902,
         },
         {
           org_uid: testOrgUid,
           registry_id: 'test-registry-1',
-          root_hash: 'hash3',
+          root_hash: 'pagination-hash3',
           type: 'delete',
           change: '{"test": "data3"}',
           table: 'project',
-          onchain_confirmation_time_stamp: (parseInt(now) + 2).toString(),
-          generation: 3,
+          onchain_confirmation_time_stamp: (parseInt(futureTs) + 2).toString(),
+          generation: 9903,
         },
       ]);
 
       const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 2, 1);
 
-      expect(result.count).to.equal(3);
+      expect(result.count).to.equal(baselineCount + 3);
       expect(result.rows).to.have.length(2);
-      // Should be ordered DESC by timestamp
-      expect(result.rows[0].generation).to.equal(3);
-      expect(result.rows[1].generation).to.equal(2);
+      // DESC — our future-timestamped records are the most recent
+      expect(result.rows[0].generation).to.equal(9903);
+      expect(result.rows[1].generation).to.equal(9902);
     });
 
     it('should return audit records ordered ASC', async function () {
-      // Create test audit records
-      const now = Math.floor(Date.now() / 1000).toString();
+      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'ASC', 10000, 1);
+      const baselineCount = baseline.count;
+
+      const futureTs = '9999999991';
       await AuditV2.bulkCreate([
         {
           org_uid: testOrgUid,
           registry_id: 'test-registry-1',
-          root_hash: 'hash1',
+          root_hash: 'asc-hash1',
           type: 'insert',
           change: '{"test": "data1"}',
           table: 'project',
-          onchain_confirmation_time_stamp: now,
-          generation: 1,
+          onchain_confirmation_time_stamp: futureTs,
+          generation: 9901,
         },
         {
           org_uid: testOrgUid,
           registry_id: 'test-registry-1',
-          root_hash: 'hash2',
+          root_hash: 'asc-hash2',
           type: 'update',
           change: '{"test": "data2"}',
           table: 'project',
-          onchain_confirmation_time_stamp: (parseInt(now) + 1).toString(),
-          generation: 2,
+          onchain_confirmation_time_stamp: (parseInt(futureTs) + 1).toString(),
+          generation: 9902,
         },
       ]);
 
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'ASC', 10, 1);
+      const result = await AuditV2.findAuditHistory(testOrgUid, 'ASC', 10000, 1);
 
-      expect(result.count).to.equal(2);
-      expect(result.rows).to.have.length(2);
-      // Should be ordered ASC by timestamp
-      expect(result.rows[0].generation).to.equal(1);
-      expect(result.rows[1].generation).to.equal(2);
+      expect(result.count).to.equal(baselineCount + 2);
+      // Verify our test records appear in ASC order at the end
+      const testRows = result.rows.filter((r) => r.root_hash.startsWith('asc-'));
+      expect(testRows).to.have.length(2);
+      expect(testRows[0].generation).to.equal(9901);
+      expect(testRows[1].generation).to.equal(9902);
     });
 
     it('should filter by orgUid', async function () {
-      // Create another org
+      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
+      const baselineCount = baseline.count;
+
       const otherOrg = await OrganizationsV2.create({
         org_uid: 'other-org-uid',
         name: 'Other Org',
@@ -142,35 +151,35 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
         subscribed: true,
       });
 
-      const now = Math.floor(Date.now() / 1000).toString();
+      const futureTs = '9999999991';
       await AuditV2.bulkCreate([
         {
           org_uid: testOrgUid,
           registry_id: 'test-registry-1',
-          root_hash: 'hash1',
+          root_hash: 'filter-hash1',
           type: 'insert',
           change: '{"test": "data1"}',
           table: 'project',
-          onchain_confirmation_time_stamp: now,
-          generation: 1,
+          onchain_confirmation_time_stamp: futureTs,
+          generation: 9901,
         },
         {
           org_uid: otherOrg.org_uid,
           registry_id: 'other-registry',
-          root_hash: 'hash2',
+          root_hash: 'filter-hash2',
           type: 'insert',
           change: '{"test": "data2"}',
           table: 'project',
-          onchain_confirmation_time_stamp: (parseInt(now) + 1).toString(),
-          generation: 1,
+          onchain_confirmation_time_stamp: (parseInt(futureTs) + 1).toString(),
+          generation: 9901,
         },
       ]);
 
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10, 1);
+      const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
 
-      expect(result.count).to.equal(1);
-      expect(result.rows).to.have.length(1);
-      expect(result.rows[0].org_uid).to.equal(testOrgUid);
+      // Only one new record for testOrgUid; the other-org record is excluded
+      expect(result.count).to.equal(baselineCount + 1);
+      expect(result.rows.every((r) => r.org_uid === testOrgUid)).to.be.true;
     });
 
     it('should throw error for invalid orgUid', async function () {
@@ -183,24 +192,27 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
     });
 
     it('should work without pagination parameters', async function () {
-      const now = Math.floor(Date.now() / 1000).toString();
+      const baseline = await AuditV2.findAuditHistory(testOrgUid);
+      const baselineCount = baseline.count;
+
+      const futureTs = '9999999991';
       await AuditV2.bulkCreate([
         {
           org_uid: testOrgUid,
           registry_id: 'test-registry-1',
-          root_hash: 'hash1',
+          root_hash: 'nopag-hash1',
           type: 'insert',
           change: '{"test": "data1"}',
           table: 'project',
-          onchain_confirmation_time_stamp: now,
-          generation: 1,
+          onchain_confirmation_time_stamp: futureTs,
+          generation: 9901,
         },
       ]);
 
       const result = await AuditV2.findAuditHistory(testOrgUid);
 
-      expect(result.count).to.equal(1);
-      expect(result.rows).to.have.length(1);
+      expect(result.count).to.equal(baselineCount + 1);
+      expect(result.rows.length).to.equal(baselineCount + 1);
     });
 
     it('should throw error for invalid limit value (too large)', async function () {
@@ -258,52 +270,59 @@ describe('Phase 17.1: AuditV2 Model Methods', function () {
     });
 
     it('should accept valid limit and page at maximum bounds', async function () {
-      const now = Math.floor(Date.now() / 1000).toString();
+      const baseline = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
+      const baselineCount = baseline.count;
+
+      const futureTs = '9999999991';
       await AuditV2.bulkCreate([
         {
           org_uid: testOrgUid,
           registry_id: 'test-registry-1',
-          root_hash: 'hash1',
+          root_hash: 'bounds-hash1',
           type: 'insert',
           change: '{"test": "data1"}',
           table: 'project',
-          onchain_confirmation_time_stamp: now,
-          generation: 1,
+          onchain_confirmation_time_stamp: futureTs,
+          generation: 9901,
         },
       ]);
 
       const result = await AuditV2.findAuditHistory(testOrgUid, 'DESC', 10000, 1);
-      expect(result.count).to.equal(1);
+      expect(result.count).to.equal(baselineCount + 1);
     });
 
     it('should default to DESC for invalid order value', async function () {
-      const now = Math.floor(Date.now() / 1000).toString();
+      const futureTs = '9999999991';
       await AuditV2.bulkCreate([
         {
           org_uid: testOrgUid,
           registry_id: 'test-registry-1',
-          root_hash: 'hash1',
+          root_hash: 'order-hash1',
           type: 'insert',
           change: '{"test": "data1"}',
           table: 'project',
-          onchain_confirmation_time_stamp: now,
-          generation: 1,
+          onchain_confirmation_time_stamp: futureTs,
+          generation: 9901,
         },
         {
           org_uid: testOrgUid,
           registry_id: 'test-registry-1',
-          root_hash: 'hash2',
+          root_hash: 'order-hash2',
           type: 'update',
           change: '{"test": "data2"}',
           table: 'project',
-          onchain_confirmation_time_stamp: (parseInt(now) + 1).toString(),
-          generation: 2,
+          onchain_confirmation_time_stamp: (parseInt(futureTs) + 1).toString(),
+          generation: 9902,
         },
       ]);
 
-      // Invalid order should default to DESC
-      const result = await AuditV2.findAuditHistory(testOrgUid, 'INVALID', 10, 1);
-      expect(result.rows[0].generation).to.equal(2); // DESC order
+      // Invalid order should default to DESC — our future-timestamped records come first
+      const result = await AuditV2.findAuditHistory(testOrgUid, 'INVALID', 10000, 1);
+      const testRows = result.rows.filter((r) => r.root_hash.startsWith('order-'));
+      expect(testRows).to.have.length(2);
+      // DESC: 9902 before 9901
+      expect(testRows[0].generation).to.equal(9902);
+      expect(testRows[1].generation).to.equal(9901);
     });
   });
 

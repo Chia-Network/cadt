@@ -21,10 +21,8 @@ import {
   assertRecordExistanceOrStaged,
 } from '../../utils/v2-data-assertions.js';
 
-import {
-  sendXls,
-  createXlsFromSequelizeResults,
-} from '../../utils/xls.js';
+import { sendXls } from '../../utils/xls.js';
+import { buildXlsSchema, createV2Xls } from '../../utils/v2-xls.js';
 
 import { loggerV2 } from '../../config/logger.js';
 import { unitV2Schema } from '../../validations/v2/unit-v2.validations.js';
@@ -386,9 +384,17 @@ export const findAll = async (req, res) => {
     // Handle pagination
     let pagination = paginationParams(page, limit);
 
-    // If XLS export, remove pagination
+    // If XLS export, remove pagination and include all associations
+    let xlsIncludes = [];
     if (xls) {
       pagination = { offset: undefined, limit: undefined };
+
+      const xlsSchema = buildXlsSchema(UnitV2);
+      xlsIncludes = xlsSchema.children.map((child) => ({
+        model: child.model,
+        as: child.sheetName,
+        required: false,
+      }));
     }
 
     // Handle FTS search parameter
@@ -495,6 +501,7 @@ export const findAll = async (req, res) => {
 
     const query = {
       attributes: queryAttributes, // undefined = include all fields (consistent with other V2 controllers)
+      include: xlsIncludes.length > 0 ? xlsIncludes : undefined,
       ...pagination,
     };
 
@@ -600,12 +607,8 @@ export const findAll = async (req, res) => {
     // Handle XLS export
     if (xls) {
       return sendXls(
-        UnitV2.name,
-        createXlsFromSequelizeResults({
-          rows: response.data || response,
-          model: UnitV2,
-          toStructuredCsv: false,
-        }),
+        'unit',
+        createV2Xls(response.data || response, UnitV2),
         res,
       );
     }
