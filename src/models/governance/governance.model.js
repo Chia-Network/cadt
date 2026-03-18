@@ -19,7 +19,7 @@ class Governance extends Model {
   static async _setCreationStatus(status, error = null) {
     try {
       await Meta.upsert({ metaKey: 'governanceCreationStatus', metaValue: status });
-      await Meta.upsert({ metaKey: 'governanceCreationStartedAt', metaValue: Meta._creationStartedAt || new Date().toISOString() });
+      await Meta.upsert({ metaKey: 'governanceCreationStartedAt', metaValue: Governance._creationStartedAt || new Date().toISOString() });
       if (error) {
         await Meta.upsert({ metaKey: 'governanceCreationError', metaValue: String(error) });
       } else {
@@ -37,7 +37,7 @@ class Governance extends Model {
       );
     }
 
-    Meta._creationStartedAt = new Date().toISOString();
+    Governance._creationStartedAt = new Date().toISOString();
     await Governance._setCreationStatus('creating_stores');
 
     const dataModelVersion = 'v1';

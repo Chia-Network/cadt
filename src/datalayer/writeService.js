@@ -58,6 +58,10 @@ const createDataLayerStore = async () => {
  * @returns {Promise<string>} The confirmed storeId
  */
 const createDataLayerStoreWithRetry = async (maxRetries = 3) => {
+  if (maxRetries < 1) {
+    throw new Error('createDataLayerStoreWithRetry requires maxRetries >= 1');
+  }
+
   if (USE_SIMULATOR) {
     const { storeId } = await createDataLayerStore();
     return storeId;
