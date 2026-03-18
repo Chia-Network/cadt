@@ -43,7 +43,7 @@ V2Router.get('/health/wallet', async (req, res) => {
     const wallet = (await import('../../datalayer/wallet.js')).default;
     const config = getConfigV2();
     const result = await getWalletHealthResponse(wallet, {
-      readOnly: config.READ_ONLY || false,
+      readOnly: config.READ_ONLY === true,
     });
     res.status(200).json(result);
   } catch (error) {

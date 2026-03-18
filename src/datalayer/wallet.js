@@ -223,8 +223,8 @@ const waitForAllTransactionsToConfirm = async (startTime = null, maxWaitMs = 180
     await new Promise((resolve) => setTimeout(resolve, 15000));
 
     if (anyUnconfirmed) {
-      // After 5 minutes of waiting, start logging health details
-      if (elapsed > 300000 && elapsed % 60000 < 15000) {
+      const elapsedAfterSleep = Date.now() - startTime;
+      if (elapsedAfterSleep > 300000 && elapsedAfterSleep % 60000 < 15000) {
         try {
           const dlWalletId = await getDLWalletId();
           const walletIds = dlWalletId ? ['1', dlWalletId] : ['1'];
@@ -234,7 +234,7 @@ const waitForAllTransactionsToConfirm = async (startTime = null, maxWaitMs = 180
             if (total > 0) {
               logger.info(
                 `waitForAllTransactionsToConfirm: wallet ${wid} still has ` +
-                `${total} unconfirmed tx(s) after ${Math.round(elapsed / 1000)}s ` +
+                `${total} unconfirmed tx(s) after ${Math.round(elapsedAfterSleep / 1000)}s ` +
                 `(${health.rejected.length} rejected, ${health.inMempool.length} in mempool, ` +
                 `${health.pending.length} pending)`,
               );
@@ -855,6 +855,7 @@ const TRANSIENT_WALLET_ERRORS = [
   'DataLayerWallet not available',
   'DataLayer Wallet already exists',
   'No spendable coins',
+  'UNIQUE constraint failed',
 ];
 
 const isTransientWalletError = (error) =>
