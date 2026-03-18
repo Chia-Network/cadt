@@ -18,19 +18,25 @@ const createDataLayerStore = async () => {
   await wallet.waitForAllTransactionsToConfirm();
 
   let storeId;
+  let txIds = [];
   if (USE_SIMULATOR) {
     storeId = await simulator.createDataLayerStore();
   } else {
     const result = await dataLayer.createDataLayerStore();
     storeId = result.storeId;
-    const txIds = result.txIds || [];
+    txIds = result.txIds || [];
 
     logger.info(
       `Created storeId: ${storeId}` +
       (txIds.length > 0 ? ` (tx_ids: ${txIds.join(', ')})` : '') +
       `, waiting for this to be confirmed on the blockchain.`,
     );
-    await waitForNewStoreToBeConfirmed(storeId, txIds);
+    try {
+      await waitForNewStoreToBeConfirmed(storeId, txIds);
+    } catch (confirmError) {
+      confirmError.txIds = txIds;
+      throw confirmError;
+    }
     await wallet.waitForAllTransactionsToConfirm();
 
     const mirrorUrl = await getMirrorUrl();
@@ -39,7 +45,7 @@ const createDataLayerStore = async () => {
     }
   }
 
-  return storeId;
+  return { storeId, txIds };
 };
 
 /**
@@ -53,16 +59,21 @@ const createDataLayerStore = async () => {
  */
 const createDataLayerStoreWithRetry = async (maxRetries = 3) => {
   if (USE_SIMULATOR) {
-    return createDataLayerStore();
+    const { storeId } = await createDataLayerStore();
+    return storeId;
   }
 
   const attemptedTxIds = [];
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const storeId = await createDataLayerStore();
+      const { storeId, txIds } = await createDataLayerStore();
+      attemptedTxIds.push(...txIds);
       return storeId;
     } catch (error) {
+      if (error.txIds) {
+        attemptedTxIds.push(...error.txIds);
+      }
       const isRejection = error.message?.includes('rejected');
 
       if (!isRejection || attempt >= maxRetries) {

@@ -1,3 +1,7 @@
+import walletModule from '../datalayer/wallet.js';
+
+const { formatDuration } = walletModule;
+
 /**
  * Build a wallet health diagnostic response.
  * Gracefully degrades if wallet or RPC is unreachable.
@@ -92,13 +96,6 @@ const truncateTxId = (txId) => {
 
 const formatTxSummary = (tx) => ({
   txId: truncateTxId(tx.name),
-  age: wallet_formatDuration(tx.age),
+  age: formatDuration(tx.age),
   error: tx.rejectionReason || null,
 });
-
-const wallet_formatDuration = (seconds) => {
-  if (seconds == null) return 'unknown';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
-};
