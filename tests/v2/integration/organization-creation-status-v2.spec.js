@@ -291,14 +291,17 @@ describe('Organization Creation Status Tests', function () {
       // The orgId will be available after creation completes
       expect(response.body.message).to.include('currently being created');
 
-      // Wait for org creation to complete (poll for org to exist)
+      // Wait for org creation to complete (poll for a non-PENDING org).
+      // The creation flow first inserts a PENDING record (name: '', orgUid: 'PENDING')
+      // then replaces it with the real record upon finalization.
       let org = null;
-      for (let attempt = 1; attempt <= 20; attempt++) {
-        org = await Organization.findOne({ where: { isHome: true }, raw: true });
-        if (org) {
+      for (let attempt = 1; attempt <= 40; attempt++) {
+        const candidate = await Organization.findOne({ where: { isHome: true }, raw: true });
+        if (candidate && candidate.orgUid !== 'PENDING') {
+          org = candidate;
           break;
         }
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 250));
       }
 
       // Verify org was created

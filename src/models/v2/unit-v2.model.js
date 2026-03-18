@@ -25,6 +25,16 @@ class UnitV2 extends Model {
   static changes = new rxjs.Subject();
   static xlsSheetName = 'units';
 
+  /**
+   * Derive unitSerialId from block range when not explicitly provided.
+   * Called by stageV2XlsRecords before staging each imported row.
+   */
+  static prepareXlsRow(row) {
+    if (!row.unitSerialId && row.unitStartBlock && row.unitEndBlock) {
+      row.unitSerialId = `${row.unitStartBlock}-${row.unitEndBlock}`;
+    }
+  }
+
   static associate(models) {
     // Unit belongs to Issuance
     UnitV2.belongsTo(models.IssuanceV2, {

@@ -425,41 +425,54 @@ export const findAll = async (req, res) => {
       // Check if associations are requested
       const requestedAssociations = normalizedColumns.filter(col => associationNames.includes(col));
 
+      // Track aliases already present from XLS includes to avoid duplicates
+      const existingAliases = new Set(queryIncludes.map((inc) => inc.as));
+
       // Build include array for requested associations
       if (requestedAssociations.includes('program') || requestedAssociations.includes('ProgramV2')) {
-        queryIncludes.push({
-          model: ProgramV2,
-          as: 'program',
-          required: false, // LEFT JOIN
-        });
+        if (!existingAliases.has('program')) {
+          queryIncludes.push({
+            model: ProgramV2,
+            as: 'program',
+            required: false, // LEFT JOIN
+          });
+        }
       }
       if (requestedAssociations.includes('locations') || requestedAssociations.includes('LocationV2')) {
-        queryIncludes.push({
-          model: LocationV2,
-          as: 'locations',
-          required: false,
-        });
+        if (!existingAliases.has('locations')) {
+          queryIncludes.push({
+            model: LocationV2,
+            as: 'locations',
+            required: false,
+          });
+        }
       }
       if (requestedAssociations.includes('estimations') || requestedAssociations.includes('EstimationV2')) {
-        queryIncludes.push({
-          model: EstimationV2,
-          as: 'estimations',
-          required: false,
-        });
+        if (!existingAliases.has('estimations')) {
+          queryIncludes.push({
+            model: EstimationV2,
+            as: 'estimations',
+            required: false,
+          });
+        }
       }
       if (requestedAssociations.includes('ratings') || requestedAssociations.includes('RatingV2')) {
-        queryIncludes.push({
-          model: RatingV2,
-          as: 'ratings',
-          required: false,
-        });
+        if (!existingAliases.has('ratings')) {
+          queryIncludes.push({
+            model: RatingV2,
+            as: 'ratings',
+            required: false,
+          });
+        }
       }
       if (requestedAssociations.includes('coBenefits') || requestedAssociations.includes('CoBenefitV2')) {
-        queryIncludes.push({
-          model: CoBenefitV2,
-          as: 'coBenefits',
-          required: false,
-        });
+        if (!existingAliases.has('coBenefits')) {
+          queryIncludes.push({
+            model: CoBenefitV2,
+            as: 'coBenefits',
+            required: false,
+          });
+        }
       }
 
       // Use columnsToInclude helper only for regular columns

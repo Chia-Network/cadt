@@ -61,6 +61,18 @@ export function createV2Xls(rows, model) {
 }
 
 /**
+ * Naive English singularization for common plural suffixes.
+ * Handles -ies → -y (e.g. "projectMethodologies" → "projectMethodology"),
+ * -ses/-xes/-zes → drop trailing "es", and plain -s removal.
+ */
+function naiveSingular(word) {
+  if (word.endsWith('ies')) return word.slice(0, -3) + 'y';
+  if (/(ses|xes|zes)$/.test(word)) return word.slice(0, -2);
+  if (word.endsWith('s')) return word.slice(0, -1);
+  return word;
+}
+
+/**
  * Parse an XLSX buffer into structured data for a V2 model.
  *
  * @param {Buffer} fileBuffer - Raw XLSX file buffer
@@ -75,14 +87,14 @@ export function parseV2Xlsx(fileBuffer, model) {
   const sheetLookup = {};
 
   // Main sheet can match by plural or singular
-  const mainSingular = schema.mainSheetName.replace(/s$/, '');
+  const mainSingular = naiveSingular(schema.mainSheetName);
   sheetLookup[schema.mainSheetName] = { type: 'main' };
   sheetLookup[mainSingular] = { type: 'main' };
   // Also accept the model name (e.g. "ProjectV2")
   sheetLookup[schema.modelSheetKey] = { type: 'main' };
 
   for (const child of schema.children) {
-    const singularChild = child.sheetName.replace(/s$/, '');
+    const singularChild = naiveSingular(child.sheetName);
     sheetLookup[child.sheetName] = { type: 'child', child };
     sheetLookup[singularChild] = { type: 'child', child };
     sheetLookup[child.model.name] = { type: 'child', child };
@@ -156,6 +168,11 @@ export async function stageV2XlsRecords(parsedData, model) {
     // Stage parent rows
     for (const row of parsedData.main) {
       parseArrayFields(row);
+
+      // Let the model apply domain-specific transforms (e.g. derive unitSerialId)
+      if (typeof model.prepareXlsRow === 'function') {
+        model.prepareXlsRow(row);
+      }
 
       const pkValue = row[schema.mainPK];
       let existingRecord = null;
