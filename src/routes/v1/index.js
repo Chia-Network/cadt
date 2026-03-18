@@ -1,6 +1,8 @@
 'use strict';
 
 import express from 'express';
+import { getWalletHealthResponse } from '../wallet-health.js';
+import { getConfig } from '../../utils/config-loader';
 const V1Router = express.Router();
 
 import {
@@ -16,13 +18,28 @@ import {
   OfferRouter,
 } from './resources';
 
-// Simple health check for V1 - doesn't require wallet or datalayer to be synced
-// This allows tests to verify V1 API is enabled without waiting for Chia services
 V1Router.get('/health', (req, res) => {
   res.status(200).json({
     message: 'V1 API is running',
     timestamp: new Date().toISOString(),
   });
+});
+
+V1Router.get('/health/wallet', async (req, res) => {
+  try {
+    const wallet = (await import('../../datalayer/wallet.js')).default;
+    const config = getConfig();
+    const result = await getWalletHealthResponse(wallet, {
+      readOnly: config.READ_ONLY || false,
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(200).json({
+      synced: false,
+      error: `Wallet health check failed: ${error.message}`,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 V1Router.use('/projects', ProjectRouter);

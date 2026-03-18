@@ -1,4 +1,6 @@
 import express from 'express';
+import { getWalletHealthResponse } from '../wallet-health.js';
+import { getConfigV2 } from '../../utils/config-loader';
 import { MethodologyV2Router } from './resources/methodology-v2.js';
 import { ProgramV2Router } from './resources/program-v2.js';
 import { ProjectV2Router } from './resources/project-v2.js';
@@ -29,12 +31,28 @@ import { FilestoreV2Router } from './resources/filestore-v2.js';
 
 const V2Router = express.Router();
 
-// Basic health check for V2
 V2Router.get('/health', (req, res) => {
   res.status(200).json({
     message: 'V2 API is running',
     timestamp: new Date().toISOString(),
   });
+});
+
+V2Router.get('/health/wallet', async (req, res) => {
+  try {
+    const wallet = (await import('../../datalayer/wallet.js')).default;
+    const config = getConfigV2();
+    const result = await getWalletHealthResponse(wallet, {
+      readOnly: config.READ_ONLY || false,
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(200).json({
+      synced: false,
+      error: `Wallet health check failed: ${error.message}`,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // V2 API routes

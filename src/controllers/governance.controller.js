@@ -36,7 +36,6 @@ export const isCreated = async (req, res) => {
     });
 
     if (results) {
-      // Get the main governance body ID (the one to share with other instances)
       const mainGovernanceBodyId = await Meta.findOne({
         where: { metaKey: 'mainGoveranceBodyId' },
       });
@@ -47,9 +46,17 @@ export const isCreated = async (req, res) => {
         governanceBodyId: mainGovernanceBodyId?.metaValue || null,
       });
     } else {
+      // Include creation status when governance is not yet created
+      const creationStatus = await Meta.findOne({ where: { metaKey: 'governanceCreationStatus' } });
+      const creationError = await Meta.findOne({ where: { metaKey: 'governanceCreationError' } });
+      const creationStartedAt = await Meta.findOne({ where: { metaKey: 'governanceCreationStartedAt' } });
+
       return res.json({
         created: false,
         success: true,
+        creationStatus: creationStatus?.metaValue || null,
+        creationError: creationError?.metaValue || null,
+        creationStartedAt: creationStartedAt?.metaValue || null,
       });
     }
   } catch (error) {
@@ -120,7 +127,15 @@ export const createGoveranceBody = async (req, res) => {
     await assertWalletIsSynced();
     await assertCanBeGovernanceBody();
 
-    Governance.createGoveranceBody();
+    Governance.createGoveranceBody().catch(async (error) => {
+      logger.error('Error creating governance body in background:', error);
+      try {
+        await Meta.upsert({ metaKey: 'governanceCreationStatus', metaValue: 'failed' });
+        await Meta.upsert({ metaKey: 'governanceCreationError', metaValue: error.message });
+      } catch (metaError) {
+        logger.error(`Failed to record governance creation failure: ${metaError.message}`);
+      }
+    });
 
     return res.json({
       message:

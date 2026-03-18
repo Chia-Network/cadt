@@ -165,7 +165,7 @@ class GovernanceV2 extends Model {
 
     // Create new V2-specific governance store
     await datalayer.waitForSpendableCoins(1);
-    const governanceVersionId = await datalayer.createDataLayerStore();
+    const governanceVersionId = await datalayer.createDataLayerStoreWithRetry();
     loggerV2.info(`[v2]: Created new V2 governance store: ${governanceVersionId}`);
 
     // Only insert the new version key; existing keys (e.g. v1) are already in the store.
@@ -225,53 +225,65 @@ class GovernanceV2 extends Model {
    * @returns {Promise<string>} The V2 governance version store ID
    * @throws {Error} If already listening to another governance body or if V1 governance exists
    */
+  static async _setCreationStatus(status, error = null) {
+    try {
+      await MetaV2.upsert({ meta_key: 'governanceCreationStatus', meta_value: status });
+      await MetaV2.upsert({ meta_key: 'governanceCreationStartedAt', meta_value: GovernanceV2._creationStartedAt || new Date().toISOString() });
+      if (error) {
+        await MetaV2.upsert({ meta_key: 'governanceCreationError', meta_value: String(error) });
+      } else {
+        await MetaV2.destroy({ where: { meta_key: 'governanceCreationError' } });
+      }
+    } catch (e) {
+      loggerV2.error(`[v2]: Failed to update governance creation status: ${e.message}`);
+    }
+  }
+
   static async createGoveranceBody() {
     const { GOVERNANCE_BODY_ID } = getConfigV2().GOVERNANCE;
     const { USE_SIMULATOR } = getConfig().APP;
 
-    // Check if already listening to another governance body
     if (GOVERNANCE_BODY_ID && GOVERNANCE_BODY_ID !== '') {
       throw new Error(
         'You are already listening to another governance body. Please clear GOVERNANCE_BODY_ID from your V2 config and try again',
       );
     }
 
+    GovernanceV2._creationStartedAt = new Date().toISOString();
+    await GovernanceV2._setCreationStatus('creating_stores');
+
     // Check if this node is already a V1 governance body
-    // Try to query V1 Meta table - if it doesn't exist, proceed with new V2 governance body
     try {
       const existingV1Governance = await Meta.findOne({
         where: { metaKey: 'mainGoveranceBodyId' },
       });
 
       if (existingV1Governance) {
-        // Node is already a V1 governance body - add V2 support instead
         loggerV2.info('[v2]: Existing V1 governance body detected, adding V2 support...');
         return await GovernanceV2.addV2ToExistingGovernanceBody();
       }
     } catch (error) {
-      // V1 Meta table doesn't exist - this is OK, proceed with creating new V2 governance body
       if (error.message && error.message.includes('no such table')) {
         loggerV2.debug('[v2]: V1 Meta table does not exist, proceeding with new V2 governance body creation');
       } else {
-        // Re-throw if it's a different error
+        await GovernanceV2._setCreationStatus('failed', error.message);
         throw error;
       }
     }
 
-    // Create new governance body from scratch
-    const dataModelVersion = 'v2'; // CRITICAL: Hardcode 'v2', not getDataModelVersion()
+    const dataModelVersion = 'v2';
     await datalayer.waitForSpendableCoins(2);
-    // Create stores sequentially to avoid "DataLayer Wallet already exists"
-    // race condition when both calls try to initialize the wallet in parallel
-    const governanceBodyId = await datalayer.createDataLayerStore();
-    const governanceVersionId = await datalayer.createDataLayerStore();
+    const governanceBodyId = await datalayer.createDataLayerStoreWithRetry();
+    const governanceVersionId = await datalayer.createDataLayerStoreWithRetry();
+
+    await GovernanceV2._setCreationStatus('waiting_for_confirmation');
 
     const revertIfFailed = async () => {
       loggerV2.warn('[v2]: Reverting Failed Governance Body Creation');
       await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
+      await GovernanceV2._setCreationStatus('failed', 'Governance body creation reverted');
     };
 
-    // Sync the governance store with version mapping
     await datalayer.syncDataLayer(
       governanceBodyId,
       {
@@ -279,6 +291,8 @@ class GovernanceV2 extends Model {
       },
       revertIfFailed,
     );
+
+    await GovernanceV2._setCreationStatus('syncing_data');
 
     const onConfirm = async () => {
       await MetaV2.upsert({
@@ -289,6 +303,7 @@ class GovernanceV2 extends Model {
         meta_key: 'mainGoveranceBodyId',
         meta_value: governanceBodyId,
       });
+      await GovernanceV2._setCreationStatus('completed');
       loggerV2.info('[v2]: V2 Governance body confirmed, you are ready to go');
     };
 

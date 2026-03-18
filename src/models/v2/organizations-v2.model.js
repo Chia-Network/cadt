@@ -523,7 +523,7 @@ class OrganizationsV2 extends Model {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
-          const storeId = await datalayer.createDataLayerStore();
+          const storeId = await datalayer.createDataLayerStoreWithRetry();
           logState(state, `Created ${storeType} store: ${storeId}`);
           return { storeType, storeId, success: true };
         } catch (error) {
@@ -922,7 +922,7 @@ class OrganizationsV2 extends Model {
         for (let attempt = 1; attempt <= maxStoreCreateRetries; attempt++) {
           try {
             await wallet.waitForSpendableCoins(1);
-            newV2RegistryStoreId = await datalayer.createDataLayerStore();
+            newV2RegistryStoreId = await datalayer.createDataLayerStoreWithRetry();
             break;
           } catch (error) {
             if (isTransientWalletError(error) && attempt < maxStoreCreateRetries) {

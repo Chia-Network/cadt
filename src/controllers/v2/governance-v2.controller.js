@@ -50,7 +50,6 @@ export const isCreated = async (req, res) => {
     });
 
     if (results) {
-      // Get the main governance body ID (the one to share with other instances)
       const mainGovernanceBodyId = await MetaV2.findOne({
         where: { meta_key: 'mainGoveranceBodyId' },
       });
@@ -61,9 +60,16 @@ export const isCreated = async (req, res) => {
         governanceBodyId: mainGovernanceBodyId?.meta_value || null,
       });
     } else {
+      const creationStatus = await MetaV2.findOne({ where: { meta_key: 'governanceCreationStatus' } });
+      const creationError = await MetaV2.findOne({ where: { meta_key: 'governanceCreationError' } });
+      const creationStartedAt = await MetaV2.findOne({ where: { meta_key: 'governanceCreationStartedAt' } });
+
       return res.json({
         created: false,
         success: true,
+        creationStatus: creationStatus?.meta_value || null,
+        creationError: creationError?.meta_value || null,
+        creationStartedAt: creationStartedAt?.meta_value || null,
       });
     }
   } catch (error) {
@@ -193,8 +199,14 @@ export const createGoveranceBody = async (req, res) => {
 
     // Start governance body creation in the background
     // Don't await - let it run asynchronously
-    GovernanceV2.createGoveranceBody().catch((error) => {
+    GovernanceV2.createGoveranceBody().catch(async (error) => {
       loggerV2.error('[v2]: Error creating governance body in background:', error);
+      try {
+        await MetaV2.upsert({ meta_key: 'governanceCreationStatus', meta_value: 'failed' });
+        await MetaV2.upsert({ meta_key: 'governanceCreationError', meta_value: error.message });
+      } catch (metaError) {
+        loggerV2.error(`[v2]: Failed to record governance creation failure: ${metaError.message}`);
+      }
     });
 
     // Return immediately - work happens in background

@@ -16,6 +16,20 @@ const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
 import ModelTypes from './governance.modeltypes.cjs';
 
 class Governance extends Model {
+  static async _setCreationStatus(status, error = null) {
+    try {
+      await Meta.upsert({ metaKey: 'governanceCreationStatus', metaValue: status });
+      await Meta.upsert({ metaKey: 'governanceCreationStartedAt', metaValue: Meta._creationStartedAt || new Date().toISOString() });
+      if (error) {
+        await Meta.upsert({ metaKey: 'governanceCreationError', metaValue: String(error) });
+      } else {
+        await Meta.destroy({ where: { metaKey: 'governanceCreationError' } });
+      }
+    } catch (e) {
+      logger.error(`Failed to update governance creation status: ${e.message}`);
+    }
+  }
+
   static async createGoveranceBody() {
     if (GOVERNANCE_BODY_ID && GOVERNANCE_BODY_ID !== '') {
       throw new Error(
@@ -23,19 +37,22 @@ class Governance extends Model {
       );
     }
 
+    Meta._creationStartedAt = new Date().toISOString();
+    await Governance._setCreationStatus('creating_stores');
+
     const dataModelVersion = 'v1';
     await datalayer.waitForSpendableCoins(2);
-    // Create stores sequentially to avoid "DataLayer Wallet already exists"
-    // race condition when both calls try to initialize the wallet in parallel
-    const governanceBodyId = await datalayer.createDataLayerStore();
-    const governanceVersionId = await datalayer.createDataLayerStore();
+    const governanceBodyId = await datalayer.createDataLayerStoreWithRetry();
+    const governanceVersionId = await datalayer.createDataLayerStoreWithRetry();
+
+    await Governance._setCreationStatus('waiting_for_confirmation');
 
     const revertOrganizationIfFailed = async () => {
       logger.warn('Reverting Failed Governance Body Creation');
       await Meta.destroy({ where: { metaKey: 'governanceBodyId' } });
+      await Governance._setCreationStatus('failed', 'Governance body creation reverted');
     };
 
-    // sync the governance store
     await datalayer.syncDataLayer(
       governanceBodyId,
       {
@@ -43,6 +60,8 @@ class Governance extends Model {
       },
       revertOrganizationIfFailed,
     );
+
+    await Governance._setCreationStatus('syncing_data');
 
     const onConfirm = async () => {
       await Meta.upsert({
@@ -53,6 +72,7 @@ class Governance extends Model {
         metaKey: 'mainGoveranceBodyId',
         metaValue: governanceBodyId,
       });
+      await Governance._setCreationStatus('completed');
       logger.info('Governance body confirmed, you are ready to go');
     };
 
