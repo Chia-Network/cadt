@@ -260,7 +260,9 @@ class GovernanceV2 extends Model {
 
       if (existingV1Governance) {
         loggerV2.info('[v2]: Existing V1 governance body detected, adding V2 support...');
-        return await GovernanceV2.addV2ToExistingGovernanceBody();
+        const result = await GovernanceV2.addV2ToExistingGovernanceBody();
+        await GovernanceV2._setCreationStatus('completed');
+        return result;
       }
     } catch (error) {
       if (error.message && error.message.includes('no such table')) {

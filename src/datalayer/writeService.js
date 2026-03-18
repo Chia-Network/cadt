@@ -329,10 +329,9 @@ export const pushChangesWhenStoreIsAvailable = async (
               if (clearResult.cleared) {
                 logger.info(
                   `Auto-cleared rejected txs in wallet ${wid} during push to ${storeId}. ` +
-                  `Continuing without counting as a retry attempt.`,
+                  `Resuming with incremented retry to prevent unbounded recursion.`,
                 );
-                // Re-enter without incrementing retry count
-                return pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback, retryAttempts);
+                return pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback, retryAttempts + 1);
               }
             }
 
@@ -405,7 +404,7 @@ const getValue = async (storeId, key) => {
 
 export default {
   addMirror,
-  createDataLayerStore,
+  createDataLayerStore: async () => (await createDataLayerStore()).storeId,
   createDataLayerStoreWithRetry,
   dataLayerAvailable,
   pushDataLayerChangeList,

@@ -785,8 +785,6 @@ const formatDuration = (seconds) => {
 const clearRejectedTransactions = async (walletId, txIds, context) => {
   const health = await getTransactionHealth(walletId);
 
-  const totalUnconfirmed = health.rejected.length + health.inMempool.length + health.pending.length;
-
   // Safety check: refuse if ANY unconfirmed tx is not rejected
   if (health.inMempool.length > 0 || health.pending.length > 0) {
     const reason =
