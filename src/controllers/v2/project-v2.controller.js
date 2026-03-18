@@ -18,10 +18,8 @@ import {
   isArrayRegex,
 } from '../../utils/string-utils.js';
 
-import {
-  createXlsFromSequelizeResults,
-  sendXls,
-} from '../../utils/xls.js';
+import { sendXls } from '../../utils/xls.js';
+import { buildXlsSchema, createV2Xls } from '../../utils/v2-xls.js';
 
 import {
   assertV2IfReadOnlyMode,
@@ -340,7 +338,6 @@ export const findAll = async (req, res) => {
     // Handle pagination
     let pagination = paginationParams(page, limit);
 
-    // If XLS export, remove pagination
     if (xls) {
       pagination = { offset: undefined, limit: undefined };
     }
@@ -409,6 +406,16 @@ export const findAll = async (req, res) => {
     // This lets Sequelize automatically include all fields including timestamps
     let queryAttributes = undefined;
     let queryIncludes = [];
+
+    // When exporting XLS, include all child associations
+    if (xls) {
+      const xlsSchema = buildXlsSchema(ProjectV2);
+      queryIncludes = xlsSchema.children.map((child) => ({
+        model: child.model,
+        as: child.sheetName,
+        required: false,
+      }));
+    }
 
     if (normalizedColumns) {
       // Association names that can be included
@@ -567,12 +574,8 @@ export const findAll = async (req, res) => {
     // Handle XLS export
     if (xls) {
       return sendXls(
-        'projects',
-        createXlsFromSequelizeResults({
-          rows: response.data || response,
-          model: ProjectV2,
-          toStructuredCsv: false,
-        }),
+        'project',
+        createV2Xls(response.data || response, ProjectV2),
         res,
       );
     }

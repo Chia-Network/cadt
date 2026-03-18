@@ -10,6 +10,7 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
+import { parseV2Xlsx, stageV2XlsRecords } from '../../utils/v2-xls.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
 import { LocationV2 } from './location-v2.model.js';
@@ -20,17 +21,13 @@ import OrganizationsV2 from './organizations-v2.model.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Readable } from 'stream';
 import csv from 'csvtojson';
-import xlsx from 'node-xlsx';
-import {
-  transformMetaUid,
-  tableDataFromXlsx,
-  collapseTablesData,
-} from '../../utils/xls.js';
+
 import { loggerV2 } from '../../config/logger.js';
 import { sanitizeSqliteFtsQuery } from '../../utils/v2-fts-utils.js';
 
 class ProjectV2 extends Model {
   static changes = new rxjs.Subject();
+  static xlsSheetName = 'projects';
 
   static associate(models) {
     // Project belongs to Program
@@ -63,9 +60,25 @@ class ProjectV2 extends Model {
       as: 'coBenefits',
     });
 
-    // Note: Other associations will be added when those models are implemented
-    // - Project has many Validations
-    // - Project has many Verifications
+    ProjectV2.hasMany(models.ValidationV2, {
+      foreignKey: 'cadTrustProjectId',
+      as: 'validations',
+    });
+
+    ProjectV2.hasMany(models.VerificationV2, {
+      foreignKey: 'cadTrustProjectId',
+      as: 'verifications',
+    });
+
+    ProjectV2.hasMany(models.ProjectMethodologyV2, {
+      foreignKey: 'cadTrustProjectId',
+      as: 'projectMethodologies',
+    });
+
+    ProjectV2.hasMany(models.StakeholderProjectV2, {
+      foreignKey: 'cadTrustProjectId',
+      as: 'stakeholderProjects',
+    });
   }
 
   /**
@@ -323,186 +336,20 @@ class ProjectV2 extends Model {
 
   /**
    * Update projects from XLSX file
-   * Parses XLSX file and stages updates
+   * Parses XLSX file and stages updates using V2-specific utilities
    * @param {Buffer} fileBuffer - XLSX file buffer
    * @returns {Promise<void>}
    * @throws {Error} If file parsing or staging fails
    */
   static async updateFromXLS(fileBuffer) {
     try {
-      // Parse XLSX file
-      const xlsxParsed = transformMetaUid(xlsx.parse(fileBuffer));
-
-      // Extract table data from XLSX
-      const stagedDataItems = tableDataFromXlsx(xlsxParsed, ProjectV2);
-
-      // Collapse table data
-      const collapsedData = collapseTablesData(stagedDataItems, ProjectV2);
-
-      // Update table with data (creates staging records)
-      // Note: updateTableWithData uses V1 models, so we need a V2 version
-      // For now, we'll create a V2-compatible version
-      await ProjectV2.updateTableWithDataV2(collapsedData);
-
+      const parsedData = parseV2Xlsx(fileBuffer, ProjectV2);
+      await stageV2XlsRecords(parsedData, ProjectV2);
       loggerV2.info('[v2]: Projects updated from XLSX file');
     } catch (error) {
       loggerV2.error('[v2]: Error updating projects from XLSX:', error);
       throw new Error(`Failed to update projects from XLSX: ${error.message}`);
     }
-  }
-
-  /**
-   * V2-compatible version of updateTableWithData
-   * Creates staging records for XLSX imports
-   * @param {Object} tableData - Collapsed table data from XLSX
-   * @returns {Promise<void>}
-   */
-  static async updateTableWithDataV2(tableData) {
-    const modelAssociations = ProjectV2.getAssociatedModels();
-
-    const removeModelKeyInChildren = [
-      'locations',
-      'coBenefits',
-      'estimations',
-      'ratings',
-    ];
-
-    // Use V2 transaction
-    await sequelizeV2.transaction(async () => {
-      const homeOrg = await OrganizationsV2.getHomeOrg();
-      if (!homeOrg) {
-        throw new Error('No home organization found');
-      }
-
-             await Promise.all(
-                 Object.values(tableData).map(async (data) => {
-                   // Skip if data structure is invalid
-                   if (
-                     !data ||
-                     data.data == null ||
-                     data.model == null ||
-                     !Array.isArray(data.data)
-                   ) {
-                     return;
-                   }
-
-          await Promise.all(
-            data.data
-              .filter((row) => !_.isEmpty(row))
-              .map(async (row) => {
-                // Convert camelCase to snake_case for V2 primary key
-                const primaryKeyField = 'cadTrustProjectId';
-                const existingRecord = await ProjectV2.findByPk(
-                  row[primaryKeyField],
-                );
-
-                const exists = Boolean(existingRecord);
-
-                // Handle array fields (projectType, projectSector) and child records
-                ProjectV2.updateProjectPropertiesV2(row);
-
-                // Handle child records
-                await ProjectV2.updateModelChildIdsV2(
-                  modelAssociations,
-                  row,
-                  removeModelKeyInChildren,
-                  ProjectV2,
-                  false,
-                );
-
-                // Validate (if validation exists)
-                // Note: V2 models may not have validateImport yet
-                const validation = data.model.validateImport?.validate(row);
-
-                await ProjectV2.updateModelChildIdsV2(
-                  modelAssociations,
-                  row,
-                  removeModelKeyInChildren,
-                  ProjectV2,
-                  true,
-                );
-
-                // Merge new record with existing record
-                let stagedRecord = Array.isArray(row) ? row : [row];
-
-                stagedRecord = stagedRecord.map((record) => {
-                  return Object.keys(record).reduce((syncedRecord, key) => {
-                    syncedRecord[key] = record[key];
-                    return syncedRecord;
-                  }, existingRecord?.dataValues ?? {});
-                });
-
-                if (!validation || !validation.error) {
-                  await StagingV2.upsert({
-                    uuid: row[primaryKeyField] || uuidv4(),
-                    action: exists ? 'UPDATE' : 'INSERT',
-                    table: 'project',
-                    data: JSON.stringify(stagedRecord),
-                  });
-                } else {
-                  validation.error.message +=
-                    ' on project for ' + JSON.stringify(row);
-                  loggerV2.error(validation.error.message);
-                  throw validation.error;
-                }
-              }),
-          );
-        }),
-      );
-    });
-  }
-
-  /**
-   * Helper to update child record IDs (V2 version)
-   * @private
-   */
-  static async updateModelChildIdsV2(
-    modelAssociations,
-    row,
-    removeModelKeyInChildren,
-    model,
-    setKey,
-  ) {
-    // Map model names to association keys (camelCase)
-    const modelToKeyMap = {
-      LocationV2: 'locations',
-      EstimationV2: 'estimations',
-      RatingV2: 'ratings',
-      CoBenefitV2: 'coBenefits',
-    };
-
-    // Map model names to primary key fields
-    const modelToPrimaryKeyMap = {
-      LocationV2: 'cadTrustLocationId',
-      EstimationV2: 'cadTrustEstimationId',
-      RatingV2: 'cadTrustRatingId',
-      CoBenefitV2: 'cadTrustCoBenefitId',
-    };
-
-    modelAssociations.forEach((association) => {
-      const modelName = association.model.name;
-      const childKey = modelToKeyMap[modelName];
-      const primaryKeyField = modelToPrimaryKeyMap[modelName];
-
-      if (childKey && row[childKey] && Array.isArray(row[childKey])) {
-        row[childKey].forEach((child) => {
-          if (setKey) {
-            // Set the project ID on child records
-            if (!child.cadTrustProjectId && row.cadTrustProjectId) {
-              child.cadTrustProjectId = row.cadTrustProjectId;
-            }
-          } else {
-            // Remove or update child record IDs
-            if (removeModelKeyInChildren.includes(childKey)) {
-              // Generate ID if missing
-              if (!child[primaryKeyField]) {
-                child[primaryKeyField] = uuidv4();
-              }
-            }
-          }
-        });
-      }
-    });
   }
 
   /**
@@ -583,6 +430,44 @@ class ProjectV2 extends Model {
             reject(new Error('There were no valid records to parse'));
           }
         });
+    });
+  }
+
+  /**
+   * Helper to update project properties from CSV
+   * Handles conversion of string fields to arrays for batch upload
+   * @private
+   */
+  static updateProjectPropertiesV2(project) {
+    if (typeof project !== 'object') return;
+
+    const arrayFields = ['projectType', 'projectSector'];
+    arrayFields.forEach((key) => {
+      if (project[key] !== undefined && project[key] !== null) {
+        if (typeof project[key] === 'string') {
+          const trimmedValue = project[key].trim();
+          if (trimmedValue.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmedValue);
+              if (Array.isArray(parsed)) {
+                project[key] = parsed;
+                return;
+              }
+            } catch {
+              // Not valid JSON, continue
+            }
+          }
+          if (trimmedValue.includes('|')) {
+            project[key] = trimmedValue.split('|').map(v => v.trim()).filter(v => v);
+          } else if (trimmedValue) {
+            project[key] = [trimmedValue];
+          } else {
+            project[key] = null;
+          }
+        } else if (!Array.isArray(project[key])) {
+          project[key] = [project[key]];
+        }
+      }
     });
   }
 
@@ -875,79 +760,6 @@ class ProjectV2 extends Model {
     }
   }
 
-  /**
-   * Helper to update project properties from CSV (V2 version)
-   * Handles conversion of string fields to arrays and child record processing
-   * @private
-   */
-  static updateProjectPropertiesV2(project) {
-    if (typeof project !== 'object') return;
-
-    // Handle array fields (projectType, projectSector)
-    // These can come from CSV as:
-    // 1. Single value: "Solar" → ["Solar"]
-    // 2. JSON array string: '["Solar","Wind"]' → ["Solar", "Wind"]
-    // 3. Pipe-separated: "Solar|Wind" → ["Solar", "Wind"]
-    // Note: projectStatus is a single string value, not an array
-    const arrayFields = ['projectType', 'projectSector'];
-
-    arrayFields.forEach((key) => {
-      if (project[key] !== undefined && project[key] !== null) {
-        if (typeof project[key] === 'string') {
-          const trimmedValue = project[key].trim();
-
-          // Try to parse as JSON array first
-          if (trimmedValue.startsWith('[')) {
-            try {
-              const parsed = JSON.parse(trimmedValue);
-              if (Array.isArray(parsed)) {
-                project[key] = parsed;
-                return;
-              }
-            } catch {
-              // Not valid JSON, continue to other parsing methods
-            }
-          }
-
-          // Check for pipe-separated values (e.g., "Solar|Wind")
-          if (trimmedValue.includes('|')) {
-            project[key] = trimmedValue.split('|').map(v => v.trim()).filter(v => v);
-          } else if (trimmedValue) {
-            // Single value - wrap in array
-            project[key] = [trimmedValue];
-          } else {
-            // Empty string - set to null
-            project[key] = null;
-          }
-        } else if (!Array.isArray(project[key])) {
-          // If it's some other type, wrap in array
-          project[key] = [project[key]];
-        }
-        // If already an array, leave as is
-      }
-    });
-
-    // Handle child record arrays
-    const childRecordKeys = ['locations', 'estimations', 'ratings', 'coBenefits'];
-
-    childRecordKeys.forEach((key) => {
-      if (project[key] && typeof project[key] === 'string') {
-        try {
-          project[key] = JSON.parse(project[key]);
-        } catch {
-          // If not JSON, leave as is
-        }
-      }
-
-      if (Array.isArray(project[key])) {
-        project[key].forEach((item) => {
-          if (!item.cadTrustProjectId) {
-            item.cadTrustProjectId = project.cadTrustProjectId;
-          }
-        });
-      }
-    });
-  }
 }
 
 ProjectV2.init(

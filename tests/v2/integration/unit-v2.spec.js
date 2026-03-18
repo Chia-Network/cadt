@@ -1261,13 +1261,87 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
     });
 
     describe('PUT /v2/unit/xlsx', function () {
-      it('should update units from XLSX file', async function () {
-        // Create a simple XLSX file buffer
+      it('should stage INSERT for a new unit from XLSX', async function () {
         const xlsxModule = await import('node-xlsx');
         const xlsx = xlsxModule.default || xlsxModule;
+        const newUnitId = uuidv4();
         const testData = [
           ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitType', 'unitVintageYear', 'unitStatus', 'cadTrustIssuanceId'],
-          ['test-uuid-1', 'XLSX-UNIT-001', '1000', '2000', '50', 'Avoidance - nature', '2024', 'Issued', testIssuanceForAdvanced.cadTrustIssuanceId],
+          [newUnitId, 'XLSX-UNIT-001', '1000', '2000', '50', 'Avoidance - nature', '2024', 'Issued', testIssuanceForAdvanced.cadTrustIssuanceId],
+        ];
+        const xlsxBuffer = xlsx.build([{ name: 'units', data: testData }]);
+
+        const response = await supertest(app)
+          .put('/v2/unit/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.message).to.include('Updates from xlsx added to staging');
+
+        // Verify a staging record was actually created
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'unit' },
+        });
+        expect(stagingRecords.length).to.be.at.least(1);
+
+        const record = stagingRecords.find((r) => r.uuid === newUnitId);
+        expect(record).to.exist;
+        expect(record.action).to.equal('INSERT');
+
+        const data = JSON.parse(record.data);
+        expect(data[0].unitSerialId).to.equal('XLSX-UNIT-001');
+      });
+
+      it('should stage UPDATE for an existing unit from XLSX', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+
+        // Create a unit to update
+        const homeOrgId = await getV2HomeOrgId();
+        const unit = await UnitV2.create({
+          cadTrustUnitId: uuidv4(),
+          orgUid: homeOrgId,
+          unitSerialId: 'XLSX-UPD-001',
+          unitStartBlock: '500',
+          unitEndBlock: '600',
+          unitCount: 25,
+          unitType: 'Avoidance - nature',
+          unitVintageYear: 2024,
+          unitStatus: 'Held',
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+        });
+
+        const testData = [
+          ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitType', 'unitVintageYear', 'unitStatus', 'cadTrustIssuanceId'],
+          [unit.cadTrustUnitId, 'XLSX-UPD-001-UPDATED', '500', '600', '30', 'Reduction - technical', '2024', 'Issued', testIssuanceForAdvanced.cadTrustIssuanceId],
+        ];
+        const xlsxBuffer = xlsx.build([{ name: 'units', data: testData }]);
+
+        const response = await supertest(app)
+          .put('/v2/unit/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'unit', uuid: unit.cadTrustUnitId },
+        });
+        expect(stagingRecords.length).to.equal(1);
+        expect(stagingRecords[0].action).to.equal('UPDATE');
+
+        const data = JSON.parse(stagingRecords[0].data);
+        expect(data[0].unitSerialId).to.equal('XLSX-UPD-001-UPDATED');
+      });
+
+      it('should accept singular sheet name "unit"', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const newUnitId = uuidv4();
+        const testData = [
+          ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitVintageYear', 'cadTrustIssuanceId'],
+          [newUnitId, 'SING-UNIT-001', '100', '200', '10', '2024', testIssuanceForAdvanced.cadTrustIssuanceId],
         ];
         const xlsxBuffer = xlsx.build([{ name: 'unit', data: testData }]);
 
@@ -1277,7 +1351,12 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
           .expect(200);
 
         expect(response.body.success).to.be.true;
-        expect(response.body.message).to.include('Updates from xlsx added to staging');
+
+        const record = await StagingV2.findOne({
+          where: { table: 'unit', uuid: newUnitId },
+        });
+        expect(record).to.exist;
+        expect(record.action).to.equal('INSERT');
       });
 
       it('should return error if no file is provided', async function () {

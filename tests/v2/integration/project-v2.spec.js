@@ -1084,14 +1084,81 @@ describe('V2 Project API - Basic CRUD Tests', function () {
     });
 
     describe('PUT /v2/project/xlsx', function () {
-      it('should update projects from XLSX file', async function () {
-        // Create a simple XLSX file buffer
-        // For testing, we'll create a minimal XLSX structure
+      it('should stage INSERT for a new project from XLSX', async function () {
         const xlsxModule = await import('node-xlsx');
         const xlsx = xlsxModule.default || xlsxModule;
+        const newProjectId = uuidv4();
         const testData = [
           ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName', 'projectSector', 'projectType', 'projectStatus', 'projectUnitMetric'],
-          ['test-uuid-1', 'Test Registry', 'XLSX-001', 'XLSX Test Project', 'Agriculture', 'Landfill gas', 'Listed', 'tCO2e'],
+          [newProjectId, 'Test Registry', 'XLSX-001', 'XLSX Test Project', '["Agriculture"]', '["Landfill gas"]', 'Listed', 'tCO2e'],
+        ];
+        const xlsxBuffer = xlsx.build([{ name: 'projects', data: testData }]);
+
+        const response = await supertest(app)
+          .put('/v2/project/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.message).to.include('Updates from xlsx added to staging');
+
+        // Verify a staging record was actually created
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'project' },
+        });
+        expect(stagingRecords.length).to.be.at.least(1);
+
+        const record = stagingRecords.find((r) => r.uuid === newProjectId);
+        expect(record).to.exist;
+        expect(record.action).to.equal('INSERT');
+
+        const data = JSON.parse(record.data);
+        expect(data[0].projectName).to.equal('XLSX Test Project');
+      });
+
+      it('should stage UPDATE for an existing project from XLSX', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+
+        const homeOrgId = await getV2HomeOrgId();
+        const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Original Registry',
+          projectId: 'XLSX-UPD-001',
+          projectName: 'Original Name',
+          projectSector: ['Agriculture'],
+          orgUid: homeOrgId,
+        }));
+
+        const testData = [
+          ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName', 'projectSector', 'projectUnitMetric'],
+          [project.cadTrustProjectId, 'Updated Registry', 'XLSX-UPD-001', 'Updated Name', '["Energy"]', 'tCO2e'],
+        ];
+        const xlsxBuffer = xlsx.build([{ name: 'projects', data: testData }]);
+
+        const response = await supertest(app)
+          .put('/v2/project/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'project', uuid: project.cadTrustProjectId },
+        });
+        expect(stagingRecords.length).to.equal(1);
+        expect(stagingRecords[0].action).to.equal('UPDATE');
+
+        const data = JSON.parse(stagingRecords[0].data);
+        expect(data[0].projectName).to.equal('Updated Name');
+      });
+
+      it('should accept singular sheet name "project"', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const newProjectId = uuidv4();
+        const testData = [
+          ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName'],
+          [newProjectId, 'Singular Sheet', 'SING-001', 'Singular Test'],
         ];
         const xlsxBuffer = xlsx.build([{ name: 'project', data: testData }]);
 
@@ -1101,7 +1168,12 @@ describe('V2 Project API - Basic CRUD Tests', function () {
           .expect(200);
 
         expect(response.body.success).to.be.true;
-        expect(response.body.message).to.include('Updates from xlsx added to staging');
+
+        const record = await StagingV2.findOne({
+          where: { table: 'project', uuid: newProjectId },
+        });
+        expect(record).to.exist;
+        expect(record.action).to.equal('INSERT');
       });
 
       it('should return error if no file is provided', async function () {
