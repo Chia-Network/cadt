@@ -113,6 +113,7 @@ export function parseV2Xlsx(fileBuffer, model) {
     const rows = data.slice(1).map((row) => {
       const obj = {};
       headerRow.forEach((col, i) => {
+        if (i >= row.length) return; // skip missing trailing cells
         const val = row[i];
         obj[col] = val === 'null' ? null : val;
       });

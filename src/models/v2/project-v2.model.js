@@ -469,6 +469,25 @@ class ProjectV2 extends Model {
         }
       }
     });
+
+    const childRecordKeys = ['locations', 'estimations', 'ratings', 'coBenefits'];
+    childRecordKeys.forEach((key) => {
+      if (project[key] && typeof project[key] === 'string') {
+        try {
+          project[key] = JSON.parse(project[key]);
+        } catch {
+          // If not JSON, leave as is
+        }
+      }
+
+      if (Array.isArray(project[key])) {
+        project[key].forEach((item) => {
+          if (!item.cadTrustProjectId) {
+            item.cadTrustProjectId = project.cadTrustProjectId;
+          }
+        });
+      }
+    });
   }
 
   /**
