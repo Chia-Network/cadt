@@ -165,9 +165,14 @@ function parseArrayFields(row) {
 export async function stageV2XlsRecords(parsedData, model) {
   const schema = buildXlsSchema(model);
 
+  const isEmptyRow = (row) =>
+    Object.values(row).every((v) => v === null || v === undefined || v === '');
+
   await sequelizeV2.transaction(async (transaction) => {
     // Stage parent rows
     for (const row of parsedData.main) {
+      if (isEmptyRow(row)) continue;
+
       parseArrayFields(row);
 
       // Let the model apply domain-specific transforms (e.g. derive unitSerialId)
@@ -220,6 +225,8 @@ export async function stageV2XlsRecords(parsedData, model) {
       if (!rows || rows.length === 0) continue;
 
       for (const row of rows) {
+        if (isEmptyRow(row)) continue;
+
         parseArrayFields(row);
 
         const pkValue = row[child.primaryKey];
