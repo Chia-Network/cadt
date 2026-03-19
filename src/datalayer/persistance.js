@@ -860,6 +860,19 @@ const pushChangeListToDataLayer = async (storeId, changelist, { skipTransactionW
         return false;
       }
 
+      if (data.error && data.error.includes('is not owned by DL Wallet')) {
+        logger.error(
+          `Store ${storeId} is not owned by this wallet's DL Wallet. ` +
+            `This is a permanent error — push will never succeed until store ownership is restored. ` +
+            `This typically happens when the node was redeployed with a new wallet.`,
+        );
+        const err = new Error(
+          `Store ${storeId} is not owned by this wallet's DL Wallet`,
+        );
+        err.permanent = true;
+        throw err;
+      }
+
       logger.error(
         `There was an error pushing your changes to the datalayer, ${JSON.stringify(
           data,
@@ -867,6 +880,9 @@ const pushChangeListToDataLayer = async (storeId, changelist, { skipTransactionW
       );
       return false;
     } catch (error) {
+      if (error.permanent) {
+        throw error;
+      }
       logger.error(error.message);
       logger.info('There was an error pushing your changes to the datalayer');
       return false;

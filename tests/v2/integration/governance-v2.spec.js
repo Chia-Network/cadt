@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
@@ -1343,6 +1344,147 @@ describe('V2 Governance Model Tests', function () {
       });
       expect(metaRecord).to.exist;
       expect(metaRecord.meta_value).to.equal(governanceBodyId);
+    });
+  });
+
+  describe('Governance Store Ownership Validation', function () {
+    beforeEach(async function () {
+      await GovernanceV2.destroy({ where: {} });
+      await MetaV2.destroy({ where: {} });
+      const { Meta } = await import('../../../src/models/index.js');
+      await Meta.destroy({ where: { metaKey: 'mainGoveranceBodyId' } });
+      await Meta.destroy({ where: { metaKey: 'governanceBodyId' } });
+    });
+
+    it('should reject update when governance store is not owned', async function () {
+      // Set a fake governanceBodyId in MetaV2 that was never created via simulator
+      await MetaV2.upsert({
+        meta_key: 'governanceBodyId',
+        meta_value: 'fake-unowned-store-id-that-does-not-exist',
+      });
+
+      // Seed existing confirmed governance data to verify it is NOT modified
+      await GovernanceV2.upsert({
+        meta_key: 'orgList',
+        meta_value: JSON.stringify([{ orgUid: 'original-org' }]),
+        confirmed: true,
+      });
+
+      let threwOwnershipError = false;
+      try {
+        await GovernanceV2.updateGoveranceBodyData([
+          { key: 'orgList', value: JSON.stringify([{ orgUid: 'new-org' }]) },
+        ]);
+      } catch (error) {
+        expect(error.message).to.include('not owned');
+        threwOwnershipError = true;
+      }
+      expect(threwOwnershipError, 'Expected ownership check to throw').to.be.true;
+
+      // Verify existing data was NOT modified
+      const orgListRecord = await GovernanceV2.findOne({
+        where: { meta_key: 'orgList' },
+      });
+      expect(orgListRecord).to.exist;
+      expect(orgListRecord.confirmed).to.be.true;
+      const parsed = JSON.parse(orgListRecord.meta_value);
+      expect(parsed).to.deep.equal([{ orgUid: 'original-org' }]);
+    });
+
+    it('should reject update via HTTP when governance store is not owned', async function () {
+      // Set up governance body with a fake store ID
+      await MetaV2.upsert({
+        meta_key: 'governanceBodyId',
+        meta_value: 'fake-unowned-store-id-that-does-not-exist',
+      });
+
+      await withConfigOverride(
+        async () => {
+          const response = await supertest(app)
+            .post('/v2/governance/meta/orgList')
+            .send([{ orgUid: 'test-org' }]);
+
+          expect(response.status).to.equal(400);
+          expect(response.body).to.have.property('success', false);
+          expect(response.body.error).to.include('not owned');
+        },
+        {
+          V2: {
+            GOVERNANCE: { GOVERNANCE_BODY_ID: '' },
+            IS_GOVERNANCE_BODY: true,
+          },
+        },
+      );
+    });
+
+    it('should succeed when governance store is owned', async function () {
+      const { Meta } = await import('../../../src/models/index.js');
+      await Meta.destroy({ where: { metaKey: 'mainGoveranceBodyId' } });
+
+      await withConfigOverride(
+        async () => {
+          // Create governance body (creates owned stores via simulator)
+          await GovernanceV2.createGoveranceBody();
+
+          // Update orgList -- should succeed because the store is owned
+          await GovernanceV2.updateGoveranceBodyData([
+            { key: 'orgList', value: JSON.stringify([{ orgUid: 'test-org' }]) },
+          ]);
+
+          const record = await GovernanceV2.findOne({
+            where: { meta_key: 'orgList' },
+          });
+          expect(record).to.exist;
+          const parsed = JSON.parse(record.meta_value);
+          expect(parsed).to.deep.equal([{ orgUid: 'test-org' }]);
+        },
+        {
+          V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+          APP: { USE_SIMULATOR: true },
+        },
+      );
+    });
+
+    it('should pass rollback callback to pushDataLayerChangeList', async function () {
+      const { Meta } = await import('../../../src/models/index.js');
+      await Meta.destroy({ where: { metaKey: 'mainGoveranceBodyId' } });
+
+      await withConfigOverride(
+        async () => {
+          // Create governance body first
+          await GovernanceV2.createGoveranceBody();
+
+          // Seed confirmed orgList data
+          await GovernanceV2.upsert({
+            meta_key: 'orgList',
+            meta_value: JSON.stringify([{ orgUid: 'confirmed-org' }]),
+            confirmed: true,
+          });
+
+          // Stub the datalayer push to capture arguments
+          const datalayerModule = await import('../../../src/datalayer/index.js');
+          const pushStub = sinon.stub(datalayerModule.default, 'pushDataLayerChangeList');
+
+          try {
+            await GovernanceV2.updateGoveranceBodyData([
+              { key: 'orgList', value: JSON.stringify([{ orgUid: 'new-org' }]) },
+            ]);
+
+            // Verify pushDataLayerChangeList was called with a failedCallback (3rd arg)
+            expect(pushStub.calledOnce).to.be.true;
+            const [storeId, changeList, failedCallback] = pushStub.firstCall.args;
+            expect(storeId).to.be.a('string');
+            expect(changeList).to.be.an('array');
+            expect(failedCallback).to.be.a('function');
+          } finally {
+            pushStub.restore();
+          }
+        },
+        {
+          V2: { GOVERNANCE: { GOVERNANCE_BODY_ID: '' } },
+          APP: { USE_SIMULATOR: true },
+        },
+      );
     });
   });
 });

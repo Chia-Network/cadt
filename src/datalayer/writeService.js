@@ -295,10 +295,23 @@ export const pushChangesWhenStoreIsAvailable = async (
     if (!hasUnconfirmed && confirmed) {
       logger.info(`pushing to datalayer ${storeId}`);
 
-      const success = await dataLayer.pushChangeListToDataLayer(
-        storeId,
-        changeList,
-      );
+      let success;
+      try {
+        success = await dataLayer.pushChangeListToDataLayer(
+          storeId,
+          changeList,
+        );
+      } catch (pushError) {
+        if (pushError.permanent) {
+          logger.error(
+            `Permanent push failure for store ${storeId}: ${pushError.message}. ` +
+              `Invoking failedCallback and aborting retries.`,
+          );
+          failedCallback();
+          throw pushError;
+        }
+        throw pushError;
+      }
 
       if (!success) {
         logger.error(
