@@ -1532,6 +1532,9 @@ jobs:
           verify_field "$P1" '.projectSubtype' 'Marine Ecosystem' 'projectSubtype'
           verify_field "$P1" '.projectUnitMetric' 'tCO2e' 'projectUnitMetric'
           verify_field "$P1" '.projectCreditingProgram' 'V2 Generic Testing Data Carbon Credits Program' 'projectCreditingProgram'
+          verify_field "$P1" '.projectLink' 'https://v2-generic-testing-data.org/projects/v2-gtd001' 'projectLink'
+          verify_field "$P1" '(.projectSector | sort | join(", "))' 'Afforestation and reforestation' 'projectSector'
+          verify_field "$P1" '(.projectType | join(", "))' 'Afforestation' 'projectType'
           echo ""
 
           echo "--- Project V2-GTD002 (Moroccan Geothermal - EDITED) ---"
@@ -1540,7 +1543,13 @@ jobs:
           verify_field "$P2" '.projectRegistryName' 'VCS' 'projectRegistryName'
           verify_field "$P2" '.projectDescription' 'V2 Generic Testing Data - UPDATED - Expanded geothermal energy generation and district heating in the Atlas Mountains region of Morocco' 'projectDescription (EDITED)'
           verify_field "$P2" '.projectStatus' 'Validated' 'projectStatus'
+          verify_field "$P2" '.projectStatusDate' '2025-02-20' 'projectStatusDate'
           verify_field "$P2" '.projectSubtype' 'Geothermal' 'projectSubtype'
+          verify_field "$P2" '.projectUnitMetric' 'tCO2e' 'projectUnitMetric'
+          verify_field "$P2" '.projectCreditingProgram' 'Gold Standard Voluntary Emission Reductions' 'projectCreditingProgram'
+          verify_field "$P2" '.projectLink' 'https://v2-generic-testing-data.org/projects/v2-gtd002' 'projectLink'
+          verify_field "$P2" '(.projectSector | sort | join(", "))' 'Energy industries (renewable-/ non renewable sources), Mining/mineral production' 'projectSector'
+          verify_field "$P2" '(.projectType | join(", "))' 'Solar' 'projectType'
           echo ""
 
           echo "--- Project V2-GTD003 (Brazilian Agroforestry) ---"
@@ -1549,7 +1558,13 @@ jobs:
           verify_field "$P3" '.projectRegistryName' 'CAR' 'projectRegistryName'
           verify_field "$P3" '.projectDescription' 'V2 Generic Testing Data - Agroforestry systems combining shade-grown coffee with native tree species in the Brazilian Atlantic Forest' 'projectDescription'
           verify_field "$P3" '.projectStatus' 'Registered' 'projectStatus'
+          verify_field "$P3" '.projectStatusDate' '2025-03-10' 'projectStatusDate'
           verify_field "$P3" '.projectSubtype' 'Agroforestry' 'projectSubtype'
+          verify_field "$P3" '.projectUnitMetric' 'tCO2e' 'projectUnitMetric'
+          verify_field "$P3" '.projectCreditingProgram' 'Verra Verified Carbon Standard' 'projectCreditingProgram'
+          verify_field "$P3" '.projectLink' 'https://v2-generic-testing-data.org/projects/v2-gtd003' 'projectLink'
+          verify_field "$P3" '(.projectSector | sort | join(", "))' 'Afforestation and reforestation, Agriculture' 'projectSector'
+          verify_field "$P3" '(.projectType | join(", "))' 'Reforestation' 'projectType'
           echo ""
 
           if [ "$ERRORS" -gt 0 ]; then
@@ -1591,8 +1606,15 @@ jobs:
           verify_field "$U1" '.unitType' 'Removal - nature' 'unitType'
           verify_field "$U1" '.unitVintageYear' '2025' 'unitVintageYear'
           verify_field "$U1" '.unitStatus' 'Held' 'unitStatus'
+          verify_field "$U1" '.unitStatusReason' 'Available for trading on voluntary carbon market' 'unitStatusReason'
+          verify_field "$U1" '.unitStatusDate' '2025-06-15' 'unitStatusDate'
           verify_field "$U1" '.unitMetric' 'tCO2e' 'unitMetric'
           verify_field "$U1" '.unitCurrentOwner' 'V2 Generic Testing Data Owner - Blue Carbon Trust' 'unitCurrentOwner'
+          verify_field "$U1" '.unitLink' 'https://v2-generic-testing-data.org/units/v2-gtd001-001' 'unitLink'
+          verify_field "$U1" '.unitItmosReferenceId' 'ITMO-V2GTD-MA-2025-001' 'unitItmosReferenceId'
+          verify_field "$U1" '.marketplace' 'Generic Testing Data Climate Impact Exchange' 'marketplace'
+          verify_field "$U1" '.marketplaceLink' 'https://example.com/cie' 'marketplaceLink'
+          verify_field "$U1" '.marketplaceIdentifier' 'CIE-V2GTD-2025-001' 'marketplaceIdentifier'
           echo ""
 
           echo "--- Unit V2-GTD002-UNIT-001 (Geothermal, RETIRED - EDITED) ---"
@@ -1601,10 +1623,18 @@ jobs:
           verify_field "$U2" '.unitEndBlock' 'V2-GTD002-2000' 'unitEndBlock'
           verify_field "$U2" '.unitCount' '2000' 'unitCount'
           verify_field "$U2" '.unitType' 'Reduction - technical' 'unitType'
+          verify_field "$U2" '.unitVintageYear' '2025' 'unitVintageYear'
           verify_field "$U2" '.unitStatus' 'Retired' 'unitStatus (EDITED)'
+          verify_field "$U2" '.unitStatusReason' 'Voluntarily retired for corporate sustainability pledge' 'unitStatusReason'
+          verify_field "$U2" '.unitStatusDate' '2025-07-20' 'unitStatusDate'
           verify_field "$U2" '.unitRetirementDetail' 'V2 Generic Testing Data - Retired for carbon offset compliance' 'unitRetirementDetail (EDITED)'
           verify_field "$U2" '.unitRetirementBeneficiary' 'V2 Generic Testing Data - Morocco Climate Fund' 'unitRetirementBeneficiary (EDITED)'
+          verify_field "$U2" '.unitRetirementBeneficiaryId' 'V2GTD-RETIRE-BENE-003' 'unitRetirementBeneficiaryId'
+          verify_field "$U2" '.unitCurrentOwner' 'V2 Generic Testing Data Owner - Atlas Energy Group' 'unitCurrentOwner'
+          verify_field "$U2" '.unitLink' 'https://v2-generic-testing-data.org/units/v2-gtd002-001' 'unitLink'
+          verify_field "$U2" '.unitItmosReferenceId' 'ITMO-V2GTD-JP-2025-003' 'unitItmosReferenceId'
           verify_field "$U2" '.marketplace' 'V2 Generic Testing Data Marketplace' 'marketplace'
+          verify_field "$U2" '.marketplaceLink' 'https://v2-generic-testing-data.org/marketplace' 'marketplaceLink'
           verify_field "$U2" '.marketplaceIdentifier' 'V2-GTD-MKT-002' 'marketplaceIdentifier'
           echo ""
 
@@ -1614,8 +1644,16 @@ jobs:
           verify_field "$U3" '.unitEndBlock' 'V2-GTD003-300' 'unitEndBlock'
           verify_field "$U3" '.unitCount' '300' 'unitCount'
           verify_field "$U3" '.unitType' 'Removal - nature' 'unitType'
+          verify_field "$U3" '.unitVintageYear' '2025' 'unitVintageYear'
           verify_field "$U3" '.unitStatus' 'Held' 'unitStatus'
+          verify_field "$U3" '.unitStatusReason' 'Held pending bilateral trade agreement finalization' 'unitStatusReason'
+          verify_field "$U3" '.unitStatusDate' '2025-08-10' 'unitStatusDate'
           verify_field "$U3" '.unitCurrentOwner' 'V2 Generic Testing Data Owner - Atlantic Forest Cooperative' 'unitCurrentOwner'
+          verify_field "$U3" '.unitLink' 'https://v2-generic-testing-data.org/units/v2-gtd003-001' 'unitLink'
+          verify_field "$U3" '.unitItmosReferenceId' 'ITMO-V2GTD-BR-2025-002' 'unitItmosReferenceId'
+          verify_field "$U3" '.marketplace' 'Generic Testing Data Carbon Bridge Platform' 'marketplace'
+          verify_field "$U3" '.marketplaceLink' 'https://example.com/cbp' 'marketplaceLink'
+          verify_field "$U3" '.marketplaceIdentifier' 'CBP-V2GTD-2025-002' 'marketplaceIdentifier'
           echo ""
 
           if [ "$ERRORS" -gt 0 ]; then
@@ -1654,6 +1692,8 @@ jobs:
           verify_field "$METH" '.methodologyName' 'V2 Generic Testing Data - Sustainable Land Management Methodology' 'methodologyName'
           verify_field "$METH" '.methodologyVersion' '3.2' 'methodologyVersion'
           verify_field "$METH" '.methodologyType' 'Removal - nature' 'methodologyType'
+          verify_field "$METH" '.methodologyDate' '2025-06-15' 'methodologyDate'
+          verify_field "$METH" '.methodologyLink' 'https://v2-generic-testing-data.org/methodology/slm' 'methodologyLink'
           echo ""
 
           echo "--- Program ---"
@@ -1662,22 +1702,29 @@ jobs:
           verify_field "$PROG" '.programRegistry' 'Gold Standard' 'programRegistry'
           verify_field "$PROG" '.programRegistryActivityId' 'V2-GTD-ACT-001' 'programRegistryActivityId'
           verify_field "$PROG" '.programRegistryProgramId' 'V2-GTD-PROG-001' 'programRegistryProgramId'
+          verify_field "$PROG" '.programDescription' 'V2 Generic Testing Data comprehensive carbon credits program for testing data synchronization' 'programDescription'
           echo ""
 
           echo "--- Stakeholders ---"
           STAKEHOLDERS=$(curl -s "$BASE/stakeholder?page=1&limit=1000")
           SH1=$(echo "$STAKEHOLDERS" | jq '[(if type == "object" then .data else . end)[] | select(.stakeholderName == "V2 Generic Testing Data - Green Horizons Foundation")] | .[0]')
           verify_field "$SH1" '.stakeholderType' 'Owner' 'stakeholder1 type'
+          verify_field "$SH1" '.stakeholderLink' 'https://v2-generic-testing-data.org/stakeholders/green-horizons' 'stakeholder1 link'
           SH2=$(echo "$STAKEHOLDERS" | jq '[(if type == "object" then .data else . end)[] | select(.stakeholderName == "V2 Generic Testing Data - EcoMetrics Consulting")] | .[0]')
           verify_field "$SH2" '.stakeholderType' 'Consultant' 'stakeholder2 type'
+          verify_field "$SH2" '.stakeholderLink' 'https://v2-generic-testing-data.org/stakeholders/ecometrics' 'stakeholder2 link'
           echo ""
 
           echo "--- Labels ---"
           LABELS=$(curl -s "$BASE/label?page=1&limit=1000")
           L1=$(echo "$LABELS" | jq '[(if type == "object" then .data else . end)[] | select(.labelName == "V2 Generic Testing Data - Marine Carbon Standard")] | .[0]')
           verify_field "$L1" '.labelType' 'Certification' 'label1 type'
+          verify_field "$L1" '.labelLink' 'https://v2-generic-testing-data.org/labels/marine-carbon' 'label1 link'
+          verify_field "$L1" '.labelDate' '2025-03-01' 'label1 date'
           L2=$(echo "$LABELS" | jq '[(if type == "object" then .data else . end)[] | select(.labelName == "V2 Generic Testing Data - Renewable Energy Certificate")] | .[0]')
           verify_field "$L2" '.labelType' 'Article 6 - Authorisation' 'label2 type'
+          verify_field "$L2" '.labelLink' 'https://v2-generic-testing-data.org/labels/renewable-energy' 'label2 link'
+          verify_field "$L2" '.labelDate' '2025-04-15' 'label2 date'
           echo ""
 
           if [ "$ERRORS" -gt 0 ]; then
@@ -1714,31 +1761,52 @@ jobs:
           LOCATIONS=$(curl -s "$BASE/location?page=1&limit=1000")
           LOC_JP=$(echo "$LOCATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.locationCountry == "Japan")] | .[0]')
           verify_field "$LOC_JP" '.locationRegion' 'Okinawa' 'Japan locationRegion'
+          verify_field "$LOC_JP" '.locationMapType' 'GeoJSON' 'Japan locationMapType'
+          verify_field "$LOC_JP" '.locationMapFileLink' 'https://v2-generic-testing-data.org/maps/v2-gtd001' 'Japan locationMapFileLink'
           LOC_MA=$(echo "$LOCATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.locationCountry == "Morocco")] | .[0]')
           verify_field "$LOC_MA" '.locationRegion' 'Atlas Mountains' 'Morocco locationRegion'
+          verify_field "$LOC_MA" '.locationMapType' 'GeoJSON' 'Morocco locationMapType'
+          verify_field "$LOC_MA" '.locationMapFileLink' 'https://v2-generic-testing-data.org/maps/v2-gtd002' 'Morocco locationMapFileLink'
           LOC_BR=$(echo "$LOCATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.locationCountry == "Brazil")] | .[0]')
           verify_field "$LOC_BR" '.locationRegion' 'Minas Gerais' 'Brazil locationRegion'
+          verify_field "$LOC_BR" '.locationMapType' 'GeoJSON' 'Brazil locationMapType'
+          verify_field "$LOC_BR" '.locationMapFileLink' 'https://v2-generic-testing-data.org/maps/v2-gtd003' 'Brazil locationMapFileLink'
           echo ""
 
           echo "--- Validations ---"
           VALIDATIONS=$(curl -s "$BASE/validation?page=1&limit=1000")
           VAL1=$(echo "$VALIDATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.validationId == "V2-GTD-VAL-001")] | .[0]')
           verify_field "$VAL1" '.validationBody' 'SCS Global Services' 'val1 body'
+          verify_field "$VAL1" '.validationType' 'Validation of Project Design Document' 'val1 type'
+          verify_field "$VAL1" '.validationDate' '2025-01-10' 'val1 date'
+          verify_field "$VAL1" '.validationCreditPeriodStartDate' '2025-01-01' 'val1 creditPeriodStart'
           verify_field "$VAL1" '.validationCreditPeriodEndDate' '2035-12-31' 'val1 creditPeriodEnd'
           VAL2=$(echo "$VALIDATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.validationId == "V2-GTD-VAL-002")] | .[0]')
           verify_field "$VAL2" '.validationBody' 'AENOR International S.A.U.' 'val2 body'
+          verify_field "$VAL2" '.validationType' 'Validation of Renewal of Credit Period' 'val2 type'
+          verify_field "$VAL2" '.validationDate' '2025-02-15' 'val2 date'
+          verify_field "$VAL2" '.validationCreditPeriodEndDate' '2030-12-31' 'val2 creditPeriodEnd'
           VAL3=$(echo "$VALIDATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.validationId == "V2-GTD-VAL-003")] | .[0]')
           verify_field "$VAL3" '.validationBody' 'Ruby Canyon Environmental Inc' 'val3 body'
+          verify_field "$VAL3" '.validationType' 'Validation of Project Design Document' 'val3 type'
+          verify_field "$VAL3" '.validationDate' '2025-03-05' 'val3 date'
+          verify_field "$VAL3" '.validationCreditPeriodEndDate' '2040-12-31' 'val3 creditPeriodEnd'
           echo ""
 
           echo "--- Verifications ---"
           VERIFICATIONS=$(curl -s "$BASE/verification?page=1&limit=1000")
           VER1=$(echo "$VERIFICATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.verificationId == "V2-GTD-VER-001")] | .[0]')
           verify_field "$VER1" '.verificationBody' 'SCS Global Services' 'ver1 body'
+          verify_field "$VER1" '.verificationStartDate' '2025-01-01' 'ver1 startDate'
+          verify_field "$VER1" '.verificationEndDate' '2025-12-31' 'ver1 endDate'
           VER2=$(echo "$VERIFICATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.verificationId == "V2-GTD-VER-002")] | .[0]')
           verify_field "$VER2" '.verificationBody' 'AENOR International S.A.U.' 'ver2 body'
+          verify_field "$VER2" '.verificationStartDate' '2025-01-01' 'ver2 startDate'
+          verify_field "$VER2" '.verificationEndDate' '2025-12-31' 'ver2 endDate'
           VER3=$(echo "$VERIFICATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.verificationId == "V2-GTD-VER-003")] | .[0]')
           verify_field "$VER3" '.verificationBody' 'Ruby Canyon Environmental Inc' 'ver3 body'
+          verify_field "$VER3" '.verificationStartDate' '2025-01-01' 'ver3 startDate'
+          verify_field "$VER3" '.verificationEndDate' '2025-12-31' 'ver3 endDate'
           echo ""
 
           echo "--- Issuances ---"
@@ -1785,10 +1853,16 @@ jobs:
           ESTIMATIONS=$(curl -s "$BASE/estimation?page=1&limit=1000")
           EST1=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-001")] | .[0]')
           verify_field "$EST1" '.estimationUnitCount' '15000' 'est1 unitCount'
+          verify_field "$EST1" '.estimationStartDate' '2025-01-01' 'est1 startDate'
+          verify_field "$EST1" '.estimationEndDate' '2025-12-31' 'est1 endDate'
           EST2=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-002")] | .[0]')
           verify_field "$EST2" '.estimationUnitCount' '45000' 'est2 unitCount'
+          verify_field "$EST2" '.estimationStartDate' '2025-01-01' 'est2 startDate'
+          verify_field "$EST2" '.estimationEndDate' '2025-12-31' 'est2 endDate'
           EST3=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-003")] | .[0]')
           verify_field "$EST3" '.estimationUnitCount' '8000' 'est3 unitCount'
+          verify_field "$EST3" '.estimationStartDate' '2025-01-01' 'est3 startDate'
+          verify_field "$EST3" '.estimationEndDate' '2025-12-31' 'est3 endDate'
 
           DELETED_EST=$(echo "$ESTIMATIONS" | jq '[(if type == "object" then .data else . end)[] | select(.estimationReferenceNo == "V2-GTD-EST-004-DELETE")] | length')
           if [ "$DELETED_EST" -eq 0 ]; then
@@ -1804,11 +1878,15 @@ jobs:
           R1=$(echo "$RATINGS" | jq '[(if type == "object" then .data else . end)[] | select(.ratingName == "V2 Generic Testing Data - Blue Carbon CDP Rating")] | .[0]')
           verify_field "$R1" '.ratingType' 'CDP' 'rating1 type'
           verify_field "$R1" '.ratingValue' 'A-' 'rating1 value'
+          verify_field "$R1" '.ratingLink' 'https://v2-generic-testing-data.org/ratings/v2-gtd001' 'rating1 link'
           R2=$(echo "$RATINGS" | jq '[(if type == "object" then .data else . end)[] | select(.ratingName == "V2 Generic Testing Data - Geothermal CCQI Rating")] | .[0]')
           verify_field "$R2" '.ratingType' 'CCQI' 'rating2 type'
           verify_field "$R2" '.ratingValue' '87' 'rating2 value'
+          verify_field "$R2" '.ratingLink' 'https://v2-generic-testing-data.org/ratings/v2-gtd002' 'rating2 link'
           R3=$(echo "$RATINGS" | jq '[(if type == "object" then .data else . end)[] | select(.ratingName == "V2 Generic Testing Data - Agroforestry CDP Rating")] | .[0]')
+          verify_field "$R3" '.ratingType' 'CDP' 'rating3 type'
           verify_field "$R3" '.ratingValue' 'B+' 'rating3 value'
+          verify_field "$R3" '.ratingLink' 'https://v2-generic-testing-data.org/ratings/v2-gtd003' 'rating3 link'
           echo ""
 
           if [ "$ERRORS" -gt 0 ]; then
@@ -1894,27 +1972,43 @@ jobs:
           verify_field "$T5" '.aefT5AuthorizedEntitiesId' 'V2-GTD-T5-001' 'T5 id'
           verify_field "$T5" '.aefT5AuthorizedEntitiesName' 'V2 Generic Testing Data - Carbon Markets Authority' 'T5 name'
           verify_field "$T5" '.aefT5AuthorizedEntitiesIncorporationCountry' 'Japan' 'T5 country'
+          verify_field "$T5" '.aefT5AuthorizedEntitiesCooperativeApproachId' 'V2-GTD-CA-001' 'T5 cooperativeApproachId'
+          verify_field "$T5" '.aefT5AuthorizedEntitiesAuthorizationDate' '2025-01-01' 'T5 authorizationDate'
           echo ""
 
           echo "--- AEF T1 (Submission) ---"
           T1=$(curl -s "$BASE/aef-t1-submission?page=1&limit=1000" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
           verify_field "$T1" '.aefT1SubmissionParty' 'V2 Generic Testing Data - Japan' 'T1 party'
+          verify_field "$T1" '.aefT1SubmissionVersion' '2.0' 'T1 version'
           verify_field "$T1" '.aefT1SubmissionReportYear' '2025' 'T1 reportYear'
+          verify_field "$T1" '.aefT1SubmissionSubmissionDate' '2025-03-15' 'T1 submissionDate'
+          verify_field "$T1" '.aefT1SubmissionReviewStatus' 'Completed' 'T1 reviewStatus'
           verify_field "$T1" '.aefT1SubmissionResultCheck' 'Passed' 'T1 resultCheck'
+          verify_field "$T1" '.aefT1SubmissionNdcFirstYear' '2025' 'T1 ndcFirstYear'
+          verify_field "$T1" '.aefT1SubmissionNdcLastYear' '2030' 'T1 ndcLastYear'
           echo ""
 
           echo "--- AEF T2 (Authorizations) ---"
           T2=$(curl -s "$BASE/aef-t2-authorizations?page=1&limit=1000" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
           verify_field "$T2" '.aefT2AuthorizationsId' 'V2-GTD-T2-001' 'T2 id'
+          verify_field "$T2" '.aefT2AuthorizationsDate' '2025-04-01' 'T2 date'
           verify_field "$T2" '.aefT2AuthorizationsQuantity' '500' 'T2 quantity'
           verify_field "$T2" '.aefT2AuthorizationsMetric' 'GHC' 'T2 metric'
+          verify_field "$T2" '.aefT2AuthorizationsSector' 'Energy industries (renewable-/ non renewable sources)' 'T2 sector'
+          verify_field "$T2" '.aefT2AuthorizationsActivityType' 'Wind' 'T2 activityType'
+          verify_field "$T2" '.aefT2AuthorizationsPurposesForAuthorization' 'IMP' 'T2 purposesForAuthorization'
+          verify_field "$T2" '.aefT2AuthorizationsAuthorizedTimeframe' '2025-2030' 'T2 authorizedTimeframe'
           echo ""
 
           echo "--- AEF T3 (Actions) ---"
           T3=$(curl -s "$BASE/aef-t3-actions?page=1&limit=1000" | jq '[(if type == "object" then .data else . end)[]] | .[0]')
           verify_field "$T3" '.aefT3ActionsQuantityTCo2' '250' 'T3 quantity'
           verify_field "$T3" '.aefT3ActionsType' 'Transfer' 'T3 type'
+          verify_field "$T3" '.aefT3ActionsSubtype' 'First international transfer' 'T3 subtype'
           verify_field "$T3" '.aefT3ActionsMitigationType' 'Emission reductions' 'T3 mitigationType'
+          verify_field "$T3" '.aefT3ActionsVintageYear' '2025' 'T3 vintageYear'
+          verify_field "$T3" '.aefT3ActionsConsistencyCheckResult' 'Passed' 'T3 consistencyCheckResult'
+          verify_field "$T3" '.aefT3ActionsDate' '2025-05-01' 'T3 date'
           echo ""
 
           echo "--- AEF T4 (Holdings) ---"
@@ -1922,6 +2016,9 @@ jobs:
           verify_field "$T4" '.aefT4HoldingsQuantityTCo2' '500' 'T4 quantity'
           verify_field "$T4" '.aefT4HoldingsMetric' 'GHC' 'T4 metric'
           verify_field "$T4" '.aefT4HoldingsMitigationType' 'Emission reductions' 'T4 mitigationType'
+          verify_field "$T4" '.aefT4HoldingsVintageYear' '2025' 'T4 vintageYear'
+          verify_field "$T4" '.aefT4HoldingsCoopoerativeApproachId' 'V2-GTD-CA-001' 'T4 cooperativeApproachId'
+          verify_field "$T4" '.aefT4HoldingsAuthorizationId' 'V2-GTD-T2-001' 'T4 authorizationId'
           echo ""
 
           if [ "$ERRORS" -gt 0 ]; then
@@ -2449,7 +2546,12 @@ jobs:
           verify_field "$P1" '.projectType' 'Afforestation' 'projectType'
           verify_field "$P1" '.projectStatus' 'Registered' 'projectStatus'
           verify_field "$P1" '.methodology' 'ACR - Afforestation and Reforestation of Degraded Lands' 'methodology'
+          verify_field "$P1" '.methodology2' 'VCS - VM0007' 'methodology2'
           verify_field "$P1" '.validationBody' 'SCS Global Services' 'validationBody'
+          verify_field "$P1" '.projectLink' 'https://generic-testing-data.org/project1' 'projectLink'
+          verify_field "$P1" '.program' 'Generic Testing Data Program 1' 'program'
+          verify_field "$P1" '.unitMetric' 'tCO2e' 'unitMetric'
+          verify_field "$P1" '.originProjectId' 'GTD001-ORIGIN' 'originProjectId'
           echo ""
 
           echo "--- GTD001 nested data ---"
@@ -2466,6 +2568,10 @@ jobs:
           verify_field "$P2" '.currentRegistry' 'Gold Standard' 'currentRegistry'
           verify_field "$P2" '.projectStatus' 'Registered' 'projectStatus'
           verify_field "$P2" '.methodology' 'GS - METHODOLOGY FOR METERED & MEASURED ENERGY COOKING DEVICES' 'methodology'
+          verify_field "$P2" '.methodology2' 'GS - REDUCED EMISSIONS FROM COOKING AND HEATING – TECHNOLOGIES AND PRACTICES TO DISPLACE DECENTRALIZED THERMAL ENERGY CONSUMPTION (TPDDTEC)' 'methodology2'
+          verify_field "$P2" '.validationBody' 'TÜV SÜD South Asia Private Limited' 'validationBody'
+          verify_field "$P2" '.sector' 'Electricity; gas, steam and air conditioning supply' 'sector'
+          verify_field "$P2" '.projectLink' 'https://generic-testing-data.org/project2' 'projectLink'
           echo ""
 
           echo "--- GTD002 nested data (2 locations, 2 labels, 2 co-benefits) ---"
@@ -2523,14 +2629,26 @@ jobs:
           P3=$(echo "$PROJECTS" | jq '[.data[] | select(.projectName == "Generic Testing Data - Forestry Project")] | .[0]')
           verify_field "$P3" '.projectName' 'Generic Testing Data - Forestry Project' 'projectName'
           verify_field "$P3" '.currentRegistry' 'Verra' 'currentRegistry'
+          verify_field "$P3" '.projectStatus' 'Listed' 'projectStatus'
+          verify_field "$P3" '.projectType' 'Forestry' 'projectType'
+          verify_field "$P3" '.methodology' 'VCS - VM0001' 'methodology'
+          verify_field "$P3" '.methodology2' 'GS - REDUCED EMISSIONS FROM COOKING AND HEATING – TECHNOLOGIES AND PRACTICES TO DISPLACE DECENTRALIZED THERMAL ENERGY CONSUMPTION (TPDDTEC)' 'methodology2'
+          verify_field "$P3" '.validationBody' 'First Environment, Inc.' 'validationBody'
           verify_field "$P3" '.projectLocations[0].country' 'Brazil' 'location country'
           verify_field "$P3" '.projectLocations[0].inCountryRegion' 'Amazonas' 'location inCountryRegion'
           echo ""
 
           echo "--- GTD004 (Energy Efficiency - Completed) ---"
           P4=$(echo "$PROJECTS" | jq '[.data[] | select(.projectStatus == "Completed")] | .[0]')
+          verify_field "$P4" '.projectName' 'Generic Testing Data - Energy Efficiency Project' 'projectName'
           verify_field "$P4" '.projectStatus' 'Completed' 'projectStatus'
           verify_field "$P4" '.currentRegistry' 'Climate Action Reserve (CAR)' 'currentRegistry'
+          verify_field "$P4" '.sector' 'Manufacturing' 'sector'
+          verify_field "$P4" '.projectType' 'Energy Demand' 'projectType'
+          verify_field "$P4" '.methodology' 'CAR - U.S. Landfill' 'methodology'
+          verify_field "$P4" '.methodology2' 'CDM - ACM0012' 'methodology2'
+          verify_field "$P4" '.validationBody' 'GHD Limited' 'validationBody'
+          verify_field "$P4" '.projectLink' 'https://generic-testing-data.org/project4' 'projectLink'
           echo ""
 
           echo "--- GTD009 (Nordic Wind) ---"
@@ -2538,6 +2656,20 @@ jobs:
           verify_field "$P9" '.projectName' 'Generic Testing Data - Nordic Wind Project' 'projectName'
           verify_field "$P9" '.currentRegistry' 'Sweden National Registry' 'currentRegistry'
           verify_field "$P9" '.sector' 'Energy Industries (renewable/non-renewable sources)' 'sector'
+          verify_field "$P9" '.projectType' 'Energy Demand' 'projectType'
+          verify_field "$P9" '.methodology' 'CDM - ACM0002' 'methodology'
+          verify_field "$P9" '.methodology2' 'CDM - ACM0002' 'methodology2'
+          verify_field "$P9" '.validationBody' 'Det Norske Veritas (U.S.A.), Inc.' 'validationBody'
+
+          echo ""
+          echo "--- GTD010 (Patagonian Conservation) ---"
+          P10=$(echo "$PROJECTS" | jq '[.data[] | select(.projectName == "Generic Testing Data - Patagonian Conservation Project")] | .[0]')
+          verify_field "$P10" '.projectName' 'Generic Testing Data - Patagonian Conservation Project' 'projectName'
+          verify_field "$P10" '.currentRegistry' 'Chile National Registry' 'currentRegistry'
+          verify_field "$P10" '.projectStatus' 'Approved' 'projectStatus'
+          verify_field "$P10" '.projectType' 'Conservation' 'projectType'
+          verify_field "$P10" '.methodology' 'VCS - VM0003' 'methodology'
+          verify_field "$P10" '.validationBody' 'Ruby Canyon Environmental, Inc' 'validationBody'
           echo ""
 
           if [ "$ERRORS" -gt 0 ]; then
@@ -2571,36 +2703,96 @@ jobs:
             fi
           }
 
-          echo "--- GTD001 unit ---"
+          echo "--- GTD001 unit (Held, USA) ---"
           U1=$(echo "$UNITS" | jq '[.data[] | select(.serialNumberBlock == "GTD001-001-GTD001-100")] | .[0]')
           verify_field "$U1" '.unitOwner' 'Generic Testing Data Owner 1' 'unitOwner'
           verify_field "$U1" '.countryJurisdictionOfOwner' 'United States of America' 'countryJurisdictionOfOwner'
           verify_field "$U1" '.unitCount' '100' 'unitCount'
           verify_field "$U1" '.unitStatus' 'Held' 'unitStatus'
+          verify_field "$U1" '.unitStatusReason' 'Available for trading on voluntary carbon market' 'unitStatusReason'
           verify_field "$U1" '.unitType' 'Removal - nature' 'unitType'
-          verify_field "$U1" '.serialNumberBlock' 'GTD001-001-GTD001-100' 'serialNumberBlock'
+          verify_field "$U1" '.vintageYear' '2024' 'vintageYear'
+          verify_field "$U1" '.marketplace' 'Generic Testing Data Voluntary Carbon Market' 'marketplace'
+          verify_field "$U1" '.marketplaceIdentifier' 'VCM-GTD-GTD001-001' 'marketplaceIdentifier'
+          verify_field "$U1" '.unitTags' 'Generic Testing Data, Renewable energy, Wind power' 'unitTags'
+          verify_field "$U1" '.correspondingAdjustmentDeclaration' 'Unknown' 'correspondingAdjustmentDeclaration'
+          verify_field "$U1" '.correspondingAdjustmentStatus' 'Not Started' 'correspondingAdjustmentStatus'
           echo ""
 
-          echo "--- GTD002 unit ---"
+          echo "--- GTD002 unit (Retired, India) ---"
           U2=$(echo "$UNITS" | jq '[.data[] | select(.unitOwner == "Generic Testing Data Owner 2")] | .[0]')
           verify_field "$U2" '.unitOwner' 'Generic Testing Data Owner 2' 'unitOwner'
+          verify_field "$U2" '.countryJurisdictionOfOwner' 'India' 'countryJurisdictionOfOwner'
           verify_field "$U2" '.unitCount' '500' 'unitCount'
           verify_field "$U2" '.unitStatus' 'Retired' 'unitStatus'
           verify_field "$U2" '.unitStatusReason' 'Retirement for Person or Organization' 'unitStatusReason'
           verify_field "$U2" '.unitType' 'Reduction - technical' 'unitType'
+          verify_field "$U2" '.vintageYear' '2024' 'vintageYear'
           verify_field "$U2" '.marketplace' 'Generic Testing Data Marketplace' 'marketplace'
+          verify_field "$U2" '.marketplaceIdentifier' 'GTD-MKT-001' 'marketplaceIdentifier'
+          verify_field "$U2" '.unitTags' 'Generic Testing Data, Energy efficiency, Sustainable practices' 'unitTags'
+          verify_field "$U2" '.correspondingAdjustmentDeclaration' 'Committed' 'correspondingAdjustmentDeclaration'
+          verify_field "$U2" '.correspondingAdjustmentStatus' 'Completed' 'correspondingAdjustmentStatus'
           echo ""
 
-          echo "--- GTD004 unit ---"
+          echo "--- GTD003 unit (Buffer, Brazil) ---"
+          U3=$(echo "$UNITS" | jq '[.data[] | select(.unitOwner == "Generic Testing Data Owner 3")] | .[0]')
+          verify_field "$U3" '.unitOwner' 'Generic Testing Data Owner 3' 'unitOwner'
+          verify_field "$U3" '.countryJurisdictionOfOwner' 'Brazil' 'countryJurisdictionOfOwner'
+          verify_field "$U3" '.unitCount' '250' 'unitCount'
+          verify_field "$U3" '.unitStatus' 'Buffer' 'unitStatus'
+          verify_field "$U3" '.unitStatusReason' 'Held in buffer pool as risk mitigation reserve' 'unitStatusReason'
+          verify_field "$U3" '.unitType' 'Removal - nature' 'unitType'
+          verify_field "$U3" '.marketplace' 'Generic Testing Data Carbon Bridge' 'marketplace'
+          verify_field "$U3" '.correspondingAdjustmentDeclaration' 'Not Required' 'correspondingAdjustmentDeclaration'
+          verify_field "$U3" '.correspondingAdjustmentStatus' 'Not Applicable' 'correspondingAdjustmentStatus'
+          echo ""
+
+          echo "--- GTD004 unit (Retired, USA) ---"
           U4=$(echo "$UNITS" | jq '[.data[] | select(.unitCount == 1000)] | .[0]')
+          verify_field "$U4" '.unitOwner' 'Generic Testing Data Owner 4' 'unitOwner'
+          verify_field "$U4" '.countryJurisdictionOfOwner' 'United States of America' 'countryJurisdictionOfOwner'
           verify_field "$U4" '.unitCount' '1000' 'unitCount'
           verify_field "$U4" '.unitStatus' 'Retired' 'unitStatus'
+          verify_field "$U4" '.unitStatusReason' 'Retirement for Person or Organization' 'unitStatusReason'
+          verify_field "$U4" '.unitType' 'Reduction - technical' 'unitType'
+          verify_field "$U4" '.vintageYear' '2023' 'vintageYear'
+          verify_field "$U4" '.marketplace' 'Generic Testing Data Green Credits Portal' 'marketplace'
+          verify_field "$U4" '.marketplaceIdentifier' 'GCP-GTD-GTD004-001' 'marketplaceIdentifier'
           echo ""
 
-          echo "--- GTD007 unit ---"
+          echo "--- GTD005 unit (Held, Germany, 2000 count) ---"
+          U5=$(echo "$UNITS" | jq '[.data[] | select(.unitOwner == "Generic Testing Data Owner 5")] | .[0]')
+          verify_field "$U5" '.unitOwner' 'Generic Testing Data Owner 5' 'unitOwner'
+          verify_field "$U5" '.countryJurisdictionOfOwner' 'Germany' 'countryJurisdictionOfOwner'
+          verify_field "$U5" '.unitCount' '2000' 'unitCount'
+          verify_field "$U5" '.unitStatus' 'Held' 'unitStatus'
+          verify_field "$U5" '.unitType' 'Reduction - technical' 'unitType'
+          verify_field "$U5" '.marketplace' 'Generic Testing Data European Marketplace' 'marketplace'
+          echo ""
+
+          echo "--- GTD007 unit (Pending Export, Kenya) ---"
           U7=$(echo "$UNITS" | jq '[.data[] | select(.unitCount == 150)] | .[0]')
+          verify_field "$U7" '.unitOwner' 'Generic Testing Data Owner 7' 'unitOwner'
+          verify_field "$U7" '.countryJurisdictionOfOwner' 'Kenya' 'countryJurisdictionOfOwner'
           verify_field "$U7" '.unitCount' '150' 'unitCount'
           verify_field "$U7" '.unitStatus' 'Pending Export' 'unitStatus'
+          verify_field "$U7" '.unitStatusReason' 'Pending transfer to partner registry system' 'unitStatusReason'
+          verify_field "$U7" '.unitType' 'Removal - nature' 'unitType'
+          verify_field "$U7" '.marketplace' 'Generic Testing Data Climate Exchange' 'marketplace'
+          verify_field "$U7" '.marketplaceIdentifier' 'CLX-GTD-GTD007-001' 'marketplaceIdentifier'
+          echo ""
+
+          echo "--- GTD009 unit (Held, Sweden, 1200 count) ---"
+          U9=$(echo "$UNITS" | jq '[.data[] | select(.unitOwner == "Generic Testing Data Owner 9")] | .[0]')
+          verify_field "$U9" '.unitOwner' 'Generic Testing Data Owner 9' 'unitOwner'
+          verify_field "$U9" '.countryJurisdictionOfOwner' 'Sweden' 'countryJurisdictionOfOwner'
+          verify_field "$U9" '.unitCount' '1200' 'unitCount'
+          verify_field "$U9" '.unitStatus' 'Held' 'unitStatus'
+          verify_field "$U9" '.unitType' 'Reduction - technical' 'unitType'
+          verify_field "$U9" '.marketplace' 'Generic Testing Data Nordic Marketplace' 'marketplace'
+          verify_field "$U9" '.correspondingAdjustmentDeclaration' 'Committed' 'correspondingAdjustmentDeclaration'
+          verify_field "$U9" '.correspondingAdjustmentStatus' 'Pending' 'correspondingAdjustmentStatus'
           echo ""
 
           if [ "$ERRORS" -gt 0 ]; then
