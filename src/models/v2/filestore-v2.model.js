@@ -141,13 +141,16 @@ class FilestoreV2 extends Model {
     const fileStoreId = myOrganization.file_store_subscribed;
 
     if (myOrganization && !fileStoreId) {
-      // Create new file store
-      datalayer.createDataLayerStore().then((newFileStoreId) => {
+      datalayer.waitForSpendableCoins(1).then(() =>
+        datalayer.createDataLayerStoreWithRetry()
+      ).then((newFileStoreId) => {
         datalayer.syncDataLayer(myOrganization.org_uid, { fileStoreId: newFileStoreId });
         OrganizationsV2.update(
           { file_store_subscribed: newFileStoreId },
           { where: { org_uid: myOrganization.org_uid } },
         );
+      }).catch((error) => {
+        loggerV2.error(`[v2]: Failed to create file store: ${error.message}`);
       });
 
       throw new Error('New File store being created, please try again later.');
@@ -195,13 +198,16 @@ class FilestoreV2 extends Model {
     const fileStoreId = myOrganization.file_store_subscribed;
 
     if (!fileStoreId) {
-      // Create new file store
-      datalayer.createDataLayerStore().then((newFileStoreId) => {
+      datalayer.waitForSpendableCoins(1).then(() =>
+        datalayer.createDataLayerStoreWithRetry()
+      ).then((newFileStoreId) => {
         datalayer.syncDataLayer(myOrganization.org_uid, { fileStoreId: newFileStoreId });
         OrganizationsV2.update(
           { file_store_subscribed: newFileStoreId },
           { where: { org_uid: myOrganization.org_uid } },
         );
+      }).catch((error) => {
+        loggerV2.error(`[v2]: Failed to create file store: ${error.message}`);
       });
       throw new Error('New File store being created, please try again later.');
     }
@@ -260,13 +266,16 @@ class FilestoreV2 extends Model {
     const fileStoreId = myOrganization.file_store_subscribed;
 
     if (!fileStoreId) {
-      // Create new file store
-      datalayer.createDataLayerStore().then((newFileStoreId) => {
+      datalayer.waitForSpendableCoins(1).then(() =>
+        datalayer.createDataLayerStoreWithRetry()
+      ).then((newFileStoreId) => {
         datalayer.syncDataLayer(myOrganization.org_uid, { fileStoreId: newFileStoreId });
         OrganizationsV2.update(
           { file_store_subscribed: newFileStoreId },
           { where: { org_uid: myOrganization.org_uid } },
         );
+      }).catch((error) => {
+        loggerV2.error(`[v2]: Failed to create file store: ${error.message}`);
       });
       throw new Error('New File store being created, please try again later.');
     }
@@ -302,7 +311,8 @@ class FilestoreV2 extends Model {
     let fileStoreId = myOrganization.file_store_subscribed;
 
     if (!fileStoreId) {
-      fileStoreId = await datalayer.createDataLayerStore();
+      await datalayer.waitForSpendableCoins(1);
+      fileStoreId = await datalayer.createDataLayerStoreWithRetry();
       datalayer.syncDataLayer(myOrganization.org_uid, { fileStoreId });
       await OrganizationsV2.update(
         { file_store_subscribed: fileStoreId },

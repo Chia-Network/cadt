@@ -4,6 +4,11 @@ import fs from 'fs';
 import path from 'path';
 import { getChiaRoot } from '../../../../src/utils/chia-root.js';
 import { shouldAutoCommit, trackTestEndpoint } from './shared-state.js';
+import {
+  getWalletDiagnostics,
+  formatWalletStatus,
+  createRecoveryStuckTracker,
+} from './wallet-diagnostics.js';
 
 /**
  * Format current timestamp as YYYY-MM-DD HH:mm:ss
@@ -563,8 +568,9 @@ export const checkOrganizationSynced = async (request) => {
  */
 export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
   const startTime = Date.now();
-  const interval = 10000; // Check every 10 seconds (longer interval for blockchain)
+  const interval = 10000;
   const timestamp = new Date().toISOString();
+  const recoveryTracker = createRecoveryStuckTracker();
 
   console.log(`[${timestamp}] Waiting for organization sync to complete...`);
 
@@ -577,12 +583,16 @@ export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
     }
 
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    console.log(`  Organization not synced yet, waiting... (${elapsed}s elapsed)`);
+
+    const health = await getWalletDiagnostics(request);
+    const walletInfo = formatWalletStatus(health);
+    console.log(`  Organization not synced yet (${elapsed}s) | wallet: ${walletInfo}`);
+
+    recoveryTracker.update(health);
 
     await new Promise(resolve => setTimeout(resolve, interval));
   }
 
-  // Timeout reached - this is a problem, sync is taking too long
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
   console.error(`❌ Timeout waiting for organization sync to complete after ${elapsed}s`);
   throw new Error(`Timeout waiting for organization sync to complete after ${maxWaitTime}ms. Blockchain sync may be taking longer than expected.`);
@@ -596,7 +606,8 @@ export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
  */
 export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
   const startTime = Date.now();
-  const interval = 10000; // Check every 10 seconds
+  const interval = 10000;
+  const recoveryTracker = createRecoveryStuckTracker();
 
   console.log('Waiting for staging table to be empty...');
 
@@ -611,7 +622,12 @@ export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
       }
 
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`  Staging table still has ${records.length} record(s), waiting... (${elapsed}s elapsed)`);
+
+      const health = await getWalletDiagnostics(request);
+      const walletInfo = formatWalletStatus(health);
+      console.log(`  Staging: ${records.length} record(s) remaining (${elapsed}s) | wallet: ${walletInfo}`);
+
+      recoveryTracker.update(health);
     } catch (error) {
       console.warn(`  Error checking staging table: ${error.message}`);
     }
@@ -629,29 +645,36 @@ export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
  */
 export const waitForDataToAppear = async (request, type, id, maxWaitTime = 600000) => {
   const startTime = Date.now();
-  let pollInterval = 5000; // Start with 5 seconds
-  const maxInterval = 30000; // Max 30 seconds
+  let pollInterval = 5000;
+  const maxInterval = 30000;
+  const recoveryTracker = createRecoveryStuckTracker();
+  let lastDiagAt = 0;
 
   while (Date.now() - startTime < maxWaitTime) {
     try {
-      // All tables now use UUID primary keys
       const endpoint = `/v2/${type}/${id}`;
 
       const response = await request.get(endpoint);
       if (response.status === 200 && response.body) {
-        // Record exists!
         return response.body;
       }
     } catch (error) {
-      // Record doesn't exist yet, continue polling
       const status = error.response?.status || error.status;
       if (status && status !== 404) {
-        // Some other error occurred
         console.warn(`  Error checking ${type}/${JSON.stringify(id)}: ${error.message} (status: ${status})`);
       }
     }
 
-    // Exponential backoff: increase interval after 2 minutes
+    const now = Date.now();
+    if (now - lastDiagAt > 30000) {
+      lastDiagAt = now;
+      const elapsed = Math.floor((now - startTime) / 1000);
+      const health = await getWalletDiagnostics(request);
+      const walletInfo = formatWalletStatus(health);
+      console.log(`  Waiting for ${type}/${JSON.stringify(id)} (${elapsed}s) | wallet: ${walletInfo}`);
+      recoveryTracker.update(health);
+    }
+
     if (Date.now() - startTime > 120000) {
       pollInterval = Math.min(pollInterval * 1.5, maxInterval);
     }
@@ -668,9 +691,10 @@ export const waitForDataToAppear = async (request, type, id, maxWaitTime = 60000
  */
 export const waitForBatchToAppear = async (request, records, maxWaitTime = 600000) => {
   const startTime = Date.now();
-  let pollInterval = 5000; // Start with 5 seconds
-  const maxInterval = 30000; // Max 30 seconds
+  let pollInterval = 5000;
+  const maxInterval = 30000;
   const foundRecords = new Set();
+  const recoveryTracker = createRecoveryStuckTracker();
 
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] 🔍 Waiting for ${records.length} record(s) to appear: ${records.map(r => `${r.type}/${JSON.stringify(r.id)}`).join(', ')}`);
@@ -705,7 +729,6 @@ export const waitForBatchToAppear = async (request, records, maxWaitTime = 60000
     await Promise.all(promises);
 
     if (foundRecords.size === records.length) {
-      // All records found!
       console.log(`✓ All ${records.length} record(s) found!`);
       return records.map(record => {
         const key = `${record.type}/${JSON.stringify(record.id)}`;
@@ -714,9 +737,12 @@ export const waitForBatchToAppear = async (request, records, maxWaitTime = 60000
     }
 
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    console.log(`  Still waiting... Found ${foundRecords.size}/${records.length} (${elapsed}s elapsed)`);
 
-    // Exponential backoff: increase interval after 2 minutes
+    const health = await getWalletDiagnostics(request);
+    const walletInfo = formatWalletStatus(health);
+    console.log(`  Found ${foundRecords.size}/${records.length} (${elapsed}s) | wallet: ${walletInfo}`);
+    recoveryTracker.update(health);
+
     if (Date.now() - startTime > 120000) {
       pollInterval = Math.min(pollInterval * 1.5, maxInterval);
     }
@@ -1053,7 +1079,9 @@ export const waitForWalletReadyForTransactions = async (request, maxWaitMs = 600
 
       if (response.status === 200) {
         consecutiveSuccess++;
-        console.log(`[${getTimestamp()}] ✓ Wallet available (${consecutiveSuccess}/${consecutiveSuccessRequired} consecutive, ${elapsed}s elapsed)`);
+        const health = await getWalletDiagnostics(request, 'v1');
+        const walletInfo = formatWalletStatus(health);
+        console.log(`[${getTimestamp()}] ✓ Wallet available (${consecutiveSuccess}/${consecutiveSuccessRequired}, ${elapsed}s) | ${walletInfo}`);
         if (consecutiveSuccess >= consecutiveSuccessRequired) {
           console.log(`[${getTimestamp()}] ✓ Wallet confirmed stable and available for transactions`);
           return;
@@ -1140,8 +1168,10 @@ export const getLiveApiRequest = async (options = {}) => {
 export const waitForV2OrganizationReady = async (request, orgName = null, maxWaitTime = 900000, options = {}) => {
   const { isUpgrade = false } = options;
   const startTime = Date.now();
-  const interval = 10000; // Check every 10 seconds
+  const interval = 10000;
   const timestamp = getTimestamp();
+  const recoveryTracker = createRecoveryStuckTracker();
+  let lastDiagAt = 0;
 
   console.log(`[${timestamp}] Waiting for V2 organization to be ready...`);
   if (orgName) {
@@ -1153,16 +1183,12 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
     console.log(`  (Upgrade mode: will wait for org to appear without fast-fail)`);
   }
 
-  // Track if we've seen a PENDING org - if it disappears, creation failed
   let sawPendingOrg = false;
-  // Track consecutive polls with no orgs and no creation in progress
   let noProgressCount = 0;
-  // For upgrades, use a much higher threshold since the process is fully async with no status feedback
-  const noProgressThreshold = isUpgrade ? 60 : 6; // 10 minutes for upgrade, 60 seconds for normal creation
-  // Track stuck state - if we're in the same state for too long, fail
+  const noProgressThreshold = isUpgrade ? 60 : 6;
   let lastState = null;
   let lastStateChangeTime = Date.now();
-  const stuckStateThresholdMs = 300000; // 5 minutes stuck in same state = fail
+  const stuckStateThresholdMs = 300000;
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -1372,15 +1398,24 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
         }
       }
     } catch (error) {
-      // Re-throw fatal errors (like PENDING org disappeared, no progress, or stuck state) - don't swallow them
       if (error.message.includes('PENDING organization was cleaned up') ||
           error.message.includes('Organization creation failed') ||
           error.message.includes('Organization creation appears to have failed') ||
           error.message.includes('appears stuck') ||
-          error.message.includes('creation FAILED')) {
+          error.message.includes('creation FAILED') ||
+          error.message.includes('recovery appears stuck')) {
         throw error;
       }
       console.log(`  [${elapsed}s] Error checking organizations: ${error.message}`);
+    }
+
+    const now = Date.now();
+    if (now - lastDiagAt > 30000) {
+      lastDiagAt = now;
+      const health = await getWalletDiagnostics(request);
+      const elapsedSec = Math.floor((now - startTime) / 1000);
+      console.log(`  [${elapsedSec}s] wallet: ${formatWalletStatus(health)}`);
+      recoveryTracker.update(health);
     }
 
     await new Promise(resolve => setTimeout(resolve, interval));
@@ -1430,8 +1465,10 @@ export const waitForV2OrganizationReady = async (request, orgName = null, maxWai
  */
 export const waitForV1OrganizationReady = async (request, orgName = null, maxWaitTime = 900000) => {
   const startTime = Date.now();
-  const interval = 10000; // Check every 10 seconds
+  const interval = 10000;
   const timestamp = getTimestamp();
+  const recoveryTracker = createRecoveryStuckTracker();
+  let lastDiagAt = 0;
 
   console.log(`[${timestamp}] Waiting for V1 organization to be ready...`);
   if (orgName) {
@@ -1440,15 +1477,12 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
     console.log(`  Looking for home organization`);
   }
 
-  // Track if we've seen a PENDING org - if it disappears, creation failed
   let sawPendingOrg = false;
-  // Track consecutive polls with no orgs and no creation in progress
   let noProgressCount = 0;
-  const noProgressThreshold = 6; // After 60 seconds (6 x 10s interval) with no progress, fail fast
-  // Track stuck state - if we're in the same state for too long, fail
+  const noProgressThreshold = 6;
   let lastState = null;
   let lastStateChangeTime = Date.now();
-  const stuckStateThresholdMs = 300000; // 5 minutes stuck in same state = fail
+  const stuckStateThresholdMs = 300000;
 
   while (Date.now() - startTime < maxWaitTime) {
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -1698,15 +1732,24 @@ export const waitForV1OrganizationReady = async (request, orgName = null, maxWai
         }
       }
     } catch (error) {
-      // Re-throw fatal errors (like PENDING org disappeared, no progress, or stuck state) - don't swallow them
       if (error.message.includes('PENDING organization was cleaned up') ||
           error.message.includes('Organization creation failed') ||
           error.message.includes('Organization creation appears to have failed') ||
           error.message.includes('appears stuck') ||
-          error.message.includes('creation FAILED')) {
+          error.message.includes('creation FAILED') ||
+          error.message.includes('recovery appears stuck')) {
         throw error;
       }
       console.log(`  [${elapsed}s] Error checking organizations: ${error.message}`);
+    }
+
+    const now = Date.now();
+    if (now - lastDiagAt > 30000) {
+      lastDiagAt = now;
+      const health = await getWalletDiagnostics(request, 'v1');
+      const elapsedSec = Math.floor((now - startTime) / 1000);
+      console.log(`  [${elapsedSec}s] wallet: ${formatWalletStatus(health)}`);
+      recoveryTracker.update(health);
     }
 
     await new Promise(resolve => setTimeout(resolve, interval));

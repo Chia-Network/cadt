@@ -277,8 +277,20 @@ class OrganizationsV2 extends Model {
       loggerV2.error(
         `[v2]: create V2 organization process failed. Error: ${error.message}`,
       );
-      // Clean up PENDING record but preserve state for potential recovery
       await OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } });
+      // Mark state as FAILED so the 409 guard in the controller doesn't
+      // permanently block new creation attempts within the same session.
+      // The startup recovery task only runs once, so mid-session failures
+      // would otherwise leave orphaned STORES_CREATING state in Meta.
+      try {
+        let failedState = await loadCreationState(MetaV2, 'v2');
+        if (failedState && failedState.state !== ORG_CREATION_STATES.COMPLETE) {
+          failedState = markAsFailed(failedState, error.message);
+          await saveCreationState(failedState, MetaV2);
+        }
+      } catch (stateError) {
+        loggerV2.error(`[v2]: Failed to mark creation state as FAILED: ${stateError.message}`);
+      }
       throw error;
     }
   }
@@ -523,7 +535,7 @@ class OrganizationsV2 extends Model {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
-          const storeId = await datalayer.createDataLayerStore();
+          const storeId = await datalayer.createDataLayerStoreWithRetry();
           logState(state, `Created ${storeType} store: ${storeId}`);
           return { storeType, storeId, success: true };
         } catch (error) {
@@ -639,6 +651,28 @@ class OrganizationsV2 extends Model {
   }
 
   /**
+   * Detect rejected txs in the DL wallet and auto-clear them.
+   * Non-blocking and best-effort — failures are logged but don't propagate.
+   * @private
+   */
+  static async _checkAndClearRejectedTxs(storeType, storeId) {
+    try {
+      const dlWalletId = await wallet.getDLWalletId();
+      if (!dlWalletId) return;
+
+      const health = await wallet.getTransactionHealth(dlWalletId);
+      if (health.rejected.length > 0) {
+        const txIds = health.rejected.map((tx) => tx.name);
+        const context =
+          `V2 _pushDataInParallel failed for ${storeType} store ${storeId}, scheduling retry`;
+        await wallet.clearRejectedTransactions(dlWalletId, txIds, context);
+      }
+    } catch (error) {
+      loggerV2.debug(`[v2]: _checkAndClearRejectedTxs non-fatal error: ${error.message}`);
+    }
+  }
+
+  /**
    * Push data to stores in parallel
    * @param {Object} state - Current state
    * @param {Object} MetaV2 - The MetaV2 model
@@ -680,6 +714,7 @@ class OrganizationsV2 extends Model {
             );
             return { storeType: STORE_TYPES.ORG_UID, success: true };
           } catch (error) {
+            await OrganizationsV2._checkAndClearRejectedTxs(STORE_TYPES.ORG_UID, orgUidStoreId);
             return { storeType: STORE_TYPES.ORG_UID, success: false, error: error.message };
           }
         })(),
@@ -701,6 +736,7 @@ class OrganizationsV2 extends Model {
             );
             return { storeType: STORE_TYPES.DATA_MODEL_VERSION, success: true };
           } catch (error) {
+            await OrganizationsV2._checkAndClearRejectedTxs(STORE_TYPES.DATA_MODEL_VERSION, dataModelVersionStoreId);
             return { storeType: STORE_TYPES.DATA_MODEL_VERSION, success: false, error: error.message };
           }
         })(),
@@ -922,7 +958,7 @@ class OrganizationsV2 extends Model {
         for (let attempt = 1; attempt <= maxStoreCreateRetries; attempt++) {
           try {
             await wallet.waitForSpendableCoins(1);
-            newV2RegistryStoreId = await datalayer.createDataLayerStore();
+            newV2RegistryStoreId = await datalayer.createDataLayerStoreWithRetry();
             break;
           } catch (error) {
             if (isTransientWalletError(error) && attempt < maxStoreCreateRetries) {

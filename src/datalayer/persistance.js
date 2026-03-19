@@ -891,12 +891,20 @@ const createDataLayerStore = async () => {
       .timeout(timeout)
       .send({
         fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        verbose: true,
       });
 
     const data = response.body;
 
     if (data.success) {
-      return data.id;
+      // With verbose=true, the RPC returns { id, txs } where txs is an array
+      // of TransactionRecord objects, each with a `name` field (tx_id/bundle_id).
+      // Older nodes without verbose support will only return { id }.
+      const txIds = Array.isArray(data.txs)
+        ? data.txs.map((tx) => tx.name).filter(Boolean)
+        : [];
+
+      return { storeId: data.id, txIds };
     }
 
     throw new Error(data.error);

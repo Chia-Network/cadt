@@ -230,8 +230,20 @@ class Organization extends Model {
       logger.error(
         `[v1]: create organization process failed. Error: ${error.message}`,
       );
-      // Clean up PENDING record but preserve state for potential recovery
       await Organization.destroy({ where: { orgUid: 'PENDING' } });
+      // Mark state as FAILED so the 409 guard in the controller doesn't
+      // permanently block new creation attempts within the same session.
+      // The startup recovery task only runs once, so mid-session failures
+      // would otherwise leave orphaned STORES_CREATING state in Meta.
+      try {
+        let failedState = await loadCreationState(Meta, 'v1');
+        if (failedState && failedState.state !== ORG_CREATION_STATES.COMPLETE) {
+          failedState = markAsFailed(failedState, error.message);
+          await saveCreationState(failedState, Meta);
+        }
+      } catch (stateError) {
+        logger.error(`[v1]: Failed to mark creation state as FAILED: ${stateError.message}`);
+      }
       throw error;
     }
   }
@@ -474,8 +486,7 @@ class Organization extends Model {
           // Only orgUid is fixed in V1 simulator mode (original behavior)
           storeId = 'f1c54511-865e-4611-976c-7c3c1f704662';
         } else {
-          // Other stores get random UUIDs (original behavior - called createDataLayerStore)
-          storeId = await datalayer.createDataLayerStore();
+          storeId = await datalayer.createDataLayerStoreWithRetry();
         }
         state = markStoreCreated(state, storeType, storeId);
         state = markStoreConfirmed(state, storeType);
@@ -492,7 +503,7 @@ class Organization extends Model {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
-          const storeId = await datalayer.createDataLayerStore();
+          const storeId = await datalayer.createDataLayerStoreWithRetry();
           logState(state, `Created ${storeType} store: ${storeId}`);
           return { storeType, storeId, success: true };
         } catch (error) {
@@ -607,6 +618,29 @@ class Organization extends Model {
   }
 
   /**
+   * Lightweight health check for the direct-push path: detect rejected txs in the
+   * DL wallet and auto-clear them before scheduling a background retry.
+   * Non-blocking and best-effort -- failures are logged but don't propagate.
+   * @private
+   */
+  static async _checkAndClearRejectedTxs(storeType, storeId) {
+    try {
+      const dlWalletId = await wallet.getDLWalletId();
+      if (!dlWalletId) return;
+
+      const health = await wallet.getTransactionHealth(dlWalletId);
+      if (health.rejected.length > 0) {
+        const txIds = health.rejected.map((tx) => tx.name);
+        const context =
+          `_pushDataInParallel failed for ${storeType} store ${storeId}, scheduling retry`;
+        await wallet.clearRejectedTransactions(dlWalletId, txIds, context);
+      }
+    } catch (error) {
+      logger.debug(`_checkAndClearRejectedTxs non-fatal error: ${error.message}`);
+    }
+  }
+
+  /**
    * Push data to stores sequentially with a short delay between each.
    *
    * Calls pushChangeListToDataLayer directly, bypassing the hasUnconfirmedTransactions
@@ -702,8 +736,9 @@ class Organization extends Model {
           await saveCreationState(state, Meta);
         } else {
           // Push was accepted by the function but returned false (RPC-level failure).
-          // Schedule a background retry and report failure for this store.
+          // Check for rejected txs before scheduling background retry.
           logState(state, `Push to ${storeType} store ${storeId} failed, background retry scheduled`, 'error');
+          await Organization._checkAndClearRejectedTxs(storeType, storeId);
           datalayer.pushDataLayerChangeList(storeId, changeList, () => {
             logState(state, `Background retry for ${storeType} store ${storeId} gave up`, 'error');
           });
@@ -712,7 +747,7 @@ class Organization extends Model {
       } catch (error) {
         logState(state, `Push to ${storeType} store ${storeId} threw: ${error.message}`, 'error');
         if (!USE_SIMULATOR) {
-          // Schedule a background retry via the normal path (which includes the unconfirmed-tx gate)
+          await Organization._checkAndClearRejectedTxs(storeType, storeId);
           datalayer.pushDataLayerChangeList(storeId, changeList, () => {
             logState(state, `Background retry for ${storeType} store ${storeId} gave up`, 'error');
           });

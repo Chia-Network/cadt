@@ -18,15 +18,25 @@ const createDataLayerStore = async () => {
   await wallet.waitForAllTransactionsToConfirm();
 
   let storeId;
+  let txIds = [];
   if (USE_SIMULATOR) {
     storeId = await simulator.createDataLayerStore();
   } else {
-    storeId = await dataLayer.createDataLayerStore();
+    const result = await dataLayer.createDataLayerStore();
+    storeId = result.storeId;
+    txIds = result.txIds || [];
 
     logger.info(
-      `Created storeId: ${storeId}, waiting for this to be confirmed on the blockchain.`,
+      `Created storeId: ${storeId}` +
+      (txIds.length > 0 ? ` (tx_ids: ${txIds.join(', ')})` : '') +
+      `, waiting for this to be confirmed on the blockchain.`,
     );
-    await waitForNewStoreToBeConfirmed(storeId);
+    try {
+      await waitForNewStoreToBeConfirmed(storeId, txIds);
+    } catch (confirmError) {
+      confirmError.txIds = txIds;
+      throw confirmError;
+    }
     await wallet.waitForAllTransactionsToConfirm();
 
     const mirrorUrl = await getMirrorUrl();
@@ -35,15 +45,91 @@ const createDataLayerStore = async () => {
     }
   }
 
-  return storeId;
+  return { storeId, txIds };
+};
+
+/**
+ * Create a DataLayer store with rejection-aware retry.
+ * On rejected spend bundles, clears the rejected txs, clears pending roots,
+ * waits for wallet stability, and retries.
+ * Returns only the storeId (string) to callers -- tx correlation is handled internally.
+ *
+ * @param {number} maxRetries - Maximum number of retry attempts (default 3)
+ * @returns {Promise<string>} The confirmed storeId
+ */
+const createDataLayerStoreWithRetry = async (maxRetries = 3) => {
+  if (maxRetries < 1) {
+    throw new Error('createDataLayerStoreWithRetry requires maxRetries >= 1');
+  }
+
+  if (USE_SIMULATOR) {
+    const { storeId } = await createDataLayerStore();
+    return storeId;
+  }
+
+  const attemptedTxIds = [];
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const { storeId, txIds } = await createDataLayerStore();
+      attemptedTxIds.push(...txIds);
+      return storeId;
+    } catch (error) {
+      if (error.txIds) {
+        attemptedTxIds.push(...error.txIds);
+      }
+      const isRejection = error.message?.includes('rejected');
+
+      if (!isRejection || attempt >= maxRetries) {
+        if (attempt >= maxRetries) {
+          logger.error(
+            `createDataLayerStoreWithRetry: all ${maxRetries} attempts failed`,
+            {
+              attemptedTxIds,
+              lastError: error.message,
+            },
+          );
+        }
+        throw error;
+      }
+
+      // Rejection detected -- attempt recovery
+      logger.warn(
+        `createDataLayerStoreWithRetry: attempt ${attempt} of ${maxRetries} ` +
+        `failed with rejection, attempting recovery`,
+        { error: error.message },
+      );
+
+      const dlWalletId = await wallet.getDLWalletId();
+      if (dlWalletId) {
+        const context =
+          `createDataLayerStoreWithRetry attempt ${attempt} of ${maxRetries}`;
+
+        const clearResult = await wallet.clearRejectedTransactions(
+          dlWalletId,
+          attemptedTxIds,
+          context,
+        );
+
+        if (!clearResult.cleared) {
+          logger.warn(
+            `Could not auto-clear rejected txs: ${clearResult.reason}. ` +
+            `Waiting for wallet to stabilize before retry.`,
+          );
+        }
+      }
+
+      // Wait for wallet to stabilize before retrying
+      await wallet.waitForAllTransactionsToConfirm();
+    }
+  }
 };
 
 const addMirror = async (storeId, url, force = false) => {
   return dataLayer.addMirror(storeId, url, force);
 };
 
-const waitForNewStoreToBeConfirmed = async (storeId, retry = 0) => {
-  // In simulator mode, stores are immediately confirmed
+const waitForNewStoreToBeConfirmed = async (storeId, txIds = [], retry = 0) => {
   if (USE_SIMULATOR) {
     logger.info(`StoreId: ${storeId} confirmed (simulator mode)`);
     return;
@@ -57,16 +143,55 @@ const waitForNewStoreToBeConfirmed = async (storeId, retry = 0) => {
 
   const { confirmed } = await dataLayer.getRoot(storeId);
 
-  if (!confirmed) {
-    logger.info(`Still waiting for ${storeId} to confirm`);
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, 30000);
-    });
-    return waitForNewStoreToBeConfirmed(storeId, retry + 1);
+  if (confirmed) {
+    logger.info(`StoreId: ${storeId} has been confirmed. Congrats!`);
+    return;
   }
-  logger.info(`StoreId: ${storeId} has been confirmed. Congrats!`);
+
+  // Check transaction health for early rejection detection
+  if (txIds.length > 0) {
+    try {
+      const dlWalletId = await wallet.getDLWalletId();
+      if (dlWalletId) {
+        const health = await wallet.getTransactionHealth(dlWalletId);
+        const rejectedNames = new Set(health.rejected.map((tx) => tx.name));
+        const ourRejected = txIds.filter((id) => rejectedNames.has(id));
+
+        if (ourRejected.length > 0) {
+          const rejectedTx = health.rejected.find((tx) => ourRejected.includes(tx.name));
+          const reason = rejectedTx?.rejectionReason || 'unknown rejection reason';
+          throw new Error(
+            `Store creation for ${storeId} was rejected by the network: ${reason}. ` +
+            `Rejected tx_ids: ${ourRejected.join(', ')}`,
+          );
+        }
+
+        // Warn if pending too long (> 10 minutes)
+        if (retry > 0 && retry % 20 === 0) {
+          const ourPending = [...health.inMempool, ...health.pending]
+            .filter((tx) => txIds.includes(tx.name));
+          if (ourPending.length > 0) {
+            const ages = ourPending.map((tx) => wallet.formatDuration(tx.age));
+            logger.warn(
+              `Store ${storeId} creation tx(s) still unconfirmed after ${retry * 30}s. ` +
+              `Tx ages: ${ages.join(', ')}. Status: ${ourPending.length} in mempool/pending.`,
+            );
+          }
+        }
+      }
+    } catch (healthError) {
+      // If the error is a rejection we threw above, re-throw it
+      if (healthError.message?.includes('rejected by the network')) {
+        throw healthError;
+      }
+      // Otherwise log and continue polling -- health check is best-effort
+      logger.debug(`Transaction health check failed (non-fatal): ${healthError.message}`);
+    }
+  }
+
+  logger.info(`Still waiting for ${storeId} to confirm (attempt ${retry + 1})`);
+  await new Promise((resolve) => setTimeout(resolve, 30000));
+  return waitForNewStoreToBeConfirmed(storeId, txIds, retry + 1);
 };
 
 const syncDataLayer = async (storeId, data, failedCallback) => {
@@ -163,12 +288,11 @@ export const pushChangesWhenStoreIsAvailable = async (
       );
     }
 
-    const hasUnconfirmedTransactions =
-      await wallet.hasUnconfirmedTransactions();
+    const hasUnconfirmed = await wallet.hasAnyUnconfirmedTransactions();
 
     const { confirmed } = await dataLayer.getRoot(storeId);
 
-    if (!hasUnconfirmedTransactions && confirmed) {
+    if (!hasUnconfirmed && confirmed) {
       logger.info(`pushing to datalayer ${storeId}`);
 
       const success = await dataLayer.pushChangeListToDataLayer(
@@ -191,6 +315,52 @@ export const pushChangesWhenStoreIsAvailable = async (
         );
       }
     } else {
+      // After 5 consecutive blocked retries, diagnose transaction health
+      if (retryAttempts > 0 && retryAttempts % 5 === 0) {
+        try {
+          const dlWalletId = await wallet.getDLWalletId();
+          const walletIds = dlWalletId ? ['1', dlWalletId] : ['1'];
+          for (const wid of walletIds) {
+            const health = await wallet.getTransactionHealth(wid);
+
+            if (health.rejected.length > 0) {
+              const txIds = health.rejected.map((tx) => tx.name);
+              const context =
+                `pushChangesWhenStoreIsAvailable for store ${storeId}, ` +
+                `retry ${retryAttempts}: detected ${health.rejected.length} rejected tx(s) in wallet ${wid}`;
+
+              const clearResult = await wallet.clearRejectedTransactions(wid, txIds, context);
+              if (clearResult.cleared) {
+                logger.info(
+                  `Auto-cleared rejected txs in wallet ${wid} during push to ${storeId}. ` +
+                  `Resuming with incremented retry to prevent unbounded recursion.`,
+                );
+                return pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback, retryAttempts + 1);
+              }
+            }
+
+            if (health.stuckCount > 0 || (health.oldestUnconfirmedAge && health.oldestUnconfirmedAge > 900)) {
+              logger.warn(
+                `Push to store ${storeId} blocked by stuck transactions in wallet ${wid}: ` +
+                `${health.inMempool.length} in mempool, ${health.pending.length} pending, ` +
+                `oldest age: ${wallet.formatDuration(health.oldestUnconfirmedAge)}`,
+              );
+            }
+          }
+        } catch (healthError) {
+          logger.debug(`Transaction health check during push retry failed (non-fatal): ${healthError.message}`);
+        }
+      }
+
+      // Final retry exhaustion with diagnostic message
+      if (retryAttempts >= 60) {
+        const diagnosticMsg =
+          `Changes could not be pushed to store ${storeId} after ${retryAttempts} retries. ` +
+          `Your wallet may have unconfirmed transactions that are stuck. ` +
+          `Run 'chia wallet delete_unconfirmed_transactions -i <wallet_id>' to clear stuck transactions, then retry.`;
+        logger.error(diagnosticMsg);
+      }
+
       retryPushToStore(
         storeId,
         changeList,
@@ -238,7 +408,8 @@ const getValue = async (storeId, key) => {
 
 export default {
   addMirror,
-  createDataLayerStore,
+  createDataLayerStore: async () => (await createDataLayerStore()).storeId,
+  createDataLayerStoreWithRetry,
   dataLayerAvailable,
   pushDataLayerChangeList,
   syncDataLayer,
