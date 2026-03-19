@@ -649,12 +649,8 @@ const classifyTransaction = (sentTo) => {
     return 'in_mempool';
   }
 
-  // All peers failed, none succeeded
-  if (hasFailed && !hasSuccess) {
-    const allFailed = sentTo.every(([, status]) => status === MempoolInclusionStatus.FAILED);
-    if (allFailed) {
-      return 'rejected';
-    }
+  if (hasFailed && sentTo.every(([, status]) => status === MempoolInclusionStatus.FAILED)) {
+    return 'rejected';
   }
 
   return 'pending';
