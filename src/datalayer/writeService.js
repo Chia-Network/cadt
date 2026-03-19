@@ -307,7 +307,7 @@ export const pushChangesWhenStoreIsAvailable = async (
             `Permanent push failure for store ${storeId}: ${pushError.message}. ` +
               `Invoking failedCallback and aborting retries.`,
           );
-          failedCallback();
+          await failedCallback();
           throw pushError;
         }
         throw pushError;
