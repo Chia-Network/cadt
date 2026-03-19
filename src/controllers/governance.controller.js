@@ -129,12 +129,7 @@ export const createGoveranceBody = async (req, res) => {
 
     Governance.createGoveranceBody().catch(async (error) => {
       logger.error('Error creating governance body in background:', error);
-      try {
-        await Meta.upsert({ metaKey: 'governanceCreationStatus', metaValue: 'failed' });
-        await Meta.upsert({ metaKey: 'governanceCreationError', metaValue: error.message });
-      } catch (metaError) {
-        logger.error(`Failed to record governance creation failure: ${metaError.message}`);
-      }
+      await Governance._setCreationStatus('failed', error.message);
     });
 
     return res.json({

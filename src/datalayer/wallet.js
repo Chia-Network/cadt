@@ -567,13 +567,9 @@ const waitForSpendableCoins = async (
   }
 
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
-  logger.error(
-    `[wallet]: Timeout waiting for spendable coins after ${elapsed}s`,
-  );
-  return {
-    success: false,
-    error: `Timeout waiting for ${requiredCoins} coins of ${minMojosPerCoin}+ mojos after ${elapsed}s`,
-  };
+  const msg = `Timeout waiting for ${requiredCoins} coins of ${minMojosPerCoin}+ mojos after ${elapsed}s`;
+  logger.error(`[wallet]: ${msg}`);
+  throw new Error(msg);
 };
 
 // Mempool inclusion status codes from Chia wallet's TransactionRecord.sent_to

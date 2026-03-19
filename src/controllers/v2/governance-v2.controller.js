@@ -201,12 +201,7 @@ export const createGoveranceBody = async (req, res) => {
     // Don't await - let it run asynchronously
     GovernanceV2.createGoveranceBody().catch(async (error) => {
       loggerV2.error('[v2]: Error creating governance body in background:', error);
-      try {
-        await MetaV2.upsert({ meta_key: 'governanceCreationStatus', meta_value: 'failed' });
-        await MetaV2.upsert({ meta_key: 'governanceCreationError', meta_value: error.message });
-      } catch (metaError) {
-        loggerV2.error(`[v2]: Failed to record governance creation failure: ${metaError.message}`);
-      }
+      await GovernanceV2._setCreationStatus('failed', error.message);
     });
 
     // Return immediately - work happens in background
