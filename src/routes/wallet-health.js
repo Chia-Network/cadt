@@ -1,7 +1,3 @@
-import walletModule from '../datalayer/wallet.js';
-
-const { formatDuration } = walletModule;
-
 /**
  * Build a wallet health diagnostic response.
  * Gracefully degrades if wallet or RPC is unreachable.
@@ -33,6 +29,12 @@ export const getWalletHealthResponse = async (wallet, { readOnly = false } = {})
       message: 'Transaction details are not available on read-only nodes',
     };
   }
+
+  const formatTxSummary = (tx) => ({
+    txId: truncateTxId(tx.name),
+    age: wallet.formatDuration(tx.age),
+    error: tx.rejectionReason || null,
+  });
 
   const result = {
     synced,
@@ -93,9 +95,3 @@ const truncateTxId = (txId) => {
   if (!txId || txId.length <= 16) return txId;
   return `${txId.slice(0, 10)}...${txId.slice(-4)}`;
 };
-
-const formatTxSummary = (tx) => ({
-  txId: truncateTxId(tx.name),
-  age: formatDuration(tx.age),
-  error: tx.rejectionReason || null,
-});

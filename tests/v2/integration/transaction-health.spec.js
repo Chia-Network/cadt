@@ -403,6 +403,7 @@ describe('Transaction Health Monitoring', function () {
       return {
         walletIsSynced: sinon.stub().resolves(synced),
         getDLWalletId: sinon.stub().resolves('2'),
+        formatDuration: wallet.formatDuration,
         getTransactionHealth: sinon.stub().resolves(
           hasTransactions
             ? {
