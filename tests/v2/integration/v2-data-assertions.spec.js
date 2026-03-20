@@ -12,6 +12,7 @@ import {
   assertIsActiveGovernanceBodyV2,
 } from '../../../src/utils/v2-data-assertions.js';
 import { withConfigOverride } from '../utils/v2-test-helpers.js';
+import TaskManager from '../../../src/tasks/index.js';
 
 describe('V2 Data Assertions - Utility Functions Test', function () {
   this.timeout(10000);
@@ -19,6 +20,11 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
   before(async function () {
     console.log('Setting up V2 test environment...');
     await prepareV2Db();
+    TaskManager.stopAll();
+  });
+
+  after(async function () {
+    TaskManager.start(true, true);
   });
 
   describe('assertRecordExistanceOrStaged', function () {
@@ -288,24 +294,20 @@ describe('V2 Data Assertions - Utility Functions Test', function () {
     });
 
     describe('assertIsActiveGovernanceBodyV2', function () {
+      beforeEach(async function () {
+        await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
+      });
+
       it('should pass when governanceBodyId exists in MetaV2', async function () {
-        // Create governanceBodyId in MetaV2
         await MetaV2.create({
           meta_key: 'governanceBodyId',
           meta_value: 'test-governance-body-id-123',
         });
 
-        // Should not throw
         await assertIsActiveGovernanceBodyV2();
-
-        // Clean up
-        await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
       });
 
       it('should throw error when governanceBodyId does not exist in MetaV2', async function () {
-        // Ensure governanceBodyId doesn't exist
-        await MetaV2.destroy({ where: { meta_key: 'governanceBodyId' } });
-
         try {
           await assertIsActiveGovernanceBodyV2();
           expect.fail('Should have thrown an error');
