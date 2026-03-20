@@ -42,8 +42,6 @@ const PLACEHOLDER_PROGRAM_ID = '{{PROGRAM_ID}}';
 const PLACEHOLDER_METHODOLOGY_ID = '{{METHODOLOGY_ID}}';
 const PLACEHOLDER_STAKEHOLDER_ID = '{{STAKEHOLDER_ID}}';
 const PLACEHOLDER_VALIDATION_ID = '{{VALIDATION_ID}}';
-const PLACEHOLDER_VERIFICATION_ID = '{{VERIFICATION_ID}}';
-const PLACEHOLDER_PROJECT_METHODOLOGY_ID = '{{PROJECT_METHODOLOGY_ID}}';
 const PLACEHOLDER_ISSUANCE_ID = '{{ISSUANCE_ID}}';
 const PLACEHOLDER_LABEL_ID = '{{LABEL_ID}}';
 
@@ -388,7 +386,7 @@ const unitsSheet = {
       'VCS-2024-001-BLK-1000-5000',
       '1000',
       '5000',
-      4000,
+      4001,
       'Removal - nature',
       2024,
       'Issued',
@@ -484,7 +482,7 @@ const unitLabelsSheet = {
     ['cadTrustLabelId', 'cadTrustUnitId', 'labelUnitDate', 'labelUnitDescription'],
     [
       PLACEHOLDER_LABEL_ID,
-      UNIT_1,
+      UNIT_3,
       '2024-06-15',
       'Gold Standard Certified — meets all GS4GG requirements for community benefit and environmental integrity',
     ],
