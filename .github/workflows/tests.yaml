@@ -203,7 +203,7 @@ jobs:
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           # Use 127.0.0.1 instead of localhost for more reliable binding in containers
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "22a0331b3b789fde950511f1c13d4d96cda127d7f5ecf8eaab64e5cc8e8dfc48"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
@@ -333,8 +333,8 @@ jobs:
           chia rpc data_layer subscriptions || echo "Failed to get datalayer subscriptions"
 
           echo ""
-          echo "Datalayer root for governance store (29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f):"
-          chia rpc data_layer get_root '{"id": "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"}' || echo "Failed to get root"
+          echo "Datalayer root for governance store (22a0331b3b789fde950511f1c13d4d96cda127d7f5ecf8eaab64e5cc8e8dfc48):"
+          chia rpc data_layer get_root '{"id": "22a0331b3b789fde950511f1c13d4d96cda127d7f5ecf8eaab64e5cc8e8dfc48"}' || echo "Failed to get root"
 
       - name: Show CADT logs before tests
         shell: bash
@@ -594,7 +594,7 @@ jobs:
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           # Use 127.0.0.1 instead of localhost for more reliable binding in containers
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "22a0331b3b789fde950511f1c13d4d96cda127d7f5ecf8eaab64e5cc8e8dfc48"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = "https://127.0.0.1:8575"' ~/.chia/mainnet/cadt/config.yaml
@@ -886,7 +886,7 @@ jobs:
           yq -yi '.APP.CHIA_NETWORK = "testnet"' ~/.chia/mainnet/cadt/config.yaml
           # Use 127.0.0.1 instead of localhost for more reliable binding in containers
           yq -yi '.APP.BIND_ADDRESS = "127.0.0.1"' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "22a0331b3b789fde950511f1c13d4d96cda127d7f5ecf8eaab64e5cc8e8dfc48"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_HOST = "https://127.0.0.1:8562"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.WALLET_HOST = "https://127.0.0.1:9256"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.DATALAYER_FILE_SERVER_URL = null' ~/.chia/mainnet/cadt/config.yaml
@@ -2370,7 +2370,7 @@ jobs:
           yq -yi '.APP.AUTO_MIRROR_EXTERNAL_STORES = false' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.TASKS.GOVERNANCE_SYNC_TASK_INTERVAL = 30' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.APP.TASKS.ORGANIZATION_META_SYNC_TASK_INTERVAL = 30' ~/.chia/mainnet/cadt/config.yaml
-          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "29fe490bde0186cb7a592450d12e78162a353b866beec3e51bd67394257e4f4f"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.GOVERNANCE.GOVERNANCE_BODY_ID = "22a0331b3b789fde950511f1c13d4d96cda127d7f5ecf8eaab64e5cc8e8dfc48"' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
 
