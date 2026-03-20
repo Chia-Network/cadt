@@ -142,4 +142,25 @@ describe('pushChangeListToDataLayer - error handling', function () {
     // Should have called post twice (initial + retry)
     expect(superagentPostStub.callCount).to.equal(2);
   });
+
+  it('should throw a permanent error for "not owned by DL Wallet"', async function () {
+    const mock = createSuperagentMock({
+      success: false,
+      error: `Singleton with launcher ID ${testStoreId} is not owned by DL Wallet`,
+      structuredError: {
+        code: 'UNKNOWN',
+        data: {},
+        message: `Singleton with launcher ID ${testStoreId} is not owned by DL Wallet`,
+      },
+    });
+    superagentPostStub.returns(mock);
+
+    try {
+      await pushChangeListToDataLayer(testStoreId, testChangelist);
+      expect.fail('Should have thrown a permanent error');
+    } catch (error) {
+      expect(error.message).to.include('not owned');
+      expect(error.permanent).to.be.true;
+    }
+  });
 });

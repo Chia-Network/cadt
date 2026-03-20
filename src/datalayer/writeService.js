@@ -236,36 +236,9 @@ const upsertDataLayer = async (storeId, data) => {
   await pushChangesWhenStoreIsAvailable(storeId, finalChangeList);
 };
 
-/**
- * Schedule a retry after 30s (fire-and-forget). Does not block the caller.
- * Caller should throw so we don't mark "data written" until the push actually succeeds.
- */
-const retryPushToStore = (
-  storeId,
-  changeList,
-  failedCallback,
-  retryAttempts,
-) => {
-  logger.info(`Retrying pushing to store ${storeId} in 30s (attempt ${retryAttempts + 1})`);
-  if (retryAttempts >= 60) {
-    logger.info(
-      'Could not push changelist to datalayer after retrying 60 times',
-    );
-    failedCallback();
-    return;
-  }
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  setTimeout(() => {
-    pushChangesWhenStoreIsAvailable(
-      storeId,
-      changeList,
-      failedCallback,
-      retryAttempts + 1,
-    ).catch((error) => {
-      logger.error(`Retry push to store ${storeId} failed: ${error.message}`);
-    });
-  }, 30000);
-};
+const MAX_PUSH_RETRIES = 60;
 
 export const pushChangesWhenStoreIsAvailable = async (
   storeId,
@@ -275,9 +248,10 @@ export const pushChangesWhenStoreIsAvailable = async (
 ) => {
   if (USE_SIMULATOR) {
     return simulator.pushChangeListToDataLayer(storeId, changeList);
-  } else {
-    const syncResult =
-      await dataLayer.getDataLayerStoreSyncStatus(storeId);
+  }
+
+  for (let attempt = retryAttempts; attempt <= MAX_PUSH_RETRIES; attempt++) {
+    const syncResult = await dataLayer.getDataLayerStoreSyncStatus(storeId);
     const syncStatus = syncResult?.sync_status;
     if (syncStatus && isOwnedStoreLocalDataMissing(syncStatus)) {
       throw new Error(
@@ -289,34 +263,40 @@ export const pushChangesWhenStoreIsAvailable = async (
     }
 
     const hasUnconfirmed = await wallet.hasAnyUnconfirmedTransactions();
-
     const { confirmed } = await dataLayer.getRoot(storeId);
 
     if (!hasUnconfirmed && confirmed) {
       logger.info(`pushing to datalayer ${storeId}`);
 
-      const success = await dataLayer.pushChangeListToDataLayer(
-        storeId,
-        changeList,
-      );
-
-      if (!success) {
-        logger.error(
-          `RPC failed when pushing to store ${storeId}, scheduling retry in 30s.`,
-        );
-        retryPushToStore(
+      let success;
+      try {
+        success = await dataLayer.pushChangeListToDataLayer(
           storeId,
           changeList,
-          failedCallback,
-          retryAttempts,
         );
-        throw new Error(
-          `Push to store ${storeId} failed (spendable/blockchain). Retry scheduled in 30s.`,
-        );
+      } catch (pushError) {
+        if (pushError.permanent) {
+          logger.error(
+            `Permanent push failure for store ${storeId}: ${pushError.message}. ` +
+              `Invoking failedCallback and aborting retries.`,
+          );
+          await failedCallback();
+          throw pushError;
+        }
+        throw pushError;
       }
+
+      if (success) {
+        return;
+      }
+
+      logger.error(
+        `RPC failed when pushing to store ${storeId}, retrying in 30s.`,
+      );
     } else {
-      // After 5 consecutive blocked retries, diagnose transaction health
-      if (retryAttempts > 0 && retryAttempts % 5 === 0) {
+      // Diagnose transaction health every 5 retries
+      let clearedRejectedTxs = false;
+      if (attempt > 0 && attempt % 5 === 0) {
         try {
           const dlWalletId = await wallet.getDLWalletId();
           const walletIds = dlWalletId ? ['1', dlWalletId] : ['1'];
@@ -327,15 +307,16 @@ export const pushChangesWhenStoreIsAvailable = async (
               const txIds = health.rejected.map((tx) => tx.name);
               const context =
                 `pushChangesWhenStoreIsAvailable for store ${storeId}, ` +
-                `retry ${retryAttempts}: detected ${health.rejected.length} rejected tx(s) in wallet ${wid}`;
+                `retry ${attempt}: detected ${health.rejected.length} rejected tx(s) in wallet ${wid}`;
 
               const clearResult = await wallet.clearRejectedTransactions(wid, txIds, context);
               if (clearResult.cleared) {
                 logger.info(
                   `Auto-cleared rejected txs in wallet ${wid} during push to ${storeId}. ` +
-                  `Resuming with incremented retry to prevent unbounded recursion.`,
+                  `Re-checking readiness immediately.`,
                 );
-                return pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback, retryAttempts + 1);
+                clearedRejectedTxs = true;
+                break;
               }
             }
 
@@ -352,33 +333,29 @@ export const pushChangesWhenStoreIsAvailable = async (
         }
       }
 
-      // Final retry exhaustion with diagnostic message
-      if (retryAttempts >= 60) {
-        const diagnosticMsg =
-          `Changes could not be pushed to store ${storeId} after ${retryAttempts} retries. ` +
-          `Your wallet may have unconfirmed transactions that are stuck. ` +
-          `Run 'chia wallet delete_unconfirmed_transactions -i <wallet_id>' to clear stuck transactions, then retry.`;
-        logger.error(diagnosticMsg);
+      if (clearedRejectedTxs) {
+        continue;
       }
+    }
 
-      retryPushToStore(
-        storeId,
-        changeList,
-        failedCallback,
-        retryAttempts,
-      );
-      throw new Error(
-        `Store ${storeId} not ready for push (unconfirmed tx or root). Retry scheduled in 30s.`,
-      );
+    if (attempt < MAX_PUSH_RETRIES) {
+      logger.info(`Retrying push to store ${storeId} in 30s (attempt ${attempt + 1}/${MAX_PUSH_RETRIES})`);
+      await delay(30000);
     }
   }
+
+  const diagnosticMsg =
+    `Changes could not be pushed to store ${storeId} after ${MAX_PUSH_RETRIES} retries. ` +
+    `Your wallet may have unconfirmed transactions that are stuck. ` +
+    `Run 'chia wallet delete_unconfirmed_transactions -i <wallet_id>' to clear stuck transactions, then retry.`;
+  logger.error(diagnosticMsg);
+  await failedCallback();
+  throw new Error(diagnosticMsg);
 };
 
 const pushDataLayerChangeList = (storeId, changeList, failedCallback) => {
   pushChangesWhenStoreIsAvailable(storeId, changeList, failedCallback).catch((error) => {
-    // Fire-and-forget callers don't await this, so catch here to avoid unhandled rejections.
-    // The retry is already scheduled inside pushChangesWhenStoreIsAvailable.
-    logger.debug(`pushDataLayerChangeList: push to ${storeId} deferred to retry: ${error.message}`);
+    logger.error(`pushDataLayerChangeList: push to ${storeId} failed after all retries: ${error.message}`);
   });
 };
 

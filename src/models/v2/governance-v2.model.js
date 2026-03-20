@@ -9,6 +9,10 @@ import datalayer from '../../datalayer/index.js';
 import { getConfig, getConfigV2 } from '../../utils/config-loader.js';
 import { loggerV2 } from '../../config/logger.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
+import {
+  assertStoreIsOwned,
+  assertOwnedStoreLocalDataIntact,
+} from '../../utils/data-assertions.js';
 import PickListStub from '../governance/governance-v2.stub.js';
 
 import ModelTypes from './governance-v2.modeltypes.cjs';
@@ -342,6 +346,14 @@ class GovernanceV2 extends Model {
       );
     }
 
+    const storeId = governanceBodyId.meta_value;
+    const { USE_SIMULATOR } = getConfig().APP;
+
+    await assertStoreIsOwned(storeId);
+    if (!USE_SIMULATOR) {
+      await assertOwnedStoreLocalDataIntact(storeId);
+    }
+
     const existingRecords = await GovernanceV2.findAll({ raw: true });
 
     const changeList = [];
@@ -392,25 +404,23 @@ class GovernanceV2 extends Model {
       );
     };
 
-    const { USE_SIMULATOR } = getConfig().APP;
-
     if (!USE_SIMULATOR) {
       await datalayer.waitForAllTransactionsToConfirm();
     }
 
     await datalayer.pushDataLayerChangeList(
-      governanceBodyId.meta_value,
+      storeId,
       changeList,
+      rollbackChangesIfFailed,
     );
 
     if (!USE_SIMULATOR) {
       datalayer.getStoreData(
-        governanceBodyId.meta_value,
+        storeId,
         onConfirm,
         rollbackChangesIfFailed,
       );
     } else {
-      // In simulator mode, immediately confirm
       onConfirm();
     }
   }

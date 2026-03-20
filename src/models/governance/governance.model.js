@@ -7,6 +7,10 @@ import datalayer from '../../datalayer';
 import { keyValueToChangeList } from '../../utils/datalayer-utils';
 import { getConfig } from '../../utils/config-loader';
 import { logger } from '../../config/logger.js';
+import {
+  assertStoreIsOwned,
+  assertOwnedStoreLocalDataIntact,
+} from '../../utils/data-assertions';
 import PickListStub from './governance.stub.js';
 
 const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
@@ -243,6 +247,13 @@ class Governance extends Model {
       );
     }
 
+    const storeId = governanceBodyId.metaValue;
+
+    await assertStoreIsOwned(storeId);
+    if (!USE_SIMULATOR) {
+      await assertOwnedStoreLocalDataIntact(storeId);
+    }
+
     const existingRecords = await Governance.findAll({ raw: true });
 
     const changeList = [];
@@ -294,12 +305,13 @@ class Governance extends Model {
     };
 
     await datalayer.pushDataLayerChangeList(
-      governanceBodyId.metaValue,
+      storeId,
       changeList,
+      rollbackChangesIfFailed,
     );
 
     datalayer.getStoreData(
-      governanceBodyId.metaValue,
+      storeId,
       onConfirm,
       rollbackChangesIfFailed,
     );
