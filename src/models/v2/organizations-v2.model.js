@@ -73,7 +73,7 @@ import {
 } from '../../utils/organization-creation-state.js';
 
 import ModelTypes from './organizations-v2.modeltypes.cjs';
-import { runMirrorCheckV2 } from '../../tasks/mirror-check-v2.js';
+import { mirrorOrgStoresV2 } from '../../tasks/mirror-check-v2.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 
 const { isTransientWalletError } = wallet;
@@ -480,9 +480,15 @@ class OrganizationsV2 extends Model {
 
       logState(state, `Organization creation complete. orgUid: ${orgUid}`);
 
-      // Fire-and-forget: the periodic mirror-check task will also handle this.
-      runMirrorCheckV2().catch((mirrorError) => {
-        logState(state, `Mirror check failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
+      // Fire-and-forget: mirror only this org's stores rather than running
+      // a full mirror check across all orgs. The periodic task handles the rest.
+      mirrorOrgStoresV2({
+        orgUid,
+        registryId,
+        dataModelVersionStoreId,
+        fileStoreId,
+      }).catch((mirrorError) => {
+        logState(state, `Mirror creation failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
       });
 
       return orgUid;
@@ -1097,9 +1103,15 @@ class OrganizationsV2 extends Model {
           { where: { org_uid: v1OrgUid } },
         );
 
-        // Fire-and-forget: the periodic mirror-check task will also handle this.
-        runMirrorCheckV2().catch((mirrorError) => {
-          loggerV2.warn(`[v2]: Mirror check failed (will be retried by periodic task): ${mirrorError.message}`);
+        // Fire-and-forget: mirror only this org's stores rather than running
+        // a full mirror check across all orgs. The periodic task handles the rest.
+        mirrorOrgStoresV2({
+          orgUid: v1OrgUid,
+          registryId: newV2RegistryStoreId,
+          dataModelVersionStoreId: sharedDataModelVersionStoreId,
+          fileStoreId: v1FileStoreId,
+        }).catch((mirrorError) => {
+          loggerV2.warn(`[v2]: Mirror creation failed (will be retried by periodic task): ${mirrorError.message}`);
         });
       };
 
