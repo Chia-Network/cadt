@@ -230,19 +230,22 @@ class Organization extends Model {
       logger.error(
         `[v1]: create organization process failed. Error: ${error.message}`,
       );
-      await Organization.destroy({ where: { orgUid: 'PENDING' } });
-      // Mark state as FAILED so the 409 guard in the controller doesn't
-      // permanently block new creation attempts within the same session.
-      // The startup recovery task only runs once, so mid-session failures
-      // would otherwise leave orphaned STORES_CREATING state in Meta.
+      // Mark state as FAILED BEFORE destroying PENDING record to ensure
+      // the state is persisted even if the destroy call causes issues.
       try {
         let failedState = await loadCreationState(Meta, 'v1');
         if (failedState && failedState.state !== ORG_CREATION_STATES.COMPLETE) {
           failedState = markAsFailed(failedState, error.message);
           await saveCreationState(failedState, Meta);
+          logger.info('[v1]: Creation state marked as FAILED in Meta table');
         }
       } catch (stateError) {
         logger.error(`[v1]: Failed to mark creation state as FAILED: ${stateError.message}`);
+      }
+      try {
+        await Organization.destroy({ where: { orgUid: 'PENDING' } });
+      } catch (destroyError) {
+        logger.error(`[v1]: Failed to destroy PENDING record: ${destroyError.message}`);
       }
       throw error;
     }

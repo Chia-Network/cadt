@@ -12,6 +12,7 @@ import {
   saveCreationState,
   loadCreationState,
   clearCreationState,
+  hasInProgressCreation,
   getStatusSummary,
   markStoreCreated,
   markStoreConfirmed,
@@ -131,6 +132,48 @@ describe('Organization Creation Status Tests', function () {
       expect(loaded).to.exist;
       expect(loaded.name).to.equal('Test Org');
       expect(loaded.apiVersion).to.equal('v1');
+    });
+
+    it('should detect timed-out creation as NOT in progress (V2)', async function () {
+      const state = createInitialState('Stale Org', '', 'v2', 'v2');
+      // Backdate startedAt to exceed the timeout
+      state.startedAt = new Date(
+        Date.now() - ORG_CREATION_CONFIG.STORE_CONFIRMATION_TIMEOUT_MS - 60000,
+      ).toISOString();
+      await saveCreationState(state, MetaV2);
+
+      const inProgress = await hasInProgressCreation(MetaV2, 'v2');
+      expect(inProgress).to.be.false;
+    });
+
+    it('should detect timed-out creation as NOT in progress (V1)', async function () {
+      const state = createInitialState('Stale Org', '', 'v1', 'v1');
+      state.startedAt = new Date(
+        Date.now() - ORG_CREATION_CONFIG.STORE_CONFIRMATION_TIMEOUT_MS - 60000,
+      ).toISOString();
+      await saveCreationState(state, Meta);
+
+      const inProgress = await hasInProgressCreation(Meta, 'v1');
+      expect(inProgress).to.be.false;
+    });
+
+    it('should detect recent creation as in progress', async function () {
+      const state = createInitialState('Fresh Org', '', 'v2', 'v2');
+      state.state = ORG_CREATION_STATES.STORES_CREATING;
+      await saveCreationState(state, MetaV2);
+
+      const inProgress = await hasInProgressCreation(MetaV2, 'v2');
+      expect(inProgress).to.be.true;
+    });
+
+    it('should NOT detect FAILED state as in progress', async function () {
+      const state = createInitialState('Failed Org', '', 'v2', 'v2');
+      state.state = ORG_CREATION_STATES.FAILED;
+      state.error = 'Some error';
+      await saveCreationState(state, MetaV2);
+
+      const inProgress = await hasInProgressCreation(MetaV2, 'v2');
+      expect(inProgress).to.be.false;
     });
   });
 

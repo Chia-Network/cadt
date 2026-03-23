@@ -422,7 +422,14 @@ export const clearCreationState = async (MetaModel, apiVersion) => {
 };
 
 /**
- * Checks if there's an in-progress organization creation
+ * Checks if there's an in-progress organization creation.
+ *
+ * A creation is considered "in progress" only if it is in a non-terminal state
+ * AND has not timed out.  Timed-out states are treated as stale so the caller
+ * (controller) does not permanently block new creation attempts when the
+ * background task failed to mark the state as FAILED.  Letting the request
+ * through allows the model's resume logic to handle timeout/retry properly.
+ *
  * @param {Object} MetaModel - The Meta model to use (Meta or MetaV2)
  * @param {string} apiVersion - 'v1' or 'v2'
  * @returns {Promise<boolean>}
@@ -432,5 +439,17 @@ export const hasInProgressCreation = async (MetaModel, apiVersion) => {
   if (!state) {
     return false;
   }
-  return ![ORG_CREATION_STATES.COMPLETE, ORG_CREATION_STATES.FAILED].includes(state.state);
+  if ([ORG_CREATION_STATES.COMPLETE, ORG_CREATION_STATES.FAILED].includes(state.state)) {
+    return false;
+  }
+  if (hasTimedOut(state)) {
+    const log = apiVersion === 'v2' ? loggerV2 : logger;
+    log.info(
+      `[${apiVersion}]: [OrgCreation] Stale creation detected (state=${state.state}, ` +
+      `started=${state.startedAt}, retries=${state.retryCount}). ` +
+      'Allowing new creation attempt to trigger resume/retry logic.',
+    );
+    return false;
+  }
+  return true;
 };
