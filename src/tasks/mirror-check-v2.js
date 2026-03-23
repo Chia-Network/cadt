@@ -12,45 +12,29 @@ import {
   decodeHex,
 } from '../utils/datalayer-utils.js';
 import datalayer from '../datalayer/index.js';
+import { getSubscriptions } from '../datalayer/persistance.js';
 import dotenv from 'dotenv';
 
 const APP_CONFIG = getConfig().APP;
 dotenv.config({ quiet: true });
 
-// This task checks if there are any mirrors that have not been properly mirrored and then mirrors them if not
-
 let mirrorCheckInProgress = false;
 
 const task = new Task('mirror-check-v2', async () => {
-  loggerV2.silly('[v2]: [MIRROR_DEBUG] Mirror-check V2 task started');
-
   try {
-    loggerV2.silly('[v2]: [MIRROR_DEBUG] Checking data layer availability');
     await assertDataLayerAvailable();
-    loggerV2.silly('[v2]: [MIRROR_DEBUG] Data layer is available');
-
-    loggerV2.silly('[v2]: [MIRROR_DEBUG] Checking wallet sync status');
     await assertWalletIsSynced();
-    loggerV2.silly('[v2]: [MIRROR_DEBUG] Wallet is synced');
 
-    // Default AUTO_MIRROR_EXTERNAL_STORES to true if it is null or undefined
     const shouldMirror = APP_CONFIG?.AUTO_MIRROR_EXTERNAL_STORES ?? true;
-    loggerV2.debug(
-      `[v2]: [MIRROR_DEBUG] AUTO_MIRROR_EXTERNAL_STORES: ${shouldMirror}, USE_SIMULATOR: ${APP_CONFIG.USE_SIMULATOR}`,
-    );
 
     if (!APP_CONFIG.USE_SIMULATOR && shouldMirror) {
-      loggerV2.silly('[v2]: [MIRROR_DEBUG] Conditions met, running mirror check');
       await runMirrorCheckV2();
-    } else {
-      loggerV2.silly('[v2]: [MIRROR_DEBUG] Skipping mirror check - conditions not met');
     }
   } catch (error) {
     loggerV2.error(
-      `[v2]: Retrying in ${APP_CONFIG?.TASKS?.MIRROR_CHECK_TASK_INTERVAL || 300} seconds`,
+      `[v2]: Mirror check failed. Retrying in ${APP_CONFIG?.TASKS?.MIRROR_CHECK_TASK_INTERVAL || 300} seconds`,
       error,
     );
-    loggerV2.silly(`[v2]: [MIRROR_DEBUG] Mirror-check V2 task error: ${error.message}`);
   }
 });
 
@@ -64,21 +48,16 @@ const job = new SimpleIntervalJob(
 );
 
 const runMirrorCheckV2Inner = async () => {
-  loggerV2.silly('[v2]: [MIRROR_DEBUG] Starting runMirrorCheckV2 function');
-
   const mirrorUrl = await getMirrorUrl();
-  loggerV2.silly(`[v2]: [MIRROR_DEBUG] Retrieved mirror URL: ${mirrorUrl}`);
 
   if (!mirrorUrl) {
     loggerV2.info(
       '[v2]: DATALAYER_FILE_SERVER_URL not set, skipping mirror announcements',
     );
-    loggerV2.silly('[v2]: [MIRROR_DEBUG] Exiting runMirrorCheckV2 - no mirror URL');
     return;
   }
 
-  // get governance info if governance node
-  loggerV2.silly('[v2]: [MIRROR_DEBUG] Checking for V2 governance organization info');
+  // Mirror governance stores
   const governanceOrgUidResult = await MetaV2.findOne({
     where: { meta_key: 'governanceBodyId' },
     attributes: ['meta_value'],
@@ -90,20 +69,10 @@ const runMirrorCheckV2Inner = async () => {
     raw: true,
   });
 
-  loggerV2.debug(
-    `[v2]: [MIRROR_DEBUG] Governance org UID result: ${governanceOrgUidResult?.meta_value || 'null'}`,
-  );
-  loggerV2.debug(
-    `[v2]: [MIRROR_DEBUG] Governance registry ID result: ${governanceRegistryIdResult?.meta_value || 'null'}`,
-  );
-
   if (
     governanceOrgUidResult?.meta_value &&
     governanceRegistryIdResult?.meta_value
   ) {
-    loggerV2.silly('[v2]: [MIRROR_DEBUG] Adding governance mirrors');
-    // add governance mirrors if instance is governance
-    // There is logic within the addMirror function to check if the mirror already exists
     await OrganizationsV2.addMirror(
       governanceOrgUidResult?.meta_value,
       mirrorUrl,
@@ -114,30 +83,20 @@ const runMirrorCheckV2Inner = async () => {
       mirrorUrl,
       true,
     );
-    loggerV2.silly('[v2]: [MIRROR_DEBUG] Completed governance mirror additions');
   } else {
-    // Mirror governance stores for subscriber nodes that have a configured
-    // GOVERNANCE_BODY_ID but are not governance body owners (no meta entries).
     const configGovernanceBodyId =
       getConfigV2().GOVERNANCE?.GOVERNANCE_BODY_ID;
 
     if (configGovernanceBodyId) {
-      loggerV2.debug(
-        `[v2]: [MIRROR_DEBUG] Subscriber node with v2 GOVERNANCE_BODY_ID: ${configGovernanceBodyId}, mirroring governance stores`,
-      );
-
       try {
         await OrganizationsV2.addMirror(
           configGovernanceBodyId,
           mirrorUrl,
           true,
         );
-        loggerV2.debug(
-          `[v2]: [MIRROR_DEBUG] Mirror ensured for v2 governance body: ${configGovernanceBodyId}`,
-        );
       } catch (error) {
         loggerV2.error(
-          `[v2]: [MIRROR_DEBUG] Failed to mirror v2 governance body ${configGovernanceBodyId}: ${error.message}`,
+          `[v2]: Failed to mirror governance body ${configGovernanceBodyId}: ${error.message}`,
         );
       }
 
@@ -150,134 +109,69 @@ const runMirrorCheckV2Inner = async () => {
           const versionStoreId = decodeHex(versionStoreIdHex);
           if (versionStoreId) {
             await OrganizationsV2.addMirror(versionStoreId, mirrorUrl, true);
-            loggerV2.debug(
-              `[v2]: [MIRROR_DEBUG] Mirror ensured for v2 governance version store: ${versionStoreId}`,
-            );
           }
-        } else {
-          loggerV2.debug(
-            `[v2]: [MIRROR_DEBUG] Could not resolve v2 governance version store from ${configGovernanceBodyId}`,
-          );
         }
       } catch (error) {
         loggerV2.error(
-          `[v2]: [MIRROR_DEBUG] Failed to resolve/mirror v2 governance version store: ${error.message}`,
+          `[v2]: Failed to resolve/mirror governance version store: ${error.message}`,
         );
       }
-    } else {
-      loggerV2.debug(
-        '[v2]: [MIRROR_DEBUG] Skipping governance mirrors - no governance data and no GOVERNANCE_BODY_ID configured',
-      );
     }
   }
 
-  loggerV2.silly('[v2]: [MIRROR_DEBUG] Retrieving V2 organizations map');
-  const organizations = await OrganizationsV2.getOrgsMap();
-  loggerV2.debug(
-    `[v2]: [MIRROR_DEBUG] Retrieved ${Object.keys(organizations).length} organizations from getOrgsMap()`,
-  );
-  loggerV2.debug(
-    `[v2]: [MIRROR_DEBUG] Organizations: ${JSON.stringify(Object.keys(organizations))}`,
-  );
+  // Fetch DataLayer subscriptions to avoid mirroring unsubscribed stores.
+  // Owned stores appear in this list too, so it covers both home and external orgs.
+  const { storeIds: subscribedStoreIds, success: subsSuccess } =
+    await getSubscriptions();
+  const subscribedSet = subsSuccess ? new Set(subscribedStoreIds) : null;
 
+  if (!subsSuccess) {
+    loggerV2.warn(
+      '[v2]: Could not fetch DataLayer subscriptions; will attempt mirrors for all stores',
+    );
+  }
+
+  const organizations = await OrganizationsV2.getOrgsMap();
   const orgs = Object.keys(organizations);
-  loggerV2.silly(`[v2]: [MIRROR_DEBUG] Processing ${orgs.length} organizations`);
+  loggerV2.info(`[v2]: Mirror check processing ${orgs.length} organizations`);
 
   for (const org of orgs) {
-    loggerV2.silly(`[v2]: [MIRROR_DEBUG] Processing organization: ${org}`);
     const orgData = organizations[org];
-    loggerV2.debug(
-      `[v2]: [MIRROR_DEBUG] Organization data: ${JSON.stringify({
-        name: orgData.name,
-        subscribed: orgData.subscribed,
-        org_uid: orgData.org_uid,
-        data_model_version_store_id: orgData.data_model_version_store_id,
-        registry_id: orgData.registry_id,
-        file_store_subscribed: orgData.file_store_subscribed,
-      })}`,
-    );
 
-    if (orgData.subscribed) {
-      loggerV2.debug(
-        `[v2]: [MIRROR_DEBUG] Organization ${org} is subscribed, adding mirrors`,
-      );
-      try {
-        await OrganizationsV2.addMirror(orgData.org_uid, mirrorUrl, true);
+    if (!orgData.subscribed) {
+      continue;
+    }
+
+    const storesToMirror = [
+      { label: 'org_uid', id: orgData.org_uid },
+      { label: 'data_model_version_store_id', id: orgData.data_model_version_store_id },
+      { label: 'registry_id', id: orgData.registry_id },
+      { label: 'file_store', id: orgData.file_store_subscribed },
+    ];
+
+    for (const { label, id } of storesToMirror) {
+      if (!id) {
+        continue;
+      }
+
+      if (subscribedSet && !subscribedSet.has(id)) {
         loggerV2.debug(
-          `[v2]: [MIRROR_DEBUG] Mirror ensured for org_uid: ${orgData.org_uid}`,
+          `[v2]: Skipping mirror for ${label} ${id} (${orgData.name}) - not subscribed in DataLayer`,
         );
+        continue;
+      }
+
+      try {
+        await OrganizationsV2.addMirror(id, mirrorUrl, true);
       } catch (error) {
         loggerV2.error(
-          `[v2]: [MIRROR_DEBUG] Failed to ensure mirror for org_uid ${orgData.org_uid}: ${error.message}`,
+          `[v2]: Failed to ensure mirror for ${label} ${id} (${orgData.name}): ${error.message}`,
         );
       }
-
-      if (orgData.data_model_version_store_id) {
-        try {
-          await OrganizationsV2.addMirror(
-            orgData.data_model_version_store_id,
-            mirrorUrl,
-            true,
-          );
-          loggerV2.debug(
-            `[v2]: [MIRROR_DEBUG] Mirror ensured for data_model_version_store_id: ${orgData.data_model_version_store_id}`,
-          );
-        } catch (error) {
-          loggerV2.error(
-            `[v2]: [MIRROR_DEBUG] Failed to ensure mirror for data_model_version_store_id ${orgData.data_model_version_store_id}: ${error.message}`,
-          );
-        }
-      } else {
-        loggerV2.debug(
-          `[v2]: [MIRROR_DEBUG] Skipping data_model_version_store_id mirror - value is null/undefined`,
-        );
-      }
-
-      if (orgData.registry_id) {
-        try {
-          await OrganizationsV2.addMirror(orgData.registry_id, mirrorUrl, true);
-          loggerV2.debug(
-            `[v2]: [MIRROR_DEBUG] Mirror ensured for registry_id: ${orgData.registry_id}`,
-          );
-        } catch (error) {
-          loggerV2.error(
-            `[v2]: [MIRROR_DEBUG] Failed to ensure mirror for registry_id ${orgData.registry_id}: ${error.message}`,
-          );
-        }
-      } else {
-        loggerV2.debug(
-          `[v2]: [MIRROR_DEBUG] Skipping registry_id mirror - value is null/undefined`,
-        );
-      }
-
-      if (orgData.file_store_subscribed) {
-        try {
-          await OrganizationsV2.addMirror(
-            orgData.file_store_subscribed,
-            mirrorUrl,
-            true,
-          );
-          loggerV2.debug(
-            `[v2]: [MIRROR_DEBUG] Mirror ensured for file_store: ${orgData.file_store_subscribed}`,
-          );
-        } catch (error) {
-          loggerV2.error(
-            `[v2]: [MIRROR_DEBUG] Failed to ensure mirror for file_store ${orgData.file_store_subscribed}: ${error.message}`,
-          );
-        }
-      } else {
-        loggerV2.debug(
-          `[v2]: [MIRROR_DEBUG] Skipping file_store mirror - value is null/undefined`,
-        );
-      }
-    } else {
-      loggerV2.debug(
-        `[v2]: [MIRROR_DEBUG] Organization ${org} is not subscribed, skipping`,
-      );
     }
   }
 
-  loggerV2.silly('[v2]: [MIRROR_DEBUG] Completed runMirrorCheckV2 function');
+  loggerV2.info('[v2]: Mirror check complete');
 };
 
 const runMirrorCheckV2 = async () => {
@@ -293,6 +187,34 @@ const runMirrorCheckV2 = async () => {
   }
 };
 
+/**
+ * Mirror only the stores belonging to a specific organization.
+ * Used by org creation / upgrade finalization to avoid running a full mirror
+ * check across all orgs, which is slow and can conflict with the periodic task.
+ * @param {Object} storeIds - Map of store labels to store IDs
+ * @param {string} storeIds.orgUid
+ * @param {string} [storeIds.registryId]
+ * @param {string} [storeIds.dataModelVersionStoreId]
+ * @param {string} [storeIds.fileStoreId]
+ */
+const mirrorOrgStoresV2 = async (storeIds) => {
+  const mirrorUrl = await getMirrorUrl();
+  if (!mirrorUrl) {
+    return;
+  }
+
+  const entries = Object.entries(storeIds).filter(([, id]) => id);
+  for (const [label, id] of entries) {
+    try {
+      await OrganizationsV2.addMirror(id, mirrorUrl, true);
+    } catch (error) {
+      loggerV2.warn(
+        `[v2]: Failed to mirror ${label} ${id} (will be retried by periodic task): ${error.message}`,
+      );
+    }
+  }
+};
+
 export default job;
-export { runMirrorCheckV2 };
+export { runMirrorCheckV2, mirrorOrgStoresV2 };
 

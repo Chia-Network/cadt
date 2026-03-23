@@ -52,7 +52,7 @@ import {
   clearCreationState,
   hasInProgressCreation,
 } from '../../utils/organization-creation-state.js';
-import { runMirrorCheck } from '../../tasks/mirror-check.js';
+import { mirrorOrgStores } from '../../tasks/mirror-check.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 
 const { isTransientWalletError } = wallet;
@@ -448,9 +448,15 @@ class Organization extends Model {
 
       logState(state, `Organization creation complete. orgUid: ${orgUid}`);
 
-      // Fire-and-forget: the periodic mirror-check task will also handle this.
-      runMirrorCheck().catch((mirrorError) => {
-        logState(state, `Mirror check failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
+      // Fire-and-forget: mirror only this org's stores rather than running
+      // a full mirror check across all orgs. The periodic task handles the rest.
+      mirrorOrgStores({
+        orgUid,
+        registryId,
+        dataModelVersionStoreId,
+        fileStoreId,
+      }).catch((mirrorError) => {
+        logState(state, `Mirror creation failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
       });
 
       return orgUid;
