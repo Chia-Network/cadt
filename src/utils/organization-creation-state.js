@@ -301,8 +301,16 @@ export const getStatusSummary = (state) => {
       progress = -1;
   }
 
+  const isTerminal = [ORG_CREATION_STATES.COMPLETE, ORG_CREATION_STATES.FAILED].includes(state.state);
+  const isStale = !isTerminal && hasTimedOut(state);
+
+  if (isStale) {
+    message = `Organization creation appears stale (started ${state.startedAt}). A new creation attempt will resume or retry.`;
+    progress = -1;
+  }
+
   return {
-    inProgress: ![ORG_CREATION_STATES.COMPLETE, ORG_CREATION_STATES.FAILED].includes(state.state),
+    inProgress: !isTerminal && !isStale,
     state: state.state,
     message,
     progress,
