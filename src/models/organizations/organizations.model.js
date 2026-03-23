@@ -230,19 +230,22 @@ class Organization extends Model {
       logger.error(
         `[v1]: create organization process failed. Error: ${error.message}`,
       );
-      await Organization.destroy({ where: { orgUid: 'PENDING' } });
-      // Mark state as FAILED so the 409 guard in the controller doesn't
-      // permanently block new creation attempts within the same session.
-      // The startup recovery task only runs once, so mid-session failures
-      // would otherwise leave orphaned STORES_CREATING state in Meta.
+      // Mark state as FAILED BEFORE destroying PENDING record to ensure
+      // the state is persisted even if the destroy call causes issues.
       try {
         let failedState = await loadCreationState(Meta, 'v1');
         if (failedState && failedState.state !== ORG_CREATION_STATES.COMPLETE) {
           failedState = markAsFailed(failedState, error.message);
           await saveCreationState(failedState, Meta);
+          logger.info('[v1]: Creation state marked as FAILED in Meta table');
         }
       } catch (stateError) {
         logger.error(`[v1]: Failed to mark creation state as FAILED: ${stateError.message}`);
+      }
+      try {
+        await Organization.destroy({ where: { orgUid: 'PENDING' } });
+      } catch (destroyError) {
+        logger.error(`[v1]: Failed to destroy PENDING record: ${destroyError.message}`);
       }
       throw error;
     }
@@ -437,23 +440,19 @@ class Organization extends Model {
         );
       }
 
-      // Trigger mirror check to create mirrors for the new organization immediately
-      // Wrapped in try-catch so mirror failures don't fail org creation
-      // The periodic mirror-check task will retry if this fails
-      try {
-        logState(state, 'Triggering mirror check to create mirrors for new organization');
-        await runMirrorCheck();
-        logState(state, 'Mirror check completed successfully');
-      } catch (mirrorError) {
-        logState(state, `Mirror check failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
-      }
-
-      // Mark complete and clear state
+      // Mark complete and clear state before mirror creation so org
+      // creation success is not dependent on mirror operations.
       updateOrgLockStatus(lockToken, 'Organization creation complete');
       state = updateState(state, { state: ORG_CREATION_STATES.COMPLETE });
       await clearCreationState(Meta, 'v1');
 
       logState(state, `Organization creation complete. orgUid: ${orgUid}`);
+
+      // Fire-and-forget: the periodic mirror-check task will also handle this.
+      runMirrorCheck().catch((mirrorError) => {
+        logState(state, `Mirror check failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
+      });
+
       return orgUid;
     } catch (error) {
       logState(state, `Error during creation: ${error.message}`, 'error');
