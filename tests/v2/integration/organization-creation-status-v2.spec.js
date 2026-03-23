@@ -422,6 +422,7 @@ describe('Organization Creation Status Tests', function () {
 
       try {
         await OrganizationsV2.createHomeOrganization('FailTest V2', '', 'v2');
+        expect.fail('createHomeOrganization should have thrown');
       } catch (e) {
         expect(e.message).to.equal('simulated store creation failure');
       }
@@ -444,6 +445,7 @@ describe('Organization Creation Status Tests', function () {
 
       try {
         await Organization.createHomeOrganization('FailTest V1', '', 'v1');
+        expect.fail('createHomeOrganization should have thrown');
       } catch (e) {
         expect(e.message).to.equal('simulated V1 store failure');
       }
