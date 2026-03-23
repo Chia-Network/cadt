@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, UnitV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, UnitV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, ProjectV2, ValidationV2, ProgramV2, UnitLabelV2, LabelV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import TaskManager from '../../../src/tasks/index.js';
 import { getConfig, getConfigV2 } from '../../../src/utils/config-loader.js';
@@ -1367,6 +1367,155 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         expect(response.body.success).to.be.false;
         expect(response.body.message).to.include('File Not Received');
       });
+
+      it('should import multi-sheet XLSX with units + unitLabels', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const unitId = uuidv4();
+        const unitLabelId = uuidv4();
+        const labelId = uuidv4();
+
+        const xlsxBuffer = xlsx.build([
+          {
+            name: 'units',
+            data: [
+              ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitCount', 'unitVintageYear', 'cadTrustIssuanceId'],
+              [unitId, 'MULTI-UNIT-001', '1000', '2000', '50', '2024', testIssuanceForAdvanced.cadTrustIssuanceId],
+            ],
+          },
+          {
+            name: 'unitLabels',
+            data: [
+              ['cadTrustUnitLabelId', 'cadTrustUnitId', 'cadTrustLabelId'],
+              [unitLabelId, unitId, labelId],
+            ],
+          },
+        ]);
+
+        const response = await supertest(app)
+          .put('/v2/unit/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const unitStaging = await StagingV2.findOne({
+          where: { table: 'unit', uuid: unitId },
+        });
+        expect(unitStaging).to.exist;
+        expect(unitStaging.action).to.equal('INSERT');
+        const unitData = JSON.parse(unitStaging.data);
+        expect(unitData[0].unitSerialId).to.equal('MULTI-UNIT-001');
+
+        const labelStaging = await StagingV2.findOne({
+          where: { table: 'unit_label', uuid: unitLabelId },
+        });
+        expect(labelStaging).to.exist;
+        expect(labelStaging.action).to.equal('INSERT');
+        const labelData = JSON.parse(labelStaging.data);
+        expect(labelData[0].cadTrustUnitId).to.equal(unitId);
+        expect(labelData[0].cadTrustLabelId).to.equal(labelId);
+      });
+
+      it('should handle XLSX with empty data rows gracefully', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const xlsxBuffer = xlsx.build([
+          {
+            name: 'units',
+            data: [
+              ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock'],
+            ],
+          },
+        ]);
+
+        const response = await supertest(app)
+          .put('/v2/unit/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        const records = await StagingV2.findAll({ where: { table: 'unit' } });
+        expect(records).to.have.lengthOf(0);
+      });
+
+      it('should skip unrecognized sheet names without error', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const unitId = uuidv4();
+
+        const xlsxBuffer = xlsx.build([
+          {
+            name: 'units',
+            data: [
+              ['cadTrustUnitId', 'unitSerialId', 'unitStartBlock', 'unitEndBlock', 'unitVintageYear', 'cadTrustIssuanceId'],
+              [unitId, 'UNKNOWN-UNIT-001', '100', '200', '2024', testIssuanceForAdvanced.cadTrustIssuanceId],
+            ],
+          },
+          {
+            name: 'unknownSheet',
+            data: [
+              ['col1', 'col2'],
+              ['val1', 'val2'],
+            ],
+          },
+        ]);
+
+        const response = await supertest(app)
+          .put('/v2/unit/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        const record = await StagingV2.findOne({
+          where: { table: 'unit', uuid: unitId },
+        });
+        expect(record).to.exist;
+      });
+
+      it('should round-trip: export then re-import produces matching staging records', async function () {
+        const xlsxModule = await import('node-xlsx');
+
+        const homeOrgId = await getV2HomeOrgId();
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'RT-UNIT-001',
+          unitStartBlock: '500',
+          unitEndBlock: '600',
+          unitCount: 30,
+          unitType: 'Avoidance - nature',
+          unitVintageYear: 2024,
+          unitStatus: 'Issued',
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
+        }));
+
+        const exportResponse = await supertest(app)
+          .get('/v2/unit')
+          .query({ xls: 'true' })
+          .buffer(true)
+          .parse((res, callback) => {
+            const chunks = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => callback(null, Buffer.concat(chunks)));
+          })
+          .expect(200);
+
+        const importResponse = await supertest(app)
+          .put('/v2/unit/xlsx')
+          .attach('xlsx', exportResponse.body, 'roundtrip.xlsx')
+          .expect(200);
+
+        expect(importResponse.body.success).to.be.true;
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'unit', uuid: unit.cadTrustUnitId },
+        });
+        expect(stagingRecords).to.have.lengthOf(1);
+        expect(stagingRecords[0].action).to.equal('UPDATE');
+
+        const data = JSON.parse(stagingRecords[0].data);
+        expect(data[0].unitSerialId).to.equal('RT-UNIT-001');
+      });
     });
 
     describe('POST /v2/unit/batch', function () {
@@ -1617,16 +1766,95 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
       });
 
       it('should export to Excel format', async function () {
-        // XLS export doesn't require pagination
         const response = await supertest(app)
           .get('/v2/unit')
           .query({ xls: 'true' })
           .expect(200);
 
-        // Excel export should return binary data
         expect(response.headers['content-disposition']).to.include('attachment');
         expect(response.headers['content-disposition']).to.include('.xlsx');
         expect(response.headers['content-type']).to.exist;
+      });
+
+      it('should export XLSX with correct sheet names, columns, and row data', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsxLib = xlsxModule.default || xlsxModule;
+
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ xls: 'true' })
+          .buffer(true)
+          .parse((res, callback) => {
+            const chunks = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => callback(null, Buffer.concat(chunks)));
+          })
+          .expect(200);
+
+        const parsed = xlsxLib.parse(response.body);
+        const sheetNames = parsed.map((s) => s.name);
+        expect(sheetNames).to.include('units');
+
+        const mainSheet = parsed.find((s) => s.name === 'units');
+        const headers = mainSheet.data[0];
+
+        expect(headers).to.include('cadTrustUnitId');
+        expect(headers).to.include('unitSerialId');
+        expect(headers).to.include('unitType');
+        expect(headers).to.include('unitVintageYear');
+
+        const dbUnits = await UnitV2.findAll({ raw: true });
+        const dataRows = mainSheet.data.slice(1);
+        expect(dataRows.length).to.equal(dbUnits.length);
+
+        const pkIdx = headers.indexOf('cadTrustUnitId');
+        const serialIdx = headers.indexOf('unitSerialId');
+        for (const dbUnit of dbUnits) {
+          const row = dataRows.find((r) => r[pkIdx] === dbUnit.cadTrustUnitId);
+          expect(row, `Row for unit ${dbUnit.cadTrustUnitId} not found`).to.exist;
+          expect(row[serialIdx]).to.equal(dbUnit.unitSerialId);
+        }
+      });
+
+      it('should export XLSX with unitLabels child sheet when labels exist', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsxLib = xlsxModule.default || xlsxModule;
+
+        const units = await UnitV2.findAll({ limit: 1 });
+        const unit = units[0];
+
+        const label = await LabelV2.create({
+          cadTrustLabelId: uuidv4(),
+          labelName: 'Export Test Label',
+          labelType: 'Certification',
+        });
+
+        await UnitLabelV2.create({
+          cadTrustUnitLabelId: uuidv4(),
+          cadTrustUnitId: unit.cadTrustUnitId,
+          cadTrustLabelId: label.cadTrustLabelId,
+        });
+
+        const response = await supertest(app)
+          .get('/v2/unit')
+          .query({ xls: 'true' })
+          .buffer(true)
+          .parse((res, callback) => {
+            const chunks = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => callback(null, Buffer.concat(chunks)));
+          })
+          .expect(200);
+
+        const parsed = xlsxLib.parse(response.body);
+        const sheetNames = parsed.map((s) => s.name);
+        expect(sheetNames).to.include('units');
+        expect(sheetNames).to.include('unitLabels');
+
+        const labelSheet = parsed.find((s) => s.name === 'unitLabels');
+        expect(labelSheet.data.length).to.be.at.least(2);
+        const labelHeaders = labelSheet.data[0];
+        expect(labelHeaders).to.include('cadTrustLabelId');
       });
 
       it('should combine multiple query parameters', async function () {
