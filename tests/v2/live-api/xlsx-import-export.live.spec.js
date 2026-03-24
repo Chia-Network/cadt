@@ -166,11 +166,12 @@ describe('XLSX Import/Export Live API Tests', function () {
   });
 
   // =========================================================================
-  // Project XLSX Import
+  // XLSX Import (Projects + Units batched into a single commit)
   // =========================================================================
-  describe('Step 11: Project XLSX Import', function () {
-    let importedProjectIds = [];
+  let importedProjectIds = [];
+  let importedUnitIds = [];
 
+  describe('Step 11: XLSX Import (batch)', function () {
     it('should import sample-projects-import.xlsx with placeholder replacement', async function () {
       const replacements = {
         '{{PROGRAM_ID}}': programId,
@@ -193,12 +194,34 @@ describe('XLSX Import/Export Live API Tests', function () {
       expect(response.body.message).to.include('Updates from xlsx added to staging');
     });
 
-    it('should commit and verify imported projects appear in database', async function () {
+    it('should import sample-units-import.xlsx with placeholder replacement', async function () {
+      const replacements = {
+        '{{ISSUANCE_ID}}': issuanceId,
+        '{{LABEL_ID}}': labelId,
+      };
+
+      const xlsxBuffer = replaceXlsxPlaceholders(
+        join(__dirname, 'data', 'sample-units-import.xlsx'),
+        replacements,
+      );
+
+      const response = await request
+        .put('/v2/unit/xlsx')
+        .attach('xlsx', xlsxBuffer, 'sample-units-import.xlsx');
+
+      expect(response.status).to.equal(200);
+      expect(response.body.success).to.be.true;
+    });
+
+    it('should commit all staged XLSX imports and verify they appear', async function () {
       await commitStagedRecords(request, [], true);
       await waitForPendingCommits(request);
       await waitForStagingEmpty(request);
+    });
+  });
 
-      // Find the 3 XLSX-imported projects by their projectId field
+  describe('Step 11a: Verify imported projects', function () {
+    it('should find all imported projects in database', async function () {
       const listResponse = await request
         .get('/v2/project')
         .query({ page: 1, limit: 1000 });
@@ -237,7 +260,6 @@ describe('XLSX Import/Export Live API Tests', function () {
     });
 
     it('should verify child entities were imported for projects', async function () {
-      // Check locations exist for imported projects
       const locResponse = await request
         .get('/v2/location')
         .query({ page: 1, limit: 1000 });
@@ -247,13 +269,11 @@ describe('XLSX Import/Export Live API Tests', function () {
       );
       expect(xlsxLocations.length).to.be.at.least(4);
 
-      // Verify a specific location
       const vnLocation = xlsxLocations.find(
         (l) => l.locationCountry === 'Viet Nam' && l.locationRegion === 'Example Delta Region',
       );
       expect(vnLocation, 'Vietnam location not found').to.exist;
 
-      // Check estimations
       const estResponse = await request
         .get('/v2/estimation')
         .query({ page: 1, limit: 1000 });
@@ -263,7 +283,6 @@ describe('XLSX Import/Export Live API Tests', function () {
       );
       expect(xlsxEstimations.length).to.be.at.least(5);
 
-      // Check co-benefits
       const cbResponse = await request
         .get('/v2/co-benefit')
         .query({ page: 1, limit: 1000 });
@@ -273,7 +292,6 @@ describe('XLSX Import/Export Live API Tests', function () {
       );
       expect(xlsxCoBenefits.length).to.be.at.least(9);
 
-      // Check ratings
       const ratingResponse = await request
         .get('/v2/rating')
         .query({ page: 1, limit: 1000 });
@@ -285,36 +303,8 @@ describe('XLSX Import/Export Live API Tests', function () {
     });
   });
 
-  // =========================================================================
-  // Unit XLSX Import
-  // =========================================================================
-  describe('Step 12: Unit XLSX Import', function () {
-    let importedUnitIds = [];
-
-    it('should import sample-units-import.xlsx with placeholder replacement', async function () {
-      const replacements = {
-        '{{ISSUANCE_ID}}': issuanceId,
-        '{{LABEL_ID}}': labelId,
-      };
-
-      const xlsxBuffer = replaceXlsxPlaceholders(
-        join(__dirname, 'data', 'sample-units-import.xlsx'),
-        replacements,
-      );
-
-      const response = await request
-        .put('/v2/unit/xlsx')
-        .attach('xlsx', xlsxBuffer, 'sample-units-import.xlsx');
-
-      expect(response.status).to.equal(200);
-      expect(response.body.success).to.be.true;
-    });
-
-    it('should commit and verify imported units appear in database', async function () {
-      await commitStagedRecords(request, [], true);
-      await waitForPendingCommits(request);
-      await waitForStagingEmpty(request);
-
+  describe('Step 12a: Verify imported units', function () {
+    it('should find all imported units in database', async function () {
       const listResponse = await request
         .get('/v2/unit')
         .query({ page: 1, limit: 1000 });
@@ -467,10 +457,13 @@ describe('XLSX Import/Export Live API Tests', function () {
   });
 
   // =========================================================================
-  // Round-trip Fidelity
+  // Round-trip Fidelity (batched into a single commit)
   // =========================================================================
-  describe('Step 15: Round-trip Fidelity', function () {
-    it('should round-trip project XLSX: export, re-import, commit, verify match', async function () {
+  let beforeProjects = [];
+  let beforeUnits = [];
+
+  describe('Step 15: Round-trip re-import (batch)', function () {
+    it('should export and re-import project XLSX', async function () {
       const exportResponse = await request
         .get('/v2/project')
         .query({ xls: 'true' })
@@ -483,26 +476,54 @@ describe('XLSX Import/Export Live API Tests', function () {
 
       expect(exportResponse.status).to.equal(200);
 
-      // Record project names before re-import
       const beforeResponse = await request
         .get('/v2/project')
         .query({ page: 1, limit: 1000 });
-      const beforeProjects = beforeResponse.body?.data || beforeResponse.body || [];
+      beforeProjects = beforeResponse.body?.data || beforeResponse.body || [];
 
-      // Re-import the exported buffer
       const importResponse = await request
         .put('/v2/project/xlsx')
         .attach('xlsx', exportResponse.body, 'roundtrip-projects.xlsx');
 
       expect(importResponse.status).to.equal(200);
       expect(importResponse.body.success).to.be.true;
+    });
 
-      // Commit the round-tripped data
+    it('should export and re-import unit XLSX', async function () {
+      const exportResponse = await request
+        .get('/v2/unit')
+        .query({ xls: 'true' })
+        .buffer(true)
+        .parse((res, callback) => {
+          const chunks = [];
+          res.on('data', (chunk) => chunks.push(chunk));
+          res.on('end', () => callback(null, Buffer.concat(chunks)));
+        });
+
+      expect(exportResponse.status).to.equal(200);
+
+      const beforeResponse = await request
+        .get('/v2/unit')
+        .query({ page: 1, limit: 1000 });
+      beforeUnits = beforeResponse.body?.data || beforeResponse.body || [];
+
+      const importResponse = await request
+        .put('/v2/unit/xlsx')
+        .attach('xlsx', exportResponse.body, 'roundtrip-units.xlsx');
+
+      expect(importResponse.status).to.equal(200);
+      expect(importResponse.body.success).to.be.true;
+    });
+
+    it('should commit all round-trip staged records', async function () {
       await commitStagedRecords(request, [], true);
       await waitForPendingCommits(request);
       await waitForStagingEmpty(request);
+    });
+  });
 
-      // Verify projects still match
+  describe('Step 15a: Verify round-trip fidelity', function () {
+    it('should verify projects match after round-trip', async function () {
       const afterResponse = await request
         .get('/v2/project')
         .query({ page: 1, limit: 1000 });
@@ -521,35 +542,7 @@ describe('XLSX Import/Export Live API Tests', function () {
       }
     });
 
-    it('should round-trip unit XLSX: export, re-import, commit, verify match', async function () {
-      const exportResponse = await request
-        .get('/v2/unit')
-        .query({ xls: 'true' })
-        .buffer(true)
-        .parse((res, callback) => {
-          const chunks = [];
-          res.on('data', (chunk) => chunks.push(chunk));
-          res.on('end', () => callback(null, Buffer.concat(chunks)));
-        });
-
-      expect(exportResponse.status).to.equal(200);
-
-      const beforeResponse = await request
-        .get('/v2/unit')
-        .query({ page: 1, limit: 1000 });
-      const beforeUnits = beforeResponse.body?.data || beforeResponse.body || [];
-
-      const importResponse = await request
-        .put('/v2/unit/xlsx')
-        .attach('xlsx', exportResponse.body, 'roundtrip-units.xlsx');
-
-      expect(importResponse.status).to.equal(200);
-      expect(importResponse.body.success).to.be.true;
-
-      await commitStagedRecords(request, [], true);
-      await waitForPendingCommits(request);
-      await waitForStagingEmpty(request);
-
+    it('should verify units match after round-trip', async function () {
       const afterResponse = await request
         .get('/v2/unit')
         .query({ page: 1, limit: 1000 });
