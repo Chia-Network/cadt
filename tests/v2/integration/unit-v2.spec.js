@@ -1474,8 +1474,6 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
       });
 
       it('should round-trip: export then re-import produces matching staging records', async function () {
-        const xlsxModule = await import('node-xlsx');
-
         const homeOrgId = await getV2HomeOrgId();
         const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
           unitSerialId: 'RT-UNIT-001',
