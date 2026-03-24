@@ -12,6 +12,9 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   readonly-live-smoke:
     name: READ_ONLY live smoke

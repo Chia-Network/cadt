@@ -43,6 +43,7 @@ const HEALTH_ENDPOINTS = new Set([
 ]);
 
 const isHealthEndpoint = (path) => HEALTH_ENDPOINTS.has(path);
+const isReadOnlyMethodBlocked = (method) => !['GET', 'HEAD', 'OPTIONS'].includes(method);
 
 const app = express();
 
@@ -153,6 +154,22 @@ app.use(async function (req, res, next) {
   }
 
   try {
+    // Enforce READ_ONLY before wallet availability assertions so writes are
+    // consistently rejected with the canonical 403 response.
+    const isV2Route = req.path.startsWith('/v2/');
+    const isV1Route = req.path.startsWith('/v1/');
+    let READ_ONLY = false;
+    if (isV2Route) {
+      READ_ONLY = getConfigV2().READ_ONLY || false;
+    } else if (isV1Route) {
+      READ_ONLY = getConfig().READ_ONLY || false;
+    } else {
+      READ_ONLY = getConfigV2().READ_ONLY || getConfig().READ_ONLY || false;
+    }
+    if (READ_ONLY && isReadOnlyMethodBlocked(req.method)) {
+      return sendReadOnlyError(res);
+    }
+
     await assertChiaNetworkMatchInConfiguration();
     await assertDataLayerAvailable();
     if (req.method !== 'GET') {
@@ -246,7 +263,7 @@ app.use(function (req, res, next) {
   if (READ_ONLY) {
     res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, READ_ONLY);
 
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    if (isReadOnlyMethodBlocked(req.method)) {
       return sendReadOnlyError(res);
     }
   } else {
