@@ -9,6 +9,10 @@ import {
   assertWalletIsSynced,
   assertCanBeGovernanceBody,
 } from '../utils/data-assertions';
+import {
+  isReadOnlyError,
+  sendReadOnlyError,
+} from '../utils/read-only-response.js';
 
 import { getConfig } from '../utils/config-loader';
 import glossary from '../models/governance/glossary.stub.js';
@@ -138,6 +142,9 @@ export const createGoveranceBody = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cant create Governance Body',
       error: error.message,
@@ -164,6 +171,9 @@ export const setDefaultOrgList = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     logger.error('[v1]: Error updating default orgs:', error);
     res.status(400).json({
       message: 'Cant update default orgs',
@@ -191,6 +201,9 @@ export const setPickList = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cant update picklist',
       error: error.message,
@@ -216,6 +229,9 @@ export const setGlossary = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cant update glossary',
       error: error.message,
@@ -226,12 +242,16 @@ export const setGlossary = async (req, res) => {
 
 export const sync = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     Governance.sync();
     return res.json({
       message: 'Syncing Governance Body',
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cant Sync Governance Body',
       error: error.message,

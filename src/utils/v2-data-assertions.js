@@ -5,6 +5,7 @@ import _ from 'lodash';
 import { StagingV2, OrganizationsV2, MetaV2 } from '../models/v2/index.js';
 import { getConfig, getConfigV2 } from './config-loader.js';
 import { loggerV2 } from '../config/logger.js';
+import { createReadOnlyError } from './read-only-response.js';
 
 /**
  * V2-specific assertion that the system is not in read-only mode
@@ -17,7 +18,7 @@ export const assertV2IfReadOnlyMode = async () => {
   const config = getConfigV2();
   const READ_ONLY = config.READ_ONLY;
   if (READ_ONLY) {
-    throw new Error('Cannot use this API in read-only mode. The system is currently configured as read-only.');
+    throw createReadOnlyError();
   }
 };
 

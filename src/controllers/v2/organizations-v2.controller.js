@@ -33,6 +33,10 @@ import { assertV2IfReadOnlyMode, assertV2HomeOrgExists, assertV2OrgDoesNotExist 
 import { assertWalletIsSynced, assertStoreIsOwned } from '../../utils/data-assertions.js';
 import { sequelizeV2 } from '../../database/v2/index.js';
 import { loggerV2 } from '../../config/logger.js';
+import {
+  isReadOnlyError,
+  sendReadOnlyError,
+} from '../../utils/read-only-response.js';
 import datalayer from '../../datalayer';
 import { getStoreData as getRawStoreData } from '../../datalayer/persistance.js';
 import * as simulator from '../../datalayer/simulator.js';
@@ -985,8 +989,7 @@ export const deleteOrganization = async (req, res) => {
  */
 export const sync = async (req, res) => {
   try {
-    // Optional: check read-only mode (sync is typically read-only operation)
-    // await assertV2IfReadOnlyMode();
+    await assertV2IfReadOnlyMode();
 
     await OrganizationsV2.syncOrganizationMeta();
 
@@ -995,6 +998,9 @@ export const sync = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     loggerV2.error(`[v2]: Error syncing organization metadata: ${error.message}`);
     res.status(400).json({
       message: 'Error syncing organization metadata',

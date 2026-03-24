@@ -1,0 +1,40 @@
+name: READ_ONLY Live API Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - develop
+      - v2-rc2
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  readonly-live-smoke:
+    name: READ_ONLY live smoke
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.RUN_READONLY_LIVE_SMOKE == 'true' }}
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 30
+    steps:
+      - name: Clean workspace
+        uses: Chia-Network/actions/clean-workspace@main
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run READ_ONLY live smoke
+        env:
+          TEST_API_HOST: 127.0.0.1
+        run: npm run test:live:readonly:smoke

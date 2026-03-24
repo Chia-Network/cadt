@@ -9,7 +9,7 @@ import datalayer from '../../datalayer';
 import { getStoreData as getRawStoreData } from '../../datalayer/persistance.js';
 import * as simulator from '../../datalayer/simulator.js';
 import { loggerV2 } from '../../config/logger.js';
-import { getConfig } from '../../utils/config-loader';
+import { getConfig, getConfigV2 } from '../../utils/config-loader';
 import { decodeHex, decodeDataLayerResponse } from '../../utils/datalayer-utils.js';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
@@ -1146,6 +1146,7 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<Object|null>} Home organization record or null if not found
    */
   static async getHomeOrg(includeAddress = true) {
+    const { READ_ONLY } = getConfigV2();
     const myOrganization = await OrganizationsV2.findOne({
       where: { is_home: true },
       raw: true,
@@ -1175,7 +1176,9 @@ class OrganizationsV2 extends Model {
     }
 
     if (includeAddress) {
-      myOrganization.xchAddress = await datalayer.getPublicAddress();
+      if (!READ_ONLY) {
+        myOrganization.xchAddress = await datalayer.getPublicAddress();
+      }
       myOrganization.fileStoreSubscribed = myOrganization.file_store_subscribed || false;
       return myOrganization;
     }
@@ -1196,6 +1199,7 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<Object>} Map of orgUid -> org data
    */
   static async getOrgsMap() {
+    const { READ_ONLY } = getConfigV2();
     loggerV2.silly(
       '[v2]: [MIRROR_DEBUG] Starting getOrgsMap() - querying V2 organizations from database',
     );
@@ -1225,10 +1229,12 @@ class OrganizationsV2 extends Model {
     // Add XCH address and balance for home org
     for (let i = 0; i < organizations.length; i++) {
       if (organizations[i].dataValues.is_home) {
-        organizations[i].dataValues.xchAddress =
-          await datalayer.getPublicAddress();
-        organizations[i].dataValues.balance =
-          await datalayer.getWalletBalance();
+        if (!READ_ONLY) {
+          organizations[i].dataValues.xchAddress =
+            await datalayer.getPublicAddress();
+          organizations[i].dataValues.balance =
+            await datalayer.getWalletBalance();
+        }
 
         const pendingCommitsCount = await StagingV2.count({
           where: { committed: true },

@@ -5,7 +5,6 @@ import joiExpress from 'express-joi-validation';
 
 import { GovernanceController } from '../../../controllers';
 import {
-  governanceSubscribeSchema,
   setOrgListSchema,
   governancePickListSchema,
 } from '../../../validations';
@@ -60,13 +59,5 @@ GovernanceRouter.post(
 GovernanceRouter.post('/meta/glossary', (req, res) => {
   return GovernanceController.setGlossary(req, res);
 });
-
-GovernanceRouter.post(
-  '/subscribe',
-  validator.body(governanceSubscribeSchema),
-  (req, res) => {
-    return GovernanceController.subscribeToGovernanceBody(req, res);
-  },
-);
 
 export { GovernanceRouter };

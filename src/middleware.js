@@ -19,6 +19,7 @@ import datalayer from './datalayer';
 import { Organization } from './models';
 import { OrganizationsV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
+import { sendReadOnlyError } from './utils/read-only-response.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
 
@@ -244,6 +245,10 @@ app.use(function (req, res, next) {
 
   if (READ_ONLY) {
     res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, READ_ONLY);
+
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      return sendReadOnlyError(res);
+    }
   } else {
     res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, false);
   }

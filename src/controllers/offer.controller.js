@@ -13,6 +13,10 @@ import {
   assertNoPendingCommitsExcludingTransfers,
   assertNoPendingCommits,
 } from '../utils/data-assertions';
+import {
+  isReadOnlyError,
+  sendReadOnlyError,
+} from '../utils/read-only-response.js';
 
 import { deserializeMaker, deserializeTaker } from '../utils/datalayer-utils';
 
@@ -153,6 +157,7 @@ export const commitImportedOfferFile = async (req, res) => {
 
 export const cancelImportedOfferFile = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await assertActiveOfferFile();
 
     await Meta.destroy({
@@ -166,6 +171,9 @@ export const cancelImportedOfferFile = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Can not cancel offer.',
       error: error.message,
