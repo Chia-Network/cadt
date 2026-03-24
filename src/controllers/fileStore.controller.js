@@ -56,9 +56,6 @@ export const getFileList = async (req, res) => {
     const files = await FileStore.getFileStoreList();
     res.json(files);
   } catch (error) {
-    if (isReadOnlyError(error)) {
-      return sendReadOnlyError(res);
-    }
     res.status(400).json({
       message: 'Can not retrieve file list from filestore',
       error: error.message,

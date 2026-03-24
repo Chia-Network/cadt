@@ -7,12 +7,6 @@ export const getFileSchema = Joi.object({
   }),
 });
 
-export const getFileParamsSchema = Joi.object({
-  fileId: Joi.string().required().messages({
-    'any.required': 'fileId is required',
-  }),
-});
-
 export const subscribedSchema = Joi.object({
   orgUid: Joi.string().required().messages({
     'any.required': 'orgUid is required',
