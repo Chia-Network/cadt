@@ -76,6 +76,9 @@ export const deleteFile = async (req, res) => {
         'File will be deleted from the filestore, but it will take a few mins to confirm.',
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Can not delete file from filestore',
       error: error.message,

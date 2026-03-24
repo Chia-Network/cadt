@@ -16,5 +16,5 @@ export const createReadOnlyError = () => {
 };
 
 export const isReadOnlyError = (error) => {
-  return error?.code === 'READ_ONLY' || error?.status === 403;
+  return error?.code === 'READ_ONLY';
 };
