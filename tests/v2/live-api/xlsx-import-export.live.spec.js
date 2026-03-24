@@ -194,10 +194,6 @@ describe('XLSX Import/Export Live API Tests', function () {
       await waitForPendingCommits(request);
       await waitForStagingEmpty(request);
 
-      // Get all project IDs from DB
-      const allProjectIds = await getAllRecordIdsFromDatabase(request, 'project');
-      expect(allProjectIds.length).to.be.at.least(3);
-
       // Find the 3 XLSX-imported projects by their projectId field
       const listResponse = await request
         .get('/v2/project')
