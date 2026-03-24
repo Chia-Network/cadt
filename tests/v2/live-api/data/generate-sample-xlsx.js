@@ -487,14 +487,16 @@ const unitsSheet = {
 const unitLabelsSheet = {
   name: 'unitLabels',
   data: [
-    ['cadTrustLabelId', 'cadTrustUnitId', 'labelUnitDate', 'labelUnitDescription'],
+    ['cadTrustUnitLabelId', 'cadTrustLabelId', 'cadTrustUnitId', 'labelUnitDate', 'labelUnitDescription'],
     [
+      'NEW-1',
       PLACEHOLDER_LABEL_ID,
       UNIT_3,
       '2024-06-15',
       'Sample certification label — example description for unit testing',
     ],
     [
+      'NEW-2',
       PLACEHOLDER_LABEL_ID,
       UNIT_4,
       '2025-03-01',
