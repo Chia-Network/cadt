@@ -45,6 +45,9 @@ const testFiles = [
   'aef-t3-actions-validation.live.spec.js',
   'aef-t4-holdings-validation.live.spec.js',
   'aef-t5-authorized-entities-validation.live.spec.js',
+
+  // XLSX import/export tests (runs after all base entities exist)
+  'xlsx-import-export.live.spec.js',
 ];
 
 async function main() {

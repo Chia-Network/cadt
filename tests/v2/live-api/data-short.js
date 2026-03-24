@@ -351,6 +351,10 @@ async function main() {
     await clearStagingTable(request);
     console.log('');
 
+    // Phase 3.5: XLSX Import/Export tests (needs records from POST phase)
+    const xlsxTestFiles = ['xlsx-import-export.live.spec.js'];
+    await runMochaTests('Step 1[1-6]:', 'XLSX Import/Export', xlsxTestFiles);
+
     // Phase 4: PUT tests
     await runMochaTests('Step 7: PUT Request Tests', 'PUT Operations');
     await commitAndWait('PUT');
