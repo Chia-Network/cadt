@@ -352,6 +352,19 @@ async function main() {
     console.log('');
 
     // Phase 3.5: XLSX Import/Export tests (needs records from POST phase)
+    // Pre-flight: verify prerequisite records are queryable before spawning XLSX process
+    const xlsxPrereqs = ['program', 'methodology', 'issuance', 'label'];
+    console.log('--- XLSX pre-flight: verifying prerequisite records exist ---');
+    for (const type of xlsxPrereqs) {
+      const res = await request.get(`/v2/${type}`);
+      const data = Array.isArray(res.body) ? res.body : (res.body?.data || []);
+      if (res.status !== 200 || data.length === 0) {
+        throw new Error(`XLSX pre-flight failed: GET /v2/${type} returned status=${res.status}, records=${data.length}. Cannot run XLSX tests without prerequisite data.`);
+      }
+      console.log(`  ✓ /v2/${type}: ${data.length} record(s)`);
+    }
+    console.log('');
+
     const xlsxTestFiles = ['xlsx-import-export.live.spec.js'];
     await runMochaTests('Step 1[1-6]:', 'XLSX Import/Export', xlsxTestFiles);
 

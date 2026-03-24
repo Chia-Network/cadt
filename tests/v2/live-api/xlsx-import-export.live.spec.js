@@ -11,10 +11,6 @@ import {
   clearStagingTable,
 } from './helpers/live-api-helpers.js';
 import { getSharedRequest, getSharedHomeOrgId } from './helpers/shared-setup.js';
-import {
-  getFirstRecordIdFromDatabase,
-  getAllRecordIdsFromDatabase,
-} from './helpers/shared-state.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -83,23 +79,76 @@ describe('XLSX Import/Export Live API Tests', function () {
     request = getSharedRequest();
     homeOrgId = getSharedHomeOrgId();
 
-    // Discover prerequisite IDs from already-committed records
-    programId = await getFirstRecordIdFromDatabase(request, 'program');
-    methodologyId = await getFirstRecordIdFromDatabase(request, 'methodology');
-    stakeholderId = await getFirstRecordIdFromDatabase(request, 'stakeholder');
-    validationId = await getFirstRecordIdFromDatabase(request, 'validation');
-    issuanceId = await getFirstRecordIdFromDatabase(request, 'issuance');
-    labelId = await getFirstRecordIdFromDatabase(request, 'label');
+    const REQUIRED_TYPES = ['program', 'methodology', 'issuance', 'label'];
+    const OPTIONAL_TYPES = ['stakeholder', 'validation'];
+    const PK_FIELDS = {
+      program: 'cadTrustProgramId',
+      methodology: 'cadTrustMethodologyId',
+      stakeholder: 'cadTrustStakeholderId',
+      validation: 'cadTrustValidationId',
+      issuance: 'cadTrustIssuanceId',
+      label: 'cadTrustLabelId',
+    };
 
-    if (!programId || !methodologyId || !issuanceId || !labelId) {
+    async function fetchFirstId(type, attempt = 1) {
+      const maxAttempts = 3;
+      const pkField = PK_FIELDS[type];
+      try {
+        const response = await request.get(`/v2/${type}`);
+        if (response.status !== 200) {
+          console.error(`  [attempt ${attempt}] GET /v2/${type} returned status ${response.status}: ${JSON.stringify(response.body)}`);
+          if (attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, 2000 * attempt));
+            return fetchFirstId(type, attempt + 1);
+          }
+          return null;
+        }
+        const data = Array.isArray(response.body)
+          ? response.body
+          : (response.body?.data || []);
+        if (data.length === 0) {
+          console.error(`  [attempt ${attempt}] GET /v2/${type} returned 200 but 0 records`);
+          if (attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, 2000 * attempt));
+            return fetchFirstId(type, attempt + 1);
+          }
+          return null;
+        }
+        const id = pkField ? data[0][pkField] : null;
+        if (!id) {
+          console.error(`  [attempt ${attempt}] GET /v2/${type} returned ${data.length} record(s) but first record missing ${pkField}. Keys: ${Object.keys(data[0]).join(', ')}`);
+        }
+        return id || null;
+      } catch (error) {
+        console.error(`  [attempt ${attempt}] GET /v2/${type} threw: ${error.message}`);
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 2000 * attempt));
+          return fetchFirstId(type, attempt + 1);
+        }
+        return null;
+      }
+    }
+
+    console.log('Discovering XLSX test prerequisites...');
+    for (const type of [...REQUIRED_TYPES, ...OPTIONAL_TYPES]) {
+      const id = await fetchFirstId(type);
+      switch (type) {
+        case 'program': programId = id; break;
+        case 'methodology': methodologyId = id; break;
+        case 'stakeholder': stakeholderId = id; break;
+        case 'validation': validationId = id; break;
+        case 'issuance': issuanceId = id; break;
+        case 'label': labelId = id; break;
+      }
+    }
+
+    const missing = REQUIRED_TYPES.filter((t) => {
+      const ids = { program: programId, methodology: methodologyId, issuance: issuanceId, label: labelId };
+      return !ids[t];
+    });
+    if (missing.length > 0) {
       throw new Error(
-        'XLSX tests require prerequisite records. Missing: ' +
-        [
-          !programId && 'program',
-          !methodologyId && 'methodology',
-          !issuanceId && 'issuance',
-          !labelId && 'label',
-        ].filter(Boolean).join(', '),
+        'XLSX tests require prerequisite records. Missing after 3 attempts: ' + missing.join(', '),
       );
     }
 
