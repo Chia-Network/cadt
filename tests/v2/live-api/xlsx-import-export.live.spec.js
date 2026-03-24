@@ -98,7 +98,7 @@ describe('XLSX Import/Export Live API Tests', function () {
       const maxAttempts = 3;
       const pkField = PK_FIELDS[type];
       try {
-        const response = await request.get(`/v2/${type}`);
+        const response = await request.get(`/v2/${type}`).query({ page: 1, limit: 10 });
         if (response.status !== 200) {
           console.error(`  [attempt ${attempt}] GET /v2/${type} returned status ${response.status}: ${JSON.stringify(response.body)}`);
           if (attempt < maxAttempts) {

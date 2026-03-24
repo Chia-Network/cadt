@@ -362,7 +362,7 @@ async function main() {
       let lastStatus, lastBody;
       let ok = false;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        const res = await request.get(`/v2/${type}`);
+        const res = await request.get(`/v2/${type}`).query({ page: 1, limit: 100 });
         lastStatus = res.status;
         lastBody = res.body;
         const data = Array.isArray(res.body) ? res.body : (res.body?.data || []);
