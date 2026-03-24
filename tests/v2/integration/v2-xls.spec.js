@@ -1,5 +1,8 @@
 import { expect } from 'chai';
 import xlsx from 'node-xlsx';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
 import {
@@ -659,6 +662,91 @@ describe('V2 XLS Utility Functions', function () {
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
       );
       expect(records[0].action).to.equal('INSERT');
+    });
+  });
+
+  describe('sample XLSX fixture validation', function () {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const fixtureDir = join(__dirname, '..', 'live-api', 'data');
+
+    it('should have consistent parent-child FK linkage in sample-projects-import.xlsx', function () {
+      const buffer = readFileSync(join(fixtureDir, 'sample-projects-import.xlsx'));
+      const result = parseV2Xlsx(buffer, ProjectV2);
+
+      expect(result.main.length).to.be.at.least(1);
+
+      const parentPKs = new Set(result.main.map((r) => r.cadTrustProjectId));
+
+      expect(parentPKs.size).to.equal(result.main.length,
+        'Each parent project should have a unique cadTrustProjectId');
+
+      for (const pk of parentPKs) {
+        expect(pk).to.exist.and.to.not.be.empty;
+        expect(pk).to.not.include('NEW-',
+          'NEW-<digit> placeholders should have been replaced with UUIDs');
+      }
+
+      for (const [sheetName, rows] of Object.entries(result.children)) {
+        for (const row of rows) {
+          if (row.cadTrustProjectId) {
+            expect(parentPKs.has(row.cadTrustProjectId),
+              `${sheetName} row FK ${row.cadTrustProjectId} must match a parent project PK`).to.be.true;
+          }
+        }
+      }
+    });
+
+    it('should have consistent parent-child FK linkage in sample-units-import.xlsx', function () {
+      const buffer = readFileSync(join(fixtureDir, 'sample-units-import.xlsx'));
+      const result = parseV2Xlsx(buffer, UnitV2);
+
+      expect(result.main.length).to.be.at.least(1);
+
+      const parentPKs = new Set(result.main.map((r) => r.cadTrustUnitId));
+
+      expect(parentPKs.size).to.equal(result.main.length,
+        'Each parent unit should have a unique cadTrustUnitId');
+
+      for (const pk of parentPKs) {
+        expect(pk).to.exist.and.to.not.be.empty;
+        expect(pk).to.not.include('NEW-',
+          'NEW-<digit> placeholders should have been replaced with UUIDs');
+      }
+
+      for (const [sheetName, rows] of Object.entries(result.children)) {
+        for (const row of rows) {
+          if (row.cadTrustUnitId) {
+            expect(parentPKs.has(row.cadTrustUnitId),
+              `${sheetName} row FK ${row.cadTrustUnitId} must match a parent unit PK`).to.be.true;
+          }
+        }
+      }
+    });
+
+    it('should produce valid staging records from sample-projects-import.xlsx', async function () {
+      const buffer = readFileSync(join(fixtureDir, 'sample-projects-import.xlsx'));
+      const parsed = parseV2Xlsx(buffer, ProjectV2);
+
+      await stageV2XlsRecords(parsed, ProjectV2);
+
+      const projectRecords = await StagingV2.findAll({ where: { table: 'project' } });
+      expect(projectRecords.length).to.equal(parsed.main.length);
+
+      const stagedPKs = new Set(projectRecords.map((r) => r.uuid));
+
+      const childTables = ['location', 'estimation', 'rating', 'co_benefit',
+        'validation', 'verification', 'project_methodology', 'stakeholder_project'];
+
+      for (const table of childTables) {
+        const childRecords = await StagingV2.findAll({ where: { table } });
+        for (const rec of childRecords) {
+          const data = JSON.parse(rec.data)[0];
+          if (data.cadTrustProjectId) {
+            expect(stagedPKs.has(data.cadTrustProjectId),
+              `${table} staged record FK ${data.cadTrustProjectId} must match a staged project PK`).to.be.true;
+          }
+        }
+      }
     });
   });
 

@@ -53,6 +53,7 @@ const projectsSheet = {
   data: [
     // Header row — camelCase column names matching the Sequelize model
     [
+      'cadTrustProjectId',
       'projectRegistryName',
       'projectId',
       'projectCreditingProgram',
@@ -69,6 +70,7 @@ const projectsSheet = {
     ],
     // Row 1 — full project with all optional fields
     [
+      PROJECT_1,
       'Sample Global Registry',
       'SAMPLE-PRJ-2024-001',
       'Example Crediting Program A',
@@ -85,6 +87,7 @@ const projectsSheet = {
     ],
     // Row 2 — minimal required fields, different registry
     [
+      PROJECT_2,
       'Example Standards Body',
       'SAMPLE-PRJ-2024-002',
       null,
@@ -101,6 +104,7 @@ const projectsSheet = {
     ],
     // Row 3 — multi-sector / multi-type project with program reference
     [
+      PROJECT_3,
       'Example Forestry Registry',
       'SAMPLE-PRJ-2025-003',
       'Example Crediting Program B',
@@ -359,6 +363,7 @@ const unitsSheet = {
   name: 'units',
   data: [
     [
+      'cadTrustUnitId',
       'unitSerialId',
       'unitStartBlock',
       'unitEndBlock',
@@ -382,6 +387,7 @@ const unitsSheet = {
     ],
     // Unit 1 — fully populated, "Issued" status
     [
+      UNIT_1,
       'SAMPLE-UNIT1-BLK-1000-5000',
       '1000',
       '5000',
@@ -405,6 +411,7 @@ const unitsSheet = {
     ],
     // Unit 2 — retired unit with beneficiary details
     [
+      UNIT_2,
       'SAMPLE-UNIT2-BLK-5001-7000',
       '5001',
       '7000',
@@ -428,6 +435,7 @@ const unitsSheet = {
     ],
     // Unit 3 — different type, held in buffer
     [
+      UNIT_3,
       'SAMPLE-UNIT3-BLK-1-2500',
       '1',
       '2500',
@@ -451,6 +459,7 @@ const unitsSheet = {
     ],
     // Unit 4 — marketplace-listed unit with ITMOS reference
     [
+      UNIT_4,
       'SAMPLE-UNIT4-BLK-1-10000',
       '1',
       '10000',
