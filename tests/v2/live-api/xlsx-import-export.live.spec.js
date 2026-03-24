@@ -7,10 +7,8 @@ import {
   commitStagedRecords,
   waitForPendingCommits,
   waitForStagingEmpty,
-  waitForBatchToAppear,
-  clearStagingTable,
 } from './helpers/live-api-helpers.js';
-import { getSharedRequest, getSharedHomeOrgId } from './helpers/shared-setup.js';
+import { getSharedRequest } from './helpers/shared-setup.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -65,7 +63,6 @@ describe('XLSX Import/Export Live API Tests', function () {
   this.timeout(1800000);
 
   let request;
-  let homeOrgId;
 
   // Prerequisite IDs discovered from the live database
   let programId;
@@ -77,7 +74,6 @@ describe('XLSX Import/Export Live API Tests', function () {
 
   before(async function () {
     request = getSharedRequest();
-    homeOrgId = getSharedHomeOrgId();
 
     const REQUIRED_TYPES = ['program', 'methodology', 'issuance', 'label'];
     const OPTIONAL_TYPES = ['stakeholder', 'validation'];

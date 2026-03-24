@@ -735,7 +735,7 @@ describe('V2 XLS Utility Functions', function () {
       const stagedPKs = new Set(projectRecords.map((r) => r.uuid));
 
       const childTables = ['location', 'estimation', 'rating', 'co_benefit',
-        'validation', 'verification', 'project_methodology', 'stakeholder_project'];
+        'validation', 'verification', 'project_methodology', 'stakeholder_projects'];
 
       for (const table of childTables) {
         const childRecords = await StagingV2.findAll({ where: { table } });
