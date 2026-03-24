@@ -262,10 +262,6 @@ app.use(function (req, res, next) {
 
   if (READ_ONLY) {
     res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, READ_ONLY);
-
-    if (isReadOnlyMethodBlocked(req.method)) {
-      return sendReadOnlyError(res);
-    }
   } else {
     res.setHeader(headerKeys.CR_READY_ONLY_HEADER_KEY, false);
   }
