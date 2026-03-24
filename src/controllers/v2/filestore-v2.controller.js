@@ -142,7 +142,7 @@ export const getFile = async (req, res) => {
   try {
     await assertV2HomeOrgExists();
 
-    const { fileId } = req.params;
+    const { fileId } = req.query;
 
     if (!fileId) {
       return res.status(400).json({
@@ -166,7 +166,7 @@ export const getFile = async (req, res) => {
     // Check if it's a "not found" error
     if (error.message && error.message.includes('not found')) {
       return res.status(404).json({
-        message: `FileId ${req.params.fileId || 'unknown'} not found in the filestore.`,
+        message: `FileId ${req.query.fileId || 'unknown'} not found in the filestore.`,
         success: false,
       });
     }

@@ -15,12 +15,11 @@ const upload = multer({
 import * as FilestoreV2Controller from '../../../controllers/v2/filestore-v2.controller.js';
 import {
   getFileSchema,
-  getFileParamsSchema,
   subscribedSchema,
 } from '../../../validations/v2/filestore-v2.validations.js';
 
-// GET /v2/filestore/get_file/:fileId - Get file by ID
-FilestoreV2Router.get('/get_file/:fileId', validator.params(getFileParamsSchema), (req, res) => {
+// GET /v2/filestore/get_file?fileId=... - Get file by ID
+FilestoreV2Router.get('/get_file', validator.query(getFileSchema), (req, res) => {
   return FilestoreV2Controller.getFile(req, res);
 });
 
