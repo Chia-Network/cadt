@@ -385,7 +385,7 @@ async function main() {
     console.log('');
 
     const xlsxTestFiles = ['xlsx-import-export.live.spec.js'];
-    await runMochaTests('Step 1[1-6]:', 'XLSX Import/Export', xlsxTestFiles);
+    await runMochaTests('Step 1[1-6]a?:', 'XLSX Import/Export', xlsxTestFiles);
 
     // Phase 4: PUT tests
     await runMochaTests('Step 7: PUT Request Tests', 'PUT Operations');
