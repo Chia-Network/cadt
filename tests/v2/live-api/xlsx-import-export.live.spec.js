@@ -33,6 +33,14 @@ function replaceXlsxPlaceholders(filePath, replacements) {
         }
       }
     }
+
+    // Drop data rows that still contain unresolved {{...}} placeholders
+    // (header row at index 0 is always kept)
+    if (sheet.data.length > 1) {
+      sheet.data = [sheet.data[0], ...sheet.data.slice(1).filter((row) =>
+        !row.some((cell) => typeof cell === 'string' && /\{\{.+?\}\}/.test(cell)),
+      )];
+    }
   }
 
   return xlsx.build(sheets);
@@ -167,8 +175,8 @@ describe('XLSX Import/Export Live API Tests', function () {
       const replacements = {
         '{{PROGRAM_ID}}': programId,
         '{{METHODOLOGY_ID}}': methodologyId,
-        '{{STAKEHOLDER_ID}}': stakeholderId || '',
-        '{{VALIDATION_ID}}': validationId || '',
+        ...(stakeholderId && { '{{STAKEHOLDER_ID}}': stakeholderId }),
+        ...(validationId && { '{{VALIDATION_ID}}': validationId }),
       };
 
       const xlsxBuffer = replaceXlsxPlaceholders(
