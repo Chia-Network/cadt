@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, ProjectV2, ProgramV2, LocationV2, EstimationV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -1113,7 +1113,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(record.action).to.equal('INSERT');
 
         const data = JSON.parse(record.data);
-        expect(data[0].projectName).to.equal('XLSX Test Project');
+        expect(data[0].project_name).to.equal('XLSX Test Project');
       });
 
       it('should stage UPDATE for an existing project from XLSX', async function () {
@@ -1149,7 +1149,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(stagingRecords[0].action).to.equal('UPDATE');
 
         const data = JSON.parse(stagingRecords[0].data);
-        expect(data[0].projectName).to.equal('Updated Name');
+        expect(data[0].project_name).to.equal('Updated Name');
       });
 
       it('should accept singular sheet name "project"', async function () {
@@ -1183,6 +1183,177 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
         expect(response.body.success).to.be.false;
         expect(response.body.message).to.include('File Not Received');
+      });
+
+      it('should import multi-sheet XLSX with project + locations + estimations', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const projectId = uuidv4();
+        const locationId = uuidv4();
+        const estimationId = uuidv4();
+
+        const xlsxBuffer = xlsx.build([
+          {
+            name: 'projects',
+            data: [
+              ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName', 'projectSector'],
+              [projectId, 'Multi Sheet Registry', 'MULTI-001', 'Multi Sheet Project', '["Agriculture"]'],
+            ],
+          },
+          {
+            name: 'locations',
+            data: [
+              ['cadTrustLocationId', 'locationCountry', 'locationRegion', 'cadTrustProjectId'],
+              [locationId, 'US', 'California', projectId],
+            ],
+          },
+          {
+            name: 'estimations',
+            data: [
+              ['cadTrustEstimationId', 'estimationUnitCount', 'estimationStartDate', 'estimationEndDate', 'cadTrustProjectId'],
+              [estimationId, '5000', '2024-01-01', '2024-12-31', projectId],
+            ],
+          },
+        ]);
+
+        const response = await supertest(app)
+          .put('/v2/project/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const projectStaging = await StagingV2.findOne({
+          where: { table: 'project', uuid: projectId },
+        });
+        expect(projectStaging).to.exist;
+        expect(projectStaging.action).to.equal('INSERT');
+        const projectData = JSON.parse(projectStaging.data);
+        expect(projectData[0].project_name).to.equal('Multi Sheet Project');
+
+        const locationStaging = await StagingV2.findOne({
+          where: { table: 'location', uuid: locationId },
+        });
+        expect(locationStaging).to.exist;
+        expect(locationStaging.action).to.equal('INSERT');
+        const locationData = JSON.parse(locationStaging.data);
+        expect(locationData[0].location_country).to.equal('US');
+        expect(locationData[0].location_region).to.equal('California');
+
+        const estimationStaging = await StagingV2.findOne({
+          where: { table: 'estimation', uuid: estimationId },
+        });
+        expect(estimationStaging).to.exist;
+        expect(estimationStaging.action).to.equal('INSERT');
+        const estimationData = JSON.parse(estimationStaging.data);
+        expect(estimationData[0].estimation_unit_count).to.equal('5000');
+      });
+
+      it('should handle XLSX with empty data rows gracefully', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const xlsxBuffer = xlsx.build([
+          {
+            name: 'projects',
+            data: [
+              ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName'],
+            ],
+          },
+        ]);
+
+        const response = await supertest(app)
+          .put('/v2/project/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        const records = await StagingV2.findAll({ where: { table: 'project' } });
+        expect(records).to.have.lengthOf(0);
+      });
+
+      it('should skip unrecognized sheet names without error', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsx = xlsxModule.default || xlsxModule;
+        const projectId = uuidv4();
+
+        const xlsxBuffer = xlsx.build([
+          {
+            name: 'projects',
+            data: [
+              ['cadTrustProjectId', 'projectRegistryName', 'projectId', 'projectName'],
+              [projectId, 'Test', 'UNKNOWN-001', 'Valid Project'],
+            ],
+          },
+          {
+            name: 'foobar',
+            data: [
+              ['col1', 'col2'],
+              ['val1', 'val2'],
+            ],
+          },
+        ]);
+
+        const response = await supertest(app)
+          .put('/v2/project/xlsx')
+          .attach('xlsx', xlsxBuffer, 'test.xlsx')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        const record = await StagingV2.findOne({
+          where: { table: 'project', uuid: projectId },
+        });
+        expect(record).to.exist;
+      });
+
+      it('should round-trip: export then re-import produces matching staging records', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsxLib = xlsxModule.default || xlsxModule;
+
+        const homeOrgId = await getV2HomeOrgId();
+        const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'RT Registry',
+          projectId: 'RT-001',
+          projectName: 'Round Trip Project',
+          projectSector: ['Agriculture'],
+          projectType: ['Forestry'],
+          cadTrustProgramId: testProgram.cadTrustProgramId,
+          orgUid: homeOrgId,
+        }));
+
+        await LocationV2.create({
+          cadTrustLocationId: uuidv4(),
+          locationCountry: 'DE',
+          locationRegion: 'Bavaria',
+          cadTrustProjectId: project.cadTrustProjectId,
+        });
+
+        const exportResponse = await supertest(app)
+          .get('/v2/project')
+          .query({ xls: 'true' })
+          .buffer(true)
+          .parse((res, callback) => {
+            const chunks = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => callback(null, Buffer.concat(chunks)));
+          })
+          .expect(200);
+
+        const importResponse = await supertest(app)
+          .put('/v2/project/xlsx')
+          .attach('xlsx', exportResponse.body, 'roundtrip.xlsx')
+          .expect(200);
+
+        expect(importResponse.body.success).to.be.true;
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'project', uuid: project.cadTrustProjectId },
+        });
+        expect(stagingRecords).to.have.lengthOf(1);
+        expect(stagingRecords[0].action).to.equal('UPDATE');
+
+        const data = JSON.parse(stagingRecords[0].data);
+        expect(data[0].project_name).to.equal('Round Trip Project');
+        expect(data[0].project_registry_name).to.equal('RT Registry');
       });
     });
 
@@ -1478,16 +1649,110 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
       });
 
       it('should export to Excel format', async function () {
-        // XLS export doesn't require pagination
         const response = await supertest(app)
           .get('/v2/project')
           .query({ xls: 'true' })
           .expect(200);
 
-        // Excel export should return binary data
         expect(response.headers['content-disposition']).to.include('attachment');
         expect(response.headers['content-disposition']).to.include('.xlsx');
         expect(response.headers['content-type']).to.exist;
+      });
+
+      it('should export XLSX with correct sheet names, columns, and row data', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsxLib = xlsxModule.default || xlsxModule;
+
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ xls: 'true' })
+          .buffer(true)
+          .parse((res, callback) => {
+            const chunks = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => callback(null, Buffer.concat(chunks)));
+          })
+          .expect(200);
+
+        const parsed = xlsxLib.parse(response.body);
+        const sheetNames = parsed.map((s) => s.name);
+        expect(sheetNames).to.include('projects');
+
+        const mainSheet = parsed.find((s) => s.name === 'projects');
+        const headers = mainSheet.data[0];
+
+        expect(headers).to.include('cadTrustProjectId');
+        expect(headers).to.include('projectName');
+        expect(headers).to.include('projectRegistryName');
+        expect(headers).to.include('projectId');
+
+        const dbProjects = await ProjectV2.findAll({ raw: true });
+        const dataRows = mainSheet.data.slice(1);
+        expect(dataRows.length).to.equal(dbProjects.length);
+
+        const projectNameIdx = headers.indexOf('projectName');
+        const exportedNames = dataRows.map((r) => r[projectNameIdx]).sort();
+        const dbNames = dbProjects.map((p) => p.projectName).sort();
+        expect(exportedNames).to.deep.equal(dbNames);
+
+        const pkIdx = headers.indexOf('cadTrustProjectId');
+        for (const dbProject of dbProjects) {
+          const row = dataRows.find((r) => r[pkIdx] === dbProject.cadTrustProjectId);
+          expect(row, `Row for project ${dbProject.cadTrustProjectId} not found`).to.exist;
+          const registryIdx = headers.indexOf('projectRegistryName');
+          expect(row[registryIdx]).to.equal(dbProject.projectRegistryName);
+        }
+      });
+
+      it('should export XLSX with child sheets when children exist', async function () {
+        const xlsxModule = await import('node-xlsx');
+        const xlsxLib = xlsxModule.default || xlsxModule;
+
+        const projects = await ProjectV2.findAll({ limit: 1 });
+        const project = projects[0];
+
+        await LocationV2.create({
+          cadTrustLocationId: uuidv4(),
+          locationCountry: 'US',
+          locationRegion: 'California',
+          cadTrustProjectId: project.cadTrustProjectId,
+        });
+        await EstimationV2.create({
+          cadTrustEstimationId: uuidv4(),
+          estimationUnitCount: 5000,
+          estimationStartDate: '2024-01-01',
+          estimationEndDate: '2024-12-31',
+          cadTrustProjectId: project.cadTrustProjectId,
+        });
+
+        const response = await supertest(app)
+          .get('/v2/project')
+          .query({ xls: 'true' })
+          .buffer(true)
+          .parse((res, callback) => {
+            const chunks = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => callback(null, Buffer.concat(chunks)));
+          })
+          .expect(200);
+
+        const parsed = xlsxLib.parse(response.body);
+        const sheetNames = parsed.map((s) => s.name);
+        expect(sheetNames).to.include('projects');
+        expect(sheetNames).to.include('locations');
+        expect(sheetNames).to.include('estimations');
+
+        const locSheet = parsed.find((s) => s.name === 'locations');
+        expect(locSheet.data.length).to.be.at.least(2);
+        const locHeaders = locSheet.data[0];
+        expect(locHeaders).to.include('locationCountry');
+
+        const countryIdx = locHeaders.indexOf('locationCountry');
+        const locRow = locSheet.data[1];
+        expect(locRow[countryIdx]).to.equal('US');
+
+        const estSheet = parsed.find((s) => s.name === 'estimations');
+        expect(estSheet.data.length).to.be.at.least(2);
       });
 
       it('should combine multiple query parameters', async function () {

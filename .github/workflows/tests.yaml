@@ -241,7 +241,29 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+          FAUCET_SUCCESS=false
+          for FAUCET_ATTEMPT in 1 2 3 4 5; do
+            echo "Faucet request attempt $FAUCET_ATTEMPT/5..."
+            FAUCET_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' \
+              "${{ secrets.TESTNETA_FAUCET }}" 2>&1) || true
+            FAUCET_HTTP_CODE=$(echo "$FAUCET_RESPONSE" | tail -1)
+            FAUCET_BODY=$(echo "$FAUCET_RESPONSE" | head -n -1)
+            echo "  Response (HTTP $FAUCET_HTTP_CODE): $FAUCET_BODY"
+            if [ -n "$FAUCET_HTTP_CODE" ] && [ "$FAUCET_HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$FAUCET_HTTP_CODE" -lt 300 ] 2>/dev/null; then
+              echo "Faucet request succeeded on attempt $FAUCET_ATTEMPT"
+              FAUCET_SUCCESS=true
+              break
+            fi
+            if [ "$FAUCET_ATTEMPT" -lt 5 ]; then
+              echo "  Faucet request failed, retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          if [ "$FAUCET_SUCCESS" = "false" ]; then
+            echo "WARNING: All 5 faucet attempts failed or returned empty response. Proceeding to balance polling in case a request was queued."
+          fi
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=30  # 30 attempts * 10 seconds = 5 minutes
@@ -445,15 +467,40 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "=========================================="
-          echo "CADT stdout logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
-          echo ""
-          echo "=========================================="
-          echo "CADT stderr logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show Chia debug log after tests (filtered)
         if: always()
@@ -624,7 +671,29 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+          FAUCET_SUCCESS=false
+          for FAUCET_ATTEMPT in 1 2 3 4 5; do
+            echo "Faucet request attempt $FAUCET_ATTEMPT/5..."
+            FAUCET_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' \
+              "${{ secrets.TESTNETA_FAUCET }}" 2>&1) || true
+            FAUCET_HTTP_CODE=$(echo "$FAUCET_RESPONSE" | tail -1)
+            FAUCET_BODY=$(echo "$FAUCET_RESPONSE" | head -n -1)
+            echo "  Response (HTTP $FAUCET_HTTP_CODE): $FAUCET_BODY"
+            if [ -n "$FAUCET_HTTP_CODE" ] && [ "$FAUCET_HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$FAUCET_HTTP_CODE" -lt 300 ] 2>/dev/null; then
+              echo "Faucet request succeeded on attempt $FAUCET_ATTEMPT"
+              FAUCET_SUCCESS=true
+              break
+            fi
+            if [ "$FAUCET_ATTEMPT" -lt 5 ]; then
+              echo "  Faucet request failed, retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          if [ "$FAUCET_SUCCESS" = "false" ]; then
+            echo "WARNING: All 5 faucet attempts failed or returned empty response. Proceeding to balance polling in case a request was queued."
+          fi
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=30
@@ -737,15 +806,40 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "=========================================="
-          echo "CADT stdout logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
-          echo ""
-          echo "=========================================="
-          echo "CADT stderr logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show Chia debug log after tests (filtered)
         if: always()
@@ -1153,7 +1247,29 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+          FAUCET_SUCCESS=false
+          for FAUCET_ATTEMPT in 1 2 3 4 5; do
+            echo "Faucet request attempt $FAUCET_ATTEMPT/5..."
+            FAUCET_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' \
+              "${{ secrets.TESTNETA_FAUCET }}" 2>&1) || true
+            FAUCET_HTTP_CODE=$(echo "$FAUCET_RESPONSE" | tail -1)
+            FAUCET_BODY=$(echo "$FAUCET_RESPONSE" | head -n -1)
+            echo "  Response (HTTP $FAUCET_HTTP_CODE): $FAUCET_BODY"
+            if [ -n "$FAUCET_HTTP_CODE" ] && [ "$FAUCET_HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$FAUCET_HTTP_CODE" -lt 300 ] 2>/dev/null; then
+              echo "Faucet request succeeded on attempt $FAUCET_ATTEMPT"
+              FAUCET_SUCCESS=true
+              break
+            fi
+            if [ "$FAUCET_ATTEMPT" -lt 5 ]; then
+              echo "  Faucet request failed, retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          if [ "$FAUCET_SUCCESS" = "false" ]; then
+            echo "WARNING: All 5 faucet attempts failed or returned empty response. Proceeding to balance polling in case a request was queued."
+          fi
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=30
@@ -1293,15 +1409,40 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "=========================================="
-          echo "CADT stdout logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
-          echo ""
-          echo "=========================================="
-          echo "CADT stderr logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show Chia debug log after tests (filtered)
         if: always()
@@ -1461,7 +1602,29 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+          FAUCET_SUCCESS=false
+          for FAUCET_ATTEMPT in 1 2 3 4 5; do
+            echo "Faucet request attempt $FAUCET_ATTEMPT/5..."
+            FAUCET_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' \
+              "${{ secrets.TESTNETA_FAUCET }}" 2>&1) || true
+            FAUCET_HTTP_CODE=$(echo "$FAUCET_RESPONSE" | tail -1)
+            FAUCET_BODY=$(echo "$FAUCET_RESPONSE" | head -n -1)
+            echo "  Response (HTTP $FAUCET_HTTP_CODE): $FAUCET_BODY"
+            if [ -n "$FAUCET_HTTP_CODE" ] && [ "$FAUCET_HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$FAUCET_HTTP_CODE" -lt 300 ] 2>/dev/null; then
+              echo "Faucet request succeeded on attempt $FAUCET_ATTEMPT"
+              FAUCET_SUCCESS=true
+              break
+            fi
+            if [ "$FAUCET_ATTEMPT" -lt 5 ]; then
+              echo "  Faucet request failed, retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          if [ "$FAUCET_SUCCESS" = "false" ]; then
+            echo "WARNING: All 5 faucet attempts failed or returned empty response. Proceeding to balance polling in case a request was queued."
+          fi
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=30
@@ -2460,15 +2623,40 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "=========================================="
-          echo "CADT stdout logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
-          echo ""
-          echo "=========================================="
-          echo "CADT stderr logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show Chia debug log after tests (filtered)
         if: always()
@@ -2628,7 +2816,29 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+          FAUCET_SUCCESS=false
+          for FAUCET_ATTEMPT in 1 2 3 4 5; do
+            echo "Faucet request attempt $FAUCET_ATTEMPT/5..."
+            FAUCET_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' \
+              "${{ secrets.TESTNETA_FAUCET }}" 2>&1) || true
+            FAUCET_HTTP_CODE=$(echo "$FAUCET_RESPONSE" | tail -1)
+            FAUCET_BODY=$(echo "$FAUCET_RESPONSE" | head -n -1)
+            echo "  Response (HTTP $FAUCET_HTTP_CODE): $FAUCET_BODY"
+            if [ -n "$FAUCET_HTTP_CODE" ] && [ "$FAUCET_HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$FAUCET_HTTP_CODE" -lt 300 ] 2>/dev/null; then
+              echo "Faucet request succeeded on attempt $FAUCET_ATTEMPT"
+              FAUCET_SUCCESS=true
+              break
+            fi
+            if [ "$FAUCET_ATTEMPT" -lt 5 ]; then
+              echo "  Faucet request failed, retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          if [ "$FAUCET_SUCCESS" = "false" ]; then
+            echo "WARNING: All 5 faucet attempts failed or returned empty response. Proceeding to balance polling in case a request was queued."
+          fi
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=30
@@ -3299,15 +3509,40 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "=========================================="
-          echo "CADT stdout logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
-          echo ""
-          echo "=========================================="
-          echo "CADT stderr logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show Chia debug log after tests (filtered)
         if: always()
@@ -3471,7 +3706,29 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+          FAUCET_SUCCESS=false
+          for FAUCET_ATTEMPT in 1 2 3 4 5; do
+            echo "Faucet request attempt $FAUCET_ATTEMPT/5..."
+            FAUCET_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' \
+              "${{ secrets.TESTNETA_FAUCET }}" 2>&1) || true
+            FAUCET_HTTP_CODE=$(echo "$FAUCET_RESPONSE" | tail -1)
+            FAUCET_BODY=$(echo "$FAUCET_RESPONSE" | head -n -1)
+            echo "  Response (HTTP $FAUCET_HTTP_CODE): $FAUCET_BODY"
+            if [ -n "$FAUCET_HTTP_CODE" ] && [ "$FAUCET_HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$FAUCET_HTTP_CODE" -lt 300 ] 2>/dev/null; then
+              echo "Faucet request succeeded on attempt $FAUCET_ATTEMPT"
+              FAUCET_SUCCESS=true
+              break
+            fi
+            if [ "$FAUCET_ATTEMPT" -lt 5 ]; then
+              echo "  Faucet request failed, retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          if [ "$FAUCET_SUCCESS" = "false" ]; then
+            echo "WARNING: All 5 faucet attempts failed or returned empty response. Proceeding to balance polling in case a request was queued."
+          fi
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=30
@@ -3579,15 +3836,40 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "=========================================="
-          echo "CADT stdout logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
-          echo ""
-          echo "=========================================="
-          echo "CADT stderr logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show Chia debug log after tests (filtered)
         if: always()
@@ -3749,7 +4031,29 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+          FAUCET_SUCCESS=false
+          for FAUCET_ATTEMPT in 1 2 3 4 5; do
+            echo "Faucet request attempt $FAUCET_ATTEMPT/5..."
+            FAUCET_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' \
+              "${{ secrets.TESTNETA_FAUCET }}" 2>&1) || true
+            FAUCET_HTTP_CODE=$(echo "$FAUCET_RESPONSE" | tail -1)
+            FAUCET_BODY=$(echo "$FAUCET_RESPONSE" | head -n -1)
+            echo "  Response (HTTP $FAUCET_HTTP_CODE): $FAUCET_BODY"
+            if [ -n "$FAUCET_HTTP_CODE" ] && [ "$FAUCET_HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$FAUCET_HTTP_CODE" -lt 300 ] 2>/dev/null; then
+              echo "Faucet request succeeded on attempt $FAUCET_ATTEMPT"
+              FAUCET_SUCCESS=true
+              break
+            fi
+            if [ "$FAUCET_ATTEMPT" -lt 5 ]; then
+              echo "  Faucet request failed, retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          if [ "$FAUCET_SUCCESS" = "false" ]; then
+            echo "WARNING: All 5 faucet attempts failed or returned empty response. Proceeding to balance polling in case a request was queued."
+          fi
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=30
@@ -3857,15 +4161,40 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "=========================================="
-          echo "CADT stdout logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
-          echo ""
-          echo "=========================================="
-          echo "CADT stderr logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show Chia debug log after tests (filtered)
         if: always()
@@ -4028,7 +4357,29 @@ jobs:
         run: |
           CHIA_WALLET_ADDRESS=$(chia wallet get_address)
           echo "Requesting funds from faucet for address: $CHIA_WALLET_ADDRESS"
-          curl -X POST -H "Content-Type: application/json" -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' "${{ secrets.TESTNETA_FAUCET }}"
+          FAUCET_SUCCESS=false
+          for FAUCET_ATTEMPT in 1 2 3 4 5; do
+            echo "Faucet request attempt $FAUCET_ATTEMPT/5..."
+            FAUCET_RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"address":"'"$CHIA_WALLET_ADDRESS"'","amount":0.0001}' \
+              "${{ secrets.TESTNETA_FAUCET }}" 2>&1) || true
+            FAUCET_HTTP_CODE=$(echo "$FAUCET_RESPONSE" | tail -1)
+            FAUCET_BODY=$(echo "$FAUCET_RESPONSE" | head -n -1)
+            echo "  Response (HTTP $FAUCET_HTTP_CODE): $FAUCET_BODY"
+            if [ -n "$FAUCET_HTTP_CODE" ] && [ "$FAUCET_HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$FAUCET_HTTP_CODE" -lt 300 ] 2>/dev/null; then
+              echo "Faucet request succeeded on attempt $FAUCET_ATTEMPT"
+              FAUCET_SUCCESS=true
+              break
+            fi
+            if [ "$FAUCET_ATTEMPT" -lt 5 ]; then
+              echo "  Faucet request failed, retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          if [ "$FAUCET_SUCCESS" = "false" ]; then
+            echo "WARNING: All 5 faucet attempts failed or returned empty response. Proceeding to balance polling in case a request was queued."
+          fi
 
           echo "Waiting for wallet to receive funds..."
           MAX_ATTEMPTS=30
@@ -4136,15 +4487,40 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "=========================================="
-          echo "CADT stdout logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
-          echo ""
-          echo "=========================================="
-          echo "CADT stderr logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show Chia debug log after tests (filtered)
         if: always()

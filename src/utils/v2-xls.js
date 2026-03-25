@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { sequelizeV2 } from '../database/v2/index.js';
 import StagingV2 from '../models/v2/staging-v2.model.js';
+import OrganizationsV2 from '../models/v2/organizations-v2.model.js';
 import { createXlsFromSequelizeResults, transformMetaUid } from './xls.js';
 import { loggerV2 } from '../config/logger.js';
 
@@ -155,6 +156,28 @@ function parseArrayFields(row) {
 }
 
 /**
+ * Convert a row object from camelCase attribute names to snake_case DB field
+ * names using the model's rawAttributes metadata. Keys not present in
+ * rawAttributes are kept as-is (they may already be snake_case or custom).
+ *
+ * V2 models use `underscored: true`, so Sequelize attribute names are camelCase
+ * (e.g. cadTrustProjectId) while the DB columns are snake_case
+ * (e.g. cad_trust_project_id).  The V2 commit pipeline
+ * (generateChangeListFromStagedData → transformFullXslsToChangeList) expects
+ * staging data to use snake_case field names, matching what the normal API
+ * controllers produce.
+ */
+function toDbFieldNames(row, modelClass) {
+  const attrs = modelClass.rawAttributes;
+  const result = {};
+  for (const [key, value] of Object.entries(row)) {
+    const attr = attrs[key];
+    result[attr && attr.field ? attr.field : key] = value;
+  }
+  return result;
+}
+
+/**
  * Create StagingV2 records from parsed XLSX data.
  * Parent rows and child rows each get their own staging entry, matching the
  * V2 architecture where every model has its own staging / changelist flow.
@@ -167,6 +190,17 @@ export async function stageV2XlsRecords(parsedData, model) {
 
   const isEmptyRow = (row) =>
     Object.values(row).every((v) => v === null || v === undefined || v === '');
+
+  // The normal V2 API controllers inject org_uid from the home organization
+  // into every staged record. The XLSX path must do the same so the data
+  // pushed to datalayer includes org_uid — otherwise sync-registries-v2
+  // fails with SequelizeUniqueConstraintError when upserting the record
+  // back (org_uid has allowNull: false on parent models).
+  const homeOrg = await OrganizationsV2.getHomeOrg(false);
+  if (!homeOrg) {
+    throw new Error('Cannot stage XLSX records: no home organization found');
+  }
+  const orgUid = homeOrg.org_uid;
 
   await sequelizeV2.transaction(async (transaction) => {
     // Stage parent rows
@@ -208,12 +242,18 @@ export async function stageV2XlsRecords(parsedData, model) {
         delete stagedRecord[child.sheetName];
       }
 
+      const dbRecord = toDbFieldNames(stagedRecord, model);
+
+      if (model.rawAttributes.orgUid) {
+        dbRecord.org_uid = orgUid;
+      }
+
       await StagingV2.upsert(
         {
           uuid,
           action: exists ? 'UPDATE' : 'INSERT',
           table: model.getTableName(),
-          data: JSON.stringify([stagedRecord]),
+          data: JSON.stringify([dbRecord]),
         },
         { transaction },
       );
@@ -251,12 +291,14 @@ export async function stageV2XlsRecords(parsedData, model) {
           }
         }
 
+        const dbRecord = toDbFieldNames(stagedRecord, child.model);
+
         await StagingV2.upsert(
           {
             uuid,
             action: exists ? 'UPDATE' : 'INSERT',
             table: child.tableName,
-            data: JSON.stringify([stagedRecord]),
+            data: JSON.stringify([dbRecord]),
           },
           { transaction },
         );
