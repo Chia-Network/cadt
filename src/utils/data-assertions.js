@@ -8,10 +8,11 @@ import { formatModelAssociationName } from './model-utils.js';
 import { getConfig } from './config-loader';
 import { getOwnedStores } from '../datalayer/persistance.js';
 import { isOwnedStoreLocalDataMissing } from './datalayer-utils.js';
+import { createReadOnlyError } from './read-only-response.js';
 
 const config = getConfig();
 const { USE_SIMULATOR, CHIA_NETWORK } = config.APP;
-const { IS_GOVERNANCE_BODY, READ_ONLY } = config;
+const { IS_GOVERNANCE_BODY } = config;
 
 export const assertChiaNetworkMatchInConfiguration = async () => {
   if (!USE_SIMULATOR) {
@@ -55,8 +56,9 @@ export const assertDataLayerAvailable = async () => {
 };
 
 export const assertIfReadOnlyMode = async () => {
+  const { READ_ONLY } = getConfig();
   if (READ_ONLY) {
-    throw new Error('You can not use this API in read-only mode');
+    throw createReadOnlyError();
   }
 };
 

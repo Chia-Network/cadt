@@ -11,7 +11,7 @@ import crypto from 'crypto';
  * Phase 19.4: FilestoreV2 Comprehensive Integration Tests
  *
  * Comprehensive integration tests for all filestore endpoints covering:
- * - GET /v2/filestore/get_file - Get file by ID
+ * - GET /v2/filestore/get_file?fileId=... - Get file by ID
  * - GET /v2/filestore/get_file_list - List files
  * - POST /v2/filestore/add_file - Add file to filestore
  * - POST /v2/filestore/subscribe - Subscribe to filestore
@@ -25,6 +25,15 @@ describe('Phase 19.4: FilestoreV2 Comprehensive Integration Tests', function () 
 
   let testOrgUid;
   let testOrgUid2;
+  const clearV1FileStoreIfAvailable = async () => {
+    try {
+      await FileStore.destroy({ where: {} });
+    } catch (error) {
+      if (!String(error.message).includes('no such table')) {
+        throw error;
+      }
+    }
+  };
 
   before(async function () {
     console.log('Setting up V2 test environment...');
@@ -33,7 +42,7 @@ describe('Phase 19.4: FilestoreV2 Comprehensive Integration Tests', function () 
     // Clean up any existing data
     await FilestoreV2.destroy({ where: {} });
     await OrganizationsV2.destroy({ where: {} });
-    await FileStore.destroy({ where: {} });
+    await clearV1FileStoreIfAvailable();
 
     // Create test home organization
     const homeOrg = await createV2TestHomeOrg();
@@ -58,7 +67,7 @@ describe('Phase 19.4: FilestoreV2 Comprehensive Integration Tests', function () 
   beforeEach(async function () {
     // Clean up filestore records before each test
     await FilestoreV2.destroy({ where: {} });
-    await FileStore.destroy({ where: {} });
+    await clearV1FileStoreIfAvailable();
   });
 
   describe('GET /v2/filestore/get_file_list', function () {
@@ -158,7 +167,7 @@ describe('Phase 19.4: FilestoreV2 Comprehensive Integration Tests', function () 
     });
   });
 
-  describe('GET /v2/filestore/get_file', function () {
+  describe('GET /v2/filestore/get_file?fileId=...', function () {
     it('should return file content when file exists', async function () {
       // Create a test file
       const testContent = 'test file content for get';
@@ -175,32 +184,37 @@ describe('Phase 19.4: FilestoreV2 Comprehensive Integration Tests', function () 
         org_uid: testOrgUid,
       });
 
-      // Note: Using POST for testing since supertest doesn't support body on GET
       const response = await supertest(app)
-        .post('/v2/filestore/get_file')
-        .send({ fileId: SHA256 })
+        .get('/v2/filestore/get_file')
+        .query({ fileId: SHA256 })
         .expect(200);
 
       // Response should be the file content as binary
       expect(response.text).to.equal(testContent);
     });
 
-    it('should return error if fileId is missing', async function () {
+    it('should return validation error for missing fileId query param', async function () {
       const response = await supertest(app)
-        .post('/v2/filestore/get_file')
-        .send({});
+        .get('/v2/filestore/get_file');
 
       expect([400, 422]).to.include(response.status);
     });
 
     it('should return error if file does not exist', async function () {
       const response = await supertest(app)
-        .post('/v2/filestore/get_file')
-        .send({ fileId: 'nonexistent-sha256' })
+        .get('/v2/filestore/get_file')
+        .query({ fileId: 'nonexistent-sha256' })
         .expect(404);
 
       expect(response.body.success).to.be.false;
       expect(response.body.message).to.include('not found');
+    });
+
+    it('should not support legacy POST /v2/filestore/get_file', async function () {
+      await supertest(app)
+        .post('/v2/filestore/get_file')
+        .send({ fileId: 'legacy-route' })
+        .expect(404);
     });
   });
 
@@ -311,8 +325,8 @@ describe('Phase 19.4: FilestoreV2 Comprehensive Integration Tests', function () 
   describe('Error Handling', function () {
     it('should handle invalid file ID gracefully', async function () {
       const response = await supertest(app)
-        .post('/v2/filestore/get_file')
-        .send({ fileId: 'invalid-sha256-format' })
+        .get('/v2/filestore/get_file')
+        .query({ fileId: 'invalid-sha256-format' })
         .expect(404);
 
       expect(response.body.success).to.be.false;
@@ -471,8 +485,8 @@ describe('Phase 19.4: FilestoreV2 Comprehensive Integration Tests', function () 
 
       // Step 3: Get file
       const getResponse = await supertest(app)
-        .post('/v2/filestore/get_file')
-        .send({ fileId })
+        .get('/v2/filestore/get_file')
+        .query({ fileId })
         .expect(200);
 
       expect(getResponse.text).to.equal(testContent);

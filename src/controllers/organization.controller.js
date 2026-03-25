@@ -23,6 +23,10 @@ import {
   getOrgLockStatus,
 } from '../utils/org-operation-lock.js';
 import { hasInProgressCreation } from '../utils/organization-creation-state.js';
+import {
+  isReadOnlyError,
+  sendReadOnlyError,
+} from '../utils/read-only-response.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
 
@@ -329,6 +333,7 @@ export const deleteOrganization = async (req, res) => {
   const { orgUid } = req.params;
 
   try {
+    await assertIfReadOnlyMode();
     const organization = await Organization.findOne({
       where: { orgUid },
       raw: true,
@@ -366,6 +371,9 @@ export const deleteOrganization = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Error deleting organization',
       error: error.message,
@@ -809,12 +817,16 @@ export const reclaimHome = async (req, res) => {
 
 export const sync = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     Organization.syncOrganizationMeta();
     return res.json({
       message: 'Syncing All Organizations Metadata',
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cant All Organizations Metadata',
       error: error.message,

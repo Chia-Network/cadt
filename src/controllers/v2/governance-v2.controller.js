@@ -12,6 +12,10 @@ import {
   assertIsActiveGovernanceBodyV2,
   assertV2IfReadOnlyMode,
 } from '../../utils/v2-data-assertions.js';
+import {
+  isReadOnlyError,
+  sendReadOnlyError,
+} from '../../utils/read-only-response.js';
 
 /**
  * Get all GovernanceV2 records
@@ -184,6 +188,7 @@ export const findPickList = async (req, res) => {
  */
 export const createGoveranceBody = async (req, res) => {
   try {
+    await assertV2IfReadOnlyMode();
     await assertCanBeGovernanceBodyV2();
 
     // Validate synchronously before starting background work
@@ -211,6 +216,9 @@ export const createGoveranceBody = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cant create V2 Governance Body',
       error: error.message,
@@ -243,6 +251,9 @@ export const setDefaultOrgList = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     loggerV2.error('[v2]: Error updating default orgs:', error);
     res.status(400).json({
       message: 'Cannot update default orgs',
@@ -276,6 +287,9 @@ export const setPickList = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     loggerV2.error('[v2]: Error updating picklist:', error);
     res.status(400).json({
       message: 'Cannot update picklist',
@@ -308,6 +322,9 @@ export const setGlossary = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     loggerV2.error('[v2]: Error updating glossary:', error);
     res.status(400).json({
       message: 'Cannot update glossary',
@@ -327,12 +344,16 @@ export const setGlossary = async (req, res) => {
  */
 export const sync = async (req, res) => {
   try {
+    await assertV2IfReadOnlyMode();
     GovernanceV2.sync();
     return res.json({
       message: 'Syncing V2 Governance Body',
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cannot sync V2 Governance Body',
       error: error.message,
@@ -369,6 +390,9 @@ export const subscribeToGovernanceBody = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     loggerV2.error(`[v2]: Error subscribing to governance body: ${error.message}`);
     res.status(400).json({
       message: 'Error subscribing to governance body',

@@ -59,6 +59,7 @@ const { isTransientWalletError } = wallet;
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
+    const { READ_ONLY } = getConfig();
     const myOrganization = await Organization.findOne({
       where: { isHome: true },
       raw: true,
@@ -79,7 +80,9 @@ class Organization extends Model {
     }
 
     if (myOrganization && includeAddress) {
-      myOrganization.xchAddress = await datalayer.getPublicAddress();
+      if (!READ_ONLY) {
+        myOrganization.xchAddress = await datalayer.getPublicAddress();
+      }
       myOrganization.fileStoreSubscribed = true;
       return myOrganization;
     }
@@ -97,6 +100,7 @@ class Organization extends Model {
   }
 
   static async getOrgsMap() {
+    const { READ_ONLY } = getConfig();
     logger.silly(
       '[MIRROR_DEBUG] Starting getOrgsMap() - querying organizations from database',
     );
@@ -126,10 +130,12 @@ class Organization extends Model {
 
     for (let i = 0; i < organizations.length; i++) {
       if (organizations[i].dataValues.isHome) {
-        organizations[i].dataValues.xchAddress =
-          await datalayer.getPublicAddress();
-        organizations[i].dataValues.balance =
-          await datalayer.getWalletBalance();
+        if (!READ_ONLY) {
+          organizations[i].dataValues.xchAddress =
+            await datalayer.getPublicAddress();
+          organizations[i].dataValues.balance =
+            await datalayer.getWalletBalance();
+        }
 
         const pendingCommitsCount = await Staging.count({
           where: { commited: true },

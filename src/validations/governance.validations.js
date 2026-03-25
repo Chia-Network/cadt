@@ -1,9 +1,5 @@
 import Joi from 'joi';
 
-export const governanceSubscribeSchema = Joi.object().keys({
-  orgUid: Joi.string().required(),
-});
-
 export const setOrgListSchema = Joi.array().items(
   Joi.object({
     orgUid: Joi.string().required(),

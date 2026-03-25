@@ -1,17 +1,26 @@
 import crypto from 'crypto';
 import { FileStore } from '../models';
 import { logger } from '../config/logger';
+import { assertIfReadOnlyMode } from '../utils/data-assertions';
+import {
+  isReadOnlyError,
+  sendReadOnlyError,
+} from '../utils/read-only-response.js';
 
-export const subscribeToFileStore = (req, res) => {
+export const subscribeToFileStore = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     const { orgUid } = req.body;
 
-    FileStore.subscribeToFileStore(orgUid);
+    await FileStore.subscribeToFileStore(orgUid);
 
     res.status(200).json({
       message: `${orgUid} subscribed to file store.`,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: `Can not subscribe to file store.`,
       error: error.message,
@@ -20,16 +29,20 @@ export const subscribeToFileStore = (req, res) => {
   }
 };
 
-export const unsubscribeFromFileStore = (req, res) => {
+export const unsubscribeFromFileStore = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     const { orgUid } = req.body;
 
-    FileStore.unsubscribeFromFileStore(orgUid);
+    await FileStore.unsubscribeFromFileStore(orgUid);
 
     res.status(200).json({
-      message: `Can not unsubscribe the fileStore from ${orgUid}`,
+      message: `${orgUid} unsubscribed from file store.`,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Can not retrieve file list from filestore',
       error: error.message,
@@ -53,12 +66,16 @@ export const getFileList = async (req, res) => {
 
 export const deleteFile = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     await FileStore.deleteFileStoreItem(req.body.fileId);
     res.status(200).json({
       message:
         'File will be deleted from the filestore, but it will take a few mins to confirm.',
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Can not delete file from filestore',
       error: error.message,
@@ -91,6 +108,7 @@ export const getFile = async (req, res) => {
 
 export const addFileToFileStore = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     if (!req.file) {
       throw new Error('Missing file data, can not upload file.');
     }
@@ -115,6 +133,9 @@ export const addFileToFileStore = async (req, res) => {
       fileId: SHA256,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     logger.error('[v1]: Error adding file to file store:', error);
     res.status(400).json({
       message: 'Can not add file to file store',
