@@ -37,7 +37,7 @@ export const unsubscribeFromFileStore = async (req, res) => {
     await FileStore.unsubscribeFromFileStore(orgUid);
 
     res.status(200).json({
-      message: `Can not unsubscribe the fileStore from ${orgUid}`,
+      message: `${orgUid} unsubscribed from file store.`,
     });
   } catch (error) {
     if (isReadOnlyError(error)) {
