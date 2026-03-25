@@ -36,6 +36,9 @@ export const generateOfferFile = async (req, res) => {
     const offerFile = await Staging.generateOfferFile();
     res.json(offerFile);
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     console.trace(error);
     res.status(400).json({
       message: 'Error generating offer file.',
