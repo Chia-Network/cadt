@@ -741,9 +741,10 @@ describe('V2 XLS Utility Functions', function () {
         const childRecords = await StagingV2.findAll({ where: { table } });
         for (const rec of childRecords) {
           const data = JSON.parse(rec.data)[0];
-          if (data.cadTrustProjectId) {
-            expect(stagedPKs.has(data.cadTrustProjectId),
-              `${table} staged record FK ${data.cadTrustProjectId} must match a staged project PK`).to.be.true;
+          const fk = data.cad_trust_project_id;
+          if (fk) {
+            expect(stagedPKs.has(fk),
+              `${table} staged record FK ${fk} must match a staged project PK`).to.be.true;
           }
         }
       }
