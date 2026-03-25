@@ -6,14 +6,30 @@ describe('READ_ONLY Live API Smoke', function () {
   this.timeout(600000);
 
   let request;
+  const canaryWriteEndpoints = [
+    { method: 'post', path: '/v1/governance', label: 'v1 governance create' },
+    { method: 'post', path: '/v1/organization/sync', label: 'v1 organization sync' },
+    { method: 'delete', path: '/v1/staging/clean', label: 'v1 staging clean' },
+    { method: 'post', path: '/v1/filestore/add_file', label: 'v1 filestore add file' },
+    { method: 'post', path: '/v2/governance', label: 'v2 governance create' },
+    { method: 'post', path: '/v2/organizations/sync', label: 'v2 organizations sync' },
+    { method: 'delete', path: '/v2/staging/clean', label: 'v2 staging clean' },
+    { method: 'post', path: '/v2/filestore/add_file', label: 'v2 filestore add file' },
+  ];
+  const canaryWriteLikeGetEndpoints = [
+    { path: '/v1/governance/sync', label: 'v1 governance sync (GET side effects)' },
+    { path: '/v2/governance/sync', label: 'v2 governance sync (GET side effects)' },
+    { path: '/v1/offer', label: 'v1 offer generate (GET side effects)' },
+    { path: '/v2/offer', label: 'v2 offer generate (GET side effects)' },
+  ];
 
   before(async function () {
     request = await getLiveApiRequest({ apiVersion: 'any' });
   });
 
-  const expectReadOnlyBlock = (response) => {
-    expect(response.status).to.equal(403);
-    expect(response.body).to.deep.equal(READ_ONLY_ERROR);
+  const expectReadOnlyBlock = (response, endpointLabel) => {
+    expect(response.status, endpointLabel).to.equal(403);
+    expect(response.body, endpointLabel).to.deep.equal(READ_ONLY_ERROR);
   };
 
   it('confirms node is configured in read-only mode', async function () {
@@ -26,20 +42,18 @@ describe('READ_ONLY Live API Smoke', function () {
     expect(v2Health.body.readOnly).to.equal(true);
   });
 
-  it('blocks representative write endpoints with canonical 403 payload', async function () {
-    const v1Write = await request.post('/v1/governance').send({});
-    const v2Write = await request.post('/v2/governance').send({});
-
-    expectReadOnlyBlock(v1Write);
-    expectReadOnlyBlock(v2Write);
+  it('blocks canary write endpoints with canonical 403 payload', async function () {
+    for (const endpoint of canaryWriteEndpoints) {
+      const response = await request[endpoint.method](endpoint.path).send({});
+      expectReadOnlyBlock(response, endpoint.label);
+    }
   });
 
-  it('blocks GET sync endpoints that trigger writes', async function () {
-    const v1Sync = await request.get('/v1/governance/sync');
-    const v2Sync = await request.get('/v2/governance/sync');
-
-    expectReadOnlyBlock(v1Sync);
-    expectReadOnlyBlock(v2Sync);
+  it('blocks canary GET endpoints with write-side effects', async function () {
+    for (const endpoint of canaryWriteLikeGetEndpoints) {
+      const response = await request.get(endpoint.path);
+      expectReadOnlyBlock(response, endpoint.label);
+    }
   });
 
   it('allows safe GET health endpoints', async function () {
