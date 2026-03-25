@@ -493,7 +493,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -832,7 +832,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -1198,7 +1198,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -2412,7 +2412,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -3298,7 +3298,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -3625,7 +3625,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -3950,7 +3950,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -4276,7 +4276,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: cadt-logs-${{ github.job }}
           path: |
