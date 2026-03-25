@@ -1113,7 +1113,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(record.action).to.equal('INSERT');
 
         const data = JSON.parse(record.data);
-        expect(data[0].projectName).to.equal('XLSX Test Project');
+        expect(data[0].project_name).to.equal('XLSX Test Project');
       });
 
       it('should stage UPDATE for an existing project from XLSX', async function () {
@@ -1149,7 +1149,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(stagingRecords[0].action).to.equal('UPDATE');
 
         const data = JSON.parse(stagingRecords[0].data);
-        expect(data[0].projectName).to.equal('Updated Name');
+        expect(data[0].project_name).to.equal('Updated Name');
       });
 
       it('should accept singular sheet name "project"', async function () {
@@ -1229,7 +1229,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(projectStaging).to.exist;
         expect(projectStaging.action).to.equal('INSERT');
         const projectData = JSON.parse(projectStaging.data);
-        expect(projectData[0].projectName).to.equal('Multi Sheet Project');
+        expect(projectData[0].project_name).to.equal('Multi Sheet Project');
 
         const locationStaging = await StagingV2.findOne({
           where: { table: 'location', uuid: locationId },
@@ -1237,8 +1237,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(locationStaging).to.exist;
         expect(locationStaging.action).to.equal('INSERT');
         const locationData = JSON.parse(locationStaging.data);
-        expect(locationData[0].locationCountry).to.equal('US');
-        expect(locationData[0].locationRegion).to.equal('California');
+        expect(locationData[0].location_country).to.equal('US');
+        expect(locationData[0].location_region).to.equal('California');
 
         const estimationStaging = await StagingV2.findOne({
           where: { table: 'estimation', uuid: estimationId },
@@ -1246,7 +1246,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(estimationStaging).to.exist;
         expect(estimationStaging.action).to.equal('INSERT');
         const estimationData = JSON.parse(estimationStaging.data);
-        expect(estimationData[0].estimationUnitCount).to.equal('5000');
+        expect(estimationData[0].estimation_unit_count).to.equal('5000');
       });
 
       it('should handle XLSX with empty data rows gracefully', async function () {
@@ -1352,8 +1352,8 @@ describe('V2 Project API - Basic CRUD Tests', function () {
         expect(stagingRecords[0].action).to.equal('UPDATE');
 
         const data = JSON.parse(stagingRecords[0].data);
-        expect(data[0].projectName).to.equal('Round Trip Project');
-        expect(data[0].projectRegistryName).to.equal('RT Registry');
+        expect(data[0].project_name).to.equal('Round Trip Project');
+        expect(data[0].project_registry_name).to.equal('RT Registry');
       });
     });
 

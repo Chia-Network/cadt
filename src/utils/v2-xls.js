@@ -155,6 +155,28 @@ function parseArrayFields(row) {
 }
 
 /**
+ * Convert a row object from camelCase attribute names to snake_case DB field
+ * names using the model's rawAttributes metadata. Keys not present in
+ * rawAttributes are kept as-is (they may already be snake_case or custom).
+ *
+ * V2 models use `underscored: true`, so Sequelize attribute names are camelCase
+ * (e.g. cadTrustProjectId) while the DB columns are snake_case
+ * (e.g. cad_trust_project_id).  The V2 commit pipeline
+ * (generateChangeListFromStagedData → transformFullXslsToChangeList) expects
+ * staging data to use snake_case field names, matching what the normal API
+ * controllers produce.
+ */
+function toDbFieldNames(row, modelClass) {
+  const attrs = modelClass.rawAttributes;
+  const result = {};
+  for (const [key, value] of Object.entries(row)) {
+    const attr = attrs[key];
+    result[attr && attr.field ? attr.field : key] = value;
+  }
+  return result;
+}
+
+/**
  * Create StagingV2 records from parsed XLSX data.
  * Parent rows and child rows each get their own staging entry, matching the
  * V2 architecture where every model has its own staging / changelist flow.
@@ -208,12 +230,14 @@ export async function stageV2XlsRecords(parsedData, model) {
         delete stagedRecord[child.sheetName];
       }
 
+      const dbRecord = toDbFieldNames(stagedRecord, model);
+
       await StagingV2.upsert(
         {
           uuid,
           action: exists ? 'UPDATE' : 'INSERT',
           table: model.getTableName(),
-          data: JSON.stringify([stagedRecord]),
+          data: JSON.stringify([dbRecord]),
         },
         { transaction },
       );
@@ -251,12 +275,14 @@ export async function stageV2XlsRecords(parsedData, model) {
           }
         }
 
+        const dbRecord = toDbFieldNames(stagedRecord, child.model);
+
         await StagingV2.upsert(
           {
             uuid,
             action: exists ? 'UPDATE' : 'INSERT',
             table: child.tableName,
-            data: JSON.stringify([stagedRecord]),
+            data: JSON.stringify([dbRecord]),
           },
           { transaction },
         );

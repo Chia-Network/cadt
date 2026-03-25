@@ -1290,7 +1290,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         expect(record.action).to.equal('INSERT');
 
         const data = JSON.parse(record.data);
-        expect(data[0].unitSerialId).to.equal('XLSX-UNIT-001');
+        expect(data[0].unit_serial_id).to.equal('XLSX-UNIT-001');
       });
 
       it('should stage UPDATE for an existing unit from XLSX', async function () {
@@ -1332,7 +1332,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         expect(stagingRecords[0].action).to.equal('UPDATE');
 
         const data = JSON.parse(stagingRecords[0].data);
-        expect(data[0].unitSerialId).to.equal('XLSX-UPD-001-UPDATED');
+        expect(data[0].unit_serial_id).to.equal('XLSX-UPD-001-UPDATED');
       });
 
       it('should accept singular sheet name "unit"', async function () {
@@ -1405,7 +1405,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         expect(unitStaging).to.exist;
         expect(unitStaging.action).to.equal('INSERT');
         const unitData = JSON.parse(unitStaging.data);
-        expect(unitData[0].unitSerialId).to.equal('MULTI-UNIT-001');
+        expect(unitData[0].unit_serial_id).to.equal('MULTI-UNIT-001');
 
         const labelStaging = await StagingV2.findOne({
           where: { table: 'unit_label', uuid: unitLabelId },
@@ -1413,8 +1413,8 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         expect(labelStaging).to.exist;
         expect(labelStaging.action).to.equal('INSERT');
         const labelData = JSON.parse(labelStaging.data);
-        expect(labelData[0].cadTrustUnitId).to.equal(unitId);
-        expect(labelData[0].cadTrustLabelId).to.equal(labelId);
+        expect(labelData[0].cad_trust_unit_id).to.equal(unitId);
+        expect(labelData[0].cad_trust_label_id).to.equal(labelId);
       });
 
       it('should handle XLSX with empty data rows gracefully', async function () {
@@ -1512,7 +1512,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         expect(stagingRecords[0].action).to.equal('UPDATE');
 
         const data = JSON.parse(stagingRecords[0].data);
-        expect(data[0].unitSerialId).to.equal('RT-UNIT-001');
+        expect(data[0].unit_serial_id).to.equal('RT-UNIT-001');
       });
     });
 

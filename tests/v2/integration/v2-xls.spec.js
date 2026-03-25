@@ -536,7 +536,7 @@ describe('V2 XLS Utility Functions', function () {
       expect(records[0].action).to.equal('INSERT');
 
       const data = JSON.parse(records[0].data);
-      expect(data[0].projectName).to.equal('Staged Project');
+      expect(data[0].project_name).to.equal('Staged Project');
     });
 
     it('should create staging UPDATE records for existing rows', async function () {
@@ -577,9 +577,9 @@ describe('V2 XLS Utility Functions', function () {
       expect(records[0].action).to.equal('UPDATE');
 
       const data = JSON.parse(records[0].data);
-      expect(data[0].projectName).to.equal('Updated Name');
+      expect(data[0].project_name).to.equal('Updated Name');
       // Should merge with existing record
-      expect(data[0].projectRegistryName).to.equal('Old Registry');
+      expect(data[0].project_registry_name).to.equal('Old Registry');
     });
 
     it('should stage child rows independently', async function () {
@@ -620,7 +620,7 @@ describe('V2 XLS Utility Functions', function () {
       expect(childRecords[0].action).to.equal('INSERT');
 
       const childData = JSON.parse(childRecords[0].data);
-      expect(childData[0].locationCountry).to.equal('US');
+      expect(childData[0].location_country).to.equal('US');
     });
 
     it('should skip empty rows', async function () {
