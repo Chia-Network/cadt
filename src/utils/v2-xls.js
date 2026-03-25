@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { sequelizeV2 } from '../database/v2/index.js';
 import StagingV2 from '../models/v2/staging-v2.model.js';
+import OrganizationsV2 from '../models/v2/organizations-v2.model.js';
 import { createXlsFromSequelizeResults, transformMetaUid } from './xls.js';
 import { loggerV2 } from '../config/logger.js';
 
@@ -190,6 +191,17 @@ export async function stageV2XlsRecords(parsedData, model) {
   const isEmptyRow = (row) =>
     Object.values(row).every((v) => v === null || v === undefined || v === '');
 
+  // The normal V2 API controllers inject org_uid from the home organization
+  // into every staged record. The XLSX path must do the same so the data
+  // pushed to datalayer includes org_uid — otherwise sync-registries-v2
+  // fails with SequelizeUniqueConstraintError when upserting the record
+  // back (org_uid has allowNull: false on parent models).
+  const homeOrg = await OrganizationsV2.getHomeOrg(false);
+  if (!homeOrg) {
+    throw new Error('Cannot stage XLSX records: no home organization found');
+  }
+  const orgUid = homeOrg.org_uid;
+
   await sequelizeV2.transaction(async (transaction) => {
     // Stage parent rows
     for (const row of parsedData.main) {
@@ -231,6 +243,10 @@ export async function stageV2XlsRecords(parsedData, model) {
       }
 
       const dbRecord = toDbFieldNames(stagedRecord, model);
+
+      if (model.rawAttributes.orgUid) {
+        dbRecord.org_uid = orgUid;
+      }
 
       await StagingV2.upsert(
         {
