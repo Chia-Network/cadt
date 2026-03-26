@@ -1068,15 +1068,40 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "=========================================="
-          echo "CADT stdout logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-out.log || echo "No stdout log found"
-          echo ""
-          echo "=========================================="
-          echo "CADT stderr logs (full):"
-          echo "=========================================="
-          cat ~/.pm2/logs/cadt-error.log || echo "No stderr log found"
+          for LOGFILE in ~/.pm2/logs/cadt-out.log ~/.pm2/logs/cadt-error.log; do
+            LOGNAME=$(basename "$LOGFILE")
+            echo "=========================================="
+            echo "CADT $LOGNAME:"
+            echo "=========================================="
+            if [ -f "$LOGFILE" ]; then
+              LOGSIZE=$(wc -c < "$LOGFILE")
+              LOGLINES=$(wc -l < "$LOGFILE")
+              echo "File size: $LOGSIZE bytes, $LOGLINES lines"
+              if [ "$LOGLINES" -le 2500 ]; then
+                cat "$LOGFILE"
+              else
+                echo "--- first 50 lines (startup) ---"
+                head -50 "$LOGFILE"
+                echo ""
+                echo "--- last 2000 lines (most recent) ---"
+                tail -2000 "$LOGFILE"
+              fi
+            else
+              echo "No $LOGNAME found"
+            fi
+            echo ""
+          done
+
+      - name: Upload CADT logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cadt-logs-${{ github.job }}
+          path: |
+            ~/.pm2/logs/cadt-out.log
+            ~/.pm2/logs/cadt-error.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show Chia debug log after tests (filtered)
         if: always()
