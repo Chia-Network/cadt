@@ -123,6 +123,10 @@ const createDataLayerStoreWithRetry = async (maxRetries = 3) => {
       await wallet.waitForAllTransactionsToConfirm();
     }
   }
+
+  throw new Error(
+    `createDataLayerStoreWithRetry: exhausted ${maxRetries} attempts without success`,
+  );
 };
 
 const addMirror = async (storeId, url, force = false) => {
