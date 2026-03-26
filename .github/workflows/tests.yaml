@@ -493,7 +493,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -832,7 +832,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -1094,7 +1094,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -1460,7 +1460,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -2674,7 +2674,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -3560,7 +3560,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -3887,7 +3887,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -4212,7 +4212,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -4538,7 +4538,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
