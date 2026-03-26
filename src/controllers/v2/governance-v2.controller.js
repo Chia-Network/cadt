@@ -204,9 +204,11 @@ export const createGoveranceBody = async (req, res) => {
 
     // Start governance body creation in the background
     // Don't await - let it run asynchronously
-    GovernanceV2.createGoveranceBody().catch(async (error) => {
+    GovernanceV2.createGoveranceBody().catch((error) => {
       loggerV2.error('[v2]: Error creating governance body in background:', error);
-      await GovernanceV2._setCreationStatus('failed', error.message);
+      GovernanceV2._setCreationStatus('failed', error.message).catch((statusErr) => {
+        loggerV2.error('[v2]: Failed to update creation status after error:', statusErr);
+      });
     });
 
     // Return immediately - work happens in background

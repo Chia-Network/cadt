@@ -131,9 +131,11 @@ export const createGoveranceBody = async (req, res) => {
     await assertWalletIsSynced();
     await assertCanBeGovernanceBody();
 
-    Governance.createGoveranceBody().catch(async (error) => {
+    Governance.createGoveranceBody().catch((error) => {
       logger.error('Error creating governance body in background:', error);
-      await Governance._setCreationStatus('failed', error.message);
+      Governance._setCreationStatus('failed', error.message).catch((statusErr) => {
+        logger.error('Failed to update creation status after error:', statusErr);
+      });
     });
 
     return res.json({
