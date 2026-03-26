@@ -4,6 +4,11 @@ import fs from 'fs';
 import path from 'path';
 import { getChiaRoot } from '../../../../src/utils/chia-root.js';
 import { shouldAutoCommit, trackTestEndpoint } from './shared-state.js';
+import {
+  getWalletDiagnostics,
+  formatWalletStatus,
+  createRecoveryStuckTracker,
+} from '../../../v2/live-api/helpers/wallet-diagnostics.js';
 
 /**
  * Format current timestamp as YYYY-MM-DD HH:mm:ss
@@ -245,14 +250,50 @@ export const checkOrganizationSynced = async (request) => {
 };
 
 /**
- * Wait for pending commits to complete
- * Checks the home organization's synced field to determine if blockchain sync is complete
- * This is more reliable than checking staging table directly
+ * Check if any commits have been marked as failed by the server.
+ * The server marks staging rows failedCommit=true when the background
+ * pushDataLayerChangeList exhausts all retries.
  */
-export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
+const checkForFailedCommits = async (request) => {
+  try {
+    const response = await request.get('/v1/staging').query({ type: 'failed' });
+    const records = Array.isArray(response.body)
+      ? response.body
+      : (response.body?.data || []);
+    return records.length;
+  } catch {
+    return 0;
+  }
+};
+
+/**
+ * Get count of pending (in-flight) commits.
+ */
+const getPendingCommitCount = async (request) => {
+  try {
+    const response = await request.get('/v1/staging').query({ type: 'pending' });
+    const records = Array.isArray(response.body)
+      ? response.body
+      : (response.body?.data || []);
+    return records.length;
+  } catch {
+    return -1;
+  }
+};
+
+/**
+ * Wait for pending commits to complete.
+ * Checks org sync status, failed commits, and pending commit count each cycle.
+ *
+ * Default timeout is 1200s (20 min) to accommodate the server-side push retry
+ * budget of up to 60 retries x 30s = 30 min. Using 20 min as a reasonable
+ * upper bound since most pushes succeed well within that window.
+ */
+export const waitForPendingCommits = async (request, maxWaitTime = 1200000) => {
   const startTime = Date.now();
-  const interval = 10000; // Check every 10 seconds (longer interval for blockchain)
+  const interval = 10000;
   const timestamp = new Date().toISOString();
+  const recoveryTracker = createRecoveryStuckTracker();
 
   console.log(`[${timestamp}] Waiting for organization sync to complete...`);
 
@@ -264,32 +305,65 @@ export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
       return true;
     }
 
+    const failedCount = await checkForFailedCommits(request);
+    if (failedCount > 0) {
+      throw new Error(
+        `Commit failed on server side: ${failedCount} staging record(s) marked as failed. ` +
+        `The server exhausted all push retries. Check CADT logs for details.`,
+      );
+    }
+
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    console.log(`  Organization not synced yet, waiting... (${elapsed}s elapsed)`);
+    const pendingCount = await getPendingCommitCount(request);
+    const health = await getWalletDiagnostics(request, 'v1');
+    const walletInfo = formatWalletStatus(health);
+    console.log(
+      `  Organization not synced yet (${elapsed}s) | ` +
+      `pending commits: ${pendingCount} | wallet: ${walletInfo}`,
+    );
+
+    recoveryTracker.update(health);
 
     await new Promise(resolve => setTimeout(resolve, interval));
   }
 
-  // Timeout reached - this is a problem, sync is taking too long
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
-  console.error(`❌ Timeout waiting for organization sync to complete after ${elapsed}s`);
-  throw new Error(`Timeout waiting for organization sync to complete after ${maxWaitTime}ms. Blockchain sync may be taking longer than expected.`);
+  const pendingCount = await getPendingCommitCount(request);
+  const failedCount = await checkForFailedCommits(request);
+  console.error(
+    `❌ Timeout waiting for organization sync to complete after ${elapsed}s ` +
+    `(pending: ${pendingCount}, failed: ${failedCount})`,
+  );
+  throw new Error(
+    `Timeout waiting for organization sync to complete after ${maxWaitTime}ms. ` +
+    `Pending commits: ${pendingCount}, failed commits: ${failedCount}. ` +
+    `Blockchain sync may be taking longer than expected.`,
+  );
 };
 
 /**
  * Wait for staging table to be empty
  * Polls GET /v1/staging until it returns no records
  * @param {Object} request - supertest request instance
- * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 600000 = 10 minutes)
+ * @param {number} maxWaitTime - Maximum wait time in milliseconds (default: 1200000 = 20 minutes)
  */
-export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
+export const waitForStagingEmpty = async (request, maxWaitTime = 1200000) => {
   const startTime = Date.now();
-  const interval = 10000; // Check every 10 seconds
+  const interval = 10000;
+  const recoveryTracker = createRecoveryStuckTracker();
 
   console.log('Waiting for staging table to be empty...');
 
   while (Date.now() - startTime < maxWaitTime) {
     try {
+      const failedCount = await checkForFailedCommits(request);
+      if (failedCount > 0) {
+        throw new Error(
+          `Commit failed on server side: ${failedCount} staging record(s) marked as failed. ` +
+          `The server exhausted all push retries. Check CADT logs for details.`,
+        );
+      }
+
       const response = await request.get('/v1/staging');
       const records = Array.isArray(response.body)
         ? response.body
@@ -301,8 +375,13 @@ export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
       }
 
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`  Staging table still has ${records.length} record(s), waiting... (${elapsed}s elapsed)`);
+      const health = await getWalletDiagnostics(request, 'v1');
+      const walletInfo = formatWalletStatus(health);
+      console.log(`  Staging: ${records.length} record(s) remaining (${elapsed}s) | wallet: ${walletInfo}`);
+
+      recoveryTracker.update(health);
     } catch (error) {
+      if (error.message.includes('Commit failed on server side')) throw error;
       console.warn(`  Error checking staging table: ${error.message}`);
     }
 
