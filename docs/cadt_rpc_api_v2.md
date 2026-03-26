@@ -83,6 +83,24 @@ The XLSX workflow follows the standard CADT staging paradigm:
 4. **Review** staged changes using the [staging](#staging) endpoints
 5. **Commit** when ready using `POST /v2/staging/commit`
 
+#### Downloading the Export
+
+The export endpoints return an XLSX file as a binary download with a `Content-Disposition: attachment` header.
+
+**Browser**: Navigating to the URL directly (e.g., `http://localhost:31310/v2/project?xls=true`) will automatically trigger a file download.
+
+**cURL**:
+
+```bash
+# Save with an explicit filename
+curl -o projects.xlsx "http://localhost:31310/v2/project?xls=true"
+
+# Or use the server-suggested filename (projects.xlsx)
+curl -J -O "http://localhost:31310/v2/project?xls=true"
+```
+
+**Postman**: Send the GET request, then click **Save Response → Save to a file** in the response pane. Postman will suggest the filename from the response headers.
+
 #### File Format
 
 Each XLSX file contains a **main sheet** plus optional **child sheets** for associated data:
