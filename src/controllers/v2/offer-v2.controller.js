@@ -12,6 +12,10 @@ import {
   assertStagingTableNotEmpty,
   assertStagingTableIsEmpty,
 } from '../../utils/v2-data-assertions.js';
+import {
+  isReadOnlyError,
+  sendReadOnlyError,
+} from '../../utils/read-only-response.js';
 import { deserializeMaker, deserializeTaker } from '../../utils/datalayer-utils.js';
 import { loggerV2 } from '../../config/logger.js';
 import { getConfig } from '../../utils/config-loader.js';
@@ -32,6 +36,9 @@ export const generateOfferFile = async (req, res) => {
     const offerFile = await OfferV2.generateOfferFile();
     res.json(offerFile);
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     loggerV2.error('[v2]: Error generating offer file:', error);
     res.status(400).json({
       message: 'Error generating offer file.',
@@ -134,6 +141,7 @@ export const commitImportedOffer = async (req, res) => {
  */
 export const cancelImportedOffer = async (req, res) => {
   try {
+    await assertV2IfReadOnlyMode();
     await OfferV2.cancelImportedOffer();
 
     res.json({
@@ -141,6 +149,9 @@ export const cancelImportedOffer = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     loggerV2.error('[v2]: Error canceling imported offer:', error);
     res.status(400).json({
       message: 'Cannot cancel offer',

@@ -8,6 +8,11 @@ import {
   createLiveApiRequest,
   waitForServer,
 } from '../../../v2/live-api/helpers/live-api-helpers.js';
+import {
+  getWalletDiagnostics,
+  formatWalletStatus,
+  createRecoveryStuckTracker,
+} from '../../../v2/live-api/helpers/wallet-diagnostics.js';
 
 const getTimestamp = () => {
   const now = new Date();
@@ -99,6 +104,7 @@ export const waitForGovernanceCreated = async (request, apiVersion, maxWaitMs = 
   const startTime = Date.now();
   const interval = 10000;
   const endpoint = `/${apiVersion}/governance/exists`;
+  const recoveryTracker = createRecoveryStuckTracker();
 
   console.log(`[${getTimestamp()}] Waiting for ${apiVersion} governance body to be created...`);
 
@@ -109,18 +115,37 @@ export const waitForGovernanceCreated = async (request, apiVersion, maxWaitMs = 
       const response = await request.get(endpoint);
 
       if (response.status === 200 && response.body) {
-        const { created, governanceBodyId } = response.body;
+        const { created, governanceBodyId, creationStatus, creationError, creationStartedAt } = response.body;
 
         if (created === true && governanceBodyId) {
           console.log(`[${getTimestamp()}] ${apiVersion} governance body created: ${governanceBodyId}`);
           return governanceBodyId;
         }
 
-        console.log(`  [${elapsed}s] ${apiVersion} governance not created yet (created=${created})`);
+        if (creationStatus === 'failed') {
+          throw new Error(
+            `${apiVersion} governance creation failed after ${elapsed}s. ` +
+            `Error: ${creationError || 'unknown'}`,
+          );
+        }
+
+        const statusParts = [`created=${created}`];
+        if (creationStatus) statusParts.push(`status=${creationStatus}`);
+        if (creationStartedAt) statusParts.push(`started=${creationStartedAt}`);
+
+        const health = await getWalletDiagnostics(request, apiVersion);
+        const walletInfo = formatWalletStatus(health);
+        console.log(`  [${elapsed}s] ${apiVersion} governance: ${statusParts.join(', ')} | wallet: ${walletInfo}`);
+
+        recoveryTracker.update(health);
       } else {
         console.log(`  [${elapsed}s] ${endpoint} returned status ${response.status}`);
       }
     } catch (error) {
+      if (error.message.includes('governance creation failed') ||
+          error.message.includes('recovery appears stuck')) {
+        throw error;
+      }
       console.log(`  [${elapsed}s] Error checking governance exists: ${error.message}`);
     }
 
@@ -199,7 +224,9 @@ export const waitForGovernanceDataConfirmed = async (request, apiVersion, keys, 
           return records.filter(r => keys.includes(r[keyField]));
         }
 
-        console.log(`  [${elapsed}s] Pending: ${pendingKeys.join(', ')}`);
+        const health = await getWalletDiagnostics(request, apiVersion);
+        const walletInfo = formatWalletStatus(health);
+        console.log(`  [${elapsed}s] Pending: ${pendingKeys.join(', ')} | wallet: ${walletInfo}`);
       } else {
         console.log(`  [${elapsed}s] ${endpoint} returned status ${response.status}`);
       }

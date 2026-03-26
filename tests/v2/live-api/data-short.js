@@ -351,6 +351,42 @@ async function main() {
     await clearStagingTable(request);
     console.log('');
 
+    // Phase 3.5: XLSX Import/Export tests (needs records from POST phase)
+    // Pre-flight: verify prerequisite records are queryable before spawning XLSX process.
+    // Retry each type with backoff because the DB can be transiently locked after a commit.
+    const xlsxPrereqs = ['program', 'methodology', 'issuance', 'label'];
+    const maxAttempts = 4;
+    const baseDelay = 3000;
+    console.log('--- XLSX pre-flight: verifying prerequisite records exist ---');
+    for (const type of xlsxPrereqs) {
+      let lastStatus, lastBody;
+      let ok = false;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const res = await request.get(`/v2/${type}`).query({ page: 1, limit: 100 });
+        lastStatus = res.status;
+        lastBody = res.body;
+        const data = Array.isArray(res.body) ? res.body : (res.body?.data || []);
+        if (res.status === 200 && data.length > 0) {
+          console.log(`  ✓ /v2/${type}: ${data.length} record(s)`);
+          ok = true;
+          break;
+        }
+        console.log(`  ⚠ /v2/${type} attempt ${attempt}/${maxAttempts}: status=${res.status}, records=${data.length}, body=${JSON.stringify(res.body).slice(0, 200)}`);
+        if (attempt < maxAttempts) {
+          const delay = baseDelay * attempt;
+          console.log(`    retrying in ${delay}ms...`);
+          await new Promise((r) => setTimeout(r, delay));
+        }
+      }
+      if (!ok) {
+        throw new Error(`XLSX pre-flight failed after ${maxAttempts} attempts: GET /v2/${type} returned status=${lastStatus}, body=${JSON.stringify(lastBody).slice(0, 300)}. Cannot run XLSX tests without prerequisite data.`);
+      }
+    }
+    console.log('');
+
+    const xlsxTestFiles = ['xlsx-import-export.live.spec.js'];
+    await runMochaTests('Step 1[1-6]a?:', 'XLSX Import/Export', xlsxTestFiles);
+
     // Phase 4: PUT tests
     await runMochaTests('Step 7: PUT Request Tests', 'PUT Operations');
     await commitAndWait('PUT');

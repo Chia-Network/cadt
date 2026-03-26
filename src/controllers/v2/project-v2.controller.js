@@ -18,10 +18,8 @@ import {
   isArrayRegex,
 } from '../../utils/string-utils.js';
 
-import {
-  createXlsFromSequelizeResults,
-  sendXls,
-} from '../../utils/xls.js';
+import { sendXls } from '../../utils/xls.js';
+import { buildXlsSchema, createV2Xls } from '../../utils/v2-xls.js';
 
 import {
   assertV2IfReadOnlyMode,
@@ -340,7 +338,6 @@ export const findAll = async (req, res) => {
     // Handle pagination
     let pagination = paginationParams(page, limit);
 
-    // If XLS export, remove pagination
     if (xls) {
       pagination = { offset: undefined, limit: undefined };
     }
@@ -410,6 +407,16 @@ export const findAll = async (req, res) => {
     let queryAttributes = undefined;
     let queryIncludes = [];
 
+    // When exporting XLS, include all child associations
+    if (xls) {
+      const xlsSchema = buildXlsSchema(ProjectV2);
+      queryIncludes = xlsSchema.children.map((child) => ({
+        model: child.model,
+        as: child.sheetName,
+        required: false,
+      }));
+    }
+
     if (normalizedColumns) {
       // Association names that can be included
       const associationNames = ['program', 'ProgramV2', 'locations', 'LocationV2', 'estimations', 'EstimationV2', 'ratings', 'RatingV2', 'coBenefits', 'CoBenefitV2'];
@@ -418,41 +425,54 @@ export const findAll = async (req, res) => {
       // Check if associations are requested
       const requestedAssociations = normalizedColumns.filter(col => associationNames.includes(col));
 
+      // Track aliases already present from XLS includes to avoid duplicates
+      const existingAliases = new Set(queryIncludes.map((inc) => inc.as));
+
       // Build include array for requested associations
       if (requestedAssociations.includes('program') || requestedAssociations.includes('ProgramV2')) {
-        queryIncludes.push({
-          model: ProgramV2,
-          as: 'program',
-          required: false, // LEFT JOIN
-        });
+        if (!existingAliases.has('program')) {
+          queryIncludes.push({
+            model: ProgramV2,
+            as: 'program',
+            required: false, // LEFT JOIN
+          });
+        }
       }
       if (requestedAssociations.includes('locations') || requestedAssociations.includes('LocationV2')) {
-        queryIncludes.push({
-          model: LocationV2,
-          as: 'locations',
-          required: false,
-        });
+        if (!existingAliases.has('locations')) {
+          queryIncludes.push({
+            model: LocationV2,
+            as: 'locations',
+            required: false,
+          });
+        }
       }
       if (requestedAssociations.includes('estimations') || requestedAssociations.includes('EstimationV2')) {
-        queryIncludes.push({
-          model: EstimationV2,
-          as: 'estimations',
-          required: false,
-        });
+        if (!existingAliases.has('estimations')) {
+          queryIncludes.push({
+            model: EstimationV2,
+            as: 'estimations',
+            required: false,
+          });
+        }
       }
       if (requestedAssociations.includes('ratings') || requestedAssociations.includes('RatingV2')) {
-        queryIncludes.push({
-          model: RatingV2,
-          as: 'ratings',
-          required: false,
-        });
+        if (!existingAliases.has('ratings')) {
+          queryIncludes.push({
+            model: RatingV2,
+            as: 'ratings',
+            required: false,
+          });
+        }
       }
       if (requestedAssociations.includes('coBenefits') || requestedAssociations.includes('CoBenefitV2')) {
-        queryIncludes.push({
-          model: CoBenefitV2,
-          as: 'coBenefits',
-          required: false,
-        });
+        if (!existingAliases.has('coBenefits')) {
+          queryIncludes.push({
+            model: CoBenefitV2,
+            as: 'coBenefits',
+            required: false,
+          });
+        }
       }
 
       // Use columnsToInclude helper only for regular columns
@@ -567,12 +587,8 @@ export const findAll = async (req, res) => {
     // Handle XLS export
     if (xls) {
       return sendXls(
-        'projects',
-        createXlsFromSequelizeResults({
-          rows: response.data || response,
-          model: ProjectV2,
-          toStructuredCsv: false,
-        }),
+        'project',
+        createV2Xls(response.data || response, ProjectV2),
         res,
       );
     }

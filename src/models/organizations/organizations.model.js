@@ -52,13 +52,14 @@ import {
   clearCreationState,
   hasInProgressCreation,
 } from '../../utils/organization-creation-state.js';
-import { runMirrorCheck } from '../../tasks/mirror-check.js';
+import { mirrorOrgStores } from '../../tasks/mirror-check.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 
 const { isTransientWalletError } = wallet;
 
 class Organization extends Model {
   static async getHomeOrg(includeAddress = true) {
+    const { READ_ONLY } = getConfig();
     const myOrganization = await Organization.findOne({
       where: { isHome: true },
       raw: true,
@@ -79,7 +80,9 @@ class Organization extends Model {
     }
 
     if (myOrganization && includeAddress) {
-      myOrganization.xchAddress = await datalayer.getPublicAddress();
+      if (!READ_ONLY) {
+        myOrganization.xchAddress = await datalayer.getPublicAddress();
+      }
       myOrganization.fileStoreSubscribed = true;
       return myOrganization;
     }
@@ -97,6 +100,7 @@ class Organization extends Model {
   }
 
   static async getOrgsMap() {
+    const { READ_ONLY } = getConfig();
     logger.silly(
       '[MIRROR_DEBUG] Starting getOrgsMap() - querying organizations from database',
     );
@@ -126,10 +130,12 @@ class Organization extends Model {
 
     for (let i = 0; i < organizations.length; i++) {
       if (organizations[i].dataValues.isHome) {
-        organizations[i].dataValues.xchAddress =
-          await datalayer.getPublicAddress();
-        organizations[i].dataValues.balance =
-          await datalayer.getWalletBalance();
+        if (!READ_ONLY) {
+          organizations[i].dataValues.xchAddress =
+            await datalayer.getPublicAddress();
+          organizations[i].dataValues.balance =
+            await datalayer.getWalletBalance();
+        }
 
         const pendingCommitsCount = await Staging.count({
           where: { commited: true },
@@ -215,12 +221,6 @@ class Organization extends Model {
 
       if (!USE_SIMULATOR) {
         const coinCheck = await wallet.waitForSpendableCoins(4);
-        if (!coinCheck.success) {
-          throw new Error(
-            `Cannot create organization: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
-            'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
-          );
-        }
         logger.info(`[v1]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
       }
 
@@ -230,8 +230,23 @@ class Organization extends Model {
       logger.error(
         `[v1]: create organization process failed. Error: ${error.message}`,
       );
-      // Clean up PENDING record but preserve state for potential recovery
-      await Organization.destroy({ where: { orgUid: 'PENDING' } });
+      // Mark state as FAILED BEFORE destroying PENDING record to ensure
+      // the state is persisted even if the destroy call causes issues.
+      try {
+        let failedState = await loadCreationState(Meta, 'v1');
+        if (failedState && failedState.state !== ORG_CREATION_STATES.COMPLETE) {
+          failedState = markAsFailed(failedState, error.message);
+          await saveCreationState(failedState, Meta);
+          logger.info('[v1]: Creation state marked as FAILED in Meta table');
+        }
+      } catch (stateError) {
+        logger.error(`[v1]: Failed to mark creation state as FAILED: ${stateError.message}`);
+      }
+      try {
+        await Organization.destroy({ where: { orgUid: 'PENDING' } });
+      } catch (destroyError) {
+        logger.error(`[v1]: Failed to destroy PENDING record: ${destroyError.message}`);
+      }
       throw error;
     }
   }
@@ -262,12 +277,6 @@ class Organization extends Model {
     const neededCoins = getStoresToCreate(state).length;
     if (!USE_SIMULATOR && neededCoins > 0) {
       const coinCheck = await wallet.waitForSpendableCoins(neededCoins);
-      if (!coinCheck.success) {
-        throw new Error(
-          `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
-          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
-        );
-      }
       logger.info(`[v1]: Resuming org creation, ${coinCheck.coinCount} coins available (need ${neededCoins})`);
     }
 
@@ -425,23 +434,25 @@ class Organization extends Model {
         );
       }
 
-      // Trigger mirror check to create mirrors for the new organization immediately
-      // Wrapped in try-catch so mirror failures don't fail org creation
-      // The periodic mirror-check task will retry if this fails
-      try {
-        logState(state, 'Triggering mirror check to create mirrors for new organization');
-        await runMirrorCheck();
-        logState(state, 'Mirror check completed successfully');
-      } catch (mirrorError) {
-        logState(state, `Mirror check failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
-      }
-
-      // Mark complete and clear state
+      // Mark complete and clear state before mirror creation so org
+      // creation success is not dependent on mirror operations.
       updateOrgLockStatus(lockToken, 'Organization creation complete');
       state = updateState(state, { state: ORG_CREATION_STATES.COMPLETE });
       await clearCreationState(Meta, 'v1');
 
       logState(state, `Organization creation complete. orgUid: ${orgUid}`);
+
+      // Fire-and-forget: mirror only this org's stores rather than running
+      // a full mirror check across all orgs. The periodic task handles the rest.
+      mirrorOrgStores({
+        orgUid,
+        registryId,
+        dataModelVersionStoreId,
+        fileStoreId,
+      }).catch((mirrorError) => {
+        logState(state, `Mirror creation failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
+      });
+
       return orgUid;
     } catch (error) {
       logState(state, `Error during creation: ${error.message}`, 'error');
@@ -474,8 +485,7 @@ class Organization extends Model {
           // Only orgUid is fixed in V1 simulator mode (original behavior)
           storeId = 'f1c54511-865e-4611-976c-7c3c1f704662';
         } else {
-          // Other stores get random UUIDs (original behavior - called createDataLayerStore)
-          storeId = await datalayer.createDataLayerStore();
+          storeId = await datalayer.createDataLayerStoreWithRetry();
         }
         state = markStoreCreated(state, storeType, storeId);
         state = markStoreConfirmed(state, storeType);
@@ -492,7 +502,7 @@ class Organization extends Model {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
-          const storeId = await datalayer.createDataLayerStore();
+          const storeId = await datalayer.createDataLayerStoreWithRetry();
           logState(state, `Created ${storeType} store: ${storeId}`);
           return { storeType, storeId, success: true };
         } catch (error) {
@@ -607,6 +617,29 @@ class Organization extends Model {
   }
 
   /**
+   * Lightweight health check for the direct-push path: detect rejected txs in the
+   * DL wallet and auto-clear them before scheduling a background retry.
+   * Non-blocking and best-effort -- failures are logged but don't propagate.
+   * @private
+   */
+  static async _checkAndClearRejectedTxs(storeType, storeId) {
+    try {
+      const dlWalletId = await wallet.getDLWalletId();
+      if (!dlWalletId) return;
+
+      const health = await wallet.getTransactionHealth(dlWalletId);
+      if (health.rejected.length > 0) {
+        const txIds = health.rejected.map((tx) => tx.name);
+        const context =
+          `_pushDataInParallel failed for ${storeType} store ${storeId}, scheduling retry`;
+        await wallet.clearRejectedTransactions(dlWalletId, txIds, context);
+      }
+    } catch (error) {
+      logger.debug(`_checkAndClearRejectedTxs non-fatal error: ${error.message}`);
+    }
+  }
+
+  /**
    * Push data to stores sequentially with a short delay between each.
    *
    * Calls pushChangeListToDataLayer directly, bypassing the hasUnconfirmedTransactions
@@ -702,8 +735,9 @@ class Organization extends Model {
           await saveCreationState(state, Meta);
         } else {
           // Push was accepted by the function but returned false (RPC-level failure).
-          // Schedule a background retry and report failure for this store.
+          // Check for rejected txs before scheduling background retry.
           logState(state, `Push to ${storeType} store ${storeId} failed, background retry scheduled`, 'error');
+          await Organization._checkAndClearRejectedTxs(storeType, storeId);
           datalayer.pushDataLayerChangeList(storeId, changeList, () => {
             logState(state, `Background retry for ${storeType} store ${storeId} gave up`, 'error');
           });
@@ -712,7 +746,7 @@ class Organization extends Model {
       } catch (error) {
         logState(state, `Push to ${storeType} store ${storeId} threw: ${error.message}`, 'error');
         if (!USE_SIMULATOR) {
-          // Schedule a background retry via the normal path (which includes the unconfirmed-tx gate)
+          await Organization._checkAndClearRejectedTxs(storeType, storeId);
           datalayer.pushDataLayerChangeList(storeId, changeList, () => {
             logState(state, `Background retry for ${storeType} store ${storeId} gave up`, 'error');
           });
@@ -1350,6 +1384,7 @@ class Organization extends Model {
                 ..._.omit(updateData, [
                   'registryId',
                   'dataModelVersionStoreId',
+                  'isHome',
                 ]),
                 prefix: updateData.prefix || '0',
                 metadata: JSON.stringify(metadata),

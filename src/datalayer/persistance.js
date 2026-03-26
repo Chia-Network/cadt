@@ -860,6 +860,19 @@ const pushChangeListToDataLayer = async (storeId, changelist, { skipTransactionW
         return false;
       }
 
+      if (data.error && data.error.includes('is not owned by DL Wallet')) {
+        logger.error(
+          `Store ${storeId} is not owned by this wallet's DL Wallet. ` +
+            `This is a permanent error — push will never succeed until store ownership is restored. ` +
+            `This typically happens when the node was redeployed with a new wallet.`,
+        );
+        const err = new Error(
+          `Store ${storeId} is not owned by this wallet's DL Wallet`,
+        );
+        err.permanent = true;
+        throw err;
+      }
+
       logger.error(
         `There was an error pushing your changes to the datalayer, ${JSON.stringify(
           data,
@@ -867,6 +880,9 @@ const pushChangeListToDataLayer = async (storeId, changelist, { skipTransactionW
       );
       return false;
     } catch (error) {
+      if (error.permanent) {
+        throw error;
+      }
       logger.error(error.message);
       logger.info('There was an error pushing your changes to the datalayer');
       return false;
@@ -891,12 +907,20 @@ const createDataLayerStore = async () => {
       .timeout(timeout)
       .send({
         fee: _.get(CONFIG, 'DEFAULT_FEE', 300000000),
+        verbose: true,
       });
 
     const data = response.body;
 
     if (data.success) {
-      return data.id;
+      // With verbose=true, the RPC returns { id, txs } where txs is an array
+      // of TransactionRecord objects, each with a `name` field (tx_id/bundle_id).
+      // Older nodes without verbose support will only return { id }.
+      const txIds = Array.isArray(data.txs)
+        ? data.txs.map((tx) => tx.name).filter(Boolean)
+        : [];
+
+      return { storeId: data.id, txIds };
     }
 
     throw new Error(data.error);

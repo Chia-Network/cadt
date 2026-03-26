@@ -9,7 +9,7 @@ import datalayer from '../../datalayer';
 import { getStoreData as getRawStoreData } from '../../datalayer/persistance.js';
 import * as simulator from '../../datalayer/simulator.js';
 import { loggerV2 } from '../../config/logger.js';
-import { getConfig } from '../../utils/config-loader';
+import { getConfig, getConfigV2 } from '../../utils/config-loader';
 import { decodeHex, decodeDataLayerResponse } from '../../utils/datalayer-utils.js';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
@@ -73,7 +73,7 @@ import {
 } from '../../utils/organization-creation-state.js';
 
 import ModelTypes from './organizations-v2.modeltypes.cjs';
-import { runMirrorCheckV2 } from '../../tasks/mirror-check-v2.js';
+import { mirrorOrgStoresV2 } from '../../tasks/mirror-check-v2.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 
 const { isTransientWalletError } = wallet;
@@ -263,12 +263,6 @@ class OrganizationsV2 extends Model {
       // Wait for sufficient spendable coins before starting store creation
       // We need 4 SEPARATE coins (one per parallel store creation), each large enough to cover COIN_SIZE + fee
       const coinCheck = await wallet.waitForSpendableCoins(4);
-      if (!coinCheck.success) {
-        throw new Error(
-          `Cannot create organization: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
-          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
-        );
-      }
       loggerV2.info(`[v2]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
 
       // Execute the creation process
@@ -277,8 +271,23 @@ class OrganizationsV2 extends Model {
       loggerV2.error(
         `[v2]: create V2 organization process failed. Error: ${error.message}`,
       );
-      // Clean up PENDING record but preserve state for potential recovery
-      await OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } });
+      // Mark state as FAILED BEFORE destroying PENDING record to ensure
+      // the state is persisted even if the destroy call causes issues.
+      try {
+        let failedState = await loadCreationState(MetaV2, 'v2');
+        if (failedState && failedState.state !== ORG_CREATION_STATES.COMPLETE) {
+          failedState = markAsFailed(failedState, error.message);
+          await saveCreationState(failedState, MetaV2);
+          loggerV2.info('[v2]: Creation state marked as FAILED in Meta table');
+        }
+      } catch (stateError) {
+        loggerV2.error(`[v2]: Failed to mark creation state as FAILED: ${stateError.message}`);
+      }
+      try {
+        await OrganizationsV2.destroy({ where: { org_uid: 'PENDING' } });
+      } catch (destroyError) {
+        loggerV2.error(`[v2]: Failed to destroy PENDING record: ${destroyError.message}`);
+      }
       throw error;
     }
   }
@@ -310,12 +319,6 @@ class OrganizationsV2 extends Model {
     const neededCoins = getStoresToCreate(state).length;
     if (neededCoins > 0) {
       const coinCheck = await wallet.waitForSpendableCoins(neededCoins);
-      if (!coinCheck.success) {
-        throw new Error(
-          `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
-          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
-        );
-      }
       loggerV2.info(`[v2]: Resuming org creation, ${coinCheck.coinCount} coins available (need ${neededCoins})`);
     }
 
@@ -457,23 +460,25 @@ class OrganizationsV2 extends Model {
         );
       }
 
-      // Trigger mirror check to create mirrors for the new organization immediately
-      // Wrapped in try-catch so mirror failures don't fail org creation
-      // The periodic mirror-check task will retry if this fails
-      try {
-        logState(state, 'Triggering mirror check to create mirrors for new organization');
-        await runMirrorCheckV2();
-        logState(state, 'Mirror check completed successfully');
-      } catch (mirrorError) {
-        logState(state, `Mirror check failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
-      }
-
-      // Mark complete and clear state
+      // Mark complete and clear state before mirror creation so org
+      // creation success is not dependent on mirror operations.
       updateOrgLockStatus(lockToken, 'Organization creation complete');
       state = updateState(state, { state: ORG_CREATION_STATES.COMPLETE });
       await clearCreationState(MetaV2, 'v2');
 
       logState(state, `Organization creation complete. orgUid: ${orgUid}`);
+
+      // Fire-and-forget: mirror only this org's stores rather than running
+      // a full mirror check across all orgs. The periodic task handles the rest.
+      mirrorOrgStoresV2({
+        orgUid,
+        registryId,
+        dataModelVersionStoreId,
+        fileStoreId,
+      }).catch((mirrorError) => {
+        logState(state, `Mirror creation failed (will be retried by periodic task): ${mirrorError.message}`, 'warn');
+      });
+
       return orgUid;
     } catch (error) {
       logState(state, `Error during creation: ${error.message}`, 'error');
@@ -523,7 +528,7 @@ class OrganizationsV2 extends Model {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           logState(state, `Creating ${storeType} store (attempt ${attempt}/${maxRetries})`);
-          const storeId = await datalayer.createDataLayerStore();
+          const storeId = await datalayer.createDataLayerStoreWithRetry();
           logState(state, `Created ${storeType} store: ${storeId}`);
           return { storeType, storeId, success: true };
         } catch (error) {
@@ -639,6 +644,28 @@ class OrganizationsV2 extends Model {
   }
 
   /**
+   * Detect rejected txs in the DL wallet and auto-clear them.
+   * Non-blocking and best-effort — failures are logged but don't propagate.
+   * @private
+   */
+  static async _checkAndClearRejectedTxs(storeType, storeId) {
+    try {
+      const dlWalletId = await wallet.getDLWalletId();
+      if (!dlWalletId) return;
+
+      const health = await wallet.getTransactionHealth(dlWalletId);
+      if (health.rejected.length > 0) {
+        const txIds = health.rejected.map((tx) => tx.name);
+        const context =
+          `V2 _pushDataInParallel failed for ${storeType} store ${storeId}, scheduling retry`;
+        await wallet.clearRejectedTransactions(dlWalletId, txIds, context);
+      }
+    } catch (error) {
+      loggerV2.debug(`[v2]: _checkAndClearRejectedTxs non-fatal error: ${error.message}`);
+    }
+  }
+
+  /**
    * Push data to stores in parallel
    * @param {Object} state - Current state
    * @param {Object} MetaV2 - The MetaV2 model
@@ -680,6 +707,7 @@ class OrganizationsV2 extends Model {
             );
             return { storeType: STORE_TYPES.ORG_UID, success: true };
           } catch (error) {
+            await OrganizationsV2._checkAndClearRejectedTxs(STORE_TYPES.ORG_UID, orgUidStoreId);
             return { storeType: STORE_TYPES.ORG_UID, success: false, error: error.message };
           }
         })(),
@@ -701,6 +729,7 @@ class OrganizationsV2 extends Model {
             );
             return { storeType: STORE_TYPES.DATA_MODEL_VERSION, success: true };
           } catch (error) {
+            await OrganizationsV2._checkAndClearRejectedTxs(STORE_TYPES.DATA_MODEL_VERSION, dataModelVersionStoreId);
             return { storeType: STORE_TYPES.DATA_MODEL_VERSION, success: false, error: error.message };
           }
         })(),
@@ -922,7 +951,7 @@ class OrganizationsV2 extends Model {
         for (let attempt = 1; attempt <= maxStoreCreateRetries; attempt++) {
           try {
             await wallet.waitForSpendableCoins(1);
-            newV2RegistryStoreId = await datalayer.createDataLayerStore();
+            newV2RegistryStoreId = await datalayer.createDataLayerStoreWithRetry();
             break;
           } catch (error) {
             if (isTransientWalletError(error) && attempt < maxStoreCreateRetries) {
@@ -1062,16 +1091,16 @@ class OrganizationsV2 extends Model {
           { where: { org_uid: v1OrgUid } },
         );
 
-        // Trigger mirror check to create mirrors for the upgraded organization immediately
-        // Wrapped in try-catch so mirror failures don't fail org upgrade
-        // The periodic mirror-check task will retry if this fails
-        try {
-          loggerV2.info('[v2]: Triggering mirror check to create mirrors for upgraded organization');
-          await runMirrorCheckV2();
-          loggerV2.info('[v2]: Mirror check completed successfully');
-        } catch (mirrorError) {
-          loggerV2.warn(`[v2]: Mirror check failed (will be retried by periodic task): ${mirrorError.message}`);
-        }
+        // Fire-and-forget: mirror only this org's stores rather than running
+        // a full mirror check across all orgs. The periodic task handles the rest.
+        mirrorOrgStoresV2({
+          orgUid: v1OrgUid,
+          registryId: newV2RegistryStoreId,
+          dataModelVersionStoreId: sharedDataModelVersionStoreId,
+          fileStoreId: v1FileStoreId,
+        }).catch((mirrorError) => {
+          loggerV2.warn(`[v2]: Mirror creation failed (will be retried by periodic task): ${mirrorError.message}`);
+        });
       };
 
       if (!USE_SIMULATOR) {
@@ -1105,6 +1134,7 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<Object|null>} Home organization record or null if not found
    */
   static async getHomeOrg(includeAddress = true) {
+    const { READ_ONLY } = getConfigV2();
     const myOrganization = await OrganizationsV2.findOne({
       where: { is_home: true },
       raw: true,
@@ -1134,7 +1164,9 @@ class OrganizationsV2 extends Model {
     }
 
     if (includeAddress) {
-      myOrganization.xchAddress = await datalayer.getPublicAddress();
+      if (!READ_ONLY) {
+        myOrganization.xchAddress = await datalayer.getPublicAddress();
+      }
       myOrganization.fileStoreSubscribed = myOrganization.file_store_subscribed || false;
       return myOrganization;
     }
@@ -1155,6 +1187,7 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<Object>} Map of orgUid -> org data
    */
   static async getOrgsMap() {
+    const { READ_ONLY } = getConfigV2();
     loggerV2.silly(
       '[v2]: [MIRROR_DEBUG] Starting getOrgsMap() - querying V2 organizations from database',
     );
@@ -1184,10 +1217,12 @@ class OrganizationsV2 extends Model {
     // Add XCH address and balance for home org
     for (let i = 0; i < organizations.length; i++) {
       if (organizations[i].dataValues.is_home) {
-        organizations[i].dataValues.xchAddress =
-          await datalayer.getPublicAddress();
-        organizations[i].dataValues.balance =
-          await datalayer.getWalletBalance();
+        if (!READ_ONLY) {
+          organizations[i].dataValues.xchAddress =
+            await datalayer.getPublicAddress();
+          organizations[i].dataValues.balance =
+            await datalayer.getWalletBalance();
+        }
 
         const pendingCommitsCount = await StagingV2.count({
           where: { committed: true },
@@ -1605,11 +1640,10 @@ class OrganizationsV2 extends Model {
         }
       }
 
-      // Remove from deleted orgs list if present
+      // Remove from deleted orgs list if present so sync-default-organizations
+      // won't skip this org on future runs
       const { MetaV2 } = await import('./index.js');
-      await MetaV2.destroy({
-        where: { meta_key: 'userDeletedOrgUid', meta_value: orgUid },
-      });
+      await MetaV2.removeUserDeletedOrgUid(orgUid);
 
       loggerV2.info(`[v2]: Importing organization ${orgUid} ${isHome && 'as home'}`);
       loggerV2.debug(
@@ -1953,8 +1987,7 @@ class OrganizationsV2 extends Model {
 
     const transaction = await sequelizeV2.transaction();
     try {
-      // Import V2 models
-      const { MetaV2, AuditV2 } = await import('./index.js');
+      const { AuditV2 } = await import('./index.js');
 
       // Delete from organization table
       await OrganizationsV2.destroy({
@@ -1971,49 +2004,6 @@ class OrganizationsV2 extends Model {
         where: { org_uid: orgUid },
         transaction,
       });
-
-      // Delete from meta table (org-related metadata)
-      // Note: This delete might not match anything if the record doesn't exist
-      // We delete it here to clean up, but the main logic below handles create/update
-      await MetaV2.destroy({
-        where: { meta_key: 'userDeletedOrgUid', meta_value: orgUid },
-        transaction,
-      });
-
-      // Note: V2 data models (ProgramV2, ProjectV2, etc.) don't have org_uid fields
-      // They are associated with organizations through the registry, not directly.
-      // Data model records are shared across organizations that use the same registry.
-      // Therefore, we only delete from system tables (AuditV2, StagingV2, MetaV2) and the organization itself.
-
-      // Add to deleted orgs list (before commit so it's part of transaction)
-      // Use upsert instead of findOne + create/update to avoid unique constraint lock issues
-      // First, try to find existing record to get current value
-      const existingMeta = await MetaV2.findOne({
-        where: { meta_key: 'userDeletedOrgUid' },
-        transaction,
-      });
-
-      let deletedOrgs = [];
-      if (existingMeta) {
-        // Parse existing value and add orgUid if not already present
-        try {
-          deletedOrgs = JSON.parse(existingMeta.meta_value || '[]');
-        } catch {
-          deletedOrgs = [];
-        }
-      }
-
-      if (!deletedOrgs.includes(orgUid)) {
-        deletedOrgs.push(orgUid);
-        // Use upsert to handle both create and update cases atomically
-        // This avoids unique constraint lock issues
-        await MetaV2.upsert({
-          meta_key: 'userDeletedOrgUid',
-          meta_value: JSON.stringify(deletedOrgs),
-        }, {
-          transaction,
-        });
-      }
 
       await transaction.commit();
     } catch (error) {
@@ -2065,7 +2055,13 @@ class OrganizationsV2 extends Model {
         `an error occurred while deleting records corresponding to organization ${orgUid}. no changes have been made`,
       );
     }
-    // Success case - release mutexes
+    // Record the deletion in the meta table while still holding the mutexes so
+    // sync-default-organizations-v2 cannot slip in between the delete and the
+    // meta write and re-import the org.  addUserDeletedOrgUid does not acquire
+    // either mutex, so this cannot deadlock.
+    const { MetaV2: MetaV2Post } = await import('./index.js');
+    await MetaV2Post.addUserDeletedOrgUid(orgUid);
+
     releaseAddDeleteMutex();
     releaseAuditTransactionMutex();
   }
@@ -2117,6 +2113,7 @@ class OrganizationsV2 extends Model {
                 ..._.omit(updateData, [
                   'registry_id',
                   'data_model_version_store_id',
+                  'is_home',
                 ]),
                 metadata: metadataJson,
               },

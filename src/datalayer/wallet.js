@@ -187,56 +187,93 @@ const waitForAllTransactionsToConfirm = async (startTime = null, maxWaitMs = 180
     return true;
   }
 
-  // Initialize start time on first call
   if (startTime === null) {
     startTime = Date.now();
   }
 
-  // Check for timeout (default 30 minutes)
   const elapsed = Date.now() - startTime;
   if (elapsed > maxWaitMs) {
-    logger.warn(`waitForAllTransactionsToConfirm timed out after ${Math.round(elapsed / 1000)}s - proceeding anyway`);
+    // On timeout, log diagnostic details instead of a generic message
+    try {
+      const dlWalletId = await getDLWalletId();
+      const walletIds = dlWalletId ? ['1', dlWalletId] : ['1'];
+      for (const wid of walletIds) {
+        const health = await getTransactionHealth(wid);
+        const total = health.rejected.length + health.inMempool.length + health.pending.length;
+        if (total > 0) {
+          logger.warn(
+            `waitForAllTransactionsToConfirm timed out after ${Math.round(elapsed / 1000)}s. ` +
+            `Wallet ${wid}: ${health.rejected.length} rejected, ${health.inMempool.length} in mempool, ` +
+            `${health.pending.length} pending. Oldest age: ${formatDuration(health.oldestUnconfirmedAge)}. ` +
+            `Proceeding anyway.`,
+          );
+        }
+      }
+    } catch (diagError) {
+      logger.warn(
+        `waitForAllTransactionsToConfirm timed out after ${Math.round(elapsed / 1000)}s ` +
+        `(diagnostic check also failed: ${diagError.message}) - proceeding anyway`,
+      );
+    }
     return true;
   }
 
   try {
-    const unconfirmedTransactions = await hasUnconfirmedTransactions();
-    await new Promise((resolve) => setTimeout(() => resolve(), 15000));
+    const anyUnconfirmed = await hasAnyUnconfirmedTransactions();
+    await new Promise((resolve) => setTimeout(resolve, 15000));
 
-    if (unconfirmedTransactions) {
+    if (anyUnconfirmed) {
+      const elapsedAfterSleep = Date.now() - startTime;
+      if (elapsedAfterSleep > 300000 && elapsedAfterSleep % 60000 < 15000) {
+        try {
+          const dlWalletId = await getDLWalletId();
+          const walletIds = dlWalletId ? ['1', dlWalletId] : ['1'];
+          for (const wid of walletIds) {
+            const health = await getTransactionHealth(wid);
+            const total = health.rejected.length + health.inMempool.length + health.pending.length;
+            if (total > 0) {
+              logger.info(
+                `waitForAllTransactionsToConfirm: wallet ${wid} still has ` +
+                `${total} unconfirmed tx(s) after ${Math.round(elapsedAfterSleep / 1000)}s ` +
+                `(${health.rejected.length} rejected, ${health.inMempool.length} in mempool, ` +
+                `${health.pending.length} pending)`,
+              );
+            }
+          }
+        } catch {
+          // best-effort diagnostics
+        }
+      }
+
       return waitForAllTransactionsToConfirm(startTime, maxWaitMs);
     }
 
     return true;
   } catch (error) {
-    // If we can't check transactions (wallet unavailable), wait and retry
     logger.warn(`Error checking transactions: ${error.message} - retrying...`);
-    await new Promise((resolve) => setTimeout(() => resolve(), 15000));
+    await new Promise((resolve) => setTimeout(resolve, 15000));
     return waitForAllTransactionsToConfirm(startTime, maxWaitMs);
   }
 };
 
-const hasUnconfirmedTransactions = async () => {
+const hasUnconfirmedTransactions = async (walletId = '1') => {
   const { cert, key, timeout } = getBaseOptions();
 
   const response = await superagent
     .post(`${rpcUrl}/get_transactions`)
     .send({
-      wallet_id: '1',
+      wallet_id: walletId,
       sort_key: 'RELEVANCE',
     })
     .key(key)
     .cert(cert)
     .timeout(timeout);
 
-  const data = JSON.parse(response.text);
+  const data = response.body || JSON.parse(response.text);
 
   if (data.success) {
-    console.log(
-      `Pending confirmations: ${
-        data.transactions.filter((transaction) => !transaction.confirmed).length
-      }`,
-    );
+    const pendingCount = data.transactions.filter((transaction) => !transaction.confirmed).length;
+    logger.debug(`Pending confirmations for wallet ${walletId}: ${pendingCount}`);
 
     return data.transactions.some((transaction) => !transaction.confirmed);
   }
@@ -530,13 +567,279 @@ const waitForSpendableCoins = async (
   }
 
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
-  logger.error(
-    `[wallet]: Timeout waiting for spendable coins after ${elapsed}s`,
+  const msg = `Timeout waiting for ${requiredCoins} coins of ${minMojosPerCoin}+ mojos after ${elapsed}s`;
+  logger.error(`[wallet]: ${msg}`);
+  throw new Error(msg);
+};
+
+// Mempool inclusion status codes from Chia wallet's TransactionRecord.sent_to
+const MempoolInclusionStatus = {
+  SUCCESS: 1,
+  PENDING: 2,
+  FAILED: 3,
+};
+
+// Cached DL wallet ID (discovered once, reused thereafter)
+let cachedDLWalletId = null;
+
+/**
+ * Discover the DataLayer wallet's wallet_id dynamically via get_wallets RPC.
+ * Caches the result so subsequent calls avoid the RPC round-trip.
+ * @returns {Promise<string|null>} The DL wallet's wallet_id as a string, or null if not found
+ */
+const getDLWalletId = async () => {
+  if (cachedDLWalletId !== null) {
+    return cachedDLWalletId;
+  }
+
+  if (USE_SIMULATOR) {
+    cachedDLWalletId = '2';
+    return cachedDLWalletId;
+  }
+
+  try {
+    const { cert, key, timeout } = getBaseOptions();
+
+    const response = await superagent
+      .post(`${rpcUrl}/get_wallets`)
+      .send({})
+      .key(key)
+      .cert(cert)
+      .timeout(timeout);
+
+    const data = response.body || JSON.parse(response.text);
+
+    if (data.success && Array.isArray(data.wallets)) {
+      // WalletType.DATA_LAYER = 14 in chia-blockchain
+      const dlWallet = data.wallets.find((w) => w.type === 14);
+      if (dlWallet) {
+        cachedDLWalletId = String(dlWallet.id);
+        logger.info(`Discovered DataLayer wallet_id: ${cachedDLWalletId}`);
+        return cachedDLWalletId;
+      }
+    }
+
+    logger.warn('DataLayer wallet not found via get_wallets RPC');
+    return null;
+  } catch (error) {
+    logger.error(`Error discovering DL wallet_id: ${error.message}`);
+    return null;
+  }
+};
+
+/**
+ * Classify a single transaction's status based on its sent_to array.
+ * sent_to is an array of [peer_id, status_code, error_message] tuples.
+ * @param {Array} sentTo - The sent_to array from a TransactionRecord
+ * @returns {'rejected'|'in_mempool'|'pending'}
+ */
+const classifyTransaction = (sentTo) => {
+  if (!sentTo || sentTo.length === 0) {
+    return 'pending';
+  }
+
+  const hasSuccess = sentTo.some(([, status]) => status === MempoolInclusionStatus.SUCCESS);
+  const hasFailed = sentTo.some(([, status]) => status === MempoolInclusionStatus.FAILED);
+
+  if (hasSuccess) {
+    return 'in_mempool';
+  }
+
+  if (hasFailed && sentTo.every(([, status]) => status === MempoolInclusionStatus.FAILED)) {
+    return 'rejected';
+  }
+
+  return 'pending';
+};
+
+/**
+ * Format rejection reasons from sent_to for logging.
+ * @param {Array} sentTo - The sent_to array from a TransactionRecord
+ * @returns {string} Human-readable rejection summary
+ */
+const formatRejectionReasons = (sentTo) => {
+  if (!sentTo || sentTo.length === 0) return 'no send attempts';
+  const failedEntries = sentTo.filter(([, status]) => status === MempoolInclusionStatus.FAILED);
+  if (failedEntries.length === 0) return 'no failures';
+  const reasons = failedEntries.map(([peerId, , errorMsg]) =>
+    `peer ${peerId?.substring(0, 8)}...: ${errorMsg || 'unknown error'}`
   );
-  return {
-    success: false,
-    error: `Timeout waiting for ${requiredCoins} coins of ${minMojosPerCoin}+ mojos after ${elapsed}s`,
+  return `FAILED on ${failedEntries.length}/${sentTo.length} peers: ${reasons.join('; ')}`;
+};
+
+/**
+ * Get the health status of unconfirmed transactions for a given wallet.
+ * Classifies each unconfirmed tx as rejected, in_mempool, or pending.
+ * @param {string} walletId - The wallet_id to check
+ * @returns {Promise<{rejected: Array, inMempool: Array, pending: Array, stuckCount: number, oldestUnconfirmedAge: number|null}>}
+ */
+const getTransactionHealth = async (walletId) => {
+  const { cert, key, timeout } = getBaseOptions();
+
+  const response = await superagent
+    .post(`${rpcUrl}/get_transactions`)
+    .send({
+      wallet_id: walletId,
+      confirmed: false,
+      sort_key: 'RELEVANCE',
+    })
+    .key(key)
+    .cert(cert)
+    .timeout(timeout);
+
+  const data = response.body || JSON.parse(response.text);
+
+  if (!data.success) {
+    throw new Error(`get_transactions failed for wallet ${walletId}: ${data.error || 'unknown error'}`);
+  }
+
+  const unconfirmed = (data.transactions || []).filter((tx) => !tx.confirmed);
+  const now = Date.now() / 1000; // seconds
+
+  const result = {
+    rejected: [],
+    inMempool: [],
+    pending: [],
+    stuckCount: 0,
+    oldestUnconfirmedAge: null,
   };
+
+  for (const tx of unconfirmed) {
+    const classification = classifyTransaction(tx.sent_to);
+    const txAge = tx.created_at_time ? now - tx.created_at_time : null;
+    const txRecord = {
+      name: tx.name,
+      type: tx.type,
+      amount: tx.amount,
+      createdAt: tx.created_at_time,
+      age: txAge,
+      sentTo: tx.sent_to,
+      rejectionReason: classification === 'rejected' ? formatRejectionReasons(tx.sent_to) : null,
+    };
+
+    result[classification === 'in_mempool' ? 'inMempool' : classification].push(txRecord);
+
+    if (txAge !== null) {
+      if (result.oldestUnconfirmedAge === null || txAge > result.oldestUnconfirmedAge) {
+        result.oldestUnconfirmedAge = txAge;
+      }
+    }
+  }
+
+  result.stuckCount = result.pending.filter((tx) => tx.age && tx.age > 600).length +
+    result.inMempool.filter((tx) => tx.age && tx.age > 600).length;
+
+  return result;
+};
+
+/**
+ * Check for unconfirmed transactions across both the standard wallet (id 1)
+ * and the DataLayer wallet.
+ * @returns {Promise<boolean>} true if either wallet has unconfirmed transactions
+ */
+const hasAnyUnconfirmedTransactions = async () => {
+  const standardHasUnconfirmed = await hasUnconfirmedTransactions('1');
+
+  const dlWalletId = await getDLWalletId();
+  if (dlWalletId && dlWalletId !== '1') {
+    const dlHasUnconfirmed = await hasUnconfirmedTransactions(dlWalletId);
+    return standardHasUnconfirmed || dlHasUnconfirmed;
+  }
+
+  return standardHasUnconfirmed;
+};
+
+/**
+ * Format a duration in seconds as a human-readable string (e.g., "12m 34s").
+ * @param {number} seconds
+ * @returns {string}
+ */
+const formatDuration = (seconds) => {
+  if (seconds == null) return 'unknown';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+};
+
+/**
+ * Clear rejected transactions for a wallet, with mandatory audit logging.
+ *
+ * SAFETY: The Chia wallet RPC delete_unconfirmed_transactions deletes ALL
+ * unconfirmed txs for a wallet_id (no per-tx filter). Therefore this function
+ * REFUSES to clear unless ALL unconfirmed txs for the wallet are in the
+ * 'rejected' category.
+ *
+ * @param {string} walletId - The wallet_id to clear
+ * @param {string[]} txIds - The tx_ids we expect to clear (for audit logging)
+ * @param {string} context - Caller-provided context explaining why the clear is happening
+ * @returns {Promise<{cleared: boolean, reason: string}>}
+ */
+const clearRejectedTransactions = async (walletId, txIds, context) => {
+  const health = await getTransactionHealth(walletId);
+
+  // Safety check: refuse if ANY unconfirmed tx is not rejected
+  if (health.inMempool.length > 0 || health.pending.length > 0) {
+    const reason =
+      `Refusing to clear: wallet ${walletId} has ${health.inMempool.length} in-mempool ` +
+      `and ${health.pending.length} pending tx(s) alongside ${health.rejected.length} rejected. ` +
+      `delete_unconfirmed_transactions is wallet-wide and would destroy non-rejected txs.`;
+    logger.warn(reason, { walletId, context, txIds });
+    return { cleared: false, reason };
+  }
+
+  if (health.rejected.length === 0) {
+    return { cleared: false, reason: 'No rejected transactions to clear' };
+  }
+
+  // Verify the txIds we care about are actually in the rejected set
+  const rejectedNames = new Set(health.rejected.map((tx) => tx.name));
+  const matchedTxIds = txIds.filter((id) => rejectedNames.has(id));
+  const unmatchedTxIds = txIds.filter((id) => !rejectedNames.has(id));
+
+  if (unmatchedTxIds.length > 0) {
+    logger.warn(
+      `Some requested tx_ids not found in rejected set: ${JSON.stringify(unmatchedTxIds)}`,
+      { walletId, context },
+    );
+  }
+
+  // All unconfirmed txs are rejected -- safe to clear
+  const { cert, key, timeout } = getBaseOptions();
+
+  try {
+    await superagent
+      .post(`${rpcUrl}/delete_unconfirmed_transactions`)
+      .send({ wallet_id: walletId })
+      .key(key)
+      .cert(cert)
+      .timeout(timeout);
+  } catch (error) {
+    const reason = `RPC delete_unconfirmed_transactions failed: ${error.message}`;
+    logger.error(reason, { walletId, context });
+    return { cleared: false, reason };
+  }
+
+  // Mandatory audit log entry
+  const clearedTxDetails = health.rejected.map((tx) => ({
+    txId: tx.name,
+    age: formatDuration(tx.age),
+    reason: tx.rejectionReason,
+  }));
+
+  logger.warn(
+    `Cleared rejected transaction(s) for wallet ${walletId}`,
+    {
+      action: 'clear_rejected_transactions',
+      walletId,
+      txCount: health.rejected.length,
+      txIds: health.rejected.map((tx) => tx.name),
+      matchedRequestedTxIds: matchedTxIds,
+      details: clearedTxDetails,
+      context,
+    },
+  );
+
+  return { cleared: true, reason: `Cleared ${health.rejected.length} rejected transaction(s)` };
 };
 
 const TRANSIENT_WALLET_ERRORS = [
@@ -544,6 +847,7 @@ const TRANSIENT_WALLET_ERRORS = [
   'DataLayerWallet not available',
   'DataLayer Wallet already exists',
   'No spendable coins',
+  'UNIQUE constraint failed',
 ];
 
 const isTransientWalletError = (error) =>
@@ -551,6 +855,7 @@ const isTransientWalletError = (error) =>
 
 export default {
   hasUnconfirmedTransactions,
+  hasAnyUnconfirmedTransactions,
   walletIsSynced,
   walletIsAvailable,
   getPublicAddress,
@@ -564,4 +869,8 @@ export default {
   getCoinRecords,
   splitCoins,
   isTransientWalletError,
+  getTransactionHealth,
+  getDLWalletId,
+  clearRejectedTransactions,
+  formatDuration,
 };

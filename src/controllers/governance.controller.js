@@ -9,6 +9,10 @@ import {
   assertWalletIsSynced,
   assertCanBeGovernanceBody,
 } from '../utils/data-assertions';
+import {
+  isReadOnlyError,
+  sendReadOnlyError,
+} from '../utils/read-only-response.js';
 
 import { getConfig } from '../utils/config-loader';
 import glossary from '../models/governance/glossary.stub.js';
@@ -36,7 +40,6 @@ export const isCreated = async (req, res) => {
     });
 
     if (results) {
-      // Get the main governance body ID (the one to share with other instances)
       const mainGovernanceBodyId = await Meta.findOne({
         where: { metaKey: 'mainGoveranceBodyId' },
       });
@@ -47,9 +50,17 @@ export const isCreated = async (req, res) => {
         governanceBodyId: mainGovernanceBodyId?.metaValue || null,
       });
     } else {
+      // Include creation status when governance is not yet created
+      const creationStatus = await Meta.findOne({ where: { metaKey: 'governanceCreationStatus' } });
+      const creationError = await Meta.findOne({ where: { metaKey: 'governanceCreationError' } });
+      const creationStartedAt = await Meta.findOne({ where: { metaKey: 'governanceCreationStartedAt' } });
+
       return res.json({
         created: false,
         success: true,
+        creationStatus: creationStatus?.metaValue || null,
+        creationError: creationError?.metaValue || null,
+        creationStartedAt: creationStartedAt?.metaValue || null,
       });
     }
   } catch (error) {
@@ -120,7 +131,12 @@ export const createGoveranceBody = async (req, res) => {
     await assertWalletIsSynced();
     await assertCanBeGovernanceBody();
 
-    Governance.createGoveranceBody();
+    Governance.createGoveranceBody().catch((error) => {
+      logger.error('Error creating governance body in background:', error);
+      Governance._setCreationStatus('failed', error.message).catch((statusErr) => {
+        logger.error('Failed to update creation status after error:', statusErr);
+      });
+    });
 
     return res.json({
       message:
@@ -128,6 +144,9 @@ export const createGoveranceBody = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cant create Governance Body',
       error: error.message,
@@ -154,6 +173,9 @@ export const setDefaultOrgList = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     logger.error('[v1]: Error updating default orgs:', error);
     res.status(400).json({
       message: 'Cant update default orgs',
@@ -181,6 +203,9 @@ export const setPickList = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cant update picklist',
       error: error.message,
@@ -206,6 +231,9 @@ export const setGlossary = async (req, res) => {
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cant update glossary',
       error: error.message,
@@ -216,12 +244,16 @@ export const setGlossary = async (req, res) => {
 
 export const sync = async (req, res) => {
   try {
+    await assertIfReadOnlyMode();
     Governance.sync();
     return res.json({
       message: 'Syncing Governance Body',
       success: true,
     });
   } catch (error) {
+    if (isReadOnlyError(error)) {
+      return sendReadOnlyError(res);
+    }
     res.status(400).json({
       message: 'Cant Sync Governance Body',
       error: error.message,

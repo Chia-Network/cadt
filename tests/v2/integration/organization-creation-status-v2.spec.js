@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db, sequelizeV2 } from '../../../src/database/v2/index.js';
@@ -12,6 +13,7 @@ import {
   saveCreationState,
   loadCreationState,
   clearCreationState,
+  hasInProgressCreation,
   getStatusSummary,
   markStoreCreated,
   markStoreConfirmed,
@@ -131,6 +133,48 @@ describe('Organization Creation Status Tests', function () {
       expect(loaded).to.exist;
       expect(loaded.name).to.equal('Test Org');
       expect(loaded.apiVersion).to.equal('v1');
+    });
+
+    it('should detect timed-out creation as NOT in progress (V2)', async function () {
+      const state = createInitialState('Stale Org', '', 'v2', 'v2');
+      // Backdate startedAt to exceed the timeout
+      state.startedAt = new Date(
+        Date.now() - ORG_CREATION_CONFIG.STORE_CONFIRMATION_TIMEOUT_MS - 60000,
+      ).toISOString();
+      await saveCreationState(state, MetaV2);
+
+      const inProgress = await hasInProgressCreation(MetaV2, 'v2');
+      expect(inProgress).to.be.false;
+    });
+
+    it('should detect timed-out creation as NOT in progress (V1)', async function () {
+      const state = createInitialState('Stale Org', '', 'v1', 'v1');
+      state.startedAt = new Date(
+        Date.now() - ORG_CREATION_CONFIG.STORE_CONFIRMATION_TIMEOUT_MS - 60000,
+      ).toISOString();
+      await saveCreationState(state, Meta);
+
+      const inProgress = await hasInProgressCreation(Meta, 'v1');
+      expect(inProgress).to.be.false;
+    });
+
+    it('should detect recent creation as in progress', async function () {
+      const state = createInitialState('Fresh Org', '', 'v2', 'v2');
+      state.state = ORG_CREATION_STATES.STORES_CREATING;
+      await saveCreationState(state, MetaV2);
+
+      const inProgress = await hasInProgressCreation(MetaV2, 'v2');
+      expect(inProgress).to.be.true;
+    });
+
+    it('should NOT detect FAILED state as in progress', async function () {
+      const state = createInitialState('Failed Org', '', 'v2', 'v2');
+      state.state = ORG_CREATION_STATES.FAILED;
+      state.error = 'Some error';
+      await saveCreationState(state, MetaV2);
+
+      const inProgress = await hasInProgressCreation(MetaV2, 'v2');
+      expect(inProgress).to.be.false;
     });
   });
 
@@ -291,14 +335,17 @@ describe('Organization Creation Status Tests', function () {
       // The orgId will be available after creation completes
       expect(response.body.message).to.include('currently being created');
 
-      // Wait for org creation to complete (poll for org to exist)
+      // Wait for org creation to complete (poll for a non-PENDING org).
+      // The creation flow first inserts a PENDING record (name: '', orgUid: 'PENDING')
+      // then replaces it with the real record upon finalization.
       let org = null;
-      for (let attempt = 1; attempt <= 20; attempt++) {
-        org = await Organization.findOne({ where: { isHome: true }, raw: true });
-        if (org) {
+      for (let attempt = 1; attempt <= 40; attempt++) {
+        const candidate = await Organization.findOne({ where: { isHome: true }, raw: true });
+        if (candidate && candidate.orgUid !== 'PENDING') {
+          org = candidate;
           break;
         }
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 250));
       }
 
       // Verify org was created
@@ -361,6 +408,157 @@ describe('Organization Creation Status Tests', function () {
       state.state = ORG_CREATION_STATES.FAILED;
       summary = getStatusSummary(state);
       expect(summary.progress).to.equal(-1);
+    });
+  });
+
+  describe('Error Recovery - State marked FAILED on failure', function () {
+    afterEach(function () {
+      sinon.restore();
+    });
+
+    it('should mark V2 state as FAILED when _executeOrganizationCreation throws', async function () {
+      sinon.stub(OrganizationsV2, '_executeOrganizationCreation')
+        .rejects(new Error('simulated store creation failure'));
+
+      try {
+        await OrganizationsV2.createHomeOrganization('FailTest V2', '', 'v2');
+        expect.fail('createHomeOrganization should have thrown');
+      } catch (e) {
+        expect(e.message).to.equal('simulated store creation failure');
+      }
+
+      const failedState = await loadCreationState(MetaV2, 'v2');
+      expect(failedState).to.exist;
+      expect(failedState.state).to.equal(ORG_CREATION_STATES.FAILED);
+      expect(failedState.error).to.include('simulated store creation failure');
+
+      const pendingOrg = await OrganizationsV2.findOne({
+        where: { org_uid: 'PENDING' },
+        raw: true,
+      });
+      expect(pendingOrg).to.be.null;
+    });
+
+    it('should mark V1 state as FAILED when _executeOrganizationCreation throws', async function () {
+      sinon.stub(Organization, '_executeOrganizationCreation')
+        .rejects(new Error('simulated V1 store failure'));
+
+      try {
+        await Organization.createHomeOrganization('FailTest V1', '', 'v1');
+        expect.fail('createHomeOrganization should have thrown');
+      } catch (e) {
+        expect(e.message).to.equal('simulated V1 store failure');
+      }
+
+      const failedState = await loadCreationState(Meta, 'v1');
+      expect(failedState).to.exist;
+      expect(failedState.state).to.equal(ORG_CREATION_STATES.FAILED);
+      expect(failedState.error).to.include('simulated V1 store failure');
+
+      const pendingOrg = await Organization.findOne({
+        where: { orgUid: 'PENDING' },
+        raw: true,
+      });
+      expect(pendingOrg).to.be.null;
+    });
+  });
+
+  describe('Error Recovery - getStatusSummary stale detection', function () {
+    it('should report timed-out INITIALIZING state as not in progress', function () {
+      const state = createInitialState('Stale Org', '', 'v2', 'v2');
+      state.startedAt = new Date(
+        Date.now() - ORG_CREATION_CONFIG.STORE_CONFIRMATION_TIMEOUT_MS - 60000,
+      ).toISOString();
+
+      const summary = getStatusSummary(state);
+      expect(summary.inProgress).to.be.false;
+      expect(summary.progress).to.equal(-1);
+      expect(summary.message).to.include('stale');
+    });
+
+    it('should report timed-out STORES_CREATING state as not in progress', function () {
+      const state = createInitialState('Stale Org', '', 'v2', 'v2');
+      state.state = ORG_CREATION_STATES.STORES_CREATING;
+      state.startedAt = new Date(
+        Date.now() - ORG_CREATION_CONFIG.STORE_CONFIRMATION_TIMEOUT_MS - 60000,
+      ).toISOString();
+
+      const summary = getStatusSummary(state);
+      expect(summary.inProgress).to.be.false;
+      expect(summary.progress).to.equal(-1);
+      expect(summary.state).to.equal(ORG_CREATION_STATES.STORES_CREATING);
+    });
+
+    it('should NOT report FAILED state as stale even if timed out', function () {
+      const state = createInitialState('Failed Org', '', 'v2', 'v2');
+      state.state = ORG_CREATION_STATES.FAILED;
+      state.error = 'Previous failure';
+      state.startedAt = new Date(
+        Date.now() - ORG_CREATION_CONFIG.STORE_CONFIRMATION_TIMEOUT_MS - 60000,
+      ).toISOString();
+
+      const summary = getStatusSummary(state);
+      expect(summary.inProgress).to.be.false;
+      expect(summary.message).to.not.include('stale');
+      expect(summary.message).to.include('failed');
+    });
+  });
+
+  describe('Error Recovery - Creation after previous failure', function () {
+    it('should create V2 org after previous FAILED state', async function () {
+      if (!USE_SIMULATOR) {
+        this.skip();
+      }
+
+      const failedState = createInitialState('Old Failed Org', '', 'v2', 'v2');
+      failedState.state = ORG_CREATION_STATES.FAILED;
+      failedState.error = 'Previous attempt failed';
+      await saveCreationState(failedState, MetaV2);
+
+      const response = await supertest(app)
+        .post('/v2/organizations')
+        .send({ name: 'Recovery Org V2', icon: '' })
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.orgUid).to.exist;
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const org = await OrganizationsV2.findOne({ where: { is_home: true }, raw: true });
+      expect(org).to.exist;
+      expect(org.name).to.equal('Recovery Org V2');
+    });
+
+    it('should create V1 org after previous FAILED state', async function () {
+      if (!USE_SIMULATOR) {
+        this.skip();
+      }
+
+      const failedState = createInitialState('Old Failed Org', '', 'v1', 'v1');
+      failedState.state = ORG_CREATION_STATES.FAILED;
+      failedState.error = 'Previous attempt failed';
+      await saveCreationState(failedState, Meta);
+
+      const response = await supertest(app)
+        .post('/v1/organizations')
+        .send({ name: 'Recovery Org V1', icon: '' });
+
+      expect(response.status).to.not.equal(409);
+      expect(response.body.success).to.be.true;
+
+      let org = null;
+      for (let attempt = 1; attempt <= 40; attempt++) {
+        const candidate = await Organization.findOne({ where: { isHome: true }, raw: true });
+        if (candidate && candidate.orgUid !== 'PENDING') {
+          org = candidate;
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+
+      expect(org).to.exist;
+      expect(org.name).to.equal('Recovery Org V1');
     });
   });
 });

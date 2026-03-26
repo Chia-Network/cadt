@@ -19,6 +19,7 @@ import datalayer from './datalayer';
 import { Organization } from './models';
 import { OrganizationsV2 } from './models/v2/index.js';
 import { logger } from './config/logger.js';
+import { sendReadOnlyError } from './utils/read-only-response.js';
 
 const { USE_SIMULATOR } = getConfig().APP;
 
@@ -32,6 +33,17 @@ const headerKeys = Object.freeze({
   ALL_DATA_SYNCED: 'x-data-synced',
   SYNC_REMAINING: 'x-sync-remaining',
 });
+
+const HEALTH_ENDPOINTS = new Set([
+  '/health',
+  '/v1/health',
+  '/v2/health',
+  '/v1/health/wallet',
+  '/v2/health/wallet',
+]);
+
+const isHealthEndpoint = (path) => HEALTH_ENDPOINTS.has(path);
+const isReadOnlyMethodBlocked = (method) => !['GET', 'HEAD', 'OPTIONS'].includes(method);
 
 const app = express();
 
@@ -49,8 +61,7 @@ const generalLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   skip: (req) => {
-    // Skip rate limiting for health check endpoints
-    return req.path === '/health' || req.path === '/v1/health' || req.path === '/v2/health';
+    return isHealthEndpoint(req.path);
   },
   handler: (req, res) => {
     res.status(429).json({
@@ -71,8 +82,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // Startup state middleware - blocks requests until CADT is fully ready
 // This runs early in the chain but after body parsing
 app.use(async function (req, res, next) {
-  // Always allow health endpoints
-  if (req.path === '/health' || req.path === '/v1/health' || req.path === '/v2/health') {
+  if (isHealthEndpoint(req.path)) {
     return next();
   }
 
@@ -139,12 +149,27 @@ app.use((req, res, next) => {
 
 // Common assertions on every endpoint
 app.use(async function (req, res, next) {
-  // Skip assertions for health endpoints
-  if (req.path === '/health' || req.path === '/v1/health' || req.path === '/v2/health') {
+  if (isHealthEndpoint(req.path)) {
     return next();
   }
 
   try {
+    // Enforce READ_ONLY before wallet availability assertions so writes are
+    // consistently rejected with the canonical 403 response.
+    const isV2Route = req.path.startsWith('/v2/');
+    const isV1Route = req.path.startsWith('/v1/');
+    let READ_ONLY = false;
+    if (isV2Route) {
+      READ_ONLY = getConfigV2().READ_ONLY || false;
+    } else if (isV1Route) {
+      READ_ONLY = getConfig().READ_ONLY || false;
+    } else {
+      READ_ONLY = getConfigV2().READ_ONLY || getConfig().READ_ONLY || false;
+    }
+    if (READ_ONLY && isReadOnlyMethodBlocked(req.method)) {
+      return sendReadOnlyError(res);
+    }
+
     await assertChiaNetworkMatchInConfiguration();
     await assertDataLayerAvailable();
     if (req.method !== 'GET') {

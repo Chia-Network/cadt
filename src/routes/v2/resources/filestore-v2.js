@@ -18,13 +18,8 @@ import {
   subscribedSchema,
 } from '../../../validations/v2/filestore-v2.validations.js';
 
-// GET /v2/filestore/get_file - Get file by ID
-// Note: V1 uses GET with body (unusual but matches V1 pattern)
-// For testing, we also support POST to work with supertest
-FilestoreV2Router.get('/get_file', validator.body(getFileSchema), (req, res) => {
-  return FilestoreV2Controller.getFile(req, res);
-});
-FilestoreV2Router.post('/get_file', validator.body(getFileSchema), (req, res) => {
+// GET /v2/filestore/get_file?fileId=... - Get file by ID
+FilestoreV2Router.get('/get_file', validator.query(getFileSchema), (req, res) => {
   return FilestoreV2Controller.getFile(req, res);
 });
 

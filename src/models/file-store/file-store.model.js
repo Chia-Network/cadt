@@ -11,6 +11,7 @@ import { Organization } from '../';
 
 import datalayer from '../../datalayer';
 import { encodeHex } from '../../utils/datalayer-utils';
+import { logger } from '../../config/logger.js';
 
 import ModelTypes from './file-store.modeltypes.cjs';
 
@@ -67,12 +68,16 @@ class FileStore extends Model {
     const fileStoreId = myOrganization.fileStoreId;
 
     if (myOrganization && !fileStoreId) {
-      datalayer.createDataLayerStore().then((fileStoreId) => {
-        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+      datalayer.waitForSpendableCoins(1).then(() =>
+        datalayer.createDataLayerStoreWithRetry()
+      ).then((newFileStoreId) => {
+        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId: newFileStoreId });
         Organization.update(
-          { fileStoreId },
+          { fileStoreId: newFileStoreId },
           { where: { orgUid: myOrganization.orgUid } },
         );
+      }).catch((error) => {
+        logger.error(`Failed to create file store: ${error.message}`);
       });
 
       throw new Error('New File store being created, please try again later.');
@@ -107,12 +112,16 @@ class FileStore extends Model {
     const fileStoreId = myOrganization?.fileStoreId;
 
     if (myOrganization && !fileStoreId) {
-      datalayer.createDataLayerStore().then((fileStoreId) => {
-        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+      datalayer.waitForSpendableCoins(1).then(() =>
+        datalayer.createDataLayerStoreWithRetry()
+      ).then((newFileStoreId) => {
+        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId: newFileStoreId });
         Organization.update(
-          { fileStoreId },
+          { fileStoreId: newFileStoreId },
           { where: { orgUid: myOrganization.orgUid } },
         );
+      }).catch((error) => {
+        logger.error(`Failed to create file store: ${error.message}`);
       });
       throw new Error('New File store being created, please try again later.');
     }
@@ -152,12 +161,16 @@ class FileStore extends Model {
     const fileStoreId = myOrganization.fileStoreId;
 
     if (!fileStoreId) {
-      datalayer.createDataLayerStore().then((fileStoreId) => {
-        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
+      datalayer.waitForSpendableCoins(1).then(() =>
+        datalayer.createDataLayerStoreWithRetry()
+      ).then((newFileStoreId) => {
+        datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId: newFileStoreId });
         Organization.update(
-          { fileStoreId },
+          { fileStoreId: newFileStoreId },
           { where: { orgUid: myOrganization.orgUid } },
         );
+      }).catch((error) => {
+        logger.error(`Failed to create file store: ${error.message}`);
       });
       throw new Error('New File store being created, please try again later.');
     }
@@ -180,7 +193,8 @@ class FileStore extends Model {
     let fileStoreId = myOrganization.fileStoreId;
 
     if (!fileStoreId) {
-      fileStoreId = await datalayer.createDataLayerStore();
+      await datalayer.waitForSpendableCoins(1);
+      fileStoreId = await datalayer.createDataLayerStoreWithRetry();
       datalayer.syncDataLayer(myOrganization.orgUid, { fileStoreId });
       throw new Error('New File store being created, please try again later.');
     }

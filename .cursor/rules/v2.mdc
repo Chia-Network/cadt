@@ -35,6 +35,9 @@ alwaysApply: false
 - PUT requests: MUST include ALL fields, not just changed ones
 - POST requests: include all required fields
 - Same validation schema for CREATE and UPDATE
+- **Most list endpoints require `page` and `limit`**: Entity data endpoints (`program`, `methodology`, `issuance`, `label`, `stakeholder`, `stakeholder-projects`, `unit-label`, `project-methodology`, `estimation`, `location`, `rating`, `co-benefit`, `validation`, `verification`, `staging`, `audit`, and all `aef-*` tables) enforce `paginationSchema` — omitting `page`/`limit` returns 400 (`"page is required","limit is required"`). Always include `.query({ page: 1, limit: <N> })`.
+- **`project` and `unit`** require `page`/`limit` UNLESS `xls=true` is also passed (XLS export mode skips pagination).
+- **Endpoints that do NOT require pagination**: `organizations`, `governance`, `offer`, `filestore`, and `health/*` endpoints return all results without `page`/`limit`.
 
 ## Migration Patterns (CRITICAL)
 - Data table PK: `{ type: Sequelize.STRING(36), primaryKey: true, allowNull: false, unique: true }`
