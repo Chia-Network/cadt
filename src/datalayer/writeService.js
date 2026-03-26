@@ -287,7 +287,9 @@ export const pushChangesWhenStoreIsAvailable = async (
           await failedCallback();
           throw pushError;
         }
-        throw pushError;
+        logger.error(
+          `Push to store ${storeId} threw error: ${pushError.message}, retrying in 30s.`,
+        );
       }
 
       if (success) {

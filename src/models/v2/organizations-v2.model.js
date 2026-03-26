@@ -263,12 +263,6 @@ class OrganizationsV2 extends Model {
       // Wait for sufficient spendable coins before starting store creation
       // We need 4 SEPARATE coins (one per parallel store creation), each large enough to cover COIN_SIZE + fee
       const coinCheck = await wallet.waitForSpendableCoins(4);
-      if (!coinCheck.success) {
-        throw new Error(
-          `Cannot create organization: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
-          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
-        );
-      }
       loggerV2.info(`[v2]: Proceeding with org creation, ${coinCheck.coinCount} coins available`);
 
       // Execute the creation process
@@ -325,12 +319,6 @@ class OrganizationsV2 extends Model {
     const neededCoins = getStoresToCreate(state).length;
     if (neededCoins > 0) {
       const coinCheck = await wallet.waitForSpendableCoins(neededCoins);
-      if (!coinCheck.success) {
-        throw new Error(
-          `Cannot resume organization creation: ${coinCheck.error || 'Insufficient spendable coins'}. ` +
-          'Please ensure wallet has sufficient balance, coin management has split coins, and no pending transactions.',
-        );
-      }
       loggerV2.info(`[v2]: Resuming org creation, ${coinCheck.coinCount} coins available (need ${neededCoins})`);
     }
 
