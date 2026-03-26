@@ -30,7 +30,10 @@ export const sendXls = (name, bytes, response) => {
     'Content-disposition',
     'attachment; filename=' + name + 's' + '.xlsx',
   );
-  response.set('Content-Type', 'text/plain');
+  response.set(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  );
 
   readStream.on('error', (error) => {
     logger.error('Stream error while sending XLS file:', error);
