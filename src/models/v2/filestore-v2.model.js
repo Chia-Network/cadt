@@ -340,7 +340,6 @@ class FilestoreV2 extends Model {
 
     const fileData = fileStore[SHA256];
     let parsedData = fileData;
-    let fileName = SHA256;
 
     // Handle both stringified JSON and direct object formats
     if (typeof fileData === 'string') {
@@ -351,7 +350,7 @@ class FilestoreV2 extends Model {
       }
     }
 
-    fileName = parsedData.name || parsedData.fileName || SHA256;
+    const fileName = parsedData.name || parsedData.fileName || SHA256;
     const fileContent = parsedData.file || parsedData.data || fileData;
 
     // Cache file in database (don't await - non-blocking)

@@ -14,7 +14,7 @@
 export const getWalletHealthResponse = async (wallet, { readOnly = false } = {}) => {
   const timestamp = new Date().toISOString();
 
-  let synced = false;
+  let synced;
   try {
     synced = await wallet.walletIsSynced();
   } catch {

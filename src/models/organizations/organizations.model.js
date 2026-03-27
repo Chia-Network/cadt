@@ -834,18 +834,15 @@ class Organization extends Model {
       `running the organization model subscription process on ${orgUid}`,
     );
 
-    let organizationStoreIdsFromDatalayer = null;
-    try {
-      organizationStoreIdsFromDatalayer =
-        await Organization.subscribeToOrganization(orgUid);
-    } catch (error) {
-      logger.error(
-        `failed to subscribe to, or validate subscribed store data for organization ${orgUid}. Error: ${error.message}`,
-      );
-      throw new Error(
-        `failed to subscribe to, or validate subscribed store data for organization ${orgUid}`,
-      );
-    }
+    const organizationStoreIdsFromDatalayer =
+      await Organization.subscribeToOrganization(orgUid).catch((error) => {
+        logger.error(
+          `failed to subscribe to, or validate subscribed store data for organization ${orgUid}. Error: ${error.message}`,
+        );
+        throw new Error(
+          `failed to subscribe to, or validate subscribed store data for organization ${orgUid}`,
+        );
+      });
 
     const {
       dataModelVersionStoreId: datalayerDataModelVersionStoreId,
