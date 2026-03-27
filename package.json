@@ -100,7 +100,6 @@
     "@babel/register": "^7.28.6",
     "@commitlint/cli": "^20.4.1",
     "@commitlint/config-conventional": "^20.4.1",
-    "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
     "@yao-pkg/pkg": "^6.14.1",
     "babel-plugin-module-resolver": "^5.0.2",
@@ -130,7 +129,7 @@
   "overrides": {
     "diff": "8.0.3",
     "esbuild": "0.27.3",
-    "tar": "7.5.7"
+    "tar": "7.5.13"
   },
   "contributors": [
     "Michael Taylor <5665004+MichaelTaylor3D@users.noreply.github.com>",
