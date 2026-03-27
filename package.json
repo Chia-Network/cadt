@@ -34,7 +34,7 @@
     "test:v2:live:governance:create": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/governance/live-api/governance-create-v2.live.spec.js' --reporter spec --exit --timeout 1800000",
     "test:v1v2:live:governance:create": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/governance/live-api/governance-create-v1-v2.live.spec.js' --reporter spec --exit --timeout 3600000",
     "test:v2:live:all": "npm run test:v2:live:organization:create && npm run test:v2:live:data && npm run test:v2:live:organization:delete",
-    "release": "npx standard-version",
+    "release": "npx commit-and-tag-version",
     "resetTestDb": "rm -rf ./tests/test-dbs && mkdir -p ./tests/test-dbs",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
     "prepare": "husky",
@@ -105,6 +105,7 @@
     "babel-plugin-module-resolver": "^5.0.2",
     "chai": "^6.2.0",
     "chai-http": "^5.1.2",
+    "commit-and-tag-version": "^12.7.1",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.2",
     "eslint-plugin-mocha": "^11.2.0",
@@ -116,10 +117,9 @@
     "semver": "^7.7.3",
     "sinon": "^21.0.1",
     "socket.io-client": "^4.8.3",
-    "standard-version": "^9.5.0",
     "supertest": "^7.2.2"
   },
-  "standard-version": {
+  "commit-and-tag-version": {
     "skip": {
       "bump": true,
       "commit": true,
