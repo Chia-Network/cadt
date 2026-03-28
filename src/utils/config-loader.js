@@ -59,7 +59,7 @@ const loadConfigForVersion = (dataModelVersion) => {
   }
 
   // Load unified config file
-  let unifiedConfig = null;
+  let unifiedConfig;
 
   try {
     if (!fs.existsSync(unifiedConfigFile)) {

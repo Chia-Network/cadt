@@ -71,7 +71,7 @@ export const getDefaultOrganizationList = async (retryCount = 0) => {
 
     logger.warn(`[v1]: cannot get default org list. trying again Error: ${error}`);
     await new Promise((resolve) => setTimeout(resolve, 5000));
-    return getDefaultOrganizationList((retryCount += 1));
+    return getDefaultOrganizationList(retryCount + 1);
   }
 };
 

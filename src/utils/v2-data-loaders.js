@@ -39,7 +39,7 @@ export const pullPickListValuesV2 = async () => {
 
 export const getDefaultOrganizationListV2 = async (retryCount = 0) => {
   // need retry because on new install governance data may not have been synced yet
-  let maxRetry = 50;
+  const maxRetry = 50;
 
   try {
     if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
@@ -100,7 +100,7 @@ export const getDefaultOrganizationListV2 = async (retryCount = 0) => {
 
     loggerV2.warn(`[v2]: cannot get default org list from V2. trying again Error: ${error.message}`);
     await new Promise((resolve) => setTimeout(resolve, 5000));
-    return getDefaultOrganizationListV2((retryCount += 1));
+    return getDefaultOrganizationListV2(retryCount + 1);
   }
 };
 

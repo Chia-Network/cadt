@@ -43,7 +43,7 @@ export const assertRecordExistanceOrStaged = async (Model, pk, apiFieldName = nu
 
   // First check the main table
   // Wrap in try-catch to handle cases where table/column might not exist yet
-  let record = null;
+  let record;
   try {
     record = await Model.findByPk(pk);
     if (record) {
