@@ -4,7 +4,7 @@ import { Sequelize, Model } from 'sequelize';
 
 import { sequelizeV2 } from '../../database/v2/index.js';
 
-import ModelTypes from './meta-v2.modeltypes.cjs';
+import ModelTypes from './meta-v2.modeltypes.js';
 
 export const USER_DELETED_ORGS = 'userDeletedOrgs';
 

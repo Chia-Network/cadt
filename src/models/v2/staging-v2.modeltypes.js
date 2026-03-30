@@ -1,0 +1,42 @@
+import Sequelize from 'sequelize';
+export default {
+  id: {
+    type: Sequelize.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  uuid: {
+    type: Sequelize.STRING,
+    unique: true,
+  },
+  table: Sequelize.STRING,
+  action: Sequelize.STRING,
+  data: Sequelize.STRING,
+  committed: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'committed', // Explicit field mapping to ensure correct column name
+  },
+  failed_commit: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'failed_commit', // Explicit field mapping to ensure correct column name
+  },
+  is_transfer: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'is_transfer', // Explicit field mapping to ensure correct column name
+  },
+  created_at: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+  },
+  updated_at: {
+    type: Sequelize.DATE,
+    defaultValue: Sequelize.NOW,
+    allowNull: false,
+  },
+};

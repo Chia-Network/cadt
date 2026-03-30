@@ -13,7 +13,7 @@ import datalayer from '../../datalayer';
 import { encodeHex } from '../../utils/datalayer-utils';
 import { logger } from '../../config/logger.js';
 
-import ModelTypes from './file-store.modeltypes.cjs';
+import ModelTypes from './file-store.modeltypes.js';
 
 class FileStore extends Model {
   static async subscribeToFileStore(orgUid) {

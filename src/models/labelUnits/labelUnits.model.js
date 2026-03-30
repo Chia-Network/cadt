@@ -3,7 +3,7 @@
 import { Model } from 'sequelize';
 import { sequelize, safeMirrorDbHandler } from '../../database';
 
-import ModelTypes from './labelUnits.modeltypes.cjs';
+import ModelTypes from './labelUnits.modeltypes.js';
 import { LabelUnitMirror } from './labelUnits.model.mirror';
 
 class LabelUnit extends Model {

@@ -19,7 +19,7 @@ import {
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { getV2PrimaryKeyField } from '../../utils/v2-primary-key-utils.js';
 
-import ModelTypes from './staging-v2.modeltypes.cjs';
+import ModelTypes from './staging-v2.modeltypes.js';
 
 // Import all V2 data models
 import {

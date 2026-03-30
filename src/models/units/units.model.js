@@ -10,7 +10,7 @@ import {
 } from '../../database';
 import { Label, Issuance, Staging, Organization } from '../../models';
 import { UnitMirror } from './units.model.mirror';
-import ModelTypes from './units.modeltypes.cjs';
+import ModelTypes from './units.modeltypes.js';
 
 import {
   createXlsFromSequelizeResults,

@@ -15,7 +15,7 @@ import {
 } from '../../utils/data-assertions.js';
 import PickListStub from '../governance/governance-v2.stub.js';
 
-import ModelTypes from './governance-v2.modeltypes.cjs';
+import ModelTypes from './governance-v2.modeltypes.js';
 
 class GovernanceV2 extends Model {
   static async create(values, options) {

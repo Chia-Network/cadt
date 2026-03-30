@@ -59,7 +59,6 @@
     "lookFor": [
       "js",
       "mjs",
-      "cjs",
       "json"
     ]
   },

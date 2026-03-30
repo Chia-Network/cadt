@@ -17,7 +17,7 @@ const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
 
 const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
 
-import ModelTypes from './governance.modeltypes.cjs';
+import ModelTypes from './governance.modeltypes.js';
 
 class Governance extends Model {
   static async _setCreationStatus(status, error = null) {
