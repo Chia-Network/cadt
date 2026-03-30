@@ -58,7 +58,18 @@ export function createV2Xls(rows, model) {
     delete xlsData[schema.modelSheetKey];
   }
 
-  return xlsx.build(Object.values(xlsData));
+  const orderedSheets = [];
+  if (xlsData[schema.mainSheetName]) {
+    orderedSheets.push(xlsData[schema.mainSheetName]);
+  }
+
+  Object.entries(xlsData).forEach(([sheetName, sheetData]) => {
+    if (sheetName !== schema.mainSheetName) {
+      orderedSheets.push(sheetData);
+    }
+  });
+
+  return xlsx.build(orderedSheets);
 }
 
 /**
