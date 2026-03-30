@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  npm_config_build_from_source: sqlite3
+
 jobs:
   test-v1:
     name: v1 integration tests
