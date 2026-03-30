@@ -400,6 +400,7 @@ describe('V2 XLS Utility Functions', function () {
 
       const parsed = xlsx.parse(buffer);
       const sheetNames = parsed.map((s) => s.name);
+      expect(sheetNames[0]).to.equal('projects');
       expect(sheetNames).to.include('projects');
 
       const mainSheet = parsed.find((s) => s.name === 'projects');
@@ -444,6 +445,7 @@ describe('V2 XLS Utility Functions', function () {
 
       const parsed = xlsx.parse(buffer);
       const sheetNames = parsed.map((s) => s.name);
+      expect(sheetNames[0]).to.equal('units');
       expect(sheetNames).to.include('units');
 
       const mainSheet = parsed.find((s) => s.name === 'units');
