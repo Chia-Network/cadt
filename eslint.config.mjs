@@ -54,21 +54,6 @@ export default [
         },
     },
     {
-        // Some v2 modeltypes files use ESM export syntax despite the .cjs extension;
-        // they will be converted to .js in a future refactor
-        files: [
-            "src/models/v2/issuance-v2.modeltypes.cjs",
-            "src/models/v2/program-v2.modeltypes.cjs",
-            "src/models/v2/project-v2.modeltypes.cjs",
-            "src/models/v2/unit-v2.modeltypes.cjs",
-            "src/models/v2/validation-v2.modeltypes.cjs",
-            "src/models/v2/verification-v2.modeltypes.cjs",
-        ],
-        languageOptions: {
-            sourceType: "module",
-        },
-    },
-    {
         // Allow dynamic imports ONLY in files that need lazy loading for optional dependencies
         files: ["src/datalayer/simulator.js"],
         rules: {
