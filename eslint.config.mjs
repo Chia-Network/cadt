@@ -1,6 +1,5 @@
 import mocha from "eslint-plugin-mocha";
 import globals from "globals";
-import babelParser from "@babel/eslint-parser";
 import js from "@eslint/js";
 
 export default [
@@ -16,15 +15,8 @@ export default [
                 ...globals.node,
             },
 
-            parser: babelParser,
-            ecmaVersion: 2024, // Modern ECMAScript version
+            ecmaVersion: 2025,
             sourceType: "module",
-
-            parserOptions: {
-                requireConfigFile: false,
-                // Enable modern features
-                allowImportExportEverywhere: true,
-            },
         },
 
         rules: {
@@ -49,6 +41,16 @@ export default [
             "no-debugger": "error",                 // Prevent debugger statements
             "prefer-const": "error",                // Use const when possible
             "no-var": "error",                      // Use let/const instead of var
+            // New in ESLint 10 eslint:recommended -- requires { cause: err } on re-thrown errors.
+            // The codebase has ~25 violations; fixing error handling semantics is a separate concern.
+            "preserve-caught-error": "warn",
+        },
+    },
+    {
+        // CJS files use CommonJS module format
+        files: ["**/*.cjs"],
+        languageOptions: {
+            sourceType: "commonjs",
         },
     },
     {
@@ -56,6 +58,19 @@ export default [
         files: ["src/datalayer/simulator.js"],
         rules: {
             "no-restricted-syntax": "off", // Exception for log-update lazy loading
+        },
+    },
+    {
+        // These modules intentionally use lazy imports to avoid cycles and
+        // to load optional runtime-only dependencies on-demand.
+        files: [
+            "src/middleware.js",
+            "src/models/organizations/organizations.model.js",
+            "src/models/v2/filestore-v2.model.js",
+            "src/models/v2/staging-v2.model.js",
+        ],
+        rules: {
+            "no-restricted-syntax": "off",
         },
     },
     {

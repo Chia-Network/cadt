@@ -12,7 +12,7 @@ import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
-import ModelTypes from './organizations.modeltypes.cjs';
+import ModelTypes from './organizations.modeltypes.js';
 import { assertStoreIsOwned } from '../../utils/data-assertions';
 import {
   getRoot,
@@ -834,18 +834,15 @@ class Organization extends Model {
       `running the organization model subscription process on ${orgUid}`,
     );
 
-    let organizationStoreIdsFromDatalayer = null;
-    try {
-      organizationStoreIdsFromDatalayer =
-        await Organization.subscribeToOrganization(orgUid);
-    } catch (error) {
-      logger.error(
-        `failed to subscribe to, or validate subscribed store data for organization ${orgUid}. Error: ${error.message}`,
-      );
-      throw new Error(
-        `failed to subscribe to, or validate subscribed store data for organization ${orgUid}`,
-      );
-    }
+    const organizationStoreIdsFromDatalayer =
+      await Organization.subscribeToOrganization(orgUid).catch((error) => {
+        logger.error(
+          `failed to subscribe to, or validate subscribed store data for organization ${orgUid}. Error: ${error.message}`,
+        );
+        throw new Error(
+          `failed to subscribe to, or validate subscribed store data for organization ${orgUid}`,
+        );
+      });
 
     const {
       dataModelVersionStoreId: datalayerDataModelVersionStoreId,

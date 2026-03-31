@@ -201,7 +201,7 @@ app.use(function (req, res, next) {
   const isV2Route = req.path.startsWith('/v2/');
   const isV1Route = req.path.startsWith('/v1/');
 
-  let CADT_API_KEY = null;
+  let CADT_API_KEY;
   if (isV2Route) {
     const configV2 = getConfigV2();
     CADT_API_KEY = configV2.CADT_API_KEY;
@@ -246,7 +246,7 @@ app.use(function (req, res, next) {
   const isV2Route = req.path.startsWith('/v2/');
   const isV1Route = req.path.startsWith('/v1/');
 
-  let READ_ONLY = false;
+  let READ_ONLY;
   if (isV2Route) {
     const configV2 = getConfigV2();
     READ_ONLY = configV2.READ_ONLY || false;
@@ -273,7 +273,7 @@ app.use(function (req, res, next) {
   const isV2Route = req.path.startsWith('/v2/');
   const isV1Route = req.path.startsWith('/v1/');
 
-  let IS_GOVERNANCE_BODY = false;
+  let IS_GOVERNANCE_BODY;
   if (isV2Route) {
     const configV2 = getConfigV2();
     IS_GOVERNANCE_BODY = configV2.IS_GOVERNANCE_BODY || false;

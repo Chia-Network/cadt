@@ -10,7 +10,7 @@ import {
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
-import ModelTypes from './estimation-v2.modeltypes.cjs';
+import ModelTypes from './estimation-v2.modeltypes.js';
 import { loggerV2 } from '../../config/logger.js';
 
 class EstimationV2 extends Model {

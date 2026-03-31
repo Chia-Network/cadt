@@ -19,7 +19,7 @@ import {
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { getV2PrimaryKeyField } from '../../utils/v2-primary-key-utils.js';
 
-import ModelTypes from './staging-v2.modeltypes.cjs';
+import ModelTypes from './staging-v2.modeltypes.js';
 
 // Import all V2 data models
 import {
@@ -321,7 +321,7 @@ class StagingV2 extends Model {
       const modelInfo = tableToModelMap[table];
       if (modelInfo) {
         const [ModelClass, primaryKeyField, hasAssociations] = modelInfo;
-        let original = null;
+        let original;
 
         try {
           if (primaryKeyField) {
@@ -565,7 +565,7 @@ class StagingV2 extends Model {
             return result;
           } catch (error) {
             const duration = Date.now() - modelStart;
-            let modelName = 'unknown';
+            let modelName;
             try {
               modelName = (ModelClass && ModelClass.name) ? ModelClass.name : (ModelClass ? String(ModelClass) : 'unknown');
             } catch (nameError) {

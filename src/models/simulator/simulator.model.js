@@ -6,7 +6,7 @@ import { sequelize } from '../../database';
 import { encodeHex } from '../../utils/datalayer-utils';
 import { ModelKeys, Staging } from '../index';
 
-import ModelTypes from './simulator.modeltypes.cjs';
+import ModelTypes from './simulator.modeltypes.js';
 import { v4 as uuidv4 } from 'uuid';
 
 class Simulator extends Model {

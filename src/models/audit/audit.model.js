@@ -3,7 +3,7 @@
 import { Sequelize, Model } from 'sequelize';
 import { sequelize, safeMirrorDbHandler } from '../../database';
 import { AuditMirror } from './audit.model.mirror';
-import ModelTypes from './audit.modeltypes.cjs';
+import ModelTypes from './audit.modeltypes.js';
 import findDuplicateIssuancesSql from './sql/find-duplicate-issuances.sql.js';
 import { Organization } from '../organizations/index.js';
 import { waitForSyncRegistriesTransaction } from '../../utils/model-utils.js';

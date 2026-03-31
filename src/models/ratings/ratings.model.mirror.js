@@ -3,7 +3,7 @@
 import { Model } from 'sequelize';
 
 import { sequelizeMirror, safeMirrorDbHandler } from '../../database';
-import ModelTypes from './ratings.modeltypes.cjs';
+import ModelTypes from './ratings.modeltypes.js';
 
 class RatingMirror extends Model {}
 

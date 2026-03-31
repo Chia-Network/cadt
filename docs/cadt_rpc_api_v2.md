@@ -69,6 +69,100 @@ Where `pageCount` is the total number of pages based on the total record count a
 
 **Exceptions**: The `xls=true` parameter on project and unit endpoints bypasses pagination to export all data.
 
+### XLSX Import/Export
+
+V2 supports bulk import and export of project and unit data via XLSX (Excel) files. This enables offline editing workflows and batch data management.
+
+#### Overview
+
+The XLSX workflow follows the standard CADT staging paradigm:
+
+1. **Export** existing data to XLSX using `GET /v2/project?xls=true` or `GET /v2/unit?xls=true`
+2. **Edit** the spreadsheet offline — modify existing records or add new rows
+3. **Import** the edited file using `PUT /v2/project/xlsx` or `PUT /v2/unit/xlsx`
+4. **Review** staged changes using the [staging](#staging) endpoints
+5. **Commit** when ready using `POST /v2/staging/commit`
+
+#### Downloading the Export
+
+The export endpoints return an XLSX file as a binary download with a `Content-Disposition: attachment` header.
+
+**Browser**: Navigating to the URL directly (e.g., `http://localhost:31310/v2/project?xls=true`) will automatically trigger a file download.
+
+**cURL**:
+
+```bash
+# Save with an explicit filename
+curl -o projects.xlsx "http://localhost:31310/v2/project?xls=true"
+
+# Or use the server-suggested filename (projects.xlsx)
+curl -J -O "http://localhost:31310/v2/project?xls=true"
+```
+
+**Postman**: Send the GET request, then click **Save Response → Save to a file** in the response pane. Postman will suggest the filename from the response headers.
+
+#### File Format
+
+Each XLSX file contains a **main sheet** plus optional **child sheets** for associated data:
+
+**Project XLSX sheets:**
+
+| Sheet Name | Description |
+|:---|:---|
+| `projects` | Main project records |
+| `locations` | Project locations (linked by `cadTrustProjectId`) |
+| `estimations` | Emission estimations (linked by `cadTrustProjectId`) |
+| `ratings` | Project ratings (linked by `cadTrustProjectId`) |
+| `coBenefits` | Co-benefits (linked by `cadTrustProjectId`) |
+| `validations` | Validations (linked by `cadTrustProjectId`) |
+| `verifications` | Verifications (linked by `cadTrustProjectId`) |
+| `projectMethodologies` | Methodology associations (linked by `cadTrustProjectId`) |
+| `stakeholderProjects` | Stakeholder associations (linked by `cadTrustProjectId`) |
+
+**Unit XLSX sheets:**
+
+| Sheet Name | Description |
+|:---|:---|
+| `units` | Main unit records |
+| `unitLabels` | Unit labels (linked by `cadTrustUnitId`) |
+
+The first row of each sheet is the **header row** containing camelCase column names matching the V2 API field names (e.g., `cadTrustProjectId`, `projectName`, `unitCount`). Data rows follow below the header.
+
+#### Creating New Records
+
+To create new records via XLSX import, use placeholder IDs in the format `NEW-<number>` (e.g., `NEW-1`, `NEW-2`) for the primary key column. These placeholders are automatically replaced with real UUIDs during import. This allows the same file to be imported multiple times without creating duplicate records.
+
+Use the same placeholder ID across sheets to link parent and child records. For example, use `NEW-1` as the `cadTrustProjectId` in both the `projects` sheet and the `locations` sheet to associate locations with that project.
+
+#### Updating Existing Records
+
+To update existing records, include their real `cadTrustProjectId` or `cadTrustUnitId` in the primary key column. The import process looks up each record by primary key — if found, it stages an UPDATE; if not found, it stages an INSERT.
+
+When updating, the imported row is merged with the existing record. Fields present in the XLSX overwrite the existing values; fields absent from the XLSX retain their current values.
+
+#### Array Fields
+
+Array fields such as `projectType` and `projectSector` should be formatted as JSON arrays in the XLSX cell:
+
+```
+["Afforestation","Reforestation"]
+```
+
+#### File Size Limit
+
+XLSX uploads are limited to **25 MB**.
+
+#### Sample Files
+
+Sample XLSX import files are available in the repository for reference:
+
+- [Sample projects import XLSX](/tests/v2/live-api/data/sample-projects-import.xlsx) — 3 projects with locations, estimations, ratings, co-benefits, validations, verifications, methodology associations, and stakeholder associations
+- [Sample units import XLSX](/tests/v2/live-api/data/sample-units-import.xlsx) — 4 units with unit labels
+
+These files use `NEW-<n>` placeholder IDs and demonstrate the expected column names, data formats, and multi-sheet structure. A [generation script](/tests/v2/live-api/data/generate-sample-xlsx.js) is also available showing how the sample files are built programmatically.
+
+**Note**: The sample files contain `{{PLACEHOLDER}}` values for foreign keys that reference entities which must already exist in the target CADT instance (e.g., `{{PROGRAM_ID}}`, `{{ISSUANCE_ID}}`). Replace these with real UUIDs from your CADT instance before importing.
+
 ## Commands
 
 - [`organizations`](#organizations)
@@ -2206,14 +2300,20 @@ Response
 
 #### Export projects to Excel
 
+Exports all projects and their child records (locations, estimations, ratings, co-benefits, validations, verifications, project methodologies, stakeholder projects) to a multi-sheet XLSX file. Pagination is bypassed — all matching records are included.
+
+The exported file can be edited offline and re-imported using `PUT /v2/project/xlsx`. See [XLSX Import/Export](#xlsx-importexport) for details on the file format and workflow.
+
 Request
 ```sh
-curl --location --request GET 'localhost:31310/v2/project?xls=true' --header 'Content-Type: application/json' > projects.xlsx
+curl --location --request GET 'localhost:31310/v2/project?xls=true' \
+--header 'Content-Type: application/json' \
+--output projects.xlsx
 ```
 
 Response:
 
-Download stream to download the XLS file of project records.
+Binary XLSX download stream. Pipe to a file (e.g., `--output projects.xlsx` or `> projects.xlsx`).
 
 ---
 
@@ -2377,9 +2477,16 @@ Response
 
 #### Update projects from XLSX file
 
+Import projects and their child records from an XLSX file. The file must be uploaded as a `multipart/form-data` request with the field name `xlsx`. Records are parsed from each sheet and added to the staging table. See [XLSX Import/Export](#xlsx-importexport) for details on the file format, creating new records with `NEW-<n>` placeholder IDs, and updating existing records.
+
+A [sample projects import file](/tests/v2/live-api/data/sample-projects-import.xlsx) is available in the repository as a reference template.
+
+**Prerequisites**: A home organization must exist and there must be no pending commits.
+
 Request
 ```shell
-curl --location -g --request PUT 'http://localhost:31310/v2/project/xlsx' --form 'xlsx=@"./cw_query.xlsx"'
+curl --location -g --request PUT 'http://localhost:31310/v2/project/xlsx' \
+--form 'xlsx=@"./projects-import.xlsx"'
 ```
 
 Response
@@ -2389,6 +2496,8 @@ Response
   "success": true
 }
 ```
+
+After importing, use the [staging endpoints](#staging) to review and commit the staged changes.
 
 ---
 
@@ -2418,9 +2527,11 @@ Response
 ### Additional Projects Resources
 
 - PUT `project/transfer` - stage the transfer of a project from another CADT organization to the instance home organization
-- PUT `project/xlsx` - update projects from XLSX file
+- PUT `project/xlsx` - import projects and child records from XLSX file ([sample file](/tests/v2/live-api/data/sample-projects-import.xlsx))
+- GET `project?xls=true` - export all projects and child records to XLSX
 - POST `project/batch` - batch upload projects from CSV file
 - Advanced query features: search, orgUid filtering, column selection, xls export, generic filtering, sorting
+- See [XLSX Import/Export](#xlsx-importexport) for detailed format documentation and workflow
 
 ---
 
@@ -3280,14 +3391,20 @@ Response
 
 #### Export units to Excel
 
+Exports all units and their child records (unit labels) to a multi-sheet XLSX file. Pagination is bypassed — all matching records are included.
+
+The exported file can be edited offline and re-imported using `PUT /v2/unit/xlsx`. See [XLSX Import/Export](#xlsx-importexport) for details on the file format and workflow.
+
 Request
 ```sh
-curl --location --request GET 'localhost:31310/v2/unit?xls=true' --header 'Content-Type: application/json' > units.xlsx
+curl --location --request GET 'localhost:31310/v2/unit?xls=true' \
+--header 'Content-Type: application/json' \
+--output units.xlsx
 ```
 
 Response:
 
-Download stream to download the XLS file of unit records.
+Binary XLSX download stream. Pipe to a file (e.g., `--output units.xlsx` or `> units.xlsx`).
 
 ---
 
@@ -3577,9 +3694,16 @@ Response
 
 #### Update units from XLSX file
 
+Import units and their child records from an XLSX file. The file must be uploaded as a `multipart/form-data` request with the field name `xlsx`. Records are parsed from each sheet and added to the staging table. See [XLSX Import/Export](#xlsx-importexport) for details on the file format, creating new records with `NEW-<n>` placeholder IDs, and updating existing records.
+
+A [sample units import file](/tests/v2/live-api/data/sample-units-import.xlsx) is available in the repository as a reference template.
+
+**Prerequisites**: A home organization must exist and there must be no pending commits.
+
 Request
 ```shell
-curl --location -g --request PUT 'http://localhost:31310/v2/unit/xlsx' --form 'xlsx=@"./cw_query.xlsx"'
+curl --location -g --request PUT 'http://localhost:31310/v2/unit/xlsx' \
+--form 'xlsx=@"./units-import.xlsx"'
 ```
 
 Response
@@ -3589,6 +3713,8 @@ Response
   "success": true
 }
 ```
+
+After importing, use the [staging endpoints](#staging) to review and commit the staged changes.
 
 ---
 
@@ -3618,9 +3744,11 @@ Response
 ### Additional Units Resources
 
 - POST `unit/split` - split a unit into multiple units
-- PUT `unit/xlsx` - update units from XLSX file
+- PUT `unit/xlsx` - import units and child records from XLSX file ([sample file](/tests/v2/live-api/data/sample-units-import.xlsx))
+- GET `unit?xls=true` - export all units and child records to XLSX
 - POST `unit/batch` - batch upload units from CSV file
 - Advanced query features: search, orgUid filtering, column selection, xls export, generic filtering, sorting
+- See [XLSX Import/Export](#xlsx-importexport) for detailed format documentation and workflow
 
 ---
 

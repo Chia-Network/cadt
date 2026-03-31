@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  npm_config_build_from_source: sqlite3
+
 jobs:
   test-v1:
     name: v1 integration tests
@@ -178,7 +181,7 @@ jobs:
           chia keys generate -l "functional_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -493,7 +496,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -617,7 +620,7 @@ jobs:
           chia keys generate -l "functional_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -832,7 +835,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -956,7 +959,7 @@ jobs:
           chia keys generate -l "readonly_live_smoke"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -1094,7 +1097,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -1218,7 +1221,7 @@ jobs:
           chia keys generate -l "functional_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -1460,7 +1463,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -1581,7 +1584,7 @@ jobs:
           chia keys generate -l "sync_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -2674,7 +2677,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -2795,7 +2798,7 @@ jobs:
           chia keys generate -l "sync_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -3560,7 +3563,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -3684,7 +3687,7 @@ jobs:
           chia keys generate -l "governance_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -3887,7 +3890,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -4009,7 +4012,7 @@ jobs:
           chia keys generate -l "governance_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -4212,7 +4215,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
@@ -4334,7 +4337,7 @@ jobs:
           chia keys generate -l "governance_tests"
           chia-tools network switch testneta
           chia-tools config add-trusted-peer -y testneta-node-msp.chia.net 58444
-          chia-tools config edit --set wallet.connect_to_unknown_peers=false
+          chia-tools config edit --set wallet.connect_to_unknown_peers=false --set 'wallet.trusted_cidrs=["207.228.216.0/22"]'
           chia configure -log-level INFO
 
       - name: Configure CADT
@@ -4538,7 +4541,7 @@ jobs:
 
       - name: Upload CADT logs as artifact
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cadt-logs-${{ github.job }}
           path: |
