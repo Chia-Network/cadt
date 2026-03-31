@@ -10,7 +10,7 @@ import {
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
-import ModelTypes from './co-benefit-v2.modeltypes.cjs';
+import ModelTypes from './co-benefit-v2.modeltypes.js';
 import { loggerV2 } from '../../config/logger.js';
 
 class CoBenefitV2 extends Model {

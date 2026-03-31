@@ -72,7 +72,7 @@ import {
   hasInProgressCreation,
 } from '../../utils/organization-creation-state.js';
 
-import ModelTypes from './organizations-v2.modeltypes.cjs';
+import ModelTypes from './organizations-v2.modeltypes.js';
 import { mirrorOrgStoresV2 } from '../../tasks/mirror-check-v2.js';
 import { updateOrgLockStatus } from '../../utils/org-operation-lock.js';
 

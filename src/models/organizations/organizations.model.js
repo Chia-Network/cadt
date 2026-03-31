@@ -12,7 +12,7 @@ import { Audit, FileStore, Meta, ModelKeys, Staging } from '../';
 import { getConfig } from '../../utils/config-loader';
 const { USE_SIMULATOR, AUTO_SUBSCRIBE_FILESTORE } = getConfig().APP;
 
-import ModelTypes from './organizations.modeltypes.cjs';
+import ModelTypes from './organizations.modeltypes.js';
 import { assertStoreIsOwned } from '../../utils/data-assertions';
 import {
   getRoot,

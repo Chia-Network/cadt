@@ -29,7 +29,7 @@ import {
   transformFullXslsToChangeList,
 } from '../../utils/xls';
 
-import ModelTypes from './projects.modeltypes.cjs';
+import ModelTypes from './projects.modeltypes.js';
 import { ProjectMirror } from './projects.model.mirror';
 import { projectsUpdateSchema } from '../../validations/index';
 import {

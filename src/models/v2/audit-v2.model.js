@@ -7,7 +7,7 @@ import AuditV2Mirror from './audit-v2.model.mirror.js';
 import OrganizationsV2 from './organizations-v2.model.js';
 import { loggerV2 } from '../../config/logger.js';
 
-import ModelTypes from './audit-v2.modeltypes.cjs';
+import ModelTypes from './audit-v2.modeltypes.js';
 
 class AuditV2 extends Model {
   static async create(values, options) {

@@ -33,7 +33,7 @@ const getStoreDataPromise = async (storeId) => {
   }
 };
 
-import ModelTypes from './filestore-v2.modeltypes.cjs';
+import ModelTypes from './filestore-v2.modeltypes.js';
 
 class FilestoreV2 extends Model {
   static async create(values, options) {

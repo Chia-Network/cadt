@@ -4,7 +4,7 @@ import { Sequelize, Model } from 'sequelize';
 
 import { sequelizeV2 } from '../../database/v2/index.js';
 
-import ModelTypes from './simulator-v2.modeltypes.cjs';
+import ModelTypes from './simulator-v2.modeltypes.js';
 
 class SimulatorV2 extends Model {
   static async create(values, options) {

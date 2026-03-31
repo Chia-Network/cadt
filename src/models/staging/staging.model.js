@@ -16,7 +16,7 @@ import { sequelize } from '../../database';
 import datalayer from '../../datalayer';
 import { makeOffer } from '../../datalayer/persistance';
 
-import ModelTypes from './staging.modeltypes.cjs';
+import ModelTypes from './staging.modeltypes.js';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 
 import {

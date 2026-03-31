@@ -4,7 +4,7 @@ import { Model } from 'sequelize';
 import { EstimationMirror } from './estimations.model.mirror';
 import { sequelize, safeMirrorDbHandler } from '../../database';
 import { Project } from '../projects';
-import ModelTypes from './estimations.modeltypes.cjs';
+import ModelTypes from './estimations.modeltypes.js';
 
 class Estimation extends Model {
   static associate() {

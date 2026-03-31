@@ -3,7 +3,7 @@
 import { Model } from 'sequelize';
 import { sequelize } from '../../database';
 
-import ModelTypes from './meta.modeltypes.cjs';
+import ModelTypes from './meta.modeltypes.js';
 
 export const USER_DELETED_ORGS = 'userDeletedOrgs';
 

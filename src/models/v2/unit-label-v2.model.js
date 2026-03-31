@@ -4,7 +4,7 @@ import _ from 'lodash';
 import { Sequelize, Model } from 'sequelize';
 import { sequelizeV2, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
 import { UnitLabelV2Mirror } from './unit-label-v2.model.mirror.js';
-import ModelTypes from './unit-label-v2.modeltypes.cjs';
+import ModelTypes from './unit-label-v2.modeltypes.js';
 import StagingV2 from './staging-v2.model.js';
 import {
   createXlsFromSequelizeResults,
