@@ -204,8 +204,8 @@ class StagingV2 extends Model {
           key: encodeHex(`${tablePrefix}|${primaryKeyValue}`),
         });
 
-        // TODO: Child table records are getting orphaned in the datalayer,
-        // because we need to generate a delete action for each one
+        // Child DELETE staging rows are created by controller-level cascade helpers
+        // in src/utils/v2-cascade-delete.js before parent delete/update staging.
 
         updateRecords.push(...(Array.isArray(parsedData) ? parsedData : [parsedData]));
       } else if (stagingRecord.action === 'DELETE') {
@@ -261,8 +261,8 @@ class StagingV2 extends Model {
           key: encodedKey,
         });
 
-        // TODO: Child table records are getting orphaned in the datalayer,
-        // because we need to generate a delete action for each one
+        // Child DELETE staging rows are created by controller-level cascade helpers
+        // in src/utils/v2-cascade-delete.js before parent delete/update staging.
       }
     }
 

@@ -33,6 +33,7 @@ import { loggerV2 } from '../../config/logger.js';
 import { projectV2Schema } from '../../validations/v2/project-v2.validations.js';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
+import { stageProjectChildDeletes } from '../../utils/v2-cascade-delete.js';
 
 export const create = async (req, res) => {
   try {
@@ -595,7 +596,7 @@ export const findAll = async (req, res) => {
 
     res.json(response);
   } catch (err) {
-    logger.error('[v2]: Error retrieving projects:', err);
+    loggerV2.error('[v2]: Error retrieving projects:', err);
     res.status(400).json({
       message: 'Error retrieving projects',
       error: err.message,
@@ -663,7 +664,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('[v2]: Error retrieving project:', err);
+    loggerV2.error('[v2]: Error retrieving project:', err);
     res.status(400).json({
       message: 'Error retrieving project',
       error: err.message,
@@ -790,7 +791,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error updating project:', err);
+    loggerV2.error('[v2]: Error updating project:', err);
     res.status(400).json({
       message: 'Error updating project',
       error: err.message,
@@ -816,6 +817,8 @@ export const destroy = async (req, res) => {
       });
     }
 
+    const stagedChildDeletes = await stageProjectChildDeletes(id);
+
     // Stage the delete
     await StagingV2.create({
       uuid: uuidv4(),
@@ -829,10 +832,11 @@ export const destroy = async (req, res) => {
 
     res.json({
       message: 'Project delete staged successfully',
+      stagedChildDeletes,
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error deleting project:', err);
+    loggerV2.error('[v2]: Error deleting project:', err);
     res.status(400).json({
       message: 'Error deleting project',
       error: err.message,
@@ -914,7 +918,7 @@ export const updateFromXLS = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error updating projects from XLSX:', error);
+    loggerV2.error('[v2]: Error updating projects from XLSX:', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
@@ -950,7 +954,7 @@ export const batchUpload = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Batch Upload Failed.', error);
+    loggerV2.error('[v2]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,

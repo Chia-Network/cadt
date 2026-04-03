@@ -28,6 +28,7 @@ import { loggerV2 } from '../../config/logger.js';
 import { unitV2Schema } from '../../validations/v2/unit-v2.validations.js';
 import { genericSortColumnRegex } from '../../utils/string-utils.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
+import { stageUnitChildDeletes } from '../../utils/v2-cascade-delete.js';
 
 // Regex patterns for query parsing
 const genericFilterRegex = /^(\w+):(.+):(\w+)$/;
@@ -797,6 +798,8 @@ export const destroy = async (req, res) => {
       });
     }
 
+    const stagedChildDeletes = await stageUnitChildDeletes(id);
+
     // Stage the delete
     await StagingV2.create({
       uuid: uuidv4(),
@@ -810,6 +813,7 @@ export const destroy = async (req, res) => {
 
     res.json({
       message: 'Unit delete staged successfully',
+      stagedChildDeletes,
       success: true,
     });
   } catch (err) {
