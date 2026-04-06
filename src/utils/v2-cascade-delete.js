@@ -47,22 +47,25 @@ const pushRowsForRecords = (rows, records, table, primaryKeyField) => {
   }
 };
 
-export const stageUnitChildDeletes = async (unitId) => {
+export const stageUnitChildDeletes = async (unitId, options = {}) => {
+  const { transaction } = options;
   const rows = [];
   const unitLabels = await UnitLabelV2.findAll({
     where: { cadTrustUnitId: unitId },
     raw: true,
+    transaction,
   });
   pushRowsForRecords(rows, unitLabels, 'unit_label', 'cad_trust_unit_label_id');
 
   if (rows.length > 0) {
-    await StagingV2.bulkCreate(rows);
+    await StagingV2.bulkCreate(rows, { transaction });
   }
 
   return rows.length;
 };
 
-export const stageProjectChildDeletes = async (projectId) => {
+export const stageProjectChildDeletes = async (projectId, options = {}) => {
+  const { transaction } = options;
   const rows = [];
 
   const directChildDefinitions = [
@@ -79,6 +82,7 @@ export const stageProjectChildDeletes = async (projectId) => {
     const records = await model.findAll({
       where: { cadTrustProjectId: projectId },
       raw: true,
+      transaction,
     });
     pushRowsForRecords(rows, records, table, primaryKeyField);
   }
@@ -86,6 +90,7 @@ export const stageProjectChildDeletes = async (projectId) => {
   const verifications = await VerificationV2.findAll({
     where: { cadTrustProjectId: projectId },
     raw: true,
+    transaction,
   });
   pushRowsForRecords(rows, verifications, 'verification', 'cad_trust_verification_id');
 
@@ -97,6 +102,7 @@ export const stageProjectChildDeletes = async (projectId) => {
     const issuances = await IssuanceV2.findAll({
       where: { cadTrustVerificationId: verificationIds },
       raw: true,
+      transaction,
     });
     pushRowsForRecords(rows, issuances, 'issuance', 'cad_trust_issuance_id');
 
@@ -108,6 +114,7 @@ export const stageProjectChildDeletes = async (projectId) => {
       const units = await UnitV2.findAll({
         where: { cadTrustIssuanceId: issuanceIds },
         raw: true,
+        transaction,
       });
       pushRowsForRecords(rows, units, 'unit', 'cad_trust_unit_id');
 
@@ -119,6 +126,7 @@ export const stageProjectChildDeletes = async (projectId) => {
         const unitLabels = await UnitLabelV2.findAll({
           where: { cadTrustUnitId: unitIds },
           raw: true,
+          transaction,
         });
         pushRowsForRecords(rows, unitLabels, 'unit_label', 'cad_trust_unit_label_id');
       }
@@ -126,7 +134,7 @@ export const stageProjectChildDeletes = async (projectId) => {
   }
 
   if (rows.length > 0) {
-    await StagingV2.bulkCreate(rows);
+    await StagingV2.bulkCreate(rows, { transaction });
   }
 
   return rows.length;
