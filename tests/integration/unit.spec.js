@@ -70,20 +70,16 @@ describe('Unit Resource Integration Tests', function () {
     const warehouseUnitId = changeRecord.warehouseUnitId;
     expect(warehouseUnitId).to.be.ok;
 
-    // Now push the staging table live and wait for sync using smart polling
+    // Now push the staging table live and wait for sync + staging cleanup
     await testFixtures.commitStagingRecordsAndWaitForCondition(
       async () => {
-        // Check if the unit exists in the DB (indicates sync complete)
         const { Unit } = await import('../../src/models/index.js');
         const unit = await Unit.findOne({ where: { warehouseUnitId } });
-        return unit !== null;
+        if (!unit) return false;
+        const lastStaging = await testFixtures.getLastCreatedStagingRecord();
+        return !lastStaging;
       },
-      { description: 'Unit creation sync to main table' }
-    );
-
-    // The staging table should be empty after committing
-    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
-      undefined,
+      { description: 'Unit creation sync and staging cleanup (delete test)' }
     );
 
     // Make sure the newly created unit is in our Db
@@ -198,6 +194,9 @@ describe('Unit Resource Integration Tests', function () {
         throw new Error(`Unit did not appear in database after ${maxAttempts * interval / 1000} seconds`);
       }
     }
+
+    // Wait for staging cleanup so assertNoPendingCommits passes on split
+    await Staging.destroy({ where: { commited: true } });
 
     const warehouseUnitIdToSplit = unitRecord.warehouseUnitId;
     const newUnitOwner = '35f92331-c8d7-4e9e-a8d2-cd0a86cbb2cf';
@@ -432,19 +431,16 @@ describe('Unit Resource Integration Tests', function () {
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
     const warehouseUnitId = changeRecord.warehouseUnitId;
 
-    // Now push the staging table live and wait for sync using smart polling
+    // Now push the staging table live and wait for sync + staging cleanup
     await testFixtures.commitStagingRecordsAndWaitForCondition(
       async () => {
         const { Unit } = await import('../../src/models/index.js');
         const unit = await Unit.findOne({ where: { warehouseUnitId } });
-        return unit !== null;
+        if (!unit) return false;
+        const lastStaging = await testFixtures.getLastCreatedStagingRecord();
+        return !lastStaging;
       },
-      { description: 'Unit creation sync to main table (end-to-end test 1)' }
-    );
-
-    // Make sure the staging table is cleaned up
-    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
-      undefined,
+      { description: 'Unit creation sync and staging cleanup (end-to-end test 1)' }
     );
 
     const newUnit = await testFixtures.getUnit(warehouseUnitId);
@@ -475,19 +471,16 @@ describe('Unit Resource Integration Tests', function () {
     expect(changeRecord.orgUid).to.equal(homeOrgUid);
     const warehouseUnitId = changeRecord.warehouseUnitId;
 
-    // Now push the staging table live and wait for sync using smart polling
+    // Now push the staging table live and wait for sync + staging cleanup
     await testFixtures.commitStagingRecordsAndWaitForCondition(
       async () => {
         const { Unit } = await import('../../src/models/index.js');
         const unit = await Unit.findOne({ where: { warehouseUnitId } });
-        return unit !== null;
+        if (!unit) return false;
+        const lastStaging = await testFixtures.getLastCreatedStagingRecord();
+        return !lastStaging;
       },
-      { description: 'Unit creation sync to main table (end-to-end test 2)' }
-    );
-
-    // Make sure the staging table is cleaned up
-    expect(await testFixtures.getLastCreatedStagingRecord()).to.equal(
-      undefined,
+      { description: 'Unit creation sync and staging cleanup (end-to-end test 2)' }
     );
 
     const newUnit = await testFixtures.getUnit(warehouseUnitId);
