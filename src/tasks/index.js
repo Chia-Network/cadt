@@ -77,6 +77,11 @@ const waitForDataLayerAvailable = async (maxWaitMs = 300000, pollIntervalMs = 50
 const jobRegistry = {};
 
 const addJobToScheduler = (job) => {
+  if (scheduler.existsById(job.id)) {
+    scheduler.stopById(job.id);
+    scheduler.removeById(job.id);
+  }
+
   jobRegistry[job.id] = job;
   scheduler.addSimpleIntervalJob(job);
 };
@@ -101,12 +106,7 @@ const start = async (enableV1 = true, enableV2 = true) => {
     }
 
     // Now register the scheduled job for future runs
-    if (scheduler.existsById(coinManagement.id)) {
-      scheduler.stopById(coinManagement.id);
-      scheduler.removeById(coinManagement.id);
-    }
-    jobRegistry[coinManagement.id] = coinManagement;
-    scheduler.addSimpleIntervalJob(coinManagement);
+    addJobToScheduler(coinManagement);
     logger.info('[COIN_MANAGEMENT] Coin management task registered for periodic runs');
   }
 
@@ -123,14 +123,7 @@ const start = async (enableV1 = true, enableV2 = true) => {
       validateOrganizationTableAndSubscriptions,
       cleanUpFailedOrg,
     ];
-    defaultJobs.forEach((defaultJob) => {
-      // Remove job if it already exists (for testing)
-      if (scheduler.existsById(defaultJob.id)) {
-        scheduler.stopById(defaultJob.id);
-        scheduler.removeById(defaultJob.id);
-      }
-      jobRegistry[defaultJob.id] = defaultJob;
-      scheduler.addSimpleIntervalJob(defaultJob);
+    defaultJobs.forEach(addJobToScheduler);
     });
   } else {
     logger.info('[v1]: V1 is disabled in config - skipping V1 scheduler tasks');
@@ -148,15 +141,7 @@ const start = async (enableV1 = true, enableV2 = true) => {
       syncPicklistsV2,
       cleanUpFailedOrgV2,
     ];
-    v2Jobs.forEach((v2Job) => {
-      // Remove job if it already exists (for testing)
-      if (scheduler.existsById(v2Job.id)) {
-        scheduler.stopById(v2Job.id);
-        scheduler.removeById(v2Job.id);
-      }
-      jobRegistry[v2Job.id] = v2Job;
-      scheduler.addSimpleIntervalJob(v2Job);
-    });
+    v2Jobs.forEach(addJobToScheduler);
   } else {
     loggerV2.info('[v2]: V2 is disabled in config - skipping V2 scheduler tasks');
   }
