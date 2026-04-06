@@ -116,19 +116,20 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install and configure MySQL for mirror database testing
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
-          echo "Installing MariaDB (MySQL-compatible) Server..."
-          # Use default-mysql-server/client which provides MariaDB on Debian Bookworm
-          # mysql-server and mysql-client packages are not directly available
-          apt-get install -y default-mysql-server default-mysql-client
+          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+
+          apt-get update
+          apt-get install -y yq jq bc iproute2 default-mysql-server default-mysql-client chia-blockchain-cli chia-tools
+
+      - name: Configure MySQL for mirror database testing
+        shell: bash
+        run: |
           echo "Starting MariaDB service..."
           service mariadb start
 
@@ -159,16 +160,6 @@ jobs:
             exit 1
           }
           echo "✓ MariaDB (MySQL-compatible) mirror database is ready for testing"
-
-      - name: Install Chia and chia-tools
-        shell: bash
-        run: |
-          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
-
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-
-          apt-get install -y chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -589,21 +580,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -928,21 +914,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -1190,21 +1171,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -1553,21 +1529,16 @@ jobs:
       - name: install global packages
         run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -2767,21 +2738,16 @@ jobs:
       - name: install global packages
         run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -3656,21 +3622,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -3981,21 +3942,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -4306,21 +4262,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
