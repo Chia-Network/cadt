@@ -311,11 +311,7 @@ class StagingV2 extends Model {
       diff.original = {};
       diff.change = JSON.parse(data);
     } else if (action === 'UPDATE' || action === 'DELETE') {
-      if (action === 'UPDATE') {
-        diff.change = JSON.parse(data);
-      } else {
-        diff.change = {};
-      }
+      diff.change = data ? JSON.parse(data) : {};
 
       // Fetch original record if model mapping exists
       const modelInfo = tableToModelMap[table];

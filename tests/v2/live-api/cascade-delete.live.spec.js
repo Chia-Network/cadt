@@ -46,7 +46,8 @@ describe('Cascade Delete Live API Tests', function () {
     if (row.table !== table || row.action !== 'DELETE') {
       return false;
     }
-    const parsed = JSON.parse(row.data);
+    const data = row.diff?.change;
+    const parsed = Array.isArray(data) ? data : [data];
     return parsed[0]?.[key] === value;
   });
 
