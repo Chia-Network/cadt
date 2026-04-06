@@ -1,6 +1,5 @@
-# Compares the version in package.json to tags on the repo. If the tag doesn't exist, a new tag is created, which
-# then triggers the normal "on tag" release automation in the build job
-name: Auto Tag
+# After a release merges to main, auto-update dev dependencies on the develop branch
+name: Post-Release Dev Dependency Update
 
 on:
   push:
@@ -11,52 +10,25 @@ concurrency:
   group: main-release-check
 
 jobs:
-  check-version:
-    name: Create tag and changelog
+  update-dev-deps:
+    name: Auto-update dev dependencies
     runs-on: ubuntu-latest
     steps:
       - name: Clean workspace
         uses: Chia-Network/actions/clean-workspace@main
 
-      - name: Checkout current branch
+      - name: Checkout develop branch
         uses: actions/checkout@v6
         with:
-          # Need PACKAGE_ADMIN_PAT token so when the tag is created, the tag automation runs
           token: ${{ secrets.PACKAGE_ADMIN_PAT }}
           fetch-depth: 0
+          ref: 'develop'
 
       - name: Configure commit signing for ChiaAutomation
         uses: Chia-Network/actions/commit-sign/gpg@main
         with:
           gpg_private_key: ${{ secrets.CHIA_AUTOMATION_PRIVATE_GPG_KEY }}
           passphrase: ${{ secrets.CHIA_AUTOMATION_PRIVATE_GPG_PASSPHRASE }}
-
-      - name: Check for current version tag. Create if it doesn't exist
-        run: |
-          version=$(cat $GITHUB_WORKSPACE/package.json | jq -r '.version')
-          echo "Version is: $version"
-
-          if [ $(git tag -l "$version") ]; then
-            echo "Tag exists, nothing to do"
-          else
-            echo "Tag does not exist. Creating and pushing tag"
-            rm -f CHANGELOG.md
-            npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -r 0
-            changes=$(npx conventional-changelog-cli -r 1 | tail -n +2)
-            git add CHANGELOG.md
-            git commit -m "chore: Updating changelog for $version"
-            git tag $version -m "Release $version  $changes"
-            git push origin $version
-            git push origin main
-          fi
-
-      - name: Checkout develop branch
-        uses: actions/checkout@v6
-        with:
-          # Need PACKAGE_ADMIN_PAT token so when the tag is created, the tag automation runs
-          token: ${{ secrets.PACKAGE_ADMIN_PAT }}
-          fetch-depth: 0
-          ref: 'develop'
 
       - name: Auto-update dev dependencies
         run: |
