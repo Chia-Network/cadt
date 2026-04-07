@@ -872,8 +872,6 @@ export const resyncOrganization = async (req, res) => {
       });
     }
 
-    transaction = await sequelizeV2.transaction();
-
     const organization = await OrganizationsV2.findOne({
       where: { org_uid: orgUid },
       raw: true,
@@ -889,8 +887,11 @@ export const resyncOrganization = async (req, res) => {
       );
     }
 
-    // Reconcile organization (updates database with datalayer data)
+    // Reconcile BEFORE opening the transaction so its DB writes finish first
+    // and the subsequent registry_hash reset is the final value.
     await OrganizationsV2.reconcileOrganization(organization);
+
+    transaction = await sequelizeV2.transaction();
 
     // Reset registry hash
     await OrganizationsV2.update(

@@ -1017,6 +1017,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
 
       expect(response.body.success).to.be.true;
       expect(response.body.message).to.equal('Unit delete staged successfully');
+      expect(response.body.stagedChildDeletes).to.equal(0);
 
       // Verify the delete was staged
       const stagingRecord = await StagingV2.findOne({
@@ -1026,6 +1027,64 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
         },
       });
       expect(stagingRecord).to.exist;
+    });
+
+    it('should cascade-stage unit_label deletes when deleting a unit', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: 'TEST-UNIT-DELETE-CASCADE-001',
+        unitStartBlock: '3000',
+        unitEndBlock: '3100',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Cascade test',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: testIssuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+
+      const label = await LabelV2.create({
+        cadTrustLabelId: uuidv4(),
+        labelName: 'Unit Cascade Label',
+      });
+
+      const unitLabel = await UnitLabelV2.create({
+        cadTrustUnitLabelId: uuidv4(),
+        cadTrustUnitId: unit.cadTrustUnitId,
+        cadTrustLabelId: label.cadTrustLabelId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/unit/${unit.cadTrustUnitId}`)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.stagedChildDeletes).to.equal(1);
+
+      const deleteRows = await StagingV2.findAll({
+        where: { action: 'DELETE' },
+        raw: true,
+      });
+
+      const unitDelete = deleteRows.find((row) => {
+        if (row.table !== 'unit') {
+          return false;
+        }
+        const data = JSON.parse(row.data);
+        return data[0]?.cad_trust_unit_id === unit.cadTrustUnitId;
+      });
+      const unitLabelDelete = deleteRows.find((row) => {
+        if (row.table !== 'unit_label') {
+          return false;
+        }
+        const data = JSON.parse(row.data);
+        return data[0]?.cad_trust_unit_label_id === unitLabel.cadTrustUnitLabelId;
+      });
+
+      expect(unitDelete).to.exist;
+      expect(unitLabelDelete).to.exist;
     });
   });
 

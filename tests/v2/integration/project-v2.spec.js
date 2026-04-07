@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, ProjectV2, ProgramV2, LocationV2, EstimationV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, ProjectV2, ProgramV2, LocationV2, EstimationV2, RatingV2, CoBenefitV2, ValidationV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, StakeholderV2, StakeholderProjectV2, IssuanceV2, UnitV2, LabelV2, UnitLabelV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -12,6 +12,7 @@ import {
   createV2TestHomeOrg,
   getV2HomeOrgId,
   addUuidIfNeeded,
+  createV2TestProgramChain,
   verifyTestDatabaseConfiguration,
 } from '../utils/v2-test-helpers.js';
 
@@ -970,6 +971,164 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].cad_trust_project_id).to.equal(project.cadTrustProjectId);
+    });
+
+    it('should cascade-stage deletes for project child records', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const chain = await createV2TestProgramChain({ testId: 'PROJ-CASCADE-001' });
+      const { project, verification, issuance, methodology } = chain;
+
+      const location = await LocationV2.create({
+        cadTrustLocationId: uuidv4(),
+        locationCountry: 'US',
+        locationRegion: 'CA',
+        cadTrustProjectId: project.cadTrustProjectId,
+      });
+      const estimation = await EstimationV2.create({
+        cadTrustEstimationId: uuidv4(),
+        estimationUnitCount: 25,
+        estimationStartDate: '2024-01-01',
+        estimationEndDate: '2024-12-31',
+        cadTrustProjectId: project.cadTrustProjectId,
+      });
+      const rating = await RatingV2.create({
+        cadTrustRatingId: uuidv4(),
+        ratingName: 'Integrity',
+        ratingValue: 'A',
+        cadTrustProjectId: project.cadTrustProjectId,
+      });
+      const coBenefit = await CoBenefitV2.create({
+        cadTrustCoBenefitId: uuidv4(),
+        coBenefitId: 'CB-1',
+        cadTrustProjectId: project.cadTrustProjectId,
+      });
+
+      const secondaryValidation = await ValidationV2.create(addUuidIfNeeded('ValidationV2', {
+        validationId: 'TEST-VALIDATION-CASCADE-001',
+        validationType: 'Validation of Project Design Document',
+        validationBody: 'Cascade Validator',
+        cadTrustProjectId: project.cadTrustProjectId,
+      }));
+
+      const secondaryVerification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
+        verificationId: 'TEST-VERIFICATION-CASCADE-001',
+        verificationBody: 'Cascade Verifier',
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustValidationId: secondaryValidation.cadTrustValidationId,
+      }));
+
+      const extraProjectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-02-01',
+      }));
+
+      const stakeholder = await StakeholderV2.create({
+        cadTrustStakeholderId: uuidv4(),
+        stakeholderName: 'Cascade Stakeholder',
+      });
+      const stakeholderProject = await StakeholderProjectV2.create({
+        cadTrustStakeholderProjectId: uuidv4(),
+        cadTrustStakeholderId: stakeholder.cadTrustStakeholderId,
+        cadTrustProjectId: project.cadTrustProjectId,
+      });
+
+      const issuanceChild = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
+        issuanceId: 'TEST-ISSUANCE-CASCADE-001',
+        issuanceDate: '2024-03-01',
+        cadTrustVerificationId: verification.cadTrustVerificationId,
+        cadTrustProjectMethodologyId: chain.projectMethodology.cadTrustProjectMethodologyId,
+      }));
+
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: 'CASCADE-UNIT-001',
+        unitStartBlock: '100',
+        unitEndBlock: '150',
+        unitCount: 50,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Cascade test',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: issuanceChild.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+
+      const label = await LabelV2.create({
+        cadTrustLabelId: uuidv4(),
+        labelName: 'Cascade Label',
+      });
+      const unitLabel = await UnitLabelV2.create({
+        cadTrustUnitLabelId: uuidv4(),
+        cadTrustLabelId: label.cadTrustLabelId,
+        cadTrustUnitId: unit.cadTrustUnitId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/project/${project.cadTrustProjectId}`)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.stagedChildDeletes).to.equal(15);
+
+      const deleteRows = await StagingV2.findAll({
+        where: { action: 'DELETE' },
+        raw: true,
+      });
+
+      const expectedDeletes = [
+        ['project', 'cad_trust_project_id', project.cadTrustProjectId],
+        ['location', 'cad_trust_location_id', location.cadTrustLocationId],
+        ['estimation', 'cad_trust_estimation_id', estimation.cadTrustEstimationId],
+        ['rating', 'cad_trust_rating_id', rating.cadTrustRatingId],
+        ['co_benefit', 'cad_trust_co_benefit_id', coBenefit.cadTrustCoBenefitId],
+        ['validation', 'cad_trust_validation_id', chain.validation.cadTrustValidationId],
+        ['validation', 'cad_trust_validation_id', secondaryValidation.cadTrustValidationId],
+        ['verification', 'cad_trust_verification_id', verification.cadTrustVerificationId],
+        ['verification', 'cad_trust_verification_id', secondaryVerification.cadTrustVerificationId],
+        ['project_methodology', 'cad_trust_project_methodology_id', chain.projectMethodology.cadTrustProjectMethodologyId],
+        ['project_methodology', 'cad_trust_project_methodology_id', extraProjectMethodology.cadTrustProjectMethodologyId],
+        ['stakeholder_projects', 'cad_trust_stakeholder_project_id', stakeholderProject.cadTrustStakeholderProjectId],
+        ['issuance', 'cad_trust_issuance_id', issuance.cadTrustIssuanceId],
+        ['issuance', 'cad_trust_issuance_id', issuanceChild.cadTrustIssuanceId],
+        ['unit', 'cad_trust_unit_id', unit.cadTrustUnitId],
+        ['unit_label', 'cad_trust_unit_label_id', unitLabel.cadTrustUnitLabelId],
+      ];
+
+      for (const [table, key, id] of expectedDeletes) {
+        const matching = deleteRows.find((row) => {
+          if (row.table !== table) {
+            return false;
+          }
+          const data = JSON.parse(row.data);
+          return data[0]?.[key] === id;
+        });
+        expect(matching, `missing staged delete for ${table}:${id}`).to.exist;
+      }
+    });
+
+    it('should stage only project delete when there are no child records', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'No Child Registry',
+        projectId: 'NO-CHILD-PROJECT-001',
+        projectName: 'No Child Project',
+        projectSector: ['Agriculture'],
+        orgUid: homeOrgId,
+      }));
+
+      const response = await supertest(app)
+        .delete(`/v2/project/${project.cadTrustProjectId}`)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.stagedChildDeletes).to.equal(0);
+
+      const deleteRows = await StagingV2.findAll({
+        where: { action: 'DELETE' },
+      });
+      expect(deleteRows).to.have.lengthOf(1);
+      expect(deleteRows[0].table).to.equal('project');
     });
   });
 
