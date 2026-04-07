@@ -200,12 +200,33 @@ export const commitStagedRecords = async (request, uuids = [], force = false) =>
     body.ids = uuids;
   }
 
-  // Note: Request logging is handled by the request wrapper in getLiveApiRequest()
-  const response = await request
-    .post('/v1/staging/commit')
-    .send(body);
+  // Retry with backoff when the wallet is temporarily desynced (e.g. after
+  // org creation causes a burst of on-chain activity).
+  const maxRetries = 5;
+  const retryDelayMs = 10000;
+  const walletErrorPatterns = ['wallet is not available', 'wallet is syncing'];
 
-  if (response.status !== 200) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await request
+      .post('/v1/staging/commit')
+      .send(body);
+
+    if (response.status === 200) {
+      return response.body;
+    }
+
+    const errorText = JSON.stringify(response.body).toLowerCase();
+    const isWalletError = walletErrorPatterns.some((p) => errorText.includes(p));
+
+    if (isWalletError && attempt < maxRetries) {
+      const elapsed = (attempt + 1) * retryDelayMs / 1000;
+      console.log(
+        `[Attempt ${attempt + 1}/${maxRetries}] Commit failed (wallet not ready), retrying in ${retryDelayMs / 1000}s... (${elapsed}s total wait)`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      continue;
+    }
+
     console.error('Commit failed:', {
       status: response.status,
       body: response.body,
@@ -213,8 +234,6 @@ export const commitStagedRecords = async (request, uuids = [], force = false) =>
     });
     throw new Error(`Commit failed with status ${response.status}: ${JSON.stringify(response.body)}`);
   }
-
-  return response.body;
 };
 
 /**

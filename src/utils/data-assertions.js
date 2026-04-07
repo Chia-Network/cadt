@@ -110,6 +110,30 @@ export const assertWalletIsSynced = async () => {
 export const assertWalletIsAvailable = async () => {
   if (!USE_SIMULATOR) {
     if (!(await datalayer.walletIsAvailable())) {
+      const lastError = datalayer.getLastWalletSyncError();
+      if (lastError && lastError.isConnectionError) {
+        throw new Error(
+          'Your wallet is not available, please turn it on to continue using CADT',
+        );
+      }
+
+      // Wallet is reachable but temporarily not synced (e.g. after a burst of
+      // on-chain activity). Retry a few times before giving up.
+      const maxRetries = 5;
+      const retryDelayMs = 5000;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        if (await datalayer.walletIsAvailable()) {
+          return;
+        }
+        const retryError = datalayer.getLastWalletSyncError();
+        if (retryError && retryError.isConnectionError) {
+          throw new Error(
+            'Your wallet is not available, please turn it on to continue using CADT',
+          );
+        }
+      }
+
       throw new Error(
         'Your wallet is not available, please turn it on to continue using CADT',
       );
