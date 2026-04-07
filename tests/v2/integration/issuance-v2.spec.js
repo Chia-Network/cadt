@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, IssuanceV2, VerificationV2, MethodologyV2, ProjectMethodologyV2, ProjectV2, ValidationV2, ProgramV2, UnitV2, UnitLabelV2, LabelV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -399,6 +399,112 @@ describe('V2 Issuance API - Basic CRUD Tests', function () {
 
       expect(response.body.message).to.equal('Issuance not found');
       expect(response.body.success).to.be.false;
+    });
+
+    it('should stage issuance deletion with no children', async function () {
+      await waitForV2DataLayerSync();
+      const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
+        issuanceId: 'ISS-DELETE-001',
+        issuanceDate: '2024-01-01',
+        cadTrustVerificationId: testVerification.cadTrustVerificationId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
+      }));
+
+      const response = await supertest(app)
+        .delete(`/v2/issuance/${issuance.cadTrustIssuanceId}`)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.message).to.equal('Issuance delete staged successfully');
+      expect(response.body.stagedChildDeletes).to.equal(0);
+
+      const deleteRows = await StagingV2.findAll({ where: { action: 'DELETE' } });
+      expect(deleteRows).to.have.lengthOf(1);
+      expect(deleteRows[0].table).to.equal('issuance');
+    });
+
+    it('should cascade-stage unit and unit_label deletes when deleting an issuance', async function () {
+      await waitForV2DataLayerSync();
+      const homeOrgId = await getV2HomeOrgId();
+
+      const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
+        issuanceId: 'ISS-CASCADE-001',
+        issuanceDate: '2024-03-01',
+        cadTrustVerificationId: testVerification.cadTrustVerificationId,
+        cadTrustProjectMethodologyId: testProjectMethodology.cadTrustProjectMethodologyId,
+      }));
+
+      const unit1 = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: 'ISS-CASCADE-UNIT-001',
+        unitStartBlock: '100',
+        unitEndBlock: '200',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: issuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+
+      const unit2 = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: 'ISS-CASCADE-UNIT-002',
+        unitStartBlock: '201',
+        unitEndBlock: '300',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: issuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+
+      const label = await LabelV2.create({
+        cadTrustLabelId: uuidv4(),
+        labelName: 'Issuance Cascade Label',
+      });
+
+      const unitLabel1 = await UnitLabelV2.create({
+        cadTrustUnitLabelId: uuidv4(),
+        cadTrustUnitId: unit1.cadTrustUnitId,
+        cadTrustLabelId: label.cadTrustLabelId,
+      });
+
+      const unitLabel2 = await UnitLabelV2.create({
+        cadTrustUnitLabelId: uuidv4(),
+        cadTrustUnitId: unit2.cadTrustUnitId,
+        cadTrustLabelId: label.cadTrustLabelId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/issuance/${issuance.cadTrustIssuanceId}`)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.stagedChildDeletes).to.equal(4);
+
+      const deleteRows = await StagingV2.findAll({
+        where: { action: 'DELETE' },
+        raw: true,
+      });
+
+      const expectedDeletes = [
+        ['issuance', 'cad_trust_issuance_id', issuance.cadTrustIssuanceId],
+        ['unit', 'cad_trust_unit_id', unit1.cadTrustUnitId],
+        ['unit', 'cad_trust_unit_id', unit2.cadTrustUnitId],
+        ['unit_label', 'cad_trust_unit_label_id', unitLabel1.cadTrustUnitLabelId],
+        ['unit_label', 'cad_trust_unit_label_id', unitLabel2.cadTrustUnitLabelId],
+      ];
+
+      for (const [table, key, id] of expectedDeletes) {
+        const matching = deleteRows.find((row) => {
+          if (row.table !== table) return false;
+          const data = JSON.parse(row.data);
+          return data[0]?.[key] === id;
+        });
+        expect(matching, `missing staged delete for ${table}:${id}`).to.exist;
+      }
     });
   });
 });

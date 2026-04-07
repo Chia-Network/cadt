@@ -1130,6 +1130,119 @@ describe('V2 Project API - Basic CRUD Tests', function () {
       expect(deleteRows).to.have.lengthOf(1);
       expect(deleteRows[0].table).to.equal('project');
     });
+
+    it('should create duplicate staging rows on double delete before commit', async function () {
+      await waitForV2DataLayerSync();
+      const homeOrgId = await getV2HomeOrgId();
+      const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+        projectRegistryName: 'Double Delete Registry',
+        projectId: 'DOUBLE-DEL-001',
+        projectName: 'Double Delete Project',
+        orgUid: homeOrgId,
+      }));
+
+      const location = await LocationV2.create({
+        cadTrustLocationId: uuidv4(),
+        locationCountry: 'US',
+        cadTrustProjectId: project.cadTrustProjectId,
+      });
+
+      const res1 = await supertest(app)
+        .delete(`/v2/project/${project.cadTrustProjectId}`)
+        .expect(200);
+      expect(res1.body.success).to.be.true;
+      expect(res1.body.stagedChildDeletes).to.equal(1);
+
+      const res2 = await supertest(app)
+        .delete(`/v2/project/${project.cadTrustProjectId}`)
+        .expect(200);
+      expect(res2.body.success).to.be.true;
+      expect(res2.body.stagedChildDeletes).to.equal(1);
+
+      const deleteRows = await StagingV2.findAll({
+        where: { action: 'DELETE', table: 'project' },
+      });
+      expect(deleteRows).to.have.lengthOf(2);
+    });
+
+    it('should cascade multiple units per issuance', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+      const chain = await createV2TestProgramChain({ testId: 'MULTI-UNIT-001' });
+
+      const unit1 = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: 'MULTI-UNIT-A',
+        unitStartBlock: '1',
+        unitEndBlock: '50',
+        unitCount: 50,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: chain.issuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+
+      const unit2 = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: 'MULTI-UNIT-B',
+        unitStartBlock: '51',
+        unitEndBlock: '100',
+        unitCount: 50,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: chain.issuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+
+      const label = await LabelV2.create({
+        cadTrustLabelId: uuidv4(),
+        labelName: 'Multi-Unit Label',
+      });
+
+      const unitLabel1 = await UnitLabelV2.create({
+        cadTrustUnitLabelId: uuidv4(),
+        cadTrustUnitId: unit1.cadTrustUnitId,
+        cadTrustLabelId: label.cadTrustLabelId,
+      });
+
+      const unitLabel2a = await UnitLabelV2.create({
+        cadTrustUnitLabelId: uuidv4(),
+        cadTrustUnitId: unit2.cadTrustUnitId,
+        cadTrustLabelId: label.cadTrustLabelId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/project/${chain.project.cadTrustProjectId}`)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+
+      const deleteRows = await StagingV2.findAll({
+        where: { action: 'DELETE' },
+        raw: true,
+      });
+
+      const unitDeletes = deleteRows.filter((r) => r.table === 'unit');
+      const unitLabelDeletes = deleteRows.filter((r) => r.table === 'unit_label');
+
+      expect(unitDeletes).to.have.lengthOf(2);
+      expect(unitLabelDeletes).to.have.lengthOf(2);
+
+      for (const [table, key, id] of [
+        ['unit', 'cad_trust_unit_id', unit1.cadTrustUnitId],
+        ['unit', 'cad_trust_unit_id', unit2.cadTrustUnitId],
+        ['unit_label', 'cad_trust_unit_label_id', unitLabel1.cadTrustUnitLabelId],
+        ['unit_label', 'cad_trust_unit_label_id', unitLabel2a.cadTrustUnitLabelId],
+      ]) {
+        const matching = deleteRows.find((row) => {
+          if (row.table !== table) return false;
+          const data = JSON.parse(row.data);
+          return data[0]?.[key] === id;
+        });
+        expect(matching, `missing staged delete for ${table}:${id}`).to.exist;
+      }
+    });
   });
 
   describe('Phase 20.5: Advanced Features Tests', function () {
