@@ -269,7 +269,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30  # 30 attempts * 10 seconds = 5 minutes
+          MAX_ATTEMPTS=60  # 60 attempts * 10 seconds = 10 minutes
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -281,7 +281,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -699,7 +699,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -711,7 +711,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -1300,7 +1300,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -1312,7 +1312,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -1655,7 +1655,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -1667,7 +1667,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -2869,7 +2869,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -2881,7 +2881,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -3759,7 +3759,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -3771,7 +3771,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -4084,7 +4084,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -4096,7 +4096,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -4410,7 +4410,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -4422,7 +4422,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
