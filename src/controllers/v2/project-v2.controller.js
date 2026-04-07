@@ -3,6 +3,8 @@
 import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
+import { sequelizeV2 } from '../../database/v2/index.js';
+import { processingSyncRegistriesTransactionMutexV2 } from '../../utils/v2-mutex-utils.js';
 
 import { StagingV2, ProjectV2, ProgramV2, OrganizationsV2, LocationV2, EstimationV2, RatingV2, CoBenefitV2 } from '../../models/v2/index.js';
 
@@ -33,6 +35,7 @@ import { loggerV2 } from '../../config/logger.js';
 import { projectV2Schema } from '../../validations/v2/project-v2.validations.js';
 import { formatModelAssociationName } from '../../utils/model-utils.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
+import { stageProjectChildDeletes } from '../../utils/v2-cascade-delete.js';
 
 export const create = async (req, res) => {
   try {
@@ -595,7 +598,7 @@ export const findAll = async (req, res) => {
 
     res.json(response);
   } catch (err) {
-    logger.error('[v2]: Error retrieving projects:', err);
+    loggerV2.error('[v2]: Error retrieving projects:', err);
     res.status(400).json({
       message: 'Error retrieving projects',
       error: err.message,
@@ -663,7 +666,7 @@ export const findOne = async (req, res) => {
 
     res.json(record);
   } catch (err) {
-    logger.error('[v2]: Error retrieving project:', err);
+    loggerV2.error('[v2]: Error retrieving project:', err);
     res.status(400).json({
       message: 'Error retrieving project',
       error: err.message,
@@ -790,7 +793,7 @@ export const update = async (req, res) => {
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error updating project:', err);
+    loggerV2.error('[v2]: Error updating project:', err);
     res.status(400).json({
       message: 'Error updating project',
       error: err.message,
@@ -816,23 +819,37 @@ export const destroy = async (req, res) => {
       });
     }
 
-    // Stage the delete
-    await StagingV2.create({
-      uuid: uuidv4(),
-      table: 'project',
-      action: 'DELETE',
-      data: JSON.stringify([{ cad_trust_project_id: id }]), // Use UUID string directly
-      committed: false,
-      failed_commit: false,
-      is_transfer: false,
-    });
+    const releaseTransactionMutex =
+      await processingSyncRegistriesTransactionMutexV2.acquire();
+    let stagedChildDeletes;
+    try {
+      stagedChildDeletes = await sequelizeV2.transaction(async (transaction) => {
+        const childDeleteCount = await stageProjectChildDeletes(id, { transaction });
+
+        // Stage the delete
+        await StagingV2.create({
+          uuid: uuidv4(),
+          table: 'project',
+          action: 'DELETE',
+          data: JSON.stringify([{ cad_trust_project_id: id }]), // Use UUID string directly
+          committed: false,
+          failed_commit: false,
+          is_transfer: false,
+        }, { transaction });
+
+        return childDeleteCount;
+      });
+    } finally {
+      releaseTransactionMutex();
+    }
 
     res.json({
       message: 'Project delete staged successfully',
+      stagedChildDeletes,
       success: true,
     });
   } catch (err) {
-    logger.error('[v2]: Error deleting project:', err);
+    loggerV2.error('[v2]: Error deleting project:', err);
     res.status(400).json({
       message: 'Error deleting project',
       error: err.message,
@@ -914,7 +931,7 @@ export const updateFromXLS = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Error updating projects from XLSX:', error);
+    loggerV2.error('[v2]: Error updating projects from XLSX:', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,
@@ -950,7 +967,7 @@ export const batchUpload = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    logger.error('[v2]: Batch Upload Failed.', error);
+    loggerV2.error('[v2]: Batch Upload Failed.', error);
     res.status(400).json({
       message: 'Batch Upload Failed.',
       error: error.message,

@@ -92,7 +92,10 @@ describe('Units Resource CRUD', function () {
         newUnit2.unitBlockEnd = 'AAAAA21';
         await testFixtures.createNewUnit(newUnit2);
 
-        // Wait for units to sync to main table using smart polling
+        // Wait for units to sync to main table using smart polling.
+        // When run in the full suite, prior afterEach commits may leave
+        // pending datalayer generations that the sync task must drain before
+        // reaching this commit's generation, so allow extra attempts.
         await testFixtures.commitStagingRecordsAndWaitForCondition(
           async () => {
             const result = await supertest(app)
@@ -100,7 +103,7 @@ describe('Units Resource CRUD', function () {
               .query({ page: 1, limit: 100 });
             return result.body.data && result.body.data.length >= 3;
           },
-          { description: 'Additional units sync for serial number ordering test' }
+          { description: 'Additional units sync for serial number ordering test', maxAttempts: 60 }
         );
 
         const result = await supertest(app)

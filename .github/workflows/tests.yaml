@@ -30,11 +30,8 @@ jobs:
       - name: Ignore Husky
         run: npm pkg delete scripts.prepare
 
-      - name: Install Mocha
-        run: npm install --save-dev mocha
-
-      - name: npm install
-        run: npm install
+      - name: npm ci
+        run: npm ci
 
       - name: npm cache clear --force
         run: npm cache clear --force
@@ -119,19 +116,20 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install and configure MySQL for mirror database testing
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
-          echo "Installing MariaDB (MySQL-compatible) Server..."
-          # Use default-mysql-server/client which provides MariaDB on Debian Bookworm
-          # mysql-server and mysql-client packages are not directly available
-          apt-get install -y default-mysql-server default-mysql-client
+          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
+
+          apt-get update
+          apt-get install -y yq jq bc iproute2 default-mysql-server default-mysql-client chia-blockchain-cli chia-tools
+
+      - name: Configure MySQL for mirror database testing
+        shell: bash
+        run: |
           echo "Starting MariaDB service..."
           service mariadb start
 
@@ -162,17 +160,6 @@ jobs:
             exit 1
           }
           echo "✓ MariaDB (MySQL-compatible) mirror database is ready for testing"
-
-      - name: Install Chia and chia-tools
-        shell: bash
-        run: |
-          curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
-
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
-
-          apt-get install -y chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -269,7 +256,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30  # 30 attempts * 10 seconds = 5 minutes
+          MAX_ATTEMPTS=60  # 60 attempts * 10 seconds = 10 minutes
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -281,7 +268,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -297,7 +284,20 @@ jobs:
         shell: bash
         run: |
           pm2 start npm --no-autorestart --name "cadt" -- start
-          sleep 30
+          echo "Waiting for CADT health endpoint..."
+          MAX_CADT_HEALTH_ATTEMPTS=30
+          for CADT_ATTEMPT in $(seq 1 "$MAX_CADT_HEALTH_ATTEMPTS"); do
+            if curl -fsS --max-time 5 http://127.0.0.1:31310/health >/dev/null 2>&1; then
+              echo "CADT health endpoint is ready"
+              break
+            fi
+            if [ "$CADT_ATTEMPT" -eq "$MAX_CADT_HEALTH_ATTEMPTS" ]; then
+              echo "ERROR: CADT health endpoint did not become ready in time"
+              pm2 logs cadt --lines 200 --nostream || true
+              exit 1
+            fi
+            sleep 2
+          done
 
       - name: Wait for wallet sync and datalayer readiness
         shell: bash
@@ -326,19 +326,27 @@ jobs:
 
             if [ "$WALLET_SYNCED" = "true" ]; then
               echo "Wallet is synced!"
-              # Wait a bit more for datalayer to catch up
-              echo "Waiting additional 60 seconds for datalayer to sync..."
-              sleep 60
+              echo "Verifying CADT health stays ready after wallet sync..."
+              MAX_HEALTH_CHECKS=12
+              HEALTH_OK=false
+              for HEALTH_ATTEMPT in $(seq 1 "$MAX_HEALTH_CHECKS"); do
+                if curl -fsS --max-time 5 http://127.0.0.1:31310/health >/dev/null 2>&1; then
+                  HEALTH_OK=true
+                  echo "CADT health confirmed"
+                  break
+                fi
+                sleep 5
+              done
+              if [ "$HEALTH_OK" != "true" ]; then
+                echo "ERROR: CADT health endpoint not ready after wallet sync"
+                exit 1
+              fi
               break
             fi
 
             echo "Wallet still syncing, waiting 30 seconds..."
             sleep 30
           done
-
-          echo "Waiting 20 seconds for sync and startup..."
-
-          sleep 20 # wait 20 seconds
 
           echo ""
           echo "=========================================="
@@ -366,31 +374,6 @@ jobs:
         run: |
           echo "Last 100 lines of CADT logs:"
           pm2 logs cadt --lines 100 --nostream
-
-      - name: Show process and port status
-        shell: bash
-        run: |
-          echo "########################################################"
-          echo "Process and Port Status"
-          echo "########################################################"
-          echo ""
-          echo "PM2 process list:"
-          pm2 list || true
-          echo ""
-          echo "CADT process details:"
-          pm2 show cadt || true
-          echo ""
-          echo "All listening TCP ports:"
-          ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null || echo "Could not get port info"
-          echo ""
-          echo "Checking if port 31310 is listening:"
-          ss -tlnp 2>/dev/null | grep :31310 || netstat -tlnp 2>/dev/null | grep :31310 || echo "Port 31310 not found in listeners"
-          echo ""
-          echo "Testing connection to localhost:31310:"
-          curl -v --max-time 5 http://localhost:31310/health 2>&1 || echo "curl to localhost:31310 failed"
-          echo ""
-          echo "Testing connection to 127.0.0.1:31310:"
-          curl -v --max-time 5 http://127.0.0.1:31310/health 2>&1 || echo "curl to 127.0.0.1:31310 failed"
 
       - name: Pre-flight check
         shell: bash
@@ -597,21 +580,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -699,7 +677,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -711,7 +689,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -936,21 +914,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -1198,21 +1171,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -1300,7 +1268,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -1312,7 +1280,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -1561,21 +1529,16 @@ jobs:
       - name: install global packages
         run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -1655,7 +1618,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -1667,7 +1630,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -2775,21 +2738,16 @@ jobs:
       - name: install global packages
         run: npm i -g @babel/cli sequelize-cli cross-env pm2@latest
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -2869,7 +2827,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -2881,7 +2839,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -3664,21 +3622,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -3759,7 +3712,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -3771,7 +3724,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -3989,21 +3942,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -4084,7 +4032,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -4096,7 +4044,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."
@@ -4314,21 +4262,16 @@ jobs:
       - name: Show home directory
         run: ls -lah ~
 
-      - name: Install yq and jq
-        run: |
-          apt-get update
-          apt-get install -y yq jq bc iproute2
-
-      - name: Install Chia and chia-tools
+      - name: Install system packages and Chia tools
         shell: bash
         run: |
           curl -sL https://repo.chia.net/FD39E6D3.pubkey.asc | gpg --dearmor -o /usr/share/keyrings/chia.gpg
 
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/debian/ stable main" | tee /etc/apt/sources.list.d/chia.list > /dev/null
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
-          apt-get update
 
-          apt-get install -y chia-blockchain-cli chia-tools
+          apt-get update
+          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
 
       - name: Configure Chia
         shell: bash
@@ -4410,7 +4353,7 @@ jobs:
           fi
 
           echo "Waiting for wallet to receive funds..."
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=60
           ATTEMPT=0
           while true; do
             BALANCE=$(chia rpc wallet get_wallet_balance '{"wallet_id": 1}' | jq -r '.wallet_balance.confirmed_wallet_balance')
@@ -4422,7 +4365,7 @@ jobs:
             fi
             ATTEMPT=$((ATTEMPT + 1))
             if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-              echo "ERROR: Timeout waiting for wallet to be funded after 5 minutes"
+              echo "ERROR: Timeout waiting for wallet to be funded after 10 minutes"
               exit 1
             fi
             echo "Balance still zero, waiting 10 seconds..."

@@ -516,8 +516,8 @@ export const commitStagedRecords = async (request, uuids = [], force = false) =>
     body.ids = uuids;
   }
 
-  // Note: Request logging is handled by the request wrapper in getLiveApiRequest()
-  // Commit UUIDs if provided, otherwise commit all uncommitted records (no ids field)
+  // V2 request.post() is wrapped by createRetryableRequest which already
+  // retries wallet sync errors for up to 30 minutes, so no outer retry needed.
   const response = await request
     .post('/v2/staging/commit')
     .send(body);

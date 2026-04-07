@@ -395,6 +395,16 @@ async function main() {
     await runMochaTests('Step 9: DELETE Request Tests', 'DELETE Operations');
     await commitAndWait('DELETE');
 
+    // Phase 6: Cascade delete e2e tests
+    // Run as a dedicated suite (not step-grep based) because it validates
+    // cascade-specific staging + commit behavior end-to-end.
+    console.log('--- Running cascade delete tests ---');
+    await runMochaTests(
+      'should cascade delete',
+      'Cascade Delete Operations',
+      ['cascade-delete.live.spec.js'],
+    );
+
     console.log('\n=== All phases complete ===\n');
 
     // Organization mirror validation (runs last to allow extra time for mirror creation/retries)

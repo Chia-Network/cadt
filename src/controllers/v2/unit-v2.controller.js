@@ -3,6 +3,8 @@
 import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
+import { sequelizeV2 } from '../../database/v2/index.js';
+import { processingSyncRegistriesTransactionMutexV2 } from '../../utils/v2-mutex-utils.js';
 
 import { StagingV2, UnitV2, IssuanceV2, OrganizationsV2, UnitLabelV2 } from '../../models/v2/index.js';
 
@@ -28,6 +30,7 @@ import { loggerV2 } from '../../config/logger.js';
 import { unitV2Schema } from '../../validations/v2/unit-v2.validations.js';
 import { genericSortColumnRegex } from '../../utils/string-utils.js';
 import { resolveOrgUid } from '../../utils/owner-utils.js';
+import { stageUnitChildDeletes } from '../../utils/v2-cascade-delete.js';
 
 // Regex patterns for query parsing
 const genericFilterRegex = /^(\w+):(.+):(\w+)$/;
@@ -797,19 +800,33 @@ export const destroy = async (req, res) => {
       });
     }
 
-    // Stage the delete
-    await StagingV2.create({
-      uuid: uuidv4(),
-      table: 'unit',
-      action: 'DELETE',
-      data: JSON.stringify([{ cad_trust_unit_id: id }]), // Use UUID string directly
-      committed: false,
-      failed_commit: false,
-      is_transfer: false,
-    });
+    const releaseTransactionMutex =
+      await processingSyncRegistriesTransactionMutexV2.acquire();
+    let stagedChildDeletes;
+    try {
+      stagedChildDeletes = await sequelizeV2.transaction(async (transaction) => {
+        const childDeleteCount = await stageUnitChildDeletes(id, { transaction });
+
+        // Stage the delete
+        await StagingV2.create({
+          uuid: uuidv4(),
+          table: 'unit',
+          action: 'DELETE',
+          data: JSON.stringify([{ cad_trust_unit_id: id }]), // Use UUID string directly
+          committed: false,
+          failed_commit: false,
+          is_transfer: false,
+        }, { transaction });
+
+        return childDeleteCount;
+      });
+    } finally {
+      releaseTransactionMutex();
+    }
 
     res.json({
       message: 'Unit delete staged successfully',
+      stagedChildDeletes,
       success: true,
     });
   } catch (err) {

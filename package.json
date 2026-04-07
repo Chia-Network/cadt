@@ -23,6 +23,7 @@
     "test:v1:live:organization:upgrade": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/organization/organization-upgrade-v1.live.spec.js' --reporter spec --exit --timeout 3600000",
     "test:v2:live:data:extended": "node --import=extensionless/register tests/v2/live-api/data-extended.js",
     "test:v2:live:data:short": "node --import=extensionless/register tests/v2/live-api/data-short.js",
+    "test:v2:live:cascade-delete": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/cascade-delete.live.spec.js' --reporter spec --exit --timeout 1800000",
     "test:live:readonly:smoke": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/read-only-smoke.live.spec.js' --reporter spec --exit --timeout 600000",
     "test:v2:live:organization:delete": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/v2/live-api/organization/organization-delete.live.spec.js' --reporter spec --exit --timeout 600000",
     "test:locks": "node --import=extensionless/register tests/helpers/show-test-locks.js",
@@ -34,7 +35,6 @@
     "test:v2:live:governance:create": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/governance/live-api/governance-create-v2.live.spec.js' --reporter spec --exit --timeout 1800000",
     "test:v1v2:live:governance:create": "npx cross-env NODE_ENV=production mocha --loader node_modules/extensionless/src/register.js 'tests/governance/live-api/governance-create-v1-v2.live.spec.js' --reporter spec --exit --timeout 3600000",
     "test:v2:live:all": "npm run test:v2:live:organization:create && npm run test:v2:live:data && npm run test:v2:live:organization:delete",
-    "release": "npx commit-and-tag-version",
     "resetTestDb": "rm -rf ./tests/test-dbs && mkdir -p ./tests/test-dbs",
     "resetMirrorDb": "npx sequelize-cli db:drop --env mirror",
     "prepare": "husky",
@@ -103,7 +103,6 @@
     "babel-plugin-module-resolver": "^5.0.2",
     "chai": "^6.2.0",
     "chai-http": "^5.1.2",
-    "commit-and-tag-version": "^12.7.1",
     "cross-env": "^10.1.0",
     "eslint": "^10.1.0",
     "eslint-plugin-mocha": "^11.2.0",
@@ -116,13 +115,6 @@
     "sinon": "^21.0.1",
     "socket.io-client": "^4.8.3",
     "supertest": "^7.2.2"
-  },
-  "commit-and-tag-version": {
-    "skip": {
-      "bump": true,
-      "commit": true,
-      "tag": true
-    }
   },
   "overrides": {
     "diff": "8.0.3",
