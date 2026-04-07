@@ -3594,6 +3594,25 @@ Response
 
 #### Split unit into multiple units
 
+Splits an existing unit into multiple units. Each new unit inherits all fields from the original unit, then overrides only the fields you provide in each record. The first record keeps the original unit's `cadTrustUnitId`; subsequent records receive new UUIDs.
+
+**Required fields per record:**
+
+| Field | Type | Description |
+|---|---|---|
+| `unitCount` | number | Number of units in this split. The sum of all `unitCount` values must equal the original unit's `unitCount`. |
+
+**Optional fields per record** (override the original unit's values):
+
+| Field | Type | Description |
+|---|---|---|
+| `unitBlockStart` | string | Start block for this split. If both `unitBlockStart` and `unitBlockEnd` are provided, `unitSerialId` is automatically derived. |
+| `unitBlockEnd` | string | End block for this split. |
+| `unitCurrentOwner` | string | New owner for this split. |
+| `unitStatus` | string | Status for this split (e.g., "Issued", "Held", "Retired"). |
+| `unitStatusReason` | string | Reason for the status. |
+| `unitStatusDate` | string | Date of the status change (YYYY-MM-DD). |
+
 Request
 ```shell
 curl --location -g --request POST 'localhost:31310/v2/unit/split' \
@@ -3605,16 +3624,17 @@ curl --location -g --request POST 'localhost:31310/v2/unit/split' \
       "unitCount": 10,
       "unitBlockStart": "A001",
       "unitBlockEnd": "A010",
-      "unitOwner": "New Owner 1",
+      "unitCurrentOwner": "New Owner 1",
       "unitStatus": "Issued",
-      "countryJurisdictionOfOwner": "Bhutan"
+      "unitStatusReason": "Split for partial transfer",
+      "unitStatusDate": "2026-04-07"
     },
     {
       "unitCount": 5,
       "unitBlockStart": "B001",
       "unitBlockEnd": "B005",
-      "unitStatus": "Held",
-      "countryJurisdictionOfOwner": "Canada"
+      "unitCurrentOwner": "New Owner 2",
+      "unitStatus": "Held"
     }
   ]
 }'
@@ -3624,6 +3644,7 @@ Response
 ```json
 {
   "message": "Unit split successful",
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "success": true
 }
 ```
