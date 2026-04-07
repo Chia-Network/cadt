@@ -3,7 +3,7 @@ import supertest from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, VerificationV2, ProjectV2, ValidationV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, VerificationV2, ProjectV2, ValidationV2, ProgramV2, IssuanceV2, MethodologyV2, ProjectMethodologyV2, UnitV2, UnitLabelV2, LabelV2 } from '../../../src/models/v2/index.js';
 import {
   resetV2StagingTable,
   resetV2DataTables,
@@ -522,6 +522,7 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
 
       expect(response.body.message).to.equal('Verification delete staged successfully');
       expect(response.body.success).to.be.true;
+      expect(response.body.stagedChildDeletes).to.equal(0);
 
       // Verify deletion was staged
       const stagingRecord = await StagingV2.findOne({
@@ -536,6 +537,89 @@ describe('V2 Verification API - Basic CRUD Tests', function () {
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].cad_trust_verification_id).to.equal(verification.cadTrustVerificationId);
+    });
+
+    it('should cascade-stage issuance, unit, and unit_label deletes when deleting a verification', async function () {
+      const homeOrgId = await getV2HomeOrgId();
+
+      const verification = await VerificationV2.create(addUuidIfNeeded('VerificationV2', {
+        verificationId: 'VER-CASCADE-001',
+        verificationBody: 'Cascade Test Verifier',
+        cadTrustProjectId: testProject.cadTrustProjectId,
+        cadTrustValidationId: testValidation.cadTrustValidationId,
+      }));
+
+      const methodology = await MethodologyV2.create({
+        methodologyCode: 'CASCADE-METHOD-001',
+        methodologyName: 'Cascade Test Methodology',
+        methodologyType: 'Methodology for Afforestation and Reforestation',
+      });
+
+      const projectMethodology = await ProjectMethodologyV2.create(addUuidIfNeeded('ProjectMethodologyV2', {
+        cadTrustProjectId: testProject.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+        projectMethodologyDate: '2024-01-01',
+      }));
+
+      const issuance = await IssuanceV2.create(addUuidIfNeeded('IssuanceV2', {
+        issuanceId: 'ISS-CASCADE-001',
+        issuanceDate: '2024-03-01',
+        cadTrustVerificationId: verification.cadTrustVerificationId,
+        cadTrustProjectMethodologyId: projectMethodology.cadTrustProjectMethodologyId,
+      }));
+
+      const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+        unitSerialId: 'VER-CASCADE-UNIT-001',
+        unitStartBlock: '100',
+        unitEndBlock: '200',
+        unitCount: 100,
+        unitType: 'Avoidance - nature',
+        unitVintageYear: 2024,
+        unitStatus: 'Issued',
+        unitStatusReason: 'Verification cascade test',
+        unitMetric: 'tCO2e',
+        cadTrustIssuanceId: issuance.cadTrustIssuanceId,
+        orgUid: homeOrgId,
+      }));
+
+      const label = await LabelV2.create({
+        cadTrustLabelId: uuidv4(),
+        labelName: 'Verification Cascade Label',
+      });
+
+      const unitLabel = await UnitLabelV2.create({
+        cadTrustUnitLabelId: uuidv4(),
+        cadTrustUnitId: unit.cadTrustUnitId,
+        cadTrustLabelId: label.cadTrustLabelId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/verification/${verification.cadTrustVerificationId}`)
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.stagedChildDeletes).to.equal(3);
+
+      const deleteRows = await StagingV2.findAll({
+        where: { action: 'DELETE' },
+        raw: true,
+      });
+
+      const expectedDeletes = [
+        ['verification', 'cad_trust_verification_id', verification.cadTrustVerificationId],
+        ['issuance', 'cad_trust_issuance_id', issuance.cadTrustIssuanceId],
+        ['unit', 'cad_trust_unit_id', unit.cadTrustUnitId],
+        ['unit_label', 'cad_trust_unit_label_id', unitLabel.cadTrustUnitLabelId],
+      ];
+
+      for (const [table, key, id] of expectedDeletes) {
+        const matching = deleteRows.find((row) => {
+          if (row.table !== table) return false;
+          const data = JSON.parse(row.data);
+          return data[0]?.[key] === id;
+        });
+        expect(matching, `missing staged delete for ${table}:${id}`).to.exist;
+      }
     });
   });
 });
