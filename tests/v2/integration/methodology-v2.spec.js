@@ -2,7 +2,8 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, MethodologyV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, MethodologyV2, ProjectMethodologyV2, ProjectV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { v4 as uuidv4 } from 'uuid';
 import {
   resetV2StagingTable,
   resetV2DataTables,
@@ -395,6 +396,126 @@ describe('V2 Methodology API - Basic CRUD Tests', function () {
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].cad_trust_methodology_id).to.equal('test-uuid-delete');
+    });
+  });
+
+  describe('DELETE /v2/methodology/:id — reference guards', function () {
+    it('should return 409 when project_methodology references exist', async function () {
+      const methodology = await MethodologyV2.create({
+        cadTrustMethodologyId: uuidv4(),
+        methodologyCode: 'REFGUARD-METHOD-001',
+        methodologyName: 'Referenced Methodology',
+      });
+
+      const program = await ProgramV2.create({
+        programName: 'Ref Guard Program',
+        programRegistry: 'Test Registry',
+        programRegistryActivityId: 'REFGUARD-001',
+      });
+
+      const project = await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: 'test-home-org-v2',
+        projectRegistryName: 'Test Registry',
+        projectId: 'REFGUARD-PROJ-001',
+        projectName: 'Ref Guard Project',
+        cadTrustProgramId: program.cadTrustProgramId,
+      });
+
+      await ProjectMethodologyV2.create({
+        cadTrustProjectMethodologyId: uuidv4(),
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/methodology/${methodology.cadTrustMethodologyId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.message).to.include('Cannot delete methodology');
+      expect(response.body.references).to.be.an('array').with.lengthOf(1);
+      expect(response.body.references[0].table).to.equal('project_methodology');
+      expect(response.body.references[0].count).to.equal(1);
+      expect(response.body.hint).to.include('force=true');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: { table: 'methodology', action: 'DELETE' },
+      });
+      expect(stagingRecord).to.be.null;
+    });
+
+    it('should return 409 when staged project_methodology references exist', async function () {
+      const methodology = await MethodologyV2.create({
+        cadTrustMethodologyId: uuidv4(),
+        methodologyCode: 'STAGED-REF-METHOD-001',
+        methodologyName: 'Staged Referenced Methodology',
+      });
+
+      await StagingV2.create({
+        uuid: uuidv4(),
+        table: 'project_methodology',
+        action: 'INSERT',
+        data: JSON.stringify([{
+          cad_trust_project_methodology_id: uuidv4(),
+          cad_trust_project_id: uuidv4(),
+          cad_trust_methodology_id: methodology.cadTrustMethodologyId,
+        }]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/methodology/${methodology.cadTrustMethodologyId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.references).to.be.an('array').with.lengthOf(1);
+      expect(response.body.references[0].table).to.equal('project_methodology');
+      expect(response.body.references[0].count).to.equal(1);
+    });
+
+    it('should allow delete with ?force=true despite references', async function () {
+      const methodology = await MethodologyV2.create({
+        cadTrustMethodologyId: uuidv4(),
+        methodologyCode: 'FORCE-METHOD-001',
+        methodologyName: 'Force Delete Methodology',
+      });
+
+      const program = await ProgramV2.create({
+        programName: 'Force Delete Program',
+        programRegistry: 'Test Registry',
+        programRegistryActivityId: 'FORCE-001',
+      });
+
+      const project = await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: 'test-home-org-v2',
+        projectRegistryName: 'Test Registry',
+        projectId: 'FORCE-PROJ-001',
+        projectName: 'Force Delete Project',
+        cadTrustProgramId: program.cadTrustProgramId,
+      });
+
+      await ProjectMethodologyV2.create({
+        cadTrustProjectMethodologyId: uuidv4(),
+        cadTrustProjectId: project.cadTrustProjectId,
+        cadTrustMethodologyId: methodology.cadTrustMethodologyId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/methodology/${methodology.cadTrustMethodologyId}`)
+        .query({ force: 'true' })
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.message).to.equal('Methodology delete staged successfully');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: { table: 'methodology', action: 'DELETE' },
+      });
+      expect(stagingRecord).to.exist;
     });
   });
 });

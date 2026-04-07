@@ -292,7 +292,7 @@ export const makePutRequest = async (request, endpoint, id, data) => {
  * @param {string|object} id - Record ID (string for single key, object for composite key)
  * @returns {Promise<object>} - Response body
  */
-export const makeDeleteRequest = async (request, endpoint, id) => {
+export const makeDeleteRequest = async (request, endpoint, id, options = {}) => {
   // Construct full endpoint path with ID
   // All endpoints now use UUID primary keys
   const fullEndpoint = `${endpoint}/${id}`;
@@ -300,8 +300,11 @@ export const makeDeleteRequest = async (request, endpoint, id) => {
   // Note: Request logging is handled by the request wrapper in live-api-helpers.js
   // No need to log here to avoid duplicate logs
 
-  const response = await request
-    .delete(fullEndpoint);
+  let req = request.delete(fullEndpoint);
+  if (options.query) {
+    req = req.query(options.query);
+  }
+  const response = await req;
 
   // Return response object even for non-200 status codes so tests can handle them
   // The response.body will contain the error information

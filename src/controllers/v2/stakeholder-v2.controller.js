@@ -4,6 +4,7 @@ import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 
 import { StagingV2, StakeholderV2, OrganizationsV2 } from '../../models/v2/index.js';
+import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-reference-guards.js';
 import { stakeholderV2Schema } from '../../validations/v2/stakeholder-v2.validations.js';
 import {
   assertV2IfReadOnlyMode,
@@ -254,7 +255,6 @@ export const deleteStakeholderV2 = async (req, res) => {
 
     const { id } = req.params;
 
-    // Verify record exists
     const existingRecord = await StakeholderV2.findByPk(id);
     if (!existingRecord) {
       return res.status(404).json({
@@ -263,12 +263,19 @@ export const deleteStakeholderV2 = async (req, res) => {
       });
     }
 
-    // Stage the delete
+    const force = req.query.force === 'true';
+    if (!force) {
+      const refResult = await checkReferences('stakeholder', id);
+      if (refResult.hasReferences) {
+        return res.status(409).json(buildReferenceConflictBody('stakeholder', refResult));
+      }
+    }
+
     await StagingV2.create({
       uuid: uuidv4(),
       table: 'stakeholder',
       action: 'DELETE',
-      data: JSON.stringify([{ cad_trust_stakeholder_id: id }]), // Use UUID string directly
+      data: JSON.stringify([{ cad_trust_stakeholder_id: id }]),
       committed: false,
       failed_commit: false,
       is_transfer: false,

@@ -1,5 +1,54 @@
 'use strict';
 
+/**
+ * V2 Cascade Delete — Design Rationale
+ *
+ * CADT records fall into two categories with fundamentally different deletion
+ * strategies. Understanding this distinction is critical before modifying any
+ * delete logic.
+ *
+ * ## 1. Project-scoped records — CASCADE on delete
+ *
+ * These are exclusively owned by a single project (or by a single unit in the
+ * case of unit_label). No other project or registry can reference them, so they
+ * are safe to cascade-delete when their parent is removed.
+ *
+ *   project → location, estimation, rating, co_benefit, validation,
+ *             verification, project_methodology (link), stakeholder_projects (link)
+ *   verification → issuance
+ *   issuance → unit
+ *   unit → unit_label
+ *
+ * When a project is deleted, the full chain above is traversed and every child
+ * gets a staged DELETE entry. When a unit is deleted, its unit_label rows are
+ * cascade-staged. The same applies to mid-chain deletes of verification or
+ * issuance — their downstream children must also be staged.
+ *
+ * ## 2. Shared / standalone records — DO NOT cascade
+ *
+ * These exist independently with their own org_uid and can be cross-referenced
+ * by any registry on the network:
+ *
+ *   methodology  — referenced via project_methodology from any project
+ *   stakeholder  — referenced via stakeholder_projects from any project
+ *   program      — referenced via cad_trust_program_id from any project
+ *   label        — referenced via unit_label from any unit
+ *
+ * Hard-deleting a shared record propagates through DataLayer sync to every
+ * subscriber, silently breaking referential integrity for any registry that
+ * still references it. There is no mechanism to notify affected registries.
+ *
+ * These records intentionally do NOT cascade. The correct approaches (in order
+ * of priority) are:
+ *   - Tier 2: Block delete with 409 if local references exist (or allow with
+ *             ?force=true after showing impact)
+ *   - Tier 3: Soft delete / deprecation (the only truly safe distributed
+ *             systems answer — tombstones over hard deletes)
+ *   - Tier 4: Orphan cleanup endpoint for records with zero local references
+ *
+ * See: docs/orphaned-records-analysis.md for the full analysis.
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import {
   StagingV2,
