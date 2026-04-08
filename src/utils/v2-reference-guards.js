@@ -19,6 +19,7 @@ import {
   StagingV2,
 } from '../models/v2/index.js';
 import { Op } from 'sequelize';
+import { toSnakeCase } from './v2-camel-to-snake.js';
 
 const REFERENCE_MAP = {
   methodology: [
@@ -55,13 +56,12 @@ const REFERENCE_MAP = {
   ],
 };
 
-const toSnakeCase = (value) => value.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`);
-
 const countStagedReferences = async (table, snakeFkField, recordId) => {
   const stagedRows = await StagingV2.findAll({
     where: {
       table,
       action: { [Op.in]: ['INSERT', 'UPDATE'] },
+      committed: false,
       failed_commit: false,
     },
     raw: true,
