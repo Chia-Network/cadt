@@ -1,0 +1,68 @@
+name: Docker Smoke Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+      - main
+      - 'v2-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  docker-smoke-test:
+    name: Docker smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build Docker image
+        run: docker build -t cadt-smoke-test .
+
+      - name: Verify native modules load
+        run: |
+          docker run --rm --entrypoint node --workdir /app cadt-smoke-test \
+            --input-type=commonjs -e \
+            "require('sqlite3'); console.log('sqlite3 native module loaded OK')"
+
+      - name: Verify container starts and health endpoints respond
+        run: |
+          trap 'docker rm -f cadt-test > /dev/null 2>&1 || true' EXIT
+
+          docker run -d --name cadt-test \
+            -e USE_SIMULATOR=true \
+            -e BIND_ADDRESS=0.0.0.0 \
+            -p 31310:31310 \
+            cadt-smoke-test
+
+          for i in $(seq 1 60); do
+            if docker logs cadt-test 2>&1 | grep -q "Server listening"; then
+              echo "Server started successfully"
+              break
+            fi
+            if ! docker ps -q --filter "name=cadt-test" | grep -q .; then
+              echo "Container exited unexpectedly:"
+              docker logs cadt-test 2>&1
+              exit 1
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "Timeout waiting for server to start"
+              docker logs cadt-test 2>&1
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "Testing health endpoints..."
+
+          curl -sf http://localhost:31310/health | jq .
+          curl -sf http://localhost:31310/v1/health | jq .
+          curl -sf http://localhost:31310/v2/health | jq .
+
+          echo "All health checks passed"
