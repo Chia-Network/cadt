@@ -2,7 +2,8 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StagingV2, ProgramV2 } from '../../../src/models/v2/index.js';
+import { StagingV2, ProgramV2, ProjectV2 } from '../../../src/models/v2/index.js';
+import { v4 as uuidv4 } from 'uuid';
 import {
   resetV2StagingTable,
   resetV2DataTables,
@@ -425,6 +426,108 @@ describe('V2 Program API - Basic CRUD Tests', function () {
       // Verify staged deletion data
       const stagedData = JSON.parse(stagingRecord.data);
       expect(stagedData[0].cad_trust_program_id).to.equal(program.cadTrustProgramId);
+    });
+  });
+
+  describe('DELETE /v2/program/:id — reference guards', function () {
+    it('should return 409 when projects reference the program', async function () {
+      const program = await ProgramV2.create({
+        cadTrustProgramId: uuidv4(),
+        programName: 'Referenced Program',
+        programRegistry: 'Test Registry',
+        programRegistryActivityId: 'REFGUARD-PROG-001',
+      });
+
+      await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: 'test-home-org-v2',
+        projectRegistryName: 'Test Registry',
+        projectId: 'REFGUARD-PROJ-001',
+        projectName: 'Project Using Program',
+        cadTrustProgramId: program.cadTrustProgramId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/program/${program.cadTrustProgramId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.message).to.include('Cannot delete program');
+      expect(response.body.references).to.be.an('array').with.lengthOf(1);
+      expect(response.body.references[0].table).to.equal('project');
+      expect(response.body.references[0].count).to.equal(1);
+      expect(response.body.hint).to.include('force=true');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: { table: 'program', action: 'DELETE' },
+      });
+      expect(stagingRecord).to.be.null;
+    });
+
+    it('should return 409 when staged project references exist', async function () {
+      const program = await ProgramV2.create({
+        cadTrustProgramId: uuidv4(),
+        programName: 'Staged Referenced Program',
+        programRegistry: 'Test Registry',
+        programRegistryActivityId: 'STAGED-REF-PROG-001',
+      });
+
+      await StagingV2.create({
+        uuid: uuidv4(),
+        table: 'project',
+        action: 'INSERT',
+        data: JSON.stringify([{
+          cad_trust_project_id: uuidv4(),
+          org_uid: 'test-home-org-v2',
+          project_registry_name: 'Test Registry',
+          project_id: 'STAGED-REF-PROJECT-001',
+          project_name: 'Staged Project',
+          cad_trust_program_id: program.cadTrustProgramId,
+        }]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/program/${program.cadTrustProgramId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.references).to.be.an('array').with.lengthOf(1);
+      expect(response.body.references[0].table).to.equal('project');
+      expect(response.body.references[0].count).to.equal(1);
+    });
+
+    it('should allow delete with ?force=true despite references', async function () {
+      const program = await ProgramV2.create({
+        cadTrustProgramId: uuidv4(),
+        programName: 'Force Delete Program',
+        programRegistry: 'Test Registry',
+        programRegistryActivityId: 'FORCE-PROG-001',
+      });
+
+      await ProjectV2.create({
+        cadTrustProjectId: uuidv4(),
+        orgUid: 'test-home-org-v2',
+        projectRegistryName: 'Test Registry',
+        projectId: 'FORCE-PROJ-001',
+        projectName: 'Project Using Program for Force',
+        cadTrustProgramId: program.cadTrustProgramId,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/program/${program.cadTrustProgramId}`)
+        .query({ force: 'true' })
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.message).to.equal('Program delete staged successfully');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: { table: 'program', action: 'DELETE' },
+      });
+      expect(stagingRecord).to.exist;
     });
   });
 });

@@ -1890,18 +1890,36 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustMethodologyId`.
 
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `project_methodology` records reference this methodology, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/methodology/9b9bb857-c71b-4649-b805-a289db27dc1c' \
 --header 'Content-Type: application/json'
 ```
 
-Response
+Response (success — no references)
 ```json
 {
-  "message": "Methodology deletion staged successfully",
+  "message": "Methodology delete staged successfully",
   "success": true
 }
+```
+
+Response (409 — references exist)
+```json
+{
+  "success": false,
+  "message": "Cannot delete methodology: referenced by 2 project-methodology links",
+  "references": [{ "table": "project_methodology", "count": 2 }],
+  "hint": "Remove all references first, or use ?force=true to delete anyway"
+}
+```
+
+Force delete (bypass guard)
+```shell
+curl --location --request DELETE 'localhost:31310/v2/methodology/9b9bb857-c71b-4649-b805-a289db27dc1c?force=true' \
+--header 'Content-Type: application/json'
 ```
 
 ---
@@ -2058,18 +2076,36 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustProgramId`.
 
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `project` records reference this program via `cadTrustProgramId`, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/program/51ca9638-22b0-4e14-ae7a-c09d23b37b58' \
 --header 'Content-Type: application/json'
 ```
 
-Response
+Response (success — no references)
 ```json
 {
-  "message": "Program deletion staged successfully",
+  "message": "Program delete staged successfully",
   "success": true
 }
+```
+
+Response (409 — references exist)
+```json
+{
+  "success": false,
+  "message": "Cannot delete program: referenced by 3 projects",
+  "references": [{ "table": "project", "count": 3 }],
+  "hint": "Remove all references first, or use ?force=true to delete anyway"
+}
+```
+
+Force delete (bypass guard)
+```shell
+curl --location --request DELETE 'localhost:31310/v2/program/51ca9638-22b0-4e14-ae7a-c09d23b37b58?force=true' \
+--header 'Content-Type: application/json'
 ```
 
 ---
@@ -4548,18 +4584,36 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustStakeholderId`.
 
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `stakeholder_projects` records reference this stakeholder, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/stakeholder/e880047e-cdf4-45bb-a9df-e706fa427713' \
 --header 'Content-Type: application/json'
 ```
 
-Response
+Response (success — no references)
 ```json
 {
-  "message": "Stakeholder deletion staged successfully",
+  "message": "Stakeholder delete staged successfully",
   "success": true
 }
+```
+
+Response (409 — references exist)
+```json
+{
+  "success": false,
+  "message": "Cannot delete stakeholder: referenced by 1 stakeholder-project links",
+  "references": [{ "table": "stakeholder_projects", "count": 1 }],
+  "hint": "Remove all references first, or use ?force=true to delete anyway"
+}
+```
+
+Force delete (bypass guard)
+```shell
+curl --location --request DELETE 'localhost:31310/v2/stakeholder/e880047e-cdf4-45bb-a9df-e706fa427713?force=true' \
+--header 'Content-Type: application/json'
 ```
 
 ---
@@ -4858,18 +4912,36 @@ Response
 
 **Note**: The ID in the URL path is the `cadTrustLabelId`.
 
+**Referential integrity**: If any committed or staged (`INSERT`/`UPDATE`) `unit_label` records reference this label, the request returns `409 Conflict`. Pass `?force=true` to bypass the guard and stage the delete anyway.
+
 Request
 ```shell
 curl --location --request DELETE 'localhost:31310/v2/label/dcacd68e-1cfb-4f06-9798-efa0aacda42c' \
 --header 'Content-Type: application/json'
 ```
 
-Response
+Response (success — no references)
 ```json
 {
-  "message": "Label deletion staged successfully",
+  "message": "Label delete staged successfully",
   "success": true
 }
+```
+
+Response (409 — references exist)
+```json
+{
+  "success": false,
+  "message": "Cannot delete label: referenced by 4 unit-label links",
+  "references": [{ "table": "unit_label", "count": 4 }],
+  "hint": "Remove all references first, or use ?force=true to delete anyway"
+}
+```
+
+Force delete (bypass guard)
+```shell
+curl --location --request DELETE 'localhost:31310/v2/label/dcacd68e-1cfb-4f06-9798-efa0aacda42c?force=true' \
+--header 'Content-Type: application/json'
 ```
 
 ---
