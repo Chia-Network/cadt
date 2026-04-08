@@ -80,6 +80,7 @@ const addJobToScheduler = (job) => {
   if (scheduler.existsById(job.id)) {
     scheduler.stopById(job.id);
     scheduler.removeById(job.id);
+    logger.info(`[SCHEDULER] Job ID conflict: Stopping and replacing existing job ${job.id}`);
   }
 
   jobRegistry[job.id] = job;
@@ -124,7 +125,6 @@ const start = async (enableV1 = true, enableV2 = true) => {
       cleanUpFailedOrg,
     ];
     defaultJobs.forEach(addJobToScheduler);
-    });
   } else {
     logger.info('[v1]: V1 is disabled in config - skipping V1 scheduler tasks');
   }
