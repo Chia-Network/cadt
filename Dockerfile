@@ -1,6 +1,6 @@
 FROM mikefarah/yq:4 AS yq
 
-FROM node:24
+FROM node:24-trixie
 
 # Copy yq from the yq image
 COPY --from=yq /usr/bin/yq /usr/local/bin/yq
@@ -15,7 +15,7 @@ COPY src /app/src/
 COPY tests /app/tests/
 WORKDIR /app
 
-RUN npm install
+RUN npm install && npm rebuild sqlite3 --build-from-source
 
 RUN mkdir -p /root/.chia/mainnet/config/ssl && mkdir -p /root/.chia/mainnet/cadt/v1
 
