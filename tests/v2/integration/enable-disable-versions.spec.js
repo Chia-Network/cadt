@@ -348,6 +348,29 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       // Check that no tasks are registered
       expect(Object.keys(scheduler.jobRegistry)).to.have.length(0);
     });
+
+    it('register override old once task id collision happend', async function () {
+      await scheduler.start(true, true);
+      const { SimpleIntervalJob, Task } = await import('toad-scheduler');
+      const newtask = new Task('new-mirror-check', async () => {});
+      const job = new SimpleIntervalJob(
+        {
+          seconds: 300,
+          runImmediately: true,
+        },
+        newtask,
+        { id: 'mirror-check', preventOverrun: true },
+      );
+
+      const oldjob = scheduler.jobRegistry['mirror-check'];
+      scheduler.addJobToScheduler(job);
+      const newjob = scheduler.jobRegistry['mirror-check'];
+      expect(newjob).not.to.equal(oldjob);
+      expect(newjob).to.equal(job);
+      // since the old job should be stopped before removed from jobRegistry, should check status
+      expect(oldjob.getStatus()).to.equal('stopped'); 
+      expect(newjob.getStatus()).to.equal('running');
+    });
   });
 
   describe('API Endpoint Behavior', function () {
