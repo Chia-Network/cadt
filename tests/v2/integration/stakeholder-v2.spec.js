@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { StakeholderV2, StagingV2 } from '../../../src/models/v2/index.js';
+import { StakeholderV2, StagingV2, StakeholderProjectV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
 
@@ -527,6 +527,101 @@ describe('Stakeholder V2 Endpoint Integration Tests', function () {
       expect(response.body).to.have.property('message');
       expect(response.body.message).to.equal('Stakeholder delete staged successfully');
       expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/stakeholder/:id — reference guards', function () {
+    beforeEach(async function () {
+      await StagingV2.destroy({ where: {} });
+      await StakeholderProjectV2.destroy({ where: {} });
+    });
+
+    it('should return 409 when stakeholder_projects references exist', async function () {
+      const stakeholder = await StakeholderV2.create({
+        cadTrustStakeholderId: uuidv4(),
+        stakeholderName: 'Referenced Stakeholder',
+        stakeholderType: 'Owner',
+      });
+
+      await StakeholderProjectV2.create({
+        cadTrustStakeholderProjectId: uuidv4(),
+        cadTrustStakeholderId: stakeholder.cadTrustStakeholderId,
+        cadTrustProjectId: uuidv4(),
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/stakeholder/${stakeholder.cadTrustStakeholderId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.message).to.include('Cannot delete stakeholder');
+      expect(response.body.references).to.be.an('array').with.lengthOf(1);
+      expect(response.body.references[0].table).to.equal('stakeholder_projects');
+      expect(response.body.references[0].count).to.equal(1);
+      expect(response.body.hint).to.include('force=true');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: { table: 'stakeholder', action: 'DELETE' },
+      });
+      expect(stagingRecord).to.be.null;
+    });
+
+    it('should return 409 when staged stakeholder_projects references exist', async function () {
+      const stakeholder = await StakeholderV2.create({
+        cadTrustStakeholderId: uuidv4(),
+        stakeholderName: 'Staged Referenced Stakeholder',
+        stakeholderType: 'Owner',
+      });
+
+      await StagingV2.create({
+        uuid: uuidv4(),
+        table: 'stakeholder_projects',
+        action: 'INSERT',
+        data: JSON.stringify([{
+          cad_trust_stakeholder_project_id: uuidv4(),
+          cad_trust_stakeholder_id: stakeholder.cadTrustStakeholderId,
+          cad_trust_project_id: uuidv4(),
+        }]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/stakeholder/${stakeholder.cadTrustStakeholderId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.references).to.be.an('array').with.lengthOf(1);
+      expect(response.body.references[0].table).to.equal('stakeholder_projects');
+      expect(response.body.references[0].count).to.equal(1);
+    });
+
+    it('should allow delete with ?force=true despite references', async function () {
+      const stakeholder = await StakeholderV2.create({
+        cadTrustStakeholderId: uuidv4(),
+        stakeholderName: 'Force Delete Stakeholder',
+        stakeholderType: 'Consultant',
+      });
+
+      await StakeholderProjectV2.create({
+        cadTrustStakeholderProjectId: uuidv4(),
+        cadTrustStakeholderId: stakeholder.cadTrustStakeholderId,
+        cadTrustProjectId: uuidv4(),
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/stakeholder/${stakeholder.cadTrustStakeholderId}`)
+        .query({ force: 'true' })
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.message).to.equal('Stakeholder delete staged successfully');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: { table: 'stakeholder', action: 'DELETE' },
+      });
+      expect(stagingRecord).to.exist;
     });
   });
 });

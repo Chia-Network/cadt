@@ -289,7 +289,7 @@ describe('Methodology Live API Validation Tests', function () {
       // Delete in reverse order
       for (let i = idsToDelete.length - 1; i >= 0; i--) {
         const id = idsToDelete[i];
-        const response = await makeDeleteRequest(request, '/v2/methodology', id);
+        const response = await makeDeleteRequest(request, '/v2/methodology', id, { query: { force: 'true' } });
         expect(response.success).to.be.true;
 
         if (shouldAutoCommit()) {

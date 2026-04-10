@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Sequelize } from 'sequelize';
 
 import { StagingV2, ProgramV2, OrganizationsV2 } from '../../models/v2/index.js';
+import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-reference-guards.js';
 
 import {
   optionallyPaginatedResponse,
@@ -256,7 +257,6 @@ export const destroy = async (req, res) => {
 
     const { id } = req.params;
 
-    // Verify record exists
     const existingRecord = await ProgramV2.findByPk(id);
     if (!existingRecord) {
       return res.status(404).json({
@@ -265,12 +265,19 @@ export const destroy = async (req, res) => {
       });
     }
 
-    // Stage the delete
+    const force = req.query.force === 'true';
+    if (!force) {
+      const refResult = await checkReferences('program', id);
+      if (refResult.hasReferences) {
+        return res.status(409).json(buildReferenceConflictBody('program', refResult));
+      }
+    }
+
     await StagingV2.create({
       uuid: uuidv4(),
       table: 'program',
       action: 'DELETE',
-      data: JSON.stringify([{ cad_trust_program_id: id }]), // Use UUID string directly
+      data: JSON.stringify([{ cad_trust_program_id: id }]),
       committed: false,
       failed_commit: false,
       is_transfer: false,

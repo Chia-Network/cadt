@@ -4,6 +4,7 @@ import _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 
 import { StagingV2, LabelV2, OrganizationsV2 } from '../../models/v2/index.js';
+import { checkReferences, buildReferenceConflictBody } from '../../utils/v2-reference-guards.js';
 import { labelV2Schema } from '../../validations/v2/label-v2.validations.js';
 import {
   assertV2IfReadOnlyMode,
@@ -263,7 +264,6 @@ export const deleteLabelV2 = async (req, res) => {
 
     const { id } = req.params;
 
-    // Verify record exists
     const existingRecord = await LabelV2.findByPk(id);
     if (!existingRecord) {
       return res.status(404).json({
@@ -272,12 +272,19 @@ export const deleteLabelV2 = async (req, res) => {
       });
     }
 
-    // Stage the delete
+    const force = req.query.force === 'true';
+    if (!force) {
+      const refResult = await checkReferences('label', id);
+      if (refResult.hasReferences) {
+        return res.status(409).json(buildReferenceConflictBody('label', refResult));
+      }
+    }
+
     await StagingV2.create({
       uuid: uuidv4(),
       table: 'label',
       action: 'DELETE',
-      data: JSON.stringify([{ cad_trust_label_id: id }]), // Use UUID string directly
+      data: JSON.stringify([{ cad_trust_label_id: id }]),
       committed: false,
       failed_commit: false,
       is_transfer: false,

@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import supertest from 'supertest';
 import app from '../../../src/server.js';
 import { prepareV2Db } from '../../../src/database/v2/index.js';
-import { LabelV2, StagingV2, OrganizationsV2 } from '../../../src/models/v2/index.js';
+import { LabelV2, StagingV2, OrganizationsV2, UnitLabelV2 } from '../../../src/models/v2/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { createV2TestHomeOrg } from '../utils/v2-test-helpers.js';
 
@@ -615,6 +615,101 @@ describe('Label V2 Endpoint Integration Tests', function () {
       expect(response.body).to.have.property('message');
       expect(response.body.message).to.equal('Label delete staged successfully');
       expect(response.body).to.have.property('success', true);
+    });
+  });
+
+  describe('DELETE /v2/label/:id — reference guards', function () {
+    beforeEach(async function () {
+      await StagingV2.destroy({ where: {} });
+      await UnitLabelV2.destroy({ where: {} });
+    });
+
+    it('should return 409 when unit_label references exist', async function () {
+      const label = await LabelV2.create({
+        cadTrustLabelId: uuidv4(),
+        labelName: 'Referenced Label',
+        labelType: 'Certification',
+      });
+
+      await UnitLabelV2.create({
+        cadTrustUnitLabelId: uuidv4(),
+        cadTrustLabelId: label.cadTrustLabelId,
+        cadTrustUnitId: uuidv4(),
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/label/${label.cadTrustLabelId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.message).to.include('Cannot delete label');
+      expect(response.body.references).to.be.an('array').with.lengthOf(1);
+      expect(response.body.references[0].table).to.equal('unit_label');
+      expect(response.body.references[0].count).to.equal(1);
+      expect(response.body.hint).to.include('force=true');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: { table: 'label', action: 'DELETE' },
+      });
+      expect(stagingRecord).to.be.null;
+    });
+
+    it('should return 409 when staged unit_label references exist', async function () {
+      const label = await LabelV2.create({
+        cadTrustLabelId: uuidv4(),
+        labelName: 'Staged Referenced Label',
+        labelType: 'Certification',
+      });
+
+      await StagingV2.create({
+        uuid: uuidv4(),
+        table: 'unit_label',
+        action: 'INSERT',
+        data: JSON.stringify([{
+          cad_trust_unit_label_id: uuidv4(),
+          cad_trust_label_id: label.cadTrustLabelId,
+          cad_trust_unit_id: uuidv4(),
+        }]),
+        committed: false,
+        failed_commit: false,
+        is_transfer: false,
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/label/${label.cadTrustLabelId}`)
+        .expect(409);
+
+      expect(response.body.success).to.be.false;
+      expect(response.body.references).to.be.an('array').with.lengthOf(1);
+      expect(response.body.references[0].table).to.equal('unit_label');
+      expect(response.body.references[0].count).to.equal(1);
+    });
+
+    it('should allow delete with ?force=true despite references', async function () {
+      const label = await LabelV2.create({
+        cadTrustLabelId: uuidv4(),
+        labelName: 'Force Delete Label',
+        labelType: 'Certification',
+      });
+
+      await UnitLabelV2.create({
+        cadTrustUnitLabelId: uuidv4(),
+        cadTrustLabelId: label.cadTrustLabelId,
+        cadTrustUnitId: uuidv4(),
+      });
+
+      const response = await supertest(app)
+        .delete(`/v2/label/${label.cadTrustLabelId}`)
+        .query({ force: 'true' })
+        .expect(200);
+
+      expect(response.body.success).to.be.true;
+      expect(response.body.message).to.equal('Label delete staged successfully');
+
+      const stagingRecord = await StagingV2.findOne({
+        where: { table: 'label', action: 'DELETE' },
+      });
+      expect(stagingRecord).to.exist;
     });
   });
 });
