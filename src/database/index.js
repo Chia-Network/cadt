@@ -165,20 +165,29 @@ export const prepareDb = async () => {
     getConfig().MIRROR_DB.DB_HOST &&
     getConfig().MIRROR_DB.DB_HOST !== ''
   ) {
-    const connection = await mysql.createConnection({
-      host: getConfig().MIRROR_DB.DB_HOST,
-      port: 3306,
-      user: getConfig().MIRROR_DB.DB_USERNAME,
-      password: getConfig().MIRROR_DB.DB_PASSWORD,
-    });
+    try {
+      const connection = await mysql.createConnection({
+        host: getConfig().MIRROR_DB.DB_HOST,
+        port: 3306,
+        user: getConfig().MIRROR_DB.DB_USERNAME,
+        password: getConfig().MIRROR_DB.DB_PASSWORD,
+      });
 
-    await connection.query(
-      `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}\`;`,
-    );
+      try {
+        await connection.query(
+          `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}\`;`,
+        );
+      } finally {
+        await connection.end();
+      }
 
-    const db = new Sequelize(config[mirrorConfig]);
+      const db = new Sequelize(config[mirrorConfig]);
 
-    await checkForMigrations(db);
+      await checkForMigrations(db);
+    } catch (error) {
+      // Non-fatal: mirror DB failure should not block main database startup
+      logger.error('[v1]: Error setting up MySQL mirror database:', error);
+    }
   } else if (mirrorConfig == 'mirrorTest') {
     await checkForMigrations(sequelizeMirror);
   }
