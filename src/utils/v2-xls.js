@@ -178,7 +178,7 @@ function parseArrayFields(row) {
  * staging data to use snake_case field names, matching what the normal API
  * controllers produce.
  */
-function toDbFieldNames(row, modelClass) {
+export function toDbFieldNames(row, modelClass) {
   const attrs = modelClass.rawAttributes;
   const result = {};
   for (const [key, value] of Object.entries(row)) {

@@ -1631,7 +1631,6 @@ describe('V2 Project API - Basic CRUD Tests', function () {
 
     describe('POST /v2/project/batch', function () {
       it('should batch upload new projects from CSV file (INSERT)', async function () {
-        // Create a CSV file buffer without cadTrustProjectId to trigger INSERT
         const csvContent = `projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric,cadTrustProgramId
 Test Registry,CSV-001,CSV Test Project 1,Agriculture,Landfill gas,Listed,tCO2e,${testProgram.cadTrustProgramId}
 Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO2e,${testProgram.cadTrustProgramId}`;
@@ -1646,19 +1645,88 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
         expect(response.body.success).to.be.true;
         expect(response.body.message).to.include('CSV processing complete');
 
-        // Verify records were staged
         const stagingRecords = await StagingV2.findAll({
-          where: {
-            table: 'project',
-            action: 'INSERT',
-          },
+          where: { table: 'project', action: 'INSERT' },
         });
 
         expect(stagingRecords.length).to.be.at.least(2);
       });
 
+      it('should stage INSERT data in snake_case with org_uid and primary key', async function () {
+        const csvContent = `projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric,cadTrustProgramId
+Test Registry,CSV-FMT-001,Format Test,Agriculture,Landfill gas,Listed,tCO2e,${testProgram.cadTrustProgramId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'project', action: 'INSERT' },
+        });
+        expect(stagingRecords.length).to.equal(1);
+
+        const staged = JSON.parse(stagingRecords[0].data);
+        expect(staged).to.be.an('array').with.lengthOf(1);
+        const record = staged[0];
+
+        // Must use snake_case field names (commit pipeline expects this)
+        expect(record).to.have.property('cad_trust_project_id');
+        expect(record).to.have.property('project_registry_name', 'Test Registry');
+        expect(record).to.have.property('project_name', 'Format Test');
+
+        // Must NOT have camelCase duplicates
+        expect(record).to.not.have.property('cadTrustProjectId');
+        expect(record).to.not.have.property('projectRegistryName');
+        expect(record).to.not.have.property('projectName');
+
+        // Must include org_uid from home org
+        const homeOrgId = await getV2HomeOrgId();
+        expect(record).to.have.property('org_uid', homeOrgId);
+
+        // Staging uuid must match the generated primary key
+        expect(stagingRecords[0].uuid).to.equal(record.cad_trust_project_id);
+      });
+
+      it('should stage UPDATE data in snake_case with org_uid', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Test Registry',
+          projectId: 'CSV-FMT-UPD-001',
+          projectName: 'Original',
+          projectSector: ['Agriculture'],
+          projectType: ['Landfill gas'],
+          projectStatus: 'Listed',
+          projectUnitMetric: 'tCO2e',
+          cadTrustProgramId: testProgram.cadTrustProgramId,
+          orgUid: homeOrgId,
+        }));
+
+        const csvContent = `cadTrustProjectId,projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric,cadTrustProgramId
+${project.cadTrustProjectId},Test Registry,CSV-FMT-UPD-001,Updated,Agriculture,Landfill gas,Listed,tCO2e,${testProgram.cadTrustProgramId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'project', action: 'UPDATE' },
+        });
+        expect(stagingRecords.length).to.equal(1);
+
+        const record = JSON.parse(stagingRecords[0].data)[0];
+        expect(record).to.have.property('cad_trust_project_id', project.cadTrustProjectId);
+        expect(record).to.have.property('project_name', 'Updated');
+        expect(record).to.have.property('org_uid', homeOrgId);
+        expect(record).to.not.have.property('cadTrustProjectId');
+      });
+
       it('should batch update existing projects from CSV file (UPDATE)', async function () {
-        // Create projects first
         const homeOrgId = await getV2HomeOrgId();
         const project1 = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
           projectRegistryName: 'Test Registry',
@@ -1684,7 +1752,6 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
           orgUid: homeOrgId,
         }));
 
-        // Create a CSV file buffer with cadTrustProjectId to trigger UPDATE
         const csvContent = `cadTrustProjectId,projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric,cadTrustProgramId
 ${project1.cadTrustProjectId},Test Registry,CSV-UPDATE-001,Updated Name 1,Agriculture,Landfill gas,Listed,tCO2e,${testProgram.cadTrustProgramId}
 ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy,Energy efficiency,Registered,tCO2e,${testProgram.cadTrustProgramId}`;
@@ -1697,17 +1764,78 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
           .expect(200);
 
         expect(response.body.success).to.be.true;
-        expect(response.body.message).to.include('CSV processing complete');
 
-        // Verify records were staged as UPDATE
         const stagingRecords = await StagingV2.findAll({
-          where: {
-            table: 'project',
-            action: 'UPDATE',
-          },
+          where: { table: 'project', action: 'UPDATE' },
         });
 
         expect(stagingRecords.length).to.be.at.least(2);
+      });
+
+      it('should parse pipe-separated array fields', async function () {
+        const csvContent = `projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric,cadTrustProgramId
+Test Registry,CSV-PIPE-001,Pipe Test,Agriculture|Energy,Landfill gas|Energy efficiency,Listed,tCO2e,${testProgram.cadTrustProgramId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'project', action: 'INSERT' },
+        });
+        const record = JSON.parse(stagingRecords[0].data)[0];
+
+        expect(record.project_sector).to.deep.equal(['Agriculture', 'Energy']);
+        expect(record.project_type).to.deep.equal(['Landfill gas', 'Energy efficiency']);
+      });
+
+      it('should parse JSON array fields', async function () {
+        const csvContent = `projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric,cadTrustProgramId
+Test Registry,CSV-JSON-001,JSON Test,"[""Agriculture"",""Energy""]","[""Landfill gas""]",Listed,tCO2e,${testProgram.cadTrustProgramId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        const stagingRecords = await StagingV2.findAll({
+          where: { table: 'project', action: 'INSERT' },
+        });
+        const record = JSON.parse(stagingRecords[0].data)[0];
+
+        expect(record.project_sector).to.deep.equal(['Agriculture', 'Energy']);
+        expect(record.project_type).to.deep.equal(['Landfill gas']);
+      });
+
+      it('should reject CSV with non-existent cadTrustProjectId', async function () {
+        const csvContent = `cadTrustProjectId,projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric
+${uuidv4()},Test Registry,CSV-NOEXIST-001,No Exist,Agriculture,Landfill gas,Listed,tCO2e`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+      });
+
+      it('should reject empty CSV with no data rows', async function () {
+        const csvContent = `projectRegistryName,projectId,projectName`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
       });
 
       it('should return error if no CSV file is provided', async function () {

@@ -14,7 +14,7 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
-import { parseV2Xlsx, stageV2XlsRecords } from '../../utils/v2-xls.js';
+import { parseV2Xlsx, stageV2XlsRecords, toDbFieldNames } from '../../utils/v2-xls.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { UnitLabelV2 } from './unit-label-v2.model.js';
 import { loggerV2 } from '../../config/logger.js';
@@ -426,17 +426,21 @@ class UnitV2 extends Model {
 
     const recordsToCreate = [];
 
+    const homeOrg = await OrganizationsV2.getHomeOrg(false);
+    if (!homeOrg) {
+      throw new Error('No home organization found');
+    }
+    const orgUid = homeOrg.org_uid;
+
     return new Promise((resolve, reject) => {
       csv()
         .fromStream(stream)
         .subscribe(async (newRecord) => {
           let action = 'UPDATE';
 
-          // Convert camelCase to snake_case for V2
           const unitId = newRecord.cadTrustUnitId || newRecord.cad_trust_unit_id;
 
           if (unitId) {
-            // Check if unit exists
             const possibleExistingRecord = await UnitV2.findByPk(unitId);
 
             if (!possibleExistingRecord) {
@@ -447,34 +451,22 @@ class UnitV2 extends Model {
               );
               return;
             }
-
-            // Verify it belongs to home org (for updates)
-            const homeOrg = await OrganizationsV2.getHomeOrg();
-            if (!homeOrg) {
-              reject(new Error('No home organization found'));
-              return;
-            }
           } else {
-            // New unit - generate UUID
             newRecord.cadTrustUnitId = uuidv4();
-            const homeOrg = await OrganizationsV2.getHomeOrg();
-            if (!homeOrg) {
-              reject(new Error('No home organization found'));
-              return;
-            }
             action = 'INSERT';
           }
 
-          // Update unit properties (handle serial ID from blocks)
-          if (newRecord.unitStartBlock && newRecord.unitEndBlock) {
-            newRecord.unitSerialId = `${newRecord.unitStartBlock}-${newRecord.unitEndBlock}`;
-          }
+          UnitV2.prepareXlsRow(newRecord);
+
+          const uuid = newRecord.cadTrustUnitId || newRecord.cad_trust_unit_id;
+          const dbRecord = toDbFieldNames(newRecord, UnitV2);
+          dbRecord.org_uid = orgUid;
 
           const stagedData = {
-            uuid: newRecord.cadTrustUnitId,
-            action: action,
+            uuid,
+            action,
             table: 'unit',
-            data: JSON.stringify([newRecord]),
+            data: JSON.stringify([dbRecord]),
           };
 
           recordsToCreate.push(stagedData);
