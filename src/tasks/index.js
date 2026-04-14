@@ -77,16 +77,16 @@ const waitForDataLayerAvailable = async (maxWaitMs = 300000, pollIntervalMs = 50
 const jobRegistry = {};
 
 const addJobToScheduler = (job) => {
-  try {
-    if (scheduler.existsById(job.id)) {
+  if (scheduler.existsById(job.id)) {
+    logger.debug(`[SCHEDULER] Stopping and replacing existing job ${job.id}`);
+    try {
       scheduler.stopById(job.id);
-      scheduler.removeById(job.id);
-      logger.debug(`[SCHEDULER] Stopping and replacing existing job ${job.id}`);
+    } catch (error) {
+      logger.info(`[SCHEDULER] fail to stop job ${job.id}: ${error.message}, force to replace it`);
     }
-  } catch (error) {
-    // ignore the job stopping fail
+    scheduler.removeById(job.id);
   }
-
+  
   jobRegistry[job.id] = job;
   scheduler.addSimpleIntervalJob(job);
 };
