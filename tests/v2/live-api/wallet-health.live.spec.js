@@ -35,9 +35,9 @@ describe('Wallet Health - Live', function () {
 
   describe('CADT /health/wallet endpoint', function () {
     it('should report DataLayer wallet as available', async function () {
-      // Try v2 first, fall back to v1
+      // Try v2 first, fall back to v1 (v2 returns 403 or 404 when disabled)
       let res = await request.get('/v2/health/wallet');
-      if (res.status === 404) {
+      if (res.status === 403 || res.status === 404) {
         res = await request.get('/v1/health/wallet');
       }
       expect(res.status).to.equal(200);

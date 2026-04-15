@@ -407,13 +407,13 @@ jobs:
           TEST_API_HOST: 127.0.0.1
         run: |
           echo "########################################################"
-          echo "Running wallet health sanity check"
-          echo "########################################################"
-          npm run test:v2:live:wallet-health
-          echo "########################################################"
           echo "Running organization creation tests"
           echo "########################################################"
           npm run test:v2:live:organization:create
+          echo "########################################################"
+          echo "Running wallet health sanity check"
+          echo "########################################################"
+          npm run test:v2:live:wallet-health
           echo "########################################################"
           echo "Running data tests"
           echo "########################################################"
@@ -779,13 +779,13 @@ jobs:
           TEST_API_HOST: 127.0.0.1
         run: |
           echo "########################################################"
-          echo "Running wallet health sanity check"
-          echo "########################################################"
-          npm run test:v2:live:wallet-health
-          echo "########################################################"
           echo "Running V1 organization creation tests"
           echo "########################################################"
           npm run test:v1:live:organization:create
+          echo "########################################################"
+          echo "Running wallet health sanity check"
+          echo "########################################################"
+          npm run test:v2:live:wallet-health
           echo "########################################################"
           echo "Running V1 data tests"
           echo "########################################################"
