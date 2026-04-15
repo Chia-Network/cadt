@@ -21,6 +21,23 @@ jobs:
     name: Build Binaries
     runs-on: ${{ matrix.runs-on }}
     strategy:
+      # GLIBC compatibility note for Linux runners:
+      #
+      # The sqlite3 npm package includes a native addon (node_sqlite3.node) that
+      # links against the system GLIBC at compile time. The compiled binary requires
+      # at least the GLIBC version present on the build system at runtime.
+      #
+      # Our .deb packages target Ubuntu 22.04+ (GLIBC 2.35). Using ubuntu-latest
+      # (currently 24.04, GLIBC 2.39) produces binaries that crash on 22.04 with:
+      #   Error: GLIBC_2.38 not found (required by node_sqlite3.node)
+      #
+      # We pin Linux runners to ubuntu-22.04 so the native addon is compiled against
+      # GLIBC 2.35, ensuring compatibility with all non-EOL Ubuntu LTS releases.
+      # The "Rebuild sqlite3 from source" step below is also required because
+      # npm install downloads prebuilt binaries compiled against a newer GLIBC.
+      #
+      # When updating Linux runners, verify the target GLIBC against the oldest
+      # Ubuntu LTS you intend to support. Ubuntu 22.04 support ends May 2027.
       matrix:
         include:
           - runs-on: ubuntu-22.04
@@ -48,7 +65,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
-      - name: Setup Node 20.x
+      - name: Setup Node 24.x
         uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -87,6 +104,9 @@ jobs:
           node --version
           npm install
 
+      # npm install downloads prebuilt node_sqlite3.node binaries via node-pre-gyp.
+      # These prebuilts are compiled against a newer GLIBC than our target (2.35).
+      # Force a source rebuild so the addon links against the runner's GLIBC instead.
       - name: Rebuild sqlite3 from source for GLIBC compatibility
         if: contains(matrix.runs-on, 'ubuntu')
         run: npm rebuild sqlite3 --build-from-source
