@@ -938,14 +938,19 @@ export const batchUpload = async (req, res) => {
       });
     }
 
-    // Use the model's batchUpload method
-    await UnitV2.batchUpload({ data: req.file.buffer });
+    const result = await UnitV2.batchUpload({ data: req.file.buffer });
 
-    res.json({
+    const response = {
       message:
         'CSV processing complete, your records have been added to the staging table.',
       success: true,
-    });
+    };
+
+    if (result.errors && result.errors.length > 0) {
+      response.errors = result.errors;
+    }
+
+    res.json(response);
   } catch (error) {
     loggerV2.error('[v2]: Batch Upload Failed.', error);
     res.status(400).json({

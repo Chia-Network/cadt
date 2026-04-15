@@ -1576,8 +1576,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
     });
 
     describe('POST /v2/unit/batch', function () {
-      it('should batch upload new units from CSV file (INSERT)', async function () {
-        // Create a CSV file buffer without cadTrustUnitId to trigger INSERT
+      it('should batch upload new units from CSV file (INSERT) with snake_case staging data', async function () {
         const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
 CSV-UNIT-001,1000,2000,50,Avoidance - nature,2024,Issued,${testIssuanceForAdvanced.cadTrustIssuanceId}
 CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
@@ -1592,26 +1591,30 @@ CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvan
         expect(response.body.success).to.be.true;
         expect(response.body.message).to.include('CSV processing complete');
 
-        // Verify records were staged
         const stagingRecords = await StagingV2.findAll({
-          where: {
-            table: 'unit',
-            action: 'INSERT',
-          },
+          where: { table: 'unit', action: 'INSERT' },
         });
 
         expect(stagingRecords.length).to.be.at.least(2);
+
+        // Verify staging data uses snake_case DB field names
+        const data = JSON.parse(stagingRecords[0].data)[0];
+        expect(data).to.have.property('unit_serial_id');
+        expect(data).to.have.property('unit_start_block');
+        expect(data).to.have.property('org_uid');
       });
 
-      it('should batch update existing units from CSV file (UPDATE)', async function () {
-        // Create units first
+      it('should batch update existing units from CSV file (UPDATE) and merge with existing data', async function () {
         const homeOrgId = await getV2HomeOrgId();
         const unit1 = await UnitV2.create(addUuidIfNeeded('UnitV2', {
           unitSerialId: 'CSV-UPDATE-001',
           unitStartBlock: '1000',
           unitEndBlock: '2000',
           unitCount: 50,
+          unitType: 'Avoidance - nature',
           unitVintageYear: 2024,
+          unitStatus: 'Issued',
+          unitLink: 'https://example.com/original-link',
           cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
           orgUid: homeOrgId,
         }));
@@ -1626,10 +1629,10 @@ CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvan
           orgUid: homeOrgId,
         }));
 
-        // Create a CSV file buffer with cadTrustUnitId to trigger UPDATE
-        const csvContent = `cadTrustUnitId,unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
-${unit1.cadTrustUnitId},CSV-UPDATE-001,1000,2000,60,Avoidance - nature,2024,Issued,${testIssuanceForAdvanced.cadTrustIssuanceId}
-${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,Held,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+        // CSV only updates unitCount — other fields should be merged from DB
+        const csvContent = `cadTrustUnitId,unitCount
+${unit1.cadTrustUnitId},60
+${unit2.cadTrustUnitId},80`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -1641,15 +1644,22 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
         expect(response.body.success).to.be.true;
         expect(response.body.message).to.include('CSV processing complete');
 
-        // Verify records were staged as UPDATE
         const stagingRecords = await StagingV2.findAll({
-          where: {
-            table: 'unit',
-            action: 'UPDATE',
-          },
+          where: { table: 'unit', action: 'UPDATE' },
         });
 
         expect(stagingRecords.length).to.be.at.least(2);
+
+        // Verify merge: staged data should contain ALL unit fields
+        const staged1 = stagingRecords.find(r => r.uuid === unit1.cadTrustUnitId);
+        expect(staged1).to.exist;
+        const data1 = JSON.parse(staged1.data)[0];
+        expect(data1.unit_count).to.equal('60');
+        // Fields NOT in CSV should be preserved from the DB
+        expect(data1.unit_serial_id).to.equal('CSV-UPDATE-001');
+        expect(data1.unit_start_block).to.equal('1000');
+        expect(data1.unit_link).to.equal('https://example.com/original-link');
+        expect(data1.org_uid).to.equal(homeOrgId);
       });
 
       it('should return error if no CSV file is provided', async function () {
@@ -1659,6 +1669,206 @@ ${unit2.cadTrustUnitId},CSV-UPDATE-002,2000,3000,80,Reduction - technical,2024,H
 
         expect(response.body.success).to.be.false;
         expect(response.body.message).to.include('Cannot find the required csv file');
+      });
+
+      it('should reject UPDATE for unit belonging to another org', async function () {
+        const otherOrgUnit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'OTHER-ORG-UNIT',
+          unitStartBlock: '100',
+          unitEndBlock: '200',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: 'other-org-uid-12345',
+        }));
+
+        const csvContent = `cadTrustUnitId,unitCount
+${otherOrgUnit.cadTrustUnitId},999`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.errors).to.be.an('array').with.lengthOf(1);
+        expect(response.body.errors[0].error).to.include('belongs to a different organization');
+      });
+
+      it('should handle duplicate PK in same CSV gracefully (upsert)', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'DUP-UNIT',
+          unitStartBlock: '100',
+          unitEndBlock: '200',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
+        }));
+
+        const csvContent = `cadTrustUnitId,unitCount
+${unit.cadTrustUnitId},10
+${unit.cadTrustUnitId},20`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { uuid: unit.cadTrustUnitId } });
+        expect(staged).to.have.lengthOf(1);
+        const data = JSON.parse(staged[0].data)[0];
+        expect(data.unit_count).to.equal('20');
+      });
+
+      it('should strip unknown columns from staged data', async function () {
+        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId,foobar,unitLabels
+STRIP-UNIT-001,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId},garbage,"[{""id"":""x""}]"`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { table: 'unit', action: 'INSERT' } });
+        expect(staged.length).to.be.at.least(1);
+
+        const data = JSON.parse(staged[0].data)[0];
+        expect(data).to.not.have.property('foobar');
+        expect(data).to.not.have.property('unitLabels');
+        expect(data).to.not.have.property('unit_labels');
+        expect(data).to.have.property('unit_serial_id', 'STRIP-UNIT-001');
+      });
+
+      it('should report error for non-existent cadTrustIssuanceId (FK check)', async function () {
+        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
+FK-UNIT-001,100,200,2024,non-existent-issuance-id`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.errors).to.be.an('array').with.lengthOf(1);
+        expect(response.body.errors[0].error).to.include('does not exist');
+      });
+
+      it('should succeed with valid cadTrustIssuanceId (FK check)', async function () {
+        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
+FK-UNIT-OK,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.errors).to.be.undefined;
+
+        const staged = await StagingV2.findAll({ where: { table: 'unit', action: 'INSERT' } });
+        expect(staged.length).to.be.at.least(1);
+      });
+
+      it('should handle large batch (15+ rows) without race condition', async function () {
+        const rows = [];
+        for (let i = 1; i <= 15; i++) {
+          rows.push(`RACE-UNIT-${String(i).padStart(3, '0')},${i * 100},${i * 100 + 99},2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`);
+        }
+        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId\n${rows.join('\n')}`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { table: 'unit', action: 'INSERT' } });
+        expect(staged.length).to.equal(15);
+      });
+
+      it('should handle mixed INSERT + UPDATE in same CSV', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const existingUnit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'MIX-EXISTING-UNIT',
+          unitStartBlock: '100',
+          unitEndBlock: '200',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
+        }));
+
+        const csvContent = `cadTrustUnitId,unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
+${existingUnit.cadTrustUnitId},MIX-EXISTING-UNIT,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}
+,MIX-NEW-UNIT,300,400,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const updates = await StagingV2.findAll({ where: { table: 'unit', action: 'UPDATE' } });
+        expect(updates.length).to.equal(1);
+
+        const inserts = await StagingV2.findAll({ where: { table: 'unit', action: 'INSERT' } });
+        expect(inserts.length).to.equal(1);
+      });
+
+      it('should accept snake_case CSV headers', async function () {
+        const csvContent = `unit_serial_id,unit_start_block,unit_end_block,unit_vintage_year,cad_trust_issuance_id
+SNAKE-UNIT-001,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { table: 'unit', action: 'INSERT' } });
+        expect(staged.length).to.be.at.least(1);
+        const data = JSON.parse(staged[0].data)[0];
+        expect(data.unit_serial_id).to.equal('SNAKE-UNIT-001');
+      });
+
+      it('should derive unitSerialId from start/end blocks in CSV', async function () {
+        const csvContent = `unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
+5000,6000,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { table: 'unit', action: 'INSERT' } });
+        expect(staged.length).to.be.at.least(1);
+        const data = JSON.parse(staged[0].data)[0];
+        expect(data.unit_serial_id).to.equal('5000-6000');
       });
     });
 

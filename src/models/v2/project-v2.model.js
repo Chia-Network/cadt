@@ -10,7 +10,15 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
-import { parseV2Xlsx, stageV2XlsRecords } from '../../utils/v2-xls.js';
+import {
+  parseV2Xlsx,
+  stageV2XlsRecords,
+  normalizeCsvHeaders,
+  toDbFieldNames,
+  stripUnknownDbFields,
+} from '../../utils/v2-xls.js';
+import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
+import { ProgramV2 } from './program-v2.model.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { keyValueToChangeList } from '../../utils/datalayer-utils.js';
 import { LocationV2 } from './location-v2.model.js';
@@ -353,92 +361,128 @@ class ProjectV2 extends Model {
   }
 
   /**
-   * Batch upload projects from CSV file
-   * Parses CSV and creates staging records
+   * Batch upload projects from CSV file.
+   *
+   * Collects all CSV rows synchronously, then processes each row sequentially
+   * inside a transaction.  For each row the pipeline is:
+   *   1. Normalize snake_case headers → camelCase attribute names
+   *   2. Parse array fields (projectType / projectSector)
+   *   3. Determine INSERT vs UPDATE, merge with existing record on UPDATE
+   *   4. Validate ownership and FK references
+   *   5. Convert to DB field names, strip unknown keys
+   *   6. Upsert into StagingV2
+   *
    * @param {Object} csvFile - CSV file object with data buffer
-   * @returns {Promise<void>}
-   * @throws {Error} If CSV parsing or staging fails
+   * @returns {Promise<Object>} Result with errors array (may be empty)
    */
   static async batchUpload(csvFile) {
     const buffer = csvFile.data;
     const stream = Readable.from(buffer.toString('utf8'));
 
-    const recordsToCreate = [];
+    const rawRows = [];
 
-    return new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
       csv()
         .fromStream(stream)
-        .subscribe(async (newRecord) => {
-          let action = 'UPDATE';
+        .subscribe((row) => {
+          rawRows.push(row);
+        })
+        .on('error', (error) => reject(error))
+        .on('done', () => resolve());
+    });
 
-          // Convert camelCase to snake_case for V2
-          const projectId = newRecord.cadTrustProjectId || newRecord.cad_trust_project_id;
+    if (rawRows.length === 0) {
+      throw new Error('There were no valid records to parse');
+    }
+
+    const homeOrg = await OrganizationsV2.getHomeOrg();
+    if (!homeOrg) {
+      throw new Error('No home organization found');
+    }
+    const orgUid = homeOrg.org_uid;
+
+    const errors = [];
+
+    await sequelizeV2.transaction(async (transaction) => {
+      for (let i = 0; i < rawRows.length; i++) {
+        const rowNum = i + 2; // +2: 1-indexed + header row
+        try {
+          let row = normalizeCsvHeaders(rawRows[i], ProjectV2);
+
+          ProjectV2.parseProjectArrayFields(row);
+
+          const projectId = row.cadTrustProjectId;
+          let action;
+          let mergedRecord;
 
           if (projectId) {
-            // Check if project exists
-            const possibleExistingRecord = await ProjectV2.findByPk(projectId);
-
-            if (!possibleExistingRecord) {
-              reject(
-                new Error(
-                  `Project with cadTrustProjectId ${projectId} does not exist`,
-                ),
-              );
-              return;
+            const existing = await ProjectV2.findByPk(projectId);
+            if (!existing) {
+              errors.push({ row: rowNum, error: `Project with cadTrustProjectId ${projectId} does not exist` });
+              continue;
             }
-
-            // Verify it belongs to home org (for updates)
-            const homeOrg = await OrganizationsV2.getHomeOrg();
-            if (!homeOrg) {
-              reject(new Error('No home organization found'));
-              return;
+            if (existing.orgUid !== orgUid) {
+              errors.push({ row: rowNum, error: `Cannot update project ${projectId}: belongs to a different organization` });
+              continue;
             }
+            action = 'UPDATE';
+            mergedRecord = { ...existing.toJSON(), ...row };
           } else {
-            // New project - generate UUID
-            newRecord.cadTrustProjectId = uuidv4();
-            const homeOrg = await OrganizationsV2.getHomeOrg();
-            if (!homeOrg) {
-              reject(new Error('No home organization found'));
-              return;
-            }
+            row.cadTrustProjectId = uuidv4();
             action = 'INSERT';
+            mergedRecord = { ...row };
           }
 
-          // Update project properties (handle child records)
-          ProjectV2.updateProjectPropertiesV2(newRecord);
-
-          const stagedData = {
-            uuid: newRecord.cadTrustProjectId,
-            action: action,
-            table: 'project',
-            data: JSON.stringify([newRecord]),
-          };
-
-          recordsToCreate.push(stagedData);
-        })
-        .on('error', (error) => {
-          reject(error);
-        })
-        .on('done', async () => {
-          if (recordsToCreate.length) {
-            await StagingV2.bulkCreate(recordsToCreate, {
-              logging: (msg) => loggerV2.info(msg),
-            });
-
-            resolve();
-          } else {
-            reject(new Error('There were no valid records to parse'));
+          // FK existence check for cadTrustProgramId
+          if (mergedRecord.cadTrustProgramId) {
+            try {
+              await assertRecordExistanceOrStaged(
+                ProgramV2,
+                mergedRecord.cadTrustProgramId,
+                `cadTrustProgramId '${mergedRecord.cadTrustProgramId}' does not exist`,
+              );
+            } catch (err) {
+              errors.push({ row: rowNum, error: err.message });
+              continue;
+            }
           }
-        });
+
+          // Remove timestamps (managed by Sequelize)
+          delete mergedRecord.createdAt;
+          delete mergedRecord.updatedAt;
+          delete mergedRecord.created_at;
+          delete mergedRecord.updated_at;
+
+          const dbRecord = toDbFieldNames(mergedRecord, ProjectV2);
+          const cleaned = stripUnknownDbFields(dbRecord, ProjectV2, loggerV2);
+
+          cleaned.org_uid = orgUid;
+
+          await StagingV2.upsert(
+            {
+              uuid: mergedRecord.cadTrustProjectId,
+              action,
+              table: 'project',
+              data: JSON.stringify([cleaned]),
+            },
+            { transaction },
+          );
+        } catch (err) {
+          errors.push({ row: rowNum, error: err.message });
+        }
+      }
     });
+
+    return { errors };
   }
 
   /**
-   * Helper to update project properties from CSV
-   * Handles conversion of string fields to arrays for batch upload
+   * Parse projectType and projectSector from CSV string representations
+   * into arrays.  These are JSON array columns on the project table, not
+   * child entities — they belong in the flat CSV row.
    * @private
    */
-  static updateProjectPropertiesV2(project) {
+  static parseProjectArrayFields(project) {
     if (typeof project !== 'object') return;
 
     const arrayFields = ['projectType', 'projectSector'];
@@ -467,25 +511,6 @@ class ProjectV2 extends Model {
         } else if (!Array.isArray(project[key])) {
           project[key] = [project[key]];
         }
-      }
-    });
-
-    const childRecordKeys = ['locations', 'estimations', 'ratings', 'coBenefits'];
-    childRecordKeys.forEach((key) => {
-      if (project[key] && typeof project[key] === 'string') {
-        try {
-          project[key] = JSON.parse(project[key]);
-        } catch {
-          // If not JSON, leave as is
-        }
-      }
-
-      if (Array.isArray(project[key])) {
-        project[key].forEach((item) => {
-          if (!item.cadTrustProjectId) {
-            item.cadTrustProjectId = project.cadTrustProjectId;
-          }
-        });
       }
     });
   }

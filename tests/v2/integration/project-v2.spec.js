@@ -1630,8 +1630,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
     });
 
     describe('POST /v2/project/batch', function () {
-      it('should batch upload new projects from CSV file (INSERT)', async function () {
-        // Create a CSV file buffer without cadTrustProjectId to trigger INSERT
+      it('should batch upload new projects from CSV file (INSERT) with snake_case staging data', async function () {
         const csvContent = `projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric,cadTrustProgramId
 Test Registry,CSV-001,CSV Test Project 1,Agriculture,Landfill gas,Listed,tCO2e,${testProgram.cadTrustProgramId}
 Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO2e,${testProgram.cadTrustProgramId}`;
@@ -1646,19 +1645,20 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
         expect(response.body.success).to.be.true;
         expect(response.body.message).to.include('CSV processing complete');
 
-        // Verify records were staged
         const stagingRecords = await StagingV2.findAll({
-          where: {
-            table: 'project',
-            action: 'INSERT',
-          },
+          where: { table: 'project', action: 'INSERT' },
         });
 
         expect(stagingRecords.length).to.be.at.least(2);
+
+        // Verify staging data uses snake_case DB field names
+        const data = JSON.parse(stagingRecords[0].data)[0];
+        expect(data).to.have.property('project_registry_name');
+        expect(data).to.have.property('project_name');
+        expect(data).to.have.property('org_uid');
       });
 
-      it('should batch update existing projects from CSV file (UPDATE)', async function () {
-        // Create projects first
+      it('should batch update existing projects from CSV file (UPDATE) and merge with existing data', async function () {
         const homeOrgId = await getV2HomeOrgId();
         const project1 = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
           projectRegistryName: 'Test Registry',
@@ -1668,6 +1668,7 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
           projectType: ['Landfill gas'],
           projectStatus: 'Listed',
           projectUnitMetric: 'tCO2e',
+          projectDescription: 'Original description that should be preserved',
           cadTrustProgramId: testProgram.cadTrustProgramId,
           orgUid: homeOrgId,
         }));
@@ -1684,10 +1685,10 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
           orgUid: homeOrgId,
         }));
 
-        // Create a CSV file buffer with cadTrustProjectId to trigger UPDATE
-        const csvContent = `cadTrustProjectId,projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric,cadTrustProgramId
-${project1.cadTrustProjectId},Test Registry,CSV-UPDATE-001,Updated Name 1,Agriculture,Landfill gas,Listed,tCO2e,${testProgram.cadTrustProgramId}
-${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy,Energy efficiency,Registered,tCO2e,${testProgram.cadTrustProgramId}`;
+        // CSV only updates projectName — other fields should be merged from DB
+        const csvContent = `cadTrustProjectId,projectName
+${project1.cadTrustProjectId},Updated Name 1
+${project2.cadTrustProjectId},Updated Name 2`;
 
         const csvBuffer = Buffer.from(csvContent, 'utf8');
 
@@ -1699,15 +1700,22 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
         expect(response.body.success).to.be.true;
         expect(response.body.message).to.include('CSV processing complete');
 
-        // Verify records were staged as UPDATE
         const stagingRecords = await StagingV2.findAll({
-          where: {
-            table: 'project',
-            action: 'UPDATE',
-          },
+          where: { table: 'project', action: 'UPDATE' },
         });
 
         expect(stagingRecords.length).to.be.at.least(2);
+
+        // Verify merge: staged data should contain ALL project fields
+        const staged1 = stagingRecords.find(r => r.uuid === project1.cadTrustProjectId);
+        expect(staged1).to.exist;
+        const data1 = JSON.parse(staged1.data)[0];
+        expect(data1.project_name).to.equal('Updated Name 1');
+        // Fields NOT in CSV should be preserved from the DB
+        expect(data1.project_registry_name).to.equal('Test Registry');
+        expect(data1.project_description).to.equal('Original description that should be preserved');
+        expect(data1.project_unit_metric).to.equal('tCO2e');
+        expect(data1.org_uid).to.equal(homeOrgId);
       });
 
       it('should return error if no CSV file is provided', async function () {
@@ -1717,6 +1725,208 @@ ${project2.cadTrustProjectId},Test Registry,CSV-UPDATE-002,Updated Name 2,Energy
 
         expect(response.body.success).to.be.false;
         expect(response.body.message).to.include('Cannot find the required csv file');
+      });
+
+      it('should reject UPDATE for project belonging to another org', async function () {
+        // Create a project with a different org_uid
+        const otherOrgProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Other Org Registry',
+          projectId: 'OTHER-ORG-001',
+          projectName: 'Other Org Project',
+          orgUid: 'other-org-uid-12345',
+        }));
+
+        const csvContent = `cadTrustProjectId,projectName
+${otherOrgProject.cadTrustProjectId},Should Not Update`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.errors).to.be.an('array').with.lengthOf(1);
+        expect(response.body.errors[0].error).to.include('belongs to a different organization');
+
+        // Verify no staging record was created
+        const staged = await StagingV2.findAll({ where: { uuid: otherOrgProject.cadTrustProjectId } });
+        expect(staged).to.have.lengthOf(0);
+      });
+
+      it('should handle duplicate PK in same CSV gracefully (upsert)', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Test Registry',
+          projectId: 'DUP-001',
+          projectName: 'Duplicate Test',
+          orgUid: homeOrgId,
+        }));
+
+        // Same PK appears twice — second row should win
+        const csvContent = `cadTrustProjectId,projectName
+${project.cadTrustProjectId},First Update
+${project.cadTrustProjectId},Second Update`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { uuid: project.cadTrustProjectId } });
+        expect(staged).to.have.lengthOf(1);
+        const data = JSON.parse(staged[0].data)[0];
+        expect(data.project_name).to.equal('Second Update');
+      });
+
+      it('should strip unknown/child columns from staged data', async function () {
+        const csvContent = `projectRegistryName,projectId,projectName,locations,estimations,foobar,cadTrustProgramId
+Test Registry,STRIP-001,Strip Test,"[{""country"":""US""}]","[{""count"":100}]",garbage,${testProgram.cadTrustProgramId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { table: 'project', action: 'INSERT' } });
+        expect(staged.length).to.be.at.least(1);
+
+        const data = JSON.parse(staged[0].data)[0];
+        // Child/unknown columns must NOT appear in staged data
+        expect(data).to.not.have.property('locations');
+        expect(data).to.not.have.property('estimations');
+        expect(data).to.not.have.property('foobar');
+        // Real columns should be present
+        expect(data).to.have.property('project_name', 'Strip Test');
+      });
+
+      it('should report error for non-existent cadTrustProgramId (FK check)', async function () {
+        const csvContent = `projectRegistryName,projectId,projectName,cadTrustProgramId
+Test Registry,FK-001,FK Test,non-existent-program-id`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.errors).to.be.an('array').with.lengthOf(1);
+        expect(response.body.errors[0].error).to.include('does not exist');
+      });
+
+      it('should handle large batch (15+ rows) without race condition', async function () {
+        const rows = [];
+        for (let i = 1; i <= 15; i++) {
+          rows.push(`Test Registry,RACE-${String(i).padStart(3, '0')},Race Test Project ${i},Agriculture,tCO2e,${testProgram.cadTrustProgramId}`);
+        }
+        const csvContent = `projectRegistryName,projectId,projectName,projectSector,projectUnitMetric,cadTrustProgramId\n${rows.join('\n')}`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { table: 'project', action: 'INSERT' } });
+        expect(staged.length).to.equal(15);
+      });
+
+      it('should handle mixed INSERT + UPDATE in same CSV', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const existingProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Test Registry',
+          projectId: 'MIX-EXISTING',
+          projectName: 'Existing Project',
+          orgUid: homeOrgId,
+        }));
+
+        const csvContent = `cadTrustProjectId,projectRegistryName,projectId,projectName,cadTrustProgramId
+${existingProject.cadTrustProjectId},Test Registry,MIX-EXISTING,Updated Existing,${testProgram.cadTrustProgramId}
+,Test Registry,MIX-NEW,New Project,${testProgram.cadTrustProgramId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const updates = await StagingV2.findAll({ where: { table: 'project', action: 'UPDATE' } });
+        expect(updates.length).to.equal(1);
+
+        const inserts = await StagingV2.findAll({ where: { table: 'project', action: 'INSERT' } });
+        expect(inserts.length).to.equal(1);
+      });
+
+      it('should accept snake_case CSV headers', async function () {
+        const csvContent = `project_registry_name,project_id,project_name,cad_trust_program_id
+Test Registry,SNAKE-001,Snake Case Test,${testProgram.cadTrustProgramId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { table: 'project', action: 'INSERT' } });
+        expect(staged.length).to.be.at.least(1);
+        const data = JSON.parse(staged[0].data)[0];
+        expect(data.project_name).to.equal('Snake Case Test');
+        expect(data.project_registry_name).to.equal('Test Registry');
+      });
+
+      it('should upsert over existing staging record on re-upload', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Test Registry',
+          projectId: 'REUPL-001',
+          projectName: 'Original',
+          orgUid: homeOrgId,
+        }));
+
+        // First upload
+        let csvContent = `cadTrustProjectId,projectName
+${project.cadTrustProjectId},First Upload`;
+        let csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        // Second upload of same PK
+        csvContent = `cadTrustProjectId,projectName
+${project.cadTrustProjectId},Second Upload`;
+        csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        // Should have exactly 1 staging record (upsert, not duplicate)
+        const staged = await StagingV2.findAll({ where: { uuid: project.cadTrustProjectId } });
+        expect(staged).to.have.lengthOf(1);
+        const data = JSON.parse(staged[0].data)[0];
+        expect(data.project_name).to.equal('Second Upload');
       });
     });
 

@@ -167,6 +167,44 @@ function parseArrayFields(row) {
 }
 
 /**
+ * Build a reverse lookup from snake_case DB field names to camelCase Sequelize
+ * attribute names for a model.  Used to normalize CSV headers that may arrive
+ * in either convention.
+ *
+ * @param {import('sequelize').Model} modelClass
+ * @returns {Map<string, string>} snake_case field -> camelCase attribute
+ */
+function buildSnakeToCamelMap(modelClass) {
+  const map = new Map();
+  for (const [attrName, meta] of Object.entries(modelClass.rawAttributes)) {
+    const dbField = meta.field || attrName;
+    if (dbField !== attrName) {
+      map.set(dbField, attrName);
+    }
+  }
+  return map;
+}
+
+/**
+ * Normalize a CSV row so that every key is a camelCase Sequelize attribute
+ * name.  Accepts headers in either camelCase or snake_case.  Keys that don't
+ * map to any known attribute are left as-is so they can be stripped later.
+ *
+ * @param {Object} row
+ * @param {import('sequelize').Model} modelClass
+ * @returns {Object} row with normalized keys
+ */
+export function normalizeCsvHeaders(row, modelClass) {
+  const snakeToCamel = buildSnakeToCamelMap(modelClass);
+  const result = {};
+  for (const [key, value] of Object.entries(row)) {
+    const normalized = snakeToCamel.get(key) || key;
+    result[normalized] = value;
+  }
+  return result;
+}
+
+/**
  * Convert a row object from camelCase attribute names to snake_case DB field
  * names using the model's rawAttributes metadata. Keys not present in
  * rawAttributes are kept as-is (they may already be snake_case or custom).
@@ -178,7 +216,7 @@ function parseArrayFields(row) {
  * staging data to use snake_case field names, matching what the normal API
  * controllers produce.
  */
-function toDbFieldNames(row, modelClass) {
+export function toDbFieldNames(row, modelClass) {
   const attrs = modelClass.rawAttributes;
   const result = {};
   for (const [key, value] of Object.entries(row)) {
@@ -186,6 +224,36 @@ function toDbFieldNames(row, modelClass) {
     result[attr && attr.field ? attr.field : key] = value;
   }
   return result;
+}
+
+/**
+ * Strip keys from a snake_case DB-field row that are not valid DB column names
+ * for the given model.  Returns a new object containing only recognized fields.
+ * Logs a warning for every stripped key so users can catch CSV header mistakes.
+ *
+ * @param {Object} dbRow - Row already converted to snake_case via toDbFieldNames
+ * @param {import('sequelize').Model} modelClass
+ * @param {import('../config/logger.js').loggerV2} [logger] - optional logger
+ * @returns {Object} cleaned row
+ */
+export function stripUnknownDbFields(dbRow, modelClass, logger = null) {
+  const validFields = new Set();
+  for (const meta of Object.values(modelClass.rawAttributes)) {
+    validFields.add(meta.field || meta.fieldName);
+  }
+  // Also accept Sequelize-managed timestamp fields
+  validFields.add('created_at');
+  validFields.add('updated_at');
+
+  const cleaned = {};
+  for (const [key, value] of Object.entries(dbRow)) {
+    if (validFields.has(key)) {
+      cleaned[key] = value;
+    } else if (logger) {
+      logger.warn(`[v2]: Stripping unknown CSV column '${key}' — not a valid DB field`);
+    }
+  }
+  return cleaned;
 }
 
 /**

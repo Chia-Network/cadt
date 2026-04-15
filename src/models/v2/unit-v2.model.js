@@ -14,7 +14,15 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
-import { parseV2Xlsx, stageV2XlsRecords } from '../../utils/v2-xls.js';
+import {
+  parseV2Xlsx,
+  stageV2XlsRecords,
+  normalizeCsvHeaders,
+  toDbFieldNames,
+  stripUnknownDbFields,
+} from '../../utils/v2-xls.js';
+import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
+import { IssuanceV2 } from './issuance-v2.model.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { UnitLabelV2 } from './unit-label-v2.model.js';
 import { loggerV2 } from '../../config/logger.js';
@@ -414,86 +422,120 @@ class UnitV2 extends Model {
   }
 
   /**
-   * Batch upload units from CSV file
-   * Parses CSV and creates staging records
+   * Batch upload units from CSV file.
+   *
+   * Collects all CSV rows synchronously, then processes each row sequentially
+   * inside a transaction.  For each row the pipeline is:
+   *   1. Normalize snake_case headers → camelCase attribute names
+   *   2. Apply domain transforms (prepareXlsRow derives unitSerialId)
+   *   3. Determine INSERT vs UPDATE, merge with existing record on UPDATE
+   *   4. Validate ownership and FK references
+   *   5. Convert to DB field names, strip unknown keys
+   *   6. Upsert into StagingV2
+   *
    * @param {Object} csvFile - CSV file object with data buffer
-   * @returns {Promise<void>}
-   * @throws {Error} If CSV parsing or staging fails
+   * @returns {Promise<Object>} Result with errors array (may be empty)
    */
   static async batchUpload(csvFile) {
     const buffer = csvFile.data;
     const stream = Readable.from(buffer.toString('utf8'));
 
-    const recordsToCreate = [];
+    const rawRows = [];
 
-    return new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
       csv()
         .fromStream(stream)
-        .subscribe(async (newRecord) => {
-          let action = 'UPDATE';
+        .subscribe((row) => {
+          rawRows.push(row);
+        })
+        .on('error', (error) => reject(error))
+        .on('done', () => resolve());
+    });
 
-          // Convert camelCase to snake_case for V2
-          const unitId = newRecord.cadTrustUnitId || newRecord.cad_trust_unit_id;
+    if (rawRows.length === 0) {
+      throw new Error('There were no valid records to parse');
+    }
+
+    const homeOrg = await OrganizationsV2.getHomeOrg();
+    if (!homeOrg) {
+      throw new Error('No home organization found');
+    }
+    const orgUid = homeOrg.org_uid;
+
+    const errors = [];
+
+    await sequelizeV2.transaction(async (transaction) => {
+      for (let i = 0; i < rawRows.length; i++) {
+        const rowNum = i + 2; // +2: 1-indexed + header row
+        try {
+          let row = normalizeCsvHeaders(rawRows[i], UnitV2);
+
+          // Derive unitSerialId from block range when not explicitly provided
+          UnitV2.prepareXlsRow(row);
+
+          const unitId = row.cadTrustUnitId;
+          let action;
+          let mergedRecord;
 
           if (unitId) {
-            // Check if unit exists
-            const possibleExistingRecord = await UnitV2.findByPk(unitId);
-
-            if (!possibleExistingRecord) {
-              reject(
-                new Error(
-                  `Unit with cadTrustUnitId ${unitId} does not exist`,
-                ),
-              );
-              return;
+            const existing = await UnitV2.findByPk(unitId);
+            if (!existing) {
+              errors.push({ row: rowNum, error: `Unit with cadTrustUnitId ${unitId} does not exist` });
+              continue;
             }
-
-            // Verify it belongs to home org (for updates)
-            const homeOrg = await OrganizationsV2.getHomeOrg();
-            if (!homeOrg) {
-              reject(new Error('No home organization found'));
-              return;
+            if (existing.orgUid !== orgUid) {
+              errors.push({ row: rowNum, error: `Cannot update unit ${unitId}: belongs to a different organization` });
+              continue;
             }
+            action = 'UPDATE';
+            mergedRecord = { ...existing.toJSON(), ...row };
           } else {
-            // New unit - generate UUID
-            newRecord.cadTrustUnitId = uuidv4();
-            const homeOrg = await OrganizationsV2.getHomeOrg();
-            if (!homeOrg) {
-              reject(new Error('No home organization found'));
-              return;
-            }
+            row.cadTrustUnitId = uuidv4();
             action = 'INSERT';
+            mergedRecord = { ...row };
           }
 
-          // Update unit properties (handle serial ID from blocks)
-          if (newRecord.unitStartBlock && newRecord.unitEndBlock) {
-            newRecord.unitSerialId = `${newRecord.unitStartBlock}-${newRecord.unitEndBlock}`;
+          // FK existence check for cadTrustIssuanceId
+          if (mergedRecord.cadTrustIssuanceId) {
+            try {
+              await assertRecordExistanceOrStaged(
+                IssuanceV2,
+                mergedRecord.cadTrustIssuanceId,
+                `cadTrustIssuanceId '${mergedRecord.cadTrustIssuanceId}' does not exist`,
+              );
+            } catch (err) {
+              errors.push({ row: rowNum, error: err.message });
+              continue;
+            }
           }
 
-          const stagedData = {
-            uuid: newRecord.cadTrustUnitId,
-            action: action,
-            table: 'unit',
-            data: JSON.stringify([newRecord]),
-          };
+          // Remove timestamps (managed by Sequelize)
+          delete mergedRecord.createdAt;
+          delete mergedRecord.updatedAt;
+          delete mergedRecord.created_at;
+          delete mergedRecord.updated_at;
 
-          recordsToCreate.push(stagedData);
-        })
-        .on('error', (error) => {
-          reject(error);
-        })
-        .on('done', async () => {
-          if (recordsToCreate.length) {
-            await StagingV2.bulkCreate(recordsToCreate, {
-              logging: (msg) => loggerV2.info(msg),
-            });
+          const dbRecord = toDbFieldNames(mergedRecord, UnitV2);
+          const cleaned = stripUnknownDbFields(dbRecord, UnitV2, loggerV2);
 
-            resolve();
-          } else {
-            reject(new Error('There were no valid records to parse'));
-          }
-        });
+          cleaned.org_uid = orgUid;
+
+          await StagingV2.upsert(
+            {
+              uuid: mergedRecord.cadTrustUnitId,
+              action,
+              table: 'unit',
+              data: JSON.stringify([cleaned]),
+            },
+            { transaction },
+          );
+        } catch (err) {
+          errors.push({ row: rowNum, error: err.message });
+        }
+      }
     });
+
+    return { errors };
   }
 
 

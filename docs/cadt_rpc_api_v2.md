@@ -2416,6 +2416,16 @@ Response
 
 #### Batch upload projects from CSV
 
+CSV batch upload is for **flat parent records only** — each row represents one project. Child records (locations, estimations, ratings, co-benefits, validations, verifications, etc.) must be created via their own REST endpoints or via the [XLSX multi-sheet import](#update-projects-from-xlsx-file) workflow. Unrecognized columns (including child entity names like `locations` or `estimations`) are silently stripped.
+
+CSV headers may use either camelCase attribute names (e.g., `cadTrustProjectId`) or snake_case DB column names (e.g., `cad_trust_project_id`).
+
+**Update behavior**: When a row includes a `cadTrustProjectId` that matches an existing project, the CSV row is **merged** with the existing DB record — fields present in the CSV overwrite the existing values; fields absent from the CSV retain their current values. This differs from the REST `PUT` endpoint, which requires all fields.
+
+**Validation**: Rows are validated for foreign key existence (`cadTrustProgramId` must reference an existing program or a staged program record). Rows that fail validation are skipped and their errors are returned in the response. The CSV validation is intentionally more lenient than the REST API — fields like `projectLink` and `projectStatusDate` that are required in the REST schema are optional in CSV batch upload.
+
+**Ownership**: UPDATE rows are verified to belong to the home organization. Attempting to update a project owned by another organization will produce an error for that row.
+
 **Array Field Formatting**: For array fields like `projectType` and `projectSector`, the CSV can use any of these formats:
 - **Single value**: `Solar` → becomes `["Solar"]`
 - **JSON array**: `["Solar","Wind"]` → becomes `["Solar","Wind"]`
@@ -2434,11 +2444,22 @@ Request
 curl --location --request POST 'http://localhost:31310/v2/project/batch' --form 'csv=@"./createProject.csv"'
 ```
 
-Response
+Response (success, no row-level errors)
 ```json
 {
-  "message":"CSV processing complete, your records have been added to the staging table.",
+  "message": "CSV processing complete, your records have been added to the staging table.",
   "success": true
+}
+```
+
+Response (success with row-level errors — valid rows are still staged)
+```json
+{
+  "message": "CSV processing complete, your records have been added to the staging table.",
+  "success": true,
+  "errors": [
+    { "row": 3, "error": "cadTrustProgramId 'invalid-id' does not exist" }
+  ]
 }
 ```
 
@@ -3689,16 +3710,39 @@ Response
 
 #### Batch upload units from CSV
 
+CSV batch upload is for **flat parent records only** — each row represents one unit. Child records (unit labels, etc.) must be created via their own REST endpoints or via the [XLSX multi-sheet import](#update-units-from-xlsx-file) workflow. Unrecognized columns are silently stripped.
+
+CSV headers may use either camelCase attribute names (e.g., `cadTrustUnitId`) or snake_case DB column names (e.g., `cad_trust_unit_id`).
+
+**Update behavior**: When a row includes a `cadTrustUnitId` that matches an existing unit, the CSV row is **merged** with the existing DB record — fields present in the CSV overwrite the existing values; fields absent from the CSV retain their current values. This differs from the REST `PUT` endpoint, which requires all fields.
+
+**Serial ID derivation**: If `unitSerialId` is not provided but `unitStartBlock` and `unitEndBlock` are, the serial ID is automatically derived as `<unitStartBlock>-<unitEndBlock>`.
+
+**Validation**: Rows are validated for foreign key existence (`cadTrustIssuanceId` must reference an existing issuance or a staged issuance record). Rows that fail validation are skipped and their errors are returned in the response.
+
+**Ownership**: UPDATE rows are verified to belong to the home organization. Attempting to update a unit owned by another organization will produce an error for that row.
+
 Request
 ```shell
 curl --location --request POST 'http://localhost:31310/v2/unit/batch' --form 'csv=@"./createUnit.csv"'
 ```
 
-Response
+Response (success, no row-level errors)
 ```json
 {
-  "message":"CSV processing complete, your records have been added to the staging table.",
+  "message": "CSV processing complete, your records have been added to the staging table.",
   "success": true
+}
+```
+
+Response (success with row-level errors — valid rows are still staged)
+```json
+{
+  "message": "CSV processing complete, your records have been added to the staging table.",
+  "success": true,
+  "errors": [
+    { "row": 4, "error": "cadTrustIssuanceId 'invalid-id' does not exist" }
+  ]
 }
 ```
 
