@@ -1576,7 +1576,7 @@ describe('V2 Unit API - Basic CRUD Tests', function () {
     });
 
     describe('POST /v2/unit/batch', function () {
-      it('should batch upload new units from CSV file (INSERT) with snake_case staging data', async function () {
+      it('should batch upload new units from CSV file (INSERT) with snake_case staging data and counts', async function () {
         const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
 CSV-UNIT-001,1000,2000,50,Avoidance - nature,2024,Issued,${testIssuanceForAdvanced.cadTrustIssuanceId}
 CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
@@ -1590,14 +1590,15 @@ CSV-UNIT-002,2000,3000,75,Reduction - technical,2024,Held,${testIssuanceForAdvan
 
         expect(response.body.success).to.be.true;
         expect(response.body.message).to.include('CSV processing complete');
+        expect(response.body.stagedCount).to.equal(2);
+        expect(response.body.errorCount).to.equal(0);
 
         const stagingRecords = await StagingV2.findAll({
           where: { table: 'unit', action: 'INSERT' },
         });
 
-        expect(stagingRecords.length).to.be.at.least(2);
+        expect(stagingRecords.length).to.equal(2);
 
-        // Verify staging data uses snake_case DB field names
         const data = JSON.parse(stagingRecords[0].data)[0];
         expect(data).to.have.property('unit_serial_id');
         expect(data).to.have.property('unit_start_block');
@@ -1671,7 +1672,7 @@ ${unit2.cadTrustUnitId},80`;
         expect(response.body.message).to.include('Cannot find the required csv file');
       });
 
-      it('should reject UPDATE for unit belonging to another org', async function () {
+      it('should reject UPDATE for unit belonging to another org (400 when all rows fail)', async function () {
         const otherOrgUnit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
           unitSerialId: 'OTHER-ORG-UNIT',
           unitStartBlock: '100',
@@ -1689,10 +1690,11 @@ ${otherOrgUnit.cadTrustUnitId},999`;
         const response = await supertest(app)
           .post('/v2/unit/batch')
           .attach('csv', csvBuffer, 'test.csv')
-          .expect(200);
+          .expect(400);
 
-        expect(response.body.success).to.be.true;
-        expect(response.body.errors).to.be.an('array').with.lengthOf(1);
+        expect(response.body.success).to.be.false;
+        expect(response.body.stagedCount).to.equal(0);
+        expect(response.body.errorCount).to.equal(1);
         expect(response.body.errors[0].error).to.include('belongs to a different organization');
       });
 
@@ -1749,7 +1751,7 @@ STRIP-UNIT-001,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId},garbag
         expect(data).to.have.property('unit_serial_id', 'STRIP-UNIT-001');
       });
 
-      it('should report error for non-existent cadTrustIssuanceId (FK check)', async function () {
+      it('should report error for non-existent cadTrustIssuanceId (FK check, 400 when all rows fail)', async function () {
         const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
 FK-UNIT-001,100,200,2024,non-existent-issuance-id`;
 
@@ -1758,10 +1760,11 @@ FK-UNIT-001,100,200,2024,non-existent-issuance-id`;
         const response = await supertest(app)
           .post('/v2/unit/batch')
           .attach('csv', csvBuffer, 'test.csv')
-          .expect(200);
+          .expect(400);
 
-        expect(response.body.success).to.be.true;
-        expect(response.body.errors).to.be.an('array').with.lengthOf(1);
+        expect(response.body.success).to.be.false;
+        expect(response.body.stagedCount).to.equal(0);
+        expect(response.body.errorCount).to.equal(1);
         expect(response.body.errors[0].error).to.include('does not exist');
       });
 
@@ -1850,6 +1853,97 @@ SNAKE-UNIT-001,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
         expect(staged.length).to.be.at.least(1);
         const data = JSON.parse(staged[0].data)[0];
         expect(data.unit_serial_id).to.equal('SNAKE-UNIT-001');
+      });
+
+      it('should return 400 when all rows fail validation (all-rows-invalid)', async function () {
+        const csvContent = `cadTrustUnitId,unitCount
+non-existent-id-1,10
+non-existent-id-2,20`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.stagedCount).to.equal(0);
+        expect(response.body.errorCount).to.equal(2);
+        expect(response.body.errors).to.have.lengthOf(2);
+        expect(response.body.message).to.include('No rows were staged');
+      });
+
+      it('should reject INSERT rows missing required fields', async function () {
+        // Missing unitStartBlock, unitEndBlock, unitVintageYear (required)
+        const csvContent = `unitSerialId,cadTrustIssuanceId
+MISSING-REQ-001,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.stagedCount).to.equal(0);
+        expect(response.body.errorCount).to.equal(1);
+        expect(response.body.errors[0].error).to.include('Missing required field(s)');
+        expect(response.body.errors[0].error).to.include('unitStartBlock');
+        expect(response.body.errors[0].error).to.include('unitEndBlock');
+        expect(response.body.errors[0].error).to.include('unitVintageYear');
+      });
+
+      it('should accept UPDATE rows that omit required INSERT fields (merged from DB)', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'UPD-REQ-UNIT',
+          unitStartBlock: '100',
+          unitEndBlock: '200',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
+        }));
+
+        // CSV omits all required fields except PK — fine for UPDATE
+        const csvContent = `cadTrustUnitId,unitStatus
+${unit.cadTrustUnitId},Retired`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.stagedCount).to.equal(1);
+        expect(response.body.errorCount).to.equal(0);
+      });
+
+      it('should return partial success with correct counts for mixed valid/invalid rows', async function () {
+        // Row 1: valid INSERT, Row 2: bad FK
+        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
+PARTIAL-UNIT-001,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}
+PARTIAL-UNIT-002,300,400,2024,non-existent-issuance-id`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.stagedCount).to.equal(1);
+        expect(response.body.errorCount).to.equal(1);
+        expect(response.body.errors).to.have.lengthOf(1);
+        expect(response.body.message).to.include('1 row(s) staged');
+        expect(response.body.message).to.include('1 row(s) skipped');
+
+        const staged = await StagingV2.findAll({ where: { table: 'unit', action: 'INSERT' } });
+        expect(staged).to.have.lengthOf(1);
       });
 
       it('should derive unitSerialId from start/end blocks in CSV', async function () {

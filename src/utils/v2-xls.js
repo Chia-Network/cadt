@@ -257,6 +257,42 @@ export function stripUnknownDbFields(dbRow, modelClass, logger = null) {
 }
 
 /**
+ * Validate that a camelCase row destined for INSERT contains all fields
+ * marked `allowNull: false` in the model definition.  Skips fields that
+ * are auto-managed (primary key, orgUid, timestamps) and any fields listed
+ * in the optional `skipFields` set (e.g. `unitSerialId` when it can be
+ * derived from other fields).
+ *
+ * @param {Object} row - camelCase row to validate
+ * @param {import('sequelize').Model} modelClass
+ * @param {Set<string>} [skipFields] - attribute names to skip
+ * @returns {string[]} array of missing field names (empty if valid)
+ */
+export function validateRequiredFields(row, modelClass, skipFields = new Set()) {
+  const autoManaged = new Set([
+    modelClass.primaryKeyAttribute,
+    'orgUid',
+    'createdAt',
+    'updatedAt',
+    // Models with underscored:true and custom timestamp mappings use
+    // snake_case attribute names in rawAttributes
+    'created_at',
+    'updated_at',
+  ]);
+
+  const missing = [];
+  for (const [attrName, meta] of Object.entries(modelClass.rawAttributes)) {
+    if (meta.allowNull === false && !autoManaged.has(attrName) && !skipFields.has(attrName)) {
+      const val = row[attrName];
+      if (val === undefined || val === null || val === '') {
+        missing.push(attrName);
+      }
+    }
+  }
+  return missing;
+}
+
+/**
  * Create StagingV2 records from parsed XLSX data.
  * Parent rows and child rows each get their own staging entry, matching the
  * V2 architecture where every model has its own staging / changelist flow.

@@ -20,6 +20,7 @@ import {
   normalizeCsvHeaders,
   toDbFieldNames,
   stripUnknownDbFields,
+  validateRequiredFields,
 } from '../../utils/v2-xls.js';
 import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
 import { IssuanceV2 } from './issuance-v2.model.js';
@@ -434,7 +435,7 @@ class UnitV2 extends Model {
    *   6. Upsert into StagingV2
    *
    * @param {Object} csvFile - CSV file object with data buffer
-   * @returns {Promise<Object>} Result with errors array (may be empty)
+   * @returns {Promise<Object>} { stagedCount, errorCount, errors }
    */
   static async batchUpload(csvFile) {
     const buffer = csvFile.data;
@@ -463,6 +464,10 @@ class UnitV2 extends Model {
     const orgUid = homeOrg.org_uid;
 
     const errors = [];
+    let stagedCount = 0;
+
+    // unitSerialId is derivable from blocks — don't require it if blocks are present
+    const unitSkipFields = new Set(['unitSerialId']);
 
     await sequelizeV2.transaction(async (transaction) => {
       for (let i = 0; i < rawRows.length; i++) {
@@ -493,6 +498,15 @@ class UnitV2 extends Model {
             row.cadTrustUnitId = uuidv4();
             action = 'INSERT';
             mergedRecord = { ...row };
+          }
+
+          // Required-field validation for INSERT rows
+          if (action === 'INSERT') {
+            const missing = validateRequiredFields(mergedRecord, UnitV2, unitSkipFields);
+            if (missing.length > 0) {
+              errors.push({ row: rowNum, error: `Missing required field(s): ${missing.join(', ')}` });
+              continue;
+            }
           }
 
           // FK existence check for cadTrustIssuanceId
@@ -529,13 +543,14 @@ class UnitV2 extends Model {
             },
             { transaction },
           );
+          stagedCount++;
         } catch (err) {
           errors.push({ row: rowNum, error: err.message });
         }
       }
     });
 
-    return { errors };
+    return { stagedCount, errorCount: errors.length, errors };
   }
 
 

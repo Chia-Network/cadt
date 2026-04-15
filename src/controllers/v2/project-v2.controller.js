@@ -961,13 +961,25 @@ export const batchUpload = async (req, res) => {
     const result = await ProjectV2.batchUpload({ data: req.file.buffer });
 
     const response = {
-      message:
-        'CSV processing complete, your records have been added to the staging table.',
-      success: true,
+      stagedCount: result.stagedCount,
+      errorCount: result.errorCount,
     };
 
-    if (result.errors && result.errors.length > 0) {
+    if (result.errorCount > 0) {
       response.errors = result.errors;
+    }
+
+    if (result.stagedCount === 0) {
+      response.success = false;
+      response.message = 'No rows were staged. All rows failed validation.';
+      return res.status(400).json(response);
+    }
+
+    response.success = true;
+    if (result.errorCount > 0) {
+      response.message = `CSV processing complete. ${result.stagedCount} row(s) staged, ${result.errorCount} row(s) skipped due to errors.`;
+    } else {
+      response.message = 'CSV processing complete, your records have been added to the staging table.';
     }
 
     res.json(response);

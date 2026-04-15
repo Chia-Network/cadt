@@ -2422,7 +2422,7 @@ CSV headers may use either camelCase attribute names (e.g., `cadTrustProjectId`)
 
 **Update behavior**: When a row includes a `cadTrustProjectId` that matches an existing project, the CSV row is **merged** with the existing DB record — fields present in the CSV overwrite the existing values; fields absent from the CSV retain their current values. This differs from the REST `PUT` endpoint, which requires all fields.
 
-**Validation**: Rows are validated for foreign key existence (`cadTrustProgramId` must reference an existing program or a staged program record). Rows that fail validation are skipped and their errors are returned in the response. The CSV validation is intentionally more lenient than the REST API — fields like `projectLink` and `projectStatusDate` that are required in the REST schema are optional in CSV batch upload.
+**Validation**: INSERT rows are validated for required fields (`projectRegistryName`, `projectId`, `projectName`) and foreign key existence (`cadTrustProgramId` must reference an existing or staged program). UPDATE rows skip required-field checks since missing fields are merged from the existing record. Rows that fail validation are skipped and their errors are returned in the response with row numbers. The CSV validation is intentionally more lenient than the REST API — fields like `projectLink` and `projectStatusDate` that are required in the REST schema are optional in CSV batch upload. If **all** rows fail validation, the response returns HTTP 400 with `success: false`.
 
 **Ownership**: UPDATE rows are verified to belong to the home organization. Attempting to update a project owned by another organization will produce an error for that row.
 
@@ -2444,20 +2444,38 @@ Request
 curl --location --request POST 'http://localhost:31310/v2/project/batch' --form 'csv=@"./createProject.csv"'
 ```
 
-Response (success, no row-level errors)
-```json
-{
-  "message": "CSV processing complete, your records have been added to the staging table.",
-  "success": true
-}
-```
-
-Response (success with row-level errors — valid rows are still staged)
+Response (full success — all rows staged)
 ```json
 {
   "message": "CSV processing complete, your records have been added to the staging table.",
   "success": true,
+  "stagedCount": 3,
+  "errorCount": 0
+}
+```
+
+Response (partial success — some rows staged, some failed)
+```json
+{
+  "message": "CSV processing complete. 2 row(s) staged, 1 row(s) skipped due to errors.",
+  "success": true,
+  "stagedCount": 2,
+  "errorCount": 1,
   "errors": [
+    { "row": 3, "error": "cadTrustProgramId 'invalid-id' does not exist" }
+  ]
+}
+```
+
+Response (failure — no rows staged, HTTP 400)
+```json
+{
+  "message": "No rows were staged. All rows failed validation.",
+  "success": false,
+  "stagedCount": 0,
+  "errorCount": 2,
+  "errors": [
+    { "row": 2, "error": "Missing required field(s): projectName" },
     { "row": 3, "error": "cadTrustProgramId 'invalid-id' does not exist" }
   ]
 }
@@ -3718,7 +3736,7 @@ CSV headers may use either camelCase attribute names (e.g., `cadTrustUnitId`) or
 
 **Serial ID derivation**: If `unitSerialId` is not provided but `unitStartBlock` and `unitEndBlock` are, the serial ID is automatically derived as `<unitStartBlock>-<unitEndBlock>`.
 
-**Validation**: Rows are validated for foreign key existence (`cadTrustIssuanceId` must reference an existing issuance or a staged issuance record). Rows that fail validation are skipped and their errors are returned in the response.
+**Validation**: INSERT rows are validated for required fields (`unitStartBlock`, `unitEndBlock`, `unitVintageYear`, `cadTrustIssuanceId`) and foreign key existence (`cadTrustIssuanceId` must reference an existing or staged issuance). `unitSerialId` is not required if `unitStartBlock` and `unitEndBlock` are provided (it is derived automatically). UPDATE rows skip required-field checks since missing fields are merged from the existing record. Rows that fail validation are skipped and their errors are returned in the response with row numbers. If **all** rows fail validation, the response returns HTTP 400 with `success: false`.
 
 **Ownership**: UPDATE rows are verified to belong to the home organization. Attempting to update a unit owned by another organization will produce an error for that row.
 
@@ -3727,21 +3745,38 @@ Request
 curl --location --request POST 'http://localhost:31310/v2/unit/batch' --form 'csv=@"./createUnit.csv"'
 ```
 
-Response (success, no row-level errors)
-```json
-{
-  "message": "CSV processing complete, your records have been added to the staging table.",
-  "success": true
-}
-```
-
-Response (success with row-level errors — valid rows are still staged)
+Response (full success — all rows staged)
 ```json
 {
   "message": "CSV processing complete, your records have been added to the staging table.",
   "success": true,
+  "stagedCount": 3,
+  "errorCount": 0
+}
+```
+
+Response (partial success — some rows staged, some failed)
+```json
+{
+  "message": "CSV processing complete. 2 row(s) staged, 1 row(s) skipped due to errors.",
+  "success": true,
+  "stagedCount": 2,
+  "errorCount": 1,
   "errors": [
     { "row": 4, "error": "cadTrustIssuanceId 'invalid-id' does not exist" }
+  ]
+}
+```
+
+Response (failure — no rows staged, HTTP 400)
+```json
+{
+  "message": "No rows were staged. All rows failed validation.",
+  "success": false,
+  "stagedCount": 0,
+  "errorCount": 1,
+  "errors": [
+    { "row": 2, "error": "Missing required field(s): unitStartBlock, unitEndBlock" }
   ]
 }
 ```

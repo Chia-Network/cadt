@@ -1630,7 +1630,7 @@ describe('V2 Project API - Basic CRUD Tests', function () {
     });
 
     describe('POST /v2/project/batch', function () {
-      it('should batch upload new projects from CSV file (INSERT) with snake_case staging data', async function () {
+      it('should batch upload new projects from CSV file (INSERT) with snake_case staging data and counts', async function () {
         const csvContent = `projectRegistryName,projectId,projectName,projectSector,projectType,projectStatus,projectUnitMetric,cadTrustProgramId
 Test Registry,CSV-001,CSV Test Project 1,Agriculture,Landfill gas,Listed,tCO2e,${testProgram.cadTrustProgramId}
 Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO2e,${testProgram.cadTrustProgramId}`;
@@ -1644,14 +1644,15 @@ Test Registry,CSV-002,CSV Test Project 2,Energy,Energy efficiency,Registered,tCO
 
         expect(response.body.success).to.be.true;
         expect(response.body.message).to.include('CSV processing complete');
+        expect(response.body.stagedCount).to.equal(2);
+        expect(response.body.errorCount).to.equal(0);
 
         const stagingRecords = await StagingV2.findAll({
           where: { table: 'project', action: 'INSERT' },
         });
 
-        expect(stagingRecords.length).to.be.at.least(2);
+        expect(stagingRecords.length).to.equal(2);
 
-        // Verify staging data uses snake_case DB field names
         const data = JSON.parse(stagingRecords[0].data)[0];
         expect(data).to.have.property('project_registry_name');
         expect(data).to.have.property('project_name');
@@ -1727,8 +1728,7 @@ ${project2.cadTrustProjectId},Updated Name 2`;
         expect(response.body.message).to.include('Cannot find the required csv file');
       });
 
-      it('should reject UPDATE for project belonging to another org', async function () {
-        // Create a project with a different org_uid
+      it('should reject UPDATE for project belonging to another org (400 when all rows fail)', async function () {
         const otherOrgProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
           projectRegistryName: 'Other Org Registry',
           projectId: 'OTHER-ORG-001',
@@ -1744,13 +1744,13 @@ ${otherOrgProject.cadTrustProjectId},Should Not Update`;
         const response = await supertest(app)
           .post('/v2/project/batch')
           .attach('csv', csvBuffer, 'test.csv')
-          .expect(200);
+          .expect(400);
 
-        expect(response.body.success).to.be.true;
-        expect(response.body.errors).to.be.an('array').with.lengthOf(1);
+        expect(response.body.success).to.be.false;
+        expect(response.body.stagedCount).to.equal(0);
+        expect(response.body.errorCount).to.equal(1);
         expect(response.body.errors[0].error).to.include('belongs to a different organization');
 
-        // Verify no staging record was created
         const staged = await StagingV2.findAll({ where: { uuid: otherOrgProject.cadTrustProjectId } });
         expect(staged).to.have.lengthOf(0);
       });
@@ -1809,7 +1809,7 @@ Test Registry,STRIP-001,Strip Test,"[{""country"":""US""}]","[{""count"":100}]",
         expect(data).to.have.property('project_name', 'Strip Test');
       });
 
-      it('should report error for non-existent cadTrustProgramId (FK check)', async function () {
+      it('should report error for non-existent cadTrustProgramId (FK check, 400 when all rows fail)', async function () {
         const csvContent = `projectRegistryName,projectId,projectName,cadTrustProgramId
 Test Registry,FK-001,FK Test,non-existent-program-id`;
 
@@ -1818,10 +1818,11 @@ Test Registry,FK-001,FK Test,non-existent-program-id`;
         const response = await supertest(app)
           .post('/v2/project/batch')
           .attach('csv', csvBuffer, 'test.csv')
-          .expect(200);
+          .expect(400);
 
-        expect(response.body.success).to.be.true;
-        expect(response.body.errors).to.be.an('array').with.lengthOf(1);
+        expect(response.body.success).to.be.false;
+        expect(response.body.stagedCount).to.equal(0);
+        expect(response.body.errorCount).to.equal(1);
         expect(response.body.errors[0].error).to.include('does not exist');
       });
 
@@ -1891,6 +1892,96 @@ Test Registry,SNAKE-001,Snake Case Test,${testProgram.cadTrustProgramId}`;
         const data = JSON.parse(staged[0].data)[0];
         expect(data.project_name).to.equal('Snake Case Test');
         expect(data.project_registry_name).to.equal('Test Registry');
+      });
+
+      it('should return 400 when all rows fail validation (all-rows-invalid)', async function () {
+        const csvContent = `cadTrustProjectId,projectName
+non-existent-id-1,Bad Project 1
+non-existent-id-2,Bad Project 2`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.stagedCount).to.equal(0);
+        expect(response.body.errorCount).to.equal(2);
+        expect(response.body.errors).to.have.lengthOf(2);
+        expect(response.body.message).to.include('No rows were staged');
+
+        const staged = await StagingV2.findAll({ where: { table: 'project' } });
+        expect(staged).to.have.lengthOf(0);
+      });
+
+      it('should reject INSERT rows missing required fields', async function () {
+        // Missing projectName (required)
+        const csvContent = `projectRegistryName,projectId,cadTrustProgramId
+Test Registry,REQ-001,${testProgram.cadTrustProgramId}`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.stagedCount).to.equal(0);
+        expect(response.body.errorCount).to.equal(1);
+        expect(response.body.errors[0].error).to.include('Missing required field(s)');
+        expect(response.body.errors[0].error).to.include('projectName');
+      });
+
+      it('should accept UPDATE rows that omit required INSERT fields (merged from DB)', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Test Registry',
+          projectId: 'UPD-REQ-001',
+          projectName: 'Full Project',
+          orgUid: homeOrgId,
+        }));
+
+        // CSV omits projectName — fine for UPDATE since it merges from DB
+        const csvContent = `cadTrustProjectId,projectStatus
+${project.cadTrustProjectId},Listed`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.stagedCount).to.equal(1);
+        expect(response.body.errorCount).to.equal(0);
+      });
+
+      it('should return partial success with correct counts for mixed valid/invalid rows', async function () {
+        // Row 1: valid INSERT, Row 2: bad FK
+        const csvContent = `projectRegistryName,projectId,projectName,cadTrustProgramId
+Test Registry,PARTIAL-001,Valid Project,${testProgram.cadTrustProgramId}
+Test Registry,PARTIAL-002,Invalid FK Project,non-existent-program-id`;
+
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.stagedCount).to.equal(1);
+        expect(response.body.errorCount).to.equal(1);
+        expect(response.body.errors).to.have.lengthOf(1);
+        expect(response.body.message).to.include('1 row(s) staged');
+        expect(response.body.message).to.include('1 row(s) skipped');
+
+        const staged = await StagingV2.findAll({ where: { table: 'project', action: 'INSERT' } });
+        expect(staged).to.have.lengthOf(1);
       });
 
       it('should upsert over existing staging record on re-upload', async function () {
