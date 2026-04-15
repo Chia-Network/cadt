@@ -87,6 +87,10 @@ jobs:
           node --version
           npm install
 
+      - name: Rebuild sqlite3 from source for GLIBC compatibility
+        if: contains(matrix.runs-on, 'ubuntu')
+        run: npm rebuild sqlite3 --build-from-source
+
       - name: npm cache clear --force
         run: npm cache clear --force
 
