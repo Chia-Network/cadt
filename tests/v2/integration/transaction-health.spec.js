@@ -26,6 +26,7 @@ describe('Transaction Health Monitoring', function () {
   let fsReadFileSyncStub;
 
   beforeEach(function () {
+    wallet.__test_resetDLWalletCache();
     fsReadFileSyncStub = sinon.stub(fs, 'readFileSync').returns(Buffer.from('fake-cert'));
     superagentPostStub = sinon.stub(superagent, 'post');
   });
@@ -340,20 +341,64 @@ describe('Transaction Health Monitoring', function () {
   });
 
   describe('getDLWalletId', function () {
-    it('should discover DL wallet by type 14', async function () {
-      superagentPostStub.returns(createSuperagentMock({
+    it('should return "2" in simulator mode', async function () {
+      const walletId = await wallet.getDLWalletId();
+      expect(walletId).to.equal('2');
+    });
+  });
+
+  describe('findDLWalletInResponse', function () {
+    it('should match type 11 (WalletType.DATA_LAYER from chia-blockchain)', function () {
+      const result = wallet.findDLWalletInResponse({
         success: true,
         wallets: [
           { id: 1, type: 0, name: 'Chia Wallet' },
-          { id: 2, type: 14, name: 'DataLayer Wallet' },
+          { id: 2, type: 11, name: 'DataLayer Wallet' },
         ],
-      }));
+      });
+      expect(result).to.equal('2');
+    });
 
-      // Reset cached value
-      wallet.__test_resetDLWalletCache?.();
+    it('should use the CHIA_WALLET_TYPE_DATA_LAYER constant equal to 11', function () {
+      expect(wallet.CHIA_WALLET_TYPE_DATA_LAYER).to.equal(11);
+    });
 
-      const walletId = await wallet.getDLWalletId();
-      expect(walletId).to.equal('2');
+    it('should return null when no wallet has DATA_LAYER type', function () {
+      const result = wallet.findDLWalletInResponse({
+        success: true,
+        wallets: [
+          { id: 1, type: 0, name: 'Chia Wallet' },
+          { id: 3, type: 6, name: 'CAT Wallet' },
+          { id: 4, type: 10, name: 'NFT Wallet' },
+        ],
+      });
+      expect(result).to.be.null;
+    });
+
+    it('should not match adjacent WalletType values (type 10, 12, 13)', function () {
+      const result = wallet.findDLWalletInResponse({
+        success: true,
+        wallets: [
+          { id: 1, type: 0, name: 'Chia Wallet' },
+          { id: 2, type: 10, name: 'NFT Wallet' },
+          { id: 3, type: 12, name: 'DataLayer Offer Wallet' },
+          { id: 4, type: 13, name: 'VC Wallet' },
+        ],
+      });
+      expect(result).to.be.null;
+    });
+
+    it('should return null on unsuccessful response', function () {
+      const result = wallet.findDLWalletInResponse({
+        success: false,
+        wallets: [{ id: 2, type: 11, name: 'DataLayer Wallet' }],
+      });
+      expect(result).to.be.null;
+    });
+
+    it('should return null when wallets array is missing', function () {
+      const result = wallet.findDLWalletInResponse({ success: true });
+      expect(result).to.be.null;
     });
   });
 
