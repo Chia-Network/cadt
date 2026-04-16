@@ -411,6 +411,10 @@ jobs:
           echo "########################################################"
           npm run test:v2:live:organization:create
           echo "########################################################"
+          echo "Running wallet health sanity check"
+          echo "########################################################"
+          npm run test:v2:live:wallet-health
+          echo "########################################################"
           echo "Running data tests"
           echo "########################################################"
           npm run test:v2:live:data:short
@@ -778,6 +782,10 @@ jobs:
           echo "Running V1 organization creation tests"
           echo "########################################################"
           npm run test:v1:live:organization:create
+          echo "########################################################"
+          echo "Running wallet health sanity check"
+          echo "########################################################"
+          npm run test:v2:live:wallet-health
           echo "########################################################"
           echo "Running V1 data tests"
           echo "########################################################"
