@@ -582,6 +582,25 @@ const MempoolInclusionStatus = {
 // Cached DL wallet ID (discovered once, reused thereafter)
 let cachedDLWalletId = null;
 
+// chia-blockchain WalletType enum value for DATA_LAYER (see wallet_types.py)
+const CHIA_WALLET_TYPE_DATA_LAYER = 11;
+
+/**
+ * Extract the DataLayer wallet_id from a get_wallets RPC response.
+ * Pure function — no I/O, no caching, no simulator awareness.
+ * @param {Object} data - Parsed response body from get_wallets
+ * @returns {string|null} wallet_id as a string, or null if not found
+ */
+const findDLWalletInResponse = (data) => {
+  if (data.success && Array.isArray(data.wallets)) {
+    const dlWallet = data.wallets.find((w) => w.type === CHIA_WALLET_TYPE_DATA_LAYER);
+    if (dlWallet) {
+      return String(dlWallet.id);
+    }
+  }
+  return null;
+};
+
 /**
  * Discover the DataLayer wallet's wallet_id dynamically via get_wallets RPC.
  * Caches the result so subsequent calls avoid the RPC round-trip.
@@ -608,15 +627,12 @@ const getDLWalletId = async () => {
       .timeout(timeout);
 
     const data = response.body || JSON.parse(response.text);
+    const walletId = findDLWalletInResponse(data);
 
-    if (data.success && Array.isArray(data.wallets)) {
-      // WalletType.DATA_LAYER = 14 in chia-blockchain
-      const dlWallet = data.wallets.find((w) => w.type === 14);
-      if (dlWallet) {
-        cachedDLWalletId = String(dlWallet.id);
-        logger.info(`Discovered DataLayer wallet_id: ${cachedDLWalletId}`);
-        return cachedDLWalletId;
-      }
+    if (walletId) {
+      cachedDLWalletId = walletId;
+      logger.info(`Discovered DataLayer wallet_id: ${cachedDLWalletId}`);
+      return cachedDLWalletId;
     }
 
     logger.warn('DataLayer wallet not found via get_wallets RPC');
@@ -853,6 +869,10 @@ const TRANSIENT_WALLET_ERRORS = [
 const isTransientWalletError = (error) =>
   TRANSIENT_WALLET_ERRORS.some((msg) => error.message?.includes(msg));
 
+const __test_resetDLWalletCache = () => {
+  cachedDLWalletId = null;
+};
+
 export default {
   hasUnconfirmedTransactions,
   hasAnyUnconfirmedTransactions,
@@ -873,4 +893,7 @@ export default {
   getDLWalletId,
   clearRejectedTransactions,
   formatDuration,
+  findDLWalletInResponse,
+  CHIA_WALLET_TYPE_DATA_LAYER,
+  __test_resetDLWalletCache,
 };
