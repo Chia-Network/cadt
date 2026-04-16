@@ -2,8 +2,11 @@ import { expect } from 'chai';
 import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
-import { getLiveApiRequest, getLiveApiConfig } from './helpers/live-api-helpers.js';
-import { getChiaRoot } from '../../../src/utils/chia-root.js';
+import {
+  getLiveApiRequest,
+  getLiveApiConfig,
+  getChiaCertificateFolderPath,
+} from './helpers/live-api-helpers.js';
 import wallet from '../../../src/datalayer/wallet.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
@@ -14,9 +17,19 @@ const getWalletRpcUrl = () => {
 };
 
 const getWalletBaseOptions = () => {
-  const chiaRoot = getChiaRoot();
-  const certPath = path.resolve(`${chiaRoot}/config/ssl/wallet/private_wallet.crt`);
-  const keyPath = path.resolve(`${chiaRoot}/config/ssl/wallet/private_wallet.key`);
+  // Resolve via getChiaCertificateFolderPath so this test honours
+  // CERTIFICATE_FOLDER_PATH the same way src/datalayer/wallet.js does.
+  // Hardcoding ${chiaRoot}/config/ssl here would cause a false-negative
+  // test failure in any deployment that uses a non-default Chia SSL
+  // directory, even though production code would successfully reach
+  // the wallet RPC.
+  const certificateFolderPath = getChiaCertificateFolderPath();
+  const certPath = path.resolve(
+    `${certificateFolderPath}/wallet/private_wallet.crt`,
+  );
+  const keyPath = path.resolve(
+    `${certificateFolderPath}/wallet/private_wallet.key`,
+  );
   return {
     cert: fs.readFileSync(certPath),
     key: fs.readFileSync(keyPath),

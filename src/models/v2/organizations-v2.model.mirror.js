@@ -1,12 +1,12 @@
 'use strict';
 
 import { Model } from 'sequelize';
-import { sequelizeV2Mirror, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { sequelizeV2Mirror, initMirrorModelV2 } from '../../database/v2/index.js';
 import ModelTypes from './organizations-v2.modeltypes.js';
 
 class OrganizationsV2Mirror extends Model {}
 
-safeMirrorDbHandlerV2(() => {
+initMirrorModelV2(() => {
   OrganizationsV2Mirror.init(ModelTypes, {
     sequelize: sequelizeV2Mirror,
     modelName: 'OrganizationsV2Mirror',

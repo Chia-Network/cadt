@@ -50,7 +50,38 @@ const logDebounce = _.debounce(() => {
   logger.info('Mirror DB not connected');
 }, 120000);
 
+// Test-only override. Tests set this to force mirror-enabled behaviour
+// against the SQLite fallback sequelizeMirror so backfill / reconnect code
+// paths can be exercised without a live MySQL instance. null means "use the
+// real config value".
+let mirrorEnabledTestOverride = null;
+
+// Track the last observed auth outcome so we can detect a transition from
+// "disconnected" back to "connected" and trigger a catch-up backfill. This
+// recovers writes (INSERT/UPDATE) and deletes that were dropped during an
+// outage because safeMirrorDbHandler is fire-and-forget and silently drops
+// its callback when authenticate() fails.
+let mirrorAuthState = 'unknown'; // 'unknown' | 'connected' | 'disconnected'
+
+// Tracks whether the MySQL-side setup (CREATE DATABASE + migrations)
+// succeeded. Set by prepareMysqlMirror. If it failed at startup (e.g. MySQL
+// not yet reachable), we treat the first successful runtime authenticate
+// as a reconnect so the setup is retried and the initial backfill runs.
+let mirrorSetupSucceeded = false;
+
+// Concurrency guard for prepareMysqlMirror - only one attempt at a time.
+let mirrorSetupPromise = null;
+
+// Single in-flight reconnect backfill. Concurrent callers share the same
+// promise so we don't run multiple backfills in parallel, and writes issued
+// after the reconnect are serialized behind it so the mirror is caught up
+// before new operations are applied.
+let reconnectBackfillPromise = null;
+
 export const mirrorDBEnabled = () => {
+  if (mirrorEnabledTestOverride !== null) {
+    return mirrorEnabledTestOverride;
+  }
   const CONFIG = getConfig();
   if (
     mirrorConfig === 'mirror' &&
@@ -65,6 +96,138 @@ export const mirrorDBEnabled = () => {
   return true;
 };
 
+// Test-only. DO NOT call from production code. Passing `null` restores the
+// real config-driven behaviour. See mirrorEnabledTestOverride above.
+export const __setMirrorEnabledForTests = (value) => {
+  mirrorEnabledTestOverride = value;
+};
+
+// Test-only. DO NOT call from production code. Signals to the reconnect
+// path whether the one-time MySQL setup (CREATE DATABASE + migrations) has
+// succeeded. In production this is set to true by prepareMysqlMirror.
+export const __setMirrorSetupSucceededForTests = (value) => {
+  mirrorSetupSucceeded = value;
+};
+
+/**
+ * Ensure the V1 MySQL mirror database exists and has up-to-date migrations.
+ * Idempotent: safe to call from startup and again on every reconnect.
+ *
+ * Returns true on success, false on failure. Never throws so it won't take
+ * down the main database path.
+ */
+export const prepareMysqlMirror = async () => {
+  if (mirrorSetupPromise) {
+    return mirrorSetupPromise;
+  }
+
+  mirrorSetupPromise = (async () => {
+    const CONFIG = getConfig();
+    const mirrorDbConfig = CONFIG?.MIRROR_DB;
+    if (
+      !mirrorDbConfig?.DB_HOST ||
+      mirrorDbConfig.DB_HOST === '' ||
+      !mirrorDbConfig.DB_NAME ||
+      !mirrorDbConfig.DB_USERNAME ||
+      !mirrorDbConfig.DB_PASSWORD
+    ) {
+      return false;
+    }
+
+    try {
+      const connection = await mysql.createConnection({
+        host: mirrorDbConfig.DB_HOST,
+        port: 3306,
+        user: mirrorDbConfig.DB_USERNAME,
+        password: mirrorDbConfig.DB_PASSWORD,
+      });
+
+      try {
+        await connection.query(
+          `CREATE DATABASE IF NOT EXISTS \`${mirrorDbConfig.DB_NAME}\`;`,
+        );
+      } finally {
+        await connection.end();
+      }
+
+      // checkForMigrations is idempotent (it checks SequelizeMeta), so it's
+      // safe to re-run on every reconnect.
+      await checkForMigrations(sequelizeMirror);
+      mirrorSetupSucceeded = true;
+      return true;
+    } catch (error) {
+      logger.error(
+        `Error setting up MySQL mirror database: ${error.message}`,
+      );
+      return false;
+    }
+  })().finally(() => {
+    mirrorSetupPromise = null;
+  });
+
+  return mirrorSetupPromise;
+};
+
+// Returns true if V1.MIRROR_DB is fully configured with MySQL credentials.
+// Used to gate reconnect-setup retries - only MySQL configs need the setup
+// retry path; SQLite test fallbacks never need it.
+const isMysqlMirrorConfiguredForReconnect = () => {
+  const CONFIG = getConfig();
+  return !!(
+    CONFIG?.MIRROR_DB?.DB_HOST &&
+    CONFIG.MIRROR_DB.DB_HOST !== '' &&
+    CONFIG.MIRROR_DB.DB_NAME &&
+    CONFIG.MIRROR_DB.DB_USERNAME &&
+    CONFIG.MIRROR_DB.DB_PASSWORD
+  );
+};
+
+const startReconnectBackfill = () => {
+  if (reconnectBackfillPromise) {
+    return reconnectBackfillPromise;
+  }
+  reconnectBackfillPromise = (async () => {
+    try {
+      logger.info('Mirror DB reconnected, running catch-up recovery...');
+
+      // If setup (CREATE DATABASE + migrations) never succeeded (e.g. MySQL
+      // was down at CADT startup), retry it before backfill. Only applies
+      // to MySQL configurations - SQLite test fallbacks don't need setup
+      // retries and don't have config to retry against.
+      if (!mirrorSetupSucceeded && isMysqlMirrorConfiguredForReconnect()) {
+        const ok = await prepareMysqlMirror();
+        if (!ok) {
+          logger.error(
+            'Reconnect recovery: mirror setup still failing, backfill skipped',
+          );
+          // Keep auth state as 'disconnected' so the next successful
+          // authenticate re-enters this path and retries setup+backfill.
+          mirrorAuthState = 'disconnected';
+          return;
+        }
+      }
+
+      if (!mirrorSetupSucceeded) {
+        // SQLite test fallback path never marked setup complete and has no
+        // MySQL to retry against. Skip the backfill quietly - there's
+        // nothing to reconnect to.
+        return;
+      }
+
+      await backfillMirror();
+    } catch (error) {
+      logger.error(`Reconnect backfill failed: ${error.message}`);
+      // Mark disconnected so the next authenticate success retries the
+      // catch-up. Without this reset, a transient backfill failure would
+      // leave the mirror permanently behind until the NEXT real outage.
+      mirrorAuthState = 'disconnected';
+    } finally {
+      reconnectBackfillPromise = null;
+    }
+  })();
+  return reconnectBackfillPromise;
+};
+
 export const safeMirrorDbHandler = (callback) => {
   if (!mirrorDBEnabled()) {
     return Promise.resolve();
@@ -75,6 +238,26 @@ export const safeMirrorDbHandler = (callback) => {
       sequelizeMirror
         .authenticate()
         .then(async () => {
+          const wasDisconnected = mirrorAuthState === 'disconnected';
+          // If MySQL setup never succeeded at startup (e.g. MySQL was down
+          // when prepareDb ran), the first successful authenticate needs
+          // to re-run setup + backfill even though we were never in an
+          // explicit 'disconnected' state. Only applies when MySQL is
+          // actually configured - the SQLite test fallback doesn't need a
+          // reconnect path and would otherwise spam recovery logs on every
+          // model write during tests.
+          const setupNeverRan =
+            !mirrorSetupSucceeded && isMysqlMirrorConfiguredForReconnect();
+          mirrorAuthState = 'connected';
+
+          if (wasDisconnected || setupNeverRan) {
+            await startReconnectBackfill();
+          } else if (reconnectBackfillPromise) {
+            // Another concurrent caller already triggered the backfill;
+            // wait for it so our write lands on a caught-up mirror.
+            await reconnectBackfillPromise;
+          }
+
           try {
             await callback();
           } catch (e) {
@@ -82,6 +265,7 @@ export const safeMirrorDbHandler = (callback) => {
           }
         })
         .catch(() => {
+          mirrorAuthState = 'disconnected';
           logDebounce();
         });
     } catch (error) {
@@ -93,6 +277,223 @@ export const safeMirrorDbHandler = (callback) => {
       resolve();
     }
   });
+};
+
+// Initialize a V1 mirror Sequelize Model synchronously at module-load time.
+//
+// Model.init() only registers schema metadata on the Sequelize instance; it
+// does not require a live database connection. Gating init on a successful
+// authenticate() (as safeMirrorDbHandler does for runtime operations) causes
+// a silent, permanent failure when the MySQL sidecar is not yet reachable at
+// CADT startup: the .then() callback never runs, the model is never
+// initialized, and every subsequent mirror write throws
+// "Cannot read properties of undefined (reading 'constructor')" from within
+// Sequelize (this.sequelize is undefined on an uninitialized Model).
+//
+// Runtime writes continue to be gated through safeMirrorDbHandler, which
+// authenticates on each call and short-circuits cleanly when MySQL is down
+// and transparently resumes when the connection pool recovers.
+export const initMirrorModel = (initFn) => {
+  try {
+    initFn();
+  } catch (error) {
+    logger.error(`Failed to initialize mirror model: ${error.message}`);
+  }
+};
+
+/**
+ * Backfill MySQL mirror database from SQLite source data.
+ *
+ * Runs on startup and on every reconnect after a connection outage. For each
+ * source/mirror pair this performs two passes:
+ *   1. Upsert pass: bulkCreate(updateOnDuplicate) inserts missing rows and
+ *      updates stale rows. This recovers inserts and updates that happened
+ *      while the mirror was unreachable.
+ *   2. Orphan sweep: rows present in mirror but no longer in source are
+ *      deleted. This recovers deletes that happened while the mirror was
+ *      unreachable (deletes are otherwise lost because the fire-and-forget
+ *      safeMirrorDbHandler silently drops operations during an outage).
+ *
+ * Ordering matters for the orphan sweep: mirror PKs are snapshotted BEFORE
+ * source PKs so rows inserted concurrently are not misclassified as orphans.
+ *
+ * Uses dynamic imports to avoid circular dependency (model files import from
+ * this file).
+ */
+const BACKFILL_BATCH_SIZE = 1000;
+
+const sweepMirrorOrphans = async (source, mirror, name) => {
+  const pkAttrs = mirror.primaryKeyAttributes;
+  if (!pkAttrs || pkAttrs.length !== 1) {
+    logger.debug(
+      `Mirror backfill: ${name} - skipping orphan sweep (composite or missing primary key)`,
+    );
+    return 0;
+  }
+  const pkAttr = pkAttrs[0];
+
+  const mirrorPkRows = await mirror.findAll({
+    attributes: [pkAttr],
+    raw: true,
+  });
+  if (mirrorPkRows.length === 0) {
+    return 0;
+  }
+
+  const sourcePkRows = await source.findAll({
+    attributes: [pkAttr],
+    raw: true,
+  });
+  const sourcePks = new Set(sourcePkRows.map((r) => r[pkAttr]));
+
+  const orphanPks = mirrorPkRows
+    .map((r) => r[pkAttr])
+    .filter((pk) => !sourcePks.has(pk));
+
+  if (orphanPks.length === 0) {
+    return 0;
+  }
+
+  let removed = 0;
+  for (let i = 0; i < orphanPks.length; i += BACKFILL_BATCH_SIZE) {
+    const batch = orphanPks.slice(i, i + BACKFILL_BATCH_SIZE);
+    removed += await mirror.destroy({
+      where: { [pkAttr]: batch },
+    });
+  }
+
+  logger.info(`Mirror backfill: ${name} - removed ${removed} orphan rows`);
+  return removed;
+};
+
+export const backfillMirror = async () => {
+  if (!mirrorDBEnabled()) {
+    return;
+  }
+
+  logger.info('Starting MySQL mirror backfill from SQLite...');
+
+  try {
+    // Dynamic import of the models barrel to avoid circular dependency:
+    // V1 model files statically import { sequelizeMirror, safeMirrorDbHandler }
+    // from this file, so a static import of the models here would introduce
+    // a module cycle. Dynamic import lets Node fully resolve the V1 model
+    // graph (including cross-model associations in src/models/index.js)
+    // before we reference any model class.
+    // eslint-disable-next-line no-restricted-syntax -- see comment above
+    const models = await import('../models/index.js');
+
+    // Mirrors are not all re-exported through the barrel today, so import
+    // each mirror file directly. Same circular-dep rationale applies.
+    /* eslint-disable no-restricted-syntax -- dynamic imports intentional; see comment above */
+    const [
+      { ProjectMirror },
+      { CoBenefitMirror },
+      { ProjectLocationMirror },
+      { LabelMirror },
+      { RatingMirror },
+      { RelatedProjectMirror },
+      { UnitMirror },
+      { IssuanceMirror },
+      { EstimationMirror },
+      { LabelUnitMirror },
+      { AuditMirror },
+    ] = await Promise.all([
+      import('../models/projects/projects.model.mirror.js'),
+      import('../models/co-benefits/co-benefits.model.mirror.js'),
+      import('../models/locations/locations.model.mirror.js'),
+      import('../models/labels/labels.model.mirror.js'),
+      import('../models/ratings/ratings.model.mirror.js'),
+      import('../models/related-projects/related-projects.model.mirror.js'),
+      import('../models/units/units.model.mirror.js'),
+      import('../models/issuances/issuances.model.mirror.js'),
+      import('../models/estimations/estimations.model.mirror.js'),
+      import('../models/labelUnits/labelUnits.model.mirror.js'),
+      import('../models/audit/audit.model.mirror.js'),
+    ]);
+    /* eslint-enable no-restricted-syntax */
+
+    const mirrorPairs = [
+      { source: models.Project, mirror: ProjectMirror, name: 'project' },
+      { source: models.CoBenefit, mirror: CoBenefitMirror, name: 'co_benefit' },
+      { source: models.ProjectLocation, mirror: ProjectLocationMirror, name: 'location' },
+      { source: models.Label, mirror: LabelMirror, name: 'label' },
+      { source: models.Rating, mirror: RatingMirror, name: 'rating' },
+      { source: models.RelatedProject, mirror: RelatedProjectMirror, name: 'related_project' },
+      { source: models.Unit, mirror: UnitMirror, name: 'unit' },
+      { source: models.Issuance, mirror: IssuanceMirror, name: 'issuance' },
+      { source: models.Estimation, mirror: EstimationMirror, name: 'estimation' },
+      { source: models.LabelUnit, mirror: LabelUnitMirror, name: 'label_unit' },
+      { source: models.Audit, mirror: AuditMirror, name: 'audit' },
+    ];
+
+    let totalSynced = 0;
+    let totalOrphansRemoved = 0;
+
+    for (const { source, mirror, name } of mirrorPairs) {
+      try {
+        if (!mirror.rawAttributes || Object.keys(mirror.rawAttributes).length === 0) {
+          logger.warn(`Mirror backfill: ${name} - mirror model not initialized, skipping`);
+          continue;
+        }
+
+        // Orphan sweep first (mirror snapshot before source snapshot) so
+        // concurrent inserts aren't wrongly classified as orphans.
+        const orphansRemoved = await sweepMirrorOrphans(source, mirror, name);
+        totalOrphansRemoved += orphansRemoved;
+
+        const count = await source.count();
+        if (count === 0) {
+          logger.debug(`Mirror backfill: ${name} - no records to sync`);
+          continue;
+        }
+
+        const updateFields = Object.keys(mirror.rawAttributes).filter(
+          (attr) => !mirror.primaryKeyAttributes.includes(attr),
+        );
+
+        // Paginate with an explicit ORDER BY on the primary key - neither
+        // SQLite nor MySQL guarantees consistent ordering across pages
+        // without it, and concurrent writes mid-backfill could otherwise
+        // shift rows between pages and cause some to be silently skipped.
+        const pkAttrs = mirror.primaryKeyAttributes || [];
+        const order =
+          pkAttrs.length === 1 ? [[pkAttrs[0], 'ASC']] : undefined;
+
+        let synced = 0;
+        for (let offset = 0; offset < count; offset += BACKFILL_BATCH_SIZE) {
+          const rows = await source.findAll({
+            raw: true,
+            offset,
+            limit: BACKFILL_BATCH_SIZE,
+            order,
+          });
+
+          await mirror.bulkCreate(rows, {
+            updateOnDuplicate: updateFields,
+          });
+
+          synced += rows.length;
+        }
+
+        logger.info(`Mirror backfill: ${name} - synced ${synced} records`);
+        totalSynced += synced;
+      } catch (error) {
+        logger.error(`Mirror backfill error for ${name}: ${error.message}`);
+        // Continue with next table - don't let one failure stop the entire backfill
+      }
+    }
+
+    logger.info(
+      `MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed`,
+    );
+  } catch (error) {
+    logger.error(
+      `MySQL mirror backfill failed: ${error?.message || error?.name || 'unknown error'}`,
+    );
+    logger.debug(error?.stack || error);
+    // Don't throw - allow main database to continue operating
+  }
 };
 
 export const sanitizeSqliteFtsQuery = (query) => {
@@ -157,42 +558,36 @@ export const checkForMigrations = async (db) => {
 };
 
 export const prepareDb = async () => {
-  const mirrorConfig =
+  const envMirrorConfig =
     (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 
   if (
-    mirrorConfig == 'mirror' &&
-    getConfig().MIRROR_DB.DB_HOST &&
+    envMirrorConfig == 'mirror' &&
+    getConfig().MIRROR_DB?.DB_HOST &&
     getConfig().MIRROR_DB.DB_HOST !== ''
   ) {
-    try {
-      const connection = await mysql.createConnection({
-        host: getConfig().MIRROR_DB.DB_HOST,
-        port: 3306,
-        user: getConfig().MIRROR_DB.DB_USERNAME,
-        password: getConfig().MIRROR_DB.DB_PASSWORD,
-      });
-
-      try {
-        await connection.query(
-          `CREATE DATABASE IF NOT EXISTS \`${getConfig().MIRROR_DB.DB_NAME}\`;`,
-        );
-      } finally {
-        await connection.end();
-      }
-
-      const db = new Sequelize(config[mirrorConfig]);
-
-      await checkForMigrations(db);
-    } catch (error) {
-      // Non-fatal: mirror DB failure should not block main database startup
-      logger.error('[v1]: Error setting up MySQL mirror database:', error);
-    }
-  } else if (mirrorConfig == 'mirrorTest') {
+    // Non-fatal: mirror DB failure should not block main database startup.
+    // When the mirror becomes reachable later, safeMirrorDbHandler will
+    // detect the reconnect and trigger a catch-up backfill automatically.
+    await prepareMysqlMirror();
+  } else if (envMirrorConfig == 'mirrorTest') {
+    // SQLite fallback used in unit/integration tests (NODE_ENV=test). The
+    // DB is always reachable so migrations run directly. Marking setup as
+    // succeeded prevents safeMirrorDbHandler from treating the first
+    // authenticate as a reconnect and spamming the "reconnect recovery"
+    // log for every model write during tests.
     await checkForMigrations(sequelizeMirror);
+    mirrorSetupSucceeded = true;
   }
 
   await checkForMigrations(sequelize);
+
+  // Run the mirror backfill after main migrations so all source and mirror
+  // tables exist. This catches up rows that were inserted/updated/deleted
+  // while the mirror was unavailable on a previous run.
+  if (mirrorSetupSucceeded) {
+    await backfillMirror();
+  }
 };
 
 // Function to set WAL mode

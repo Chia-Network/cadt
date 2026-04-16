@@ -2,11 +2,21 @@
 /**
  * Orchestration file for short test mode (batch commits)
  * Runs all POST requests first, then commits, then PUT requests, then commits, then DELETE requests, then commits
+ *
+ * MySQL Mirror Database Testing:
+ * When CADT is configured with a V1 MySQL mirror database (V1.MIRROR_DB in
+ * config.yaml), this test runner will also verify that data is correctly
+ * mirrored to MySQL after each commit phase.
  */
 
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import {
+  isMirrorDbEnabled,
+  verifyMirrorRecordsBatch,
+  closeMirrorDbPool,
+} from './helpers/mysql-mirror-helpers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -179,6 +189,40 @@ async function commitAndWait(phase) {
     console.log('No records to verify');
   }
 
+  // MySQL Mirror Database Verification
+  // When V1.MIRROR_DB is configured, assert each tracked record appears in
+  // the MySQL mirror with matching data (or is absent for DELETEs). This is
+  // how we catch regressions in:
+  //   - the V1 safeMirrorDbHandler init race (mirror models not init'd),
+  //   - outage-replay gaps (writes dropped during MySQL outage),
+  //   - DELETE handling in the reconnect backfill.
+  if (isMirrorDbEnabled()) {
+    console.log(`\n[${verifyTimestamp}] Verifying MySQL mirror database (V1)...`);
+
+    const mirrorRecordsToVerify = [];
+    for (const [type, typeRecords] of Object.entries(verificationRecords)) {
+      for (const [id, recordInfo] of Object.entries(typeRecords)) {
+        mirrorRecordsToVerify.push({
+          type,
+          id,
+          operation: recordInfo.operation,
+          expectedData: recordInfo.expectedData,
+        });
+      }
+    }
+
+    if (mirrorRecordsToVerify.length > 0) {
+      const mirrorResult = await verifyMirrorRecordsBatch(mirrorRecordsToVerify);
+      if (mirrorResult.failed > 0) {
+        console.error(`\n❌ MySQL Mirror (V1) verification failed: ${mirrorResult.failed} record(s) failed`);
+        console.error('MySQL Mirror Failures:');
+        mirrorResult.failures.forEach(failure => console.error(`  - ${failure}`));
+        throw new Error(`MySQL Mirror (V1) verification failed: ${mirrorResult.failed} of ${mirrorResult.verified + mirrorResult.failed} record(s) failed`);
+      }
+      console.log(`✓ MySQL Mirror (V1): All ${mirrorResult.verified} record(s) verified successfully`);
+    }
+  }
+
   clearBatchVerificationRecords();
   console.log(`[${verifyTimestamp}] ✓ ${phase} phase complete\n`);
 }
@@ -186,6 +230,12 @@ async function commitAndWait(phase) {
 async function main() {
   try {
     console.log('\n=== Short Test Mode (Batch Commits) ===\n');
+
+    if (isMirrorDbEnabled()) {
+      console.log('✓ V1 MySQL mirror database is enabled - will verify mirror data after commits');
+    } else {
+      console.log('ℹ V1 MySQL mirror database is not configured - skipping mirror verification');
+    }
 
     // Clear staging table and verification state before starting tests
     const { getLiveApiRequest, clearStagingTable } = await import('./helpers/live-api-helpers.js');
@@ -215,8 +265,23 @@ async function main() {
     await commitAndWait('DELETE');
 
     console.log('\n=== All phases complete ===\n');
+
+    // Close MySQL mirror connection pool to let the process exit cleanly.
+    // Wrap so a cleanup failure doesn't flip a successful test run into a
+    // perceived error - closeMirrorDbPool is defensive internally, this
+    // is belt-and-suspenders.
+    try {
+      await closeMirrorDbPool();
+    } catch (cleanupError) {
+      console.warn(`Error closing MySQL mirror pool (ignored): ${cleanupError.message}`);
+    }
   } catch (error) {
     console.error('Error running short mode tests:', error);
+    try {
+      await closeMirrorDbPool();
+    } catch (cleanupError) {
+      console.warn(`Error closing MySQL mirror pool (ignored): ${cleanupError.message}`);
+    }
     process.exit(1);
   }
 }

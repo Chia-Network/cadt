@@ -1,12 +1,12 @@
 'use strict';
 import { Model } from 'sequelize';
 
-import { sequelizeMirror, safeMirrorDbHandler } from '../../database';
+import { sequelizeMirror, initMirrorModel } from '../../database';
 import ModelTypes from './units.modeltypes.js';
 
 class UnitMirror extends Model {}
 
-safeMirrorDbHandler(() => {
+initMirrorModel(() => {
   UnitMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
     modelName: 'unit',
