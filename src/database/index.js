@@ -442,41 +442,82 @@ export const backfillMirror = async () => {
         const orphansRemoved = await sweepMirrorOrphans(source, mirror, name);
         totalOrphansRemoved += orphansRemoved;
 
-        const count = await source.count();
-        if (count === 0) {
-          logger.debug(`Mirror backfill: ${name} - no records to sync`);
-          continue;
-        }
-
         const updateFields = Object.keys(mirror.rawAttributes).filter(
           (attr) => !mirror.primaryKeyAttributes.includes(attr),
         );
 
-        // Paginate with an explicit ORDER BY on the primary key - neither
-        // SQLite nor MySQL guarantees consistent ordering across pages
-        // without it, and concurrent writes mid-backfill could otherwise
-        // shift rows between pages and cause some to be silently skipped.
+        // Keyset pagination (WHERE pk > :lastSeenPk ORDER BY pk ASC LIMIT N)
+        // instead of offset-based. Offset pagination under concurrent
+        // writes can silently skip rows: a delete at position N shifts
+        // later rows down, so the next page's OFFSET lands one row later
+        // than intended. Keyset pagination avoids that page-shift-on-delete
+        // hazard by using a lower-bound predicate instead of a position
+        // count.
+        //
+        // Note: keyset pagination is NOT immune to concurrent INSERTs with
+        // a PK less than `lastPk`. Such rows will be missed in the current
+        // pass but picked up by the next reconnect backfill. A subsequent
+        // steady-state safeMirrorDbHandler write also directly upserts
+        // them, so the miss window is bounded.
+        //
+        // Requires a single-column comparable PK. Composite-PK models fall
+        // back to a single unordered bulk read - safer than a wrong-order
+        // keyset walk. No V1 models currently use composite PKs, and the
+        // single-PK invariant is asserted at load time by
+        // mirror-model-init.spec.js.
         const pkAttrs = mirror.primaryKeyAttributes || [];
-        const order =
-          pkAttrs.length === 1 ? [[pkAttrs[0], 'ASC']] : undefined;
 
         let synced = 0;
-        for (let offset = 0; offset < count; offset += BACKFILL_BATCH_SIZE) {
-          const rows = await source.findAll({
-            raw: true,
-            offset,
-            limit: BACKFILL_BATCH_SIZE,
-            order,
-          });
-
-          await mirror.bulkCreate(rows, {
-            updateOnDuplicate: updateFields,
-          });
-
-          synced += rows.length;
+        if (pkAttrs.length === 1) {
+          const pk = pkAttrs[0];
+          let lastPk = null;
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const where =
+              lastPk === null ? undefined : { [pk]: { [Sequelize.Op.gt]: lastPk } };
+            const rows = await source.findAll({
+              raw: true,
+              where,
+              limit: BACKFILL_BATCH_SIZE,
+              order: [[pk, 'ASC']],
+            });
+            if (rows.length === 0) break;
+            await mirror.bulkCreate(rows, { updateOnDuplicate: updateFields });
+            synced += rows.length;
+            lastPk = rows[rows.length - 1][pk];
+            // Defensive: a null/undefined terminal PK means we can't
+            // continue the keyset walk safely (Op.gt: undefined is
+            // ill-defined and would loop on the same page). Stop the
+            // walk; subsequent reconnects will retry from scratch.
+            if (lastPk == null) {
+              logger.warn(
+                `Mirror backfill: ${name} - terminal row had null PK; ` +
+                  `stopping keyset walk early (${synced} rows synced).`,
+              );
+              break;
+            }
+            if (rows.length < BACKFILL_BATCH_SIZE) break;
+          }
+        } else {
+          // Composite-PK mirrors are not supported by keyset-paginated
+          // backfill. mirror-model-init.spec.js asserts every current
+          // mirror has a single-column PK; if someone introduces a
+          // composite-PK mirror without extending this function, fail
+          // loudly (caught by the per-table try/catch) rather than
+          // silently loading the whole table into memory.
+          throw new Error(
+            `Mirror backfill: ${name} has a composite primary key ` +
+              `(${pkAttrs.join(', ')}). Keyset pagination needs a ` +
+              `single-column comparable PK. Either reduce to a single-column ` +
+              `PK, or extend backfillMirror to handle composite keys.`,
+          );
         }
 
-        logger.info(`Mirror backfill: ${name} - synced ${synced} records`);
+        if (synced === 0) {
+          logger.debug(`Mirror backfill: ${name} - no records to sync`);
+        } else {
+          logger.info(`Mirror backfill: ${name} - synced ${synced} records`);
+        }
         totalSynced += synced;
       } catch (error) {
         logger.error(`Mirror backfill error for ${name}: ${error.message}`);
