@@ -32,10 +32,52 @@ import { createHash } from 'crypto';
 // DATETIME(0) columns). CADT's mirror verification helpers
 // (tests/v{1,2}/live-api/helpers/mysql-mirror-helpers.js) compare on
 // the YYYY-MM-DD prefix only, so the rounding is not observable.
+
+// Diagnostic counters for the patched base _stringify below. Gated by
+// CADT_DATE_STRINGIFY_DIAG so tests and production runs don't pay the
+// stack-capture cost or spam the logger. This block is TEMPORARY - it
+// exists to identify the specific Sequelize entry point that reaches
+// the base _stringify despite the mysql.DATE subclass being wired up.
+// Remove once that path is understood and documented in the comment
+// above.
+const MAX_BASE_STRINGIFY_STACKS = 8;
+let baseStringifyDiagCount = 0;
+const baseStringifyDiagEnabled =
+  process.env.CADT_DATE_STRINGIFY_DIAG !== undefined
+    ? process.env.CADT_DATE_STRINGIFY_DIAG !== '0' &&
+      process.env.CADT_DATE_STRINGIFY_DIAG !== 'false'
+    : false;
+
 Sequelize.DataTypes.DATE.prototype._stringify = function _stringify(
   date,
   options,
 ) {
+  // TEMPORARY DIAGNOSTIC - see MAX_BASE_STRINGIFY_STACKS block above.
+  if (
+    baseStringifyDiagEnabled &&
+    baseStringifyDiagCount < MAX_BASE_STRINGIFY_STACKS
+  ) {
+    baseStringifyDiagCount += 1;
+    const stack = new Error('[DATE-diag]').stack
+      .split('\n')
+      .slice(1, 12)
+      .join('\n');
+    const valueStr =
+      date instanceof Date
+        ? date.toISOString()
+        : moment.isMoment(date)
+          ? date.toISOString()
+          : String(date);
+    const dialectHint = this?.constructor?.name || 'unknown';
+    logger.warn(
+      `[DATE-diag] base _stringify called ` +
+        `(${baseStringifyDiagCount}/${MAX_BASE_STRINGIFY_STACKS}) ` +
+        `value=${valueStr} ` +
+        `timezone=${options?.timezone ?? 'unset'} ` +
+        `this.constructor.name=${dialectHint}\n` +
+        stack,
+    );
+  }
   if (!moment.isMoment(date)) {
     date = this._applyTimezone(date, options);
   }
