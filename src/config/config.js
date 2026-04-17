@@ -61,6 +61,18 @@ export default {
     host: getConfig().MIRROR_DB.DB_HOST || '',
     dialect: 'mysql',
     logging: mirrorLogging,
+    // Tell Sequelize to serialise Date values as UTC without a trailing
+    // "+00:00" offset. Recent MariaDB strict mode rejects the
+    // "YYYY-MM-DD HH:MM:SS.SSS +00:00" format Sequelize emits by default,
+    // with errors like:
+    //   Incorrect datetime value: '2026-04-16 22:41:27.490 +00:00'
+    //     for column `cadt_mirror_test`.`audit`.`createdAt` at row 1
+    // Setting timezone at the Sequelize constructor level (as opposed to
+    // Model.init, where it is silently ignored) produces the MariaDB-safe
+    // "YYYY-MM-DD HH:MM:SS" format. Without this, every mirror write that
+    // touches a DATE/DATETIME column is silently dropped by the
+    // fire-and-forget safeMirrorDbHandler.
+    timezone: '+00:00',
   },
   // V2 Database Configurations
   v2Local: {
@@ -96,5 +108,8 @@ export default {
     host: getConfigV2().MIRROR_DB?.DB_HOST || '',
     dialect: 'mysql',
     logging: mirrorLogging,
+    // See comment on `mirror` above. Same MariaDB strict-mode datetime
+    // issue applies to V2.
+    timezone: '+00:00',
   },
 };

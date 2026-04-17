@@ -581,8 +581,17 @@ const sweepMirrorOrphansV2 = async (source, mirror, name) => {
  * Ensure the MySQL mirror database exists and has up-to-date migrations.
  * Idempotent: safe to call from startup and again on every reconnect.
  *
- * Returns true on success, false on failure. Never throws so it won't take
- * down the main database path.
+ * Returns true on success, false on transient I/O failure (e.g. MySQL not
+ * reachable, CREATE DATABASE fails, migrations fail). I/O failures are
+ * caught and logged so they don't take down the main database path.
+ *
+ * THROWS (intentionally) when V1 and V2 are misconfigured to share the
+ * same MIRROR_DB.DB_NAME - see validateMirrorDbNames. That is a
+ * programmer/ops error, not a retryable failure, and surfacing it loudly
+ * at CADT startup prevents silent data corruption where V1 and V2 would
+ * clobber each other's rows in the mirror. Callers on both the startup
+ * path (prepareV2Db) and the reconnect path (startV2ReconnectBackfill)
+ * are already wrapped in try/catch at the appropriate level.
  */
 export const prepareMysqlMirrorV2 = async () => {
   if (v2MirrorSetupPromise) {
