@@ -314,20 +314,12 @@ jobs:
 
       - name: Start CADT
         shell: bash
-        env:
-          # TEMPORARY: capture stack traces for the first few base
-          # DATE._stringify invocations. One CI run pinpoints the
-          # Sequelize internal path that reaches the base serialiser
-          # despite mysql.DATE being wired up. Remove this env var once
-          # the stacks are captured and the comment in src/config/config.js
-          # is updated with the concrete root cause.
-          CADT_DATE_STRINGIFY_DIAG: "1"
         run: |
           # MariaDB is still stopped at this point (see "Configure MySQL").
           # CADT must start successfully, log the mirror setup failure as
           # non-fatal, and expose its health endpoint. This exercises the
           # mirror init race that broke production observers on k8s.
-          pm2 start npm --no-autorestart --name "cadt" --update-env -- start
+          pm2 start npm --no-autorestart --name "cadt" -- start
           echo "Waiting for CADT health endpoint..."
           MAX_CADT_HEALTH_ATTEMPTS=30
           for CADT_ATTEMPT in $(seq 1 "$MAX_CADT_HEALTH_ATTEMPTS"); do
@@ -850,14 +842,6 @@ jobs:
 
       - name: Start CADT
         shell: bash
-        env:
-          # TEMPORARY: capture stack traces for the first few base
-          # DATE._stringify invocations. One CI run pinpoints the
-          # Sequelize internal path that reaches the base serialiser
-          # despite mysql.DATE being wired up. Remove this env var once
-          # the stacks are captured and the comment in src/config/config.js
-          # is updated with the concrete root cause.
-          CADT_DATE_STRINGIFY_DIAG: "1"
         run: |
           # MariaDB is still stopped at this point (see "Configure MySQL
           # for V1 mirror database testing"). CADT must start successfully,
@@ -865,7 +849,7 @@ jobs:
           # The subsequent "Delay-start MariaDB" step restarts MariaDB
           # shortly after so the V1 mirror reconnect path is exercised
           # while CADT is still booting.
-          pm2 start npm --no-autorestart --name "cadt" --update-env -- start
+          pm2 start npm --no-autorestart --name "cadt" -- start
           echo "Waiting for CADT API endpoint (V1 port ${CW_PORT:-31310})..."
           MAX_CADT_HEALTH_ATTEMPTS=30
           for CADT_ATTEMPT in $(seq 1 "$MAX_CADT_HEALTH_ATTEMPTS"); do
