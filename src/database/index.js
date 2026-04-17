@@ -83,6 +83,20 @@ export const mirrorDBEnabled = () => {
     return mirrorEnabledTestOverride;
   }
   const CONFIG = getConfig();
+  // In production-like mode ('local' env), require full MySQL config.
+  // In SQLite-fallback test mode ('mirrorTest' env), leave the mirror
+  // enabled unconditionally so integration tests that rely on the
+  // SQLite fallback mirror continue to see their writes land.
+  //
+  // Asymmetry note: V2's mirrorDBEnabledV2() is stricter - it returns
+  // false in SQLite-fallback test mode, and V2 tests opt in via
+  // __setMirrorEnabledForTestsV2. V1 integration tests predate that
+  // pattern and rely on the implicit test-mode enablement here.
+  //
+  // The cost of the on-startup backfill iterating all 11 table pairs
+  // is gated separately in prepareDb() via
+  // isMysqlMirrorConfiguredForReconnect(), not via mirrorDBEnabled(),
+  // so the backfill only fires when MySQL is actually configured.
   if (
     mirrorConfig === 'mirror' &&
     (!CONFIG?.MIRROR_DB?.DB_HOST ||
@@ -92,7 +106,6 @@ export const mirrorDBEnabled = () => {
   ) {
     return false;
   }
-
   return true;
 };
 
@@ -332,39 +345,74 @@ const sweepMirrorOrphans = async (source, mirror, name) => {
   }
   const pkAttr = pkAttrs[0];
 
+  // Concurrency invariant: mirror is scanned BEFORE source. A row
+  // inserted concurrently (after the mirror page fetch, before or
+  // during the source page fetch) will be absent from orphanCandidates
+  // and thus cannot be misclassified as an orphan. A row inserted
+  // before the mirror scan and deleted from source during the scan is
+  // a true orphan and will be correctly removed. Reversing the order
+  // would allow false-positive orphan deletes for rows inserted into
+  // both tables during the sweep.
+  //
+  // Both scans are keyset-paginated. An earlier revision loaded every
+  // PK from both tables in a single unbounded findAll; this is fine
+  // for today's row counts but spikes memory on long-running
+  // deployments with large tables. Peak memory here is O(|mirror|) for
+  // the candidate set; the source side is streamed.
+  //
   // `raw: true` is safe here - the projection is PK-only, so there are
   // no DATE or custom-getter columns whose raw SQLite representation
-  // could leak into a bulk write (which is the hazard backfillMirror
-  // avoids). If a future change adds more projected attributes, revisit
-  // the raw:true pattern (see backfillMirror for the safe variant).
-  const mirrorPkRows = await mirror.findAll({
-    attributes: [pkAttr],
-    raw: true,
-  });
-  if (mirrorPkRows.length === 0) {
-    return 0;
-  }
-
-  const sourcePkRows = await source.findAll({
-    attributes: [pkAttr],
-    raw: true,
-  });
-  const sourcePks = new Set(sourcePkRows.map((r) => r[pkAttr]));
-
-  const orphanPks = mirrorPkRows
-    .map((r) => r[pkAttr])
-    .filter((pk) => !sourcePks.has(pk));
-
-  if (orphanPks.length === 0) {
-    return 0;
-  }
-
-  let removed = 0;
-  for (let i = 0; i < orphanPks.length; i += BACKFILL_BATCH_SIZE) {
-    const batch = orphanPks.slice(i, i + BACKFILL_BATCH_SIZE);
-    removed += await mirror.destroy({
-      where: { [pkAttr]: batch },
+  // could leak into a bulk write (the hazard backfillMirror avoids).
+  const orphanCandidates = new Set();
+  let lastMirrorPk = null;
+  while (true) {
+    const where =
+      lastMirrorPk === null
+        ? undefined
+        : { [pkAttr]: { [Sequelize.Op.gt]: lastMirrorPk } };
+    const page = await mirror.findAll({
+      attributes: [pkAttr],
+      where,
+      limit: BACKFILL_BATCH_SIZE,
+      order: [[pkAttr, 'ASC']],
+      raw: true,
     });
+    if (page.length === 0) break;
+    for (const r of page) orphanCandidates.add(r[pkAttr]);
+    lastMirrorPk = page[page.length - 1][pkAttr];
+    if (lastMirrorPk == null) break;
+    if (page.length < BACKFILL_BATCH_SIZE) break;
+  }
+
+  if (orphanCandidates.size === 0) return 0;
+
+  let lastSrcPk = null;
+  while (true) {
+    const where =
+      lastSrcPk === null
+        ? undefined
+        : { [pkAttr]: { [Sequelize.Op.gt]: lastSrcPk } };
+    const page = await source.findAll({
+      attributes: [pkAttr],
+      where,
+      limit: BACKFILL_BATCH_SIZE,
+      order: [[pkAttr, 'ASC']],
+      raw: true,
+    });
+    if (page.length === 0) break;
+    for (const r of page) orphanCandidates.delete(r[pkAttr]);
+    lastSrcPk = page[page.length - 1][pkAttr];
+    if (lastSrcPk == null) break;
+    if (page.length < BACKFILL_BATCH_SIZE) break;
+  }
+
+  if (orphanCandidates.size === 0) return 0;
+
+  const orphans = [...orphanCandidates];
+  let removed = 0;
+  for (let i = 0; i < orphans.length; i += BACKFILL_BATCH_SIZE) {
+    const batch = orphans.slice(i, i + BACKFILL_BATCH_SIZE);
+    removed += await mirror.destroy({ where: { [pkAttr]: batch } });
   }
 
   logger.info(`Mirror backfill: ${name} - removed ${removed} orphan rows`);
@@ -644,10 +692,17 @@ export const prepareDb = async () => {
 
   await checkForMigrations(sequelize);
 
-  // Run the mirror backfill after main migrations so all source and mirror
-  // tables exist. This catches up rows that were inserted/updated/deleted
-  // while the mirror was unavailable on a previous run.
-  if (mirrorSetupSucceeded) {
+  // Run the mirror backfill after main migrations so all source and
+  // mirror tables exist. This catches up rows that were inserted/
+  // updated/deleted while the mirror was unavailable on a previous run.
+  //
+  // Gate on isMysqlMirrorConfiguredForReconnect() (MySQL mode only) so
+  // SQLite-fallback test startups don't iterate all 11 source/mirror
+  // table pairs on every run. Tests that need the backfill code path
+  // exercised call backfillMirror() directly with
+  // __setMirrorSetupSucceededForTests and __setMirrorEnabledForTests
+  // to opt in.
+  if (mirrorSetupSucceeded && isMysqlMirrorConfiguredForReconnect()) {
     await backfillMirror();
   }
 };

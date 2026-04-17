@@ -1,7 +1,46 @@
+import Sequelize from 'sequelize';
+import moment from 'moment';
 import { getConfig, getConfigV2 } from '../utils/config-loader';
 import { getChiaRoot } from '../utils/chia-root.js';
 import { logger } from './logger.js';
 import { createHash } from 'crypto';
+
+// Strip the " +00:00" offset suffix from Sequelize's base DATE serialiser.
+//
+// Sequelize 6's default BaseTypes.DATE._stringify formats Date values as
+//   "YYYY-MM-DD HH:mm:ss.SSS Z"    (e.g. "2026-04-17 19:12:48.720 +00:00")
+// which recent MariaDB strict mode rejects with:
+//   Incorrect datetime value: '2026-04-17 19:12:48.720 +00:00'
+//     for column `cadt_mirror_test`.`audit`.`createdAt` at row 1
+//
+// The mysql-specific subclass overrides _stringify to a safer format
+// ("YYYY-MM-DD HH:mm:ss") and is always invoked for attribute-typed
+// writes on a MySQL dialect. However, V1 live-api CI reproducibly shows
+// the base format reaching MariaDB on Audit.create mirror writes even
+// with the mysql subclass wired up - presumably via some Sequelize
+// internal path that prototype-invokes the base method rather than
+// dispatching through the resolved attribute type. Rather than continue
+// bisecting Sequelize internals, patch the base emitter to drop the
+// offset suffix. The ".SSS" fractional-seconds form is kept so local
+// SQLite round-trips preserve millisecond precision (sqlite.DATE inherits
+// this _stringify - it doesn't define its own). Legacy rows written in
+// the pre-patch "... +00:00" form still round-trip via sqlite.DATE.parse
+// because its `date.includes("+")` branch returns `new Date(str)`
+// directly.
+//
+// MariaDB strict mode accepts ".SSS" (rounds half-up to whole seconds on
+// DATETIME(0) columns). CADT's mirror verification helpers
+// (tests/v{1,2}/live-api/helpers/mysql-mirror-helpers.js) compare on
+// the YYYY-MM-DD prefix only, so the rounding is not observable.
+Sequelize.DataTypes.DATE.prototype._stringify = function _stringify(
+  date,
+  options,
+) {
+  if (!moment.isMoment(date)) {
+    date = this._applyTimezone(date, options);
+  }
+  return date.format('YYYY-MM-DD HH:mm:ss.SSS');
+};
 
 const chiaRoot = getChiaRoot();
 const persistanceFolder = `${chiaRoot}/cadt/v1`;
