@@ -332,6 +332,11 @@ const sweepMirrorOrphans = async (source, mirror, name) => {
   }
   const pkAttr = pkAttrs[0];
 
+  // `raw: true` is safe here - the projection is PK-only, so there are
+  // no DATE or custom-getter columns whose raw SQLite representation
+  // could leak into a bulk write (which is the hazard backfillMirror
+  // avoids). If a future change adds more projected attributes, revisit
+  // the raw:true pattern (see backfillMirror for the safe variant).
   const mirrorPkRows = await mirror.findAll({
     attributes: [pkAttr],
     raw: true,
@@ -475,13 +480,29 @@ export const backfillMirror = async () => {
           while (true) {
             const where =
               lastPk === null ? undefined : { [pk]: { [Sequelize.Op.gt]: lastPk } };
-            const rows = await source.findAll({
-              raw: true,
+            // NOTE: Do NOT pass `raw: true` to findAll. With raw:true
+            // Sequelize returns SQLite values as-stored (strings),
+            // including DATE columns as "YYYY-MM-DD HH:mm:ss.SSS +00:00".
+            // Forwarding those strings verbatim to MariaDB's bulkCreate
+            // triggers strict-mode "Incorrect datetime value" rejections.
+            // Building model instances runs sqlite.DATE.parse so DATE
+            // columns become real Date objects; mysql.DATE then serialises
+            // them in the MariaDB-safe "YYYY-MM-DD HH:mm:ss" format.
+            //
+            // `.get({ plain: true, raw: true })` extracts dataValues
+            // directly (bypassing any attribute-level `get()` accessors
+            // a source model may define). Dates remain Date objects on
+            // dataValues because the sqlite parser runs during instance
+            // construction, not at get() time.
+            const instances = await source.findAll({
               where,
               limit: BACKFILL_BATCH_SIZE,
               order: [[pk, 'ASC']],
             });
-            if (rows.length === 0) break;
+            if (instances.length === 0) break;
+            const rows = instances.map((r) =>
+              r.get({ plain: true, raw: true }),
+            );
             await mirror.bulkCreate(rows, { updateOnDuplicate: updateFields });
             synced += rows.length;
             lastPk = rows[rows.length - 1][pk];
