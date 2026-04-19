@@ -3974,9 +3974,9 @@ Response
   "cadTrustProjectId": "9b9bb857-c71b-4649-b805-a289db27dc1c",
   "ratingType": "CCQI",
   "ratingName": "Quality Assessment Rating",
-      "ratingValue": "97",
-      "ratingLink": "https://www.example.com/rating-report",
-      "createdAt": "2022-03-11T05:17:55.427Z",
+  "ratingValue": "97",
+  "ratingLink": "https://www.example.com/rating-report",
+  "createdAt": "2022-03-11T05:17:55.427Z",
   "updatedAt": "2022-03-11T05:17:55.427Z"
 }
 ```
