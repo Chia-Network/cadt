@@ -155,9 +155,34 @@ class Governance extends Model {
     await Promise.all(updates.map(async (update) => Governance.upsert(update)));
   }
 
-  static async sync(retryCounter = 0) {
+  /**
+   * @returns {Promise<boolean>} true when the default-org governance data exists
+   */
+  static async hasLocalGovernanceData() {
     try {
+      return (
+        (await Governance.count({
+          where: { metaKey: 'orgList' },
+        })) > 0
+      );
+    } catch (error) {
+      if (error.message?.includes('no such table')) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  static async sync() {
+    if (Governance._syncPromise) {
+      logger.debug('governance sync already in progress, reusing in-flight sync');
+      return Governance._syncPromise;
+    }
+
+    Governance._syncPromise = (async () => {
       logger.debug('running governance model sync()');
+      const { GOVERNANCE_BODY_ID } = getConfig().GOVERNANCE;
+      const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
 
       if (!GOVERNANCE_BODY_ID) {
         throw new Error('Missing information in env to sync Governance data');
@@ -195,6 +220,7 @@ class Governance extends Model {
           GOVERNANCE_BODY_ID,
           governanceData,
         );
+        return;
       }
 
       // Check if the governance data for this version exists
@@ -219,19 +245,15 @@ class Governance extends Model {
           `Governance data is not available from store ${GOVERNANCE_BODY_ID} for ${dataModelVersion} data model.`,
         );
       }
+    })();
+
+    try {
+      return await Governance._syncPromise;
     } catch (error) {
-      await new Promise((resolve) => setTimeout(() => resolve(), 5000));
-      const maxRetry = 50;
-      if (retryCounter < maxRetry) {
-        logger.error(
-          `Error Syncing Governance Data. Retry attempt #${retryCounter + 1}. Retrying. Error:, ${error}`,
-        );
-        await Governance.sync(retryCounter + 1);
-      } else {
-        logger.error(
-          `Error Syncing Governance Data. Retry attempts exceeded. This will not have the latest governance data and data sync may be impacted`,
-        );
-      }
+      logger.error(`Error Syncing Governance Data: ${error.message}`);
+      throw error;
+    } finally {
+      Governance._syncPromise = null;
     }
   }
 

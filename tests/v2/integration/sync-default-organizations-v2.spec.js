@@ -84,6 +84,34 @@ describe('Phase 27.3: Sync Default Organizations V2 Task Tests', function () {
   });
 
   describe('OrgList Format Handling', function () {
+    it('should return an empty list until governance data has been synced', async function () {
+      await withConfigOverride(
+        async () => {
+          const defaultOrgList = await getDefaultOrganizationListV2();
+
+          expect(defaultOrgList).to.deep.equal([]);
+        },
+        { APP: { USE_SIMULATOR: false } },
+      );
+    });
+
+    it('should return an empty list when governance data exists without orgList', async function () {
+      await withConfigOverride(
+        async () => {
+          await GovernanceV2.create({
+            meta_key: 'pickList',
+            meta_value: '{}',
+            confirmed: true,
+          });
+
+          const defaultOrgList = await getDefaultOrganizationListV2();
+
+          expect(defaultOrgList).to.deep.equal([]);
+        },
+        { APP: { USE_SIMULATOR: false } },
+      );
+    });
+
     it('should correctly parse orgList with object format [{orgUid: "..."}, ...]', async function () {
       // The governance orgList is stored as an array of objects with orgUid property
       // This test verifies the format is handled correctly (regression test for bug fix)

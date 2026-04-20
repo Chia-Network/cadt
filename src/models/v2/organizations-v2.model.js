@@ -1409,8 +1409,13 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<string>} Registry store ID
    * @throws {Error} If v2 registry store ID not found
    */
-  static async getRegistryStoreIdFromSingleton(dataModelVersionStoreId, requiredVersion = 'v2') {
+  static async getRegistryStoreIdFromSingleton(
+    dataModelVersionStoreId,
+    requiredVersion = 'v2',
+    options = {},
+  ) {
     loggerV2.debug(`[v2]: Getting registry store ID from singleton ${dataModelVersionStoreId}, required version: ${requiredVersion}`);
+    const allowLongWait = options.allowLongWait !== false;
 
     // Get singleton data - use getStoreDataPromise in simulator mode, getSubscribedStoreData otherwise
     let singletonData = null;
@@ -1429,25 +1434,33 @@ class OrganizationsV2 extends Model {
       }
     } else {
       // In production mode, use getSubscribedStoreData with timeout
-      const timeout = Date.now() + 600000; // 10 minutes
+      if (allowLongWait) {
+        const timeout = Date.now() + 600000; // 10 minutes
 
-      while (!singletonData) {
-        try {
-          singletonData = await datalayer.getSubscribedStoreData(
-            dataModelVersionStoreId,
-            undefined,
-            true, // wait for sync
-          );
-          break;
-        } catch (error) {
-          if (Date.now() > timeout) {
-            throw new Error(
-              `Timeout getting singleton data from ${dataModelVersionStoreId}: ${error.message}`,
+        while (!singletonData) {
+          try {
+            singletonData = await datalayer.getSubscribedStoreData(
+              dataModelVersionStoreId,
+              undefined,
+              true, // wait for sync
             );
+            break;
+          } catch (error) {
+            if (Date.now() > timeout) {
+              throw new Error(
+                `Timeout getting singleton data from ${dataModelVersionStoreId}: ${error.message}`,
+              );
+            }
+            loggerV2.debug(`[v2]: ${error.message}. RETRYING`);
+            await new Promise((resolve) => setTimeout(resolve, 10000));
           }
-          loggerV2.debug(`[v2]: ${error.message}. RETRYING`);
-          await new Promise((resolve) => setTimeout(resolve, 10000));
         }
+      } else {
+        singletonData = await datalayer.getSubscribedStoreData(
+          dataModelVersionStoreId,
+          undefined,
+          false,
+        );
       }
     }
 
@@ -1469,13 +1482,14 @@ class OrganizationsV2 extends Model {
    * @param {string} orgUid - Organization UID
    * @returns {Promise<{orgUid: string, dataModelVersionStoreId: string, registryStoreId: string}>}
    */
-  static async subscribeToOrganization(orgUid) {
+  static async subscribeToOrganization(orgUid, options = {}) {
     if (orgUid === 'PENDING') {
       loggerV2.info('[v2]: cannot subscribe to a home organization while its pending.');
       throw new Error('Cannot subscribe to PENDING organization');
     }
 
     loggerV2.debug(`[v2]: Running the organization subscription process on organization ${orgUid}`);
+    const allowLongWait = options.allowLongWait !== false;
 
     // Timeout: 10 minutes
     const timeout = Date.now() + 600000;
@@ -1504,21 +1518,29 @@ class OrganizationsV2 extends Model {
       }
     } else {
       // In production mode, use getSubscribedStoreData with retry logic
-      while (!orgStoreData) {
-        try {
-          orgStoreData = await datalayer.getSubscribedStoreData(
-            orgUid,
-            undefined,
-            true, // wait for sync
-          );
-          break;
-        } catch (error) {
-          if (reachedTimeout()) {
-            onTimeout(error);
+      if (allowLongWait) {
+        while (!orgStoreData) {
+          try {
+            orgStoreData = await datalayer.getSubscribedStoreData(
+              orgUid,
+              undefined,
+              true, // wait for sync
+            );
+            break;
+          } catch (error) {
+            if (reachedTimeout()) {
+              onTimeout(error);
+            }
+            loggerV2.debug(`[v2]: ${error.message}. RETRYING`);
+            await new Promise((resolve) => setTimeout(resolve, 10000));
           }
-          loggerV2.debug(`[v2]: ${error.message}. RETRYING`);
-          await new Promise((resolve) => setTimeout(resolve, 10000));
         }
+      } else {
+        orgStoreData = await datalayer.getSubscribedStoreData(
+          orgUid,
+          undefined,
+          false,
+        );
       }
     }
 
@@ -1537,6 +1559,7 @@ class OrganizationsV2 extends Model {
     const registryStoreId = await OrganizationsV2.getRegistryStoreIdFromSingleton(
       dataModelVersionStoreId,
       'v2', // Must be v2 - V2 system only works with V2 organizations
+      options,
     );
     loggerV2.debug(
       `[v2]: The registry singleton id for organization ${orgUid} is ${registryStoreId}`,
@@ -1592,7 +1615,7 @@ class OrganizationsV2 extends Model {
    * @param {boolean} isHome - Whether this is a home organization
    * @returns {Promise<void>}
    */
-  static async importOrganization(orgUid, isHome = false) {
+  static async importOrganization(orgUid, isHome = false, options = {}) {
     // Subscribe to the org store first, then check sync status.
     // This ensures new org stores get subscribed on the first pass so they can
     // begin syncing, and subsequent runs will find them synced and proceed.
@@ -1653,7 +1676,7 @@ class OrganizationsV2 extends Model {
       // Subscribe to organization stores
       let storeIds = null;
       try {
-        storeIds = await OrganizationsV2.subscribeToOrganization(orgUid);
+        storeIds = await OrganizationsV2.subscribeToOrganization(orgUid, options);
       } catch (error) {
         loggerV2.error(
           `[v2]: Failure validating or adding subscriptions for org import. cannot import. Error: ${error.message}`,
@@ -1739,10 +1762,7 @@ class OrganizationsV2 extends Model {
       }
 
       // Get registry store ID (must use v2 - this is a V2 system)
-      const registryStoreId = await OrganizationsV2.getRegistryStoreIdFromSingleton(
-        storeIds.dataModelVersionStoreId,
-        'v2', // Must be v2 for V2 system
-      );
+      const registryStoreId = storeIds.registryStoreId;
 
       // Create organization record
       const organizationData = {

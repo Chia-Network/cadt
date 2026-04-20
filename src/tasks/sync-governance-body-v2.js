@@ -8,67 +8,87 @@ import { loggerV2 } from '../config/logger.js';
 import { GovernanceV2 } from '../models/v2/index.js';
 import { OrganizationsV2 } from '../models/v2/index.js';
 
-const CONFIG = getConfig().APP;
-const CONFIG_V2 = getConfigV2();
-
 import dotenv from 'dotenv';
 dotenv.config({ quiet: true });
 
-const task = new Task('sync-governance-meta-v2', async () => {
-  try {
-    // Skip governance sync in simulator mode - no datalayer to sync from
-    // Fallback picklist will be used instead
-    if (CONFIG.USE_SIMULATOR) {
-      loggerV2.debug('[v2]: Simulator mode - skipping governance sync (using fallback picklist)');
-      return;
-    }
+export const GOVERNANCE_SYNC_V2_JOB_ID = 'sync-governance-meta-v2';
 
-    await assertDataLayerAvailable();
-    await assertWalletIsSynced();
+const getSteadyStateIntervalSeconds = () =>
+  getConfig()?.APP?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 1800;
 
-    loggerV2.info('[v2]: Syncing V2 governance data');
-    const { GOVERNANCE_BODY_ID } = CONFIG_V2.GOVERNANCE;
+const shouldSyncGovernance = async () => {
+  const governanceBodyId = getConfigV2()?.GOVERNANCE?.GOVERNANCE_BODY_ID;
 
-    if (GOVERNANCE_BODY_ID) {
-      loggerV2.info(
-        `[v2]: Governance Config Found ${GOVERNANCE_BODY_ID}`,
-      );
-
-      // Check if this node is the governance body itself
-      const v2HomeOrg = await OrganizationsV2.findOne({
-        where: { is_home: true },
-        raw: true,
-      });
-
-      // Only sync if we're not the governance body ourselves
-      if (!v2HomeOrg || v2HomeOrg.org_uid !== GOVERNANCE_BODY_ID) {
-        await GovernanceV2.sync();
-      } else {
-        loggerV2.debug(
-          '[v2]: This node is the governance body, skipping governance sync',
-        );
-      }
-    } else {
-      loggerV2.debug('[v2]: No GOVERNANCE_BODY_ID configured, skipping governance sync');
-    }
-  } catch (error) {
-    loggerV2.error(
-      `[v2]: Cannot download Governance data, Retrying in ${
-        CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 86400
-      } seconds. Error: ${error.message}`,
-    );
+  loggerV2.info('[v2]: Syncing V2 governance data');
+  if (!governanceBodyId) {
+    loggerV2.debug('[v2]: No GOVERNANCE_BODY_ID configured, skipping governance sync');
+    return false;
   }
-});
 
-const job = new SimpleIntervalJob(
-  {
-    // DEFAULT 1 day
-    seconds: CONFIG?.TASKS?.GOVERNANCE_SYNC_TASK_INTERVAL || 86400,
-    runImmediately: true,
-  },
-  task,
-  { id: 'sync-governance-meta-v2', preventOverrun: true },
-);
+  loggerV2.info(`[v2]: Governance Config Found ${governanceBodyId}`);
+  const v2HomeOrg = await OrganizationsV2.findOne({
+    where: { is_home: true },
+    raw: true,
+  });
 
-export default job;
+  if (v2HomeOrg?.org_uid === governanceBodyId) {
+    loggerV2.debug('[v2]: This node is the governance body, skipping governance sync');
+    return false;
+  }
+
+  return true;
+};
+
+const createGovernanceTask = ({
+  intervalSeconds = getSteadyStateIntervalSeconds(),
+  isBootstrap = false,
+  onBootstrapComplete = undefined,
+} = {}) =>
+  new Task(GOVERNANCE_SYNC_V2_JOB_ID, async () => {
+    try {
+      const config = getConfig().APP;
+
+      // Skip governance sync in simulator mode - no datalayer to sync from
+      // Fallback picklist will be used instead
+      if (config.USE_SIMULATOR) {
+        loggerV2.debug('[v2]: Simulator mode - skipping governance sync (using fallback picklist)');
+        return;
+      }
+
+      await assertDataLayerAvailable();
+      await assertWalletIsSynced();
+
+      if (await shouldSyncGovernance()) {
+        await GovernanceV2.sync();
+      }
+
+      if (isBootstrap && (await GovernanceV2.hasLocalGovernanceData())) {
+        onBootstrapComplete?.();
+      }
+    } catch (error) {
+      loggerV2.error(
+        `[v2]: Cannot download Governance data, Retrying in ${intervalSeconds} seconds. Error: ${error.message}`,
+      );
+    }
+  });
+
+export const createSyncGovernanceBodyV2Job = ({
+  intervalSeconds = getSteadyStateIntervalSeconds(),
+  isBootstrap = false,
+  onBootstrapComplete = undefined,
+} = {}) =>
+  new SimpleIntervalJob(
+    {
+      seconds: intervalSeconds,
+      runImmediately: true,
+    },
+    createGovernanceTask({
+      intervalSeconds,
+      isBootstrap,
+      onBootstrapComplete,
+    }),
+    { id: GOVERNANCE_SYNC_V2_JOB_ID, preventOverrun: true },
+  );
+
+export default createSyncGovernanceBodyV2Job();
 

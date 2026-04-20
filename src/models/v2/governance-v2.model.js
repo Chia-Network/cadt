@@ -426,14 +426,36 @@ class GovernanceV2 extends Model {
   }
 
   /**
-   * Sync governance data from datalayer
-   * Downloads governance data from subscribed governance body store
-   *
-   * @param {number} retryCounter - Current retry attempt number
-   * @throws {Error} If GOVERNANCE_BODY_ID is missing or sync fails after max retries
+   * @returns {Promise<boolean>} true when the default-org governance data exists
    */
-  static async sync(retryCounter = 0) {
+  static async hasLocalGovernanceData() {
     try {
+      return (
+        (await GovernanceV2.count({
+          where: { meta_key: 'orgList' },
+        })) > 0
+      );
+    } catch (error) {
+      if (error.message?.includes('no such table')) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Sync governance data from datalayer.
+   * Downloads governance data from the subscribed governance body store.
+   *
+   * @throws {Error} If GOVERNANCE_BODY_ID is missing or the sync fails
+   */
+  static async sync() {
+    if (GovernanceV2._syncPromise) {
+      loggerV2.debug('[v2]: governance sync already in progress, reusing in-flight sync');
+      return GovernanceV2._syncPromise;
+    }
+
+    GovernanceV2._syncPromise = (async () => {
       loggerV2.debug('[v2]: running V2 governance model sync()');
 
       const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
@@ -506,19 +528,15 @@ class GovernanceV2 extends Model {
           `[v2]: Governance data is not available from store ${GOVERNANCE_BODY_ID} for ${dataModelVersion} data model. Legacy data may have been synced.`,
         );
       }
+    })();
+
+    try {
+      return await GovernanceV2._syncPromise;
     } catch (error) {
-      await new Promise((resolve) => setTimeout(() => resolve(), 5000));
-      const maxRetry = 50;
-      if (retryCounter < maxRetry) {
-        loggerV2.error(
-          `[v2]: Error Syncing V2 Governance Data. Retry attempt #${retryCounter + 1}. Retrying. Error:, ${error}`,
-        );
-        await GovernanceV2.sync(retryCounter + 1);
-      } else {
-        loggerV2.error(
-          `[v2]: Error Syncing V2 Governance Data. Retry attempts exceeded. This will not have the latest governance data and data sync may be impacted`,
-        );
-      }
+      loggerV2.error(`[v2]: Error Syncing V2 Governance Data: ${error.message}`);
+      throw error;
+    } finally {
+      GovernanceV2._syncPromise = null;
     }
   }
 

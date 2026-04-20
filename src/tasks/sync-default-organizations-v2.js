@@ -4,13 +4,11 @@ import {
   assertWalletIsSynced,
 } from '../utils/data-assertions';
 import { getDefaultOrganizationListV2 } from '../utils/v2-data-loaders.js';
-import { MetaV2, OrganizationsV2, GovernanceV2 } from '../models/v2/index.js';
+import { MetaV2, OrganizationsV2 } from '../models/v2/index.js';
 import { loggerV2 } from '../config/logger.js';
-import { getConfig, getConfigV2 } from '../utils/config-loader.js';
-import _ from 'lodash';
+import { getConfig } from '../utils/config-loader.js';
 
 const CONFIG = getConfig().APP;
-const CONFIG_V2 = getConfigV2();
 
 const task = new Task('sync-default-organizations-v2', async () => {
   try {
@@ -18,37 +16,6 @@ const task = new Task('sync-default-organizations-v2', async () => {
     await assertWalletIsSynced();
 
     if (!CONFIG.USE_SIMULATOR) {
-      // Check if governance data exists, and if not, trigger a governance sync
-      // This ensures that once the wallet syncs, governance data will be synced
-      // within the retry interval of this task (5 minutes) instead of waiting
-      // for the governance sync task (24 hours)
-      const governanceData = await GovernanceV2.findOne({
-        where: { meta_key: 'orgList' },
-        raw: true,
-      });
-
-      if (!governanceData && CONFIG_V2.GOVERNANCE.GOVERNANCE_BODY_ID) {
-        const v2HomeOrg = await OrganizationsV2.findOne({
-          where: { is_home: true },
-          raw: true,
-        });
-        if (!v2HomeOrg || v2HomeOrg.org_uid !== CONFIG_V2.GOVERNANCE.GOVERNANCE_BODY_ID) {
-          loggerV2.info(
-            '[v2]: Governance data not found, triggering governance sync before checking default organizations',
-          );
-          try {
-            await GovernanceV2.sync();
-            loggerV2.info('[v2]: Governance sync completed successfully');
-          } catch (syncError) {
-            loggerV2.warn(
-              `[v2]: Governance sync failed, will retry on next run: ${syncError.message}`,
-            );
-            // Don't throw here - let the task continue and retry governance sync on next run
-            // This allows the task to proceed if governance sync fails but data exists
-          }
-        }
-      }
-
       const defaultOrgList = await getDefaultOrganizationListV2();
       const userDeletedOrgs = await MetaV2.getUserDeletedOrgUids();
 
@@ -70,7 +37,9 @@ const task = new Task('sync-default-organizations-v2', async () => {
             `[v2]: default organization ${orgUid} was NOT found in the organizations table. running the import process to correct`,
           );
           try {
-            await OrganizationsV2.importOrganization(orgUid);
+            await OrganizationsV2.importOrganization(orgUid, false, {
+              allowLongWait: false,
+            });
             // Verify the org was actually created (importOrganization may return early
             // if store is not synced yet, without throwing an error)
             const imported = await OrganizationsV2.findOne({

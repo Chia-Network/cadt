@@ -5,12 +5,11 @@ import PickListStub from '../models/governance/governance.stub.js';
 import { getConfig } from '../utils/config-loader';
 import { logger } from '../config/logger.js';
 
-const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
-
 let downloadedPickList = {};
 export const getPicklistValues = () => downloadedPickList;
 
 export const pullPickListValues = async () => {
+  const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
   if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
     downloadedPickList = PickListStub;
   } else {
@@ -37,42 +36,45 @@ export const pullPickListValues = async () => {
   return downloadedPickList;
 };
 
-export const getDefaultOrganizationList = async (retryCount = 0) => {
-  // need retry because on new install governance data may not have been synced yet
-  let maxRetry = 50;
-
-  try {
-    if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
-      return [];
-    } else {
-      logger.debug(`[v1]: getting default organization list from governance data`);
-      const governanceData = await Governance.findOne({
-        where: { metaKey: 'orgList' },
-        raw: true,
-      });
-
-      if (governanceData) {
-        const defaultOrgList = JSON.parse(
-          _.get(governanceData, 'metaValue', null),
-        );
-        if (defaultOrgList && _.isArray(defaultOrgList)) {
-          return defaultOrgList;
-        }
-      }
-
-      throw new Error(
-        'governance data does not contain a default organization list',
-      );
-    }
-  } catch (error) {
-    if (retryCount >= maxRetry) {
-      throw error;
-    }
-
-    logger.warn(`[v1]: cannot get default org list. trying again Error: ${error}`);
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    return getDefaultOrganizationList(retryCount + 1);
+export const getDefaultOrganizationList = async () => {
+  const { USE_SIMULATOR, USE_DEVELOPMENT_MODE } = getConfig().APP;
+  if (USE_SIMULATOR || USE_DEVELOPMENT_MODE) {
+    return [];
   }
+
+  logger.debug(`[v1]: getting default organization list from governance data`);
+  const governanceData = await Governance.findOne({
+    where: { metaKey: 'orgList' },
+    raw: true,
+  });
+
+  if (governanceData) {
+    const rawOrgList = _.get(governanceData, 'metaValue', null);
+    if (rawOrgList == null) {
+      throw new Error('[v1]: governance orgList record is missing metaValue');
+    }
+
+    let defaultOrgList;
+    try {
+      defaultOrgList = JSON.parse(rawOrgList);
+    } catch (error) {
+      throw new Error(`[v1]: cannot parse governance orgList JSON: ${error.message}`);
+    }
+
+    if (!_.isArray(defaultOrgList)) {
+      throw new Error('[v1]: governance orgList must be an array');
+    }
+
+    return defaultOrgList;
+  }
+
+  const governanceDataExists = (await Governance.count()) > 0;
+  logger.debug(
+    governanceDataExists
+      ? '[v1]: Governance data exists but orgList is not available. Returning empty list. Will check again on next sync.'
+      : '[v1]: Governance data has not been synced yet. Returning empty list and waiting for the next governance sync.',
+  );
+  return [];
 };
 
 export const serverAvailable = async (server, port) => {

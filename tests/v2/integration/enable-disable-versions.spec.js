@@ -9,6 +9,9 @@ import scheduler from '../../../src/tasks/index.js';
 import app from '../../../src/server.js';
 import { sequelize } from '../../../src/database/index.js';
 import { sequelizeV2 } from '../../../src/database/v2/index.js';
+import { Governance } from '../../../src/models/index.js';
+import { GovernanceV2 } from '../../../src/models/v2/index.js';
+import { getDefaultOrganizationList } from '../../../src/utils/data-loaders.js';
 import { getChiaRoot } from '../../../src/utils/chia-root.js';
 import { defaultConfig } from '../../../src/utils/defaultConfig.js';
 
@@ -29,6 +32,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
   const unifiedConfigDir = path.resolve(`${projectRoot}/tests/v2/config`);
   const unifiedConfigPath = path.resolve(`${unifiedConfigDir}/test-config.yaml`);
   let originalUnifiedConfig = null;
+  const cloneDefaultConfig = () => JSON.parse(JSON.stringify(defaultConfig));
 
   before(async function () {
     // Ensure test config directory exists
@@ -40,6 +44,8 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     if (fs.existsSync(unifiedConfigPath)) {
       originalUnifiedConfig = fs.readFileSync(unifiedConfigPath, 'utf8');
     }
+
+    await initializeDatabases();
   });
 
   after(async function () {
@@ -64,7 +70,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
 
   // Helper function to write unified config
   const writeUnifiedConfig = (v1Enable, v2Enable) => {
-    const testConfig = { ...defaultConfig };
+    const testConfig = cloneDefaultConfig();
     testConfig.V1.ENABLE = v1Enable;
     testConfig.V2.ENABLE = v2Enable;
     // Ensure directory exists
@@ -73,6 +79,9 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
     }
     fs.writeFileSync(unifiedConfigPath, yaml.dump(testConfig), 'utf8');
   };
+
+  const getTaskIntervalSeconds = (taskId) =>
+    scheduler.jobRegistry[taskId]?.schedule?.seconds;
 
   beforeEach(async function () {
     // Clear memoized configs before each test
@@ -297,6 +306,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
 
       // Check that V2 tasks are registered
       const v2TaskIds = [
+        'sync-governance-meta-v2',
         'sync-default-organizations-v2',
         'sync-organization-meta-v2',
         'sync-registries-v2',
@@ -316,6 +326,7 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
 
       // Check that V2 tasks are NOT registered
       const v2TaskIds = [
+        'sync-governance-meta-v2',
         'sync-default-organizations-v2',
         'sync-organization-meta-v2',
         'sync-registries-v2',
@@ -338,8 +349,40 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
       expect(scheduler.jobRegistry['sync-registries']).to.exist;
 
       // Check V2 tasks
+      expect(scheduler.jobRegistry['sync-governance-meta-v2']).to.exist;
       expect(scheduler.jobRegistry['sync-registries-v2']).to.exist;
       expect(scheduler.jobRegistry['mirror-check-v2']).to.exist;
+    });
+
+    it('should use bootstrap governance cadence until local governance data exists', async function () {
+      await Governance.destroy({ where: {} });
+      await GovernanceV2.destroy({ where: {} });
+
+      await scheduler.start(true, true);
+
+      expect(getTaskIntervalSeconds('sync-governance-meta')).to.equal(300);
+      expect(getTaskIntervalSeconds('sync-governance-meta-v2')).to.equal(300);
+    });
+
+    it('should use steady-state governance cadence once local governance data exists', async function () {
+      await Governance.destroy({ where: {} });
+      await GovernanceV2.destroy({ where: {} });
+
+      await Governance.create({
+        metaKey: 'orgList',
+        metaValue: '[]',
+        confirmed: true,
+      });
+      await GovernanceV2.create({
+        meta_key: 'orgList',
+        meta_value: '[]',
+        confirmed: true,
+      });
+
+      await scheduler.start(true, true);
+
+      expect(getTaskIntervalSeconds('sync-governance-meta')).to.equal(1800);
+      expect(getTaskIntervalSeconds('sync-governance-meta-v2')).to.equal(1800);
     });
 
     it('should register neither when both are disabled', async function () {
@@ -347,6 +390,42 @@ describe('V1/V2 Enable/Disable Functionality Tests', function () {
 
       // Check that no tasks are registered
       expect(Object.keys(scheduler.jobRegistry)).to.have.length(0);
+    });
+  });
+
+  describe('Default Organization Loader Parity', function () {
+    beforeEach(async function () {
+      await Governance.destroy({ where: {} });
+    });
+
+    it('should return an empty list for V1 until governance data has been synced', async function () {
+      const testConfig = cloneDefaultConfig();
+      testConfig.APP.USE_SIMULATOR = false;
+      fs.writeFileSync(unifiedConfigPath, yaml.dump(testConfig), 'utf8');
+
+      getConfig.cache?.clear?.();
+      getChiaRoot.cache?.clear?.();
+
+      const defaultOrgList = await getDefaultOrganizationList();
+      expect(defaultOrgList).to.deep.equal([]);
+    });
+
+    it('should return an empty list for V1 when governance data exists without orgList', async function () {
+      const testConfig = cloneDefaultConfig();
+      testConfig.APP.USE_SIMULATOR = false;
+      fs.writeFileSync(unifiedConfigPath, yaml.dump(testConfig), 'utf8');
+
+      getConfig.cache?.clear?.();
+      getChiaRoot.cache?.clear?.();
+
+      await Governance.create({
+        metaKey: 'pickList',
+        metaValue: '{}',
+        confirmed: true,
+      });
+
+      const defaultOrgList = await getDefaultOrganizationList();
+      expect(defaultOrgList).to.deep.equal([]);
     });
   });
 

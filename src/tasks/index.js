@@ -1,12 +1,14 @@
 import { ToadScheduler } from 'toad-scheduler';
 import { logger, loggerV2 } from '../config/logger.js';
 import { getConfig } from '../utils/config-loader.js';
+import { Governance } from '../models/index.js';
+import { GovernanceV2 } from '../models/v2/index.js';
 
 import syncDefaultOrganizations from './sync-default-organizations.js';
 import syncPickLists from './sync-picklists.js';
 import syncRegistries from './sync-registries.js';
 import syncOrganizationMeta from './sync-organization-meta.js';
-import syncGovernanceBody from './sync-governance-body.js';
+import { createSyncGovernanceBodyJob } from './sync-governance-body.js';
 import mirrorCheck from './mirror-check.js';
 import resetAuditTable from './reset-audit-table.js';
 import validateOrganizationTableAndSubscriptions from './validate-organization-table-and-subscriptions.js';
@@ -14,7 +16,7 @@ import cleanUpFailedOrg from './clean-up-failed-org.js';
 import coinManagement, { runCoinManagement } from './coin-management.js';
 
 // V2 background tasks
-import syncGovernanceBodyV2 from './sync-governance-body-v2.js';
+import { createSyncGovernanceBodyV2Job } from './sync-governance-body-v2.js';
 import syncDefaultOrganizationsV2 from './sync-default-organizations-v2.js';
 import syncOrganizationMetaV2 from './sync-organization-meta-v2.js';
 import syncRegistriesV2 from './sync-registries-v2.js';
@@ -24,6 +26,9 @@ import syncPicklistsV2 from './sync-picklists-v2.js';
 import cleanUpFailedOrgV2 from './clean-up-failed-org-v2.js';
 
 const scheduler = new ToadScheduler();
+const governanceJobModes = { v1: null, v2: null };
+const governancePromotionPending = { v1: false, v2: false };
+const governancePromotionTimers = { v1: null, v2: null };
 
 /**
  * Wait for DataLayer to become available before starting tasks.
@@ -76,9 +81,98 @@ const waitForDataLayerAvailable = async (maxWaitMs = 300000, pollIntervalMs = 50
 
 const jobRegistry = {};
 
-const addJobToScheduler = (job) => {
+const replaceJobInScheduler = (job) => {
+  if (scheduler.existsById(job.id)) {
+    scheduler.stopById(job.id);
+    scheduler.removeById(job.id);
+  }
   jobRegistry[job.id] = job;
   scheduler.addSimpleIntervalJob(job);
+};
+
+const addJobToScheduler = (job) => {
+  replaceJobInScheduler(job);
+};
+
+const getGovernanceSyncIntervals = () => {
+  const taskConfig = getConfig()?.APP?.TASKS ?? {};
+  return {
+    bootstrapSeconds: taskConfig.GOVERNANCE_SYNC_BOOTSTRAP_TASK_INTERVAL || 300,
+    steadyStateSeconds: taskConfig.GOVERNANCE_SYNC_TASK_INTERVAL || 1800,
+  };
+};
+
+const requestGovernanceJobPromotion = (version) => {
+  if (
+    governanceJobModes[version] === 'steady' ||
+    governancePromotionPending[version]
+  ) {
+    return;
+  }
+
+  governancePromotionPending[version] = true;
+  governancePromotionTimers[version] = setTimeout(async () => {
+    try {
+      const hasLocalData =
+        version === 'v1'
+          ? await Governance.hasLocalGovernanceData()
+          : await GovernanceV2.hasLocalGovernanceData();
+      if (!hasLocalData) {
+        return;
+      }
+
+      await scheduleGovernanceJob(version, 'steady');
+    } catch (error) {
+      const versionLogger = version === 'v1' ? logger : loggerV2;
+      versionLogger.warn(
+        `[SCHEDULER] Failed to promote ${version.toUpperCase()} governance sync cadence: ${error.message}`,
+      );
+    } finally {
+      governancePromotionTimers[version] = null;
+      governancePromotionPending[version] = false;
+    }
+  }, 0);
+};
+
+const scheduleGovernanceJob = async (version, forcedMode = undefined) => {
+  const { bootstrapSeconds, steadyStateSeconds } = getGovernanceSyncIntervals();
+  let hasLocalData = false;
+  if (!forcedMode) {
+    try {
+      hasLocalData =
+        version === 'v1'
+          ? await Governance.hasLocalGovernanceData()
+          : await GovernanceV2.hasLocalGovernanceData();
+    } catch (error) {
+      const versionLogger = version === 'v1' ? logger : loggerV2;
+      versionLogger.warn(
+        `[SCHEDULER] Failed to inspect ${version.toUpperCase()} governance readiness. Falling back to bootstrap cadence: ${error.message}`,
+      );
+    }
+  }
+  const mode = forcedMode || (hasLocalData ? 'steady' : 'bootstrap');
+  const isBootstrap = mode === 'bootstrap';
+
+  governanceJobModes[version] = mode;
+
+  const job =
+    version === 'v1'
+      ? createSyncGovernanceBodyJob({
+          intervalSeconds: isBootstrap ? bootstrapSeconds : steadyStateSeconds,
+          isBootstrap,
+          onBootstrapComplete: isBootstrap
+            ? () => requestGovernanceJobPromotion('v1')
+            : undefined,
+        })
+      : createSyncGovernanceBodyV2Job({
+          intervalSeconds: isBootstrap ? bootstrapSeconds : steadyStateSeconds,
+          isBootstrap,
+          onBootstrapComplete: isBootstrap
+            ? () => requestGovernanceJobPromotion('v2')
+            : undefined,
+        });
+
+  replaceJobInScheduler(job);
 };
 
 const start = async (enableV1 = true, enableV2 = true) => {
@@ -112,8 +206,8 @@ const start = async (enableV1 = true, enableV2 = true) => {
 
   // add default jobs (V1) if enabled
   if (enableV1) {
+    await scheduleGovernanceJob('v1');
     const defaultJobs = [
-      syncGovernanceBody,
       syncDefaultOrganizations,
       syncPickLists,
       syncRegistries,
@@ -138,8 +232,8 @@ const start = async (enableV1 = true, enableV2 = true) => {
 
   // add V2 background tasks if enabled
   if (enableV2) {
+    await scheduleGovernanceJob('v2');
     const v2Jobs = [
-      syncGovernanceBodyV2,
       syncDefaultOrganizationsV2,
       syncOrganizationMetaV2,
       syncRegistriesV2,
@@ -189,6 +283,19 @@ const stopAll = () => {
   jobIds.forEach((key) => {
     delete jobRegistry[key];
   });
+
+  governanceJobModes.v1 = null;
+  governanceJobModes.v2 = null;
+  if (governancePromotionTimers.v1) {
+    clearTimeout(governancePromotionTimers.v1);
+    governancePromotionTimers.v1 = null;
+  }
+  if (governancePromotionTimers.v2) {
+    clearTimeout(governancePromotionTimers.v2);
+    governancePromotionTimers.v2 = null;
+  }
+  governancePromotionPending.v1 = false;
+  governancePromotionPending.v2 = false;
 };
 
 export default { start, addJobToScheduler, jobRegistry, getJobStatus, stopAll };

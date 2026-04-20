@@ -1007,6 +1007,53 @@ describe('V2 Governance Model Tests', function () {
         },
       );
     });
+
+    it('should reuse in-flight sync work across concurrent HTTP requests', async function () {
+      await withConfigOverride(
+        async () => {
+          const originalUpsert = GovernanceV2.upsert;
+          const upsertStub = sinon
+            .stub(GovernanceV2, 'upsert')
+            .callsFake(async (...args) => {
+              await new Promise((resolve) => setTimeout(resolve, 50));
+              return originalUpsert.call(GovernanceV2, ...args);
+            });
+
+          try {
+            const [firstResponse, secondResponse] = await Promise.all([
+              supertest(app).get('/v2/governance/sync'),
+              supertest(app).get('/v2/governance/sync'),
+            ]);
+
+            expect(firstResponse.status).to.equal(200);
+            expect(secondResponse.status).to.equal(200);
+
+            let record = null;
+            for (let i = 0; i < 10; i++) {
+              record = await GovernanceV2.findOne({
+                where: { meta_key: 'pickList' },
+              });
+              if (record) {
+                break;
+              }
+              await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+
+            expect(record).to.exist;
+            expect(upsertStub.callCount).to.equal(1);
+          } finally {
+            upsertStub.restore();
+            GovernanceV2._syncPromise = null;
+          }
+        },
+        {
+          V2: {
+            GOVERNANCE: { GOVERNANCE_BODY_ID: 'test-governance-body-id' },
+          },
+          APP: { USE_SIMULATOR: true },
+        },
+      );
+    });
   });
 
   describe('Integration Tests - Version Isolation and End-to-End', function () {

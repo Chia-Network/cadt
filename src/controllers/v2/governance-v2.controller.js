@@ -347,7 +347,9 @@ export const setGlossary = async (req, res) => {
 export const sync = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    GovernanceV2.sync();
+    void GovernanceV2.sync().catch((error) => {
+      loggerV2.error(`[v2]: Governance sync request failed: ${error.message}`);
+    });
     return res.json({
       message: 'Syncing V2 Governance Body',
       success: true,

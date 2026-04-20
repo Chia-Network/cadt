@@ -954,7 +954,7 @@ class Organization extends Model {
    * @param isHome import the org as a home org
    * @returns {Promise<void>}
    */
-  static async importOrganization(orgUid, isHome = false) {
+  static async importOrganization(orgUid, isHome = false, options = {}) {
     // Subscribe to the org store first, then check sync status.
     // This ensures new org stores get subscribed on the first pass so they can
     // begin syncing, and subsequent runs will find them synced and proceed.
@@ -1010,7 +1010,7 @@ class Organization extends Model {
 
       let storeIds = null;
       try {
-        storeIds = await Organization.subscribeToOrganization(orgUid);
+        storeIds = await Organization.subscribeToOrganization(orgUid, options);
       } catch (error) {
         logger.error(
           `failure validating or adding subscriptions for org import. cannot import. Error: ${error.message}`,
@@ -1116,10 +1116,12 @@ class Organization extends Model {
    *          - `dataModelVersionStoreId`: The identifier of the data model version store.
    *          - `registryStoreId`: The identifier of the registry store.
    */
-  static async subscribeToOrganization(orgUid) {
+  static async subscribeToOrganization(orgUid, options = {}) {
     if (orgUid === 'PENDING') {
       logger.info('[v1]: cannot subscribe to a home organization while its pending.');
     }
+
+    const allowLongWait = options.allowLongWait !== false;
 
     logger.debug(
       `running the organization subscription process on organization ${orgUid})`,
@@ -1140,20 +1142,28 @@ class Organization extends Model {
       `determining datamodel version singleton id for org ${orgUid}`,
     );
     let orgStoreData = null;
-    while (!orgStoreData) {
-      try {
-        orgStoreData = await datalayer.getSubscribedStoreData(
-          orgUid,
-          undefined,
-          true,
-        );
-      } catch (error) {
-        if (reachedTimeout()) {
-          onTimeout(error);
+    if (allowLongWait) {
+      while (!orgStoreData) {
+        try {
+          orgStoreData = await datalayer.getSubscribedStoreData(
+            orgUid,
+            undefined,
+            true,
+          );
+        } catch (error) {
+          if (reachedTimeout()) {
+            onTimeout(error);
+          }
+          logger.debug(`[v1]: ${error.message}. RETRYING`);
+          await new Promise((resolve) => setTimeout(resolve, 10000));
         }
-        logger.debug(`[v1]: ${error.message}. RETRYING`);
-        await new Promise((resolve) => setTimeout(resolve, 10000));
       }
+    } else {
+      orgStoreData = await datalayer.getSubscribedStoreData(
+        orgUid,
+        undefined,
+        false,
+      );
     }
 
     // here registryId is actually the data model version store that points to the registry store
@@ -1169,20 +1179,28 @@ class Organization extends Model {
 
     logger.debug(`[v1]: determining registry store singleton id for org ${orgUid}`);
     let dataModelVersionStoreData = null;
-    while (!dataModelVersionStoreData) {
-      try {
-        dataModelVersionStoreData = await datalayer.getSubscribedStoreData(
-          dataModelVersionStoreId,
-          undefined,
-          true,
-        );
-      } catch (error) {
-        if (reachedTimeout()) {
-          onTimeout(error);
+    if (allowLongWait) {
+      while (!dataModelVersionStoreData) {
+        try {
+          dataModelVersionStoreData = await datalayer.getSubscribedStoreData(
+            dataModelVersionStoreId,
+            undefined,
+            true,
+          );
+        } catch (error) {
+          if (reachedTimeout()) {
+            onTimeout(error);
+          }
+          logger.debug(`[v1]: ${error.message}. RETRYING`);
+          await new Promise((resolve) => setTimeout(resolve, 10000));
         }
-        logger.debug(`[v1]: ${error.message}. RETRYING`);
-        await new Promise((resolve) => setTimeout(resolve, 10000));
       }
+    } else {
+      dataModelVersionStoreData = await datalayer.getSubscribedStoreData(
+        dataModelVersionStoreId,
+        undefined,
+        false,
+      );
     }
 
     // here v1 is actually the registry store id
