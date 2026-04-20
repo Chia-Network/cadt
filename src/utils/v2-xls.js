@@ -205,6 +205,25 @@ export function normalizeCsvHeaders(row, modelClass) {
 }
 
 /**
+ * Convert a DB-field row (snake_case) back to Sequelize attribute names
+ * (camelCase). This is used when reconciling pending staging rows with a new
+ * CSV batch row so we can merge everything in one consistent key space before
+ * converting back to DB field names for staging.
+ *
+ * @param {Object} row
+ * @param {import('sequelize').Model} modelClass
+ * @returns {Object} row with attribute-style keys where possible
+ */
+export function toAttributeNames(row, modelClass) {
+  const snakeToCamel = buildSnakeToCamelMap(modelClass);
+  const result = {};
+  for (const [key, value] of Object.entries(row)) {
+    result[snakeToCamel.get(key) || key] = value;
+  }
+  return result;
+}
+
+/**
  * Convert a row object from camelCase attribute names to snake_case DB field
  * names using the model's rawAttributes metadata. Keys not present in
  * rawAttributes are kept as-is (they may already be snake_case or custom).
@@ -290,6 +309,189 @@ export function validateRequiredFields(row, modelClass, skipFields = new Set()) 
     }
   }
   return missing;
+}
+
+function getPrimaryKeyDbField(modelClass) {
+  const pkAttr = modelClass.primaryKeyAttribute;
+  return modelClass.rawAttributes[pkAttr]?.field || pkAttr;
+}
+
+function extractMatchingStagedRecord(stagingRecord, pk, modelClass, primaryKeyDbField) {
+  try {
+    const parsedData = JSON.parse(stagingRecord.data);
+    const records = Array.isArray(parsedData) ? parsedData : [parsedData];
+    const primaryKeyAttr = modelClass.primaryKeyAttribute;
+    const matchedIndex = records.findIndex(
+      (record) =>
+        record && (record[primaryKeyDbField] === pk || record[primaryKeyAttr] === pk),
+    );
+    if (matchedIndex === -1) {
+      return null;
+    }
+
+    return {
+      stagingRecord,
+      recordData: records[matchedIndex],
+      recordCount: records.length,
+    };
+  } catch (error) {
+    loggerV2.warn('[v2]: Failed to parse pending staging row during CSV merge', {
+      stagingId: stagingRecord.id,
+      uuid: stagingRecord.uuid,
+      table: stagingRecord.table,
+      error: error.message,
+    });
+    return null;
+  }
+}
+
+/**
+ * Return pending staging rows for a specific model primary key. Results are
+ * sorted oldest to newest so callers can replay staged edits in order.
+ *
+ * @param {import('sequelize').Model} modelClass
+ * @param {string} pk
+ * @param {{ transaction?: import('sequelize').Transaction, actions?: string[] }} [options]
+ * @returns {Promise<Array<{ stagingRecord: Object, recordData: Object }>>}
+ */
+export async function getPendingStagedRowsForPk(
+  modelClass,
+  pk,
+  { transaction, actions = ['INSERT', 'UPDATE'] } = {},
+) {
+  const primaryKeyDbField = getPrimaryKeyDbField(modelClass);
+  const stagedRows = await StagingV2.findAll({
+    where: {
+      table: modelClass.getTableName(),
+      committed: false,
+      failed_commit: false,
+      is_transfer: false,
+      action: actions,
+    },
+    order: [['id', 'ASC']],
+    transaction,
+  });
+
+  return stagedRows
+    .map((stagingRecord) =>
+      extractMatchingStagedRecord(stagingRecord, pk, modelClass, primaryKeyDbField))
+    .filter(Boolean);
+}
+
+/**
+ * Build the latest logical row for a record by replaying any pending staging
+ * rows on top of the committed DB row. This lets CSV batch uploads reconcile
+ * with already-staged edits instead of clobbering them.
+ *
+ * @param {import('sequelize').Model} modelClass
+ * @param {string} pk
+ * @param {Object|null} persistedRecord - Sequelize instance or null
+ * @param {{ transaction?: import('sequelize').Transaction }} [options]
+ * @returns {Promise<{ mergedBase: Object, pendingRows: Array, hasPendingDelete: boolean }>}
+ */
+export async function buildPendingCsvMergeBase(
+  modelClass,
+  pk,
+  persistedRecord,
+  { transaction } = {},
+) {
+  const pendingDeleteRows = await getPendingStagedRowsForPk(modelClass, pk, {
+    transaction,
+    actions: ['DELETE'],
+  });
+  const pendingRows = await getPendingStagedRowsForPk(modelClass, pk, {
+    transaction,
+    actions: ['INSERT', 'UPDATE'],
+  });
+
+  let mergedBase = persistedRecord ? persistedRecord.toJSON() : {};
+  const hasMultiRecordPendingRow = pendingRows.some(
+    ({ recordCount }) => recordCount > 1,
+  );
+  for (const { recordData } of pendingRows) {
+    mergedBase = {
+      ...mergedBase,
+      ...toAttributeNames(recordData, modelClass),
+    };
+  }
+
+  return {
+    mergedBase,
+    pendingRows,
+    hasPendingDelete: pendingDeleteRows.length > 0,
+    hasMultiRecordPendingRow,
+  };
+}
+
+/**
+ * Write a single consolidated pending staging row for the given record. If
+ * prior pending INSERT/UPDATE rows exist for the same PK, update the newest
+ * one in place and delete older duplicates so the changelist sees one final
+ * staged row.
+ *
+ * If any existing pending row is an INSERT, the consolidated row remains an
+ * INSERT because the record has not been committed yet.
+ *
+ * @param {import('sequelize').Model} modelClass
+ * @param {string} pk
+ * @param {'INSERT'|'UPDATE'} action
+ * @param {Object} cleanedRecord - DB-field (snake_case) row
+ * @param {import('sequelize').Transaction} transaction
+ * @returns {Promise<void>}
+ */
+export async function stageConsolidatedCsvRecord(
+  modelClass,
+  pk,
+  action,
+  cleanedRecord,
+  transaction,
+) {
+  const pendingRows = await getPendingStagedRowsForPk(modelClass, pk, {
+    transaction,
+    actions: ['INSERT', 'UPDATE'],
+  });
+
+  const effectiveAction = pendingRows.some(
+    ({ stagingRecord }) => stagingRecord.action === 'INSERT',
+  )
+    ? 'INSERT'
+    : action;
+
+  if (pendingRows.length > 0) {
+    const targetRow = pendingRows[pendingRows.length - 1].stagingRecord;
+    const duplicateIds = pendingRows
+      .slice(0, -1)
+      .map(({ stagingRecord }) => stagingRecord.id);
+
+    await StagingV2.update(
+      {
+        action: effectiveAction,
+        data: JSON.stringify([cleanedRecord]),
+      },
+      {
+        where: { id: targetRow.id },
+        transaction,
+      },
+    );
+
+    if (duplicateIds.length > 0) {
+      await StagingV2.destroy({
+        where: { id: duplicateIds },
+        transaction,
+      });
+    }
+    return;
+  }
+
+  await StagingV2.upsert(
+    {
+      uuid: pk,
+      action: effectiveAction,
+      table: modelClass.getTableName(),
+      data: JSON.stringify([cleanedRecord]),
+    },
+    { transaction },
+  );
 }
 
 /**

@@ -17,6 +17,8 @@ import {
   toDbFieldNames,
   stripUnknownDbFields,
   validateRequiredFields,
+  buildPendingCsvMergeBase,
+  stageConsolidatedCsvRecord,
 } from '../../utils/v2-xls.js';
 import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
 import { ProgramV2 } from './program-v2.model.js';
@@ -419,16 +421,38 @@ class ProjectV2 extends Model {
 
           if (projectId) {
             const existing = await ProjectV2.findByPk(projectId);
-            if (!existing) {
+            const {
+              mergedBase,
+              hasPendingDelete,
+              hasMultiRecordPendingRow,
+            } = await buildPendingCsvMergeBase(ProjectV2, projectId, existing, {
+              transaction,
+            });
+
+            if (hasPendingDelete) {
+              errors.push({
+                row: rowNum,
+                error: `Cannot update project ${projectId}: it already has a pending staged delete`,
+              });
+              continue;
+            }
+            if (hasMultiRecordPendingRow) {
+              errors.push({
+                row: rowNum,
+                error: `Cannot update project ${projectId}: it already has a complex pending staged update`,
+              });
+              continue;
+            }
+            if (!existing && Object.keys(mergedBase).length === 0) {
               errors.push({ row: rowNum, error: `Project with cadTrustProjectId ${projectId} does not exist` });
               continue;
             }
-            if (existing.orgUid !== orgUid) {
+            if (mergedBase.orgUid !== orgUid) {
               errors.push({ row: rowNum, error: `Cannot update project ${projectId}: belongs to a different organization` });
               continue;
             }
-            action = 'UPDATE';
-            mergedRecord = { ...existing.toJSON(), ...row };
+            action = existing ? 'UPDATE' : 'INSERT';
+            mergedRecord = { ...mergedBase, ...row };
           } else {
             row.cadTrustProjectId = uuidv4();
             action = 'INSERT';
@@ -469,14 +493,12 @@ class ProjectV2 extends Model {
 
           cleaned.org_uid = orgUid;
 
-          await StagingV2.upsert(
-            {
-              uuid: mergedRecord.cadTrustProjectId,
-              action,
-              table: 'project',
-              data: JSON.stringify([cleaned]),
-            },
-            { transaction },
+          await stageConsolidatedCsvRecord(
+            ProjectV2,
+            mergedRecord.cadTrustProjectId,
+            action,
+            cleaned,
+            transaction,
           );
           stagedCount++;
         } catch (err) {

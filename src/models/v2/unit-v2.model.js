@@ -21,6 +21,8 @@ import {
   toDbFieldNames,
   stripUnknownDbFields,
   validateRequiredFields,
+  buildPendingCsvMergeBase,
+  stageConsolidatedCsvRecord,
 } from '../../utils/v2-xls.js';
 import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
 import { IssuanceV2 } from './issuance-v2.model.js';
@@ -484,16 +486,46 @@ class UnitV2 extends Model {
 
           if (unitId) {
             const existing = await UnitV2.findByPk(unitId);
-            if (!existing) {
+            const {
+              mergedBase,
+              hasPendingDelete,
+              hasMultiRecordPendingRow,
+            } = await buildPendingCsvMergeBase(UnitV2, unitId, existing, {
+              transaction,
+            });
+
+            if (hasPendingDelete) {
+              errors.push({
+                row: rowNum,
+                error: `Cannot update unit ${unitId}: it already has a pending staged delete`,
+              });
+              continue;
+            }
+            if (hasMultiRecordPendingRow) {
+              errors.push({
+                row: rowNum,
+                error: `Cannot update unit ${unitId}: it already has a complex pending staged update`,
+              });
+              continue;
+            }
+            if (!existing && Object.keys(mergedBase).length === 0) {
               errors.push({ row: rowNum, error: `Unit with cadTrustUnitId ${unitId} does not exist` });
               continue;
             }
-            if (existing.orgUid !== orgUid) {
+            if (mergedBase.orgUid !== orgUid) {
               errors.push({ row: rowNum, error: `Cannot update unit ${unitId}: belongs to a different organization` });
               continue;
             }
-            action = 'UPDATE';
-            mergedRecord = { ...existing.toJSON(), ...row };
+            action = existing ? 'UPDATE' : 'INSERT';
+            mergedRecord = { ...mergedBase, ...row };
+
+            const changedBlockRange =
+              !row.unitSerialId &&
+              (row.unitStartBlock !== undefined || row.unitEndBlock !== undefined);
+            if (changedBlockRange) {
+              delete mergedRecord.unitSerialId;
+              UnitV2.prepareXlsRow(mergedRecord);
+            }
           } else {
             row.cadTrustUnitId = uuidv4();
             action = 'INSERT';
@@ -534,14 +566,12 @@ class UnitV2 extends Model {
 
           cleaned.org_uid = orgUid;
 
-          await StagingV2.upsert(
-            {
-              uuid: mergedRecord.cadTrustUnitId,
-              action,
-              table: 'unit',
-              data: JSON.stringify([cleaned]),
-            },
-            { transaction },
+          await stageConsolidatedCsvRecord(
+            UnitV2,
+            mergedRecord.cadTrustUnitId,
+            action,
+            cleaned,
+            transaction,
           );
           stagedCount++;
         } catch (err) {

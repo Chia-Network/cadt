@@ -1728,6 +1728,164 @@ ${unit.cadTrustUnitId},20`;
         expect(data.unit_count).to.equal('20');
       });
 
+      it('should merge CSV updates into an already-staged unit update instead of creating duplicate staged rows', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'STAGED-MERGE-UNIT',
+          unitStartBlock: '100',
+          unitEndBlock: '200',
+          unitCount: 50,
+          unitVintageYear: 2024,
+          unitLink: 'https://example.com/original-unit',
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
+        }));
+
+        await StagingV2.create({
+          uuid: uuidv4(),
+          table: 'unit',
+          action: 'UPDATE',
+          data: JSON.stringify([{
+            cad_trust_unit_id: unit.cadTrustUnitId,
+            unit_link: 'https://example.com/already-staged-unit',
+          }]),
+          committed: false,
+          failed_commit: false,
+          is_transfer: false,
+        });
+
+        const csvContent = `cadTrustUnitId,unitCount
+${unit.cadTrustUnitId},75`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.stagedCount).to.equal(1);
+
+        const staged = await StagingV2.findAll({
+          where: { table: 'unit', committed: false, failed_commit: false },
+        });
+        expect(staged.filter((row) => {
+          const data = JSON.parse(row.data)[0];
+          return data.cad_trust_unit_id === unit.cadTrustUnitId;
+        })).to.have.lengthOf(1);
+
+        const merged = JSON.parse(staged[0].data)[0];
+        expect(merged.unit_count).to.equal('75');
+        expect(merged.unit_link).to.equal('https://example.com/already-staged-unit');
+        expect(merged.unit_serial_id).to.equal('STAGED-MERGE-UNIT');
+      });
+
+      it('should merge CSV updates into an already-staged unit INSERT and keep it as INSERT', async function () {
+        const stagedUnitId = uuidv4();
+        await StagingV2.create({
+          uuid: stagedUnitId,
+          table: 'unit',
+          action: 'INSERT',
+          data: JSON.stringify([{
+            cad_trust_unit_id: stagedUnitId,
+            org_uid: await getV2HomeOrgId(),
+            unit_serial_id: 'STAGED-INSERT-UNIT',
+            unit_start_block: '100',
+            unit_end_block: '200',
+            unit_vintage_year: 2024,
+            cad_trust_issuance_id: testIssuanceForAdvanced.cadTrustIssuanceId,
+            unit_link: 'https://example.com/staged-unit',
+          }]),
+          committed: false,
+          failed_commit: false,
+          is_transfer: false,
+        });
+
+        const csvContent = `cadTrustUnitId,unitCount
+${stagedUnitId},75`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.stagedCount).to.equal(1);
+
+        const staged = await StagingV2.findAll({
+          where: { table: 'unit', committed: false, failed_commit: false },
+        });
+        const matching = staged.filter((row) => {
+          const data = JSON.parse(row.data)[0];
+          return data.cad_trust_unit_id === stagedUnitId;
+        });
+        expect(matching).to.have.lengthOf(1);
+        expect(matching[0].action).to.equal('INSERT');
+
+        const data = JSON.parse(matching[0].data)[0];
+        expect(data.unit_count).to.equal('75');
+        expect(data.unit_link).to.equal('https://example.com/staged-unit');
+      });
+
+      it('should reject CSV update when the unit already has a multi-record pending staged update', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'PENDING-SPLIT-UNIT',
+          unitStartBlock: '100',
+          unitEndBlock: '200',
+          unitCount: 100,
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
+        }));
+
+        await StagingV2.create({
+          uuid: uuidv4(),
+          table: 'unit',
+          action: 'UPDATE',
+          data: JSON.stringify([
+            {
+              cadTrustUnitId: unit.cadTrustUnitId,
+              orgUid: homeOrgId,
+              unitSerialId: '100-150',
+              unitStartBlock: '100',
+              unitEndBlock: '150',
+              unitCount: 50,
+              unitVintageYear: 2024,
+              cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+            },
+            {
+              cadTrustUnitId: uuidv4(),
+              orgUid: homeOrgId,
+              unitSerialId: '151-200',
+              unitStartBlock: '151',
+              unitEndBlock: '200',
+              unitCount: 50,
+              unitVintageYear: 2024,
+              cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+            },
+          ]),
+          committed: false,
+          failed_commit: false,
+          is_transfer: false,
+        });
+
+        const csvContent = `cadTrustUnitId,unitCount
+${unit.cadTrustUnitId},75`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.stagedCount).to.equal(0);
+        expect(response.body.errorCount).to.equal(1);
+        expect(response.body.errors[0].error).to.include('complex pending staged update');
+      });
+
       it('should strip unknown columns from staged data', async function () {
         const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId,foobar,unitLabels
 STRIP-UNIT-001,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId},garbage,"[{""id"":""x""}]"`;
@@ -1784,6 +1942,35 @@ FK-UNIT-OK,100,200,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
 
         const staged = await StagingV2.findAll({ where: { table: 'unit', action: 'INSERT' } });
         expect(staged.length).to.be.at.least(1);
+      });
+
+      it('should accept cadTrustIssuanceId that exists only in pending staging', async function () {
+        const stagedIssuanceId = uuidv4();
+        await StagingV2.create({
+          uuid: stagedIssuanceId,
+          table: 'issuance',
+          action: 'INSERT',
+          data: JSON.stringify([{
+            cad_trust_issuance_id: stagedIssuanceId,
+          }]),
+          committed: false,
+          failed_commit: false,
+          is_transfer: false,
+        });
+
+        const csvContent = `unitSerialId,unitStartBlock,unitEndBlock,unitCount,unitType,unitVintageYear,unitStatus,cadTrustIssuanceId
+FK-STAGED-UNIT,100,200,50,Avoidance - nature,2024,Issued,${stagedIssuanceId}`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { table: 'unit', action: 'INSERT' } });
+        expect(staged).to.have.lengthOf(1);
       });
 
       it('should handle large batch (15+ rows) without race condition', async function () {
@@ -1946,6 +2133,45 @@ PARTIAL-UNIT-002,300,400,2024,non-existent-issuance-id`;
         expect(staged).to.have.lengthOf(1);
       });
 
+      it('should return partial success when a valid update is mixed with a wrong-owner update', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const ownedUnit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'PARTIAL-OWNED-UNIT',
+          unitStartBlock: '100',
+          unitEndBlock: '200',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
+        }));
+        const otherOrgUnit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: 'PARTIAL-OTHER-UNIT',
+          unitStartBlock: '300',
+          unitEndBlock: '400',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: 'other-org-uid-12345',
+        }));
+
+        const csvContent = `cadTrustUnitId,unitCount
+${ownedUnit.cadTrustUnitId},88
+${otherOrgUnit.cadTrustUnitId},99`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.stagedCount).to.equal(1);
+        expect(response.body.errorCount).to.equal(1);
+        expect(response.body.errors[0].error).to.include('belongs to a different organization');
+
+        const staged = await StagingV2.findAll({ where: { table: 'unit', action: 'UPDATE' } });
+        expect(staged).to.have.lengthOf(1);
+        expect(staged[0].uuid).to.equal(ownedUnit.cadTrustUnitId);
+      });
+
       it('should derive unitSerialId from start/end blocks in CSV', async function () {
         const csvContent = `unitStartBlock,unitEndBlock,unitVintageYear,cadTrustIssuanceId
 5000,6000,2024,${testIssuanceForAdvanced.cadTrustIssuanceId}`;
@@ -1963,6 +2189,70 @@ PARTIAL-UNIT-002,300,400,2024,non-existent-issuance-id`;
         expect(staged.length).to.be.at.least(1);
         const data = JSON.parse(staged[0].data)[0];
         expect(data.unit_serial_id).to.equal('5000-6000');
+      });
+
+      it('should recompute unitSerialId on UPDATE when one block boundary changes and unitSerialId is omitted', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: '100-200',
+          unitStartBlock: '100',
+          unitEndBlock: '200',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
+        }));
+
+        const csvContent = `cadTrustUnitId,unitEndBlock
+${unit.cadTrustUnitId},250`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findOne({
+          where: { table: 'unit', action: 'UPDATE', uuid: unit.cadTrustUnitId },
+        });
+        expect(staged).to.exist;
+
+        const data = JSON.parse(staged.data)[0];
+        expect(data.unit_end_block).to.equal('250');
+        expect(data.unit_serial_id).to.equal('100-250');
+      });
+
+      it('should recompute unitSerialId on UPDATE when a block boundary changes and unitSerialId is blank', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const unit = await UnitV2.create(addUuidIfNeeded('UnitV2', {
+          unitSerialId: '100-200',
+          unitStartBlock: '100',
+          unitEndBlock: '200',
+          unitVintageYear: 2024,
+          cadTrustIssuanceId: testIssuanceForAdvanced.cadTrustIssuanceId,
+          orgUid: homeOrgId,
+        }));
+
+        const csvContent = `cadTrustUnitId,unitSerialId,unitEndBlock
+${unit.cadTrustUnitId},,260`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/unit/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findOne({
+          where: { table: 'unit', action: 'UPDATE', uuid: unit.cadTrustUnitId },
+        });
+        expect(staged).to.exist;
+
+        const data = JSON.parse(staged.data)[0];
+        expect(data.unit_end_block).to.equal('260');
+        expect(data.unit_serial_id).to.equal('100-260');
       });
     });
 

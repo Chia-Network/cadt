@@ -1784,6 +1784,137 @@ ${project.cadTrustProjectId},Second Update`;
         expect(data.project_name).to.equal('Second Update');
       });
 
+      it('should merge CSV updates into an already-staged project update instead of creating duplicate staged rows', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Test Registry',
+          projectId: 'STAGED-MERGE-001',
+          projectName: 'Original Name',
+          projectDescription: 'Original description',
+          orgUid: homeOrgId,
+        }));
+
+        await StagingV2.create({
+          uuid: uuidv4(),
+          table: 'project',
+          action: 'UPDATE',
+          data: JSON.stringify([{
+            cad_trust_project_id: project.cadTrustProjectId,
+            project_description: 'Already staged description',
+          }]),
+          committed: false,
+          failed_commit: false,
+          is_transfer: false,
+        });
+
+        const csvContent = `cadTrustProjectId,projectName
+${project.cadTrustProjectId},CSV Updated Name`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.stagedCount).to.equal(1);
+
+        const staged = await StagingV2.findAll({
+          where: { table: 'project', committed: false, failed_commit: false },
+        });
+        expect(staged.filter((row) => {
+          const data = JSON.parse(row.data)[0];
+          return data.cad_trust_project_id === project.cadTrustProjectId;
+        })).to.have.lengthOf(1);
+
+        const merged = JSON.parse(staged[0].data)[0];
+        expect(merged.project_name).to.equal('CSV Updated Name');
+        expect(merged.project_description).to.equal('Already staged description');
+        expect(merged.project_registry_name).to.equal('Test Registry');
+      });
+
+      it('should merge CSV updates into an already-staged project INSERT and keep it as INSERT', async function () {
+        const stagedProjectId = uuidv4();
+        await StagingV2.create({
+          uuid: stagedProjectId,
+          table: 'project',
+          action: 'INSERT',
+          data: JSON.stringify([{
+            cad_trust_project_id: stagedProjectId,
+            org_uid: await getV2HomeOrgId(),
+            project_registry_name: 'Staged Registry',
+            project_id: 'STAGED-INSERT-001',
+            project_name: 'Staged Insert Name',
+            project_description: 'Staged insert description',
+          }]),
+          committed: false,
+          failed_commit: false,
+          is_transfer: false,
+        });
+
+        const csvContent = `cadTrustProjectId,projectName
+${stagedProjectId},CSV Updated Insert Name`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.stagedCount).to.equal(1);
+
+        const staged = await StagingV2.findAll({
+          where: { table: 'project', committed: false, failed_commit: false },
+        });
+        const matching = staged.filter((row) => {
+          const data = JSON.parse(row.data)[0];
+          return data.cad_trust_project_id === stagedProjectId;
+        });
+        expect(matching).to.have.lengthOf(1);
+        expect(matching[0].action).to.equal('INSERT');
+
+        const data = JSON.parse(matching[0].data)[0];
+        expect(data.project_name).to.equal('CSV Updated Insert Name');
+        expect(data.project_description).to.equal('Staged insert description');
+      });
+
+      it('should reject CSV update when the project already has a pending staged delete', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const project = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Test Registry',
+          projectId: 'PENDING-DELETE-001',
+          projectName: 'Delete Pending Project',
+          orgUid: homeOrgId,
+        }));
+
+        await StagingV2.create({
+          uuid: uuidv4(),
+          table: 'project',
+          action: 'DELETE',
+          data: JSON.stringify([{
+            cad_trust_project_id: project.cadTrustProjectId,
+          }]),
+          committed: false,
+          failed_commit: false,
+          is_transfer: false,
+        });
+
+        const csvContent = `cadTrustProjectId,projectName
+${project.cadTrustProjectId},Should Fail`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(400);
+
+        expect(response.body.success).to.be.false;
+        expect(response.body.stagedCount).to.equal(0);
+        expect(response.body.errorCount).to.equal(1);
+        expect(response.body.errors[0].error).to.include('pending staged delete');
+      });
+
       it('should strip unknown/child columns from staged data', async function () {
         const csvContent = `projectRegistryName,projectId,projectName,locations,estimations,foobar,cadTrustProgramId
 Test Registry,STRIP-001,Strip Test,"[{""country"":""US""}]","[{""count"":100}]",garbage,${testProgram.cadTrustProgramId}`;
@@ -1824,6 +1955,35 @@ Test Registry,FK-001,FK Test,non-existent-program-id`;
         expect(response.body.stagedCount).to.equal(0);
         expect(response.body.errorCount).to.equal(1);
         expect(response.body.errors[0].error).to.include('does not exist');
+      });
+
+      it('should accept cadTrustProgramId that exists only in pending staging', async function () {
+        const stagedProgramId = uuidv4();
+        await StagingV2.create({
+          uuid: stagedProgramId,
+          table: 'program',
+          action: 'INSERT',
+          data: JSON.stringify([{
+            cad_trust_program_id: stagedProgramId,
+          }]),
+          committed: false,
+          failed_commit: false,
+          is_transfer: false,
+        });
+
+        const csvContent = `projectRegistryName,projectId,projectName,cadTrustProgramId
+Test Registry,FK-STAGED-001,Uses Staged Program,${stagedProgramId}`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+
+        const staged = await StagingV2.findAll({ where: { table: 'project', action: 'INSERT' } });
+        expect(staged).to.have.lengthOf(1);
       });
 
       it('should handle large batch (15+ rows) without race condition', async function () {
@@ -1982,6 +2142,41 @@ Test Registry,PARTIAL-002,Invalid FK Project,non-existent-program-id`;
 
         const staged = await StagingV2.findAll({ where: { table: 'project', action: 'INSERT' } });
         expect(staged).to.have.lengthOf(1);
+      });
+
+      it('should return partial success when a valid update is mixed with a wrong-owner update', async function () {
+        const homeOrgId = await getV2HomeOrgId();
+        const ownedProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Test Registry',
+          projectId: 'PARTIAL-UPD-OK',
+          projectName: 'Owned Project',
+          orgUid: homeOrgId,
+        }));
+        const otherOrgProject = await ProjectV2.create(addUuidIfNeeded('ProjectV2', {
+          projectRegistryName: 'Other Registry',
+          projectId: 'PARTIAL-UPD-BAD',
+          projectName: 'Other Org Project',
+          orgUid: 'other-org-uid-12345',
+        }));
+
+        const csvContent = `cadTrustProjectId,projectName
+${ownedProject.cadTrustProjectId},Updated Owned Project
+${otherOrgProject.cadTrustProjectId},Should Fail`;
+        const csvBuffer = Buffer.from(csvContent, 'utf8');
+
+        const response = await supertest(app)
+          .post('/v2/project/batch')
+          .attach('csv', csvBuffer, 'test.csv')
+          .expect(200);
+
+        expect(response.body.success).to.be.true;
+        expect(response.body.stagedCount).to.equal(1);
+        expect(response.body.errorCount).to.equal(1);
+        expect(response.body.errors[0].error).to.include('belongs to a different organization');
+
+        const staged = await StagingV2.findAll({ where: { table: 'project', action: 'UPDATE' } });
+        expect(staged).to.have.lengthOf(1);
+        expect(staged[0].uuid).to.equal(ownedProject.cadTrustProjectId);
       });
 
       it('should upsert over existing staging record on re-upload', async function () {
