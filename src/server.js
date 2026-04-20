@@ -11,6 +11,7 @@ import { logger } from './config/logger.js';
 import dotenv from 'dotenv';
 
 dotenv.config({ quiet: true });
+process.title = 'cadt';
 logger.info('CADT:server');
 
 const port = getConfig().APP.CW_PORT || 3030;
