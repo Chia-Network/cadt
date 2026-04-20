@@ -45,6 +45,24 @@ const mirrorConfig =
   (process.env.NODE_ENV || 'local') === 'local' ? 'mirror' : 'mirrorTest';
 export const sequelizeMirror = new Sequelize(config[mirrorConfig]);
 
+// Snapshot of whether V1 MIRROR_DB was fully configured at module-load time.
+// Captured alongside sequelizeMirror construction so mirrorDBEnabled() stays
+// consistent with the backend sequelizeMirror was actually built against.
+// Reading the live config on every call would let tests that clear the
+// getConfig() memoize cache (or any future runtime-reload path) drift the
+// enablement check away from the already-constructed Sequelize instance.
+// Symmetric with v2MirrorTargetsMysql in src/database/v2/index.js.
+const v1MirrorConfiguredAtLoad = (() => {
+  const CONFIG = getConfig();
+  return !!(
+    CONFIG?.MIRROR_DB?.DB_HOST &&
+    CONFIG.MIRROR_DB.DB_HOST !== '' &&
+    CONFIG.MIRROR_DB.DB_NAME &&
+    CONFIG.MIRROR_DB.DB_USERNAME &&
+    CONFIG.MIRROR_DB.DB_PASSWORD
+  );
+})();
+
 const logDebounce = _.debounce(() => {
   console.log('Mirror DB not connected');
   logger.info('Mirror DB not connected');
@@ -55,6 +73,11 @@ const logDebounce = _.debounce(() => {
 // paths can be exercised without a live MySQL instance. null means "use the
 // real config value".
 let mirrorEnabledTestOverride = null;
+
+// Test-only override for isMysqlMirrorConfiguredForReconnect(). Tests set
+// this to simulate "MySQL is configured" (or not) independently of the
+// actual config.yaml. null means "use the real config value".
+let mysqlConfiguredForReconnectOverride = null;
 
 // Track the last observed auth outcome so we can detect a transition from
 // "disconnected" back to "connected" and trigger a catch-up backfill. This
@@ -82,7 +105,6 @@ export const mirrorDBEnabled = () => {
   if (mirrorEnabledTestOverride !== null) {
     return mirrorEnabledTestOverride;
   }
-  const CONFIG = getConfig();
   // In production-like mode ('local' env), require full MySQL config.
   // In SQLite-fallback test mode ('mirrorTest' env), leave the mirror
   // enabled unconditionally so integration tests that rely on the
@@ -97,13 +119,11 @@ export const mirrorDBEnabled = () => {
   // is gated separately in prepareDb() via
   // isMysqlMirrorConfiguredForReconnect(), not via mirrorDBEnabled(),
   // so the backfill only fires when MySQL is actually configured.
-  if (
-    mirrorConfig === 'mirror' &&
-    (!CONFIG?.MIRROR_DB?.DB_HOST ||
-      !CONFIG?.MIRROR_DB?.DB_NAME ||
-      !CONFIG?.MIRROR_DB?.DB_USERNAME ||
-      !CONFIG?.MIRROR_DB?.DB_PASSWORD)
-  ) {
+  //
+  // Uses v1MirrorConfiguredAtLoad (module-load snapshot) so this check
+  // stays consistent with the backend sequelizeMirror was built against.
+  // Symmetric with mirrorDBEnabledV2.
+  if (mirrorConfig === 'mirror' && !v1MirrorConfiguredAtLoad) {
     return false;
   }
   return true;
@@ -120,6 +140,23 @@ export const __setMirrorEnabledForTests = (value) => {
 // succeeded. In production this is set to true by prepareMysqlMirror.
 export const __setMirrorSetupSucceededForTests = (value) => {
   mirrorSetupSucceeded = value;
+};
+
+// Test-only. DO NOT call from production code. Forces
+// isMysqlMirrorConfiguredForReconnect() to return a specific boolean so
+// tests can exercise the reconnect setup / skip-callback guards without a
+// live MySQL instance or a real MIRROR_DB config. null restores live behaviour.
+export const __setMysqlConfiguredForReconnectForTests = (value) => {
+  mysqlConfiguredForReconnectOverride = value;
+};
+
+// Test-only. DO NOT call from production code. Resets the internal
+// auth-state machine back to 'unknown' so tests that intentionally leave
+// the state in 'disconnected' can reset it in an afterEach hook and avoid
+// leaking reconnect behaviour into downstream specs running in the same
+// mocha session.
+export const __resetMirrorAuthStateForTests = () => {
+  mirrorAuthState = 'unknown';
 };
 
 /**
@@ -185,6 +222,9 @@ export const prepareMysqlMirror = async () => {
 // Used to gate reconnect-setup retries - only MySQL configs need the setup
 // retry path; SQLite test fallbacks never need it.
 const isMysqlMirrorConfiguredForReconnect = () => {
+  if (mysqlConfiguredForReconnectOverride !== null) {
+    return mysqlConfiguredForReconnectOverride;
+  }
   const CONFIG = getConfig();
   return !!(
     CONFIG?.MIRROR_DB?.DB_HOST &&
@@ -269,6 +309,20 @@ export const safeMirrorDbHandler = (callback) => {
             // Another concurrent caller already triggered the backfill;
             // wait for it so our write lands on a caught-up mirror.
             await reconnectBackfillPromise;
+          }
+
+          // If MySQL is configured but the one-time setup (CREATE DATABASE
+          // + migrations) has not yet completed, the mirror tables don't
+          // exist. Running the callback would produce a confusing
+          // "table doesn't exist" error that gets swallowed by the catch
+          // below. Skip quietly - the next authenticate success will
+          // re-enter startReconnectBackfill and retry setup. Symmetric
+          // with safeMirrorDbHandlerV2.
+          if (
+            isMysqlMirrorConfiguredForReconnect() &&
+            !mirrorSetupSucceeded
+          ) {
+            return;
           }
 
           try {

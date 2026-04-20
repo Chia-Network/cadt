@@ -12,6 +12,8 @@ import {
   safeMirrorDbHandlerV2,
   __setMirrorEnabledForTestsV2,
   __setMirrorSetupSucceededForTestsV2,
+  __setMysqlConfiguredForReconnectForTestsV2,
+  __resetMirrorAuthStateForTestsV2,
 } from '../../../src/database/v2/index.js';
 import { loggerV2 } from '../../../src/config/logger.js';
 import {
@@ -65,6 +67,11 @@ describe('Mirror Reconnect and Orphan Sweep (V2)', function () {
   afterEach(async function () {
     __setMirrorEnabledForTestsV2(null);
     __setMirrorSetupSucceededForTestsV2(false);
+    __setMysqlConfiguredForReconnectForTestsV2(null);
+    // Reset auth-state machine so downstream specs running in the same
+    // mocha session don't observe a leaked 'disconnected' state and enter
+    // the reconnect path on their first mirror write.
+    __resetMirrorAuthStateForTestsV2();
     sinon.restore();
 
     for (const t of ['program', 'organizations']) {
@@ -265,6 +272,45 @@ describe('Mirror Reconnect and Orphan Sweep (V2)', function () {
 
       loggerSpy.restore();
       backfillSpy.restore();
+    });
+
+    // Placed last in this block because it intentionally leaves
+    // v2MirrorAuthState in the 'disconnected' state (startV2ReconnectBackfill
+    // does so on setup failure). Running another reconnect-related test
+    // after this one would observe that stale state and behave differently.
+    it('should skip the callback when MySQL is configured but setup has not completed yet', async function () {
+      // Regression guard for the post-reconnect skip-callback branch in
+      // safeMirrorDbHandlerV2. When the mirror is "enabled" and
+      // authenticate() succeeds but the one-time setup (CREATE DATABASE +
+      // migrations) has not yet completed, running the callback would hit
+      // tables that don't exist and produce a confusing swallowed error.
+      // The handler must skip the callback silently in that window.
+      //
+      // Forces both prongs of the guard true:
+      //   - isMysqlMirrorConfiguredForReconnectV2() -> true
+      //   - v2MirrorSetupSucceeded                  -> false
+      __setMysqlConfiguredForReconnectForTestsV2(true);
+      __setMirrorSetupSucceededForTestsV2(false);
+
+      // Happy-path authenticate so the handler reaches the guard without
+      // going through the disconnected-catch branch. The handler will first
+      // call startV2ReconnectBackfill (because setupNeverRan is true), which
+      // in turn calls prepareMysqlMirrorV2. prepareMysqlMirrorV2 reads
+      // config.yaml directly (not via the override above) and, with no real
+      // MIRROR_DB in the test config, returns false. That leaves
+      // v2MirrorSetupSucceeded still false, so the new guard trips.
+      sinon.stub(sequelizeV2Mirror, 'authenticate').resolves();
+
+      let cbRan = false;
+      await safeMirrorDbHandlerV2(async () => {
+        cbRan = true;
+      });
+      await new Promise((r) => setTimeout(r, 100));
+
+      expect(
+        cbRan,
+        'callback must not run while MySQL setup is still pending',
+      ).to.equal(false);
     });
   });
 });

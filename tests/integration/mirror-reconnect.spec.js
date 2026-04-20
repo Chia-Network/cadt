@@ -12,6 +12,8 @@ import {
   safeMirrorDbHandler,
   __setMirrorEnabledForTests,
   __setMirrorSetupSucceededForTests,
+  __setMysqlConfiguredForReconnectForTests,
+  __resetMirrorAuthStateForTests,
 } from '../../src/database/index.js';
 import { ProjectMirror } from '../../src/models/projects/projects.model.mirror.js';
 
@@ -52,6 +54,12 @@ describe('Mirror Reconnect and Orphan Sweep (V1)', function () {
   afterEach(async function () {
     __setMirrorEnabledForTests(null);
     __setMirrorSetupSucceededForTests(false);
+    __setMysqlConfiguredForReconnectForTests(null);
+    // Reset auth-state machine so downstream specs running in the same
+    // mocha session (project.spec.js, unit.spec.js, etc.) don't observe a
+    // leaked 'disconnected' state and enter the reconnect path on their
+    // first mirror write.
+    __resetMirrorAuthStateForTests();
     sinon.restore();
 
     // Clean both databases between tests. We clear a minimal set of tables
@@ -216,6 +224,45 @@ describe('Mirror Reconnect and Orphan Sweep (V1)', function () {
       expect(cb2Ran, 'callback must run after reconnect').to.equal(true);
       expect(mirrorAfter, 'reconnect backfill must recover missing row').to.not
         .be.null;
+    });
+
+    // Placed last in this block because it intentionally leaves
+    // mirrorAuthState in the 'disconnected' state (startReconnectBackfill
+    // does so on setup failure). Running another reconnect-related test
+    // after this one would observe that stale state and behave differently.
+    it('should skip the callback when MySQL is configured but setup has not completed yet', async function () {
+      // Regression guard for the post-reconnect skip-callback branch in
+      // safeMirrorDbHandler. When the mirror is "enabled" and authenticate()
+      // succeeds but the one-time setup (CREATE DATABASE + migrations) has
+      // not yet completed, running the callback would hit tables that don't
+      // exist and produce a confusing swallowed error. The handler must
+      // skip the callback silently in that window. Symmetric with V2.
+      //
+      // Forces both prongs of the guard true:
+      //   - isMysqlMirrorConfiguredForReconnect() -> true
+      //   - mirrorSetupSucceeded                  -> false
+      __setMysqlConfiguredForReconnectForTests(true);
+      __setMirrorSetupSucceededForTests(false);
+
+      // Happy-path authenticate so the handler reaches the guard without
+      // going through the disconnected-catch branch. The handler will first
+      // call startReconnectBackfill (because setupNeverRan is true), which
+      // calls prepareMysqlMirror. prepareMysqlMirror reads config.yaml
+      // directly (not via the override above) and, with no real MIRROR_DB
+      // in the test config, returns false. That leaves mirrorSetupSucceeded
+      // still false, so the new guard trips.
+      sinon.stub(sequelizeMirror, 'authenticate').resolves();
+
+      let cbRan = false;
+      await safeMirrorDbHandler(async () => {
+        cbRan = true;
+      });
+      await new Promise((r) => setTimeout(r, 100));
+
+      expect(
+        cbRan,
+        'callback must not run while MySQL setup is still pending',
+      ).to.equal(false);
     });
   });
 });
