@@ -73,6 +73,33 @@ export const getLiveApiConfig = () => {
 };
 
 /**
+ * Resolve the Chia SSL certificate folder used by RPC clients in live tests.
+ *
+ * Mirrors the resolution performed by src/datalayer/wallet.js (and the
+ * equivalent logic for DataLayer RPC) so that tests honour the
+ * `CERTIFICATE_FOLDER_PATH` override. Without this, tests that hardcode
+ * `${chiaRoot}/config/ssl` fail in environments where CADT is correctly
+ * configured to use a non-default Chia SSL directory, giving a false
+ * negative even though production code would successfully reach the RPC.
+ *
+ * Matches production semantics exactly: an explicit override is returned
+ * verbatim (whether absolute or relative), and only the default fallback
+ * is expanded to an absolute path via getChiaRoot(). This keeps relative
+ * override paths - which production code forwards directly to fs.readFileSync
+ * against the CADT process cwd - resolved the same way in tests.
+ *
+ * @returns {string} path to the Chia SSL certificate folder
+ */
+export const getChiaCertificateFolderPath = () => {
+  const { config } = getLiveApiConfig();
+  const override = config?.APP?.CERTIFICATE_FOLDER_PATH;
+  if (override && override !== '') {
+    return override;
+  }
+  return `${getChiaRoot()}/config/ssl`;
+};
+
+/**
  * Create supertest instance pointing to localhost API
  */
 export const createLiveApiRequest = () => {

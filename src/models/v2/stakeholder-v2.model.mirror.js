@@ -1,11 +1,11 @@
 'use strict';
 
 import { Sequelize, Model } from 'sequelize';
-import { sequelizeV2Mirror, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { sequelizeV2Mirror, initMirrorModelV2 } from '../../database/v2/index.js';
 
 class StakeholderV2Mirror extends Model {}
 
-safeMirrorDbHandlerV2(() => {
+initMirrorModelV2(() => {
   StakeholderV2Mirror.init(
     {
       cadTrustStakeholderId: {

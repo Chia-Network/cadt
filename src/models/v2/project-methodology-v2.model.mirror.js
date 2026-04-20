@@ -2,11 +2,11 @@
 
 import { Sequelize, Model } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
-import { sequelizeV2Mirror, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { sequelizeV2Mirror, initMirrorModelV2 } from '../../database/v2/index.js';
 
 class ProjectMethodologyV2Mirror extends Model {}
 
-safeMirrorDbHandlerV2(() => {
+initMirrorModelV2(() => {
   ProjectMethodologyV2Mirror.init(
     {
       cadTrustProjectMethodologyId: {

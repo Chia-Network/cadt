@@ -161,6 +161,34 @@ jobs:
           }
           echo "✓ MariaDB (MySQL-compatible) mirror database is ready for testing"
 
+          # Stop MariaDB so CADT starts against a DOWN mirror. This exercises
+          # the startup race that k8s observers hit: CADT up before MySQL is
+          # reachable. The subsequent "Delay-start MariaDB (exercise mirror
+          # reconnect recovery)" step will restart MariaDB ~30s after CADT,
+          # and the V2 mirror reconnect path must transparently run
+          # migrations + backfill and catch up without losing any writes.
+          # If the test fails, either the init race fix or the
+          # reconnect-backfill logic has regressed.
+          #
+          # The race test is load-bearing on MariaDB actually being down
+          # when CADT starts - fail the job if mysqladmin can still ping it
+          # after 10 seconds of retries rather than letting the test
+          # silently degrade into a no-op.
+          echo "Stopping MariaDB so CADT starts against a down mirror..."
+          service mariadb stop
+          for STOP_ATTEMPT in $(seq 1 10); do
+            if ! mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "✓ MariaDB stopped after ${STOP_ATTEMPT}s - CADT startup will race against delayed restart"
+              break
+            fi
+            if [ "$STOP_ATTEMPT" -eq 10 ]; then
+              echo "ERROR: MariaDB still responding 10s after 'service mariadb stop'."
+              echo "The race test's precondition (MariaDB down when CADT starts) cannot be met."
+              exit 1
+            fi
+            sleep 1
+          done
+
       - name: Configure Chia
         shell: bash
         run: |
@@ -174,7 +202,11 @@ jobs:
       - name: Configure CADT
         shell: bash
         run: |
-          # Run cadt momentarily to create config file
+          # Run cadt momentarily to create config file. Note: MariaDB is
+          # intentionally stopped at this point to exercise the mirror
+          # init race on first boot - CADT must log the setup failure
+          # non-fatally and continue, then recover automatically once
+          # MariaDB restarts.
           pm2 start npm --no-autorestart --name "cadt" -- start
           sleep 10
           pm2 logs cadt --nostream
@@ -283,6 +315,10 @@ jobs:
       - name: Start CADT
         shell: bash
         run: |
+          # MariaDB is still stopped at this point (see "Configure MySQL").
+          # CADT must start successfully, log the mirror setup failure as
+          # non-fatal, and expose its health endpoint. This exercises the
+          # mirror init race that broke production observers on k8s.
           pm2 start npm --no-autorestart --name "cadt" -- start
           echo "Waiting for CADT health endpoint..."
           MAX_CADT_HEALTH_ATTEMPTS=30
@@ -298,6 +334,37 @@ jobs:
             fi
             sleep 2
           done
+
+      - name: Delay-start MariaDB (exercise mirror reconnect recovery)
+        shell: bash
+        run: |
+          # Restart MariaDB now that CADT has been running without it for a
+          # while. The next V2 mirror operation should:
+          #   1. Detect authenticate success following previous failures.
+          #   2. Retry CREATE DATABASE + migrations via prepareMysqlMirrorV2
+          #      (they never ran at startup because MariaDB was down).
+          #   3. Run backfillMirrorV2 to catch up any writes + deletes that
+          #      happened while MariaDB was unavailable.
+          # The live-api tests' verifyMirrorRecordsBatch assertions will
+          # fail if any step regresses.
+          echo "Waiting a few seconds so CADT logs multiple mirror-down messages..."
+          sleep 10
+          echo "Starting MariaDB (CADT should reconnect and recover)..."
+          service mariadb start
+          for i in {1..30}; do
+            if mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "MariaDB is back up"
+              break
+            fi
+            sleep 1
+          done
+          # Re-verify the DB and test user persist - they were created
+          # before the stop, and the data directory is unchanged.
+          mysql -u cadt_test -pcadt_test_password -e "SELECT 1 as test;" || {
+            echo "Failed to reconnect to MariaDB after restart"
+            exit 1
+          }
+          echo "✓ MariaDB back online - CADT mirror recovery path will engage"
 
       - name: Wait for wallet sync and datalayer readiness
         shell: bash
@@ -593,7 +660,63 @@ jobs:
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/chia-tools/debian/ stable main" | tee /etc/apt/sources.list.d/chia-tools.list > /dev/null
 
           apt-get update
-          apt-get install -y yq jq bc iproute2 chia-blockchain-cli chia-tools
+          apt-get install -y yq jq bc iproute2 default-mysql-server default-mysql-client chia-blockchain-cli chia-tools
+
+      - name: Configure MySQL for V1 mirror database testing
+        shell: bash
+        run: |
+          echo "Starting MariaDB service..."
+          service mariadb start
+
+          echo "Waiting for MariaDB to be ready..."
+          for i in {1..30}; do
+            if mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "MariaDB is ready!"
+              break
+            fi
+            echo "Waiting for MariaDB... ($i/30)"
+            sleep 1
+          done
+
+          echo "Creating V1 test database and user..."
+          mysql -u root <<EOF
+          CREATE DATABASE IF NOT EXISTS cadt_mirror_test;
+          CREATE USER IF NOT EXISTS 'cadt_test'@'localhost' IDENTIFIED BY 'cadt_test_password';
+          GRANT ALL PRIVILEGES ON cadt_mirror_test.* TO 'cadt_test'@'localhost';
+          FLUSH PRIVILEGES;
+          EOF
+
+          echo "Verifying MariaDB setup..."
+          mysql -u cadt_test -pcadt_test_password -e "SELECT 1 as test;" || {
+            echo "Failed to connect as test user"
+            exit 1
+          }
+          echo "✓ MariaDB (V1 mirror database) is ready for testing"
+
+          # Stop MariaDB so CADT starts against a DOWN mirror. This
+          # exercises the V1 mirror init race (same bug class as V2: the
+          # fire-and-forget handler would skip model.init() when MySQL was
+          # unreachable at module load). The "Delay-start MariaDB" step
+          # below restarts MariaDB ~30s after CADT, and the V1 mirror
+          # reconnect path must transparently run migrations + backfill.
+          #
+          # Fail the job if mysqladmin can still ping MariaDB after 10
+          # seconds of retries rather than letting the race test silently
+          # degrade into a no-op against an always-up DB.
+          echo "Stopping MariaDB so CADT starts against a down mirror..."
+          service mariadb stop
+          for STOP_ATTEMPT in $(seq 1 10); do
+            if ! mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "✓ MariaDB stopped after ${STOP_ATTEMPT}s - CADT V1 startup will race against delayed restart"
+              break
+            fi
+            if [ "$STOP_ATTEMPT" -eq 10 ]; then
+              echo "ERROR: MariaDB still responding 10s after 'service mariadb stop'."
+              echo "The race test's precondition (MariaDB down when CADT starts) cannot be met."
+              exit 1
+            fi
+            sleep 1
+          done
 
       - name: Configure Chia
         shell: bash
@@ -608,7 +731,9 @@ jobs:
       - name: Configure CADT
         shell: bash
         run: |
-          # Run cadt momentarily to create config file
+          # Run cadt momentarily to create config file. MariaDB is
+          # intentionally stopped at this point to exercise the V1 mirror
+          # init race on first boot.
           pm2 start npm --no-autorestart --name "cadt" -- start
           sleep 10
           pm2 logs cadt --nostream
@@ -635,6 +760,16 @@ jobs:
           # Enable V1 only for V1 live API tests
           yq -yi '.V1.ENABLE = true' ~/.chia/mainnet/cadt/config.yaml
           yq -yi '.V2.ENABLE = false' ~/.chia/mainnet/cadt/config.yaml
+
+          # Configure MySQL mirror database for V1 testing.
+          # V1.MIRROR_DB is the V1 analog of V2.MIRROR_DB; the V1 live-api
+          # test runner (tests/v1/live-api/data-short.js) reads this path
+          # and asserts each record is mirrored correctly.
+          echo "Configuring MySQL mirror database for V1..."
+          yq -yi '.V1.MIRROR_DB.DB_HOST = "localhost"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.MIRROR_DB.DB_USERNAME = "cadt_test"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.MIRROR_DB.DB_PASSWORD = "cadt_test_password"' ~/.chia/mainnet/cadt/config.yaml
+          yq -yi '.V1.MIRROR_DB.DB_NAME = "cadt_mirror_test"' ~/.chia/mainnet/cadt/config.yaml
 
           # Show the config file
           echo "Showing the config file after configuration..."
@@ -708,8 +843,60 @@ jobs:
       - name: Start CADT
         shell: bash
         run: |
+          # MariaDB is still stopped at this point (see "Configure MySQL
+          # for V1 mirror database testing"). CADT must start successfully,
+          # log the mirror setup failure as non-fatal, and expose its API.
+          # The subsequent "Delay-start MariaDB" step restarts MariaDB
+          # shortly after so the V1 mirror reconnect path is exercised
+          # while CADT is still booting.
           pm2 start npm --no-autorestart --name "cadt" -- start
-          sleep 30
+          echo "Waiting for CADT API endpoint (V1 port ${CW_PORT:-31310})..."
+          MAX_CADT_HEALTH_ATTEMPTS=30
+          for CADT_ATTEMPT in $(seq 1 "$MAX_CADT_HEALTH_ATTEMPTS"); do
+            # V1 API doesn't expose /health - probe /v1/organizations instead
+            if curl -fsS --max-time 5 http://127.0.0.1:31310/v1/organizations >/dev/null 2>&1; then
+              echo "CADT V1 API is ready"
+              break
+            fi
+            if [ "$CADT_ATTEMPT" -eq "$MAX_CADT_HEALTH_ATTEMPTS" ]; then
+              echo "ERROR: CADT V1 API did not become ready in time"
+              pm2 logs cadt --lines 200 --nostream || true
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Delay-start MariaDB (exercise V1 mirror reconnect recovery)
+        shell: bash
+        run: |
+          # Restart MariaDB now that CADT has been running without it.
+          # The next V1 mirror operation should run prepareMysqlMirror +
+          # backfillMirror via the reconnect path, catching up any writes
+          # or deletes that would otherwise be lost during the outage
+          # window. The V1 live-api test runner
+          # (tests/v1/live-api/data-short.js) asserts each record lands
+          # in the MySQL mirror, so a regression in the init race or
+          # reconnect/backfill logic will fail this job.
+          #
+          # Small delay first so CADT accumulates multiple "mirror down"
+          # log entries - matches the V2 job's sequencing and gives the
+          # reconnect path a non-trivial backlog to catch up on.
+          echo "Waiting a few seconds so CADT logs multiple mirror-down messages..."
+          sleep 10
+          echo "Starting MariaDB (CADT should reconnect and recover)..."
+          service mariadb start
+          for i in {1..30}; do
+            if mysqladmin ping -h localhost --silent 2>/dev/null; then
+              echo "MariaDB is back up"
+              break
+            fi
+            sleep 1
+          done
+          mysql -u cadt_test -pcadt_test_password -e "SELECT 1 as test;" || {
+            echo "Failed to reconnect to MariaDB after restart"
+            exit 1
+          }
+          echo "✓ MariaDB back online - CADT V1 mirror recovery path will engage"
 
       - name: Wait for wallet sync and datalayer readiness
         shell: bash

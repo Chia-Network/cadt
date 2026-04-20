@@ -55,12 +55,122 @@ const mirrorConfig = mysqlMirrorConfigured ? 'v2Mirror' : 'v2MirrorTest';
 
 loggerV2.info(`[v2]: Mirror DB config selected: ${mirrorConfig} (MySQL configured: ${!!mysqlMirrorConfigured})`);
 
+// Test-only override for isMysqlMirrorConfiguredForReconnectV2(). Tests set
+// this to simulate "MySQL is configured" (or not) independently of the actual
+// config.yaml. null means "use the real config value".
+let mysqlConfiguredForReconnectOverrideV2 = null;
+
+// Returns true if V2.MIRROR_DB is fully configured with MySQL credentials.
+// Used to gate reconnect-setup retries - only MySQL configs need the setup
+// retry path; SQLite test fallbacks never need it. Reads config on every
+// call so the check stays correct across config reloads (symmetric with
+// V1's isMysqlMirrorConfiguredForReconnect).
+const isMysqlMirrorConfiguredForReconnectV2 = () => {
+  if (mysqlConfiguredForReconnectOverrideV2 !== null) {
+    return mysqlConfiguredForReconnectOverrideV2;
+  }
+  const c = getConfigV2()?.MIRROR_DB;
+  return !!(
+    c?.DB_HOST &&
+    c.DB_HOST !== '' &&
+    c.DB_NAME &&
+    c.DB_USERNAME &&
+    c.DB_PASSWORD
+  );
+};
+
 export const sequelizeV2Mirror = new Sequelize(config[mirrorConfig]);
 
+// Snapshot of "is the mirror Sequelize instance actually pointing at MySQL"
+// taken at module-load time, alongside sequelizeV2Mirror construction.
+//
+// mirrorDBEnabledV2() must stay consistent with the backend that
+// sequelizeV2Mirror writes to. sequelizeV2Mirror is built ONCE above from
+// either the MySQL config (v2Mirror) or the SQLite fallback (v2MirrorTest)
+// and is never rebuilt - runtime config changes cannot move an already-open
+// Sequelize instance to a different target. If we re-read the live config
+// on every mirrorDBEnabledV2() call (the previous behaviour), a runtime
+// config change could flip enablement true while writes still go to the
+// originally-selected SQLite fallback, silently desyncing the mirror.
+// See PR #1585 bugbot finding "Mirror enable check desynchronizes mirror
+// target".
+const v2MirrorTargetsMysql = !!mysqlMirrorConfigured;
+
+// Test-only override. Tests set this to force mirror-enabled behaviour
+// against the SQLite fallback sequelizeV2Mirror so backfill / reconnect
+// code paths can be exercised without a live MySQL instance. null means
+// "use the real config value".
+let mirrorEnabledTestOverrideV2 = null;
+
+// Track the last observed auth outcome so we can detect a transition from
+// "disconnected" back to "connected" and trigger a catch-up backfill. This
+// recovers writes (INSERT/UPDATE) and deletes that were dropped during an
+// outage because safeMirrorDbHandlerV2 is fire-and-forget and silently drops
+// its callback when authenticate() fails.
+let v2MirrorAuthState = 'unknown'; // 'unknown' | 'connected' | 'disconnected'
+
+// Tracks whether the MySQL-side setup (CREATE DATABASE + migrations)
+// succeeded. If it failed at startup (e.g. MySQL not yet reachable), we
+// treat the first successful runtime authenticate as a reconnect so the
+// setup is retried and the initial backfill runs.
+let v2MirrorSetupSucceeded = false;
+
+// Concurrency guard for prepareMysqlMirrorV2 - only one attempt at a time.
+let v2MirrorSetupPromise = null;
+
+// Single in-flight reconnect backfill. Concurrent callers share the same
+// promise so we don't run multiple backfills in parallel, and all writes
+// issued after the reconnect are serialized behind it so the mirror is in a
+// caught-up state before new operations are applied.
+let v2ReconnectBackfillPromise = null;
+
 export const mirrorDBEnabledV2 = () => {
-  // Mirror DB is only enabled if MySQL is actually configured
-  // In test mode without MySQL, mirror operations should be no-ops
-  return mysqlMirrorConfigured;
+  // Mirror DB is only enabled if MySQL is actually configured.
+  // In test mode without MySQL, mirror operations should be no-ops.
+  if (mirrorEnabledTestOverrideV2 !== null) {
+    return mirrorEnabledTestOverrideV2;
+  }
+  // Use the module-load snapshot so this check stays consistent with the
+  // backend that sequelizeV2Mirror was actually constructed against.
+  // Reading the live config here would allow the check to drift away from
+  // the Sequelize instance after a runtime config change, causing writes
+  // intended for MySQL to silently land in the SQLite fallback (or vice
+  // versa). The setupNeverRan gate in safeMirrorDbHandlerV2 below still
+  // reads live config for its own purpose (deciding whether to retry the
+  // reconnect setup path).
+  return v2MirrorTargetsMysql;
+};
+
+// Test-only. DO NOT call from production code. Passing `null` restores the
+// real config-driven behaviour. See mirrorEnabledTestOverrideV2 above.
+export const __setMirrorEnabledForTestsV2 = (value) => {
+  mirrorEnabledTestOverrideV2 = value;
+};
+
+// Test-only. DO NOT call from production code. Signals to the reconnect
+// path whether the one-time MySQL setup (CREATE DATABASE + migrations) has
+// succeeded. In production this is set to true by prepareMysqlMirrorV2.
+// Tests use this to bypass MySQL setup (they run against SQLite fallback)
+// while still exercising the reconnect-backfill behaviour.
+export const __setMirrorSetupSucceededForTestsV2 = (value) => {
+  v2MirrorSetupSucceeded = value;
+};
+
+// Test-only. DO NOT call from production code. Forces
+// isMysqlMirrorConfiguredForReconnectV2() to return a specific boolean so
+// tests can exercise the reconnect setup / skip-callback guards without a
+// live MySQL instance or a real MIRROR_DB config. null restores live behaviour.
+export const __setMysqlConfiguredForReconnectForTestsV2 = (value) => {
+  mysqlConfiguredForReconnectOverrideV2 = value;
+};
+
+// Test-only. DO NOT call from production code. Resets the internal
+// auth-state machine back to 'unknown' so tests that intentionally leave
+// the state in 'disconnected' can reset it in an afterEach hook and avoid
+// leaking reconnect behaviour into downstream specs running in the same
+// mocha session.
+export const __resetMirrorAuthStateForTestsV2 = () => {
+  v2MirrorAuthState = 'unknown';
 };
 
 /**
@@ -84,6 +194,60 @@ export const validateMirrorDbNames = (v1Config, v2Config) => {
   }
 };
 
+const startV2ReconnectBackfill = () => {
+  if (v2ReconnectBackfillPromise) {
+    return v2ReconnectBackfillPromise;
+  }
+  v2ReconnectBackfillPromise = (async () => {
+    try {
+      loggerV2.info(
+        '[v2]: Mirror DB reconnected, running catch-up recovery...',
+      );
+
+      // If the initial setup (CREATE DATABASE + migrations) never succeeded
+      // (e.g. MySQL was down at CADT startup), retry it before backfill.
+      // prepareMysqlMirrorV2 is idempotent. Only applies to real MySQL
+      // configurations - the SQLite test fallback never needs setup retries
+      // and would otherwise log a spurious "still failing" error on every
+      // call when tests force the mirror enabled via the test override.
+      if (
+        !v2MirrorSetupSucceeded &&
+        isMysqlMirrorConfiguredForReconnectV2()
+      ) {
+        const ok = await prepareMysqlMirrorV2();
+        if (!ok) {
+          loggerV2.error(
+            '[v2]: Reconnect recovery: mirror setup still failing, backfill skipped',
+          );
+          // Keep auth state as 'disconnected' so the next successful
+          // authenticate re-enters this path and retries setup+backfill,
+          // instead of silently treating the mirror as caught up.
+          v2MirrorAuthState = 'disconnected';
+          return;
+        }
+      }
+
+      if (!v2MirrorSetupSucceeded) {
+        // SQLite test fallback path never marked setup complete and has no
+        // MySQL to retry against. Skip the backfill quietly - symmetric
+        // with V1's startReconnectBackfill.
+        return;
+      }
+
+      await backfillMirrorV2();
+    } catch (error) {
+      loggerV2.error(`[v2]: Reconnect backfill failed: ${error.message}`);
+      // Mark disconnected so the next authenticate success retries the
+      // catch-up. Without this reset, a transient backfill failure would
+      // leave the mirror permanently behind until the NEXT real outage.
+      v2MirrorAuthState = 'disconnected';
+    } finally {
+      v2ReconnectBackfillPromise = null;
+    }
+  })();
+  return v2ReconnectBackfillPromise;
+};
+
 export const safeMirrorDbHandlerV2 = (callback) => {
   if (!mirrorDBEnabledV2()) {
     return Promise.resolve();
@@ -94,6 +258,40 @@ export const safeMirrorDbHandlerV2 = (callback) => {
       sequelizeV2Mirror
         .authenticate()
         .then(async () => {
+          const wasDisconnected = v2MirrorAuthState === 'disconnected';
+          // If MySQL setup never succeeded at startup (e.g. MySQL was down
+          // when prepareV2Db ran), the first successful authenticate needs
+          // to re-run setup + backfill even though we were never in an
+          // explicit 'disconnected' state. Only applies when MySQL is
+          // actually configured - the SQLite test fallback doesn't need
+          // the reconnect path and would otherwise spam recovery logs on
+          // every model write during tests. Uses a live config check so
+          // any runtime config reload stays consistent (symmetric with V1).
+          const setupNeverRan =
+            !v2MirrorSetupSucceeded && isMysqlMirrorConfiguredForReconnectV2();
+          v2MirrorAuthState = 'connected';
+
+          if (wasDisconnected || setupNeverRan) {
+            await startV2ReconnectBackfill();
+          } else if (v2ReconnectBackfillPromise) {
+            // Another concurrent caller already triggered the backfill;
+            // wait for it to finish so our write lands on a caught-up mirror.
+            await v2ReconnectBackfillPromise;
+          }
+
+          // If MySQL is configured but the one-time setup (CREATE DATABASE
+          // + migrations) has not yet completed, the mirror tables don't
+          // exist. Running the callback would produce a confusing
+          // "table doesn't exist" error that gets swallowed by the catch
+          // below. Skip quietly - the next authenticate success will
+          // re-enter startV2ReconnectBackfill and retry setup.
+          if (
+            isMysqlMirrorConfiguredForReconnectV2() &&
+            !v2MirrorSetupSucceeded
+          ) {
+            return;
+          }
+
           try {
             await callback();
           } catch (e) {
@@ -101,6 +299,7 @@ export const safeMirrorDbHandlerV2 = (callback) => {
           }
         })
         .catch(() => {
+          v2MirrorAuthState = 'disconnected';
           loggerV2.info('V2 Mirror DB not connected');
         });
     } catch (error) {
@@ -112,6 +311,30 @@ export const safeMirrorDbHandlerV2 = (callback) => {
       resolve();
     }
   });
+};
+
+// Initialize a V2 mirror Sequelize Model synchronously at module-load time.
+//
+// Model.init() only registers schema metadata on the Sequelize instance; it
+// does not require a live database connection. Gating init on a successful
+// authenticate() (as safeMirrorDbHandlerV2 does for runtime operations) causes
+// a silent, permanent failure when the MySQL sidecar is not yet reachable at
+// CADT startup: the .then() callback never runs, the model is never
+// initialized, and every subsequent mirror write throws
+// "Cannot read properties of undefined (reading 'constructor')" from within
+// Sequelize (this.sequelize is undefined on an uninitialized Model).
+//
+// Runtime writes continue to be gated through safeMirrorDbHandlerV2, which
+// authenticates on each call and short-circuits cleanly when MySQL is down
+// and transparently resumes when the connection pool recovers.
+export const initMirrorModelV2 = (initFn) => {
+  try {
+    initFn();
+  } catch (error) {
+    loggerV2.error(
+      `[v2]: Failed to initialize mirror model: ${error.message}`,
+    );
+  }
 };
 
 export const seedV2Db = async (db) => {
@@ -218,9 +441,21 @@ export const checkForV2Migrations = async (db) => {
 
 /**
  * Backfill MySQL mirror database from SQLite source data.
- * Runs on every startup when mirror is configured. Uses bulkCreate with
- * updateOnDuplicate for idempotent upsert behavior - rows that already exist
- * in MySQL get updated, missing rows get inserted.
+ *
+ * Runs on startup and on every reconnect after a connection outage. For each
+ * source/mirror pair this performs two passes:
+ *   1. Upsert pass: bulkCreate(updateOnDuplicate) inserts missing rows and
+ *      updates stale rows. This recovers inserts and updates that happened
+ *      while the mirror was unreachable.
+ *   2. Orphan sweep: rows present in mirror but no longer in source are
+ *      deleted. This recovers deletes that happened while the mirror was
+ *      unreachable (deletes are otherwise lost because the fire-and-forget
+ *      safeMirrorDbHandlerV2 silently drops operations during an outage).
+ *
+ * Ordering matters for the orphan sweep: mirror PKs are snapshotted BEFORE
+ * source PKs. This prevents false-positive deletes when a row is inserted
+ * concurrently (it would appear in source snapshot but not in mirror
+ * snapshot - we'd classify it as not-orphan either way, which is correct).
  *
  * Uses dynamic imports to avoid circular dependency (models import from this file).
  */
@@ -266,6 +501,7 @@ export const backfillMirrorV2 = async () => {
     ];
 
     let totalSynced = 0;
+    let totalOrphansRemoved = 0;
 
     for (const { source, mirror, name } of mirrorPairs) {
       try {
@@ -275,11 +511,12 @@ export const backfillMirrorV2 = async () => {
           continue;
         }
 
-        const count = await source.count();
-        if (count === 0) {
-          loggerV2.debug(`[v2]: Mirror backfill: ${name} - no records to sync`);
-          continue;
-        }
+        // Orphan sweep pass - snapshot mirror PKs BEFORE source PKs so that
+        // rows inserted concurrently (after mirror snapshot) are not wrongly
+        // treated as orphans. See function-level comment for the full
+        // concurrency argument.
+        const orphansRemoved = await sweepMirrorOrphansV2(source, mirror, name);
+        totalOrphansRemoved += orphansRemoved;
 
         // Determine which fields to update on duplicate key conflict.
         // Include all non-primary-key attributes so the mirror stays in sync
@@ -288,22 +525,96 @@ export const backfillMirrorV2 = async () => {
           (attr) => !mirror.primaryKeyAttributes.includes(attr),
         );
 
+        // Keyset pagination (WHERE pk > :lastSeenPk ORDER BY pk ASC LIMIT N)
+        // instead of offset-based. Offset pagination under concurrent
+        // writes can silently skip rows: a delete at position N shifts
+        // later rows down, so the next page's OFFSET lands one row later
+        // than intended. Keyset pagination avoids that page-shift-on-delete
+        // hazard by using a lower-bound predicate instead of a position
+        // count.
+        //
+        // Note: keyset pagination is NOT immune to concurrent INSERTs with
+        // a PK less than `lastPk` (plausible with UUID PKs, which most V2
+        // mirrors use). Such rows will be missed in the current pass but
+        // picked up by the next reconnect backfill. A subsequent
+        // steady-state safeMirrorDbHandler write also directly upserts
+        // them, so the miss window is bounded.
+        //
+        // Requires a single-column comparable PK. For the (currently none)
+        // composite-PK case, fall back to a single unordered query -
+        // safer than a wrong-order keyset walk. The single-PK invariant
+        // is asserted at load time by mirror-model-init.spec.js.
+        const pkAttrs = mirror.primaryKeyAttributes || [];
+
         let synced = 0;
-        for (let offset = 0; offset < count; offset += BACKFILL_BATCH_SIZE) {
-          const rows = await source.findAll({
-            raw: true,
-            offset,
-            limit: BACKFILL_BATCH_SIZE,
-          });
-
-          await mirror.bulkCreate(rows, {
-            updateOnDuplicate: updateFields,
-          });
-
-          synced += rows.length;
+        if (pkAttrs.length === 1) {
+          const pk = pkAttrs[0];
+          let lastPk = null;
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const where =
+              lastPk === null ? undefined : { [pk]: { [Sequelize.Op.gt]: lastPk } };
+            // NOTE: Do NOT pass `raw: true` to findAll. With raw:true
+            // Sequelize returns SQLite values as-stored (strings),
+            // including DATE columns as "YYYY-MM-DD HH:mm:ss.SSS +00:00".
+            // Forwarding those strings verbatim to MariaDB's bulkCreate
+            // triggers strict-mode "Incorrect datetime value" rejections.
+            // Building model instances runs sqlite.DATE.parse so DATE
+            // columns become real Date objects; mysql.DATE then serialises
+            // them in the MariaDB-safe "YYYY-MM-DD HH:mm:ss" format.
+            //
+            // `.get({ plain: true, raw: true })` extracts dataValues
+            // directly (bypassing any attribute-level `get()` accessors -
+            // e.g. ProjectV2.projectSector returns a parsed Array via its
+            // getter, but the mirror column stores the raw JSON string).
+            // Dates are still Date objects on dataValues because the
+            // sqlite parser runs during instance construction, not at
+            // get() time.
+            const instances = await source.findAll({
+              where,
+              limit: BACKFILL_BATCH_SIZE,
+              order: [[pk, 'ASC']],
+            });
+            if (instances.length === 0) break;
+            const rows = instances.map((r) =>
+              r.get({ plain: true, raw: true }),
+            );
+            await mirror.bulkCreate(rows, { updateOnDuplicate: updateFields });
+            synced += rows.length;
+            lastPk = rows[rows.length - 1][pk];
+            // Defensive: a null/undefined terminal PK means we can't
+            // continue the keyset walk safely (Op.gt: undefined is
+            // ill-defined and would loop on the same page). Stop the
+            // walk; subsequent reconnects will retry from scratch.
+            if (lastPk == null) {
+              loggerV2.warn(
+                `[v2]: Mirror backfill: ${name} - terminal row had null PK; ` +
+                  `stopping keyset walk early (${synced} rows synced).`,
+              );
+              break;
+            }
+            if (rows.length < BACKFILL_BATCH_SIZE) break;
+          }
+        } else {
+          // Composite-PK mirrors are not supported by keyset-paginated
+          // backfill. mirror-model-init.spec.js asserts every current
+          // mirror has a single-column PK; if someone introduces a
+          // composite-PK mirror without extending this function, fail
+          // loudly (caught by the per-table try/catch) rather than
+          // silently loading the whole table into memory.
+          throw new Error(
+            `[v2]: Mirror backfill: ${name} has a composite primary key ` +
+              `(${pkAttrs.join(', ')}). Keyset pagination needs a ` +
+              `single-column comparable PK. Either reduce to a single-column ` +
+              `PK, or extend backfillMirrorV2 to handle composite keys.`,
+          );
         }
 
-        loggerV2.info(`[v2]: Mirror backfill: ${name} - synced ${synced} records`);
+        if (synced === 0) {
+          loggerV2.debug(`[v2]: Mirror backfill: ${name} - no records to sync`);
+        } else {
+          loggerV2.info(`[v2]: Mirror backfill: ${name} - synced ${synced} records`);
+        }
         totalSynced += synced;
       } catch (error) {
         loggerV2.error(`[v2]: Mirror backfill error for ${name}: ${error.message}`);
@@ -311,11 +622,194 @@ export const backfillMirrorV2 = async () => {
       }
     }
 
-    loggerV2.info(`[v2]: MySQL mirror backfill completed - ${totalSynced} total records synced`);
+    loggerV2.info(
+      `[v2]: MySQL mirror backfill completed - ${totalSynced} records upserted, ${totalOrphansRemoved} orphan rows removed`,
+    );
   } catch (error) {
-    loggerV2.error('[v2]: MySQL mirror backfill failed:', error.message);
+    loggerV2.error(
+      `[v2]: MySQL mirror backfill failed: ${error?.message || error?.name || 'unknown error'}`,
+    );
+    loggerV2.debug(error?.stack || error);
     // Don't throw - allow main database to continue operating
   }
+};
+
+/**
+ * Remove rows from a V2 mirror table whose primary key no longer exists in
+ * the source table. Returns the number of rows removed.
+ *
+ * Safe against concurrent writes because we snapshot mirror PKs before
+ * source PKs: a row inserted concurrently into source appears in the source
+ * snapshot but not the mirror snapshot, so it's never classified as an
+ * orphan. A row deleted concurrently from source shows up only in the
+ * mirror snapshot and IS classified as orphan - correct behavior.
+ *
+ * Skips tables with composite primary keys (none exist in V2 today; fall
+ * back to log-and-continue if one is introduced later).
+ */
+const sweepMirrorOrphansV2 = async (source, mirror, name) => {
+  const pkAttrs = mirror.primaryKeyAttributes;
+  if (!pkAttrs || pkAttrs.length !== 1) {
+    loggerV2.debug(
+      `[v2]: Mirror backfill: ${name} - skipping orphan sweep (composite or missing primary key)`,
+    );
+    return 0;
+  }
+  const pkAttr = pkAttrs[0];
+
+  // Concurrency invariant: mirror is scanned BEFORE source. A row
+  // inserted concurrently (after the mirror page fetch, before or
+  // during the source page fetch) will be absent from orphanCandidates
+  // and thus cannot be misclassified as an orphan. A row inserted
+  // before the mirror scan and deleted from source during the scan is
+  // a true orphan and will be correctly removed. Reversing the order
+  // would allow false-positive orphan deletes for rows inserted into
+  // both tables during the sweep.
+  //
+  // Both scans are keyset-paginated. An earlier revision loaded every
+  // PK from both tables in a single unbounded findAll; this is fine
+  // for today's row counts but spikes memory on long-running
+  // deployments with large tables. Peak memory here is O(|mirror|) for
+  // the candidate set; the source side is streamed.
+  //
+  // `raw: true` is safe here - the projection is PK-only, so there are
+  // no DATE or custom-getter columns whose raw SQLite representation
+  // could leak into a bulk write (the hazard backfillMirrorV2 avoids).
+  const orphanCandidates = new Set();
+  let lastMirrorPk = null;
+  while (true) {
+    const where =
+      lastMirrorPk === null
+        ? undefined
+        : { [pkAttr]: { [Sequelize.Op.gt]: lastMirrorPk } };
+    const page = await mirror.findAll({
+      attributes: [pkAttr],
+      where,
+      limit: BACKFILL_BATCH_SIZE,
+      order: [[pkAttr, 'ASC']],
+      raw: true,
+    });
+    if (page.length === 0) break;
+    for (const r of page) orphanCandidates.add(r[pkAttr]);
+    lastMirrorPk = page[page.length - 1][pkAttr];
+    if (lastMirrorPk == null) break;
+    if (page.length < BACKFILL_BATCH_SIZE) break;
+  }
+
+  if (orphanCandidates.size === 0) return 0;
+
+  let lastSrcPk = null;
+  while (true) {
+    const where =
+      lastSrcPk === null
+        ? undefined
+        : { [pkAttr]: { [Sequelize.Op.gt]: lastSrcPk } };
+    const page = await source.findAll({
+      attributes: [pkAttr],
+      where,
+      limit: BACKFILL_BATCH_SIZE,
+      order: [[pkAttr, 'ASC']],
+      raw: true,
+    });
+    if (page.length === 0) break;
+    for (const r of page) orphanCandidates.delete(r[pkAttr]);
+    lastSrcPk = page[page.length - 1][pkAttr];
+    if (lastSrcPk == null) break;
+    if (page.length < BACKFILL_BATCH_SIZE) break;
+  }
+
+  if (orphanCandidates.size === 0) return 0;
+
+  const orphans = [...orphanCandidates];
+  let removed = 0;
+  for (let i = 0; i < orphans.length; i += BACKFILL_BATCH_SIZE) {
+    const batch = orphans.slice(i, i + BACKFILL_BATCH_SIZE);
+    removed += await mirror.destroy({ where: { [pkAttr]: batch } });
+  }
+
+  loggerV2.info(
+    `[v2]: Mirror backfill: ${name} - removed ${removed} orphan rows`,
+  );
+  return removed;
+};
+
+/**
+ * Ensure the MySQL mirror database exists and has up-to-date migrations.
+ * Idempotent: safe to call from startup and again on every reconnect.
+ *
+ * Returns true on success, false on transient I/O failure (e.g. MySQL not
+ * reachable, CREATE DATABASE fails, migrations fail). I/O failures are
+ * caught and logged so they don't take down the main database path.
+ *
+ * THROWS (intentionally) when V1 and V2 are misconfigured to share the
+ * same MIRROR_DB.DB_NAME - see validateMirrorDbNames. That is a
+ * programmer/ops error, not a retryable failure, and surfacing it loudly
+ * at CADT startup prevents silent data corruption where V1 and V2 would
+ * clobber each other's rows in the mirror. Callers on both the startup
+ * path (prepareV2Db) and the reconnect path (startV2ReconnectBackfill)
+ * are already wrapped in try/catch at the appropriate level.
+ */
+export const prepareMysqlMirrorV2 = async () => {
+  if (v2MirrorSetupPromise) {
+    return v2MirrorSetupPromise;
+  }
+
+  v2MirrorSetupPromise = (async () => {
+    const mirrorDbConfig = getConfigV2()?.MIRROR_DB;
+    const isMysqlMirrorConfigured =
+      mirrorDbConfig?.DB_HOST &&
+      mirrorDbConfig?.DB_HOST !== '' &&
+      mirrorDbConfig?.DB_NAME &&
+      mirrorDbConfig?.DB_USERNAME &&
+      mirrorDbConfig?.DB_PASSWORD;
+
+    if (!isMysqlMirrorConfigured) {
+      return false;
+    }
+
+    // validateMirrorDbNames throws when V1 and V2 are misconfigured to use
+    // the same MIRROR_DB.DB_NAME. That is a programmer/ops error, not a
+    // transient I/O failure, and must fail loudly rather than being lumped
+    // in with "MySQL unreachable" retryable failures below.
+    validateMirrorDbNames(getConfig(), getConfigV2());
+
+    try {
+      const connection = await mysql.createConnection({
+        host: mirrorDbConfig.DB_HOST,
+        port: 3306,
+        user: mirrorDbConfig.DB_USERNAME,
+        password: mirrorDbConfig.DB_PASSWORD,
+      });
+
+      try {
+        const dbName = mirrorDbConfig.DB_NAME;
+        await connection.query(
+          `CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`,
+        );
+        loggerV2.info(
+          `[v2]: MySQL mirror database '${dbName}' created/verified`,
+        );
+      } finally {
+        await connection.end();
+      }
+
+      // checkForV2Migrations is idempotent (it checks SequelizeMeta), so
+      // it's safe to re-run on every reconnect.
+      await checkForV2Migrations(sequelizeV2Mirror);
+      loggerV2.info('[v2]: MySQL mirror database migrations completed');
+      v2MirrorSetupSucceeded = true;
+      return true;
+    } catch (error) {
+      loggerV2.error(
+        `[v2]: Error setting up MySQL mirror database: ${error.message}`,
+      );
+      return false;
+    }
+  })().finally(() => {
+    v2MirrorSetupPromise = null;
+  });
+
+  return v2MirrorSetupPromise;
 };
 
 // Mutex to prevent concurrent prepareV2Db calls
@@ -366,30 +860,15 @@ export const prepareV2Db = async () => {
       mirrorDbConfig?.DB_PASSWORD;
 
     if (isMysqlMirrorConfigured) {
-      // Validate that V1 and V2 mirror database names are different
-      validateMirrorDbNames(getConfig(), getConfigV2());
-
-      loggerV2.info('[v2]: MySQL mirror database configured, creating database and running migrations...');
-      try {
-        const connection = await mysql.createConnection({
-          host: mirrorDbConfig.DB_HOST,
-          port: 3306,
-          user: mirrorDbConfig.DB_USERNAME,
-          password: mirrorDbConfig.DB_PASSWORD,
-        });
-
-        const dbName = mirrorDbConfig.DB_NAME;
-        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
-        loggerV2.info(`[v2]: MySQL mirror database '${dbName}' created/verified`);
-        await connection.end();
-
-        // Run migrations on the MySQL mirror database
-        await checkForV2Migrations(sequelizeV2Mirror);
-        loggerV2.info('[v2]: MySQL mirror database migrations completed');
-      } catch (error) {
-        loggerV2.error('[v2]: Error setting up MySQL mirror database:', error.message);
-        // Don't throw - allow main database to continue
-      }
+      loggerV2.info(
+        '[v2]: MySQL mirror database configured, creating database and running migrations...',
+      );
+      // If this fails (e.g. MySQL sidecar not yet reachable), it returns
+      // false and leaves v2MirrorSetupSucceeded=false. safeMirrorDbHandlerV2
+      // will retry setup the first time authenticate succeeds at runtime,
+      // then run the catch-up backfill, so the mirror eventually converges
+      // without requiring a CADT restart.
+      await prepareMysqlMirrorV2();
     } else {
       // No MySQL mirror configured - mirror operations will be no-ops
       loggerV2.info('[v2]: No MySQL mirror configured, mirror operations disabled');
@@ -401,7 +880,7 @@ export const prepareV2Db = async () => {
 
     // Backfill mirror database from SQLite source data (idempotent upsert).
     // Runs after both mirror and main migrations are complete so all tables exist.
-    if (isMysqlMirrorConfigured) {
+    if (isMysqlMirrorConfigured && v2MirrorSetupSucceeded) {
       await backfillMirrorV2();
     }
 
