@@ -117,11 +117,12 @@ const createVersionLogger = (version) => {
       }),
     );
   } else {
-    // In production, mirror error-level logs to stderr so operators can see
-    // them via journalctl/pm2/docker alongside the on-disk log files.
+    // In production, also stream every log line the logger emits to the
+    // process's stdout/stderr so operators can consume them via journalctl,
+    // pm2, or docker. File transports above continue to hold the same data
+    // on disk. Errors go to stderr, everything else to stdout.
     versionLogger.add(
       new transports.Console({
-        level: 'error',
         stderrLevels: ['error'],
         format: format.combine(format.json()),
       }),
