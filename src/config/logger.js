@@ -116,6 +116,16 @@ const createVersionLogger = (version) => {
         ),
       }),
     );
+  } else {
+    // In production, mirror error-level logs to stderr so operators can see
+    // them via journalctl/pm2/docker alongside the on-disk log files.
+    versionLogger.add(
+      new transports.Console({
+        level: 'error',
+        stderrLevels: ['error'],
+        format: format.combine(format.json()),
+      }),
+    );
   }
 
   return versionLogger;
