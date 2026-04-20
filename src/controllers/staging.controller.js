@@ -3,6 +3,8 @@ import _ from 'lodash';
 import { Sequelize } from 'sequelize';
 import { Staging } from '../models';
 
+import { logger } from '../config/logger.js';
+
 import {
   optionallyPaginatedResponse,
   paginationParams,
@@ -110,7 +112,9 @@ export const commit = async (req, res) => {
       success: true,
     });
   } catch (error) {
-    console.trace(error);
+    logger.error(`POST /v1/staging/commit failed: ${error.message}`, {
+      stack: error.stack,
+    });
     res.status(400).json({
       message: 'Error commiting staging table',
       error: error.message,
