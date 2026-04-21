@@ -87,4 +87,3 @@ export const createSyncGovernanceBodyJob = ({
     { id: GOVERNANCE_SYNC_JOB_ID, preventOverrun: true },
   );
 
-export default createSyncGovernanceBodyJob();

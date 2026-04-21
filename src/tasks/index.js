@@ -29,6 +29,7 @@ const scheduler = new ToadScheduler();
 const governanceJobModes = { v1: null, v2: null };
 const governancePromotionPending = { v1: false, v2: false };
 const governancePromotionTimers = { v1: null, v2: null };
+let schedulerStopped = false;
 
 /**
  * Wait for DataLayer to become available before starting tasks.
@@ -112,6 +113,9 @@ const requestGovernanceJobPromotion = (version) => {
 
   governancePromotionPending[version] = true;
   governancePromotionTimers[version] = setTimeout(async () => {
+    if (schedulerStopped) {
+      return;
+    }
     try {
       const hasLocalData =
         version === 'v1'
@@ -176,6 +180,8 @@ const scheduleGovernanceJob = async (version, forcedMode = undefined) => {
 };
 
 const start = async (enableV1 = true, enableV2 = true) => {
+  schedulerStopped = false;
+
   // Wait for DataLayer to be available before starting any tasks
   // This prevents tasks from failing immediately and setting long retry intervals
   await waitForDataLayerAvailable();
@@ -264,6 +270,8 @@ const getJobStatus = () => {
 };
 
 const stopAll = () => {
+  schedulerStopped = true;
+
   // Get all job IDs before clearing registry
   const jobIds = Object.keys(jobRegistry);
 
