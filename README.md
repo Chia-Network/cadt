@@ -22,13 +22,18 @@ After the initial installation, it will take anywhere from a few days (most like
 
 ### How to use the API
 
-CADT will be transitioning to version 2 of the API while phasing out version 1 of the API.  For v2 documenentation, please see the [CADT v2 RPC Guide](docs/cadt_rpc_api_v2.md).  For v1, please see the [CADT v1 RPC Guide](docs/cadt_rpc_api.md).
+CADT will be transitioning to version 2 of the API while phasing out version 1 of the API.  For v2 API endpoints documentation, please see the [CADT v2 RPC Guide](docs/cadt_rpc_api_v2.md).  For v1 API endpoints, please see the [CADT v1 RPC Guide](docs/cadt_rpc_api.md).
+
 
 ### Upgrading a v1 system to v2
 
-V2 of the CADT API is available on versions above 1.7.25.  When a v2 compatible version is first run, the CADT config file will be migrated from the `~/.chia/mainnet/cadt/v1` directory to the `~/.chia/mainnet/cadt` directory.  This new config file will contain parameters for both the v1 and v2 API.  The v1 and v2 endpoints and sync services can be enabled and disabled individually.
+V2 of the CADT API is available on versions above 1.7.26.  When a v2 compatible version is first run, the CADT config file will be migrated from the `~/.chia/mainnet/cadt/v1` directory to the `~/.chia/mainnet/cadt` directory.  This new config file will contain parameters for both the v1 and v2 API.  The v1 and v2 endpoints and sync services can be enabled and disabled individually.
 
-Data cannot be migrated automatically from v1 to v2, but a v1 organization [can be upgraded](/docs/cadt_rpc_api_v2.md#upgrade-v1-organization-to-v2).
+
+Therefore, whether you are already connected to v1 and upgrading, or you are new to CAD Trust and starting directly on v2, follow the installation setup in this README and use a v2-compatible CADT version.
+
+However, data cannot be migrated automatically from v1 to v2. A v1 organization running on CADT must be upgraded using the `POST /v2/organization/upgrade` endpoint. Upgrade details are available in the [v2 API documentation](/docs/cadt_rpc_api_v2.md#upgrade-v1-organization-to-v2).
+
 
 ## Installation
 
@@ -40,7 +45,7 @@ CADT and Chia system usage will depend on many factors, including how busy the b
 
 * 4 CPU cores
 * 8 GB RAM
-* 300 GB disk space
+* 500 GB disk space
 
 ARM and x86 systems are supported.  While Windows, MacOS, and all versions of Linux are supported, Ubuntu Linux is the recommended operating system as it is used most in testing and our internal hosting.
 
@@ -81,7 +86,8 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.
 
 ```
 sudo apt-get update
-sudo apt-get install chia-blockchain-cli cadt
+sudo apt-get install chia-blockchain-cli 
+sudo apt-get install cadt=1.7.26-rc24
 ```
 
 6.  Start Chia Wallet, Full Node, and Datalayer with [systemd](https://docs.chia.net/installation/#systemd)
@@ -150,11 +156,12 @@ Release candidates can be installed via `apt` using the instructions (above)[#de
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/chia.gpg] https://repo.chia.net/cadt-test/debian/ stable main" | sudo tee /etc/apt/sources.list.d/cadt-test.list > /dev/null
 ```
 
-If both the stable and release-candidate repos are added, `apt` can switch between versions installed using by appending `=<version-number>` to the install command:
+If both the stable and release-candidate repos are added, `apt` can switch between versions by appending `=<version-number>` to the install command.
+
+For upgrades from v1 to v2, use a v2-compatible version and pin the package version explicitly. At the time of writing, the latest version is:
 
 ```
-apt install cadt=1.7.19
-apt install cadt=1.7.21-rc7
+apt install cadt=1.7.26-rc24
 ```
 
 Without specifying the version number, `apt` will install the latest release candidate if it exists, which might not always be desired.
