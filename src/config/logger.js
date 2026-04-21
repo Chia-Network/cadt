@@ -117,19 +117,21 @@ const createVersionLogger = (version) => {
       }),
     );
   } else {
-    // In production, also stream every log line the logger emits to the
-    // process's stdout/stderr so operators can consume the full log stream
-    // via journalctl, pm2, or docker. File transports above continue to
-    // hold the same data on disk. Errors go to stderr, everything else to
-    // stdout.
+    // In production, also stream debug-level and above to stdout/stderr so
+    // operators can consume the log stream via journalctl, pm2, or docker
+    // alongside the on-disk log files. Errors go to stderr, everything
+    // else to stdout.
     //
-    // NOTE: in winston 3 a transport's `level` is independent of the
-    // logger's level, so we explicitly use 'silly' (the most permissive
-    // level) to guarantee that anything the app logs reaches journalctl,
-    // regardless of APP.LOG_LEVEL.
+    // The explicit `level: 'debug'` is deliberate: winston 3 transport
+    // levels are independent of the logger's level, and we want journalctl
+    // to receive every "normal" log line (error through debug) regardless
+    // of APP.LOG_LEVEL. The one level we deliberately exclude is `silly`,
+    // which is reserved for extreme debugging (per-query Sequelize output
+    // in src/config/config.js); operators who need that can flip the
+    // transport to 'silly' temporarily.
     versionLogger.add(
       new transports.Console({
-        level: 'silly',
+        level: 'debug',
         stderrLevels: ['error'],
         format: format.combine(format.json()),
       }),
