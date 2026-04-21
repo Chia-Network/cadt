@@ -118,11 +118,18 @@ const createVersionLogger = (version) => {
     );
   } else {
     // In production, also stream every log line the logger emits to the
-    // process's stdout/stderr so operators can consume them via journalctl,
-    // pm2, or docker. File transports above continue to hold the same data
-    // on disk. Errors go to stderr, everything else to stdout.
+    // process's stdout/stderr so operators can consume the full log stream
+    // via journalctl, pm2, or docker. File transports above continue to
+    // hold the same data on disk. Errors go to stderr, everything else to
+    // stdout.
+    //
+    // NOTE: in winston 3 a transport's `level` is independent of the
+    // logger's level, so we explicitly use 'silly' (the most permissive
+    // level) to guarantee that anything the app logs reaches journalctl,
+    // regardless of APP.LOG_LEVEL.
     versionLogger.add(
       new transports.Console({
+        level: 'silly',
         stderrLevels: ['error'],
         format: format.combine(format.json()),
       }),
