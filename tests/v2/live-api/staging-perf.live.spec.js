@@ -4,12 +4,19 @@
  * Mirrors tests/v1/live-api/staging-perf.live.spec.js against the V2 API.
  * For POST / PUT / DELETE phases this:
  *   - stages a configurable batch (default 100 projects),
- *   - times a single GET /v2/staging (paginated, matches how the app
- *     actually consumes the endpoint) before committing,
+ *   - times a single GET /v2/staging with limit >= ROW_COUNT so the whole
+ *     batch lands in one request (single-request SLA, not a paginated
+ *     browse) before committing,
  *   - asserts status 200, expected staged row count, and response time
  *     under the configured budget,
  *   - commits + waits for the existing datalayer submission path to
  *     succeed (no tight SLA on the commit path itself).
+ *
+ * V2 staging is served by src/controllers/v2/staging-v2.controller.js,
+ * which is a separate code path from the V1 staging controller. This
+ * spec is a baseline SLA for that V2 path independent of any batched-
+ * diff work on V1; it will be useful as a regression guard once the
+ * equivalent batching lands on V2.
  *
  * Tunables (env overrides for tuning after live runs):
  *   STAGING_PERF_V2_ROW_COUNT   default 100
@@ -38,19 +45,30 @@ const parseIntEnv = (name, fallback) => {
   const raw = process.env[name];
   if (raw === undefined || raw === '') return fallback;
   const parsed = Number.parseInt(raw, 10);
-  if (Number.isNaN(parsed) || parsed < 0) {
-    throw new Error(`Invalid ${name}=${raw}; expected non-negative integer`);
+  // Zero would collapse ROW_COUNT / BUDGET_MS / COMMIT_TIMEOUT_MS to no-ops
+  // or always-fail, so reject <= 0 explicitly.
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${name}=${raw}; expected positive integer`);
   }
   return parsed;
 };
 
+// V2 paginationSchema caps `limit` at 1000 (src/validations/v2/pagination-v2.validations.js).
+// Staying at or below that keeps the single-request SLA valid; bumping ROW_COUNT higher
+// would require paging across multiple GETs and rethinking the budget.
+const MAX_STAGING_PAGE_LIMIT = 1000;
+
 const ROW_COUNT = parseIntEnv('STAGING_PERF_V2_ROW_COUNT', 100);
+if (ROW_COUNT > MAX_STAGING_PAGE_LIMIT) {
+  throw new Error(
+    `STAGING_PERF_V2_ROW_COUNT=${ROW_COUNT} exceeds the V2 pagination limit ` +
+    `(${MAX_STAGING_PAGE_LIMIT}); the single-GET SLA would return a clamped page.`,
+  );
+}
 const BUDGET_MS = parseIntEnv('STAGING_PERF_V2_BUDGET_MS', 2000);
 const COMMIT_TIMEOUT_MS = parseIntEnv('STAGING_PERF_V2_COMMIT_TIMEOUT_MS', 1_200_000);
 
-// Pagination limit must be >= ROW_COUNT so a single GET fetches every row
-// we staged; that keeps the perf assertion a true single-request SLA.
-const STAGING_PAGE_LIMIT = Math.max(ROW_COUNT, 1000);
+const STAGING_PAGE_LIMIT = MAX_STAGING_PAGE_LIMIT;
 
 const SPEC_TIMEOUT_MS = COMMIT_TIMEOUT_MS * 3 + 600_000;
 

@@ -9,6 +9,11 @@
  *   - commits + waits for the existing datalayer submission path to
  *     succeed (no tight SLA on the commit path itself).
  *
+ * PUT and DELETE are the phases that exercise the batched-diff hydration
+ * path (Project/Unit/Issuance findAll IN) the staging.model.js fix
+ * targets. POST short-circuits on INSERT and is kept as a baseline smoke
+ * on the unpaginated GET shape + commit round-trip.
+ *
  * Tunables (env overrides for tuning after live runs):
  *   STAGING_PERF_V1_ROW_COUNT   default 100
  *   STAGING_PERF_V1_BUDGET_MS   default 3000
@@ -36,8 +41,10 @@ const parseIntEnv = (name, fallback) => {
   const raw = process.env[name];
   if (raw === undefined || raw === '') return fallback;
   const parsed = Number.parseInt(raw, 10);
-  if (Number.isNaN(parsed) || parsed < 0) {
-    throw new Error(`Invalid ${name}=${raw}; expected non-negative integer`);
+  // Zero would collapse ROW_COUNT / BUDGET_MS / COMMIT_TIMEOUT_MS to no-ops
+  // or always-fail, so reject <= 0 explicitly.
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${name}=${raw}; expected positive integer`);
   }
   return parsed;
 };
