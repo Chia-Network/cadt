@@ -2067,7 +2067,14 @@ class OrganizationsV2 extends Model {
   }
 
   /**
-   * Synchronizes metadata for all subscribed organizations
+   * Synchronizes metadata for all subscribed organizations.
+   *
+   * Skips orgs whose orgUid store is not yet fully synced on the datalayer.
+   * Without the pre-check, `datalayer.getStoreIfUpdated` can descend into
+   * `syncService.getStoreData`'s retry loop (20 × 10 s) for any org whose
+   * root hash has changed but data has not yet propagated, which serializes
+   * into minutes-per-org of scheduler blocking when multiple orgs update.
+   *
    * @returns {Promise<void>}
    */
   static async syncOrganizationMeta() {
@@ -2078,6 +2085,23 @@ class OrganizationsV2 extends Model {
       });
 
       for (const organization of allSubscribedOrganizations) {
+        if (!USE_SIMULATOR) {
+          try {
+            const syncStatus = await datalayer.getDataLayerStoreSyncStatus(organization.org_uid);
+            if (!isDlStoreSynced(syncStatus?.sync_status)) {
+              loggerV2.info(
+                `[v2]: syncOrganizationMeta: org store ${organization.org_uid} not yet synced, skipping this run.`,
+              );
+              continue;
+            }
+          } catch (error) {
+            loggerV2.warn(
+              `[v2]: syncOrganizationMeta: could not check sync status for org store ${organization.org_uid}, skipping this run: ${error.message}`,
+            );
+            continue;
+          }
+        }
+
         const processData = (data, keyFilter) =>
           data
             .filter(({ key }) => keyFilter(key))
