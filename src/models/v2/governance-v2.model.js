@@ -454,6 +454,28 @@ class GovernanceV2 extends Model {
       return;
     }
 
+    // Subscribe to the governance body store first so it begins syncing on
+    // fresh deployments. Without this, an unsubscribed store would cause
+    // getDataLayerStoreSyncStatus to error (the DL node has no record of
+    // it), we'd skip, and no subsequent run would ever subscribe — a
+    // permanent skip loop.  subscribeToStoreOnDataLayer returns falsy on
+    // failure (datalayer unreachable, subscribe RPC failure) and also
+    // throws on unexpected errors, so we guard against both.
+    try {
+      const subscribed = await datalayer.subscribeToStoreOnDataLayer(GOVERNANCE_BODY_ID);
+      if (!subscribed) {
+        loggerV2.warn(
+          `[v2]: could not subscribe to governance body store ${GOVERNANCE_BODY_ID}. Skipping sync, will retry on next task run.`,
+        );
+        return;
+      }
+    } catch (error) {
+      loggerV2.warn(
+        `[v2]: could not subscribe to governance body store ${GOVERNANCE_BODY_ID}: ${error.message}. Skipping sync, will retry on next task run.`,
+      );
+      return;
+    }
+
     // Check governance body store sync status before any blocking fetch.
     // If the store is not yet synced, return immediately so cached governance
     // data remains usable and the next task run retries.
@@ -501,6 +523,24 @@ class GovernanceV2 extends Model {
       if (!versionedGovernanceStoreId) {
         loggerV2.warn(
           `[v2]: governance data is not available from store ${GOVERNANCE_BODY_ID} for ${dataModelVersion} data model. Legacy data may have been synced.`,
+        );
+        return;
+      }
+
+      // Subscribe to the versioned governance store first (its ID is only
+      // discovered by reading the body store above), then check sync status.
+      // Same reasoning as the body-store subscribe above.
+      try {
+        const versionedSubscribed = await datalayer.subscribeToStoreOnDataLayer(versionedGovernanceStoreId);
+        if (!versionedSubscribed) {
+          loggerV2.warn(
+            `[v2]: could not subscribe to versioned governance store ${versionedGovernanceStoreId}. Skipping sync, will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        loggerV2.warn(
+          `[v2]: could not subscribe to versioned governance store ${versionedGovernanceStoreId}: ${error.message}. Skipping sync, will retry on next task run.`,
         );
         return;
       }
