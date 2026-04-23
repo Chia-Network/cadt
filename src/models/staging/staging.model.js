@@ -25,6 +25,16 @@ import {
 } from '../../utils/xls';
 import { updateNilVerificationBodyAsEmptyString } from '../../utils/helpers.js';
 
+const buildAssociationIncludes = (ModelClass) =>
+  ModelClass.getAssociatedModels().map((association) => {
+    return {
+      model: association.model,
+      as: formatModelAssociationName(association),
+    };
+  });
+
+const dedupe = (values) => _.uniq(values.filter(Boolean));
+
 class Staging extends Model {
   static changes = new rxjs.Subject();
 
@@ -316,100 +326,141 @@ class Staging extends Model {
   };
 
   static getDiffObject = async (uuid, table, action, data) => {
-    const diff = {};
-    if (action === 'INSERT') {
-      diff.original = {};
-      diff.change = JSON.parse(data);
-    }
-
-    if (action === 'UPDATE') {
-      diff.change = JSON.parse(data);
-
-      let original;
-
-      if (table === 'Projects') {
-        original = await Project.findOne({
-          where: { warehouseProjectId: uuid },
-          include: Project.getAssociatedModels().map((association) => {
-            return {
-              model: association.model,
-              as: formatModelAssociationName(association),
-            };
-          }),
-        });
-
-        // Show the issuance data if its being reused
-        // this is just for view purposes onlys
-        await Promise.all(
-          diff.change.map(async (record) => {
-            if (record.issuanceId) {
-              const issuance = await Issuance.findOne({
-                where: { id: record.issuanceId },
-              });
-
-              record.issuance = issuance.dataValues;
-            }
-          }),
-        );
-      } else if (table === 'Units') {
-        original = await Unit.findOne({
-          where: { warehouseUnitId: uuid },
-          include: Unit.getAssociatedModels().map((association) => {
-            return {
-              model: association.model,
-              as: formatModelAssociationName(association),
-            };
-          }),
-        });
-
-        // Show the issuance data if its being reused,
-        // this is just for view purposes onlys
-        await Promise.all(
-          diff.change.map(async (record) => {
-            if (record.issuanceId) {
-              const issuance = await Issuance.findOne({
-                where: { id: record.issuanceId },
-              });
-
-              record.issuance = issuance.dataValues;
-            }
-          }),
-        );
-      }
-
-      diff.original = original;
-    }
-
-    if (action === 'DELETE') {
-      let original;
-
-      if (table === 'Projects') {
-        original = await Project.findOne({
-          where: { warehouseProjectId: uuid },
-          include: Project.getAssociatedModels().map((association) => {
-            return {
-              model: association.model,
-              as: formatModelAssociationName(association),
-            };
-          }),
-        });
-      } else if (table === 'Units') {
-        original = await Unit.findOne({
-          where: { warehouseUnitId: uuid },
-          include: Unit.getAssociatedModels().map((association) => {
-            return {
-              model: association.model,
-              as: formatModelAssociationName(association),
-            };
-          }),
-        });
-      }
-
-      diff.original = original;
-      diff.change = {};
-    }
-
+    const [diff] = await Staging.getDiffObjects([{ uuid, table, action, data }]);
     return diff;
+  };
+
+  static getDiffObjects = async (stagingRecords) => {
+    const normalizedRecords = stagingRecords.map((record) => {
+      if (!record) {
+        return record;
+      }
+
+      return record.dataValues ? record.dataValues : record;
+    });
+
+    const parsedChanges = normalizedRecords.map((record) => {
+      if (!record || record.action !== 'UPDATE') {
+        return null;
+      }
+
+      return JSON.parse(record.data);
+    });
+
+    const unitIds = dedupe(
+      normalizedRecords
+        .filter(
+          (record) =>
+            record &&
+            record.table === 'Units' &&
+            ['UPDATE', 'DELETE'].includes(record.action),
+        )
+        .map((record) => record.uuid),
+    );
+    const projectIds = dedupe(
+      normalizedRecords
+        .filter(
+          (record) =>
+            record &&
+            record.table === 'Projects' &&
+            ['UPDATE', 'DELETE'].includes(record.action),
+        )
+        .map((record) => record.uuid),
+    );
+    const issuanceIds = dedupe(
+      normalizedRecords.flatMap((record, index) => {
+        if (
+          !record ||
+          record.action !== 'UPDATE' ||
+          !['Projects', 'Units'].includes(record.table)
+        ) {
+          return [];
+        }
+
+        return (parsedChanges[index] || []).map((changeRecord) => changeRecord.issuanceId);
+      }),
+    );
+
+    const [units, projects, issuances] = await Promise.all([
+      unitIds.length
+        ? Unit.findAll({
+            where: { warehouseUnitId: { [Op.in]: unitIds } },
+            include: buildAssociationIncludes(Unit),
+          })
+        : [],
+      projectIds.length
+        ? Project.findAll({
+            where: { warehouseProjectId: { [Op.in]: projectIds } },
+            include: buildAssociationIncludes(Project),
+          })
+        : [],
+      issuanceIds.length
+        ? Issuance.findAll({
+            where: { id: { [Op.in]: issuanceIds } },
+          })
+        : [],
+    ]);
+
+    const unitsById = new Map(
+      units.map((record) => [record.warehouseUnitId, record]),
+    );
+    const projectsById = new Map(
+      projects.map((record) => [record.warehouseProjectId, record]),
+    );
+    const issuancesById = new Map(
+      issuances.map((record) => [record.id, record.dataValues]),
+    );
+
+    return normalizedRecords.map((record, index) => {
+      const diff = {};
+
+      if (record.action === 'INSERT') {
+        diff.original = {};
+        diff.change = JSON.parse(record.data);
+        return diff;
+      }
+
+      if (record.action === 'UPDATE') {
+        diff.change = parsedChanges[index];
+
+        if (['Projects', 'Units'].includes(record.table)) {
+          diff.change.forEach((changeRecord) => {
+            if (changeRecord.issuanceId) {
+              if (!issuancesById.has(changeRecord.issuanceId)) {
+                logger.warn(
+                  `[v1][staging:getDiffObjects] Missing issuance '${changeRecord.issuanceId}' for staged ${record.table} record '${record.uuid}'`,
+                );
+                throw new Error(
+                  `Could not find issuance '${changeRecord.issuanceId}' for staged ${record.table} record '${record.uuid}'`,
+                );
+              }
+
+              changeRecord.issuance = issuancesById.get(changeRecord.issuanceId);
+            }
+          });
+        }
+
+        diff.original =
+          record.table === 'Projects'
+            ? projectsById.get(record.uuid) ?? null
+            : record.table === 'Units'
+              ? unitsById.get(record.uuid) ?? null
+              : undefined;
+        return diff;
+      }
+
+      if (record.action === 'DELETE') {
+        diff.original =
+          record.table === 'Projects'
+            ? projectsById.get(record.uuid) ?? null
+            : record.table === 'Units'
+              ? unitsById.get(record.uuid) ?? null
+              : undefined;
+        diff.change = {};
+      }
+
+      return diff;
+    });
   };
 
   static seperateStagingDataIntoActionGroups = (stagedData, table) => {
