@@ -984,6 +984,59 @@ class Organization extends Model {
         );
         return;
       }
+
+      // Read the org store to discover the data-model-version (singleton) store
+      // id, subscribe to it, and pre-check its sync status.  Without this,
+      // subscribeToOrganization would enter a 10-minute blocking wait loop on
+      // the singleton store during first-time imports.  Skip this import now
+      // and let the next task run retry once the singleton has synced.
+      let singletonStoreId;
+      try {
+        const orgStoreData = await datalayer.getSubscribedStoreData(
+          orgUid,
+          undefined,
+          false,
+        );
+        singletonStoreId = orgStoreData?.registryId;
+      } catch (error) {
+        logger.warn(
+          `[v1]: Could not read org store ${orgUid} to discover singleton id, skipping import: ${error.message}`,
+        );
+        return;
+      }
+
+      if (!singletonStoreId) {
+        logger.warn(
+          `[v1]: Org store ${orgUid} does not contain a data-model-version store id, skipping import.`,
+        );
+        return;
+      }
+
+      try {
+        await datalayer.subscribeToStoreOnDataLayer(singletonStoreId);
+      } catch (error) {
+        logger.warn(
+          `[v1]: Could not subscribe to singleton store ${singletonStoreId} for org ${orgUid}, skipping import: ${error.message}`,
+        );
+        return;
+      }
+
+      try {
+        const singletonSyncStatus = await datalayer.getDataLayerStoreSyncStatus(
+          singletonStoreId,
+        );
+        if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
+          logger.info(
+            `[v1]: Skipping import of organization ${orgUid} - singleton store ${singletonStoreId} not yet synced. Will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        logger.warn(
+          `[v1]: Could not check sync status for singleton store ${singletonStoreId}, skipping import: ${error.message}`,
+        );
+        return;
+      }
     }
 
     logger.verbose('[v1]: acquiring mutex to import organization');
