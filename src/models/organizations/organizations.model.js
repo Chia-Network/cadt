@@ -959,11 +959,23 @@ class Organization extends Model {
     // This ensures new org stores get subscribed on the first pass so they can
     // begin syncing, and subsequent runs will find them synced and proceed.
     if (!USE_SIMULATOR) {
+      // subscribeToStoreOnDataLayer returns falsy on the common failure paths
+      // (no storeId, getSubscriptions RPC failure) and also throws on
+      // unexpected errors, so guard on both.  Without the falsy-return check,
+      // the dominant datalayer-unreachable failure slips past the try/catch
+      // and the subsequent "not yet synced" skip log is misleading.  Same
+      // pattern as Governance.sync and reconcileOrganization.
       try {
-        await datalayer.subscribeToStoreOnDataLayer(orgUid);
+        const subscribed = await datalayer.subscribeToStoreOnDataLayer(orgUid);
+        if (!subscribed) {
+          logger.warn(
+            `[v1]: Could not subscribe to org store ${orgUid}. Skipping import, will retry on next task run.`,
+          );
+          return;
+        }
       } catch (error) {
         logger.warn(
-          `[v1]: Could not subscribe to store for ${orgUid}, skipping import: ${error.message}`,
+          `[v1]: Could not subscribe to org store ${orgUid}: ${error.message}. Skipping import, will retry on next task run.`,
         );
         return;
       }
@@ -1013,10 +1025,18 @@ class Organization extends Model {
       }
 
       try {
-        await datalayer.subscribeToStoreOnDataLayer(singletonStoreId);
+        const singletonSubscribed = await datalayer.subscribeToStoreOnDataLayer(
+          singletonStoreId,
+        );
+        if (!singletonSubscribed) {
+          logger.warn(
+            `[v1]: Could not subscribe to singleton store ${singletonStoreId} for org ${orgUid}. Skipping import, will retry on next task run.`,
+          );
+          return;
+        }
       } catch (error) {
         logger.warn(
-          `[v1]: Could not subscribe to singleton store ${singletonStoreId} for org ${orgUid}, skipping import: ${error.message}`,
+          `[v1]: Could not subscribe to singleton store ${singletonStoreId} for org ${orgUid}: ${error.message}. Skipping import, will retry on next task run.`,
         );
         return;
       }
