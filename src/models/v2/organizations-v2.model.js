@@ -1835,11 +1835,24 @@ class OrganizationsV2 extends Model {
   }
 
   /**
-   * Reconcile organization - validate and update database with datalayer data
+   * Reconcile organization - validate and update database with datalayer data.
+   *
    * @param {Object} organization - Organization record
+   * @param {Object} [options]
+   * @param {boolean} [options.skipOnUnsynced=false] - When true, silently
+   *   return early if the org or singleton store is unsynced or if a subscribe
+   *   call fails.  Background task callers (validate-organization-table*) must
+   *   pass `true` so a transient datalayer hiccup doesn't block task cadence.
+   *   Request-path callers (e.g. POST /organizations/resync) MUST leave this
+   *   `false`: their downstream code (e.g. resetting registry_hash,
+   *   destroying audit records) depends on reconcile either completing or
+   *   throwing, never silently skipping — otherwise a datalayer hiccup causes
+   *   data deletion without reconciliation.
    * @returns {Promise<void>}
+   * @throws When `skipOnUnsynced` is false and any of: the org store subscribe
+   *   fails, the org or singleton store is unsynced, or a sync-status RPC fails.
    */
-  static async reconcileOrganization(organization) {
+  static async reconcileOrganization(organization, { skipOnUnsynced = false } = {}) {
     const { org_uid, is_home, data_model_version_store_id } = organization;
 
     loggerV2.info(`[v2]: Reconciling organization ${org_uid}`);
@@ -1855,6 +1868,17 @@ class OrganizationsV2 extends Model {
       }
     }
 
+    // Skip-or-throw helper: for transient "not ready" conditions, background
+    // tasks want a silent skip, request-paths want a hard failure so their
+    // downstream destructive writes don't run.
+    const skipOrThrow = (message) => {
+      if (skipOnUnsynced) {
+        loggerV2.info(`[v2]: reconcileOrganization: ${message}. Will retry on next task run.`);
+        return;
+      }
+      throw new Error(`reconcileOrganization: ${message}`);
+    };
+
     // Subscribe to org store first so it begins syncing, then check sync status
     // before entering the blocking subscription flow.
     //
@@ -1864,49 +1888,46 @@ class OrganizationsV2 extends Model {
     // datalayer-unreachable failure would slip past the try/catch and the
     // subsequent "not yet synced" skip log would be misleading.
     if (!USE_SIMULATOR) {
+      let subscribeErr;
       try {
         const subscribed = await datalayer.subscribeToStoreOnDataLayer(org_uid);
         if (!subscribed) {
-          loggerV2.warn(
-            `[v2]: reconcileOrganization: could not subscribe to org store ${org_uid}. Skipping reconcile, will retry on next task run.`,
-          );
-          return;
+          subscribeErr = `could not subscribe to org store ${org_uid}`;
         }
       } catch (error) {
-        loggerV2.warn(
-          `[v2]: reconcileOrganization: could not subscribe to org store ${org_uid}: ${error.message}. Skipping reconcile, will retry on next task run.`,
-        );
+        subscribeErr = `could not subscribe to org store ${org_uid}: ${error.message}`;
+      }
+      if (subscribeErr) {
+        skipOrThrow(subscribeErr);
         return;
       }
 
+      let orgStatusErr;
       try {
         const orgSyncStatus = await datalayer.getDataLayerStoreSyncStatus(org_uid);
         if (!isDlStoreSynced(orgSyncStatus?.sync_status)) {
-          loggerV2.info(
-            `[v2]: reconcileOrganization: org store ${org_uid} not yet synced, skipping reconcile. Will retry on next task run.`,
-          );
-          return;
+          orgStatusErr = `org store ${org_uid} not yet synced`;
         }
       } catch (error) {
-        loggerV2.warn(
-          `[v2]: reconcileOrganization: could not check sync status for org store ${org_uid}, skipping reconcile: ${error.message}`,
-        );
+        orgStatusErr = `could not check sync status for org store ${org_uid}: ${error.message}`;
+      }
+      if (orgStatusErr) {
+        skipOrThrow(orgStatusErr);
         return;
       }
 
       if (data_model_version_store_id) {
+        let singletonStatusErr;
         try {
           const singletonSyncStatus = await datalayer.getDataLayerStoreSyncStatus(data_model_version_store_id);
           if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
-            loggerV2.info(
-              `[v2]: reconcileOrganization: singleton store ${data_model_version_store_id} for org ${org_uid} not yet synced, skipping reconcile. Will retry on next task run.`,
-            );
-            return;
+            singletonStatusErr = `singleton store ${data_model_version_store_id} for org ${org_uid} not yet synced`;
           }
         } catch (error) {
-          loggerV2.warn(
-            `[v2]: reconcileOrganization: could not check sync status for singleton store ${data_model_version_store_id}, skipping reconcile: ${error.message}`,
-          );
+          singletonStatusErr = `could not check sync status for singleton store ${data_model_version_store_id}: ${error.message}`;
+        }
+        if (singletonStatusErr) {
+          skipOrThrow(singletonStatusErr);
           return;
         }
       }

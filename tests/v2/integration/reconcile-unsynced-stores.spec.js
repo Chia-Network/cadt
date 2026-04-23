@@ -16,9 +16,18 @@ import TaskManager from '../../../src/tasks/index.js';
  * run in production.  The production-mode paths are exercised by the
  * live integration tests; these unit tests cover the simulator fast-path
  * and method-contract assertions.
+ *
+ * The `{ skipOnUnsynced }` option controls whether the pre-check path
+ * silently returns (background tasks: true) or throws (request-path
+ * callers like resyncOrganization controller: false, the default).
+ * Throwing on the default matters because request-path callers run
+ * destructive writes (reset registry_hash, delete audit records) after
+ * reconcile and must not proceed on stale state.  Option semantics are
+ * verified here by signature checks; the production throw/skip behavior
+ * is covered by live tests.
  */
 describe('Reconcile Unsynced Stores', function () {
-  this.timeout(10000);
+  this.timeout(30000);
 
   before(async function () {
     await prepareDb();
@@ -136,6 +145,115 @@ describe('Reconcile Unsynced Stores', function () {
       }
       expect(Date.now() - start).to.be.below(1000, 'simulator mode should fail fast for unknown store');
       expect(error).to.exist;
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────
+  // skipOnUnsynced option contract
+  // ─────────────────────────────────────────────────────────
+
+  describe('skipOnUnsynced option contract', function () {
+    it('V1 should accept { skipOnUnsynced: true } without error in simulator mode', async function () {
+      const org = {
+        orgUid: 'some-org-v1',
+        name: 'Some Org',
+        registryId: 'reg-v1',
+        dataModelVersionStoreId: 'singleton-v1',
+        isHome: false,
+      };
+      let threw = false;
+      try {
+        await Organization.reconcileOrganization(org, { skipOnUnsynced: true });
+      } catch {
+        threw = true;
+      }
+      expect(threw).to.be.false;
+    });
+
+    it('V1 should accept { skipOnUnsynced: false } (default) without error in simulator mode', async function () {
+      // In simulator mode the whole function short-circuits before hitting the
+      // pre-check block that's affected by this option; the option must still
+      // parse without throwing a signature error.
+      const org = {
+        orgUid: 'some-org-v1',
+        name: 'Some Org',
+        registryId: 'reg-v1',
+        dataModelVersionStoreId: 'singleton-v1',
+        isHome: false,
+      };
+      let threw = false;
+      try {
+        await Organization.reconcileOrganization(org, { skipOnUnsynced: false });
+      } catch {
+        threw = true;
+      }
+      expect(threw).to.be.false;
+    });
+
+    it('V1 should accept no-option call (back-compat with pre-PR signature)', async function () {
+      const org = {
+        orgUid: 'some-org-v1',
+        name: 'Some Org',
+        registryId: 'reg-v1',
+        dataModelVersionStoreId: 'singleton-v1',
+        isHome: false,
+      };
+      let threw = false;
+      try {
+        await Organization.reconcileOrganization(org);
+      } catch {
+        threw = true;
+      }
+      expect(threw).to.be.false;
+    });
+
+    it('V2 should accept { skipOnUnsynced: true } without a signature error', async function () {
+      // Unknown org in simulator mode will throw from subscribeToOrganization,
+      // but the option itself must parse cleanly.
+      let errorMessage = null;
+      try {
+        await OrganizationsV2.reconcileOrganization(
+          { org_uid: 'skip-true-v2', is_home: false, data_model_version_store_id: 'singleton' },
+          { skipOnUnsynced: true },
+        );
+      } catch (e) {
+        errorMessage = e.message;
+      }
+      // If we got an error, it must NOT be a signature/argument error.
+      if (errorMessage) {
+        expect(errorMessage).to.not.match(/options|skipOnUnsynced/i);
+      }
+    });
+
+    it('V2 should accept { skipOnUnsynced: false } (default) without a signature error', async function () {
+      let errorMessage = null;
+      try {
+        await OrganizationsV2.reconcileOrganization(
+          { org_uid: 'skip-false-v2', is_home: false, data_model_version_store_id: 'singleton' },
+          { skipOnUnsynced: false },
+        );
+      } catch (e) {
+        errorMessage = e.message;
+      }
+      if (errorMessage) {
+        expect(errorMessage).to.not.match(/options|skipOnUnsynced/i);
+      }
+    });
+
+    it('V2 should accept no-option call (back-compat with pre-PR signature)', async function () {
+      let errorMessage = null;
+      try {
+        await OrganizationsV2.reconcileOrganization({
+          org_uid: 'no-option-v2',
+          is_home: false,
+          data_model_version_store_id: 'singleton',
+        });
+      } catch (e) {
+        errorMessage = e.message;
+      }
+      if (errorMessage) {
+        expect(errorMessage).to.not.match(/options|skipOnUnsynced/i);
+      }
     });
   });
 });

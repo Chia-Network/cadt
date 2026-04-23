@@ -37,7 +37,12 @@ const task = new Task('validate-organization-table-v2', async () => {
             );
 
             try {
-              await OrganizationsV2.reconcileOrganization(organization);
+              // Background task — skip (not throw) when the org/singleton store
+              // is unsynced or a subscribe call fails, so a transient datalayer
+              // hiccup doesn't spam ERROR logs or block task cadence.
+              await OrganizationsV2.reconcileOrganization(organization, {
+                skipOnUnsynced: true,
+              });
             } catch (error) {
               loggerV2.error(
                 `failed reconcile organization records and subscriptions for organization ${organization.org_uid}. Error: ${error.message}. `,
