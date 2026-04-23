@@ -184,10 +184,14 @@ describe('Staging Resource CRUD', function () {
         .stub(Staging, 'getDiffObjects')
         .resolves([{ original: { warehouseUnitId: 'unit-1' }, change: {} }]);
 
-      const response = await supertest(app).get('/v1/staging').expect(200);
+      const response = await supertest(app)
+        .get('/v1/staging')
+        .query({ limit: 10 })
+        .expect(200);
 
       expect(findAllStub.calledOnce).to.be.true;
       expect(findAndCountAllStub.called).to.be.false;
+      expect(getDiffObjectsStub.calledOnce).to.be.true;
       expect(findAllStub.firstCall.args[0]).to.deep.equal({
         where: {},
         order: [['id', 'ASC']],
