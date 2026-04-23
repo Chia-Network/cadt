@@ -1024,20 +1024,16 @@ class Organization extends Model {
    * @returns {Promise<void>}
    */
   static async importOrganization(orgUid, isHome = false) {
-    // Subscribe-first, then check sync status. This ensures new org stores
-    // get subscribed on the first pass so they can begin syncing, and
-    // subsequent runs will find them synced and proceed.
+    // Subscribe to the org store first, then check sync status.
+    // This ensures new org stores get subscribed on the first pass so they can
+    // begin syncing, and subsequent runs will find them synced and proceed.
     if (!USE_SIMULATOR) {
-      if (
-        !(await subscribeOrSkip({
-          datalayer,
-          storeId: orgUid,
-          logger,
-          prefix: '[v1]: importOrganization',
-          label: 'org',
-          action: 'import',
-        }))
-      ) {
+      try {
+        await datalayer.subscribeToStoreOnDataLayer(orgUid);
+      } catch (error) {
+        logger.warn(
+          `[v1]: Could not subscribe to store for ${orgUid}, skipping import: ${error.message}`,
+        );
         return;
       }
 
