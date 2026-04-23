@@ -789,7 +789,7 @@ class Organization extends Model {
    * @returns {Promise<void>}
    * @throws Error on failure. call in a try block
    */
-  static async reconcileOrganization(organization) {
+  static async reconcileOrganization(organization, { skipOnUnsynced = false } = {}) {
     if (USE_SIMULATOR) {
       return;
     }
@@ -827,6 +827,75 @@ class Organization extends Model {
         throw new Error(
           `orgUid store ${orgUid} is not owned by this chia wallet. CADT cannot correct this issue. please contact your administrator`,
         );
+      }
+    }
+
+    // Skip-or-throw helper: for transient "not ready" conditions, background
+    // tasks want a silent skip (skipOnUnsynced=true), request-paths want a hard
+    // failure (skipOnUnsynced=false, the default) so their downstream destructive
+    // writes (e.g. POST /organizations/resync resetting registryHash and
+    // destroying all data-model rows) don't run against stale state.
+    const skipOrThrow = (message) => {
+      if (skipOnUnsynced) {
+        logger.info(`[v1]: reconcileOrganization: ${message}. Will retry on next task run.`);
+        return;
+      }
+      throw new Error(`reconcileOrganization: ${message}`);
+    };
+
+    // Subscribe to org store first so it begins syncing, then check sync status
+    // before entering the blocking subscription flow.  If either the org store or
+    // its derived singleton store is not yet synced, return early so the periodic
+    // task retries on the next run rather than waiting up to 10 minutes.
+    //
+    // subscribeToStoreOnDataLayer returns falsy on the common failure paths
+    // (no storeId, getSubscriptions RPC failure) and also throws on unexpected
+    // errors, so guard on both.  Without the falsy-return check, the dominant
+    // datalayer-unreachable failure would slip past the try/catch and the
+    // subsequent "not yet synced" skip log would be misleading.
+    let subscribeErr;
+    try {
+      const subscribed = await datalayer.subscribeToStoreOnDataLayer(orgUid);
+      if (!subscribed) {
+        subscribeErr = `could not subscribe to org store ${orgUid}`;
+      }
+    } catch (error) {
+      subscribeErr = `could not subscribe to org store ${orgUid}: ${error.message}`;
+    }
+    if (subscribeErr) {
+      skipOrThrow(subscribeErr);
+      return;
+    }
+
+    let orgStatusErr;
+    try {
+      const orgSyncStatus = await getDataLayerStoreSyncStatus(orgUid);
+      if (!isDlStoreSynced(orgSyncStatus?.sync_status)) {
+        orgStatusErr = `org store ${orgUid} not yet synced`;
+      }
+    } catch (error) {
+      orgStatusErr = `could not check sync status for org store ${orgUid}: ${error.message}`;
+    }
+    if (orgStatusErr) {
+      skipOrThrow(orgStatusErr);
+      return;
+    }
+
+    // Check the singleton (data model version) store before the blocking fetch inside
+    // subscribeToOrganization so that an unsynced singleton doesn't stall the background task.
+    if (dataModelVersionStoreId) {
+      let singletonStatusErr;
+      try {
+        const singletonSyncStatus = await getDataLayerStoreSyncStatus(dataModelVersionStoreId);
+        if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
+          singletonStatusErr = `singleton store ${dataModelVersionStoreId} for org ${orgUid} not yet synced`;
+        }
+      } catch (error) {
+        singletonStatusErr = `could not check sync status for singleton store ${dataModelVersionStoreId}: ${error.message}`;
+      }
+      if (singletonStatusErr) {
+        skipOrThrow(singletonStatusErr);
+        return;
       }
     }
 

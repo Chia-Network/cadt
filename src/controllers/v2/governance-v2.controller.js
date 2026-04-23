@@ -347,7 +347,13 @@ export const setGlossary = async (req, res) => {
 export const sync = async (req, res) => {
   try {
     await assertV2IfReadOnlyMode();
-    GovernanceV2.sync();
+    // Fire-and-forget: GovernanceV2.sync() returns cleanly on any failure
+    // (subscribe-first pattern, scheduler retries on cadence), so a rejection
+    // here is unexpected. Attach a .catch anyway so any future exception from
+    // the sync coroutine is logged instead of becoming an unhandled rejection.
+    void GovernanceV2.sync().catch((error) => {
+      loggerV2.error(`[v2]: Governance sync request failed: ${error.message}`);
+    });
     return res.json({
       message: 'Syncing V2 Governance Body',
       success: true,
