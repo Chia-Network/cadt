@@ -830,6 +830,53 @@ class Organization extends Model {
       }
     }
 
+    // Subscribe to org store first so it begins syncing, then check sync status
+    // before entering the blocking subscription flow.  If either the org store or
+    // its derived singleton store is not yet synced, return early so the periodic
+    // task retries on the next run rather than waiting up to 10 minutes.
+    try {
+      await datalayer.subscribeToStoreOnDataLayer(orgUid);
+    } catch (error) {
+      logger.warn(
+        `[v1]: reconcileOrganization: could not subscribe to org store ${orgUid}, skipping reconcile: ${error.message}`,
+      );
+      return;
+    }
+
+    try {
+      const orgSyncStatus = await getDataLayerStoreSyncStatus(orgUid);
+      if (!isDlStoreSynced(orgSyncStatus?.sync_status)) {
+        logger.info(
+          `[v1]: reconcileOrganization: org store ${orgUid} not yet synced, skipping reconcile. Will retry on next task run.`,
+        );
+        return;
+      }
+    } catch (error) {
+      logger.warn(
+        `[v1]: reconcileOrganization: could not check sync status for org store ${orgUid}, skipping reconcile: ${error.message}`,
+      );
+      return;
+    }
+
+    // Check the singleton (data model version) store before the blocking fetch inside
+    // subscribeToOrganization so that an unsynced singleton doesn't stall the background task.
+    if (dataModelVersionStoreId) {
+      try {
+        const singletonSyncStatus = await getDataLayerStoreSyncStatus(dataModelVersionStoreId);
+        if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
+          logger.info(
+            `[v1]: reconcileOrganization: singleton store ${dataModelVersionStoreId} for org ${orgUid} not yet synced, skipping reconcile. Will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        logger.warn(
+          `[v1]: reconcileOrganization: could not check sync status for singleton store ${dataModelVersionStoreId}, skipping reconcile: ${error.message}`,
+        );
+        return;
+      }
+    }
+
     logger.debug(
       `running the organization model subscription process on ${orgUid}`,
     );

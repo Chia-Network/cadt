@@ -1428,7 +1428,11 @@ class OrganizationsV2 extends Model {
         throw new Error(`Failed to get singleton data from ${dataModelVersionStoreId} in simulator mode`);
       }
     } else {
-      // In production mode, use getSubscribedStoreData with timeout
+      // In production mode, use getSubscribedStoreData with sync wait.
+      // For the background reconcile path, reconcileOrganization's pre-checks have
+      // already verified this store is synced, so the wait completes immediately
+      // without blocking.  Request-path callers (subscribe controller, import flow)
+      // still benefit from the wait in case the store is not yet fully synced.
       const timeout = Date.now() + 600000; // 10 minutes
 
       while (!singletonData) {
@@ -1436,7 +1440,7 @@ class OrganizationsV2 extends Model {
           singletonData = await datalayer.getSubscribedStoreData(
             dataModelVersionStoreId,
             undefined,
-            true, // wait for sync
+            true,
           );
           break;
         } catch (error) {
@@ -1836,7 +1840,7 @@ class OrganizationsV2 extends Model {
    * @returns {Promise<void>}
    */
   static async reconcileOrganization(organization) {
-    const { org_uid, is_home } = organization;
+    const { org_uid, is_home, data_model_version_store_id } = organization;
 
     loggerV2.info(`[v2]: Reconciling organization ${org_uid}`);
 
@@ -1848,6 +1852,51 @@ class OrganizationsV2 extends Model {
         throw new Error(
           `orgUid store ${org_uid} is not owned by this chia wallet. cannot reconcile home organization`,
         );
+      }
+    }
+
+    // Subscribe to org store first so it begins syncing, then check sync status
+    // before entering the blocking subscription flow.
+    if (!USE_SIMULATOR) {
+      try {
+        await datalayer.subscribeToStoreOnDataLayer(org_uid);
+      } catch (error) {
+        loggerV2.warn(
+          `[v2]: reconcileOrganization: could not subscribe to org store ${org_uid}, skipping reconcile: ${error.message}`,
+        );
+        return;
+      }
+
+      try {
+        const orgSyncStatus = await datalayer.getDataLayerStoreSyncStatus(org_uid);
+        if (!isDlStoreSynced(orgSyncStatus?.sync_status)) {
+          loggerV2.info(
+            `[v2]: reconcileOrganization: org store ${org_uid} not yet synced, skipping reconcile. Will retry on next task run.`,
+          );
+          return;
+        }
+      } catch (error) {
+        loggerV2.warn(
+          `[v2]: reconcileOrganization: could not check sync status for org store ${org_uid}, skipping reconcile: ${error.message}`,
+        );
+        return;
+      }
+
+      if (data_model_version_store_id) {
+        try {
+          const singletonSyncStatus = await datalayer.getDataLayerStoreSyncStatus(data_model_version_store_id);
+          if (!isDlStoreSynced(singletonSyncStatus?.sync_status)) {
+            loggerV2.info(
+              `[v2]: reconcileOrganization: singleton store ${data_model_version_store_id} for org ${org_uid} not yet synced, skipping reconcile. Will retry on next task run.`,
+            );
+            return;
+          }
+        } catch (error) {
+          loggerV2.warn(
+            `[v2]: reconcileOrganization: could not check sync status for singleton store ${data_model_version_store_id}, skipping reconcile: ${error.message}`,
+          );
+          return;
+        }
       }
     }
 
