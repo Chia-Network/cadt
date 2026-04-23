@@ -174,6 +174,26 @@ const createVersionLogger = (version) => {
         ),
       }),
     );
+  } else {
+    // In production, also stream debug-level and above to stdout/stderr so
+    // operators can consume the log stream via journalctl, pm2, or docker
+    // alongside the on-disk log files. Errors go to stderr, everything
+    // else to stdout.
+    //
+    // The explicit `level: 'debug'` is deliberate: winston 3 transport
+    // levels are independent of the logger's level, and we want journalctl
+    // to receive every "normal" log line (error through debug) regardless
+    // of APP.LOG_LEVEL. The one level we deliberately exclude is `silly`,
+    // which is reserved for extreme debugging (per-query Sequelize output
+    // in src/config/config.js); operators who need that can flip the
+    // transport to 'silly' temporarily.
+    versionLogger.add(
+      new transports.Console({
+        level: 'debug',
+        stderrLevels: ['error'],
+        format: format.combine(format.json()),
+      }),
+    );
   }
 
   if (legacyCleanup.removed.length > 0) {
