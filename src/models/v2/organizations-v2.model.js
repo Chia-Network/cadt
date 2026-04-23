@@ -2086,6 +2086,31 @@ class OrganizationsV2 extends Model {
 
       for (const organization of allSubscribedOrganizations) {
         if (!USE_SIMULATOR) {
+          // Subscribe-first, then check sync status.  Without subscribing,
+          // getDataLayerStoreSyncStatus errors/returns falsy for any store
+          // the DL node has no record of (e.g. after a datalayer DB reset),
+          // we skip, and no subsequent run ever subscribes — a permanent
+          // skip loop.  subscribeToStoreOnDataLayer returns falsy on the
+          // common failure paths (datalayer unreachable, getSubscriptions
+          // RPC failure) and also throws on unexpected errors, so guard on
+          // both.  Same pattern as GovernanceV2.sync and reconcileOrganization.
+          try {
+            const subscribed = await datalayer.subscribeToStoreOnDataLayer(
+              organization.org_uid,
+            );
+            if (!subscribed) {
+              loggerV2.warn(
+                `[v2]: syncOrganizationMeta: could not subscribe to org store ${organization.org_uid}. Skipping this run.`,
+              );
+              continue;
+            }
+          } catch (error) {
+            loggerV2.warn(
+              `[v2]: syncOrganizationMeta: could not subscribe to org store ${organization.org_uid}: ${error.message}. Skipping this run.`,
+            );
+            continue;
+          }
+
           try {
             const syncStatus = await datalayer.getDataLayerStoreSyncStatus(organization.org_uid);
             if (!isDlStoreSynced(syncStatus?.sync_status)) {
