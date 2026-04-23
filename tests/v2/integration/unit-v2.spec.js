@@ -1778,6 +1778,11 @@ ${unit.cadTrustUnitId},75`;
         expect(merged.unit_count).to.equal('75');
         expect(merged.unit_link).to.equal('https://example.com/already-staged-unit');
         expect(merged.unit_serial_id).to.equal('STAGED-MERGE-UNIT');
+        // Staging row's uuid column must equal the entity PK; downstream
+        // commit logic uses it as the datalayer changelist key. The pre-
+        // seeded row above had a deliberately-mismatched random uuid, so
+        // this asserts the consolidation code rewrote it to the PK.
+        expect(staged[0].uuid).to.equal(unit.cadTrustUnitId);
       });
 
       it('should merge CSV updates into an already-staged unit INSERT and keep it as INSERT', async function () {

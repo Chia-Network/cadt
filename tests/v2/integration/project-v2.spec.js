@@ -1831,6 +1831,11 @@ ${project.cadTrustProjectId},CSV Updated Name`;
         expect(merged.project_name).to.equal('CSV Updated Name');
         expect(merged.project_description).to.equal('Already staged description');
         expect(merged.project_registry_name).to.equal('Test Registry');
+        // Staging row's uuid column must equal the entity PK; downstream
+        // commit logic uses it as the datalayer changelist key. The pre-
+        // seeded row above had a deliberately-mismatched random uuid, so
+        // this asserts the consolidation code rewrote it to the PK.
+        expect(staged[0].uuid).to.equal(project.cadTrustProjectId);
       });
 
       it('should merge CSV updates into an already-staged project INSERT and keep it as INSERT', async function () {

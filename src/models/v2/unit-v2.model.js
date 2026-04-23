@@ -484,15 +484,21 @@ class UnitV2 extends Model {
           let action;
           let mergedRecord;
 
+          let pendingRows = [];
           if (unitId) {
             const existing = await UnitV2.findByPk(unitId);
+            const mergeResult = await buildPendingCsvMergeBase(
+              UnitV2,
+              unitId,
+              existing,
+              { transaction },
+            );
             const {
               mergedBase,
               hasPendingDelete,
               hasMultiRecordPendingRow,
-            } = await buildPendingCsvMergeBase(UnitV2, unitId, existing, {
-              transaction,
-            });
+            } = mergeResult;
+            pendingRows = mergeResult.pendingRows;
 
             if (hasPendingDelete) {
               errors.push({
@@ -572,6 +578,7 @@ class UnitV2 extends Model {
             action,
             cleaned,
             transaction,
+            { pendingRows },
           );
           stagedCount++;
         } catch (err) {

@@ -383,11 +383,16 @@ export async function getPendingStagedRowsForPk(
  * rows on top of the committed DB row. This lets CSV batch uploads reconcile
  * with already-staged edits instead of clobbering them.
  *
+ * Performs a single staging table scan and buckets results by action client
+ * side, then returns the INSERT/UPDATE pending rows so the caller can hand
+ * them to stageConsolidatedCsvRecord without scanning the staging table a
+ * second time.
+ *
  * @param {import('sequelize').Model} modelClass
  * @param {string} pk
  * @param {Object|null} persistedRecord - Sequelize instance or null
  * @param {{ transaction?: import('sequelize').Transaction }} [options]
- * @returns {Promise<{ mergedBase: Object, pendingRows: Array, hasPendingDelete: boolean }>}
+ * @returns {Promise<{ mergedBase: Object, pendingRows: Array, hasPendingDelete: boolean, hasMultiRecordPendingRow: boolean }>}
  */
 export async function buildPendingCsvMergeBase(
   modelClass,
@@ -395,14 +400,20 @@ export async function buildPendingCsvMergeBase(
   persistedRecord,
   { transaction } = {},
 ) {
-  const pendingDeleteRows = await getPendingStagedRowsForPk(modelClass, pk, {
+  const allPendingRows = await getPendingStagedRowsForPk(modelClass, pk, {
     transaction,
-    actions: ['DELETE'],
+    actions: ['DELETE', 'INSERT', 'UPDATE'],
   });
-  const pendingRows = await getPendingStagedRowsForPk(modelClass, pk, {
-    transaction,
-    actions: ['INSERT', 'UPDATE'],
-  });
+
+  const pendingRows = [];
+  let hasPendingDelete = false;
+  for (const entry of allPendingRows) {
+    if (entry.stagingRecord.action === 'DELETE') {
+      hasPendingDelete = true;
+    } else {
+      pendingRows.push(entry);
+    }
+  }
 
   let mergedBase = persistedRecord ? persistedRecord.toJSON() : {};
   const hasMultiRecordPendingRow = pendingRows.some(
@@ -418,7 +429,7 @@ export async function buildPendingCsvMergeBase(
   return {
     mergedBase,
     pendingRows,
-    hasPendingDelete: pendingDeleteRows.length > 0,
+    hasPendingDelete,
     hasMultiRecordPendingRow,
   };
 }
@@ -432,11 +443,16 @@ export async function buildPendingCsvMergeBase(
  * If any existing pending row is an INSERT, the consolidated row remains an
  * INSERT because the record has not been committed yet.
  *
+ * Callers that already have the pending INSERT/UPDATE rows in hand (e.g. from
+ * buildPendingCsvMergeBase during the same row of a CSV batch) may pass them
+ * via options.pendingRows to avoid re-scanning the staging table.
+ *
  * @param {import('sequelize').Model} modelClass
  * @param {string} pk
  * @param {'INSERT'|'UPDATE'} action
  * @param {Object} cleanedRecord - DB-field (snake_case) row
  * @param {import('sequelize').Transaction} transaction
+ * @param {{ pendingRows?: Array<{ stagingRecord: Object }> }} [options]
  * @returns {Promise<void>}
  */
 export async function stageConsolidatedCsvRecord(
@@ -445,26 +461,39 @@ export async function stageConsolidatedCsvRecord(
   action,
   cleanedRecord,
   transaction,
+  { pendingRows } = {},
 ) {
-  const pendingRows = await getPendingStagedRowsForPk(modelClass, pk, {
-    transaction,
-    actions: ['INSERT', 'UPDATE'],
-  });
+  // Callers pass an Array (possibly empty) when they already know the
+  // pending INSERT/UPDATE rows. Anything else — undefined/null — means
+  // "unknown, please scan". Guarding on Array.isArray avoids accidentally
+  // re-scanning when a caller explicitly passes `[]` (known-empty).
+  const resolvedPendingRows = Array.isArray(pendingRows)
+    ? pendingRows
+    : await getPendingStagedRowsForPk(modelClass, pk, {
+        transaction,
+        actions: ['INSERT', 'UPDATE'],
+      });
 
-  const effectiveAction = pendingRows.some(
+  const effectiveAction = resolvedPendingRows.some(
     ({ stagingRecord }) => stagingRecord.action === 'INSERT',
   )
     ? 'INSERT'
     : action;
 
-  if (pendingRows.length > 0) {
-    const targetRow = pendingRows[pendingRows.length - 1].stagingRecord;
-    const duplicateIds = pendingRows
+  if (resolvedPendingRows.length > 0) {
+    const targetRow = resolvedPendingRows[resolvedPendingRows.length - 1].stagingRecord;
+    const duplicateIds = resolvedPendingRows
       .slice(0, -1)
       .map(({ stagingRecord }) => stagingRecord.id);
 
+    // Keep the staging row's uuid column in sync with the entity PK. The
+    // staging table convention is that uuid === entity primary key, and
+    // downstream commit logic uses it as the datalayer changelist key; a
+    // stale uuid from a prior staging row would produce the wrong changelist
+    // entry.
     await StagingV2.update(
       {
+        uuid: pk,
         action: effectiveAction,
         data: JSON.stringify([cleanedRecord]),
       },
