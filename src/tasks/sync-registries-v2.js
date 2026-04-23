@@ -97,11 +97,17 @@ const truncateStagingV2 = async () => {
 
   while (!success && attempts < maxAttempts) {
     try {
-      // Only delete records that have been marked as committed
-      // This prevents deleting newly staged records that haven't been committed yet
+      // Only delete records that have been marked as committed.
+      // This prevents deleting newly staged records that haven't been committed yet.
+      // Exclude is_transfer records: project transfers are staged with
+      // committed: true + is_transfer: true and must persist until the offer
+      // flow consumes them (see staging-v2.model generateOfferFile and the
+      // offer controller). They are cleaned up explicitly by the offer flow,
+      // not by this periodic task.
       await StagingV2.destroy({
         where: {
           committed: true,
+          is_transfer: false,
         },
       });
       success = true; // If destroy succeeds, set success to true to exit the loop

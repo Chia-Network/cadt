@@ -431,12 +431,16 @@ class OfferV2 {
       const tradeId = tradeIdRecord.meta_value;
       await datalayerPersistance.cancelOffer(tradeId);
 
-      // Remove trade ID from MetaV2
-      await MetaV2.destroy({
-        where: {
-          meta_key: 'activeOfferTradeId',
-        },
-      });
+      // Clear the active offer trade ID and the transfer-staging marker in
+      // parallel, mirroring the v1 offer.controller.cancelActiveOffer flow.
+      // The transfer-staging row (committed: true, is_transfer: true) is
+      // preserved by the periodic sync-registries-v2 truncate on purpose so
+      // that GET /v2/offer can read it between transfer-stage and offer
+      // consumption; it must be cleaned up here when the offer is cancelled.
+      await Promise.all([
+        MetaV2.destroy({ where: { meta_key: 'activeOfferTradeId' } }),
+        StagingV2.destroy({ where: { is_transfer: true } }),
+      ]);
     } catch (error) {
       loggerV2.error('[v2]: Error canceling active offer:', error);
       throw new Error(error.message);
