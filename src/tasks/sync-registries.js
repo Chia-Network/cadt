@@ -215,7 +215,20 @@ const truncateStaging = async () => {
   while (!success && attempts < maxAttempts) {
     try {
       if (CONFIG.USE_SIMULATOR) {
-        await Staging.destroy({ where: { commited: true } });
+        // Simulator-mode cleanup: delete only committed non-transfer
+        // records. Project transfers are staged with commited: true +
+        // isTransfer: true and must persist until the offer flow consumes
+        // them (see Staging.generateOfferFile and
+        // offer.controller.cancelActiveOffer, which destroys the
+        // isTransfer row on cancel). Excluding them here matches the
+        // existing v1 cancelActiveOffer contract.
+        //
+        // The non-simulator branch below still calls truncate()
+        // unconditionally; that pre-existing race on the v1 transfer
+        // flow is out of scope for this change.
+        await Staging.destroy({
+          where: { commited: true, isTransfer: false },
+        });
       } else {
         await Staging.truncate();
       }

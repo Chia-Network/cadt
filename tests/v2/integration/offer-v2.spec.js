@@ -380,6 +380,44 @@ describe('Phase 18.4: OfferV2 Integration Tests', function () {
           }
         });
     });
+
+    it('should remove activeOfferTradeId meta and is_transfer staging row on successful cancel', async function () {
+      // Regression guard: cancelActiveOffer must clear both MetaV2.activeOfferTradeId
+      // and the is_transfer staging marker, since the periodic truncateStagingV2
+      // task deliberately preserves is_transfer rows (see src/tasks/sync-registries-v2.js).
+      await MetaV2.destroy({ where: {} });
+      await resetV2StagingTable();
+
+      await MetaV2.create({
+        meta_key: 'activeOfferTradeId',
+        meta_value: 'test-trade-id-cleanup',
+      });
+
+      await StagingV2.create({
+        uuid: testProject.cadTrustProjectId,
+        table: 'project',
+        action: 'UPDATE',
+        data: JSON.stringify([
+          { cad_trust_project_id: testProject.cadTrustProjectId },
+        ]),
+        committed: true,
+        failed_commit: false,
+        is_transfer: true,
+      });
+
+      const response = await supertest(app).delete('/v2/offer').expect(200);
+      expect(response.body).to.have.property('success', true);
+
+      const remainingTradeIdMeta = await MetaV2.findOne({
+        where: { meta_key: 'activeOfferTradeId' },
+      });
+      expect(remainingTradeIdMeta, 'activeOfferTradeId meta should be cleared').to.be.null;
+
+      const remainingTransferRows = await StagingV2.count({
+        where: { is_transfer: true },
+      });
+      expect(remainingTransferRows, 'is_transfer staging row should be cleared').to.equal(0);
+    });
   });
 
   describe('POST /v2/offer/accept/commit - Commit imported offer', function () {
