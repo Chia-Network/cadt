@@ -640,16 +640,159 @@ class Organization extends Model {
   }
 
   /**
+   * Wait for the wallet to be ready for a batch_update RPC. The Chia wallet
+   * will reject batch_update with "Wallet needs to be fully synced" unless
+   * the wallet is caught up to the tip AND the relevant wallet ids have no
+   * unconfirmed transactions. We explicitly check all three signals here:
+   *
+   *   1. walletIsSynced()                  — wallet caught up to blockchain
+   *   2. hasAnyUnconfirmedTransactions()   — standard + DL wallets settled
+   *   3. waitForSpendableCoins(requiredCoins) — at least N coins available
+   *
+   * NOTE: waitForSpendableCoins alone is insufficient — it only polls
+   * hasUnconfirmedTransactions('1') and coin records, not walletIsSynced().
+   * On a node replaying blocks with no pending txs, it would return success
+   * while the wallet still rejects transactions.
+   *
+   * Bounded by ORG_CREATION_CONFIG.DATA_PUSH_WALLET_SYNC_WAIT_MS. Throws on
+   * timeout; the caller decides whether that's fatal (pre-flight) or should
+   * fall through to the next retry attempt (per-push retry).
+   *
+   * No-ops in the simulator (no wallet).
+   *
+   * @param {number} requiredCoins - Minimum number of spendable coins needed.
+   * @returns {Promise<void>}
+   * @private
+   */
+  static async _waitForWalletReadyForPush(requiredCoins = 1) {
+    if (USE_SIMULATOR) return;
+
+    const totalTimeoutMs = ORG_CREATION_CONFIG.DATA_PUSH_WALLET_SYNC_WAIT_MS;
+    const deadline = Date.now() + totalTimeoutMs;
+    const pollIntervalMs = 5000;
+
+    // Phase 1: wait for the wallet to report synced=true.
+    while (Date.now() < deadline) {
+      if (await wallet.walletIsSynced()) break;
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+    if (!(await wallet.walletIsSynced())) {
+      throw new Error(
+        `wallet did not reach fully-synced state within ${totalTimeoutMs / 1000}s`,
+      );
+    }
+
+    // Phase 2: wait for all relevant wallets (standard + DL) to have no
+    // unconfirmed transactions. This is what pushChangesWhenStoreIsAvailable
+    // gates on, and it's stricter than waitForSpendableCoins's wallet_id=1
+    // check.
+    while (Date.now() < deadline) {
+      if (!(await wallet.hasAnyUnconfirmedTransactions())) break;
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+    if (await wallet.hasAnyUnconfirmedTransactions()) {
+      throw new Error(
+        `unconfirmed transactions did not clear within ${totalTimeoutMs / 1000}s`,
+      );
+    }
+
+    // Phase 3: verify at least requiredCoins spendable coins remain. We've
+    // already waited for unconfirmed txs, so this usually returns quickly;
+    // cap the remaining time so the overall helper respects totalTimeoutMs.
+    const remainingMs = Math.max(10000, deadline - Date.now());
+    await wallet.waitForSpendableCoins(requiredCoins, undefined, remainingMs);
+  }
+
+  /**
+   * Push a single store's changelist with a bounded synchronous retry loop.
+   *
+   * Each attempt is preceded by a wallet-sync wait so that a transient desync
+   * (e.g. wallet still processing store-creation confirmations) doesn't
+   * immediately fail the push. Returns true on success, false after all
+   * retries are exhausted. Throws on permanent errors (e.g. store not owned).
+   *
+   * Interaction with pushChangeListToDataLayer's internal retry loop:
+   *  - pushChangeListToDataLayer has its own 5-attempt loop, but only retries
+   *    on "Already have a pending root" and "Key already present" errors.
+   *  - The target failure mode here ("Wallet needs to be fully synced")
+   *    falls through to the final `return false` after a single attempt.
+   *  - Because we've already waited for unconfirmed txs to clear in
+   *    _waitForWalletReadyForPush, the "pending root" path is unlikely to
+   *    compound here in practice.
+   *
+   * No-op in the simulator -- caller writes via the in-memory store instead.
+   *
+   * @param {string} storeType
+   * @param {string} storeId
+   * @param {Array} changeList
+   * @param {Object} state
+   * @returns {Promise<boolean>}
+   * @private
+   */
+  static async _pushWithSyncRetry(storeType, storeId, changeList, state) {
+    const maxAttempts = ORG_CREATION_CONFIG.MAX_DATA_PUSH_SYNC_RETRIES;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await Organization._waitForWalletReadyForPush(1);
+      } catch (waitError) {
+        const level = attempt === maxAttempts ? 'error' : 'warn';
+        logState(
+          state,
+          `Wallet-readiness wait before ${storeType} push attempt ${attempt}/${maxAttempts} timed out: ${waitError.message}`,
+          level,
+        );
+        if (attempt === maxAttempts) return false;
+        continue;
+      }
+
+      const success = await pushChangeListToDataLayer(storeId, changeList, {
+        skipTransactionWait: true,
+      });
+      if (success) {
+        if (attempt > 1) {
+          logState(
+            state,
+            `Push to ${storeType} store ${storeId} succeeded on attempt ${attempt}/${maxAttempts}`,
+          );
+        }
+        return true;
+      }
+
+      if (attempt < maxAttempts) {
+        logState(
+          state,
+          `Push to ${storeType} store ${storeId} returned false (attempt ${attempt}/${maxAttempts}); waiting for wallet readiness and retrying`,
+          'warn',
+        );
+      } else {
+        logState(
+          state,
+          `Push to ${storeType} store ${storeId} returned false after ${maxAttempts} sync-retry attempts; giving up on synchronous path`,
+          'error',
+        );
+      }
+    }
+    return false;
+  }
+
+  /**
    * Push data to stores sequentially with a short delay between each.
    *
-   * Calls pushChangeListToDataLayer directly, bypassing the hasUnconfirmedTransactions
-   * gate in pushChangesWhenStoreIsAvailable. With coin splitting we maintain multiple
-   * coins specifically so concurrent/back-to-back transactions work; the unconfirmed-tx
-   * check is a legacy guard from single-coin days and would force a 30s retry delay
-   * on the second push. We already know stores are confirmed from the previous step.
+   * Before pushing, waits for the wallet to be synced with enough spendable
+   * coins (pre-flight gate). After store creation the wallet is temporarily
+   * desynced while processing confirmations; without this gate the first
+   * batch_update RPC often fails with "Wallet needs to be fully synced",
+   * which used to mark the entire creation as FAILED.
    *
-   * Pushes are staggered by 2s so two batch_update RPCs don't hit the wallet at the
-   * exact same instant (avoids a coin-selection race in the Chia wallet).
+   * Each push bypasses the legacy hasUnconfirmedTransactions gate in
+   * pushChangesWhenStoreIsAvailable (with coin splitting we maintain multiple
+   * coins specifically so back-to-back txs work), but is wrapped in a bounded
+   * sync-retry loop (_pushWithSyncRetry) that re-checks wallet readiness
+   * before each attempt. Only after those retries are exhausted do we fall
+   * back to the fire-and-forget background retry + record the push as failed.
+   *
+   * Pushes are staggered by 2s so two batch_update RPCs don't hit the wallet
+   * at the exact same instant (avoids a coin-selection race in the Chia wallet).
    *
    * @param {Object} state - Current state
    * @returns {Promise<Object>} Updated state
@@ -664,6 +807,27 @@ class Organization extends Model {
     }
 
     logState(state, `Pushing data to ${storesNeedingData.length} stores`);
+
+    // Pre-flight: wait for the wallet to be synced with at least one spendable
+    // coin before starting. This is a lightweight gate; the per-push retry
+    // handles re-checks for subsequent pushes and the coin-management task
+    // refills coins as they're consumed. Waiting for N coins here would be
+    // stricter than necessary and could race coin splitting.
+    if (!USE_SIMULATOR) {
+      try {
+        await Organization._waitForWalletReadyForPush(1);
+        logState(state, 'Wallet is synced and ready for data push');
+      } catch (waitError) {
+        logState(
+          state,
+          `Wallet did not become ready for data push within ${ORG_CREATION_CONFIG.DATA_PUSH_WALLET_SYNC_WAIT_MS / 1000}s: ${waitError.message}`,
+          'warn',
+        );
+        // Fall through: per-push _pushWithSyncRetry re-checks wallet
+        // readiness before each attempt, so a slow-to-settle wallet still
+        // has a chance to recover without aborting the whole creation.
+      }
+    }
 
     const orgUidStoreId = state.stores[STORE_TYPES.ORG_UID].id;
     const dataModelVersionStoreId = state.stores[STORE_TYPES.DATA_MODEL_VERSION].id;
@@ -724,9 +888,15 @@ class Organization extends Model {
           await simPush(storeId, changeList);
           success = true;
         } else {
-          // Call persistance directly, skipping the legacy hasUnconfirmedTransactions gate.
-          // With coin splitting we have multiple coins so back-to-back txs are fine.
-          success = await pushChangeListToDataLayer(storeId, changeList, { skipTransactionWait: true });
+          // Sync-retry loop with a wallet-sync wait before each attempt. This
+          // absorbs transient "Wallet needs to be fully synced" errors that
+          // would otherwise fail the whole creation.
+          success = await Organization._pushWithSyncRetry(
+            storeType,
+            storeId,
+            changeList,
+            state,
+          );
         }
 
         if (success) {
