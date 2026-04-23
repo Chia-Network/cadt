@@ -2,12 +2,12 @@
 
 import { Model } from 'sequelize';
 
-import { sequelizeMirror, safeMirrorDbHandler } from '../../database';
+import { sequelizeMirror, initMirrorModel } from '../../database';
 import ModelTypes from './labelUnits.modeltypes.js';
 
 class LabelUnitMirror extends Model {}
 
-safeMirrorDbHandler(() => {
+initMirrorModel(() => {
   LabelUnitMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
     modelName: 'label_unit',

@@ -1,11 +1,11 @@
 'use strict';
 
 import { Sequelize, Model } from 'sequelize';
-import { sequelizeV2Mirror, safeMirrorDbHandlerV2 } from '../../database/v2/index.js';
+import { sequelizeV2Mirror, initMirrorModelV2 } from '../../database/v2/index.js';
 
 class UnitV2Mirror extends Model {}
 
-safeMirrorDbHandlerV2(() => {
+initMirrorModelV2(() => {
   UnitV2Mirror.init(
     {
       cadTrustUnitId: {

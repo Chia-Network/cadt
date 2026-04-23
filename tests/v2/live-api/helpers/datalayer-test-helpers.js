@@ -6,18 +6,23 @@
 import fs from 'fs';
 import path from 'path';
 import superagent from 'superagent';
-import { getChiaRoot } from '../../../../src/utils/chia-root.js';
-import { getLiveApiConfig } from './live-api-helpers.js';
+import {
+  getLiveApiConfig,
+  getChiaCertificateFolderPath,
+} from './live-api-helpers.js';
 
 // Disable TLS certificate validation for self-signed certs
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
 /**
- * Get base options for datalayer RPC calls (certs, keys, timeout)
+ * Get base options for datalayer RPC calls (certs, keys, timeout).
+ *
+ * Uses getChiaCertificateFolderPath so this helper honours
+ * CERTIFICATE_FOLDER_PATH the same way src/datalayer/wallet.js does, rather
+ * than hardcoding ${chiaRoot}/config/ssl.
  */
 const getBaseOptions = () => {
-  const chiaRoot = getChiaRoot();
-  const certificateFolderPath = `${chiaRoot}/config/ssl`;
+  const certificateFolderPath = getChiaCertificateFolderPath();
 
   const certFile = path.resolve(
     `${certificateFolderPath}/data_layer/private_data_layer.crt`,

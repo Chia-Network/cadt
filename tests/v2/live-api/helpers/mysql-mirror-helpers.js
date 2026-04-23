@@ -328,6 +328,16 @@ export const verifyMirrorRecord = async (type, id, expectedData = null) => {
         if (expectedDatePart === actualDatePart) {
           continue;
         }
+        // Dates didn't match on the YYYY-MM-DD prefix. Record the mismatch
+        // and skip the fallback comparisons: falling through to the
+        // parseFloat branch below would compare '2024-01-01' and
+        // '2024-06-15' as both equal to the year 2024 and silently
+        // suppress the mismatch.
+        result.dataMatches = false;
+        result.errors.push(
+          `Field '${snakeKey}' mismatch: expected '${expectedValue}', got '${actualValue}'`
+        );
+        continue;
       }
     }
 

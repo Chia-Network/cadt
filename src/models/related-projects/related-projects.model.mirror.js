@@ -2,12 +2,12 @@
 
 import { Model } from 'sequelize';
 
-import { sequelizeMirror, safeMirrorDbHandler } from '../../database';
+import { sequelizeMirror, initMirrorModel } from '../../database';
 import ModelTypes from './related-projects.modeltypes.js';
 
 class RelatedProjectMirror extends Model {}
 
-safeMirrorDbHandler(() => {
+initMirrorModel(() => {
   RelatedProjectMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
     modelName: 'relatedProject',

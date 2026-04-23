@@ -2,12 +2,12 @@
 
 import { Model } from 'sequelize';
 
-import { sequelizeMirror, safeMirrorDbHandler } from '../../database';
+import { sequelizeMirror, initMirrorModel } from '../../database';
 import ModelTypes from './co-benefits.modeltypes.js';
 
 class CoBenefitMirror extends Model {}
 
-safeMirrorDbHandler(() => {
+initMirrorModel(() => {
   CoBenefitMirror.init(ModelTypes, {
     sequelize: sequelizeMirror,
     modelName: 'coBenefit',
