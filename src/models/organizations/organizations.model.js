@@ -834,11 +834,23 @@ class Organization extends Model {
     // before entering the blocking subscription flow.  If either the org store or
     // its derived singleton store is not yet synced, return early so the periodic
     // task retries on the next run rather than waiting up to 10 minutes.
+    //
+    // subscribeToStoreOnDataLayer returns falsy on the common failure paths
+    // (no storeId, getSubscriptions RPC failure) and also throws on unexpected
+    // errors, so guard on both.  Without the falsy-return check, the dominant
+    // datalayer-unreachable failure would slip past the try/catch and the
+    // subsequent "not yet synced" skip log would be misleading.
     try {
-      await datalayer.subscribeToStoreOnDataLayer(orgUid);
+      const subscribed = await datalayer.subscribeToStoreOnDataLayer(orgUid);
+      if (!subscribed) {
+        logger.warn(
+          `[v1]: reconcileOrganization: could not subscribe to org store ${orgUid}. Skipping reconcile, will retry on next task run.`,
+        );
+        return;
+      }
     } catch (error) {
       logger.warn(
-        `[v1]: reconcileOrganization: could not subscribe to org store ${orgUid}, skipping reconcile: ${error.message}`,
+        `[v1]: reconcileOrganization: could not subscribe to org store ${orgUid}: ${error.message}. Skipping reconcile, will retry on next task run.`,
       );
       return;
     }

@@ -1857,12 +1857,24 @@ class OrganizationsV2 extends Model {
 
     // Subscribe to org store first so it begins syncing, then check sync status
     // before entering the blocking subscription flow.
+    //
+    // subscribeToStoreOnDataLayer returns falsy on the common failure paths
+    // (no storeId, getSubscriptions RPC failure) and also throws on unexpected
+    // errors, so guard on both.  Without the falsy-return check, the dominant
+    // datalayer-unreachable failure would slip past the try/catch and the
+    // subsequent "not yet synced" skip log would be misleading.
     if (!USE_SIMULATOR) {
       try {
-        await datalayer.subscribeToStoreOnDataLayer(org_uid);
+        const subscribed = await datalayer.subscribeToStoreOnDataLayer(org_uid);
+        if (!subscribed) {
+          loggerV2.warn(
+            `[v2]: reconcileOrganization: could not subscribe to org store ${org_uid}. Skipping reconcile, will retry on next task run.`,
+          );
+          return;
+        }
       } catch (error) {
         loggerV2.warn(
-          `[v2]: reconcileOrganization: could not subscribe to org store ${org_uid}, skipping reconcile: ${error.message}`,
+          `[v2]: reconcileOrganization: could not subscribe to org store ${org_uid}: ${error.message}. Skipping reconcile, will retry on next task run.`,
         );
         return;
       }
