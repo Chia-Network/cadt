@@ -134,7 +134,7 @@ function getEndpointPath(type) {
 
 async function commitAndWait(phase) {
   const { getLiveApiRequest, commitStagedRecords, waitForPendingCommits, waitForStagingEmpty, waitForBatchToAppear, validateDataInDatabase } = await import('./helpers/live-api-helpers.js');
-  const { getAllCreatedIds, getBatchVerificationRecords, clearBatchVerificationRecords } = await import('./helpers/shared-state.js');
+  const { getBatchVerificationRecords, clearBatchVerificationRecords } = await import('./helpers/shared-state.js');
 
   // Use V2 API version for health checks since this uses V2 endpoints
   const request = await getLiveApiRequest({ apiVersion: 'v2' });
@@ -154,8 +154,17 @@ async function commitAndWait(phase) {
   await waitForPendingCommits(request);
   await waitForStagingEmpty(request);
 
-  // Wait for all created records to appear after batch commit
-  const recordsToWaitFor = getAllCreatedIds();
+  // Wait for records touched in this phase to appear after batch commit.
+  // DELETE operations are validated separately and must NOT be waited on here.
+  const verificationRecords = getBatchVerificationRecords();
+  const recordsToWaitFor = [];
+  for (const [type, typeRecords] of Object.entries(verificationRecords)) {
+    for (const [id, recordInfo] of Object.entries(typeRecords)) {
+      if (recordInfo.operation === 'POST' || recordInfo.operation === 'PUT') {
+        recordsToWaitFor.push({ type, id });
+      }
+    }
+  }
   if (recordsToWaitFor.length > 0) {
     const waitTimestamp = new Date().toISOString();
     console.log(`[${waitTimestamp}] Waiting for ${recordsToWaitFor.length} record(s) to appear after batch commit...`);
@@ -165,7 +174,6 @@ async function commitAndWait(phase) {
   }
 
   // Verify records
-  const verificationRecords = getBatchVerificationRecords();
   const verifyTimestamp = new Date().toISOString();
   console.log(`[${verifyTimestamp}] Verifying ${phase} operations...`);
 
