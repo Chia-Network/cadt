@@ -515,6 +515,11 @@ describe('XLSX Import/Export Live API Tests', function () {
       expect(importResponse.body.success).to.be.true;
     });
 
+    it('should commit all round-trip staged records', async function () {
+      await commitStagedRecords(request, [], true);
+      await waitForPendingCommits(request);
+      await waitForStagingEmpty(request);
+    });
   });
 
   describe('Step 15a: Verify round-trip fidelity', function () {
