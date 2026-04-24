@@ -159,9 +159,10 @@ async function commitAndWait(phase) {
   const verificationRecords = getBatchVerificationRecords();
   const recordsToWaitFor = [];
   for (const [type, typeRecords] of Object.entries(verificationRecords)) {
+    const endpointPath = getEndpointPath(type);
     for (const [id, recordInfo] of Object.entries(typeRecords)) {
       if (recordInfo.operation === 'POST' || recordInfo.operation === 'PUT') {
-        recordsToWaitFor.push({ type, id });
+        recordsToWaitFor.push({ type: endpointPath, id });
       }
     }
   }
