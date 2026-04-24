@@ -136,6 +136,10 @@ describe('Cascade Delete Live API Tests', function () {
       expect(hasStagedDelete(stagedRowsA, table, key, value), `missing staged delete ${table}:${value}`).to.equal(true);
     }
 
+    // Exact row count guards against spurious over-staging (12 = 11 children + project itself)
+    const deleteRowsA = stagedRowsA.filter((r) => r.action === 'DELETE');
+    expect(deleteRowsA.length, 'unexpected extra staged deletes in Graph A').to.equal(12);
+
     // --- Graph B deletes: unit3, issuance2, verification1 ---
     const unitDelResp = await request.delete(`/v2/unit/${unit3Id}`).expect(200);
     expect(unitDelResp.body.success).to.equal(true);
@@ -170,6 +174,10 @@ describe('Cascade Delete Live API Tests', function () {
     for (const [table, key, value] of expectedStagedDeletesB) {
       expect(hasStagedDelete(stagedRowsB, table, key, value), `missing staged delete ${table}:${value}`).to.equal(true);
     }
+
+    // Exact row count: 12 from Graph A + 9 from Graph B = 21 DELETE rows total
+    const deleteRowsB = stagedRowsB.filter((r) => r.action === 'DELETE');
+    expect(deleteRowsB.length, 'unexpected extra staged deletes after Graph B').to.equal(21);
 
     // --- Commit cycle 2: commit all deletes (both graphs) in one pass ---
     await commitStagedRecords(request, [], true);
@@ -216,10 +224,15 @@ describe('Cascade Delete Live API Tests', function () {
     }
 
     // Verify non-deleted Graph B siblings are still present (guards against
-    // overly-aggressive cascades that silently delete sibling entities)
+    // overly-aggressive cascades that silently delete sibling entities).
+    // val1/val2/val3 are parent validations whose child verifications were
+    // deleted — they must NOT be cascade-deleted upward.
     const survivingGraphB = [
       ['/v2/project', projectBId],
       ['/v2/project-methodology', pm1Id],
+      ['/v2/validation', val1Id],
+      ['/v2/validation', val2Id],
+      ['/v2/validation', val3Id],
       ['/v2/verification', ver2Id],
       ['/v2/verification', ver3Id],
       ['/v2/issuance', iss3Id],
