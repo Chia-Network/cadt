@@ -10,6 +10,10 @@ import {
   createRecoveryStuckTracker,
 } from './wallet-diagnostics.js';
 
+// Reduced from 10 000 ms to cut idle wait time between blockchain commits.
+// Increases API call volume ~3x but stays well within the 30-minute suite timeout.
+const COMMIT_POLL_INTERVAL_MS = 3000;
+
 /**
  * Format current timestamp as YYYY-MM-DD HH:mm:ss
  * @returns {string} - Formatted timestamp
@@ -595,7 +599,7 @@ export const checkOrganizationSynced = async (request) => {
  */
 export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
   const startTime = Date.now();
-  const interval = 3000;
+  const interval = COMMIT_POLL_INTERVAL_MS;
   const timestamp = new Date().toISOString();
   const recoveryTracker = createRecoveryStuckTracker();
 
@@ -633,7 +637,7 @@ export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
  */
 export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
   const startTime = Date.now();
-  const interval = 3000;
+  const interval = COMMIT_POLL_INTERVAL_MS;
   const recoveryTracker = createRecoveryStuckTracker();
 
   console.log('Waiting for staging table to be empty...');
