@@ -10,11 +10,10 @@ import {
   createRecoveryStuckTracker,
 } from './wallet-diagnostics.js';
 
-// Reduced from 10 000 ms to cut idle wait time between blockchain commits.
 // Each iteration calls two HTTP endpoints (org-synced + wallet-diagnostics),
-// so the total request rate increase across all live jobs is ~6.7× vs the old
-// 10 s interval.  Both jobs (test-v2-live-api, test-v2-live-cascade-delete)
-// use this helper; the 30-minute suite timeout is not at risk.
+// so the per-loop request rate is ~6.7× the org-creation polling interval.
+// Both live jobs (test-v2-live-api, test-v2-live-cascade-delete) share this
+// helper; the 30-minute suite timeout is not at risk.
 const COMMIT_POLL_INTERVAL_MS = 3000;
 
 /**

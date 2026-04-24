@@ -51,6 +51,11 @@ describe('Cascade Delete Live API Tests', function () {
     return parsed.some((p) => p?.[key] === value);
   });
 
+  // Graphs A and B are intentionally combined into one it() to share a single
+  // on-chain commit cycle.  Trade-off: a Graph A assertion failure will abort
+  // the test before Graph B executes.  Accepted because the two graphs share
+  // the same commit, and duplicating the commit cycle for isolation would cost
+  // ~2 min per CI run.
   it('should cascade delete project and sub-entity children through commit', async function () {
     // === Graph A: full project cascade (project + 11 children) ===
     const programAId = await postAndGetId('/v2/program', generateProgram(), 'cadTrustProgramId');
