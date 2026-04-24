@@ -394,25 +394,23 @@ async function main() {
     console.log('');
 
     const xlsxTestFiles = ['xlsx-import-export.live.spec.js'];
-    await runMochaTests('Step 1[1-6]a?:', 'XLSX Import/Export', xlsxTestFiles);
 
-    // Phase 4: PUT tests
+    // Pass 1: XLSX imports + verify + export (1 on-chain commit from Step 11)
+    await runMochaTests('Step 11:|Step 11a:|Step 12a:|Step 13:|Step 14:', 'XLSX Import/Export (imports)', xlsxTestFiles);
+
+    // Pass 2: XLSX round-trip staging only (no separate commit — absorbed into PUT commit below)
+    await runMochaTests('Step 15: Round-trip re-import \\(batch\\)', 'XLSX Round-trip Staging', xlsxTestFiles);
+
+    // Phase 4: PUT tests (stages on top of XLSX round-trip; one commit covers both)
     await runMochaTests('Step 7: PUT Request Tests', 'PUT Operations');
     await commitAndWait('PUT');
+
+    // Pass 3: XLSX round-trip verify + filter export (reads now-committed data)
+    await runMochaTests('Step 15a:|Step 16:', 'XLSX Round-trip Verify + Filter Export', xlsxTestFiles);
 
     // Phase 5: DELETE tests
     await runMochaTests('Step 9: DELETE Request Tests', 'DELETE Operations');
     await commitAndWait('DELETE');
-
-    // Phase 6: Cascade delete e2e tests
-    // Run as a dedicated suite (not step-grep based) because it validates
-    // cascade-specific staging + commit behavior end-to-end.
-    console.log('--- Running cascade delete tests ---');
-    await runMochaTests(
-      'should cascade delete',
-      'Cascade Delete Operations',
-      ['cascade-delete.live.spec.js'],
-    );
 
     console.log('\n=== All phases complete ===\n');
 

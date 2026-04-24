@@ -595,7 +595,7 @@ export const checkOrganizationSynced = async (request) => {
  */
 export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
   const startTime = Date.now();
-  const interval = 10000;
+  const interval = 3000;
   const timestamp = new Date().toISOString();
   const recoveryTracker = createRecoveryStuckTracker();
 
@@ -633,7 +633,7 @@ export const waitForPendingCommits = async (request, maxWaitTime = 600000) => {
  */
 export const waitForStagingEmpty = async (request, maxWaitTime = 600000) => {
   const startTime = Date.now();
-  const interval = 10000;
+  const interval = 3000;
   const recoveryTracker = createRecoveryStuckTracker();
 
   console.log('Waiting for staging table to be empty...');
