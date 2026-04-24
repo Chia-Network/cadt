@@ -260,6 +260,35 @@ describe('V2 XLS Utility Functions', function () {
       );
     });
 
+    it('should replace multi-digit NEW-X placeholders (NEW-10 through NEW-15)', function () {
+      const rows = [];
+      for (let i = 1; i <= 15; i++) {
+        rows.push([`NEW-${i}`, `Placeholder Project ${i}`]);
+      }
+
+      const buffer = xlsx.build([
+        {
+          name: 'projects',
+          data: [['cadTrustProjectId', 'projectName'], ...rows],
+        },
+      ]);
+
+      const result = parseV2Xlsx(buffer, ProjectV2);
+      expect(result.main).to.have.lengthOf(15);
+
+      const uuids = new Set();
+      result.main.forEach((row) => {
+        expect(row.cadTrustProjectId).to.not.include('NEW-');
+        expect(row.cadTrustProjectId).to.match(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+        );
+        uuids.add(row.cadTrustProjectId);
+      });
+
+      // All 15 should have unique UUIDs
+      expect(uuids.size).to.equal(15);
+    });
+
     it('should convert "null" string values to null', function () {
       const projectId = uuidv4();
       const buffer = xlsx.build([

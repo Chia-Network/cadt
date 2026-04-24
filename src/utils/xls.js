@@ -925,8 +925,14 @@ function getExcludedColumns(items) {
 export const transformMetaUid = (xlsxParsed) => {
   let xlsxParseSerialized = JSON.stringify(xlsxParsed, 2, 2);
   const metaUids = _.uniq(
-    [...xlsxParseSerialized.matchAll(/(NEW-[0-9])/g)].map((item) => item[0]),
-  );
+    [...xlsxParseSerialized.matchAll(/(NEW-[0-9]+)/g)].map((item) => item[0]),
+  ).sort((a, b) => {
+    // Replace longer/higher-numbered placeholders first to avoid
+    // NEW-1 matching inside NEW-10, NEW-11, etc.
+    const numA = parseInt(a.slice(4), 10);
+    const numB = parseInt(b.slice(4), 10);
+    return numB - numA;
+  });
   metaUids.forEach((metaId) => {
     const uuid = uuidv4();
     xlsxParseSerialized = xlsxParseSerialized.replace(

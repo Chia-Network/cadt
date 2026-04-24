@@ -14,7 +14,18 @@ import {
   createXlsFromSequelizeResults,
   transformFullXslsToChangeList,
 } from '../../utils/xls.js';
-import { parseV2Xlsx, stageV2XlsRecords } from '../../utils/v2-xls.js';
+import {
+  parseV2Xlsx,
+  stageV2XlsRecords,
+  normalizeCsvHeaders,
+  toDbFieldNames,
+  stripUnknownDbFields,
+  validateRequiredFields,
+  buildPendingCsvMergeBase,
+  stageConsolidatedCsvRecord,
+} from '../../utils/v2-xls.js';
+import { assertRecordExistanceOrStaged } from '../../utils/v2-data-assertions.js';
+import { IssuanceV2 } from './issuance-v2.model.js';
 import { getDeletedItems } from '../../utils/model-utils.js';
 import { UnitLabelV2 } from './unit-label-v2.model.js';
 import { loggerV2 } from '../../config/logger.js';
@@ -414,86 +425,169 @@ class UnitV2 extends Model {
   }
 
   /**
-   * Batch upload units from CSV file
-   * Parses CSV and creates staging records
+   * Batch upload units from CSV file.
+   *
+   * Collects all CSV rows synchronously, then processes each row sequentially
+   * inside a transaction.  For each row the pipeline is:
+   *   1. Normalize snake_case headers → camelCase attribute names
+   *   2. Apply domain transforms (prepareXlsRow derives unitSerialId)
+   *   3. Determine INSERT vs UPDATE, merge with existing record on UPDATE
+   *   4. Validate ownership and FK references
+   *   5. Convert to DB field names, strip unknown keys
+   *   6. Upsert into StagingV2
+   *
    * @param {Object} csvFile - CSV file object with data buffer
-   * @returns {Promise<void>}
-   * @throws {Error} If CSV parsing or staging fails
+   * @returns {Promise<Object>} { stagedCount, errorCount, errors }
    */
   static async batchUpload(csvFile) {
     const buffer = csvFile.data;
     const stream = Readable.from(buffer.toString('utf8'));
 
-    const recordsToCreate = [];
+    const rawRows = [];
 
-    return new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
       csv()
         .fromStream(stream)
-        .subscribe(async (newRecord) => {
-          let action = 'UPDATE';
-
-          // Convert camelCase to snake_case for V2
-          const unitId = newRecord.cadTrustUnitId || newRecord.cad_trust_unit_id;
-
-          if (unitId) {
-            // Check if unit exists
-            const possibleExistingRecord = await UnitV2.findByPk(unitId);
-
-            if (!possibleExistingRecord) {
-              reject(
-                new Error(
-                  `Unit with cadTrustUnitId ${unitId} does not exist`,
-                ),
-              );
-              return;
-            }
-
-            // Verify it belongs to home org (for updates)
-            const homeOrg = await OrganizationsV2.getHomeOrg();
-            if (!homeOrg) {
-              reject(new Error('No home organization found'));
-              return;
-            }
-          } else {
-            // New unit - generate UUID
-            newRecord.cadTrustUnitId = uuidv4();
-            const homeOrg = await OrganizationsV2.getHomeOrg();
-            if (!homeOrg) {
-              reject(new Error('No home organization found'));
-              return;
-            }
-            action = 'INSERT';
-          }
-
-          // Update unit properties (handle serial ID from blocks)
-          if (newRecord.unitStartBlock && newRecord.unitEndBlock) {
-            newRecord.unitSerialId = `${newRecord.unitStartBlock}-${newRecord.unitEndBlock}`;
-          }
-
-          const stagedData = {
-            uuid: newRecord.cadTrustUnitId,
-            action: action,
-            table: 'unit',
-            data: JSON.stringify([newRecord]),
-          };
-
-          recordsToCreate.push(stagedData);
+        .subscribe((row) => {
+          rawRows.push(row);
         })
-        .on('error', (error) => {
-          reject(error);
-        })
-        .on('done', async () => {
-          if (recordsToCreate.length) {
-            await StagingV2.bulkCreate(recordsToCreate, {
-              logging: (msg) => loggerV2.info(msg),
-            });
-
-            resolve();
-          } else {
-            reject(new Error('There were no valid records to parse'));
-          }
-        });
+        .on('error', (error) => reject(error))
+        .on('done', () => resolve());
     });
+
+    if (rawRows.length === 0) {
+      throw new Error('There were no valid records to parse');
+    }
+
+    const homeOrg = await OrganizationsV2.getHomeOrg();
+    if (!homeOrg) {
+      throw new Error('No home organization found');
+    }
+    const orgUid = homeOrg.org_uid;
+
+    const errors = [];
+    let stagedCount = 0;
+
+    // unitSerialId is derivable from blocks — don't require it if blocks are present
+    const unitSkipFields = new Set(['unitSerialId']);
+
+    await sequelizeV2.transaction(async (transaction) => {
+      for (let i = 0; i < rawRows.length; i++) {
+        const rowNum = i + 2; // +2: 1-indexed + header row
+        try {
+          let row = normalizeCsvHeaders(rawRows[i], UnitV2);
+
+          // Derive unitSerialId from block range when not explicitly provided
+          UnitV2.prepareXlsRow(row);
+
+          const unitId = row.cadTrustUnitId;
+          let action;
+          let mergedRecord;
+
+          let pendingRows = [];
+          if (unitId) {
+            const existing = await UnitV2.findByPk(unitId);
+            const mergeResult = await buildPendingCsvMergeBase(
+              UnitV2,
+              unitId,
+              existing,
+              { transaction },
+            );
+            const {
+              mergedBase,
+              hasPendingDelete,
+              hasMultiRecordPendingRow,
+            } = mergeResult;
+            pendingRows = mergeResult.pendingRows;
+
+            if (hasPendingDelete) {
+              errors.push({
+                row: rowNum,
+                error: `Cannot update unit ${unitId}: it already has a pending staged delete`,
+              });
+              continue;
+            }
+            if (hasMultiRecordPendingRow) {
+              errors.push({
+                row: rowNum,
+                error: `Cannot update unit ${unitId}: it already has a complex pending staged update`,
+              });
+              continue;
+            }
+            if (!existing && Object.keys(mergedBase).length === 0) {
+              errors.push({ row: rowNum, error: `Unit with cadTrustUnitId ${unitId} does not exist` });
+              continue;
+            }
+            if (mergedBase.orgUid !== orgUid) {
+              errors.push({ row: rowNum, error: `Cannot update unit ${unitId}: belongs to a different organization` });
+              continue;
+            }
+            action = existing ? 'UPDATE' : 'INSERT';
+            mergedRecord = { ...mergedBase, ...row };
+
+            const changedBlockRange =
+              !row.unitSerialId &&
+              (row.unitStartBlock !== undefined || row.unitEndBlock !== undefined);
+            if (changedBlockRange) {
+              delete mergedRecord.unitSerialId;
+              UnitV2.prepareXlsRow(mergedRecord);
+            }
+          } else {
+            row.cadTrustUnitId = uuidv4();
+            action = 'INSERT';
+            mergedRecord = { ...row };
+          }
+
+          // Required-field validation for INSERT rows
+          if (action === 'INSERT') {
+            const missing = validateRequiredFields(mergedRecord, UnitV2, unitSkipFields);
+            if (missing.length > 0) {
+              errors.push({ row: rowNum, error: `Missing required field(s): ${missing.join(', ')}` });
+              continue;
+            }
+          }
+
+          // FK existence check for cadTrustIssuanceId
+          if (mergedRecord.cadTrustIssuanceId) {
+            try {
+              await assertRecordExistanceOrStaged(
+                IssuanceV2,
+                mergedRecord.cadTrustIssuanceId,
+                `cadTrustIssuanceId '${mergedRecord.cadTrustIssuanceId}' does not exist`,
+              );
+            } catch (err) {
+              errors.push({ row: rowNum, error: err.message });
+              continue;
+            }
+          }
+
+          // Remove timestamps (managed by Sequelize)
+          delete mergedRecord.createdAt;
+          delete mergedRecord.updatedAt;
+          delete mergedRecord.created_at;
+          delete mergedRecord.updated_at;
+
+          const dbRecord = toDbFieldNames(mergedRecord, UnitV2);
+          const cleaned = stripUnknownDbFields(dbRecord, UnitV2, loggerV2);
+
+          cleaned.org_uid = orgUid;
+
+          await stageConsolidatedCsvRecord(
+            UnitV2,
+            mergedRecord.cadTrustUnitId,
+            action,
+            cleaned,
+            transaction,
+            { pendingRows },
+          );
+          stagedCount++;
+        } catch (err) {
+          errors.push({ row: rowNum, error: err.message });
+        }
+      }
+    });
+
+    return { stagedCount, errorCount: errors.length, errors };
   }
 
 

@@ -2416,6 +2416,16 @@ Response
 
 #### Batch upload projects from CSV
 
+CSV batch upload is for **flat parent records only** — each row represents one project. Child records (locations, estimations, ratings, co-benefits, validations, verifications, etc.) must be created via their own REST endpoints or via the [XLSX multi-sheet import](#update-projects-from-xlsx-file) workflow. Unrecognized columns (including child entity names like `locations` or `estimations`) are silently stripped.
+
+CSV headers may use either camelCase attribute names (e.g., `cadTrustProjectId`) or snake_case DB column names (e.g., `cad_trust_project_id`).
+
+**Update behavior**: When a row includes a `cadTrustProjectId` that matches an existing project, the CSV row is **merged** with the latest pending state for that project — existing DB values plus any already-staged uncommitted edits for the same project. Fields present in the CSV overwrite that merged state; fields absent from the CSV retain their current values. This differs from the REST `PUT` endpoint, which requires all fields.
+
+**Validation**: INSERT rows are validated for required fields (`projectRegistryName`, `projectId`, `projectName`) and foreign key existence (`cadTrustProgramId` must reference an existing or staged program). UPDATE rows skip required-field checks since missing fields are merged from the existing record. Rows that fail validation are skipped and their errors are returned in the response with row numbers. The CSV validation is intentionally more lenient than the REST API — fields like `projectLink` and `projectStatusDate` that are required in the REST schema are optional in CSV batch upload. If **all** rows fail validation, the response returns HTTP 400 with `success: false`.
+
+**Ownership**: UPDATE rows are verified to belong to the home organization. Attempting to update a project owned by another organization will produce an error for that row.
+
 **Array Field Formatting**: For array fields like `projectType` and `projectSector`, the CSV can use any of these formats:
 - **Single value**: `Solar` → becomes `["Solar"]`
 - **JSON array**: `["Solar","Wind"]` → becomes `["Solar","Wind"]`
@@ -2434,13 +2444,46 @@ Request
 curl --location --request POST 'http://localhost:31310/v2/project/batch' --form 'csv=@"./createProject.csv"'
 ```
 
-Response
+Response (full success — all rows staged)
 ```json
 {
-  "message":"CSV processing complete, your records have been added to the staging table.",
-  "success": true
+  "message": "CSV processing complete, your records have been added to the staging table.",
+  "success": true,
+  "stagedCount": 3,
+  "errorCount": 0
 }
 ```
+
+Response (partial success — some rows staged, some failed)
+```json
+{
+  "message": "CSV processing complete. 2 row(s) staged, 1 row(s) skipped due to errors.",
+  "success": true,
+  "stagedCount": 2,
+  "errorCount": 1,
+  "errors": [
+    { "row": 3, "error": "cadTrustProgramId 'invalid-id' does not exist" }
+  ]
+}
+```
+
+Response (failure — no rows staged, HTTP 400)
+```json
+{
+  "message": "No rows were staged. All rows failed validation.",
+  "success": false,
+  "stagedCount": 0,
+  "errorCount": 2,
+  "errors": [
+    { "row": 2, "error": "Missing required field(s): projectName" },
+    { "row": 3, "error": "cadTrustProgramId 'invalid-id' does not exist" }
+  ]
+}
+```
+
+Other 400 responses:
+- Missing file upload: `{ "message": "Cannot find the required csv file in request", "success": false }`
+- Parser/runtime failure: `{ "message": "Batch Upload Failed.", "error": "<details>", "success": false }`
 
 ---
 
@@ -2553,7 +2596,7 @@ curl --location -g --request DELETE 'http://localhost:31310/v2/project/693d37f6-
 Response
 ```json
 {
-  "message": "Project deletion staged successfully",
+  "message": "Project delete staged successfully",
   "success": true
 }
 ```
@@ -3689,18 +3732,62 @@ Response
 
 #### Batch upload units from CSV
 
+CSV batch upload is for **flat parent records only** — each row represents one unit. Child records (unit labels, etc.) must be created via their own REST endpoints or via the [XLSX multi-sheet import](#update-units-from-xlsx-file) workflow. Unrecognized columns are silently stripped.
+
+CSV headers may use either camelCase attribute names (e.g., `cadTrustUnitId`) or snake_case DB column names (e.g., `cad_trust_unit_id`).
+
+**Update behavior**: When a row includes a `cadTrustUnitId` that matches an existing unit, the CSV row is **merged** with the latest pending state for that unit — existing DB values plus any already-staged uncommitted edits for the same unit. Fields present in the CSV overwrite that merged state; fields absent from the CSV retain their current values. This differs from the REST `PUT` endpoint, which requires all fields.
+
+**Serial ID derivation**: If `unitSerialId` is not provided but `unitStartBlock` and `unitEndBlock` are, the serial ID is automatically derived as `<unitStartBlock>-<unitEndBlock>`. This also applies to UPDATE rows after merge: if you change one block boundary and omit `unitSerialId`, the serial ID is recomputed from the merged start/end block values.
+
+**Validation**: INSERT rows are validated for required fields (`unitStartBlock`, `unitEndBlock`, `unitVintageYear`, `cadTrustIssuanceId`) and foreign key existence (`cadTrustIssuanceId` must reference an existing or staged issuance). `unitSerialId` is not required if `unitStartBlock` and `unitEndBlock` are provided (it is derived automatically). UPDATE rows skip required-field checks since missing fields are merged from the existing record. Rows that fail validation are skipped and their errors are returned in the response with row numbers. If **all** rows fail validation, the response returns HTTP 400 with `success: false`.
+
+**Ownership**: UPDATE rows are verified to belong to the home organization. Attempting to update a unit owned by another organization will produce an error for that row.
+
 Request
 ```shell
 curl --location --request POST 'http://localhost:31310/v2/unit/batch' --form 'csv=@"./createUnit.csv"'
 ```
 
-Response
+Response (full success — all rows staged)
 ```json
 {
-  "message":"CSV processing complete, your records have been added to the staging table.",
-  "success": true
+  "message": "CSV processing complete, your records have been added to the staging table.",
+  "success": true,
+  "stagedCount": 3,
+  "errorCount": 0
 }
 ```
+
+Response (partial success — some rows staged, some failed)
+```json
+{
+  "message": "CSV processing complete. 2 row(s) staged, 1 row(s) skipped due to errors.",
+  "success": true,
+  "stagedCount": 2,
+  "errorCount": 1,
+  "errors": [
+    { "row": 4, "error": "cadTrustIssuanceId 'invalid-id' does not exist" }
+  ]
+}
+```
+
+Response (failure — no rows staged, HTTP 400)
+```json
+{
+  "message": "No rows were staged. All rows failed validation.",
+  "success": false,
+  "stagedCount": 0,
+  "errorCount": 1,
+  "errors": [
+    { "row": 2, "error": "Missing required field(s): unitStartBlock, unitEndBlock" }
+  ]
+}
+```
+
+Other 400 responses:
+- Missing file upload: `{ "message": "Cannot find the required csv file", "success": false }`
+- Parser/runtime failure: `{ "message": "Batch Upload Failed.", "error": "<details>", "success": false }`
 
 ---
 
@@ -3791,7 +3878,7 @@ curl --location -g --request DELETE 'localhost:31310/v2/unit/104b082c-b112-4c39-
 Response
 ```json
 {
-  "message": "Unit deletion staged successfully",
+  "message": "Unit delete staged successfully",
   "success": true
 }
 ```
